@@ -1,0 +1,10 @@
+Name:                fps
+Version:             0.1
+License:             GPL
+License-file:        LICENSE
+Author:              Don Stewart
+Maintainer:          dons@cse.unsw.edu.au
+Build-Depends:       base, unix
+Exposed-modules:	 Data.FastPackedString
+ghc-options:         -O2 -funbox-strict-fields -fglasgow-exts -Icbits -DUSE_MMAP
+c-sources:           cbits/fpstring.c
