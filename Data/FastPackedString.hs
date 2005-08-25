@@ -32,7 +32,7 @@
 
 -- 
 --
--- | An efficient implementation of strings.
+-- An efficient implementation of strings.
 --
 -----------------------------------------------------------------------------
 
@@ -179,7 +179,7 @@ use_mmap = False
 data PackedString = PS !(ForeignPtr Word8) !Int !Int
 
 ----------------------------------------------------------------------------
--- A way of creating ForeignPtrs outside the IO monad (althogh it still
+-- | A way of creating ForeignPtrs outside the IO monad (althogh it still
 -- isn't entirely "safe", but at least it's convenient.
 
 createPS :: Int -> (Ptr Word8 -> IO ()) -> PackedString
@@ -196,12 +196,14 @@ mallocForeignPtr l = when (l > 1000000) performGC >> mallocForeignPtrArray l
 -- -----------------------------------------------------------------------------
 -- unsafeWithInternals
 
--- | Do something with the internals of a PackedString. Beware of
+-- | Do something with the internals of a 'PackedString'. Beware of
 -- altering the contents!
 unsafeWithInternals :: PackedString -> (Ptr Word8 -> Int -> IO a) -> IO a
 unsafeWithInternals (PS fp s l) f = withForeignPtr fp $ \p -> f (p `plusPtr` s) l
 
 #if defined(__GLASGOW_HASKELL__)
+-- | Construct a 'PackedString' given a C Word8 buffer, a length,
+-- and an IO action representing a finalizer.
 constructPS :: (Ptr Word8) -> Int -> IO () -> IO PackedString
 constructPS p l f = do 
     fp <- FC.newForeignPtr p f
