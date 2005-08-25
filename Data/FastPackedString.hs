@@ -199,6 +199,7 @@ unsafeWithInternals (PS fp s l) f = withForeignPtr fp $ \p -> f (p `plusPtr` s) 
 #if defined(__GLASGOW_HASKELL__)
 -- | Construct a 'PackedString' given a C Word8 buffer, a length,
 -- and an IO action representing a finalizer.
+-- This function is not available on Hugs.
 constructPS :: (Ptr Word8) -> Int -> IO () -> IO PackedString
 constructPS p l f = do 
     fp <- FC.newForeignPtr p f
