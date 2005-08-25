@@ -8,3 +8,4 @@ Build-Depends:       base
 Exposed-modules:	 Data.FastPackedString
 ghc-options:         -O2 -funbox-strict-fields -fglasgow-exts -Icbits
 c-sources:           cbits/fpstring.c
+include-dirs:        cbits
