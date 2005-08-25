@@ -44,7 +44,9 @@
 module Data.FastPackedString (
         -- * The @PackedString@ type
         PackedString,           -- abstract, instances: Eq, Ord, Show, Typeable
+#if defined(__GLASGOW_HASKELL__)
         constructPS,
+#endif
 
          -- * Converting to and from @PackedString@s
         generatePS,             -- :: Int -> (Ptr Word8 -> Int -> IO Int) -> IO PackedString
@@ -199,10 +201,12 @@ mallocForeignPtr l = when (l > 1000000) performGC >> mallocForeignPtrArray l
 unsafeWithInternals :: PackedString -> (Ptr Word8 -> Int -> IO a) -> IO a
 unsafeWithInternals (PS fp s l) f = withForeignPtr fp $ \p -> f (p `plusPtr` s) l
 
+#if defined(__GLASGOW_HASKELL__)
 constructPS :: (Ptr Word8) -> Int -> IO () -> IO PackedString
 constructPS p l f = do 
     fp <- FC.newForeignPtr p f
     return $ PS fp 0 l
+#endif
 
 {-# INLINE (!) #-}
 (!) :: PackedString -> Int -> Word8
