@@ -174,7 +174,7 @@ use_mmap = False
 -- -----------------------------------------------------------------------------
 
 -- | A space-efficient representation of a 'String', which supports various
--- efficient operations.  A 'PackedString' contains full Unicode 'Char's.
+-- efficient operations.  A 'PackedString' contains 8-bit characters only.
 --
 data PackedString = PS !(ForeignPtr Word8) !Int !Int
 
