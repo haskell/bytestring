@@ -130,7 +130,7 @@ runTestText (HU.PutText put us) t = do
   return (counts, us'')
  where
   allTestsStr = unlines $ "All tests:" :
-                        [ "  " ++ show i  ++ " " ++ showPath p 
+                        [ "  " ++ show i  ++ "\t" ++ showPath p 
                         | (p,i) <- zip (HU.testCasePaths t) [1..] ]
   reportStart ss us = put (HU.showCounts (HU.counts ss)) False us
   reportError   = reportProblem "Error:"   "Error in:   "
