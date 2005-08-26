@@ -102,7 +102,6 @@ module Data.FastPackedString (
         reversePS,      -- :: PackedString -> PackedString
         elemPS,         -- :: Char -> PackedString -> Bool
         concatPS,       -- :: [PackedString] -> PackedString
-        unsafeConcatLenPS, -- :: Int -> [PackedString] -> PackedString
         indexPS,        -- :: PackedString -> Int -> Char
         indexWord8PS,   -- :: PackedString -> Int -> Word8
         anyPS,          -- :: (Char -> Bool) -> PackedString -> Bool
@@ -131,6 +130,9 @@ module Data.FastPackedString (
         betweenLinesPS, --  :: PackedString -> PackedString -> PackedString -> Maybe (PackedString)
         breakAfterNthNewline,   
         breakBeforeNthNewline,
+
+        -- should this even be available?
+        unsafeConcatLenPS, -- :: Int -> [PackedString] -> PackedString
 
    ) where
 
@@ -543,7 +545,27 @@ unlinesPS ss = concatPS $ map (\s -> s `appendPS` newline) ss
 -- | 'wordsPS' breaks a packed string up into a list of words, which
 -- were delimited by white space.
 wordsPS :: PackedString -> [PackedString]
+wordsPS ps = filter (not.nullPS) (splitWithPS isSpace ps)
+
+{-
+-- darcs version has different behaviour.
+-- We may wish to export these under an alternate name.
+
+linesPS :: PackedString -> [PackedString]
+linesPS ps = case wfindPS (c2w '\n') ps of
+             Nothing -> [ps]
+             Just n -> takePS n ps : linesPS (dropPS (n+1) ps)
+
+unlinesPS :: [PackedString] -> PackedString
+unlinesPS ss = concatPS $ intersperse_newlines ss
+    where intersperse_newlines (a:b:s) = a:newline: intersperse_newlines (b:s)
+          intersperse_newlines s = s
+          newline = packString "\n"
+
+wordsPS :: PackedString -> [PackedString]
 wordsPS ps = splitWithPS isSpace ps
+
+-}
 
 -- | The 'unwordsPS' function is analogous to the 'unwords' function.
 unwordsPS :: [PackedString] -> PackedString
@@ -577,8 +599,10 @@ elemIndexWord8PS c (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> do
 
 -- | The 'findIndexPS' function takes a predicate and a 'PackedString'
 -- and returns the index of the first element in the packed string
--- satisfying the predicate, or 'Nothing' if there is no such element.
-findIndexPS :: (Char -> Bool) -> PackedString -> Int
+-- satisfying the predicate. It returns (length of string) if the
+-- element was not found (unlike the List findIndex, which returns
+-- Nothing).
+findIndexPS :: (Char -> Bool) -> PackedString -> Int -- TODO Maybe Int ?
 findIndexPS f ps 
     | nullPS ps           = 0
     | f (unsafeHeadPS ps) = 0
