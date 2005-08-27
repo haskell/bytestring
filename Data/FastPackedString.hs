@@ -29,10 +29,9 @@
 -- Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 -- 02111-1307, USA.
 --
+------------------------------------------------------------------------
 --
 -- An efficient implementation of strings.
---
-------------------------------------------------------------------------
 --
 -- Original GHC implementation by Bryan O\'Sullivan,
 -- Rewritten to use UArray by Simon Marlow.
@@ -171,7 +170,7 @@ import System.Posix             (handleToFd)
 -- | A space-efficient representation of a 'String', which supports various
 -- efficient operations.  A 'PackedString' contains 8-bit characters only.
 --
-data PackedString = PS !(ForeignPtr Word8) !Int !Int
+data PackedString = PS {-# UNPACK #-} !(ForeignPtr Word8) !Int !Int
 
 ------------------------------------------------------------------------
 
@@ -187,39 +186,24 @@ instance Show PackedString where
 ------------------------------------------------------------------------
 
 -- | Equality on the 'PackedString' type
-eqPS :: PackedString -> PackedString -> Bool
-eqPS a@(PS x1 s1 l1) b@(PS x2 s2 l2) 
-    | nullPS a && nullPS b  = True
-    | l1 /= l2              = False
-    | otherwise             = unsafePerformIO $ 
-        withForeignPtr x1 $ \p1 -> 
-            withForeignPtr x2 $ \p2 ->
-                if p1 == p2 && s1 == s2
-                then return True
-                else liftM (==0) $ c_memcmp (p1 `plusPtr` s1) (p2 `plusPtr` s2) l1
+eqPS a b = (comparePS a b) == EQ
 {-# INLINE eqPS #-}
 
 -- | 'comparePS' provides an 'Ordering' for 'PackedStrings' supporting slices.
 comparePS :: PackedString -> PackedString -> Ordering
 comparePS (PS x1 s1 l1) (PS x2 s2 l2) = unsafePerformIO $ 
     withForeignPtr x1 $ \p1 -> 
-        withForeignPtr x2 $ \p2 -> do
-            let doc :: Ptr Word8 -> Ptr Word8 -> IO Ordering
-                st1 = p1 `plusPtr` s1 `plusPtr` l1
-                st2 = p2 `plusPtr` s2 `plusPtr` l2
-                doc w1 w2
-                    | w1 == st1 && w2 == st2 = return EQ
-                    | w1 == st1              = return LT
-                    | w2 == st2              = return GT
-                    | otherwise
-                    = do h1 <- peek w1
-                         h2 <- peek w2
-                         case () of {_
-                            | h1 < h2   -> return LT
-                            | h1 == h2  -> doc (w1 `plusPtr` 1) (w2 `plusPtr` 1) -- use memcmp?
-                            | otherwise -> return GT
-                        }
-            doc (p1 `plusPtr` s1) (p2 `plusPtr` s2)
+        withForeignPtr x2 $ \p2 -> do 
+            i <- c_memcmp (p1 `plusPtr` s1) (p2 `plusPtr` s2) (min l1 l2)
+            return $ case i `compare` 0 of
+                EQ  -> l1 `compare` l2
+                x   -> x
+
+-- Using memcmp provides a good improvement in time and space over old version.
+-- For 100M strings: 
+--  total alloc = 209,725,240 bytes,    0.14 secs
+-- versus
+--  total alloc = 1,048,585,780 bytes,  4.86 secs
 
 -- -----------------------------------------------------------------------------
 -- Constructing and destructing packed strings
