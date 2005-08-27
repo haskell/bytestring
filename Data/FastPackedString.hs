@@ -191,6 +191,7 @@ eqPS a b = (comparePS a b) == EQ
 
 -- | 'comparePS' provides an 'Ordering' for 'PackedStrings' supporting slices.
 comparePS :: PackedString -> PackedString -> Ordering
+comparePS (PS _ _ 0) (PS _ _ 0) = EQ    -- short cut for empty strings
 comparePS (PS x1 s1 l1) (PS x2 s2 l2) = unsafePerformIO $ 
     withForeignPtr x1 $ \p1 -> 
         withForeignPtr x2 $ \p2 -> do 
