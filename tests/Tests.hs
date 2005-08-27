@@ -41,6 +41,15 @@ $(tests "fps" [d|
     test_comparePS = do assert (pstr `comparePS` pstr == EQ)
                         assert (qstr `comparePS` pstr == LT)
                         assert (pstr `comparePS` qstr == GT)
+                        assert (pstr `comparePS` nilPS == GT)
+                        assert (nilPS `comparePS` pstr == LT)
+                        assert (nilPS `comparePS` nilPS == EQ)
+                        let a = packString "x"
+                            b = packString "xy"
+                        assert (a `compare` b == LT)
+                        assert (b `compare` a == GT)
+                        assert (a `compare` a == EQ)
+                        assert (b `compare` b == EQ)
 
     test_nilPS = do assertEqual (length [])     (lengthPS nilPS) 
     test_consPS   = assertEqual ('X' : str)     (unpackPS $ 'X' `consPS` pstr)
