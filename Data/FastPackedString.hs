@@ -186,6 +186,7 @@ instance Show PackedString where
 ------------------------------------------------------------------------
 
 -- | Equality on the 'PackedString' type
+eqPS :: PackedString -> PackedString -> Bool
 eqPS a b = (comparePS a b) == EQ
 {-# INLINE eqPS #-}
 
@@ -371,9 +372,9 @@ mapPS func (PS ps s l) = createPS l $ \p -> withForeignPtr ps $ \f ->
 -- | 'filterPS', applied to a predicate and a packed string, returns a
 -- packed string containing those characters that satisfy the predicate.
 filterPS :: (Char -> Bool) -> PackedString -> PackedString
-filterPS pred ps 
+filterPS f ps 
     | nullPS ps = ps
-    | otherwise = packString (filter pred (unpackPS ps))
+    | otherwise = packString (filter f (unpackPS ps))
 
 -- | 'foldlPS', applied to a binary operator, a starting value (typically
 -- the left-identity of the operator), and a packed string, reduces the
@@ -402,7 +403,7 @@ dropWhilePS f ps = seq f $ dropPS (findIndexPS (not . f) ps) ps
 -- | 'takePS' @n@, applied to a packed string @xs@, returns the prefix
 -- of @xs@ of length @n@, or @xs@ itself if @n > 'length' xs@.
 takePS :: Int -> PackedString -> PackedString
-takePS n ps@(PS x s l)
+takePS n ps@(PS x s _l)
     | n <= 0    = nilPS
     | nullPS ps = nilPS
     | otherwise = PS x s n
