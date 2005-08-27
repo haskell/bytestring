@@ -403,9 +403,9 @@ dropWhilePS f ps = seq f $ dropPS (findIndexPS (not . f) ps) ps
 -- | 'takePS' @n@, applied to a packed string @xs@, returns the prefix
 -- of @xs@ of length @n@, or @xs@ itself if @n > 'length' xs@.
 takePS :: Int -> PackedString -> PackedString
-takePS n ps@(PS x s _l)
+takePS n ps@(PS x s l)
     | n <= 0    = nilPS
-    | nullPS ps = nilPS
+    | n >= l    = ps
     | otherwise = PS x s n
 {-# INLINE takePS #-}
 
@@ -414,7 +414,7 @@ takePS n ps@(PS x s _l)
 dropPS  :: Int -> PackedString -> PackedString
 dropPS n ps@(PS x s l)
     | n <= 0    = ps
-    | nullPS ps = nilPS
+    | n >  l    = nilPS
     | otherwise = PS x (s+n) (l-n)
 {-# INLINE dropPS #-}
 
