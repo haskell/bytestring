@@ -438,7 +438,9 @@ reversePS ps = packString (reverse (unpackPS ps))   -- can we improve this?
 
 -- | 'elemPS' is the list membership predicate.
 elemPS :: Char -> PackedString -> Bool
-elemPS c ps = c `elem` unpackPS ps                  -- improve this too?
+elemPS c ps = case elemIndexPS c ps of
+    Nothing -> False
+    Just _  -> True
 
 -- | Concatenate a list of packed strings.
 concatPS :: [PackedString] -> PackedString
@@ -577,10 +579,11 @@ elemIndexPS c ps = elemIndexWord8PS (c2w c) ps
 -- | 'elemIndexWord8PS' is like 'elemIndexPS', except that it takes a
 -- 'Word8' as the element to search for.
 elemIndexWord8PS :: Word8 -> PackedString -> Maybe Int
-elemIndexWord8PS c (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> do
-    let p' = p `plusPtr` s
-        q  = memchr p' (fromIntegral c) (fromIntegral l)
-    return $ if q == nullPtr then Nothing else Just (q `minusPtr` p')
+elemIndexWord8PS c (PS x s l) = unsafePerformIO $ 
+    withForeignPtr x $ \p -> do
+        let p' = p `plusPtr` s
+            q  = memchr p' (fromIntegral c) (fromIntegral l)
+        return $ if q == nullPtr then Nothing else Just (q `minusPtr` p')
 {-# INLINE elemIndexWord8PS #-}
 
 -- | The 'findIndexPS' function takes a predicate and a 'PackedString'
