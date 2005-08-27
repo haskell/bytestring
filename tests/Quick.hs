@@ -14,7 +14,11 @@ prop_eq1 xs      = xs            == (unpackPS . packString $ xs)
 prop_eq2 xs      = packString xs == packString xs
 prop_eq3 xs      = (packString . unpackPS . packString $ xs) == packString xs
 
-prop_compare xs  = (packString xs `compare` packString xs) == EQ
+prop_compare1 xs  = (packString xs         `compare` packString xs) == EQ
+prop_compare2 xs  = (packString (xs++"X")  `compare` packString xs) == GT
+prop_compare3 xs  = (packString xs  `compare` packString (xs++"X")) == LT
+prop_compare4 xs  = (not (null xs)) ==> (packString xs  `compare` nilPS) == GT
+prop_compare5 xs  = (not (null xs)) ==> (nilPS `compare` packString xs) == LT
 
 -- prop_nil1 xs = (null xs) ==> packString xs == nilPS
 -- prop_nil2 xs = (null xs) ==> xs == unpackPS nilPS
@@ -101,7 +105,11 @@ main = do
         [   run prop_eq1
         ,   run prop_eq2
         ,   run prop_eq3
-        ,   run prop_compare
+        ,   run prop_compare1
+        ,   run prop_compare2
+        ,   run prop_compare3
+        ,   run prop_compare4
+        ,   run prop_compare5
     --  ,   run prop_nil1
     --  ,   run prop_nil2
         ,   run prop_cons1
