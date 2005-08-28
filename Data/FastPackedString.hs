@@ -75,10 +75,10 @@ module Data.FastPackedString (
         gzWriteFilePSs,         -- :: FilePath -> [PackedString] -> IO ()
 #endif
 
-        -- * List-like functions
+        -- * Basic list functions
+        nilPS,          -- :: PackedString
         eqPS,           -- :: PackedString -> PackedString -> Bool
         comparePS,      -- :: PackedString -> PackedString -> Ordering
-        nilPS,          -- :: PackedString
         consPS,         -- :: Char -> PackedString -> PackedString
         headPS,         -- :: PackedString -> Char
         tailPS,         -- :: PackedString -> PackedString
@@ -87,33 +87,56 @@ module Data.FastPackedString (
         nullPS,         -- :: PackedString -> Bool
         lengthPS,       -- :: PackedString -> Int
         appendPS,       -- :: PackedString -> PackedString -> PackedString
+
+        -- * List transformations
         mapPS,          -- :: (Char -> Char) -> PackedString -> PackedString
-        filterPS,       -- :: (Char -> Bool) -> PackedString -> PackedString
+        reversePS,      -- :: PackedString -> PackedString
+        joinPS,         -- :: PackedString -> [PackedString] -> PackedString
+
+        -- * Reducing lists (folds)
         foldlPS,        -- :: (a -> Char -> a) -> a -> PackedString -> a
         foldrPS,        -- :: (Char -> a -> a) -> a -> PackedString -> a
-        takeWhilePS,    -- :: (Char -> Bool) -> PackedString -> PackedString
-        dropWhilePS,    -- :: (Char -> Bool) -> PackedString -> PackedString
+
+        -- ** Special folds
+        concatPS,       -- :: [PackedString] -> PackedString
+        anyPS,          -- :: (Char -> Bool) -> PackedString -> Bool
+
+        -- * Sublists
         takePS,         -- :: Int -> PackedString -> PackedString
         dropPS,         -- :: Int -> PackedString -> PackedString
         splitAtPS,      -- :: Int -> PackedString -> (PackedString, PackedString)
+        takeWhilePS,    -- :: (Char -> Bool) -> PackedString -> PackedString
+        dropWhilePS,    -- :: (Char -> Bool) -> PackedString -> PackedString
         spanPS,         -- :: (Char -> Bool) -> PackedString -> (PackedString, PackedString)
         breakPS,        -- :: (Char -> Bool) -> PackedString -> (PackedString, PackedString)
-        reversePS,      -- :: PackedString -> PackedString
+
+        -- * Searching lists
+
+        -- ** Searching by equality
         elemPS,         -- :: Char -> PackedString -> Bool
-        concatPS,       -- :: [PackedString] -> PackedString
+
+        -- ** Searching with a predicate
+        filterPS,       -- :: (Char -> Bool) -> PackedString -> PackedString
+
+        -- * Indexing lists
         indexPS,        -- :: PackedString -> Int -> Char
-        indexWord8PS,   -- :: PackedString -> Int -> Word8
-        anyPS,          -- :: (Char -> Bool) -> PackedString -> Bool
+        elemIndexPS,    -- :: Char -> PackedString -> Maybe Int
+        findIndexPS,    -- :: (Char -> Bool) -> PackedString -> Int
+
+        -- * Special lists
+
+        -- ** Lines and words
         linesPS,        -- :: PackedString -> [PackedString]
         unlinesPS,      -- :: [PackedString] -> PackedString
         wordsPS,        -- :: PackedString -> [PackedString]
         unwordsPS,      -- :: PackedString -> [PackedString]
-        joinPS,         -- :: PackedString -> [PackedString] -> PackedString
-        elemIndexPS,    -- :: Char -> PackedString -> Maybe Int
-        elemIndexWord8PS,-- :: Word8 -> PackedString -> Maybe Int
-        findIndexPS,    -- :: (Char -> Bool) -> PackedString -> Int
+
+        -- ** Ordered lists
+        sortPS,         -- :: PackedString -> PackedString
 
         -- * Extensions to the List functions
+        indexWord8PS,   -- :: PackedString -> Int -> Word8
+        elemIndexWord8PS,-- :: Word8 -> PackedString -> Maybe Int
         dropWhitePS,    -- :: PackedString -> PackedString
         breakWhitePS,   -- :: PackedString -> Maybe (PackedString,PackedString)
         spanEndPS,      -- :: (Char -> Bool) -> PackedString -> (PackedString, PackedString)
@@ -571,6 +594,12 @@ joinPS filler pss = concatPS (splice pss)
         splice []  = []
         splice [x] = [x]
         splice (x:y:xs) = x:filler:splice (y:xs)
+
+-- | Sort using an /unstable/ sorting algorithm (QSORT(3))
+sortPS :: PackedString -> PackedString
+sortPS (PS x s l) = createPS l $ \p -> withForeignPtr x $ \f -> do
+        c_memcpy p (f `plusPtr` s) l
+        c_qsort p l -- inplace
 
 -- | The 'elemIndexPS' function returns the index of the first element
 -- in the given 'PackedString' which is equal (by memchr) to the query
@@ -1113,6 +1142,9 @@ foreign import ccall unsafe "static fpstring.h conv_from_hex" conv_from_hex
 
 foreign import ccall unsafe "static fpstring.h reverse" c_reverse
     :: Ptr Word8 -> Ptr Word8 -> Int -> IO ()
+
+foreign import ccall unsafe "static fpstring.h my_qsort" c_qsort
+    :: Ptr Word8 -> Int -> IO ()
 
 ------------------------------------------------------------------------
 

@@ -17,6 +17,7 @@ prop_compare2 xs  = (packString (xs++"X")  `compare` packString xs) == GT
 prop_compare3 xs  = (packString xs  `compare` packString (xs++"X")) == LT
 prop_compare4 xs  = (not (null xs)) ==> (packString xs  `compare` nilPS) == GT
 prop_compare5 xs  = (not (null xs)) ==> (nilPS `compare` packString xs) == LT
+prop_compare6 xs ys= (not (null ys)) ==> (packString (xs++ys)  `compare` packString xs) == GT
 
 -- prop_nil1 xs = (null xs) ==> packString xs == nilPS
 -- prop_nil2 xs = (null xs) ==> xs == unpackPS nilPS
@@ -101,16 +102,19 @@ prop_elemIndex2 xs c = (elemIndex c xs) == (elemIndexPS c (packString xs))
 prop_findIndex xs = (fromMaybe (length xs) (findIndex (=='X') xs)) ==
                     (findIndexPS (=='X') (packString xs))
 
+prop_sort1 xs = sort xs == (unpackPS . sortPS . packString) xs
+
 ------------------------------------------------------------------------
 
 main = do
-    runTests "fps" (defOpt { no_of_tests = 500, length_of_tests= 10 } )
+    runTests "fps" (defOpt { no_of_tests = 200, length_of_tests= 10 } )
         [   run prop_eq1
         ,   run prop_compare1
         ,   run prop_compare2
         ,   run prop_compare3
         ,   run prop_compare4
         ,   run prop_compare5
+        ,   run prop_compare6
     --  ,   run prop_nil1
     --  ,   run prop_nil2
         ,   run prop_cons1
@@ -147,6 +151,7 @@ main = do
         ,   run prop_elemIndex1
         ,   run prop_elemIndex2
         ,   run prop_findIndex
+        ,   run prop_sort1
         ]
 
 instance Arbitrary Char where

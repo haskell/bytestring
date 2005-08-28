@@ -175,4 +175,6 @@ $(tests "fps" [d|
         assertEqual (fromMaybe (length []) (findIndex (=='X') []))
                     (findIndexPS (=='X') nilPS)
 
+    test_sortPS = assertEqual (sort str) (unpackPS . sortPS $ pstr)
+
  |])

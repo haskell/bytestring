@@ -15,3 +15,4 @@ void conv_to_hex(unsigned char *dest, unsigned char *from, int num_chars);
 void conv_from_hex(unsigned char *dest, unsigned char *from, int num_chars);
 
 void reverse(unsigned char *dest, unsigned char *from, int len);
+void my_qsort(unsigned char *base, size_t size);

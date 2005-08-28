@@ -222,3 +222,13 @@ void reverse(unsigned char *dest, unsigned char *from, int len)
     while (p >= from)
         *q++ = *p--;
 }
+
+/* copy a string in reverse */
+static int cmp(const void *p, const void *q) {
+    return (*(unsigned char *)p - *(unsigned char *)q);
+}
+
+void my_qsort(unsigned char *base, size_t size)
+{
+    qsort(base, size, sizeof(char), cmp);
+}
