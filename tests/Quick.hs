@@ -98,7 +98,7 @@ prop_findIndex xs = (fromMaybe (length xs) (findIndex (=='X') xs)) ==
 ------------------------------------------------------------------------
 
 main = do
-    runTests "fps" (defOpt { no_of_tests = 1000, length_of_tests= 10 } )
+    runTests "fps" (defOpt { no_of_tests = 1000, length_of_tests= 4 } )
         [   run prop_eq1
         ,   run prop_compare1
         ,   run prop_compare2
@@ -140,6 +140,7 @@ main = do
         ]
 
 instance Arbitrary Char where
-  arbitrary     = chr `fmap` choose (0,255)
+  arbitrary = oneof $ map return
+                (['a'..'z']++['A'..'Z']++['1'..'9']++['0','~','.',',','-','/'])
   coarbitrary c = coarbitrary (ord c)
 
