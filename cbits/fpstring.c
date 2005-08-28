@@ -211,3 +211,14 @@ void conv_from_hex(unsigned char *dest, unsigned char *from, int num_chars)
 
     return;
 }
+
+/* copy a string in reverse */
+void reverse(unsigned char *dest, unsigned char *from, int len)
+{
+    unsigned char *p, *q, c;
+    p = from + len - 1;
+    q = dest;
+
+    while (p >= from)
+        *q++ = *p--;
+}

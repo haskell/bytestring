@@ -434,7 +434,8 @@ breakPS p ps = case findIndexPS p ps of n -> (takePS n ps, dropPS n ps)
 
 -- | 'reverse' @xs@ returns the elements of @xs@ in reverse order.
 reversePS :: PackedString -> PackedString
-reversePS ps = packString (reverse (unpackPS ps))   -- can we improve this?
+reversePS (PS x s l) = createPS l $ \p -> withForeignPtr x $ \f -> 
+        c_reverse p (f `plusPtr` s) l -- 99% less space, very much faster
 
 -- | 'elemPS' is the list membership predicate.
 elemPS :: Char -> PackedString -> Bool
@@ -1106,6 +1107,9 @@ foreign import ccall unsafe "static fpstring.h conv_to_hex" conv_to_hex
     :: Ptr Word8 -> Ptr Word8 -> Int -> IO ()
 
 foreign import ccall unsafe "static fpstring.h conv_from_hex" conv_from_hex
+    :: Ptr Word8 -> Ptr Word8 -> Int -> IO ()
+
+foreign import ccall unsafe "static fpstring.h reverse" c_reverse
     :: Ptr Word8 -> Ptr Word8 -> Int -> IO ()
 
 ------------------------------------------------------------------------
