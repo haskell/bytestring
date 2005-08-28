@@ -23,6 +23,9 @@ prop_compare5 xs  = (not (null xs)) ==> (nilPS `compare` packString xs) == LT
 
 prop_cons1 xs = 'X' : xs == unpackPS ('X' `consPS` (packString xs))
 
+prop_cons2 :: [Char] -> Char -> Bool
+prop_cons2 xs c = c : xs == unpackPS (c `consPS` (packString xs))
+
 prop_head xs     = 
     (not (null xs)) ==> head xs  == (headPS . packString) xs
 
@@ -38,11 +41,13 @@ prop_init xs     =
 
 prop_length xs = length xs == lengthPS (packString xs)
 
-prop_append xs = (xs ++ xs) == (unpackPS $ packString xs `appendPS` packString xs)
+prop_append1 xs = (xs ++ xs) == (unpackPS $ packString xs `appendPS` packString xs)
+prop_append2 xs ys = (xs ++ ys) == (unpackPS $ packString xs `appendPS` packString ys)
 
 prop_map   xs = map toLower xs == (unpackPS . (mapPS toLower) .  packString) xs
 
-prop_filter xs = (filter (=='X') xs) == (unpackPS $ filterPS (=='X') (packString xs))
+prop_filter1 xs   = (filter (=='X') xs) == (unpackPS $ filterPS (=='X') (packString xs))
+prop_filter2 xs c = (filter (==c) xs) == (unpackPS $ filterPS (==c) (packString xs))
 
 prop_foldl xs = ((foldl (\x c -> if c == 'a' then x else c:x) [] xs)) ==  
                 (unpackPS $ foldlPS (\x c -> if c == 'a' then x else c `consPS` x) nilPS (packString xs))
@@ -90,7 +95,8 @@ prop_unwords xs = (packString.unwords.words) xs == (unwordsPS . wordsPS .packStr
 prop_join xs = (concat . (intersperse "XYX") . lines) xs ==
                (unpackPS $ joinPS (packString "XYX") (linesPS (packString xs)))
 
-prop_elemIndex xs = (elemIndex 'X' xs) == (elemIndexPS 'X' (packString xs))
+prop_elemIndex1 xs   = (elemIndex 'X' xs) == (elemIndexPS 'X' (packString xs))
+prop_elemIndex2 xs c = (elemIndex c xs) == (elemIndexPS c (packString xs))
 
 prop_findIndex xs = (fromMaybe (length xs) (findIndex (=='X') xs)) ==
                     (findIndexPS (=='X') (packString xs))
@@ -108,14 +114,17 @@ main = do
     --  ,   run prop_nil1
     --  ,   run prop_nil2
         ,   run prop_cons1
+        ,   run prop_cons2
         ,   run prop_head
         ,   run prop_tail
         ,   run prop_init
     --  ,   run prop_null
         ,   run prop_length
-        ,   run prop_append
+        ,   run prop_append1
+        ,   run prop_append2
         ,   run prop_map
-        ,   run prop_filter
+        ,   run prop_filter1
+        ,   run prop_filter2
         ,   run prop_foldl
         ,   run prop_foldr
         ,   run prop_take
@@ -135,7 +144,8 @@ main = do
         ,   run prop_words
         ,   run prop_unwords
         ,   run prop_join
-        ,   run prop_elemIndex
+        ,   run prop_elemIndex1
+        ,   run prop_elemIndex2
         ,   run prop_findIndex
         ]
 
