@@ -98,7 +98,7 @@ prop_findIndex xs = (fromMaybe (length xs) (findIndex (=='X') xs)) ==
 ------------------------------------------------------------------------
 
 main = do
-    runTests "fps" (defOpt { no_of_tests = 1000, length_of_tests= 4 } )
+    runTests "fps" (defOpt { no_of_tests = 500, length_of_tests= 10 } )
         [   run prop_eq1
         ,   run prop_compare1
         ,   run prop_compare2
