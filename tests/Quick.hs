@@ -102,7 +102,18 @@ prop_elemIndex2 xs c = (elemIndex c xs) == (elemIndexPS c (packString xs))
 prop_findIndex xs = (fromMaybe (length xs) (findIndex (=='X') xs)) ==
                     (findIndexPS (=='X') (packString xs))
 
+-- example properties from QuickCheck.Batch
 prop_sort1 xs = sort xs == (unpackPS . sortPS . packString) xs
+prop_sort2 xs = (not (null xs)) ==> (headPS . sortPS . packString $ xs) == minimum xs
+prop_sort3 xs = (not (null xs)) ==> (lastPS . sortPS . packString $ xs) == maximum xs
+prop_sort4 xs ys =
+        (not (null xs)) ==>
+        (not (null ys)) ==>
+        (headPS . sortPS) (appendPS (packString xs) (packString ys)) == min (minimum xs) (minimum ys)
+prop_sort5 xs ys =
+        (not (null xs)) ==>
+        (not (null ys)) ==>
+        (lastPS . sortPS) (appendPS (packString xs) (packString ys)) == max (maximum xs) (maximum ys)
 
 ------------------------------------------------------------------------
 
@@ -152,6 +163,10 @@ main = do
         ,   run prop_elemIndex2
         ,   run prop_findIndex
         ,   run prop_sort1
+        ,   run prop_sort2
+        ,   run prop_sort3
+        ,   run prop_sort4
+        ,   run prop_sort5
         ]
 
 instance Arbitrary Char where
