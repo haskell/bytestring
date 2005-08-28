@@ -305,7 +305,9 @@ c2w = fromIntegral . ord
 
 -- | 'consPS' is analogous to (:) for lists
 consPS :: Char -> PackedString -> PackedString
-consPS c cs = packString (c : (unpackPS cs))        -- ToDo better
+consPS c (PS x s l) = createPS (l+1) $ \p -> withForeignPtr x $ \f -> do
+        c_memcpy (p `plusPtr` 1) (f `plusPtr` s) l  -- 99% less space
+        poke p (c2w c)
 
 -- | Extract the first element of a packed string, which must be non-empty.
 headPS :: PackedString -> Char
