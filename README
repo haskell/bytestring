@@ -14,7 +14,7 @@ Building:
         > runhaskell build
         > runhaskell install
 
-If you have troubles with mmap, then try:
+If you have troubles with mmap (possibly you have a system without mmap), then try:
         > ln -s fps.cabal.no-mmap fps.cabal
 as your first step.
 

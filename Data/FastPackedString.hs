@@ -251,6 +251,12 @@ unpackPS :: PackedString -> String
 unpackPS (PS ps s l) = map w2c $ unsafePerformIO $ withForeignPtr ps $ \p -> 
         peekArray l (p `plusPtr` s)
 
+-- with mmap on openbsd,     
+--  pstr <- mmapFilePS "/home/dons/tmp/tests/70k" ; 
+--  unpackPS pstr `seq` return ()
+-- segfaults in #0  0x1c0fe1f6 in GHCziStorable_readWord8OffPtr_info ()
+-- at around 62k chars
+
 -- | Convert a 'PackedString' to a '[Word8]'
 unpackWords :: PackedString -> [Word8]
 unpackWords ps@(PS x s _)
@@ -972,7 +978,13 @@ mmap f = do
                              return thefp
 #if defined(__GLASGOW_HASKELL__)
                      else do
-                             fp <- FC.newForeignPtr p (do {c_munmap p l; return (); })
+                          -- The munmap leads to crashes on OpenBSD.
+                          -- maybe there's a use after unmap in there somewhere?
+#if !defined(__OpenBSD__)
+                             fp <- FC.newForeignPtr p (c_munmap p l >> return ())
+#else
+                             fp <- FC.newForeignPtr p (return ())
+#endif
                              return fp
                c_close fd
 #endif
