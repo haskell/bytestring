@@ -121,7 +121,8 @@ module Data.FastPackedString (
         -- * Indexing lists
         indexPS,        -- :: PackedString -> Int -> Char
         elemIndexPS,    -- :: Char -> PackedString -> Maybe Int
-        findIndexPS,    -- :: (Char -> Bool) -> PackedString -> Int
+        findIndexPS,    -- :: (Char -> Bool) -> PackedString -> Maybe Int
+        findIndicesPS,  -- :: (Char -> Bool) -> PackedString -> [Int]
 
         -- * Special lists
 
@@ -162,6 +163,7 @@ import Data.Bits                (rotateL)
 import Data.Char                (chr, ord, String, isSpace)
 import Data.Int                 (Int32)
 import Data.Word                (Word8)
+import Data.Maybe               (listToMaybe)
 
 import Control.Monad            (when, liftM)
 import Control.Exception        (bracket)
@@ -171,7 +173,7 @@ import System.IO.Unsafe         (unsafePerformIO, unsafeInterleaveIO)
 import System.Mem               (performGC)
 
 import Foreign.Ptr              (Ptr, FunPtr, plusPtr, nullPtr, minusPtr, castPtr)
-import Foreign.ForeignPtr       (newForeignPtr, withForeignPtr, mallocForeignPtrArray, ForeignPtr)
+import Foreign.ForeignPtr       (touchForeignPtr, newForeignPtr, withForeignPtr, mallocForeignPtrArray, ForeignPtr)
 import Foreign.Storable         (peekElemOff, peek, poke)
 import Foreign.C.String         (CString)
 import Foreign.C.Types          (CSize, CLong, CInt)
@@ -249,7 +251,7 @@ packWords s = createPS (length s) $ \p -> pokeArray p s
 -- | Convert a 'PackedString' into a 'String'
 unpackPS :: PackedString -> String
 unpackPS (PS ps s l) = map w2c $ unsafePerformIO $ withForeignPtr ps $ \p -> 
-        peekArray l (p `plusPtr` s)
+    peekArray l (p `plusPtr` s)
 
 -- with mmap on openbsd,     
 --  pstr <- mmapFilePS "/home/dons/tmp/tests/70k" ; 
@@ -423,12 +425,12 @@ foldrPS f v ps = foldr f v (unpackPS ps)
 -- returns the longest prefix (possibly empty) of @xs@ of elements that
 -- satisfy @p@.
 takeWhilePS :: (Char -> Bool) -> PackedString -> PackedString
-takeWhilePS f ps = seq f $ takePS (findIndexPS (not . f) ps) ps
+takeWhilePS f ps = seq f $ takePS (findIndexOrEndPS (not . f) ps) ps
 {-# INLINE takeWhilePS #-}
 
 -- | 'dropWhilePS' @p xs@ returns the suffix remaining after 'takeWhilePS' @p xs@.
 dropWhilePS :: (Char -> Bool) -> PackedString -> PackedString
-dropWhilePS f ps = seq f $ dropPS (findIndexPS (not . f) ps) ps
+dropWhilePS f ps = seq f $ dropPS (findIndexOrEndPS (not . f) ps) ps
 {-# INLINE dropWhilePS #-}
 
 -- | 'takePS' @n@, applied to a packed string @xs@, returns the prefix
@@ -461,7 +463,7 @@ spanPS  p ps = breakPS (not . p) ps
 
 -- | 'break' @p@ is equivalent to @'spanPS' ('not' . p)@.
 breakPS :: (Char -> Bool) -> PackedString -> (PackedString, PackedString)
-breakPS p ps = case findIndexPS p ps of n -> (takePS n ps, dropPS n ps)
+breakPS p ps = case findIndexOrEndPS p ps of n -> (takePS n ps, dropPS n ps)
 
 -- | 'reverse' @xs@ returns the elements of @xs@ in reverse order.
 reversePS :: PackedString -> PackedString
@@ -626,14 +628,26 @@ elemIndexWord8PS c (PS x s l) = unsafePerformIO $
 
 -- | The 'findIndexPS' function takes a predicate and a 'PackedString'
 -- and returns the index of the first element in the packed string
--- satisfying the predicate. It returns (length of string) if the
--- element was not found (unlike the List findIndex, which returns
--- Nothing).
-findIndexPS :: (Char -> Bool) -> PackedString -> Int -- TODO Maybe Int ?
-findIndexPS f ps 
+-- satisfying the predicate.
+findIndexPS :: (Char -> Bool) -> PackedString -> Maybe Int
+findIndexPS f = listToMaybe . findIndicesPS f
+
+-- | The 'findIndices' function extends 'findIndex', by returning the
+-- indices of all elements satisfying the predicate, in ascending order.
+findIndicesPS :: (Char -> Bool) -> PackedString -> [Int]
+findIndicesPS p ps = loop 0 ps
+	where
+       loop n ps' | nullPS ps'           = []
+       loop n ps' | p (unsafeHeadPS ps') = n : loop (n + 1) (unsafeTailPS ps')
+                  | otherwise            = loop (n + 1) (unsafeTailPS ps')
+
+-- | 'findIndicesPS' is a variant of findIndexPS, that returns the
+-- length of the string if no element is found, rather than Nothing.
+findIndexOrEndPS :: (Char -> Bool) -> PackedString -> Int
+findIndexOrEndPS f ps
     | nullPS ps           = 0
     | f (unsafeHeadPS ps) = 0
-    | otherwise           = seq f $ 1 + findIndexPS f (unsafeTailPS ps)
+    | otherwise           = seq f $ 1 + findIndexOrEndPS f (unsafeTailPS ps)
 
 ------------------------------------------------------------------------
 -- Extensions to the list interface
