@@ -99,8 +99,9 @@ prop_join xs = (concat . (intersperse "XYX") . lines) xs ==
 prop_elemIndex1 xs   = (elemIndex 'X' xs) == (elemIndexPS 'X' (packString xs))
 prop_elemIndex2 xs c = (elemIndex c xs) == (elemIndexPS c (packString xs))
 
-prop_findIndex xs = (fromMaybe (length xs) (findIndex (=='X') xs)) ==
-                    (findIndexPS (=='X') (packString xs))
+prop_findIndex xs = (findIndex (=='X') xs) == (findIndexPS (=='X') (packString xs))
+
+prop_findIndicies xs c = (findIndices (==c) xs) == (findIndicesPS (==c) (packString xs))
 
 -- example properties from QuickCheck.Batch
 prop_sort1 xs = sort xs == (unpackPS . sortPS . packString) xs
@@ -162,6 +163,7 @@ main = do
         ,   run prop_elemIndex1
         ,   run prop_elemIndex2
         ,   run prop_findIndex
+        ,   run prop_findIndicies
         ,   run prop_sort1
         ,   run prop_sort2
         ,   run prop_sort3
