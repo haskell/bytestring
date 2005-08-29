@@ -50,6 +50,8 @@ prop_map   xs = map toLower xs == (unpackPS . (mapPS toLower) .  packString) xs
 prop_filter1 xs   = (filter (=='X') xs) == (unpackPS $ filterPS (=='X') (packString xs))
 prop_filter2 xs c = (filter (==c) xs) == (unpackPS $ filterPS (==c) (packString xs))
 
+prop_find xs c = find (==c) xs == findPS (==c) (packString xs)
+
 prop_foldl xs = ((foldl (\x c -> if c == 'a' then x else c:x) [] xs)) ==  
                 (unpackPS $ foldlPS (\x c -> if c == 'a' then x else c `consPS` x) nilPS (packString xs))
 
@@ -164,6 +166,7 @@ main = do
         ,   run prop_elemIndex2
         ,   run prop_findIndex
         ,   run prop_findIndicies
+        ,   run prop_find
         ,   run prop_sort1
         ,   run prop_sort2
         ,   run prop_sort3

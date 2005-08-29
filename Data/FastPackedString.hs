@@ -117,6 +117,7 @@ module Data.FastPackedString (
 
         -- ** Searching with a predicate
         filterPS,       -- :: (Char -> Bool) -> PackedString -> PackedString
+        findPS,         -- :: (Char -> Bool) -> PackedString -> Maybe Char
 
         -- * Indexing lists
         indexPS,        -- :: PackedString -> Int -> Char
@@ -407,7 +408,15 @@ mapPS func (PS ps s l) = createPS l $ \p -> withForeignPtr ps $ \f ->
 filterPS :: (Char -> Bool) -> PackedString -> PackedString
 filterPS f ps 
     | nullPS ps = ps
-    | otherwise = packString (filter f (unpackPS ps))
+    | otherwise = packString (filter f (unpackPS ps))   -- todo better
+
+-- | The 'find' function takes a predicate and a packed string and
+-- returns the first element in matching the predicate, or 'Nothing' if
+-- there is no such element.
+findPS :: (Char -> Bool) -> PackedString -> Maybe Char
+findPS p ps = case filterPS p ps of
+            p' | nullPS p' -> Nothing
+               | otherwise -> Just (unsafeHeadPS p')
 
 -- | 'foldlPS', applied to a binary operator, a starting value (typically
 -- the left-identity of the operator), and a packed string, reduces the
