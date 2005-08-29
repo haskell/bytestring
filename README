@@ -2,10 +2,10 @@
                        fps : Fast Packed Strings
 ------------------------------------------------------------------------
 
-This library provides the FastPackedString library from darcs as a cabalised package.
+This library provides the FastPackedString library from darcs as a
+cabalised package.
 
 Requirements:
-        > The Glasgow Haskell Compiler
         > Cabal
 
 Building:
@@ -14,12 +14,16 @@ Building:
         > runhaskell build
         > runhaskell install
 
-If you have troubles with mmap (possibly you have a system without mmap), then try:
+If you have troubles with mmap (possibly you have a system without
+mmap), then try:
+
         > ln -s fps.cabal.no-mmap fps.cabal
+
 as your first step.
 
 After installation, you can run the testsuite:
-        > cd tests ; make ; ./run-utests
+
+        > cd tests ; make ; make run
 
 ------------------------------------------------------------------------
 
@@ -27,5 +31,4 @@ Authors:
     FastPackedString is derived from the GHC PackedString library, 
     originallly written by Bryan O'Sullivan, and then by Simon Marlow.
     It was adapted, and greatly extended for darcs by David Roundy, and
-    others. Don Stewart cleaned up some of the code, made some small
-    fixes, and cabalised it.
+    others. Don Stewart cleaned up and extended the implementation.
