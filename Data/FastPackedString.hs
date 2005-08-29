@@ -36,7 +36,7 @@
 -- Original GHC implementation by Bryan O\'Sullivan,
 -- Rewritten to use UArray by Simon Marlow.
 -- Rewritten to support slices and use ForeignPtr by David Roundy
--- Cleanups and a bug fix by Don Stewart
+-- Cleanups and extensions by Don Stewart
 --
 
 module Data.FastPackedString (
@@ -44,11 +44,11 @@ module Data.FastPackedString (
         PackedString,           -- abstract, instances: Eq, Ord, Show, Typeable
 
          -- * Converting to and from @PackedString@s
-        packString,             -- :: String -> PackedString
+        pack,                   -- :: String -> PackedString
+        unpack,                 -- :: PackedString -> String
         packWords,              -- :: [Word8] -> PackedString
-        unpackPS,               -- :: PackedString -> String
         unpackWords,            -- :: PackedString -> [Word8]
-        unpackPSfromUTF8,       -- :: PackedString -> String
+        unpackFromUTF8,         -- :: PackedString -> String
         generatePS,             -- :: Int -> (Ptr Word8 -> Int -> IO Int) -> IO PackedString
 #if defined(__GLASGOW_HASKELL__)
         constructPS,            -- :: (Ptr Word8) -> Int -> IO () -> IO PackedString
@@ -76,65 +76,65 @@ module Data.FastPackedString (
 #endif
 
         -- * Basic list functions
-        nilPS,          -- :: PackedString
-        eqPS,           -- :: PackedString -> PackedString -> Bool
-        comparePS,      -- :: PackedString -> PackedString -> Ordering
-        consPS,         -- :: Char -> PackedString -> PackedString
-        headPS,         -- :: PackedString -> Char
-        tailPS,         -- :: PackedString -> PackedString
-        lastPS,         -- :: PackedString -> Char
-        initPS,         -- :: PackedString -> PackedString
-        nullPS,         -- :: PackedString -> Bool
-        lengthPS,       -- :: PackedString -> Int
-        appendPS,       -- :: PackedString -> PackedString -> PackedString
+        empty,        -- :: PackedString
+        cons,         -- :: Char -> PackedString -> PackedString
+        head,         -- :: PackedString -> Char
+        tail,         -- :: PackedString -> PackedString
+        last,         -- :: PackedString -> Char
+        init,         -- :: PackedString -> PackedString
+        null,         -- :: PackedString -> Bool
+        length,       -- :: PackedString -> Int
+        append,       -- :: PackedString -> PackedString -> PackedString
 
         -- * List transformations
-        mapPS,          -- :: (Char -> Char) -> PackedString -> PackedString
-        reversePS,      -- :: PackedString -> PackedString
-        joinPS,         -- :: PackedString -> [PackedString] -> PackedString
+        map,          -- :: (Char -> Char) -> PackedString -> PackedString
+        reverse,      -- :: PackedString -> PackedString
+        join,         -- :: PackedString -> [PackedString] -> PackedString
 
         -- * Reducing lists (folds)
-        foldlPS,        -- :: (a -> Char -> a) -> a -> PackedString -> a
-        foldrPS,        -- :: (Char -> a -> a) -> a -> PackedString -> a
+        foldl,        -- :: (a -> Char -> a) -> a -> PackedString -> a
+        foldr,        -- :: (Char -> a -> a) -> a -> PackedString -> a
 
         -- ** Special folds
-        concatPS,       -- :: [PackedString] -> PackedString
-        anyPS,          -- :: (Char -> Bool) -> PackedString -> Bool
+        concat,       -- :: [PackedString] -> PackedString
+        any,          -- :: (Char -> Bool) -> PackedString -> Bool
 
         -- * Sublists
-        takePS,         -- :: Int -> PackedString -> PackedString
-        dropPS,         -- :: Int -> PackedString -> PackedString
-        splitAtPS,      -- :: Int -> PackedString -> (PackedString, PackedString)
-        takeWhilePS,    -- :: (Char -> Bool) -> PackedString -> PackedString
-        dropWhilePS,    -- :: (Char -> Bool) -> PackedString -> PackedString
-        spanPS,         -- :: (Char -> Bool) -> PackedString -> (PackedString, PackedString)
-        breakPS,        -- :: (Char -> Bool) -> PackedString -> (PackedString, PackedString)
+        take,         -- :: Int -> PackedString -> PackedString
+        drop,         -- :: Int -> PackedString -> PackedString
+        splitAt,      -- :: Int -> PackedString -> (PackedString, PackedString)
+        takeWhile,    -- :: (Char -> Bool) -> PackedString -> PackedString
+        dropWhile,    -- :: (Char -> Bool) -> PackedString -> PackedString
+        span,         -- :: (Char -> Bool) -> PackedString -> (PackedString, PackedString)
+        break,        -- :: (Char -> Bool) -> PackedString -> (PackedString, PackedString)
 
         -- * Searching lists
 
         -- ** Searching by equality
-        elemPS,         -- :: Char -> PackedString -> Bool
+        elem,         -- :: Char -> PackedString -> Bool
 
         -- ** Searching with a predicate
-        filterPS,       -- :: (Char -> Bool) -> PackedString -> PackedString
-        findPS,         -- :: (Char -> Bool) -> PackedString -> Maybe Char
+        filter,       -- :: (Char -> Bool) -> PackedString -> PackedString
+        find,         -- :: (Char -> Bool) -> PackedString -> Maybe Char
 
         -- * Indexing lists
-        indexPS,        -- :: PackedString -> Int -> Char
-        elemIndexPS,    -- :: Char -> PackedString -> Maybe Int
-        findIndexPS,    -- :: (Char -> Bool) -> PackedString -> Maybe Int
-        findIndicesPS,  -- :: (Char -> Bool) -> PackedString -> [Int]
+        index,        -- :: PackedString -> Int -> Char
+        elemIndex,    -- :: Char -> PackedString -> Maybe Int
+        findIndex,    -- :: (Char -> Bool) -> PackedString -> Maybe Int
+        findIndices,  -- :: (Char -> Bool) -> PackedString -> [Int]
 
         -- * Special lists
 
         -- ** Lines and words
-        linesPS,        -- :: PackedString -> [PackedString]
-        unlinesPS,      -- :: [PackedString] -> PackedString
-        wordsPS,        -- :: PackedString -> [PackedString]
-        unwordsPS,      -- :: PackedString -> [PackedString]
+        lines,          -- :: PackedString -> [PackedString]
+        unlines,        -- :: [PackedString] -> PackedString
+        words,        -- :: PackedString -> [PackedString]
+        unwords,      -- :: PackedString -> [PackedString]
 
         -- ** Ordered lists
-        sortPS,         -- :: PackedString -> PackedString
+        sort,         -- :: PackedString -> PackedString
+
+        ------------------------------------------------------------------------
 
         -- * Extensions to the List functions
         indexWord8PS,   -- :: PackedString -> Int -> Word8
@@ -159,6 +159,13 @@ module Data.FastPackedString (
         unsafeConcatLenPS, -- :: Int -> [PackedString] -> PackedString
 
    ) where
+
+import qualified Prelude
+import Prelude hiding (reverse,head,tail,last,init,null,
+                       length,map,lines,foldl,foldr,unlines,
+                       concat,any,take,drop,splitAt,takeWhile,
+                       dropWhile,span,break,elem,filter,unwords,
+                       words)
 
 import Data.Bits                (rotateL)
 import Data.Char                (chr, ord, String, isSpace)
@@ -207,7 +214,7 @@ instance Ord PackedString
     where compare = comparePS
 
 instance Show PackedString where
-    showsPrec p ps r = showsPrec p (unpackPS ps) r
+    showsPrec p ps r = showsPrec p (unpack ps) r
 
 ------------------------------------------------------------------------
 
@@ -237,45 +244,45 @@ comparePS (PS x1 s1 l1) (PS x2 s2 l2) = unsafePerformIO $
 -- Constructing and destructing packed strings
 
 -- | The empty 'PackedString'
-nilPS :: PackedString
-nilPS = unsafePerformIO $ mallocForeignPtr 1 >>= \fp -> return $ PS fp 0 0
-{-# NOINLINE nilPS #-}
+empty :: PackedString
+empty = unsafePerformIO $ mallocForeignPtr 1 >>= \fp -> return $ PS fp 0 0
+{-# NOINLINE empty #-}
 
 -- | Convert a 'String' into a 'PackedString'
-packString :: String -> PackedString
-packString str = createPS (length str) $ \p -> pokeArray p $ map c2w str
+pack :: String -> PackedString
+pack str = createPS (Prelude.length str) $ \p -> pokeArray p $ Prelude.map c2w str
 
 -- | Convert a '[Word8]' into a 'PackedString'
 packWords :: [Word8] -> PackedString
-packWords s = createPS (length s) $ \p -> pokeArray p s
+packWords s = createPS (Prelude.length s) $ \p -> pokeArray p s
 
 -- | Convert a 'PackedString' into a 'String'
-unpackPS :: PackedString -> String
-unpackPS (PS ps s l) = map w2c $ unsafePerformIO $ withForeignPtr ps $ \p -> 
+unpack :: PackedString -> String
+unpack (PS ps s l) = Prelude.map w2c $ unsafePerformIO $ withForeignPtr ps $ \p -> 
     peekArray l (p `plusPtr` s)
 
 -- with mmap on openbsd,     
 --  pstr <- mmapFilePS "/home/dons/tmp/tests/70k" ; 
---  unpackPS pstr `seq` return ()
+--  unpack pstr `seq` return ()
 -- segfaults in #0  0x1c0fe1f6 in GHCziStorable_readWord8OffPtr_info ()
 -- at around 62k chars
 
 -- | Convert a 'PackedString' to a '[Word8]'
 unpackWords :: PackedString -> [Word8]
 unpackWords ps@(PS x s _)
-    | nullPS ps     = []
+    | null ps     = []
     | otherwise     =
         (unsafePerformIO $ withForeignPtr x $ \p -> peekElemOff p s) 
             : unpackWords (unsafeTailPS ps)
 
 -- | Convert a 'PackedString' in UTF8 form to a 'String'
-unpackPSfromUTF8 :: PackedString -> String
-unpackPSfromUTF8 (PS _ _ 0) = []
-unpackPSfromUTF8 (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> do 
+unpackFromUTF8 :: PackedString -> String
+unpackFromUTF8 (PS _ _ 0) = []
+unpackFromUTF8 (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> do 
     outbuf <- mallocArray l
     lout   <- utf8_to_ints outbuf (p `plusPtr` s) l
     when (lout < 0) $ error "Bad UTF8!"
-    str    <- (map chr) `liftM` peekArray lout outbuf
+    str    <- (Prelude.map chr) `liftM` peekArray lout outbuf
     free outbuf
     return str
 
@@ -335,67 +342,67 @@ c2w = fromIntegral . ord
 -- -----------------------------------------------------------------------------
 -- List-like functions for PackedStrings
 
--- | 'consPS' is analogous to (:) for lists
-consPS :: Char -> PackedString -> PackedString
-consPS c (PS x s l) = createPS (l+1) $ \p -> withForeignPtr x $ \f -> do
+-- | 'cons' is analogous to (:) for lists
+cons :: Char -> PackedString -> PackedString
+cons c (PS x s l) = createPS (l+1) $ \p -> withForeignPtr x $ \f -> do
         c_memcpy (p `plusPtr` 1) (f `plusPtr` s) l  -- 99% less space
         poke p (c2w c)
 
 -- | Extract the first element of a packed string, which must be non-empty.
-headPS :: PackedString -> Char
-headPS ps@(PS x s _)        -- ps ! 0 is inlined manually to eliminate a (+0)
-  | nullPS ps   = errorEmptyList "headPS"
+head :: PackedString -> Char
+head ps@(PS x s _)        -- ps ! 0 is inlined manually to eliminate a (+0)
+  | null ps   = errorEmptyList "head"
   | otherwise   = w2c $ unsafePerformIO $ withForeignPtr x $ \p -> 
                     peekElemOff p s
-{-# INLINE headPS #-}
+{-# INLINE head #-}
 
 -- | Extract the elements after the head of a packed string, which must be non-empty.
-tailPS :: PackedString -> PackedString
-tailPS (PS p s l) 
-    | l <= 0    = errorEmptyList "tailPS"
-    | l == 1    = nilPS                                                                    
+tail :: PackedString -> PackedString
+tail (PS p s l) 
+    | l <= 0    = errorEmptyList "tail"
+    | l == 1    = empty                                                                    
     | otherwise = PS p (s+1) (l-1)
-{-# INLINE tailPS #-}
+{-# INLINE tail #-}
 
 -- | Extract the last element of a packed string, which must be finite and non-empty.
-lastPS :: PackedString -> Char
-lastPS ps@(PS x s l)        -- ps ! 0 is inlined manually to eliminate a (+0)
-  | nullPS ps   = errorEmptyList "lastPS"
+last :: PackedString -> Char
+last ps@(PS x s l)        -- ps ! 0 is inlined manually to eliminate a (+0)
+  | null ps   = errorEmptyList "last"
   | otherwise   = w2c $ unsafePerformIO $ withForeignPtr x $ \p -> 
                     peekElemOff p (s+l-1)
-{-# INLINE lastPS #-}
+{-# INLINE last #-}
 
 -- | Return all the elements of a list except the last one.
 -- The list must be finite and non-empty.
-initPS :: PackedString -> PackedString
-initPS (PS p s l) 
-    | l <= 0    = errorEmptyList "initPS"
-    | l == 1    = nilPS                                                                    
+init :: PackedString -> PackedString
+init (PS p s l) 
+    | l <= 0    = errorEmptyList "init"
+    | l == 1    = empty                                                                    
     | otherwise = PS p s (l-1)                                                          
-{-# INLINE initPS #-}
+{-# INLINE init #-}
 
 -- | Test whether a packed string is empty.
-nullPS :: PackedString -> Bool
-nullPS (PS _ _ l) = l == 0
-{-# INLINE nullPS #-}
+null :: PackedString -> Bool
+null (PS _ _ l) = l == 0
+{-# INLINE null #-}
 
--- | 'lengthPS' returns the length of a packed string as an 'Int'.
-lengthPS :: PackedString -> Int
-lengthPS (PS _ _ l) = l
-{-# INLINE lengthPS #-}
+-- | 'length' returns the length of a packed string as an 'Int'.
+length :: PackedString -> Int
+length (PS _ _ l) = l
+{-# INLINE length #-}
 
 -- | Append two packed strings
-appendPS :: PackedString -> PackedString -> PackedString
-appendPS xs ys
-    | nullPS xs = ys
-    | nullPS ys = xs
-    | otherwise  = concatPS [xs,ys]
-{-# INLINE appendPS #-}
+append :: PackedString -> PackedString -> PackedString
+append xs ys
+    | null xs = ys
+    | null ys = xs
+    | otherwise  = concat [xs,ys]
+{-# INLINE append #-}
 
 -- | 'map' @f xs@ is the packed string obtained by applying @f@ to each
 -- element of @xs@, i.e.,
-mapPS :: (Char -> Char) -> PackedString -> PackedString
-mapPS func (PS ps s l) = createPS l $ \p -> withForeignPtr ps $ \f -> 
+map :: (Char -> Char) -> PackedString -> PackedString
+map func (PS ps s l) = createPS l $ \p -> withForeignPtr ps $ \f -> 
     mint (f `plusPtr` s) p l
     where mint :: Ptr Word8 -> Ptr Word8 -> Int -> IO ()
           mint _ _ 0    = return ()
@@ -403,93 +410,93 @@ mapPS func (PS ps s l) = createPS l $ \p -> withForeignPtr ps $ \f ->
                              poke t $ c2w $ func $ w2c val
                              mint (f `plusPtr` 1) (t `plusPtr` 1) (len - 1)
 
--- | 'filterPS', applied to a predicate and a packed string, returns a
+-- | 'filter', applied to a predicate and a packed string, returns a
 -- packed string containing those characters that satisfy the predicate.
-filterPS :: (Char -> Bool) -> PackedString -> PackedString
-filterPS f ps 
-    | nullPS ps = ps
-    | otherwise = packString (filter f (unpackPS ps))   -- todo better
+filter :: (Char -> Bool) -> PackedString -> PackedString
+filter f ps 
+    | null ps = ps
+    | otherwise = pack (Prelude.filter f (unpack ps))   -- todo better
 
 -- | The 'find' function takes a predicate and a packed string and
 -- returns the first element in matching the predicate, or 'Nothing' if
 -- there is no such element.
-findPS :: (Char -> Bool) -> PackedString -> Maybe Char
-findPS p ps = case filterPS p ps of
-            p' | nullPS p' -> Nothing
+find :: (Char -> Bool) -> PackedString -> Maybe Char
+find p ps = case filter p ps of
+            p' | null p' -> Nothing
                | otherwise -> Just (unsafeHeadPS p')
 
--- | 'foldlPS', applied to a binary operator, a starting value (typically
+-- | 'foldl', applied to a binary operator, a starting value (typically
 -- the left-identity of the operator), and a packed string, reduces the
 -- packed string using the binary operator, from left to right.
-foldlPS :: (a -> Char -> a) -> a -> PackedString -> a
-foldlPS f b ps = foldl f b (unpackPS ps)
+foldl :: (a -> Char -> a) -> a -> PackedString -> a
+foldl f b ps = Prelude.foldl f b (unpack ps)
 
--- | 'foldrPS', applied to a binary operator, a starting value
+-- | 'foldr', applied to a binary operator, a starting value
 -- (typically the right-identity of the operator), and a packed string,
 -- reduces the packed string using the binary operator, from right to left.
-foldrPS :: (Char -> a -> a) -> a -> PackedString -> a
-foldrPS f v ps = foldr f v (unpackPS ps)
+foldr :: (Char -> a -> a) -> a -> PackedString -> a
+foldr f v ps = Prelude.foldr f v (unpack ps)
 
--- | 'takeWhilePS', applied to a predicate @p@ and a packed string @xs@,
+-- | 'takeWhile', applied to a predicate @p@ and a packed string @xs@,
 -- returns the longest prefix (possibly empty) of @xs@ of elements that
 -- satisfy @p@.
-takeWhilePS :: (Char -> Bool) -> PackedString -> PackedString
-takeWhilePS f ps = seq f $ takePS (findIndexOrEndPS (not . f) ps) ps
-{-# INLINE takeWhilePS #-}
+takeWhile :: (Char -> Bool) -> PackedString -> PackedString
+takeWhile f ps = seq f $ take (findIndexOrEndPS (not . f) ps) ps
+{-# INLINE takeWhile #-}
 
--- | 'dropWhilePS' @p xs@ returns the suffix remaining after 'takeWhilePS' @p xs@.
-dropWhilePS :: (Char -> Bool) -> PackedString -> PackedString
-dropWhilePS f ps = seq f $ dropPS (findIndexOrEndPS (not . f) ps) ps
-{-# INLINE dropWhilePS #-}
+-- | 'dropWhile' @p xs@ returns the suffix remaining after 'takeWhile' @p xs@.
+dropWhile :: (Char -> Bool) -> PackedString -> PackedString
+dropWhile f ps = seq f $ drop (findIndexOrEndPS (not . f) ps) ps
+{-# INLINE dropWhile #-}
 
--- | 'takePS' @n@, applied to a packed string @xs@, returns the prefix
+-- | 'take' @n@, applied to a packed string @xs@, returns the prefix
 -- of @xs@ of length @n@, or @xs@ itself if @n > 'length' xs@.
-takePS :: Int -> PackedString -> PackedString
-takePS n ps@(PS x s l)
-    | n <= 0    = nilPS
+take :: Int -> PackedString -> PackedString
+take n ps@(PS x s l)
+    | n <= 0    = empty
     | n >= l    = ps
     | otherwise = PS x s n
-{-# INLINE takePS #-}
+{-# INLINE take #-}
 
--- | 'dropPS' @n xs@ returns the suffix of @xs@ after the first @n@
+-- | 'drop' @n xs@ returns the suffix of @xs@ after the first @n@
 -- elements, or @[]@ if @n > 'length' xs@.
-dropPS  :: Int -> PackedString -> PackedString
-dropPS n ps@(PS x s l)
+drop  :: Int -> PackedString -> PackedString
+drop n ps@(PS x s l)
     | n <= 0    = ps
-    | n >  l    = nilPS
+    | n >  l    = empty
     | otherwise = PS x (s+n) (l-n)
-{-# INLINE dropPS #-}
+{-# INLINE drop #-}
 
--- | 'splitAtPS' @n xs@ is equivalent to @('takePS' n xs, 'dropPS' n xs)@.
-splitAtPS :: Int -> PackedString -> (PackedString, PackedString)
-splitAtPS  n ps  = (takePS n ps, dropPS n ps)
-{-# INLINE splitAtPS #-}
+-- | 'splitAt' @n xs@ is equivalent to @('take' n xs, 'drop' n xs)@.
+splitAt :: Int -> PackedString -> (PackedString, PackedString)
+splitAt  n ps  = (take n ps, drop n ps)
+{-# INLINE splitAt #-}
 
 -- | 'span' @p xs@ breaks the packed string into two segments. It is
 -- equivalent to @('takeWhile' p xs, 'dropWhile' p xs)@
-spanPS :: (Char -> Bool) -> PackedString -> (PackedString, PackedString)
-spanPS  p ps = breakPS (not . p) ps
+span :: (Char -> Bool) -> PackedString -> (PackedString, PackedString)
+span  p ps = break (not . p) ps
 
--- | 'break' @p@ is equivalent to @'spanPS' ('not' . p)@.
-breakPS :: (Char -> Bool) -> PackedString -> (PackedString, PackedString)
-breakPS p ps = case findIndexOrEndPS p ps of n -> (takePS n ps, dropPS n ps)
+-- | 'break' @p@ is equivalent to @'span' ('not' . p)@.
+break :: (Char -> Bool) -> PackedString -> (PackedString, PackedString)
+break p ps = case findIndexOrEndPS p ps of n -> (take n ps, drop n ps)
 
 -- | 'reverse' @xs@ returns the elements of @xs@ in reverse order.
-reversePS :: PackedString -> PackedString
-reversePS (PS x s l) = createPS l $ \p -> withForeignPtr x $ \f -> 
+reverse :: PackedString -> PackedString
+reverse (PS x s l) = createPS l $ \p -> withForeignPtr x $ \f -> 
         c_reverse p (f `plusPtr` s) l -- 99% less space, very much faster
 
--- | 'elemPS' is the list membership predicate.
-elemPS :: Char -> PackedString -> Bool
-elemPS c ps = case elemIndexPS c ps of
+-- | 'elem' is the list membership predicate.
+elem :: Char -> PackedString -> Bool
+elem c ps = case elemIndex c ps of
     Nothing -> False
     Just _  -> True
 
 -- | Concatenate a list of packed strings.
-concatPS :: [PackedString] -> PackedString
-concatPS []     = nilPS
-concatPS [ps]   = ps
-concatPS xs     = unsafePerformIO $ do 
+concat :: [PackedString] -> PackedString
+concat []     = empty
+concat [ps]   = ps
+concat xs     = unsafePerformIO $ do 
     let start_size = 1024
     p <- mallocArray start_size
     f p 0 1024 xs
@@ -509,10 +516,10 @@ concatPS xs     = unsafePerformIO $ do
                             ptr' <- reallocArray ptr new_total
                             f ptr' len (new_total - len) pss
 
--- | Analogous to @concatPS@, only you tell it how big the result will
+-- | Analogous to @concat@, only you tell it how big the result will
 -- be. If you lie then Bad Things will happen.
 unsafeConcatLenPS :: Int -> [PackedString] -> PackedString
-unsafeConcatLenPS n []   = n `seq` nilPS
+unsafeConcatLenPS n []   = n `seq` empty
 unsafeConcatLenPS _ [ps] = ps
 unsafeConcatLenPS total_length pss = createPS total_length $ \p-> cpPSs p pss
     where cpPSs :: Ptr Word8 -> [PackedString] -> IO ()
@@ -522,18 +529,18 @@ unsafeConcatLenPS total_length pss = createPS total_length $ \p-> cpPSs p pss
                 cpPSs (p `plusPtr` l) rest
 
 -- | 'PackedString' index (subscript) operator, starting from 0.
-indexPS :: PackedString -> Int -> Char
-indexPS ps n 
-    | n < 0            = error "FastPackedString.indexPS: negative index"
-    | n >= lengthPS ps = error "FastPackedString.indexPS: index too large"
+index :: PackedString -> Int -> Char
+index ps n 
+    | n < 0            = error "FastPackedString.index: negative index"
+    | n >= length ps = error "FastPackedString.index: index too large"
     | otherwise        = w2c $ ps ! n
-{-# INLINE indexPS #-}
+{-# INLINE index #-}
 
--- | 'indexWord8PS' is like 'indexPS', except that the result is of type 'Word8'
+-- | 'indexWord8PS' is like 'index', except that the result is of type 'Word8'
 indexWord8PS :: PackedString -> Int -> Word8
 indexWord8PS ps n 
     | n < 0            = error "FastPackedString.indexWord8PS: negative index"
-    | n >= lengthPS ps = error "FastPackedString.indexWord8PS: index too large"
+    | n >= length ps = error "FastPackedString.indexWord8PS: index too large"
     | otherwise        = ps ! n
 {-# INLINE indexWord8PS #-}
 
@@ -543,10 +550,10 @@ indexWord8PS ps n
 (PS x s _l) ! i = unsafePerformIO $ withForeignPtr x $ \p -> peekElemOff p (s+i)
 {-# INLINE (!) #-}
 
--- | Applied to a predicate and a packed string, 'anyPS' determines if
+-- | Applied to a predicate and a packed string, 'any' determines if
 -- any element of the list satisfies the predicate.
-anyPS :: (Char -> Bool) -> PackedString -> Bool
-anyPS f (PS x s l) = unsafePerformIO $ withForeignPtr x $ \ptr ->
+any :: (Char -> Bool) -> PackedString -> Bool
+any f (PS x s l) = unsafePerformIO $ withForeignPtr x $ \ptr ->
         lookat (ptr `plusPtr` s) (ptr `plusPtr` (s+l))
     where lookat :: Ptr Word8 -> Ptr Word8 -> IO Bool
           lookat p st | p == st     = return False
@@ -555,77 +562,77 @@ anyPS f (PS x s l) = unsafePerformIO $ withForeignPtr x $ \ptr ->
                                             then return True
                                             else lookat (p `plusPtr` 1) st
 
--- | 'linesPS' breaks a packed string up into a list of packed strings
+-- | 'lines' breaks a packed string up into a list of packed strings
 -- at newline characters.  The resulting strings do not contain
 -- newlines.
-linesPS :: PackedString -> [PackedString]
-linesPS ps 
-    | nullPS ps = []
+lines :: PackedString -> [PackedString]
+lines ps 
+    | null ps = []
     | otherwise = case elemIndexWord8PS (c2w '\n') ps of
              Nothing -> [ps]
-             Just n -> takePS n ps : linesPS (dropPS (n+1) ps)
-{-# INLINE linesPS #-}
+             Just n -> take n ps : lines (drop (n+1) ps)
+{-# INLINE lines #-}
 
--- | 'unlinesPS' is an inverse operation to 'linesPS'.  It joins lines,
+-- | 'unlines' is an inverse operation to 'lines'.  It joins lines,
 -- after appending a terminating newline to each.
-unlinesPS :: [PackedString] -> PackedString
-unlinesPS ss = concatPS $ map (\s -> s `appendPS` newline) ss
+unlines :: [PackedString] -> PackedString
+unlines ss = concat $ Prelude.map (\s -> s `append` newline) ss
     where   
-      newline = packString "\n"
+      newline = pack "\n"
 
--- | 'wordsPS' breaks a packed string up into a list of words, which
+-- | 'words' breaks a packed string up into a list of words, which
 -- were delimited by white space.
-wordsPS :: PackedString -> [PackedString]
-wordsPS ps = filter (not.nullPS) (splitWithPS isSpace ps)
+words :: PackedString -> [PackedString]
+words ps = Prelude.filter (not.null) (splitWithPS isSpace ps)
 
 {-
 -- darcs version has different behaviour.
 -- We may wish to export these under an alternate name.
 
-linesPS :: PackedString -> [PackedString]
-linesPS ps = case wfindPS (c2w '\n') ps of
+lines :: PackedString -> [PackedString]
+lines ps = case wfind (c2w '\n') ps of
              Nothing -> [ps]
-             Just n -> takePS n ps : linesPS (dropPS (n+1) ps)
+             Just n -> take n ps : lines (drop (n+1) ps)
 
-unlinesPS :: [PackedString] -> PackedString
-unlinesPS ss = concatPS $ intersperse_newlines ss
+unlines :: [PackedString] -> PackedString
+unlines ss = concat $ intersperse_newlines ss
     where intersperse_newlines (a:b:s) = a:newline: intersperse_newlines (b:s)
           intersperse_newlines s = s
-          newline = packString "\n"
+          newline = pack "\n"
 
-wordsPS :: PackedString -> [PackedString]
-wordsPS ps = splitWithPS isSpace ps
+words :: PackedString -> [PackedString]
+words ps = splitWithPS isSpace ps
 
 -}
 
--- | The 'unwordsPS' function is analogous to the 'unwords' function.
-unwordsPS :: [PackedString] -> PackedString
-unwordsPS = joinPS (packString " ")
+-- | The 'unwords' function is analogous to the 'unwords' function.
+unwords :: [PackedString] -> PackedString
+unwords = join (pack " ")
 
--- | The 'joinPS' function takes a 'PackedString' and a list of 'PackedString's
+-- | The 'join' function takes a 'PackedString' and a list of 'PackedString's
 -- and concatenates the list after interspersing the first argument between
 -- each element of the list.
-joinPS :: PackedString -> [PackedString] -> PackedString
-joinPS filler pss = concatPS (splice pss)
+join :: PackedString -> [PackedString] -> PackedString
+join filler pss = concat (splice pss)
     where
         splice []  = []
         splice [x] = [x]
         splice (x:y:xs) = x:filler:splice (y:xs)
 
--- | Sort using an /unstable/ sorting algorithm (QSORT(3))
-sortPS :: PackedString -> PackedString
-sortPS (PS x s l) = createPS l $ \p -> withForeignPtr x $ \f -> do
+-- | Sort using an /unstable/ sorting algorithm (QSORT(3)).
+sort :: PackedString -> PackedString
+sort (PS x s l) = createPS l $ \p -> withForeignPtr x $ \f -> do
         c_memcpy p (f `plusPtr` s) l
         c_qsort p l -- inplace
 
--- | The 'elemIndexPS' function returns the index of the first element
+-- | The 'elemIndex' function returns the index of the first element
 -- in the given 'PackedString' which is equal (by memchr) to the query
 -- element, or 'Nothing' if there is no such element.
-elemIndexPS :: Char -> PackedString -> Maybe Int
-elemIndexPS c ps = elemIndexWord8PS (c2w c) ps
-{-# INLINE elemIndexPS #-}
+elemIndex :: Char -> PackedString -> Maybe Int
+elemIndex c ps = elemIndexWord8PS (c2w c) ps
+{-# INLINE elemIndex #-}
 
--- | 'elemIndexWord8PS' is like 'elemIndexPS', except that it takes a
+-- | 'elemIndexWord8PS' is like 'elemIndex', except that it takes a
 -- 'Word8' as the element to search for.
 elemIndexWord8PS :: Word8 -> PackedString -> Maybe Int
 elemIndexWord8PS c (PS x s l) = unsafePerformIO $ 
@@ -635,50 +642,50 @@ elemIndexWord8PS c (PS x s l) = unsafePerformIO $
         return $ if q == nullPtr then Nothing else Just (q `minusPtr` p')
 {-# INLINE elemIndexWord8PS #-}
 
--- | The 'findIndexPS' function takes a predicate and a 'PackedString'
+-- | The 'findIndex' function takes a predicate and a 'PackedString'
 -- and returns the index of the first element in the packed string
 -- satisfying the predicate.
-findIndexPS :: (Char -> Bool) -> PackedString -> Maybe Int
-findIndexPS f = listToMaybe . findIndicesPS f
+findIndex :: (Char -> Bool) -> PackedString -> Maybe Int
+findIndex f = listToMaybe . findIndices f
 
 -- | The 'findIndices' function extends 'findIndex', by returning the
 -- indices of all elements satisfying the predicate, in ascending order.
-findIndicesPS :: (Char -> Bool) -> PackedString -> [Int]
-findIndicesPS p ps = loop 0 ps
+findIndices :: (Char -> Bool) -> PackedString -> [Int]
+findIndices p ps = loop 0 ps
 	where
-       loop n ps' | nullPS ps'           = []
+       loop n ps' | null ps'           = []
        loop n ps' | p (unsafeHeadPS ps') = n : loop (n + 1) (unsafeTailPS ps')
                   | otherwise            = loop (n + 1) (unsafeTailPS ps')
-
--- | 'findIndicesPS' is a variant of findIndexPS, that returns the
--- length of the string if no element is found, rather than Nothing.
-findIndexOrEndPS :: (Char -> Bool) -> PackedString -> Int
-findIndexOrEndPS f ps
-    | nullPS ps           = 0
-    | f (unsafeHeadPS ps) = 0
-    | otherwise           = seq f $ 1 + findIndexOrEndPS f (unsafeTailPS ps)
 
 ------------------------------------------------------------------------
 -- Extensions to the list interface
 
--- (Internal) unchecked version of @headPS@, you must provide some
+-- (Internal) 'findIndexOrEndPS' is a variant of findIndex, that returns the
+-- length of the string if no element is found, rather than Nothing.
+findIndexOrEndPS :: (Char -> Bool) -> PackedString -> Int
+findIndexOrEndPS f ps
+    | null ps           = 0
+    | f (unsafeHeadPS ps) = 0
+    | otherwise           = seq f $ 1 + findIndexOrEndPS f (unsafeTailPS ps)
+
+-- (Internal) unchecked version of @head@, you must provide some
 -- guarantee that the packed string is non-empty
 unsafeHeadPS :: PackedString -> Char
 unsafeHeadPS (PS x s _) = w2c $ unsafePerformIO $ withForeignPtr x $ \p -> 
                     peekElemOff p s
 {-# INLINE unsafeHeadPS #-}
 
--- (Internal) unchecked version of @tailPS@, as for unsafeHeadPS
+-- (Internal) unchecked version of @tail@, as for unsafeHeadPS
 unsafeTailPS :: PackedString -> PackedString
 unsafeTailPS (PS ps s l)
-    | l == 1 = nilPS
+    | l == 1 = empty
     | otherwise  = PS ps (s+1) (l-1)
 {-# INLINE unsafeTailPS #-}
 
 findFromEndUntilPS :: (Char -> Bool) -> PackedString -> Int
 findFromEndUntilPS f ps@(PS x s l) = seq f $
-    if nullPS ps then 0
-    else if f $ lastPS ps then l
+    if null ps then 0
+    else if f $ last ps then l
          else findFromEndUntilPS f (PS x s (l-1))
 
 {-# INLINE dropWhitePS #-}
@@ -686,16 +693,16 @@ dropWhitePS :: PackedString -> PackedString
 dropWhitePS (PS x s l) =
     unsafePerformIO $ withForeignPtr x $ \p->
     do i <- first_nonwhite (p `plusPtr` s) l
-       return $ if i == l then nilPS else PS x (s+i) (l-i)
+       return $ if i == l then empty else PS x (s+i) (l-i)
 
 spanEndPS :: (Char -> Bool) -> PackedString -> (PackedString, PackedString)
-spanEndPS  p ps = splitAtPS (findFromEndUntilPS (not.p) ps) ps
+spanEndPS  p ps = splitAt (findFromEndUntilPS (not.p) ps) ps
 
 {-# INLINE breakOnPS #-}
 breakOnPS :: Char -> PackedString -> (PackedString, PackedString)
-breakOnPS c p = case elemIndexPS c p of
-                    Nothing -> (p,nilPS)
-                    Just n -> (takePS n p, dropPS n p)
+breakOnPS c p = case elemIndex c p of
+                    Nothing -> (p,empty)
+                    Just n -> (take n p, drop n p)
 
 {-# INLINE hashPS #-}
 hashPS :: PackedString -> Int32
@@ -714,22 +721,22 @@ breakWhitePS :: PackedString -> (PackedString,PackedString)
 breakWhitePS (PS x s l) =
     unsafePerformIO $ withForeignPtr x $ \p->
     do i <- first_white (p `plusPtr` s) l
-       if i == 0 then return (nilPS, PS x s l)
+       if i == 0 then return (empty, PS x s l)
                  else if i == l
-                      then return (PS x s l, nilPS)
+                      then return (PS x s l, empty)
                       else return (PS x s i, PS x (s+i) (l-i))
 
 {-# INLINE breakFirstPS #-}
 breakFirstPS :: Char -> PackedString -> Maybe (PackedString,PackedString)
-breakFirstPS c p = case elemIndexPS c p of
+breakFirstPS c p = case elemIndex c p of
                        Nothing -> Nothing
-                       Just n -> Just (takePS n p, dropPS (n+1) p)
+                       Just n -> Just (take n p, drop (n+1) p)
 
 {-# INLINE breakLastPS #-}
 breakLastPS :: Char -> PackedString -> Maybe (PackedString,PackedString)
 breakLastPS c p = case findLastPS c p of
                       Nothing -> Nothing
-                      Just n -> Just (takePS n p, dropPS (n+1) p)
+                      Just n -> Just (take n p, drop (n+1) p)
 
 {-# INLINE findLastPS #-}
 findLastPS :: Char -> PackedString -> Maybe Int
@@ -756,14 +763,14 @@ splitPS c = wsplitPS (c2w c)
 {-# INLINE wsplitPS #-}
 wsplitPS :: Word8 -> PackedString -> [PackedString]
 wsplitPS c ps = case elemIndexWord8PS c ps of
-                Nothing -> if nullPS ps then [] else [ps]
-                Just n -> takePS n ps : wsplitPS c (dropPS (n+1) ps)
+                Nothing -> if null ps then [] else [ps]
+                Just n -> take n ps : wsplitPS c (drop (n+1) ps)
 
 splitWithPS :: (Char -> Bool) -> PackedString -> [PackedString]
 splitWithPS f ps =
-    case [ m | m <- [0..lengthPS ps-1], f (w2c (ps ! m)) ] of
-    [] -> if nullPS ps then [] else [ps]
-    (n:_) -> takePS n ps : splitWithPS f (dropPS (n+1) ps)
+    case [ m | m <- [0..length ps-1], f (w2c (ps ! m)) ] of
+    [] -> if null ps then [] else [ps]
+    (n:_) -> take n ps : splitWithPS f (drop (n+1) ps)
 
 -- | readIntPS skips any whitespace at the beginning of its argument, and
 -- reads an Int from the beginning of the PackedString.  If there is no
@@ -795,20 +802,20 @@ fromHex2PS (PS x s l) = createPS (l `div` 2) $ \p -> withForeignPtr x $ \f ->
 -- | betweenLinesPS returns the PackedString between the two lines given,
 -- or Nothing if they do not appear.
 betweenLinesPS :: PackedString -> PackedString -> PackedString -> Maybe (PackedString)
-betweenLinesPS start end ps
- = case break (start ==) (linesPS ps) of
-       (_, _:rest@(PS ps1 s1 _:_)) ->
-           case break (end ==) rest of
-               (_, PS _ s2 _:_) -> Just $ PS ps1 s1 (s2 - s1)
-               _ -> Nothing
-       _ -> Nothing
+betweenLinesPS start end ps = 
+    case Prelude.break (start ==) (lines ps) of
+        (_, _:rest@(PS ps1 s1 _:_)) ->
+            case Prelude.break (end ==) rest of
+                (_, PS _ s2 _:_) -> Just $ PS ps1 s1 (s2 - s1)
+                _ -> Nothing
+        _ -> Nothing
 
 -- | breakAfterNthNewline
 breakAfterNthNewline :: Int -> PackedString -> Maybe (PackedString, PackedString)
-breakAfterNthNewline 0 the_ps | nullPS the_ps = Just (nilPS, nilPS)
+breakAfterNthNewline 0 the_ps | null the_ps = Just (empty, empty)
 breakAfterNthNewline n the_ps@(PS fp the_s l)
  = unsafePerformIO $ withForeignPtr fp $ \p ->
-   do let findit 0 s | s == end = return $ Just (the_ps, nilPS)
+   do let findit 0 s | s == end = return $ Just (the_ps, empty)
           findit _ s | s == end = return Nothing
           findit 0 s = let left_l = s - the_s
                        in return $ Just (PS fp the_s left_l,
@@ -822,10 +829,10 @@ breakAfterNthNewline n the_ps@(PS fp the_s l)
 
 -- | breakBeforeNthNewline
 breakBeforeNthNewline :: Int -> PackedString -> (PackedString, PackedString)
-breakBeforeNthNewline 0 the_ps | nullPS the_ps = (nilPS, nilPS)
+breakBeforeNthNewline 0 the_ps | null the_ps = (empty, empty)
 breakBeforeNthNewline n the_ps@(PS fp the_s l)
  = unsafePerformIO $ withForeignPtr fp $ \p ->
-   do let findit _ s | s == end = return (the_ps, nilPS)
+   do let findit _ s | s == end = return (the_ps, empty)
           findit i s = do w <- peekElemOff p s
                           if w == nl
                             then if i == 0
@@ -887,13 +894,13 @@ hPutPS h (PS ps s l) = withForeignPtr ps $ \p-> hPutBuf h (p `plusPtr` s) l
 
 -- | Read a 'PackedString' directly from the specified 'Handle'.  This
 -- is far more efficient than reading the characters into a 'String'
--- and then using 'packString'.
+-- and then using 'pack'.
 --
 -- NOTE: as with 'hPutPS', the string representation in the file is
 -- assumed to be ISO-8859-1.
 --
 hGetPS :: Handle -> Int -> IO PackedString
-hGetPS _ 0 = return nilPS
+hGetPS _ 0 = return empty
 hGetPS h i = do fp <- mallocForeignPtr i
                 l  <- withForeignPtr fp $ \p-> hGetBuf h p i
                 return $ PS fp 0 l
@@ -927,7 +934,7 @@ hGetContentsPS h = do
 
 -- | Read an entire file directly into a 'PackedString'.  This is far more
 -- efficient than reading the characters into a 'String' and then using
--- 'packString'.  It also may be more efficient than opening the file and
+-- 'pack'.  It also may be more efficient than opening the file and
 -- reading it using hGetPS.
 --
 -- NOTE: as with 'hGetPS', the string representation in the file is
@@ -1043,6 +1050,8 @@ readHandleLazily h
                      $ \p -> hGetBuf h p blocksize
               case lread of
                   0 -> return []
+                  l | l < blocksize -> do hClose h
+                                          return [PS fp 0 l]
                   l -> do rest <- unsafeInterleaveIO read_rest
                           return (PS fp 0 l:rest)
       unsafeInterleaveIO read_rest
@@ -1060,7 +1069,7 @@ gzReadFilePS :: FilePath -> IO PackedString
 gzReadFilePS f = do
     h <- openBinaryFile f ReadMode
     header <- hGetPS h 2
-    if header /= packString "\31\139"
+    if header /= pack "\31\139"
        then do hClose h
                mmapFilePS f
        else do hSeek h SeekFromEnd (-4)
@@ -1079,7 +1088,7 @@ gzReadFileLazily :: FilePath -> IO LazyFile
 gzReadFileLazily f = do
     h <- openBinaryFile f ReadMode
     header <- hGetPS h 2
-    if header == packString "\31\139" then
+    if header == pack "\31\139" then
         do hClose h
            withCString f $ \fstr-> withCString "rb" $ \rb-> do
                gzf <- c_gzopen fstr rb

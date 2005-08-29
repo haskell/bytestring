@@ -7,7 +7,9 @@ module Tests where
 import Data.Char
 import Data.List
 import Data.Maybe
-import Data.FastPackedString
+
+import Data.FastPackedString (pack,unpack,mmapFilePS)
+import qualified Data.FastPackedString as P
 
 import TestFramework
 import Language.Haskell.TH
@@ -31,150 +33,150 @@ str' = unsafePerformIO $ readFile "Makefile"
 ------------------------------------------------------------------------
 
 $(tests "fps" [d| 
-    test_unpackPS = assertEqual (str) (unpackPS pstr) 
+    test_unpack = assertEqual (str) (unpack pstr) 
 
-    test_eqPS     = do assert (pstr `eqPS` pstr)
-                       assert (nilPS `eqPS` nilPS)
-                       assert (not (pstr `eqPS` nilPS))
-                       assert (not (pstr `eqPS` qstr))
+    test_eqPS     = do assert (pstr == pstr)
+                       assert (P.empty == P.empty)
+                       assert (not (pstr == P.empty))
+                       assert (not (pstr == qstr))
 
-    test_comparePS = do assert (pstr `comparePS` pstr == EQ)
-                        assert (qstr `comparePS` pstr == LT)
-                        assert (pstr `comparePS` qstr == GT)
-                        assert (pstr `comparePS` nilPS == GT)
-                        assert (nilPS `comparePS` pstr == LT)
-                        assert (nilPS `comparePS` nilPS == EQ)
-                        let a = packString "x"
-                            b = packString "xy"
-                        assert (a `compare` b == LT)
-                        assert (b `compare` a == GT)
-                        assert (a `compare` a == EQ)
-                        assert (b `compare` b == EQ)
+    test_compare = do assert (pstr `compare` pstr == EQ)
+                      assert (qstr `compare` pstr == LT)
+                      assert (pstr `compare` qstr == GT)
+                      assert (pstr `compare` P.empty == GT)
+                      assert (P.empty `compare` pstr == LT)
+                      assert (P.empty `compare` P.empty == EQ)
+                      let a = pack "x"
+                          b = pack "xy"
+                      assert (a `compare` b == LT)
+                      assert (b `compare` a == GT)
+                      assert (a `compare` a == EQ)
+                      assert (b `compare` b == EQ)
 
-    test_nilPS = do assertEqual (length [])     (lengthPS nilPS) 
-    test_consPS   = assertEqual ('X' : str)     (unpackPS $ 'X' `consPS` pstr)
-    test_headPS   = assertEqual (head str)      (headPS pstr)
-    test_tailPS   = assertEqual (tail str)      (unpackPS (tailPS pstr))
-    test_lastPS   = assertEqual (last str)      (lastPS pstr)
-    test_initPS   = assertEqual (init str)      (unpackPS (initPS pstr))
-    test_nullPS   = do assertEqual (null [])    (nullPS nilPS)
-                       assertEqual (null str)   (nullPS pstr)
-    test_lengthPS = assertEqual (length str)    (lengthPS pstr)  
-    test_appendPS = assertEqual (str ++ str)    (unpackPS $ pstr `appendPS` pstr)
-    test_mapPS    = do assertEqual (map toUpper str) (unpackPS $ mapPS toUpper pstr)
-                       assertEqual (map toUpper []) (unpackPS $ mapPS toUpper nilPS)
-    test_filterPS = do assertEqual (filter (=='X') str) (unpackPS (filterPS (=='X') pstr))
+    test_empty = do assertEqual (length [])     (P.length P.empty) 
+    test_cons   = assertEqual ('X' : str)     (unpack $ 'X' `P.cons` pstr)
+    test_head   = assertEqual (head str)      (P.head pstr)
+    test_tail   = assertEqual (tail str)      (unpack (P.tail pstr))
+    test_last   = assertEqual (last str)      (P.last pstr)
+    test_init   = assertEqual (init str)      (unpack (P.init pstr))
+    test_null   = do assertEqual (null [])    (P.null P.empty)
+                     assertEqual (null str)   (P.null pstr)
+    test_length = assertEqual (length str)    (P.length pstr)  
+    test_append = assertEqual (str ++ str)    (unpack $ pstr `P.append` pstr)
+    test_map    = do assertEqual (map toUpper str) (unpack $ P.map toUpper pstr)
+                     assertEqual (map toUpper []) (unpack $ P.map toUpper P.empty)
+    test_filter = do assertEqual (filter (=='X') str) (unpack (P.filter (=='X') pstr))
 
-    test_foldlPS  = assertEqual (foldl (\x c -> if c == 'a' then x + 1 else x)  0 str)
-                                (foldlPS (\x c -> if c == 'a' then x + 1 else x)  0 pstr)
-    test_foldrPS  = assertEqual (foldr (\c x -> if c == 'a' then x + 1 else x)  0 str)
-                                (foldrPS (\c x -> if c == 'a' then x + 1 else x)  0 pstr)
+    test_foldl  = assertEqual (foldl (\x c -> if c == 'a' then x + 1 else x)  0 str)
+                                (P.foldl (\x c -> if c == 'a' then x + 1 else x)  0 pstr)
+    test_foldr  = assertEqual (foldr (\c x -> if c == 'a' then x + 1 else x)  0 str)
+                                (P.foldr (\c x -> if c == 'a' then x + 1 else x)  0 pstr)
 
-    test_takeWhilePS  = do assertEqual (takeWhile (/= 'X') str) 
-                                       (unpackPS $ takeWhilePS (/= 'X') pstr)
-                           assertEqual (takeWhile (/= 'X') [])
-                                       (unpackPS $ takeWhilePS (/= 'X') nilPS)
-    test_dropWhilePS  = do assertEqual (dropWhile (/= 'X') str)
-                                       (unpackPS $ dropWhilePS (/= 'X') pstr)
-                           assertEqual (dropWhile (/= 'X') [])
-                                       (unpackPS $ dropWhilePS (/= 'X') nilPS)
-    test_takePS  = do assertEqual (take 1000 str) (unpackPS $ takePS 1000 pstr)
-                      assertEqual (take 1000 []) (unpackPS $ takePS 1000 nilPS)
-    test_dropPS  = do assertEqual (drop 1000 str) (unpackPS $ dropPS 1000 pstr)
-                      assertEqual (drop 1000 []) (unpackPS $ dropPS 1000 nilPS)
+    test_takeWhile  = do assertEqual (takeWhile (/= 'X') str) 
+                                       (unpack $ P.takeWhile (/= 'X') pstr)
+                         assertEqual (takeWhile (/= 'X') [])
+                                       (unpack $ P.takeWhile (/= 'X') P.empty)
+    test_dropWhile  = do assertEqual (dropWhile (/= 'X') str)
+                                       (unpack $ P.dropWhile (/= 'X') pstr)
+                         assertEqual (dropWhile (/= 'X') [])
+                                       (unpack $ P.dropWhile (/= 'X') P.empty)
+    test_take  = do assertEqual (take 1000 str) (unpack $ P.take 1000 pstr)
+                    assertEqual (take 1000 []) (unpack $ P.take 1000 P.empty)
+    test_drop  = do assertEqual (drop 1000 str) (unpack $ P.drop 1000 pstr)
+                    assertEqual (drop 1000 []) (unpack $ P.drop 1000 P.empty)
 
     test_splitAtPS = assertEqual (splitAt 1000 str) 
-                                (let (x,y) = splitAtPS 1000 pstr in (unpackPS x, unpackPS y))
+                                (let (x,y) = P.splitAt 1000 pstr in (unpack x, unpack y))
 
     test_spanPS = do assertEqual (span (/= 'X') str) 
-                                (let (x,y) = spanPS (/= 'X') pstr in (unpackPS x, unpackPS y))
+                                (let (x,y) = P.span (/= 'X') pstr in (unpack x, unpack y))
                      assertEqual (span (/= 'X') []) 
-                                (let (x,y) = spanPS (/= 'X') nilPS in (unpackPS x, unpackPS y))
+                                (let (x,y) = P.span (/= 'X') P.empty in (unpack x, unpack y))
 
     test_breakPS = do assertEqual (break (/= 'X') str) 
-                                (let (x,y) = breakPS (/= 'X') pstr in (unpackPS x, unpackPS y))
+                                (let (x,y) = P.break (/= 'X') pstr in (unpack x, unpack y))
                       assertEqual (break (/= 'X') []) 
-                                (let (x,y) = breakPS (/= 'X') nilPS in (unpackPS x, unpackPS y))
+                                (let (x,y) = P.break (/= 'X') P.empty in (unpack x, unpack y))
 
-    test_reversePS = do assertEqual (reverse str)  (unpackPS $ reversePS pstr)
-                        assertEqual (reverse [])  (unpackPS $ reversePS nilPS)
+    test_reversePS = do assertEqual (reverse str)  (unpack $ P.reverse pstr)
+                        assertEqual (reverse [])  (unpack $ P.reverse P.empty)
 
-    test_elemPS  = do assertEqual ('X' `elem` str)   ('X' `elemPS` pstr)
-                      assertEqual ('X' `elem` [])   ('X' `elemPS` nilPS)
+    test_elemPS  = do assertEqual ('X' `elem` str)   ('X' `P.elem` pstr)
+                      assertEqual ('X' `elem` [])   ('X' `P.elem` P.empty)
 
-    test_concatPS = do
-        assertEqual (concat [str,str'])       (unpackPS $ concatPS [pstr,qstr])
-        assertEqual (concat [str,[]])         (unpackPS $ concatPS [pstr,nilPS])
-        assertEqual (concat [[],str])         (unpackPS $ concatPS [nilPS, pstr])
-        assertEqual (concat [str',[],str])    (unpackPS $ concatPS [qstr, nilPS, pstr])
-        assertEqual (concat [str,[],str'])    (unpackPS $ concatPS [pstr, nilPS, qstr])
-        assertEqual (concat [str,str',[]])    (unpackPS $ concatPS [pstr, qstr, nilPS])
-        assertEqual (concat [[],str,str',[]]) (unpackPS $ concatPS [nilPS,pstr, qstr])
+    test_concat = do
+        assertEqual (concat [str,str'])       (unpack $ P.concat [pstr,qstr])
+        assertEqual (concat [str,[]])         (unpack $ P.concat [pstr,P.empty])
+        assertEqual (concat [[],str])         (unpack $ P.concat [P.empty, pstr])
+        assertEqual (concat [str',[],str])    (unpack $ P.concat [qstr, P.empty, pstr])
+        assertEqual (concat [str,[],str'])    (unpack $ P.concat [pstr, P.empty, qstr])
+        assertEqual (concat [str,str',[]])    (unpack $ P.concat [pstr, qstr, P.empty])
+        assertEqual (concat [[],str,str',[]]) (unpack $ P.concat [P.empty,pstr, qstr])
 
-    test_indexPS  = do 
-        assertEqual (str !! 1000)   (pstr `indexPS` 1000)
+    test_index  = do 
+        assertEqual (str !! 1000)   (pstr `P.index` 1000)
         e <- Control.Exception.catch 
                   (Control.Exception.evaluate $ [] !! 1000)           
                   (\_ -> return (chr 0))
         f <- Control.Exception.catch
-                  (Control.Exception.evaluate $ nilPS `indexPS` 1000) 
+                  (Control.Exception.evaluate $ P.empty `P.index` 1000) 
                   (\_ -> return (chr 0))
         assertEqual e f
 
     test_indexWord8PS  = do
-        assertEqual (str !! 1000)   (chr . fromIntegral $ pstr `indexWord8PS` 1000)
+        assertEqual (str !! 1000)   (chr . fromIntegral $ pstr `P.indexWord8PS` 1000)
         e <- Control.Exception.catch 
                       (Control.Exception.evaluate $ [] !! 1000)           
                       (\_ -> return (chr 0))
         f <- Control.Exception.catch
-                      (Control.Exception.evaluate $ (chr .fromIntegral $ nilPS `indexWord8PS` 1000) )
+                      (Control.Exception.evaluate $ (chr .fromIntegral $ P.empty `P.indexWord8PS` 1000) )
                       (\_ -> return (chr 0))
         assertEqual e f
 
-    test_anyPS   = do assertEqual (any (== 'X') str) (anyPS (== 'X') pstr)
-                      assertEqual (any (== '~') str) (anyPS (== '~') pstr)
+    test_any   = do assertEqual (any (== 'X') str) (P.any (== 'X') pstr)
+                    assertEqual (any (== '~') str) (P.any (== '~') pstr)
 
-    test_linesPS    = do 
-        assertEqual (lines str)  (map unpackPS $ linesPS pstr)
-        assertEqual (lines [])   (map unpackPS  $ linesPS nilPS)
-        assertEqual (lines str') (map unpackPS  $ linesPS qstr)
-        assertEqual (lines "a\nb\n") (map unpackPS  $ linesPS (packString "a\nb\n"))
-        assertEqual (lines "a\nb") (map unpackPS  $ linesPS (packString "a\nb"))
+    test_lines    = do 
+        assertEqual (lines str)  (map unpack $ P.lines pstr)
+        assertEqual (lines [])   (map unpack  $ P.lines P.empty)
+        assertEqual (lines str') (map unpack  $ P.lines qstr)
+        assertEqual (lines "a\nb\n") (map unpack  $ P.lines (pack "a\nb\n"))
+        assertEqual (lines "a\nb") (map unpack  $ P.lines (pack "a\nb"))
 
-    test_unlinesPS  = do 
-        assertEqual (unlines . lines $ str)      (unpackPS . unlinesPS . linesPS $ pstr)
-        assertEqual (unlines . lines $ str')     (unpackPS . unlinesPS . linesPS $ qstr)
-        assertEqual (unlines . lines $ [])       (unpackPS . unlinesPS .  linesPS $ nilPS)
+    test_unlines  = do 
+        assertEqual (unlines . lines $ str)      (unpack . P.unlines . P.lines $ pstr)
+        assertEqual (unlines . lines $ str')     (unpack . P.unlines . P.lines $ qstr)
+        assertEqual (unlines . lines $ [])       (unpack . P.unlines .  P.lines $ P.empty)
         assertEqual (unlines . lines $ "a\nb\n") 
-                    (unpackPS . unlinesPS . linesPS $ packString "a\nb\n")
+                    (unpack . P.unlines . P.lines $ pack "a\nb\n")
         assertEqual (unlines . lines $ "a\nb")
-                    (unpackPS . unlinesPS . linesPS $ packString "a\nb")
+                    (unpack . P.unlines . P.lines $ pack "a\nb")
 
-    test_wordsPS    = do
+    test_words    = do
         assertEqual (words "a b ") 
-                    (map unpackPS $ wordsPS $ packString "a b ")
+                    (map unpack $ P.words $ pack "a b ")
         assertEqual (words "a b") 
-                    (map unpackPS $ wordsPS $ packString "a b")
-        assertEqual (words str') (map unpackPS $ wordsPS qstr)
+                    (map unpack $ P.words $ pack "a b")
+        assertEqual (words str') (map unpack $ P.words qstr)
 
-    test_unwordsPS  = do
+    test_unwords  = do
         assertEqual (unwords . words $ "a b ") 
-                    (unpackPS . unwordsPS . wordsPS $ packString "a b ")
-        assertEqual (unwords $ words str) (unpackPS .  unwordsPS . wordsPS $ pstr)
+                    (unpack . P.unwords . P.words $ pack "a b ")
+        assertEqual (unwords $ words str) (unpack .  P.unwords . P.words $ pstr)
 
-    test_joinPS = do
+    test_join = do
         assertEqual (concat $ intersperse "XYX" (lines str))
-                    (unpackPS $ joinPS (packString "XYX") (linesPS pstr))
+                    (unpack $ P.join (pack "XYX") (P.lines pstr))
 
-    test_elemIndexPS = do
-        assertEqual (elemIndex 'X' str) (elemIndexPS 'X' pstr)
+    test_elemIndex = do
+        assertEqual (elemIndex 'X' str) (P.elemIndex 'X' pstr)
 
-    test_findIndexPS = do
+    test_findIndex = do
         assertEqual (findIndex (=='X') str)
-                    (findIndexPS (=='X') pstr)
+                    (P.findIndex (=='X') pstr)
         assertEqual (findIndex (=='X') [])
-                    (findIndexPS (=='X') nilPS)
+                    (P.findIndex (=='X') P.empty)
 
-    test_sortPS = assertEqual (sort str) (unpackPS . sortPS $ pstr)
+    test_sort = assertEqual (sort str) (unpack . P.sort $ pstr)
 
  |])

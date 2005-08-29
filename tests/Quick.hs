@@ -2,7 +2,8 @@
 import Data.Char
 import Data.List
 import Data.Maybe
-import Data.FastPackedString
+import Data.FastPackedString (pack,unpack)
+import qualified Data.FastPackedString as P
 
 import Test.QuickCheck.Batch
 import Test.QuickCheck
@@ -10,113 +11,113 @@ import Test.QuickCheck
 ------------------------------------------------------------------------
 -- at first we just check the correspondence to List functions
 
-prop_eq1 xs      = xs            == (unpackPS . packString $ xs) 
+prop_eq1 xs      = xs            == (unpack . pack $ xs) 
 
-prop_compare1 xs  = (packString xs         `compare` packString xs) == EQ
-prop_compare2 xs  = (packString (xs++"X")  `compare` packString xs) == GT
-prop_compare3 xs  = (packString xs  `compare` packString (xs++"X")) == LT
-prop_compare4 xs  = (not (null xs)) ==> (packString xs  `compare` nilPS) == GT
-prop_compare5 xs  = (not (null xs)) ==> (nilPS `compare` packString xs) == LT
-prop_compare6 xs ys= (not (null ys)) ==> (packString (xs++ys)  `compare` packString xs) == GT
+prop_compare1 xs  = (pack xs         `compare` pack xs) == EQ
+prop_compare2 xs  = (pack (xs++"X")  `compare` pack xs) == GT
+prop_compare3 xs  = (pack xs  `compare` pack (xs++"X")) == LT
+prop_compare4 xs  = (not (null xs)) ==> (pack xs  `compare` P.empty) == GT
+prop_compare5 xs  = (not (null xs)) ==> (P.empty `compare` pack xs) == LT
+prop_compare6 xs ys= (not (null ys)) ==> (pack (xs++ys)  `compare` pack xs) == GT
 
--- prop_nil1 xs = (null xs) ==> packString xs == nilPS
--- prop_nil2 xs = (null xs) ==> xs == unpackPS nilPS
+-- prop_nil1 xs = (null xs) ==> pack xs == P.empty
+-- prop_nil2 xs = (null xs) ==> xs == unpack P.empty
 
-prop_cons1 xs = 'X' : xs == unpackPS ('X' `consPS` (packString xs))
+prop_cons1 xs = 'X' : xs == unpack ('X' `P.cons` (pack xs))
 
 prop_cons2 :: [Char] -> Char -> Bool
-prop_cons2 xs c = c : xs == unpackPS (c `consPS` (packString xs))
+prop_cons2 xs c = c : xs == unpack (c `P.cons` (pack xs))
 
 prop_head xs     = 
-    (not (null xs)) ==> head xs  == (headPS . packString) xs
+    (not (null xs)) ==> head xs  == (P.head . pack) xs
 
 prop_tail xs     = 
     (not (null xs)) ==>
-    tail xs    == (unpackPS . tailPS . packString) xs
+    tail xs    == (unpack . P.tail . pack) xs
 
 prop_init xs     = 
     (not (null xs)) ==>
-    init xs    == (unpackPS . initPS . packString) xs
+    init xs    == (unpack . P.init . pack) xs
 
--- prop_null xs = (null xs) ==> null xs == (nullPS (packString xs))
+-- prop_null xs = (null xs) ==> null xs == (nullPS (pack xs))
 
-prop_length xs = length xs == lengthPS (packString xs)
+prop_length xs = length xs == P.length (pack xs)
 
-prop_append1 xs = (xs ++ xs) == (unpackPS $ packString xs `appendPS` packString xs)
-prop_append2 xs ys = (xs ++ ys) == (unpackPS $ packString xs `appendPS` packString ys)
+prop_append1 xs = (xs ++ xs) == (unpack $ pack xs `P.append` pack xs)
+prop_append2 xs ys = (xs ++ ys) == (unpack $ pack xs `P.append` pack ys)
 
-prop_map   xs = map toLower xs == (unpackPS . (mapPS toLower) .  packString) xs
+prop_map   xs = map toLower xs == (unpack . (P.map toLower) .  pack) xs
 
-prop_filter1 xs   = (filter (=='X') xs) == (unpackPS $ filterPS (=='X') (packString xs))
-prop_filter2 xs c = (filter (==c) xs) == (unpackPS $ filterPS (==c) (packString xs))
+prop_filter1 xs   = (filter (=='X') xs) == (unpack $ P.filter (=='X') (pack xs))
+prop_filter2 xs c = (filter (==c) xs) == (unpack $ P.filter (==c) (pack xs))
 
-prop_find xs c = find (==c) xs == findPS (==c) (packString xs)
+prop_find xs c = find (==c) xs == P.find (==c) (pack xs)
 
 prop_foldl xs = ((foldl (\x c -> if c == 'a' then x else c:x) [] xs)) ==  
-                (unpackPS $ foldlPS (\x c -> if c == 'a' then x else c `consPS` x) nilPS (packString xs))
+                (unpack $ P.foldl (\x c -> if c == 'a' then x else c `P.cons` x) P.empty (pack xs))
 
 prop_foldr xs = ((foldr (\c x -> if c == 'a' then x else c:x) [] xs)) ==  
-                (unpackPS $ foldrPS (\c x -> if c == 'a' then x else c `consPS` x) 
-                    nilPS (packString xs))
+                (unpack $ P.foldr (\c x -> if c == 'a' then x else c `P.cons` x) 
+                    P.empty (pack xs))
 
-prop_takeWhile xs = (takeWhile (/= 'X') xs) == (unpackPS . (takeWhilePS (/= 'X')) . packString) xs
+prop_takeWhile xs = (takeWhile (/= 'X') xs) == (unpack . (P.takeWhile (/= 'X')) . pack) xs
 
-prop_dropWhile xs = (dropWhile (/= 'X') xs) == (unpackPS . (dropWhilePS (/= 'X')) . packString) xs
+prop_dropWhile xs = (dropWhile (/= 'X') xs) == (unpack . (P.dropWhile (/= 'X')) . pack) xs
 
-prop_take xs = (take 10 xs) == (unpackPS . (takePS 10) . packString) xs
+prop_take xs = (take 10 xs) == (unpack . (P.take 10) . pack) xs
 
-prop_drop xs = (drop 10 xs) == (unpackPS . (dropPS 10) . packString) xs
+prop_drop xs = (drop 10 xs) == (unpack . (P.drop 10) . pack) xs
 
-prop_splitAt xs = (splitAt 1000 xs) == (let (x,y) = splitAtPS 1000 (packString xs) 
-                                      in (unpackPS x, unpackPS y))
+prop_splitAt xs = (splitAt 1000 xs) == (let (x,y) = P.splitAt 1000 (pack xs) 
+                                      in (unpack x, unpack y))
 
-prop_span xs = (span (/='X') xs) == (let (x,y) = spanPS (/='X') (packString xs) 
-                                     in (unpackPS x, unpackPS y))
+prop_span xs = (span (/='X') xs) == (let (x,y) = P.span (/='X') (pack xs) 
+                                     in (unpack x, unpack y))
 
-prop_break xs = (break (/='X') xs) == (let (x,y) = breakPS (/='X') (packString xs) 
-                                       in (unpackPS x, unpackPS y))
+prop_break xs = (break (/='X') xs) == (let (x,y) = P.break (/='X') (pack xs) 
+                                       in (unpack x, unpack y))
 
-prop_reverse xs = (reverse xs) == (unpackPS . reversePS . packString) xs
+prop_reverse xs = (reverse xs) == (unpack . P.reverse . pack) xs
 
-prop_elem xs = ('X' `elem` xs) == ('X' `elemPS` (packString xs))
+prop_elem xs = ('X' `elem` xs) == ('X' `P.elem` (pack xs))
 
 -- should try to stress it
-prop_concat1 xs = (concat [xs,xs]) == (unpackPS $ concatPS [packString xs, packString xs])
+prop_concat1 xs = (concat [xs,xs]) == (unpack $ P.concat [pack xs, pack xs])
 
-prop_concat2 xs = (concat [xs,[]]) == (unpackPS $ concatPS [packString xs, packString []])
+prop_concat2 xs = (concat [xs,[]]) == (unpack $ P.concat [pack xs, pack []])
 
-prop_any xs = (any (== 'X') xs) == (anyPS (== 'X') (packString xs))
+prop_any xs = (any (== 'X') xs) == (P.any (== 'X') (pack xs))
 
-prop_lines xs = (lines xs) == ((map unpackPS) . linesPS . packString) xs
+prop_lines xs = (lines xs) == ((map unpack) . P.lines . pack) xs
 
-prop_unlines xs = (unlines.lines) xs == (unpackPS. unlinesPS . linesPS .packString) xs
+prop_unlines xs = (unlines.lines) xs == (unpack. P.unlines . P.lines .pack) xs
 
-prop_words xs = (words xs) == ((map unpackPS) . wordsPS . packString) xs
+prop_words xs = (words xs) == ((map unpack) . P.words . pack) xs
 
-prop_unwords xs = (packString.unwords.words) xs == (unwordsPS . wordsPS .packString) xs
+prop_unwords xs = (pack.unwords.words) xs == (P.unwords . P.words .pack) xs
 
 prop_join xs = (concat . (intersperse "XYX") . lines) xs ==
-               (unpackPS $ joinPS (packString "XYX") (linesPS (packString xs)))
+               (unpack $ P.join (pack "XYX") (P.lines (pack xs)))
 
-prop_elemIndex1 xs   = (elemIndex 'X' xs) == (elemIndexPS 'X' (packString xs))
-prop_elemIndex2 xs c = (elemIndex c xs) == (elemIndexPS c (packString xs))
+prop_elemIndex1 xs   = (elemIndex 'X' xs) == (P.elemIndex 'X' (pack xs))
+prop_elemIndex2 xs c = (elemIndex c xs) == (P.elemIndex c (pack xs))
 
-prop_findIndex xs = (findIndex (=='X') xs) == (findIndexPS (=='X') (packString xs))
+prop_findIndex xs = (findIndex (=='X') xs) == (P.findIndex (=='X') (pack xs))
 
-prop_findIndicies xs c = (findIndices (==c) xs) == (findIndicesPS (==c) (packString xs))
+prop_findIndicies xs c = (findIndices (==c) xs) == (P.findIndices (==c) (pack xs))
 
 -- example properties from QuickCheck.Batch
-prop_sort1 xs = sort xs == (unpackPS . sortPS . packString) xs
-prop_sort2 xs = (not (null xs)) ==> (headPS . sortPS . packString $ xs) == minimum xs
-prop_sort3 xs = (not (null xs)) ==> (lastPS . sortPS . packString $ xs) == maximum xs
+prop_sort1 xs = sort xs == (unpack . P.sort . pack) xs
+prop_sort2 xs = (not (null xs)) ==> (P.head . P.sort . pack $ xs) == minimum xs
+prop_sort3 xs = (not (null xs)) ==> (P.last . P.sort . pack $ xs) == maximum xs
 prop_sort4 xs ys =
         (not (null xs)) ==>
         (not (null ys)) ==>
-        (headPS . sortPS) (appendPS (packString xs) (packString ys)) == min (minimum xs) (minimum ys)
+        (P.head . P.sort) (P.append (pack xs) (pack ys)) == min (minimum xs) (minimum ys)
 prop_sort5 xs ys =
         (not (null xs)) ==>
         (not (null ys)) ==>
-        (lastPS . sortPS) (appendPS (packString xs) (packString ys)) == max (maximum xs) (maximum ys)
+        (P.last . P.sort) (P.append (pack xs) (pack ys)) == max (maximum xs) (maximum ys)
 
 ------------------------------------------------------------------------
 
