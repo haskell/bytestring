@@ -1,6 +1,4 @@
-{-# OPTIONS -cpp -fffi #-}
 -----------------------------------------------------------------------------
--- |
 -- Module      :  FastPackedString
 -- Copyright   :  (c) The University of Glasgow 2001,
 --                    David Roundy 2003-2005,
@@ -29,14 +27,13 @@
 -- Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
 -- 02111-1307, USA.
 --
-------------------------------------------------------------------------
+
 --
--- An efficient implementation of strings.
+-- | An efficient implementation of strings.
 --
--- Original GHC implementation by Bryan O\'Sullivan,
--- Rewritten to use UArray by Simon Marlow.
--- Rewritten to support slices and use ForeignPtr by David Roundy
--- Cleanups and extensions by Don Stewart
+-- Original GHC implementation by Bryan O\'Sullivan, rewritten to use
+-- UArray by Simon Marlow. Again rewritten to support slices and use
+-- ForeignPtr by David Roundy. Cleanups and extensions by Don Stewart
 --
 
 module Data.FastPackedString (
@@ -181,7 +178,7 @@ import System.IO.Unsafe         (unsafePerformIO, unsafeInterleaveIO)
 import System.Mem               (performGC)
 
 import Foreign.Ptr              (Ptr, FunPtr, plusPtr, nullPtr, minusPtr, castPtr)
-import Foreign.ForeignPtr       (touchForeignPtr, newForeignPtr, withForeignPtr, mallocForeignPtrArray, ForeignPtr)
+import Foreign.ForeignPtr       (newForeignPtr, withForeignPtr, mallocForeignPtrArray, ForeignPtr)
 import Foreign.Storable         (peekElemOff, peek, poke)
 import Foreign.C.String         (CString)
 import Foreign.C.Types          (CSize, CLong, CInt)
@@ -653,7 +650,7 @@ findIndex f = listToMaybe . findIndices f
 findIndices :: (Char -> Bool) -> PackedString -> [Int]
 findIndices p ps = loop 0 ps
 	where
-       loop n ps' | null ps'           = []
+       loop _ ps' | null ps'           = []
        loop n ps' | p (unsafeHeadPS ps') = n : loop (n + 1) (unsafeTailPS ps')
                   | otherwise            = loop (n + 1) (unsafeTailPS ps')
 

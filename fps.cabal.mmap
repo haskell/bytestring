@@ -6,9 +6,8 @@ Author:              Don Stewart
 Maintainer:          dons@cse.unsw.edu.au
 Build-Depends:       base, unix
 Exposed-modules:	 Data.FastPackedString
-ghc-options:         -O2 -funbox-strict-fields -fglasgow-exts -Icbits -DZLIB -DUSE_MMAP -D__OpenBSD__
+extensions:          CPP, ForeignFunctionInterface
+ghc-options:         -Wall -O2 -funbox-strict-fields -Icbits -DUSE_MMAP -D__OpenBSD__
 c-sources:           cbits/fpstring.c
 include-dirs:        cbits
-includes:            zlib.h
-extra-libraries:     z
 
