@@ -361,8 +361,8 @@ map k (PS ps s l) = createPS l $ \p -> withForeignPtr ps $ \f ->
     where 
         go :: Ptr Word8 -> Ptr Word8 -> Int -> IO ()
         go _ _ 0    = return ()
-        go f t len  = do c <- liftM w2c $ peek f
-                         poke t $ c2w $ k c
+        go f t len  = do w <- peek f
+                         ((poke t) . c2w . k . w2c) w
                          go (f `plusPtr` 1) (t `plusPtr` 1) (len - 1)
 
 -- | 'filter', applied to a predicate and a packed string, returns a
