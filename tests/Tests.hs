@@ -123,16 +123,6 @@ $(tests "fps" [d|
                   (\_ -> return (chr 0))
         assertEqual e f
 
-    test_indexWord8PS  = do
-        assertEqual (str !! 1000)   (chr . fromIntegral $ pstr `P.indexWord8PS` 1000)
-        e <- Control.Exception.catch 
-                      (Control.Exception.evaluate $ [] !! 1000)           
-                      (\_ -> return (chr 0))
-        f <- Control.Exception.catch
-                      (Control.Exception.evaluate $ (chr .fromIntegral $ P.empty `P.indexWord8PS` 1000) )
-                      (\_ -> return (chr 0))
-        assertEqual e f
-
     test_any   = do assertEqual (any (== 'X') str) (P.any (== 'X') pstr)
                     assertEqual (any (== '~') str) (P.any (== '~') pstr)
 

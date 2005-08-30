@@ -146,6 +146,22 @@ prop_minimum xs = (not (null xs)) ==> (minimum xs) == (P.minimum ( pack xs ))
 
 ------------------------------------------------------------------------
 
+prop_dropSpace xs = dropWhile isSpace xs == unpack (P.dropSpace (pack xs))
+
+prop_breakSpace xs = (let (x,y) = P.breakSpace (pack xs)
+                      in (unpack x, unpack y)) == (break isSpace xs)
+
+prop_spanEnd xs = (P.spanEnd (not . isSpace) (pack xs)) ==
+                  (let (x,y) = P.span (not.isSpace) (P.reverse (pack xs)) 
+                   in (P.reverse y,P.reverse x))
+
+prop_breakOn c xs = (break (==c) xs) == 
+                    (let (x,y) = P.breakOn c (pack xs) in (unpack x, unpack y))
+
+prop_split xs = (map unpack (P.split '\n' (pack xs))) == lines xs
+
+------------------------------------------------------------------------
+
 main = do
     runTests "fps" (defOpt { no_of_tests = 200, length_of_tests= 10 } )
         [   run prop_eq1
@@ -210,10 +226,14 @@ main = do
         ,   run prop_intersperse
         ,   run prop_maximum
         ,   run prop_minimum
+        ,   run prop_dropSpace
+        ,   run prop_breakSpace
+        ,   run prop_spanEnd
+        ,   run prop_breakOn
+        ,   run prop_split
         ]
 
 instance Arbitrary Char where
   arbitrary = oneof $ map return
-                (['a'..'z']++['A'..'Z']++['1'..'9']++['0','~','.',',','-','/'])
+                (['a'..'z']++['A'..'Z']++['1'..'9']++['\n','\t','0','~','.',',','-','/'])
   coarbitrary c = coarbitrary (ord c)
-
