@@ -687,9 +687,9 @@ findIndex f = listToMaybe . findIndices f
 findIndices :: (Char -> Bool) -> PackedString -> [Int]
 findIndices p ps = loop 0 ps
 	where
-       loop _ ps' | null ps'           = []
+       loop _ ps' | null ps'      = []
        loop n ps' | p (head1 ps') = n : loop (n + 1) (tail1 ps')
-                  | otherwise            = loop (n + 1) (tail1 ps')
+                  | otherwise     = loop (n + 1) (tail1 ps')
 
 -- | A variety of 'head' for non-empty 'packedString's.
 head1 :: PackedString -> Char
