@@ -29,12 +29,11 @@ prop_cons2 xs c = c : xs == unpack (c `P.cons` (pack xs))
 
 prop_snoc1 xs c = xs ++ [c] == unpack ((pack xs) `P.snoc` c)
 
-prop_head xs     = 
-    (not (null xs)) ==> head xs  == (P.head . pack) xs
+prop_head xs     = (not (null xs)) ==> head  xs  == (P.head . pack) xs
+prop_head1 xs    = (not (null xs)) ==> head xs == (P.head1 . pack) xs
 
-prop_tail xs     = 
-    (not (null xs)) ==>
-    tail xs    == (unpack . P.tail . pack) xs
+prop_tail xs     = (not (null xs)) ==> tail xs    == (unpack . P.tail . pack) xs
+prop_tail1 xs    = (not (null xs)) ==> tail xs    == (unpack . P.tail1. pack) xs
 
 prop_init xs     = 
     (not (null xs)) ==>
@@ -59,11 +58,21 @@ prop_foldl1 xs = ((foldl (\x c -> if c == 'a' then x else c:x) [] xs)) ==
 
 prop_foldl2 xs = P.foldl (\xs c -> c `P.cons` xs) P.empty (pack xs) == P.reverse (pack xs)
 
+prop_foldl11 xs = 
+    (not (null xs)) ==> 
+    (P.foldl1 (\x y -> chr $ ord x + ord y)   (pack xs)) == 
+    (P.foldl  (\x y -> chr $ ord x + ord y) '\0' (pack xs))
+
 prop_foldr1 xs = ((foldr (\c x -> if c == 'a' then x else c:x) [] xs)) ==  
                 (unpack $ P.foldr (\c x -> if c == 'a' then x else c `P.cons` x) 
                     P.empty (pack xs))
 
 prop_foldr2 xs = P.foldr (\c xs -> c `P.cons` xs) P.empty (pack xs) == (pack xs)
+
+prop_foldr11 xs = 
+    (not (null xs)) ==> 
+    (P.foldr1 (\x y -> chr $ ord x + ord y) (pack xs)) == 
+    (P.foldr  (\x y -> chr $ ord x + ord y) '\0' (pack xs))
 
 prop_takeWhile xs = (takeWhile (/= 'X') xs) == (unpack . (P.takeWhile (/= 'X')) . pack) xs
 
@@ -150,7 +159,9 @@ main = do
         ,   run prop_cons2
         ,   run prop_snoc1
         ,   run prop_head
+        ,   run prop_head1
         ,   run prop_tail
+        ,   run prop_tail1
         ,   run prop_init
     --  ,   run prop_null
         ,   run prop_length
@@ -163,6 +174,8 @@ main = do
         ,   run prop_foldl2
         ,   run prop_foldr1
         ,   run prop_foldr2
+        ,   run prop_foldl11
+        ,   run prop_foldr11
         ,   run prop_take
         ,   run prop_drop
         ,   run prop_takeWhile
