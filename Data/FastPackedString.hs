@@ -170,12 +170,13 @@ import Prelude hiding (reverse,head,tail,last,init,null,
                        dropWhile,span,break,elem,filter,unwords,
                        words)
 
+import qualified Data.List as List (intersperse,transpose)
+
 import Data.Bits                (rotateL)
 import Data.Char                (chr, ord, String, isSpace)
 import Data.Int                 (Int32)
 import Data.Word                (Word8)
 import Data.Maybe               (listToMaybe)
-import qualified Data.List as List (intersperse)
 
 import Control.Monad            (when, liftM)
 import Control.Exception        (bracket)
@@ -566,7 +567,10 @@ intersperse c ps@(PS x s l)
     | otherwise      = createPS (2*l-1) $ \p -> withForeignPtr x $ \f ->
                             c_intersperse p (f `plusPtr` s) l (c2w c)
 
-transpose = undefined
+-- | The 'transpose' function transposes the rows and columns of its
+-- 'PackedString' argument.
+transpose :: [PackedString] -> [PackedString]
+transpose ps = Prelude.map pack (List.transpose (Prelude.map unpack ps)) -- better
 
 -- | The 'join' function takes a 'PackedString' and a list of 'PackedString's
 -- and concatenates the list after interspersing the first argument between

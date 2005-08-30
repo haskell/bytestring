@@ -121,6 +121,8 @@ prop_sort5 xs ys =
 
 prop_intersperse c xs = (intersperse c xs) == (unpack $ P.intersperse c (pack xs))
 
+prop_transpose xs = (transpose xs) == ((map unpack) . P.transpose . (map pack)) xs
+
 ------------------------------------------------------------------------
 
 main = do
