@@ -74,6 +74,7 @@ module Data.FastPackedString (
 
         -- ** Special folds
         concat,       -- :: [PackedString] -> PackedString
+        concatMap,    -- :: (Char -> PackedString) -> PackedString -> PackedString
         any,          -- :: (Char -> Bool) -> PackedString -> Bool
         all,          -- :: (Char -> Bool) -> PackedString -> Bool
         maximum,      -- :: PackedString -> Char
@@ -173,7 +174,7 @@ import Prelude hiding (reverse,head,tail,last,init,null,
                        length,map,lines,foldl,foldr,unlines,
                        concat,any,take,drop,splitAt,takeWhile,
                        dropWhile,span,break,elem,filter,unwords,
-                       words,maximum,minimum,all)
+                       words,maximum,minimum,all,concatMap)
 
 import qualified Data.List as List (intersperse,transpose)
 
@@ -401,6 +402,30 @@ foldr k z (PS x s l) = unsafePerformIO $ withForeignPtr x $ \ptr ->
                                 ws <- go (p `plusPtr` 1) q
                                 return $ c `k` ws
 
+-- | Applied to a predicate and a packed string, 'any' determines if
+-- any element of the list satisfies the predicate.
+any :: (Char -> Bool) -> PackedString -> Bool
+any f (PS x s l) = unsafePerformIO $ withForeignPtr x $ \ptr ->
+        go (ptr `plusPtr` s) (ptr `plusPtr` (s+l))
+    where 
+        go p q | p == q    = return False
+               | otherwise = do c <- liftM w2c $ peek p
+                                if f c
+                                   then return True   -- a short-circuiting foldr
+                                   else go (p `plusPtr` 1) q
+
+-- | Applied to a predicate and a 'PackedString', 'all' determines if
+-- all elements of the 'PackedString' satisfy the predicate.
+all :: (Char -> Bool) -> PackedString -> Bool
+all f (PS x s l) = unsafePerformIO $ withForeignPtr x $ \ptr ->
+        go (ptr `plusPtr` s) (ptr `plusPtr` (s+l))
+    where 
+        go p q | p == q     = return True  -- end of list
+               | otherwise  = do c <- liftM w2c $ peek p
+                                 if f c
+                                    then go (p `plusPtr` 1) q -- improve 
+                                    else return False
+
 -- | 'takeWhile', applied to a predicate @p@ and a packed string @xs@,
 -- returns the longest prefix (possibly empty) of @xs@ of elements that
 -- satisfy @p@.
@@ -455,6 +480,10 @@ elem :: Char -> PackedString -> Bool
 elem c ps = case elemIndex c ps of
     Nothing -> False
     Just _  -> True
+
+-- | Map a function over a 'PackedString' and concatenate the results
+concatMap :: (Char -> PackedString) -> PackedString -> PackedString
+concatMap f = foldr (append . f) empty
 
 -- | Concatenate a list of packed strings.
 concat :: [PackedString] -> PackedString
@@ -513,30 +542,6 @@ indexWord8PS ps n
 (!) :: PackedString -> Int -> Word8
 (PS x s _l) ! i = unsafePerformIO $ withForeignPtr x $ \p -> peekElemOff p (s+i)
 {-# INLINE (!) #-}
-
--- | Applied to a predicate and a packed string, 'any' determines if
--- any element of the list satisfies the predicate.
-any :: (Char -> Bool) -> PackedString -> Bool
-any f (PS x s l) = unsafePerformIO $ withForeignPtr x $ \ptr ->
-        lookat (ptr `plusPtr` s) (ptr `plusPtr` (s+l))
-    where lookat :: Ptr Word8 -> Ptr Word8 -> IO Bool
-          lookat p st | p == st     = return False  -- end of list
-                      | otherwise   = do w <- peek p
-                                         if f $ w2c w
-                                            then return True
-                                            else lookat (p `plusPtr` 1) st -- improve
-
--- | Applied to a predicate and a 'PackedString', 'all' determines if
--- all elements of the 'PackedString' satisfy the predicate.
-all :: (Char -> Bool) -> PackedString -> Bool
-all f (PS x s l) = unsafePerformIO $ withForeignPtr x $ \ptr ->
-        lookat (ptr `plusPtr` s) (ptr `plusPtr` (s+l))
-    where lookat :: Ptr Word8 -> Ptr Word8 -> IO Bool
-          lookat p st | p == st     = return True  -- end of list
-                      | otherwise   = do w <- peek p
-                                         if f $ w2c w
-                                            then lookat (p `plusPtr` 1) st -- improve 
-                                            else return False
 
 -- | 'maximum' returns the maximum value from a 'PackedString'
 maximum :: PackedString -> Char
