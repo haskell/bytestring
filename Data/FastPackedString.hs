@@ -382,7 +382,12 @@ find p ps = case filter p ps of
 -- the left-identity of the operator), and a packed string, reduces the
 -- packed string using the binary operator, from left to right.
 foldl :: (a -> Char -> a) -> a -> PackedString -> a
-foldl f b ps = Prelude.foldl f b (unpack ps)
+foldl f v (PS x s l) = unsafePerformIO $ withForeignPtr x $ \ptr ->
+        lgo v (ptr `plusPtr` s) (ptr `plusPtr` (s+l))
+    where
+        lgo z p q | p == q    = return z
+                  | otherwise = do c <- liftM w2c $ peek p
+                                   lgo (f z c) (p `plusPtr` 1) q
 
 -- | 'foldr', applied to a binary operator, a starting value
 -- (typically the right-identity of the operator), and a packed string,
