@@ -1,16 +1,12 @@
------------------------------------------------------------------------------
--- Module      :  FastPackedString
--- Copyright   :  (c) The University of Glasgow 2001,
---                    David Roundy 2003-2005,
---                    Don Stewart 2005
 --
--- License : GPL (David says: I'm happy to also license this file BSD
---      style but don't want to bother distributing two license files
---      with darcs.
---
--- Maintainer  :  dons@cse.unsw.edu.au
--- Stability   :  experimental
--- Portability :  portable
+-- Module      : FastPackedString
+-- Copyright   : (c) The University of Glasgow 2001,
+--               (c) David Roundy 2003-2005,
+--               (c) Don Stewart 2005
+-- License     : GPL (Also happy to license this file as BSD style)
+-- Maintainer  : dons@cse.unsw.edu.au
+-- Stability   : experimental
+-- Portability : portable
 -- 
 -- This program is free software; you can redistribute it and\/or
 -- modify it under the terms of the GNU General Public License as
@@ -29,63 +25,44 @@
 --
 
 --
--- | An efficient implementation of strings.
+-- | An efficient implementation of strings as packed byte arrays.
 --
--- Original GHC implementation by Bryan O\'Sullivan, rewritten to use
--- UArray by Simon Marlow. Again rewritten to support slices and use
--- ForeignPtr by David Roundy. Cleanups and extensions by Don Stewart
+-- This module is intended to be imported @qualified@, to avoid name
+-- clashes with Prelude functions.  eg.
+--
+-- >  import Data.FastPackedString as P
+--
+-- Original GHC implementation by Bryan O\'Sullivan. Rewritten to use
+-- UArray by Simon Marlow. Rewritten to support slices and use
+-- ForeignPtr by David Roundy. Cleanups and extensions by Don Stewart.
 --
 
 module Data.FastPackedString (
+
         -- * The @PackedString@ type
         PackedString,           -- abstract, instances: Eq, Ord, Show, Typeable
 
-         -- * Converting to and from @PackedString@s
+        -- * Introduction and eliminating @PackedString@s
+        empty,                  -- :: PackedString
         pack,                   -- :: String -> PackedString
         unpack,                 -- :: PackedString -> String
         packWords,              -- :: [Word8] -> PackedString
         unpackWords,            -- :: PackedString -> [Word8]
-        unpackFromUTF8,         -- :: PackedString -> String
-        generatePS,             -- :: Int -> (Ptr Word8 -> Int -> IO Int) -> IO PackedString
-#if defined(__GLASGOW_HASKELL__)
-        constructPS,            -- :: (Ptr Word8) -> Int -> IO () -> IO PackedString
-#endif
-        mallocedCString2PS,     -- :: CString -> IO PackedString
-        withCStringPS,          -- :: PackedString -> (CString -> IO a) -> IO a
-        unsafeWithInternals,    -- :: PackedString -> (Ptr Word8 -> Int -> IO a) -> IO a
 
-        -- * I\/O with @PackedString@s
-        hGetPS,                 -- :: Handle -> Int -> IO PackedString
-        hPutPS,                 -- :: Handle -> PackedString -> IO ()
-        hGetContentsPS,         -- :: Handle -> IO PackedString
-        readFilePS,             -- :: FilePath -> IO PackedString
-        writeFilePS,            -- :: FilePath -> PackedString -> IO ()
-        mmapFilePS,             -- :: FilePath -> IO PackedString
-
-        -- * Extensions to the I\/O interface
-        LazyFile(..),
-        readFileLazily,         -- :: FilePath -> IO LazyFile
-#if defined(USE_ZLIB)
-        gzReadFilePS,           -- :: FilePath -> IO PackedString
-        gzReadFileLazily,       -- :: FilePath -> IO LazyFile
-        gzWriteFilePS,          -- :: FilePath -> PackedString -> IO ()
-        gzWriteFilePSs,         -- :: FilePath -> [PackedString] -> IO ()
-#endif
-
-        -- * Basic list functions
-        empty,        -- :: PackedString
+        -- * Basic list-like interface
         cons,         -- :: Char -> PackedString -> PackedString
+        append,       -- :: PackedString -> PackedString -> PackedString
         head,         -- :: PackedString -> Char
         tail,         -- :: PackedString -> PackedString
         last,         -- :: PackedString -> Char
         init,         -- :: PackedString -> PackedString
         null,         -- :: PackedString -> Bool
         length,       -- :: PackedString -> Int
-        append,       -- :: PackedString -> PackedString -> PackedString
 
         -- * List transformations
         map,          -- :: (Char -> Char) -> PackedString -> PackedString
         reverse,      -- :: PackedString -> PackedString
+        intersperse,  -- :: Char -> PackedString -> PackedString
         join,         -- :: PackedString -> [PackedString] -> PackedString
 
         -- * Reducing lists (folds)
@@ -154,6 +131,34 @@ module Data.FastPackedString (
 
         -- should this even be available?
         unsafeConcatLenPS, -- :: Int -> [PackedString] -> PackedString
+
+        -- * Low-level constructors
+        generatePS,             -- :: Int -> (Ptr Word8 -> Int -> IO Int) -> IO PackedString
+#if defined(__GLASGOW_HASKELL__)
+        constructPS,            -- :: (Ptr Word8) -> Int -> IO () -> IO PackedString
+#endif
+        mallocedCString2PS,     -- :: CString -> IO PackedString
+        withCStringPS,          -- :: PackedString -> (CString -> IO a) -> IO a
+        unpackFromUTF8,         -- :: PackedString -> String
+        unsafeWithInternals,    -- :: PackedString -> (Ptr Word8 -> Int -> IO a) -> IO a
+
+        -- * I\/O with @PackedString@s
+        hGetPS,                 -- :: Handle -> Int -> IO PackedString
+        hPutPS,                 -- :: Handle -> PackedString -> IO ()
+        hGetContentsPS,         -- :: Handle -> IO PackedString
+        readFilePS,             -- :: FilePath -> IO PackedString
+        writeFilePS,            -- :: FilePath -> PackedString -> IO ()
+        mmapFilePS,             -- :: FilePath -> IO PackedString
+
+        -- * Extensions to the I\/O interface
+        LazyFile(..),
+        readFileLazily,         -- :: FilePath -> IO LazyFile
+#if defined(USE_ZLIB)
+        gzReadFilePS,           -- :: FilePath -> IO PackedString
+        gzReadFileLazily,       -- :: FilePath -> IO LazyFile
+        gzWriteFilePS,          -- :: FilePath -> PackedString -> IO ()
+        gzWriteFilePSs,         -- :: FilePath -> [PackedString] -> IO ()
+#endif
 
    ) where
 
@@ -258,12 +263,6 @@ unpack :: PackedString -> String
 unpack (PS ps s l) = Prelude.map w2c $ unsafePerformIO $ withForeignPtr ps $ \p -> 
     peekArray l (p `plusPtr` s)
 
--- with mmap on openbsd,     
---  pstr <- mmapFilePS "/home/dons/tmp/tests/70k" ; 
---  unpack pstr `seq` return ()
--- segfaults in #0  0x1c0fe1f6 in GHCziStorable_readWord8OffPtr_info ()
--- at around 62k chars
-
 -- | Convert a 'PackedString' to a '[Word8]'
 unpackWords :: PackedString -> [Word8]
 unpackWords ps@(PS x s _)
@@ -272,58 +271,7 @@ unpackWords ps@(PS x s _)
         (unsafePerformIO $ withForeignPtr x $ \p -> peekElemOff p s) 
             : unpackWords (unsafeTailPS ps)
 
--- | Convert a 'PackedString' in UTF8 form to a 'String'
-unpackFromUTF8 :: PackedString -> String
-unpackFromUTF8 (PS _ _ 0) = []
-unpackFromUTF8 (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> do 
-    outbuf <- mallocArray l
-    lout   <- utf8_to_ints outbuf (p `plusPtr` s) l
-    when (lout < 0) $ error "Bad UTF8!"
-    str    <- (Prelude.map chr) `liftM` peekArray lout outbuf
-    free outbuf
-    return str
-
--- | Given the maximum size needed and a function to make the contents
--- of a PackedString, generatePS makes the 'PackedString'. The
--- generating function is required to return the actual size (<= the
--- maximum size).
-generatePS :: Int -> (Ptr Word8 -> IO Int) -> IO PackedString
-generatePS i f = do 
-    p <- mallocArray i
-    i' <- f p
-    p' <- reallocArray p i'
-    fp <- newForeignPtr c_free p'
-    return $ PS fp 0 i'
-
-#if defined(__GLASGOW_HASKELL__)
--- | Construct a 'PackedString' given a C Word8 buffer, a length,
--- and an IO action representing a finalizer.
--- This function is not available on Hugs.
-constructPS :: (Ptr Word8) -> Int -> IO () -> IO PackedString
-constructPS p l f = do 
-    fp <- FC.newForeignPtr p f
-    return $ PS fp 0 l
-#endif
-
-mallocedCString2PS :: CString -> IO PackedString
-mallocedCString2PS cs = do 
-    fp <- newForeignPtr c_free (castPtr cs)
-    l <- c_strlen cs
-    return $ PS fp 0 (fromIntegral l)
-
-withCStringPS :: PackedString -> (CString -> IO a) -> IO a
-withCStringPS (PS ps s l) = bracket alloc free_cstring
-    where 
-      alloc = withForeignPtr ps $ \p -> do 
-                buf <- c_malloc (fromIntegral l+1)
-                c_memcpy (castPtr buf) (castPtr p `plusPtr` s) (fromIntegral l)
-                poke (buf `plusPtr` l) (0::Word8)
-                return $ castPtr buf
-
--- | Do something with the internals of a 'PackedString'. Beware of
--- altering the contents!
-unsafeWithInternals :: PackedString -> (Ptr Word8 -> Int -> IO a) -> IO a
-unsafeWithInternals (PS fp s l) f = withForeignPtr fp $ \p -> f (p `plusPtr` s) l
+------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
 -- Conversion between 'Word8' and 'Char'
@@ -606,6 +554,15 @@ words ps = splitWithPS isSpace ps
 unwords :: [PackedString] -> PackedString
 unwords = join (pack " ")
 
+-- | The 'intersperse' function takes a 'Char' and a 'PackedString' and
+-- \`intersperses\' that 'Char' between the elements of the 'PackedString'.
+-- It is analogous to the intersperse function on Lists.
+intersperse :: Char -> PackedString -> PackedString
+intersperse c ps@(PS x s l)
+    | length ps < 2  = ps
+    | otherwise      = createPS (2*l-1) $ \p -> withForeignPtr x $ \f ->
+                            c_intersperse p (f `plusPtr` s) l (c2w c)
+
 -- | The 'join' function takes a 'PackedString' and a list of 'PackedString's
 -- and concatenates the list after interspersing the first argument between
 -- each element of the list.
@@ -859,7 +816,62 @@ substrPS :: PackedString -> Int -> Int -> PackedString
 substrPS (PS ps s _) begin end = PS ps (s+begin) (1+end-begin)
 -}
 
-----------------------------------------------------------------------------
+------------------------------------------------------------------------
+
+-- | Convert a 'PackedString' in UTF8 form to a 'String'
+unpackFromUTF8 :: PackedString -> String
+unpackFromUTF8 (PS _ _ 0) = []
+unpackFromUTF8 (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> do 
+    outbuf <- mallocArray l
+    lout   <- utf8_to_ints outbuf (p `plusPtr` s) l
+    when (lout < 0) $ error "Bad UTF8!"
+    str    <- (Prelude.map chr) `liftM` peekArray lout outbuf
+    free outbuf
+    return str
+
+-- | Given the maximum size needed and a function to make the contents
+-- of a PackedString, generatePS makes the 'PackedString'. The
+-- generating function is required to return the actual size (<= the
+-- maximum size).
+generatePS :: Int -> (Ptr Word8 -> IO Int) -> IO PackedString
+generatePS i f = do 
+    p <- mallocArray i
+    i' <- f p
+    p' <- reallocArray p i'
+    fp <- newForeignPtr c_free p'
+    return $ PS fp 0 i'
+
+#if defined(__GLASGOW_HASKELL__)
+-- | Construct a 'PackedString' given a C Word8 buffer, a length, and an
+-- IO action representing a finalizer.  This function is not available
+-- on Hugs.
+constructPS :: (Ptr Word8) -> Int -> IO () -> IO PackedString
+constructPS p l f = do 
+    fp <- FC.newForeignPtr p f
+    return $ PS fp 0 l
+#endif
+
+-- | Build a @PackedString@ from a malloced @CString@
+mallocedCString2PS :: CString -> IO PackedString
+mallocedCString2PS cs = do 
+    fp <- newForeignPtr c_free (castPtr cs)
+    l  <- c_strlen cs
+    return $ PS fp 0 (fromIntegral l)
+
+-- | Use a @PackedString@ with a function requiring a @CString@
+withCStringPS :: PackedString -> (CString -> IO a) -> IO a
+withCStringPS (PS ps s l) = bracket alloc free_cstring
+    where 
+      alloc = withForeignPtr ps $ \p -> do 
+                buf <- c_malloc (fromIntegral l+1)
+                c_memcpy (castPtr buf) (castPtr p `plusPtr` s) (fromIntegral l)
+                poke (buf `plusPtr` l) (0::Word8)
+                return $ castPtr buf
+
+-- | Do something with the internals of a 'PackedString'. Beware of
+-- altering the contents!
+unsafeWithInternals :: PackedString -> (Ptr Word8 -> Int -> IO a) -> IO a
+unsafeWithInternals (PS fp s l) f = withForeignPtr fp $ \p -> f (p `plusPtr` s) l
 
 -- | A way of creating ForeignPtrs outside the IO monad (although it
 -- still isn't entirely "safe", but at least it's convenient.
@@ -1186,6 +1198,9 @@ foreign import ccall unsafe "static fpstring.h reverse" c_reverse
 
 foreign import ccall unsafe "static fpstring.h my_qsort" c_qsort
     :: Ptr Word8 -> Int -> IO ()
+
+foreign import ccall unsafe "static fpstring.h intersperse" c_intersperse
+    :: Ptr Word8 -> Ptr Word8 -> Int -> Word8 -> IO ()
 
 ------------------------------------------------------------------------
 

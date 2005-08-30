@@ -119,6 +119,8 @@ prop_sort5 xs ys =
         (not (null ys)) ==>
         (P.last . P.sort) (P.append (pack xs) (pack ys)) == max (maximum xs) (maximum ys)
 
+prop_intersperse c xs = (intersperse c xs) == (unpack $ P.intersperse c (pack xs))
+
 ------------------------------------------------------------------------
 
 main = do
@@ -173,6 +175,7 @@ main = do
         ,   run prop_sort3
         ,   run prop_sort4
         ,   run prop_sort5
+        ,   run prop_intersperse
         ]
 
 instance Arbitrary Char where

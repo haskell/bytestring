@@ -215,7 +215,7 @@ void conv_from_hex(unsigned char *dest, unsigned char *from, int num_chars)
 /* copy a string in reverse */
 void reverse(unsigned char *dest, unsigned char *from, int len)
 {
-    unsigned char *p, *q, c;
+    unsigned char *p, *q;
     p = from + len - 1;
     q = dest;
 
@@ -231,4 +231,18 @@ static int cmp(const void *p, const void *q) {
 void my_qsort(unsigned char *base, size_t size)
 {
     qsort(base, size, sizeof(char), cmp);
+}
+
+/* duplicate a string, interspersing the character through the elements
+   of the duplicated string */
+void intersperse(unsigned char *dest, unsigned char *from, int len, char c)
+{
+    unsigned char *p, *q;
+    p = from;
+    q = dest;
+    while (p < from + len - 1) {
+        *q++ = *p++; 
+        *q++ = c;
+    }
+    *q = *p;
 }

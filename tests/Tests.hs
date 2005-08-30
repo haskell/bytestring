@@ -179,4 +179,6 @@ $(tests "fps" [d|
 
     test_sort = assertEqual (sort str) (unpack . P.sort $ pstr)
 
+    test_intersperse = assertEqual (intersperse 'X' str) (unpack (P.intersperse 'X' pstr))
+
  |])
