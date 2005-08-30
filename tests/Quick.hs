@@ -25,8 +25,9 @@ prop_compare6 xs ys= (not (null ys)) ==> (pack (xs++ys)  `compare` pack xs) == G
 
 prop_cons1 xs = 'X' : xs == unpack ('X' `P.cons` (pack xs))
 
-prop_cons2 :: [Char] -> Char -> Bool
 prop_cons2 xs c = c : xs == unpack (c `P.cons` (pack xs))
+
+prop_snoc1 xs c = xs ++ [c] == unpack ((pack xs) `P.snoc` c)
 
 prop_head xs     = 
     (not (null xs)) ==> head xs  == (P.head . pack) xs
@@ -123,6 +124,9 @@ prop_intersperse c xs = (intersperse c xs) == (unpack $ P.intersperse c (pack xs
 
 prop_transpose xs = (transpose xs) == ((map unpack) . P.transpose . (map pack)) xs
 
+prop_maximum xs = (not (null xs)) ==> (maximum xs) == (P.maximum ( pack xs ))
+prop_minimum xs = (not (null xs)) ==> (minimum xs) == (P.minimum ( pack xs ))
+
 ------------------------------------------------------------------------
 
 main = do
@@ -138,6 +142,7 @@ main = do
     --  ,   run prop_nil2
         ,   run prop_cons1
         ,   run prop_cons2
+        ,   run prop_snoc1
         ,   run prop_head
         ,   run prop_tail
         ,   run prop_init
@@ -178,6 +183,8 @@ main = do
         ,   run prop_sort4
         ,   run prop_sort5
         ,   run prop_intersperse
+        ,   run prop_maximum
+        ,   run prop_minimum
         ]
 
 instance Arbitrary Char where

@@ -25,7 +25,8 @@
 --
 
 --
--- | An efficient implementation of strings as packed byte arrays.
+-- | An time and space-efficient implementation of strings as packed
+-- byte arrays.
 --
 -- This module is intended to be imported @qualified@, to avoid name
 -- clashes with Prelude functions.  eg.
@@ -51,6 +52,7 @@ module Data.FastPackedString (
 
         -- * Basic list-like interface
         cons,         -- :: Char -> PackedString -> PackedString
+        snoc,         -- :: PackedString -> Char -> PackedString
         append,       -- :: PackedString -> PackedString -> PackedString
         head,         -- :: PackedString -> Char
         tail,         -- :: PackedString -> PackedString
@@ -73,6 +75,8 @@ module Data.FastPackedString (
         -- ** Special folds
         concat,       -- :: [PackedString] -> PackedString
         any,          -- :: (Char -> Bool) -> PackedString -> Bool
+        maximum,      -- :: PackedString -> Char
+        minimum,      -- :: PackedString -> Char
 
         -- * Sublists
         take,         -- :: Int -> PackedString -> PackedString
@@ -168,7 +172,7 @@ import Prelude hiding (reverse,head,tail,last,init,null,
                        length,map,lines,foldl,foldr,unlines,
                        concat,any,take,drop,splitAt,takeWhile,
                        dropWhile,span,break,elem,filter,unwords,
-                       words)
+                       words,maximum,minimum)
 
 import qualified Data.List as List (intersperse,transpose)
 
@@ -223,12 +227,12 @@ instance Show PackedString where
 
 ------------------------------------------------------------------------
 
--- | Equality on the 'PackedString' type
+-- | /O(n)/ Equality on the 'PackedString' type
 eqPS :: PackedString -> PackedString -> Bool
 eqPS a b = (comparePS a b) == EQ
 {-# INLINE eqPS #-}
 
--- | 'comparePS' provides an 'Ordering' for 'PackedStrings' supporting slices.
+-- | /O(n)/ 'comparePS' provides an 'Ordering' for 'PackedStrings' supporting slices.
 comparePS :: PackedString -> PackedString -> Ordering
 comparePS (PS _ _ 0) (PS _ _ 0) = EQ    -- short cut for empty strings
 comparePS (PS x1 s1 l1) (PS x2 s2 l2) = unsafePerformIO $ 
@@ -239,34 +243,28 @@ comparePS (PS x1 s1 l1) (PS x2 s2 l2) = unsafePerformIO $
                 EQ  -> l1 `compare` l2
                 x   -> x
 
--- Using memcmp provides a good improvement in time and space over old version.
--- For 100M strings: 
---  total alloc = 209,725,240 bytes,    0.14 secs
--- versus
---  total alloc = 1,048,585,780 bytes,  4.86 secs
-
 -- -----------------------------------------------------------------------------
 -- Constructing and destructing packed strings
 
--- | The empty 'PackedString'
+-- | /O(1)/ The empty 'PackedString'
 empty :: PackedString
 empty = unsafePerformIO $ mallocForeignPtr 1 >>= \fp -> return $ PS fp 0 0
 {-# NOINLINE empty #-}
 
--- | Convert a 'String' into a 'PackedString'
+-- | /O(n)/ Convert a 'String' into a 'PackedString'
 pack :: String -> PackedString
 pack str = createPS (Prelude.length str) $ \p -> pokeArray p $ Prelude.map c2w str
 
--- | Convert a '[Word8]' into a 'PackedString'
+-- | /O(n)/ Convert a '[Word8]' into a 'PackedString'
 packWords :: [Word8] -> PackedString
 packWords s = createPS (Prelude.length s) $ \p -> pokeArray p s
 
--- | Convert a 'PackedString' into a 'String'
+-- | /O(n)/ Convert a 'PackedString' into a 'String'
 unpack :: PackedString -> String
 unpack (PS ps s l) = Prelude.map w2c $ unsafePerformIO $ withForeignPtr ps $ \p -> 
     peekArray l (p `plusPtr` s)
 
--- | Convert a 'PackedString' to a '[Word8]'
+-- | /O(n)/ Convert a 'PackedString' to a '[Word8]'
 unpackWords :: PackedString -> [Word8]
 unpackWords ps@(PS x s _)
     | null ps     = []
@@ -290,13 +288,19 @@ c2w = fromIntegral . ord
 -- -----------------------------------------------------------------------------
 -- List-like functions for PackedStrings
 
--- | 'cons' is analogous to (:) for lists
+-- | /O(n)/ 'cons' is analogous to (:) for lists. Requires a memcpy.
 cons :: Char -> PackedString -> PackedString
 cons c (PS x s l) = createPS (l+1) $ \p -> withForeignPtr x $ \f -> do
         c_memcpy (p `plusPtr` 1) (f `plusPtr` s) l  -- 99% less space
         poke p (c2w c)
 
--- | Extract the first element of a packed string, which must be non-empty.
+-- | /O(n)/ Append a character to the end of a 'PackedString'
+snoc :: PackedString -> Char -> PackedString
+snoc (PS x s l) c = createPS (l+1) $ \p -> withForeignPtr x $ \f -> do
+        c_memcpy p (f `plusPtr` s) l
+        poke (p `plusPtr` l) (c2w c)
+
+-- | /O(1)/ Extract the first element of a packed string, which must be non-empty.
 head :: PackedString -> Char
 head ps@(PS x s _)        -- ps ! 0 is inlined manually to eliminate a (+0)
   | null ps   = errorEmptyList "head"
@@ -509,6 +513,20 @@ any f (PS x s l) = unsafePerformIO $ withForeignPtr x $ \ptr ->
                                          if f $ w2c w
                                             then return True
                                             else lookat (p `plusPtr` 1) st
+
+-- | 'maximum' returns the maximum value from a 'PackedString'
+maximum :: PackedString -> Char
+maximum xs@(PS x s l)
+    | null xs   = errorEmptyList "maximum"
+    | otherwise = unsafePerformIO $ withForeignPtr x $ \p -> 
+                    return $ w2c $ c_maximum (p `plusPtr` s) l
+
+-- | 'maximum' returns the maximum value from a 'PackedString'
+minimum :: PackedString -> Char
+minimum xs@(PS x s l)
+    | null xs   = errorEmptyList "minimum"
+    | otherwise = unsafePerformIO $ withForeignPtr x $ \p -> 
+                    return $ w2c $ c_minimum (p `plusPtr` s) l
 
 -- | 'lines' breaks a packed string up into a list of packed strings
 -- at newline characters.  The resulting strings do not contain
@@ -1210,6 +1228,12 @@ foreign import ccall unsafe "static fpstring.h my_qsort" c_qsort
 
 foreign import ccall unsafe "static fpstring.h intersperse" c_intersperse
     :: Ptr Word8 -> Ptr Word8 -> Int -> Word8 -> IO ()
+
+foreign import ccall unsafe "static fpstring.h maximum" c_maximum
+    :: Ptr Word8 -> Int -> Word8
+
+foreign import ccall unsafe "static fpstring.h minimum" c_minimum
+    :: Ptr Word8 -> Int -> Word8
 
 ------------------------------------------------------------------------
 

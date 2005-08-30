@@ -246,3 +246,23 @@ void intersperse(unsigned char *dest, unsigned char *from, int len, char c)
     }
     *q = *p;
 }
+
+/* find maximum char in a packed string */
+unsigned char maximum(unsigned char *p, int len)
+{
+    unsigned char *q, c = *p;
+    for (q = p; q < p + len; q++)
+        if (*q > c)
+            c = *q;
+    return c;
+}
+
+/* find minimum char in a packed string */
+unsigned char minimum(unsigned char *p, int len)
+{
+    unsigned char *q, c = *p;
+    for (q = p; q < p + len; q++)
+        if (*q < c)
+            c = *q;
+    return c;
+}

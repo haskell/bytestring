@@ -181,4 +181,7 @@ $(tests "fps" [d|
 
     test_intersperse = assertEqual (intersperse 'X' str) (unpack (P.intersperse 'X' pstr))
 
+    test_maximum = assertEqual (maximum str) (P.maximum pstr)
+    test_minimum = assertEqual (minimum str) (P.minimum pstr)
+
  |])
