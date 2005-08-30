@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2003 David Roundy
+ * Copyright (C) 2005 Don Stewart
  * Most of the UTF code is Copyright (C) 1999-2001 Free Software Foundation, Inc.
  * This file is part of darcs.
  *
@@ -32,7 +33,7 @@
 #define ISSPACE(c) \
     ((c) == ' ' || (c) == '\t' || (c) == '\n' || (c) == '\r')
 
-int first_white(const char *s, int len)
+int firstspace(const char *s, int len)
 {
     const char *start;
     const char *end;
@@ -42,7 +43,8 @@ int first_white(const char *s, int len)
     return s - start;
 }
 
-int first_nonwhite(const char *s, int len)
+/* return index of first non-space character */
+int firstnonspace(const char *s, int len)
 {
     const char *start;
     const char *end;
@@ -84,21 +86,6 @@ char *my_mmap(int len, int fd) {
 }
 
 #endif
-
-// ForeignPtr debugging stuff...
-
-static int num_alloced = 0;
-
-void debug_free(void *p) {
-  num_alloced--;
-  fprintf(stderr, "Freeing %p (%d left)\n", p, num_alloced);
-}
-
-void debug_alloc(void *p, const char *name) {
-  num_alloced++;
-  fprintf(stderr, "Allocating %p named %s (%d left)\n",
-          p, name, num_alloced);
-}
 
 /* Specification: RFC 2279 */
 
@@ -223,11 +210,12 @@ void reverse(unsigned char *dest, unsigned char *from, int len)
         *q++ = *p--;
 }
 
-/* copy a string in reverse */
+/* compare bytes ascii-wise */
 static int cmp(const void *p, const void *q) {
     return (*(unsigned char *)p - *(unsigned char *)q);
 }
 
+/* quicksort wrapper */
 void my_qsort(unsigned char *base, size_t size)
 {
     qsort(base, size, sizeof(char), cmp);

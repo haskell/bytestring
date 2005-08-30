@@ -1,11 +1,9 @@
 #include <HsFFI.h>
 
 int wfindps_helper(char c, const char *s, int len);
-void debug_free(void *p);
-void debug_alloc(void *p, const char *name);
 
-int first_white(const char *s, int len);
-int first_nonwhite(const char *s, int len);
+int firstspace(const char *s, int len);
+int firstnonspace(const char *s, int len);
 
 char *my_mmap(int len, int fd);
 
