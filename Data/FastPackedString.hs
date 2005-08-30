@@ -356,20 +356,30 @@ append xs ys
 -- | 'map' @f xs@ is the packed string obtained by applying @f@ to each
 -- element of @xs@, i.e.,
 map :: (Char -> Char) -> PackedString -> PackedString
-map func (PS ps s l) = createPS l $ \p -> withForeignPtr ps $ \f -> 
-    mint (f `plusPtr` s) p l
-    where mint :: Ptr Word8 -> Ptr Word8 -> Int -> IO ()
-          mint _ _ 0    = return ()
-          mint f t len  = do val <- peek f
-                             poke t $ c2w $ func $ w2c val
-                             mint (f `plusPtr` 1) (t `plusPtr` 1) (len - 1)
+map k (PS ps s l) = createPS l $ \p -> withForeignPtr ps $ \f -> 
+        go (f `plusPtr` s) p l
+    where 
+        go :: Ptr Word8 -> Ptr Word8 -> Int -> IO ()
+        go _ _ 0    = return ()
+        go f t len  = do c <- liftM w2c $ peek f
+                         poke t $ c2w $ k c
+                         go (f `plusPtr` 1) (t `plusPtr` 1) (len - 1)
 
 -- | 'filter', applied to a predicate and a packed string, returns a
 -- packed string containing those characters that satisfy the predicate.
+--  | otherwise = pack $ foldl (\xs c -> if f c then c : xs else xs) [] ps
 filter :: (Char -> Bool) -> PackedString -> PackedString
-filter f ps 
-    | null ps = ps
-    | otherwise = pack (Prelude.filter f (unpack ps))   -- todo better
+filter k ps@(PS x s l)
+    | null ps   = ps
+    | otherwise = unsafePerformIO $ generatePS l $ \p -> withForeignPtr x $ \f -> do
+        t <- go (f `plusPtr` s) p l
+        return (t `minusPtr` p) -- actual length
+    where
+        go _ t 0 = return t
+        go f t e = do w <- peek f
+                      if k (w2c w)
+                        then poke t w >> go (f `plusPtr` 1) (t `plusPtr` 1) (e - 1)
+                        else             go (f `plusPtr` 1) t               (e - 1)
 
 -- | The 'find' function takes a predicate and a packed string and
 -- returns the first element in matching the predicate, or 'Nothing' if
@@ -410,9 +420,8 @@ any f (PS x s l) = unsafePerformIO $ withForeignPtr x $ \ptr ->
     where 
         go p q | p == q    = return False
                | otherwise = do c <- liftM w2c $ peek p
-                                if f c
-                                   then return True   -- a short-circuiting foldr
-                                   else go (p `plusPtr` 1) q
+                                if f c then return True
+                                       else go (p `plusPtr` 1) q
 
 -- | Applied to a predicate and a 'PackedString', 'all' determines if
 -- all elements of the 'PackedString' satisfy the predicate.
