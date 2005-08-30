@@ -54,12 +54,16 @@ prop_filter2 xs c = (filter (==c) xs) == (unpack $ P.filter (==c) (pack xs))
 
 prop_find xs c = find (==c) xs == P.find (==c) (pack xs)
 
-prop_foldl xs = ((foldl (\x c -> if c == 'a' then x else c:x) [] xs)) ==  
+prop_foldl1 xs = ((foldl (\x c -> if c == 'a' then x else c:x) [] xs)) ==  
                 (unpack $ P.foldl (\x c -> if c == 'a' then x else c `P.cons` x) P.empty (pack xs))
 
-prop_foldr xs = ((foldr (\c x -> if c == 'a' then x else c:x) [] xs)) ==  
+prop_foldl2 xs = P.foldl (\xs c -> c `P.cons` xs) P.empty (pack xs) == P.reverse (pack xs)
+
+prop_foldr1 xs = ((foldr (\c x -> if c == 'a' then x else c:x) [] xs)) ==  
                 (unpack $ P.foldr (\c x -> if c == 'a' then x else c `P.cons` x) 
                     P.empty (pack xs))
+
+prop_foldr2 xs = P.foldr (\c xs -> c `P.cons` xs) P.empty (pack xs) == (pack xs)
 
 prop_takeWhile xs = (takeWhile (/= 'X') xs) == (unpack . (P.takeWhile (/= 'X')) . pack) xs
 
@@ -155,8 +159,10 @@ main = do
         ,   run prop_map
         ,   run prop_filter1
         ,   run prop_filter2
-        ,   run prop_foldl
-        ,   run prop_foldr
+        ,   run prop_foldl1
+        ,   run prop_foldl2
+        ,   run prop_foldr1
+        ,   run prop_foldr2
         ,   run prop_take
         ,   run prop_drop
         ,   run prop_takeWhile
