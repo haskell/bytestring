@@ -42,7 +42,7 @@ module Data.FastPackedString (
         -- * The @PackedString@ type
         PackedString,           -- abstract, instances: Eq, Ord, Show, Typeable
 
-        -- * Introduction and eliminating @PackedString@s
+        -- * Introducing and eliminating @PackedString@s
         empty,                  -- :: PackedString
         pack,                   -- :: String -> PackedString
         unpack,                 -- :: PackedString -> String
@@ -63,6 +63,7 @@ module Data.FastPackedString (
         map,          -- :: (Char -> Char) -> PackedString -> PackedString
         reverse,      -- :: PackedString -> PackedString
         intersperse,  -- :: Char -> PackedString -> PackedString
+        transpose,    -- :: [PackedString] -> [PackedString]
         join,         -- :: PackedString -> [PackedString] -> PackedString
 
         -- * Reducing lists (folds)
@@ -174,6 +175,7 @@ import Data.Char                (chr, ord, String, isSpace)
 import Data.Int                 (Int32)
 import Data.Word                (Word8)
 import Data.Maybe               (listToMaybe)
+import qualified Data.List as List (intersperse)
 
 import Control.Monad            (when, liftM)
 import Control.Exception        (bracket)
@@ -521,9 +523,10 @@ lines ps
 -- | 'unlines' is an inverse operation to 'lines'.  It joins lines,
 -- after appending a terminating newline to each.
 unlines :: [PackedString] -> PackedString
-unlines ss = concat $ Prelude.map (\s -> s `append` newline) ss
-    where   
-      newline = pack "\n"
+unlines [] = empty
+unlines ss = (concat $ List.intersperse nl ss) `append` nl -- half as much space
+    where
+      nl = pack "\n"
 
 -- | 'words' breaks a packed string up into a list of words, which
 -- were delimited by white space.
@@ -562,6 +565,8 @@ intersperse c ps@(PS x s l)
     | length ps < 2  = ps
     | otherwise      = createPS (2*l-1) $ \p -> withForeignPtr x $ \f ->
                             c_intersperse p (f `plusPtr` s) l (c2w c)
+
+transpose = undefined
 
 -- | The 'join' function takes a 'PackedString' and a list of 'PackedString's
 -- and concatenates the list after interspersing the first argument between
