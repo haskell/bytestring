@@ -88,6 +88,7 @@ module Data.FastPackedString (
         take,         -- :: Int -> PackedString -> PackedString
         drop,         -- :: Int -> PackedString -> PackedString
         splitAt,      -- :: Int -> PackedString -> (PackedString, PackedString)
+
         takeWhile,    -- :: (Char -> Bool) -> PackedString -> PackedString
         dropWhile,    -- :: (Char -> Bool) -> PackedString -> PackedString
         span,         -- :: (Char -> Bool) -> PackedString -> (PackedString, PackedString)
@@ -105,6 +106,8 @@ module Data.FastPackedString (
         -- * Indexing lists
         (!!),         -- :: PackedString -> Int -> Char
         elemIndex,    -- :: Char -> PackedString -> Maybe Int
+        elemIndices,  -- :: Char -> PackedString -> [Int]
+
         findIndex,    -- :: (Char -> Bool) -> PackedString -> Maybe Int
         findIndices,  -- :: (Char -> Bool) -> PackedString -> [Int]
 
@@ -657,6 +660,11 @@ sort (PS x s l) = createPS l $ \p -> withForeignPtr x $ \f -> do
 elemIndex :: Char -> PackedString -> Maybe Int
 elemIndex c ps = elemIndexWord8PS (c2w c) ps
 {-# INLINE elemIndex #-}
+
+-- | The 'elemIndices' function extends 'elemIndex', by returning the
+-- indices of all elements equal to the query element, in ascending order.
+elemIndices :: Char -> PackedString -> [Int]
+elemIndices x = findIndices (x==)
 
 -- | 'elemIndexWord8PS' is like 'elemIndex', except that it takes a
 -- 'Word8' as the element to search for.

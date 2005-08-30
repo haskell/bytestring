@@ -118,6 +118,8 @@ prop_join xs = (concat . (intersperse "XYX") . lines) xs ==
 prop_elemIndex1 xs   = (elemIndex 'X' xs) == (P.elemIndex 'X' (pack xs))
 prop_elemIndex2 xs c = (elemIndex c xs) == (P.elemIndex c (pack xs))
 
+prop_elemIndices xs c = elemIndices c xs == P.elemIndices c (pack xs)
+
 prop_findIndex xs = (findIndex (=='X') xs) == (P.findIndex (=='X') (pack xs))
 
 prop_findIndicies xs c = (findIndices (==c) xs) == (P.findIndices (==c) (pack xs))
@@ -196,6 +198,7 @@ main = do
         ,   run prop_join
         ,   run prop_elemIndex1
         ,   run prop_elemIndex2
+        ,   run prop_elemIndices
         ,   run prop_findIndex
         ,   run prop_findIndicies
         ,   run prop_find
