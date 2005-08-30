@@ -75,6 +75,7 @@ module Data.FastPackedString (
         -- ** Special folds
         concat,       -- :: [PackedString] -> PackedString
         any,          -- :: (Char -> Bool) -> PackedString -> Bool
+        all,          -- :: (Char -> Bool) -> PackedString -> Bool
         maximum,      -- :: PackedString -> Char
         minimum,      -- :: PackedString -> Char
 
@@ -172,7 +173,7 @@ import Prelude hiding (reverse,head,tail,last,init,null,
                        length,map,lines,foldl,foldr,unlines,
                        concat,any,take,drop,splitAt,takeWhile,
                        dropWhile,span,break,elem,filter,unwords,
-                       words,maximum,minimum)
+                       words,maximum,minimum,all)
 
 import qualified Data.List as List (intersperse,transpose)
 
@@ -508,11 +509,23 @@ any :: (Char -> Bool) -> PackedString -> Bool
 any f (PS x s l) = unsafePerformIO $ withForeignPtr x $ \ptr ->
         lookat (ptr `plusPtr` s) (ptr `plusPtr` (s+l))
     where lookat :: Ptr Word8 -> Ptr Word8 -> IO Bool
-          lookat p st | p == st     = return False
+          lookat p st | p == st     = return False  -- end of list
                       | otherwise   = do w <- peek p
                                          if f $ w2c w
                                             then return True
-                                            else lookat (p `plusPtr` 1) st
+                                            else lookat (p `plusPtr` 1) st -- improve
+
+-- | Applied to a predicate and a 'PackedString', 'all' determines if
+-- all elements of the 'PackedString' satisfy the predicate.
+all :: (Char -> Bool) -> PackedString -> Bool
+all f (PS x s l) = unsafePerformIO $ withForeignPtr x $ \ptr ->
+        lookat (ptr `plusPtr` s) (ptr `plusPtr` (s+l))
+    where lookat :: Ptr Word8 -> Ptr Word8 -> IO Bool
+          lookat p st | p == st     = return True  -- end of list
+                      | otherwise   = do w <- peek p
+                                         if f $ w2c w
+                                            then lookat (p `plusPtr` 1) st -- improve 
+                                            else return False
 
 -- | 'maximum' returns the maximum value from a 'PackedString'
 maximum :: PackedString -> Char

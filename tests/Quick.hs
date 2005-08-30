@@ -88,6 +88,8 @@ prop_concat1 xs = (concat [xs,xs]) == (unpack $ P.concat [pack xs, pack xs])
 prop_concat2 xs = (concat [xs,[]]) == (unpack $ P.concat [pack xs, pack []])
 
 prop_any xs = (any (== 'X') xs) == (P.any (== 'X') (pack xs))
+prop_all xs = (all (== 'X') xs) == (P.all (== 'X') (pack xs))
+
 
 prop_lines xs = (lines xs) == ((map unpack) . P.lines . pack) xs
 
@@ -167,6 +169,7 @@ main = do
         ,   run prop_concat1
         ,   run prop_concat2
         ,   run prop_any
+        ,   run prop_all
         ,   run prop_lines
         ,   run prop_unlines
         ,   run prop_words
