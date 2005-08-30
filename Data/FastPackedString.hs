@@ -99,7 +99,7 @@ module Data.FastPackedString (
         find,         -- :: (Char -> Bool) -> PackedString -> Maybe Char
 
         -- * Indexing lists
-        index,        -- :: PackedString -> Int -> Char
+        (!!),         -- :: PackedString -> Int -> Char
         elemIndex,    -- :: Char -> PackedString -> Maybe Int
         findIndex,    -- :: (Char -> Bool) -> PackedString -> Maybe Int
         findIndices,  -- :: (Char -> Bool) -> PackedString -> [Int]
@@ -310,7 +310,7 @@ head ps@(PS x s _)        -- ps ! 0 is inlined manually to eliminate a (+0)
                     peekElemOff p s
 {-# INLINE head #-}
 
--- | Extract the elements after the head of a packed string, which must be non-empty.
+-- | /O(1)/ Extract the elements after the head of a packed string, which must be non-empty.
 tail :: PackedString -> PackedString
 tail (PS p s l) 
     | l <= 0    = errorEmptyList "tail"
@@ -318,7 +318,7 @@ tail (PS p s l)
     | otherwise = PS p (s+1) (l-1)
 {-# INLINE tail #-}
 
--- | Extract the last element of a packed string, which must be finite and non-empty.
+-- | /O(1)/ Extract the last element of a packed string, which must be finite and non-empty.
 last :: PackedString -> Char
 last ps@(PS x s l)        -- ps ! 0 is inlined manually to eliminate a (+0)
   | null ps   = errorEmptyList "last"
@@ -326,8 +326,7 @@ last ps@(PS x s l)        -- ps ! 0 is inlined manually to eliminate a (+0)
                     peekElemOff p (s+l-1)
 {-# INLINE last #-}
 
--- | Return all the elements of a list except the last one.
--- The list must be finite and non-empty.
+-- | /O(1)/ Return all the elements of a list except the last one.
 init :: PackedString -> PackedString
 init (PS p s l) 
     | l <= 0    = errorEmptyList "init"
@@ -335,17 +334,17 @@ init (PS p s l)
     | otherwise = PS p s (l-1)                                                          
 {-# INLINE init #-}
 
--- | Test whether a packed string is empty.
+-- | /O(1)/ Test whether a packed string is empty.
 null :: PackedString -> Bool
 null (PS _ _ l) = l == 0
 {-# INLINE null #-}
 
--- | 'length' returns the length of a packed string as an 'Int'.
+-- | /O(1)/ 'length' returns the length of a packed string as an 'Int'.
 length :: PackedString -> Int
 length (PS _ _ l) = l
 {-# INLINE length #-}
 
--- | Append two packed strings
+-- | /O(n)/ Append two packed strings
 append :: PackedString -> PackedString -> PackedString
 append xs ys
     | null xs = ys
@@ -353,7 +352,7 @@ append xs ys
     | otherwise  = concat [xs,ys]
 {-# INLINE append #-}
 
--- | 'map' @f xs@ is the packed string obtained by applying @f@ to each
+-- | /O(n)/ 'map' @f xs@ is the packed string obtained by applying @f@ to each
 -- element of @xs@, i.e.,
 map :: (Char -> Char) -> PackedString -> PackedString
 map k (PS ps s l) = createPS l $ \p -> withForeignPtr ps $ \f -> 
@@ -365,9 +364,9 @@ map k (PS ps s l) = createPS l $ \p -> withForeignPtr ps $ \f ->
                          ((poke t) . c2w . k . w2c) w
                          go (f `plusPtr` 1) (t `plusPtr` 1) (len - 1)
 
--- | 'filter', applied to a predicate and a packed string, returns a
--- packed string containing those characters that satisfy the predicate.
---  | otherwise = pack $ foldl (\xs c -> if f c then c : xs else xs) [] ps
+-- | /O(n)/ 'filter', applied to a predicate and a packed string,
+-- returns a packed string containing those characters that satisfy the
+-- predicate.
 filter :: (Char -> Bool) -> PackedString -> PackedString
 filter k ps@(PS x s l)
     | null ps   = ps
@@ -381,9 +380,11 @@ filter k ps@(PS x s l)
                         then poke t w >> go (f `plusPtr` 1) (t `plusPtr` 1) (e - 1)
                         else             go (f `plusPtr` 1) t               (e - 1)
 
--- | The 'find' function takes a predicate and a packed string and
--- returns the first element in matching the predicate, or 'Nothing' if
--- there is no such element.
+-- Almost as good: pack $ foldl (\xs c -> if f c then c : xs else xs) [] ps
+
+-- | /O(n)/ The 'find' function takes a predicate and a packed string
+-- and returns the first element in matching the predicate, or 'Nothing'
+-- if there is no such element.
 find :: (Char -> Bool) -> PackedString -> Maybe Char
 find p ps = case filter p ps of
             p' | null p' -> Nothing
@@ -531,26 +532,12 @@ unsafeConcatLenPS total_length pss = createPS total_length $ \p-> cpPSs p pss
                 cpPSs (p `plusPtr` l) rest
 
 -- | 'PackedString' index (subscript) operator, starting from 0.
-index :: PackedString -> Int -> Char
-index ps n 
+(!!) :: PackedString -> Int -> Char
+(!!) ps n 
     | n < 0            = error "FastPackedString.index: negative index"
     | n >= length ps = error "FastPackedString.index: index too large"
     | otherwise        = w2c $ ps ! n
 {-# INLINE index #-}
-
--- | 'indexWord8PS' is like 'index', except that the result is of type 'Word8'
-indexWord8PS :: PackedString -> Int -> Word8
-indexWord8PS ps n 
-    | n < 0            = error "FastPackedString.indexWord8PS: negative index"
-    | n >= length ps = error "FastPackedString.indexWord8PS: index too large"
-    | otherwise        = ps ! n
-{-# INLINE indexWord8PS #-}
-
--- (Internal) unsafe 'PackedString' index (subscript) operator, starting
--- from 0, returning a 'Word8'
-(!) :: PackedString -> Int -> Word8
-(PS x s _l) ! i = unsafePerformIO $ withForeignPtr x $ \p -> peekElemOff p (s+i)
-{-# INLINE (!) #-}
 
 -- | 'maximum' returns the maximum value from a 'PackedString'
 maximum :: PackedString -> Char
@@ -638,7 +625,7 @@ join filler pss = concat (splice pss)
         splice [x] = [x]
         splice (x:y:xs) = x:filler:splice (y:xs)
 
--- | Sort using an /unstable/ sorting algorithm (QSORT(3)).
+-- | /O(n log(n))/ Sort using an /unstable/ sorting algorithm (QSORT(3)).
 sort :: PackedString -> PackedString
 sort (PS x s l) = createPS l $ \p -> withForeignPtr x $ \f -> do
         c_memcpy p (f `plusPtr` s) l
@@ -678,6 +665,20 @@ findIndices p ps = loop 0 ps
 
 ------------------------------------------------------------------------
 -- Extensions to the list interface
+
+-- | 'indexWord8PS' is like 'index', except that the result is of type 'Word8'
+indexWord8PS :: PackedString -> Int -> Word8
+indexWord8PS ps n 
+    | n < 0            = error "FastPackedString.indexWord8PS: negative index"
+    | n >= length ps = error "FastPackedString.indexWord8PS: index too large"
+    | otherwise        = ps ! n
+{-# INLINE indexWord8PS #-}
+
+-- (Internal) unsafe 'PackedString' index (subscript) operator, starting
+-- from 0, returning a 'Word8'
+(!) :: PackedString -> Int -> Word8
+(PS x s _l) ! i = unsafePerformIO $ withForeignPtr x $ \p -> peekElemOff p (s+i)
+{-# INLINE (!) #-}
 
 -- (Internal) 'findIndexOrEndPS' is a variant of findIndex, that returns the
 -- length of the string if no element is found, rather than Nothing.
