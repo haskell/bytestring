@@ -388,7 +388,13 @@ foldl f b ps = Prelude.foldl f b (unpack ps)
 -- (typically the right-identity of the operator), and a packed string,
 -- reduces the packed string using the binary operator, from right to left.
 foldr :: (Char -> a -> a) -> a -> PackedString -> a
-foldr f v ps = Prelude.foldr f v (unpack ps)
+foldr k z (PS x s l) = unsafePerformIO $ withForeignPtr x $ \ptr ->
+        go (ptr `plusPtr` s) (ptr `plusPtr` (s+l))
+    where
+        go p q | p == q    = return z
+               | otherwise = do c  <- liftM w2c $ peek p
+                                ws <- go (p `plusPtr` 1) q
+                                return $ c `k` ws
 
 -- | 'takeWhile', applied to a predicate @p@ and a packed string @xs@,
 -- returns the longest prefix (possibly empty) of @xs@ of elements that
