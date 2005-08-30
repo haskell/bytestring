@@ -104,7 +104,7 @@ module Data.FastPackedString (
         find,         -- :: (Char -> Bool) -> PackedString -> Maybe Char
 
         -- * Indexing lists
-        (!!),         -- :: PackedString -> Int -> Char
+        index,        -- :: PackedString -> Int -> Char
         elemIndex,    -- :: Char -> PackedString -> Maybe Int
         elemIndices,  -- :: Char -> PackedString -> [Int]
 
@@ -114,9 +114,9 @@ module Data.FastPackedString (
         -- * Special lists
 
         -- ** Lines and words
-        lines,          -- :: PackedString -> [PackedString]
-        unlines,        -- :: [PackedString] -> PackedString
+        lines,        -- :: PackedString -> [PackedString]
         words,        -- :: PackedString -> [PackedString]
+        unlines,      -- :: [PackedString] -> PackedString
         unwords,      -- :: PackedString -> [PackedString]
 
         -- ** Ordered lists
@@ -181,7 +181,7 @@ import Prelude hiding (reverse,head,tail,last,init,null,
                        length,map,lines,foldl,foldr,unlines,
                        concat,any,take,drop,splitAt,takeWhile,
                        dropWhile,span,break,elem,filter,unwords,
-                       words,maximum,minimum,all,concatMap,(!!),
+                       words,maximum,minimum,all,concatMap,
                        foldl1,foldr1)
 
 import qualified Data.List as List (intersperse,transpose)
@@ -555,12 +555,12 @@ unsafeConcatLenPS total_length pss = createPS total_length $ \p-> cpPSs p pss
                 cpPSs (p `plusPtr` l) rest
 
 -- | 'PackedString' index (subscript) operator, starting from 0.
-(!!) :: PackedString -> Int -> Char
-(!!) ps n 
+index :: PackedString -> Int -> Char
+index ps n 
     | n < 0            = error "FastPackedString.index: negative index"
     | n >= length ps = error "FastPackedString.index: index too large"
     | otherwise        = w2c $ ps ! n
-{-# INLINE (!!) #-}
+{-# INLINE index #-}
 
 -- | 'maximum' returns the maximum value from a 'PackedString'
 maximum :: PackedString -> Char
