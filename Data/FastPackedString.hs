@@ -60,6 +60,8 @@ module Data.FastPackedString (
         init,         -- :: PackedString -> PackedString
         null,         -- :: PackedString -> Bool
         length,       -- :: PackedString -> Int
+        head1,        -- :: PackedString -> Char
+        tail1,        -- :: PackedString -> PackedString
 
         -- * List transformations
         map,          -- :: (Char -> Char) -> PackedString -> PackedString
@@ -71,6 +73,8 @@ module Data.FastPackedString (
         -- * Reducing lists (folds)
         foldl,        -- :: (a -> Char -> a) -> a -> PackedString -> a
         foldr,        -- :: (Char -> a -> a) -> a -> PackedString -> a
+        foldl1,       -- :: (Char -> Char -> Char) -> PackedString -> Char
+        foldr1,       -- :: (Char -> Char -> Char) -> PackedString -> Char
 
         -- ** Special folds
         concat,       -- :: [PackedString] -> PackedString
@@ -174,7 +178,8 @@ import Prelude hiding (reverse,head,tail,last,init,null,
                        length,map,lines,foldl,foldr,unlines,
                        concat,any,take,drop,splitAt,takeWhile,
                        dropWhile,span,break,elem,filter,unwords,
-                       words,maximum,minimum,all,concatMap)
+                       words,maximum,minimum,all,concatMap,(!!),
+                       foldl1,foldr1)
 
 import qualified Data.List as List (intersperse,transpose)
 
@@ -272,7 +277,7 @@ unpackWords ps@(PS x s _)
     | null ps     = []
     | otherwise     =
         (unsafePerformIO $ withForeignPtr x $ \p -> peekElemOff p s) 
-            : unpackWords (unsafeTailPS ps)
+            : unpackWords (tail1 ps)
 
 ------------------------------------------------------------------------
 
@@ -388,7 +393,7 @@ filter k ps@(PS x s l)
 find :: (Char -> Bool) -> PackedString -> Maybe Char
 find p ps = case filter p ps of
             p' | null p' -> Nothing
-               | otherwise -> Just (unsafeHeadPS p')
+               | otherwise -> Just (head1 p')
 
 -- | 'foldl', applied to a binary operator, a starting value (typically
 -- the left-identity of the operator), and a packed string, reduces the
@@ -412,6 +417,21 @@ foldr k z (PS x s l) = unsafePerformIO $ withForeignPtr x $ \ptr ->
                | otherwise = do c  <- liftM w2c $ peek p
                                 ws <- go (p `plusPtr` 1) q
                                 return $ c `k` ws
+
+-- | 'foldl1' is a variant of 'foldl' that has no starting value
+-- argument, and thus must be applied to non-empty 'PackedStrings'.
+foldl1 :: (Char -> Char -> Char) -> PackedString -> Char
+foldl1 f ps
+    | null ps   = errorEmptyList "foldl1"
+    | otherwise = foldl f (head1 ps) (tail1 ps)
+
+-- | 'foldr1' is a variant of 'foldr' that has no starting value argument,
+-- and thus must be applied to non-empty 'PackedString's
+foldr1 :: (Char -> Char -> Char) -> PackedString -> Char
+foldr1 f ps
+    | null ps        = errorEmptyList "foldr1"
+    | length ps == 1 = head1 ps
+    | otherwise      = f (head1 ps) (foldr1 f (tail1 ps))
 
 -- | Applied to a predicate and a packed string, 'any' determines if
 -- any element of the list satisfies the predicate.
@@ -537,7 +557,7 @@ unsafeConcatLenPS total_length pss = createPS total_length $ \p-> cpPSs p pss
     | n < 0            = error "FastPackedString.index: negative index"
     | n >= length ps = error "FastPackedString.index: index too large"
     | otherwise        = w2c $ ps ! n
-{-# INLINE index #-}
+{-# INLINE (!!) #-}
 
 -- | 'maximum' returns the maximum value from a 'PackedString'
 maximum :: PackedString -> Char
@@ -660,8 +680,21 @@ findIndices :: (Char -> Bool) -> PackedString -> [Int]
 findIndices p ps = loop 0 ps
 	where
        loop _ ps' | null ps'           = []
-       loop n ps' | p (unsafeHeadPS ps') = n : loop (n + 1) (unsafeTailPS ps')
-                  | otherwise            = loop (n + 1) (unsafeTailPS ps')
+       loop n ps' | p (head1 ps') = n : loop (n + 1) (tail1 ps')
+                  | otherwise            = loop (n + 1) (tail1 ps')
+
+-- | A variety of 'head' for non-empty 'packedString's.
+head1 :: PackedString -> Char
+head1 (PS x s _) = w2c $ unsafePerformIO $ 
+    withForeignPtr x $ \p -> peekElemOff p s
+{-# INLINE head1 #-}
+
+-- | A variety of 'tail' for non-empty 'packedString's
+tail1 :: PackedString -> PackedString
+tail1 (PS ps s l)
+    | l == 1    = empty
+    | otherwise = PS ps (s+1) (l-1)
+{-# INLINE tail1 #-}
 
 ------------------------------------------------------------------------
 -- Extensions to the list interface
@@ -685,22 +718,8 @@ indexWord8PS ps n
 findIndexOrEndPS :: (Char -> Bool) -> PackedString -> Int
 findIndexOrEndPS f ps
     | null ps           = 0
-    | f (unsafeHeadPS ps) = 0
-    | otherwise           = seq f $ 1 + findIndexOrEndPS f (unsafeTailPS ps)
-
--- (Internal) unchecked version of @head@, you must provide some
--- guarantee that the packed string is non-empty
-unsafeHeadPS :: PackedString -> Char
-unsafeHeadPS (PS x s _) = w2c $ unsafePerformIO $ withForeignPtr x $ \p -> 
-                    peekElemOff p s
-{-# INLINE unsafeHeadPS #-}
-
--- (Internal) unchecked version of @tail@, as for unsafeHeadPS
-unsafeTailPS :: PackedString -> PackedString
-unsafeTailPS (PS ps s l)
-    | l == 1 = empty
-    | otherwise  = PS ps (s+1) (l-1)
-{-# INLINE unsafeTailPS #-}
+    | f (head1 ps) = 0
+    | otherwise           = seq f $ 1 + findIndexOrEndPS f (tail1 ps)
 
 findFromEndUntilPS :: (Char -> Bool) -> PackedString -> Int
 findFromEndUntilPS f ps@(PS x s l) = seq f $
