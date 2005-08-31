@@ -768,7 +768,7 @@ breakAll f ps =
 -- the PackedString. I.e.
 --
 -- > breakFirst 'b' "aabbcc" == Just ("aa","bcc")
--- and
+--
 -- > breakFirst c xs ==
 -- > let (x,y) = break (== c) xs 
 -- > in if null y then Nothing else Just (x, drop 1 y))
@@ -783,7 +783,9 @@ breakFirst c p = case elemIndex c p of
 -- PackedString.
 --
 -- > breakLast ('b') (pack "aabbcc") == Just ("aab","cc")
+--
 -- and the following are equivalent:
+--
 -- > breakLast 'c' "abcdef"
 -- > let (x,y) = break (=='c') (reverse "abcdef") 
 -- > in if null x then Nothing else Just (reverse (drop 1 y), reverse x)
