@@ -118,6 +118,14 @@ prop_join xs = (concat . (intersperse "XYX") . lines) xs ==
 prop_elemIndex1 xs   = (elemIndex 'X' xs) == (P.elemIndex 'X' (pack xs))
 prop_elemIndex2 xs c = (elemIndex c xs) == (P.elemIndex c (pack xs))
 
+prop_elemIndexLast1 c xs = (P.elemIndexLast c (pack xs)) ==
+                           (case P.elemIndex c (pack (reverse xs)) of 
+                                Nothing -> Nothing
+                                Just i  -> Just (length xs -1 -i))
+
+prop_elemIndexLast2 c xs = (P.elemIndexLast c (pack xs)) == 
+                           ((-) (length xs - 1) `fmap` P.elemIndex c (pack $ reverse xs))
+
 prop_elemIndices xs c = elemIndices c xs == P.elemIndices c (pack xs)
 
 prop_findIndex xs = (findIndex (=='X') xs) == (P.findIndex (=='X') (pack xs))
@@ -243,6 +251,8 @@ main = do
         ,   run prop_split
         ,   run prop_breakFirst
         ,   run prop_breakLast
+        ,   run prop_elemIndexLast1
+        ,   run prop_elemIndexLast2
         ]
 
 instance Arbitrary Char where
