@@ -166,8 +166,8 @@ prop_breakFirst c xs = (let (x,y) = break (==c) xs
                        (P.breakFirst c (pack xs))
 
 prop_breakLast c xs = (let (x,y) = break (==c) (reverse xs)
-                       in if null x then Nothing
-                                    else Just (pack (drop 1 y), pack x)) ==
+                       in if null y then Nothing
+                                    else Just (pack (reverse $ drop 1 y), pack (reverse x))) ==
                        (P.breakLast c (pack xs))
 
 ------------------------------------------------------------------------
@@ -242,6 +242,7 @@ main = do
         ,   run prop_spanEnd
         ,   run prop_split
         ,   run prop_breakFirst
+        ,   run prop_breakLast
         ]
 
 instance Arbitrary Char where
