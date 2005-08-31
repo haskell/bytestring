@@ -2,7 +2,7 @@ GHC=            ghc
 
 BIN=            run-utests run-qtests
 
-M4=             /usr/local/bin/gm4
+GM4=             m4
 PP=             ./logpp
 PP_OPTS=        -pgmF "$(PP)" -F
 
