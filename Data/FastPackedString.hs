@@ -129,6 +129,7 @@ module Data.FastPackedString (
         breakOn,      -- :: Char -> PackedString -> (PackedString, PackedString)
         split,        -- :: Char -> PackedString -> [PackedString]
         breakAll,     -- :: (Char -> Bool) -> PackedString -> [PackedString]
+        breakFirst,   -- :: Char -> PackedString -> Maybe (PackedString,PackedString)
         tokens,       -- :: (Char -> Bool) -> PackedString -> [PackedString]
         hash,         -- :: PackedString -> Int32
 
@@ -136,7 +137,6 @@ module Data.FastPackedString (
 
         ------------------------------------------------------------------------
 
-        breakFirstPS,   -- :: Char -> PackedString -> Maybe (PackedString,PackedString)
         breakLastPS,    -- :: Char -> PackedString -> Maybe (PackedString,PackedString)
         readIntPS,      -- :: PackedString -> Maybe (Int, PackedString)
         fromHex2PS,     -- :: PackedString -> PackedString
@@ -786,6 +786,30 @@ breakAll f ps =
         (n:_) -> take n ps : breakAll f (drop (n+1) ps)
 -}
 
+-- | /O(n)/ 'breakFirst' breaks the given PackedString on the first
+-- occurence of @c@. It behaves like 'break', except the delimiter is
+-- not returned, and @Nothing@ is returned if the delimiter is not in
+-- the PackedString.
+--
+-- > breakFirst 'b' "aabbcc" == Just ("aa","bcc")
+--
+breakFirst :: Char -> PackedString -> Maybe (PackedString,PackedString)
+breakFirst c p = case elemIndex c p of
+   Nothing -> Nothing
+   Just n -> Just (take n p, drop (n+1) p)
+{-# INLINE breakFirst #-}
+
+-- | /O(n)/ 'breakLast' behaves like breakFirst, but from the end of the
+-- PackedString.
+--
+-- > breakLastPS ('b') (pack "aabbcc") == Just ("aab","cc")
+--
+breakLast :: Char -> PackedString -> Maybe (PackedString,PackedString)
+breakLast c p = case findLastPS c p of
+    Nothing -> Nothing
+    Just n -> Just (take n p, drop (n+1) p)
+{-# INLINE breakLast #-}
+
 -- | /O(n)/ Hash a PackedString into an 'Int32' value, suitable for use as a key.
 hash :: PackedString -> Int32
 hash (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> 
@@ -827,18 +851,6 @@ findFromEndUntilPS f ps@(PS x s l) = seq f $
     if null ps then 0
     else if f $ last ps then l
          else findFromEndUntilPS f (PS x s (l-1))
-
-{-# INLINE breakFirstPS #-}
-breakFirstPS :: Char -> PackedString -> Maybe (PackedString,PackedString)
-breakFirstPS c p = case elemIndex c p of
-                       Nothing -> Nothing
-                       Just n -> Just (take n p, drop (n+1) p)
-
-{-# INLINE breakLastPS #-}
-breakLastPS :: Char -> PackedString -> Maybe (PackedString,PackedString)
-breakLastPS c p = case findLastPS c p of
-                      Nothing -> Nothing
-                      Just n -> Just (take n p, drop (n+1) p)
 
 {-# INLINE findLastPS #-}
 findLastPS :: Char -> PackedString -> Maybe Int
