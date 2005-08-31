@@ -123,13 +123,14 @@ module Data.FastPackedString (
         sort,         -- :: PackedString -> PackedString
 
         -- * Extensions to the list interface
-        dropSpace,    -- :: PackedString -> PackedString
-        breakSpace,   -- :: PackedString -> Maybe (PackedString,PackedString)
-        spanEnd,      -- :: (Char -> Bool) -> PackedString -> (PackedString, PackedString)
         breakOn,      -- :: Char -> PackedString -> (PackedString, PackedString)
-        split,        -- :: Char -> PackedString -> [PackedString]
+        breakSpace,   -- :: PackedString -> Maybe (PackedString,PackedString)
         breakAll,     -- :: (Char -> Bool) -> PackedString -> [PackedString]
         breakFirst,   -- :: Char -> PackedString -> Maybe (PackedString,PackedString)
+        breakLast,    -- :: Char -> PackedString -> Maybe (PackedString,PackedString)
+        dropSpace,    -- :: PackedString -> PackedString
+        spanEnd,      -- :: (Char -> Bool) -> PackedString -> (PackedString, PackedString)
+        split,        -- :: Char -> PackedString -> [PackedString]
         tokens,       -- :: (Char -> Bool) -> PackedString -> [PackedString]
         hash,         -- :: PackedString -> Int32
 
@@ -137,7 +138,6 @@ module Data.FastPackedString (
 
         ------------------------------------------------------------------------
 
-        breakLastPS,    -- :: Char -> PackedString -> Maybe (PackedString,PackedString)
         readIntPS,      -- :: PackedString -> Maybe (Int, PackedString)
         fromHex2PS,     -- :: PackedString -> PackedString
         fromPS2Hex,     -- :: PackedString -> PackedString
@@ -815,9 +815,10 @@ hash :: PackedString -> Int32
 hash (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> 
     go (0 :: Int32) (p `plusPtr` s) l
   where
+    go :: Int32 -> Ptr Word8 -> Int -> IO Int32
     go h _ 0 = return h
-    go h p n = do x <- peek p
-                  let h' = (fromIntegral x) + (rotateL h 8)
+    go h p n = do w <- peek p
+                  let h' = (fromIntegral w) + (rotateL h 8)
                   go h' (p `advancePtr` 1) (n-1)
 
 ------------------------------------------------------------------------

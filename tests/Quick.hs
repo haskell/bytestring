@@ -160,6 +160,11 @@ prop_breakOn c xs = (break (==c) xs) ==
 
 prop_split xs = (map unpack (P.split '\n' (pack xs))) == lines xs
 
+prop_breakFirst c xs = (let (x,y) = break (==c) xs
+                        in if null y then Nothing
+                                     else Just (pack x, pack $ drop 1 y)) ==
+                       (P.breakFirst c (pack xs))
+
 ------------------------------------------------------------------------
 
 main = do
@@ -226,11 +231,12 @@ main = do
         ,   run prop_intersperse
         ,   run prop_maximum
         ,   run prop_minimum
-        ,   run prop_dropSpace
-        ,   run prop_breakSpace
-        ,   run prop_spanEnd
         ,   run prop_breakOn
+        ,   run prop_breakSpace
+        ,   run prop_dropSpace
+        ,   run prop_spanEnd
         ,   run prop_split
+        ,   run prop_breakFirst
         ]
 
 instance Arbitrary Char where
