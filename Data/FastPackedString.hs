@@ -806,7 +806,11 @@ breakFirst c p = case elemIndex c p of
 -- | /O(n)/ 'breakLast' behaves like breakFirst, but from the end of the
 -- PackedString.
 --
--- > breakLastPS ('b') (pack "aabbcc") == Just ("aab","cc")
+-- > breakLast ('b') (pack "aabbcc") == Just ("aab","cc")
+-- and the following are equivalent:
+-- > breakLast 'c' "abcdef"
+-- > let (x,y) = break (=='c') (reverse "abcdef") 
+-- > in if null x then Nothing else Just (reverse (drop 1 y), reverse x)
 --
 breakLast :: Char -> PackedString -> Maybe (PackedString,PackedString)
 breakLast c p = case findLastPS c p of

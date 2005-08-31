@@ -165,6 +165,11 @@ prop_breakFirst c xs = (let (x,y) = break (==c) xs
                                      else Just (pack x, pack $ drop 1 y)) ==
                        (P.breakFirst c (pack xs))
 
+prop_breakLast c xs = (let (x,y) = break (==c) (reverse xs)
+                       in if null x then Nothing
+                                    else Just (pack (drop 1 y), pack x)) ==
+                       (P.breakLast c (pack xs))
+
 ------------------------------------------------------------------------
 
 main = do
