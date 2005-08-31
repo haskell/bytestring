@@ -35,7 +35,7 @@
 --
 -- Original GHC implementation by Bryan O\'Sullivan. Rewritten to use
 -- UArray by Simon Marlow. Rewritten to support slices and use
--- ForeignPtr by David Roundy. Cleanups and extensions by Don Stewart.
+-- ForeignPtr by David Roundy. Cleaned up and extended by Don Stewart.
 --
 
 module Data.FastPackedString (
@@ -70,7 +70,7 @@ module Data.FastPackedString (
         transpose,    -- :: [PackedString] -> [PackedString]
         join,         -- :: PackedString -> [PackedString] -> PackedString
 
-        -- * Reducing lists (folds)
+        -- * Reducing 'PackedString's (folds)
         foldl,        -- :: (a -> Char -> a) -> a -> PackedString -> a
         foldr,        -- :: (Char -> a -> a) -> a -> PackedString -> a
         foldl1,       -- :: (Char -> Char -> Char) -> PackedString -> Char
@@ -84,7 +84,7 @@ module Data.FastPackedString (
         maximum,      -- :: PackedString -> Char
         minimum,      -- :: PackedString -> Char
 
-        -- * Sublists
+        -- * Substrings
         take,         -- :: Int -> PackedString -> PackedString
         drop,         -- :: Int -> PackedString -> PackedString
         splitAt,      -- :: Int -> PackedString -> (PackedString, PackedString)
@@ -94,7 +94,7 @@ module Data.FastPackedString (
         span,         -- :: (Char -> Bool) -> PackedString -> (PackedString, PackedString)
         break,        -- :: (Char -> Bool) -> PackedString -> (PackedString, PackedString)
 
-        -- * Searching lists
+        -- * Searching 'PackedString's
 
         -- ** Searching by equality
         elem,         -- :: Char -> PackedString -> Bool
@@ -103,7 +103,7 @@ module Data.FastPackedString (
         filter,       -- :: (Char -> Bool) -> PackedString -> PackedString
         find,         -- :: (Char -> Bool) -> PackedString -> Maybe Char
 
-        -- * Indexing lists
+        -- * Indexing 'PackedString's
         index,        -- :: PackedString -> Int -> Char
         elemIndex,    -- :: Char -> PackedString -> Maybe Int
         elemIndices,  -- :: Char -> PackedString -> [Int]
@@ -111,7 +111,7 @@ module Data.FastPackedString (
         findIndex,    -- :: (Char -> Bool) -> PackedString -> Maybe Int
         findIndices,  -- :: (Char -> Bool) -> PackedString -> [Int]
 
-        -- * Special lists
+        -- * Special 'PackedString's
 
         -- ** Lines and words
         lines,        -- :: PackedString -> [PackedString]
@@ -119,7 +119,7 @@ module Data.FastPackedString (
         unlines,      -- :: [PackedString] -> PackedString
         unwords,      -- :: PackedString -> [PackedString]
 
-        -- ** Ordered lists
+        -- ** Ordered 'PackedString's
         sort,         -- :: PackedString -> PackedString
 
         -- * Extensions to the list interface
@@ -331,7 +331,7 @@ last ps@(PS x s l)        -- ps ! 0 is inlined manually to eliminate a (+0)
         withForeignPtr x $ \p -> peekElemOff p (s+l-1)
 {-# INLINE last #-}
 
--- | /O(1)/ Return all the elements of a list except the last one.
+-- | /O(1)/ Return all the elements of a 'PackedString' except the last one.
 init :: PackedString -> PackedString
 init (PS p s l) 
     | l <= 0    = errorEmptyList "init"
@@ -433,7 +433,7 @@ foldr1 f ps
     | otherwise      = f (head1 ps) (foldr1 f (tail1 ps))
 
 -- | Applied to a predicate and a packed string, 'any' determines if
--- any element of the list satisfies the predicate.
+-- any element of the 'PackedString' satisfies the predicate.
 any :: (Char -> Bool) -> PackedString -> Bool
 any f (PS x s l) = unsafePerformIO $ withForeignPtr x $ \ptr ->
         go (ptr `plusPtr` s) (ptr `plusPtr` (s+l))
@@ -504,7 +504,7 @@ reverse :: PackedString -> PackedString
 reverse (PS x s l) = createPS l $ \p -> withForeignPtr x $ \f -> 
         c_reverse p (f `plusPtr` s) l -- 99% less space, very much faster
 
--- | 'elem' is the list membership predicate.
+-- | 'elem' is the 'PackedString' membership predicate.
 elem :: Char -> PackedString -> Bool
 elem c ps = case elemIndex c ps of
     Nothing -> False
@@ -633,9 +633,9 @@ intersperse c ps@(PS x s l)
 transpose :: [PackedString] -> [PackedString]
 transpose ps = Prelude.map pack (List.transpose (Prelude.map unpack ps)) -- better
 
--- | The 'join' function takes a 'PackedString' and a list of 'PackedString's
--- and concatenates the list after interspersing the first argument between
--- each element of the list.
+-- | The 'join' function takes a 'PackedString' and a list of
+-- 'PackedString's and concatenates the list after interspersing the
+-- first argument between each element of the list.
 join :: PackedString -> [PackedString] -> PackedString
 join filler pss = concat (splice pss)
     where
@@ -789,11 +789,10 @@ breakAll f ps =
 -- | (Internal) /O(n)/ 'elemIndexWord8PS' is like 'elemIndex', except
 -- that it takes a 'Word8' as the element to search for.
 elemIndexWord8PS :: Word8 -> PackedString -> Maybe Int
-elemIndexWord8PS c (PS x s l) = unsafePerformIO $ 
-    withForeignPtr x $ \p -> do
-        let p' = p `plusPtr` s
-            q  = memchr p' (fromIntegral c) (fromIntegral l)
-        return $ if q == nullPtr then Nothing else Just (q `minusPtr` p')
+elemIndexWord8PS c (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> do
+    let p' = p `plusPtr` s
+        q  = memchr p' (fromIntegral c) (fromIntegral l)
+    return $ if q == nullPtr then Nothing else Just (q `minusPtr` p')
 {-# INLINE elemIndexWord8PS #-}
 
 -- (Internal) unsafe 'PackedString' index (subscript) operator, starting
@@ -943,17 +942,7 @@ breakBeforeNthNewline n the_ps@(PS fp the_s l)
 -- Common up near identical calls to `error' to reduce the number
 -- constant strings created when compiled:
 errorEmptyList :: String -> a
-errorEmptyList fun = error ("FastPackedString." ++ fun ++ ": empty list")
-
-------------------------------------------------------------------------
---
--- The definition of @_substrPS@ is essentially:
--- @take (end - begin + 1) (drop begin str)@.
-
-{-
-substrPS :: PackedString -> Int -> Int -> PackedString
-substrPS (PS ps s _) begin end = PS ps (s+begin) (1+end-begin)
--}
+errorEmptyList fun = error ("FastPackedString." ++ fun ++ ": empty PackedString")
 
 ------------------------------------------------------------------------
 
