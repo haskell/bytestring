@@ -130,10 +130,12 @@ module Data.FastPackedString (
         split,        -- :: Char -> PackedString -> [PackedString]
         breakAll,     -- :: (Char -> Bool) -> PackedString -> [PackedString]
         tokens,       -- :: (Char -> Bool) -> PackedString -> [PackedString]
+        hash,         -- :: PackedString -> Int32
+
+        -- maybe some Text.Regex functions on PackedStrings?
 
         ------------------------------------------------------------------------
 
-        hashPS,
         breakFirstPS,   -- :: Char -> PackedString -> Maybe (PackedString,PackedString)
         breakLastPS,    -- :: Char -> PackedString -> Maybe (PackedString,PackedString)
         readIntPS,      -- :: PackedString -> Maybe (Int, PackedString)
@@ -784,6 +786,16 @@ breakAll f ps =
         (n:_) -> take n ps : breakAll f (drop (n+1) ps)
 -}
 
+-- | /O(n)/ Hash a PackedString into an 'Int32' value, suitable for use as a key.
+hash :: PackedString -> Int32
+hash (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> 
+    go (0 :: Int32) (p `plusPtr` s) l
+  where
+    go h _ 0 = return h
+    go h p n = do x <- peek p
+                  let h' = (fromIntegral x) + (rotateL h 8)
+                  go h' (p `advancePtr` 1) (n-1)
+
 ------------------------------------------------------------------------
 
 -- | (Internal) /O(n)/ 'elemIndexWord8PS' is like 'elemIndex', except
@@ -815,18 +827,6 @@ findFromEndUntilPS f ps@(PS x s l) = seq f $
     if null ps then 0
     else if f $ last ps then l
          else findFromEndUntilPS f (PS x s (l-1))
-
-{-# INLINE hashPS #-}
-hashPS :: PackedString -> Int32
-hashPS (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> do 
-    hash (p `plusPtr` s) l
-
-hash :: Ptr Word8 -> Int -> IO Int32
-hash ptr len = f (0 :: Int32) ptr len
- where f h _ 0 = return h
-       f h p n = do x <- peek p
-                    let h' =  (fromIntegral x) + (rotateL h 8)
-                    f h' (p `advancePtr` 1) (n-1)
 
 {-# INLINE breakFirstPS #-}
 breakFirstPS :: Char -> PackedString -> Maybe (PackedString,PackedString)
