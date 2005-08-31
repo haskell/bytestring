@@ -9,9 +9,6 @@ char *my_mmap(int len, int fd);
 
 int utf8_to_ints(HsInt *pwc, const unsigned char *s, int n);
 
-void conv_to_hex(unsigned char *dest, unsigned char *from, int num_chars);
-void conv_from_hex(unsigned char *dest, unsigned char *from, int num_chars);
-
 void reverse(unsigned char *dest, unsigned char *from, int len);
 void my_qsort(unsigned char *base, size_t size);
 void intersperse(unsigned char *dest, unsigned char *from, int len, char c);

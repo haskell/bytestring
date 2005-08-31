@@ -167,38 +167,6 @@ int utf8_to_ints(HsInt *pwc, const unsigned char *s, int n) {
   return pwc - pwc_original;
 }
 
-/* Conversion to and from hex */
-
-void conv_to_hex(unsigned char *dest, unsigned char *from, int num_chars)
-{
-    static char hex[] = "0123456789abcdef";
-    unsigned char *end;
-
-    for (end = from + num_chars; from < end; from++) {
-        *dest++ = hex[*from >> 4];
-        *dest++ = hex[*from & 0xf];
-    }
-
-    return;
-}
-
-#define NYBBLE_TO_INT(c) \
-    ((c) - ((c) >= 'a' ? 'a' - 10 : '0'))
-
-void conv_from_hex(unsigned char *dest, unsigned char *from, int num_chars)
-{
-    unsigned char *end;
-    unsigned char c;
-
-    end = dest + num_chars;
-    while (dest < end) {
-        c = NYBBLE_TO_INT(*from) << 4, from++;
-        *dest++ = c | NYBBLE_TO_INT(*from), from++;
-    }
-
-    return;
-}
-
 /* copy a string in reverse */
 void reverse(unsigned char *dest, unsigned char *from, int len)
 {
