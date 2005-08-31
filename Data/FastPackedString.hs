@@ -133,30 +133,10 @@ module Data.FastPackedString (
         split,        -- :: Char -> PackedString -> [PackedString]
         tokens,       -- :: (Char -> Bool) -> PackedString -> [PackedString]
         hash,         -- :: PackedString -> Int32
-
-        -- maybe some Text.Regex functions on PackedStrings?
+        elemIndexLast,-- :: Char -> PackedString -> Maybe Int
+        betweenLines, -- :: PackedString -> PackedString -> PackedString -> Maybe (PackedString)
 
         ------------------------------------------------------------------------
-
-        readIntPS,      -- :: PackedString -> Maybe (Int, PackedString)
-        fromHex2PS,     -- :: PackedString -> PackedString
-        fromPS2Hex,     -- :: PackedString -> PackedString
-        betweenLinesPS, --  :: PackedString -> PackedString -> PackedString -> Maybe (PackedString)
-        breakAfterNthNewline,   
-        breakBeforeNthNewline,
-
-        -- should this even be available?
-        unsafeConcatLenPS, -- :: Int -> [PackedString] -> PackedString
-
-        -- * Low-level constructors
-        generatePS,             -- :: Int -> (Ptr Word8 -> Int -> IO Int) -> IO PackedString
-#if defined(__GLASGOW_HASKELL__)
-        constructPS,            -- :: (Ptr Word8) -> Int -> IO () -> IO PackedString
-#endif
-        mallocedCString2PS,     -- :: CString -> IO PackedString
-        withCStringPS,          -- :: PackedString -> (CString -> IO a) -> IO a
-        unpackFromUTF8,         -- :: PackedString -> String
-        unsafeWithInternals,    -- :: PackedString -> (Ptr Word8 -> Int -> IO a) -> IO a
 
         -- * I\/O with @PackedString@s
         hGetPS,                 -- :: Handle -> Int -> IO PackedString
@@ -166,13 +146,22 @@ module Data.FastPackedString (
         writeFilePS,            -- :: FilePath -> PackedString -> IO ()
         mmapFilePS,             -- :: FilePath -> IO PackedString
 
+        -- * Lower-level constructors
+        generate,             -- :: Int -> (Ptr Word8 -> Int -> IO Int) -> IO PackedString
+#if defined(__GLASGOW_HASKELL__)
+        construct,            -- :: (Ptr Word8) -> Int -> IO () -> IO PackedString
+#endif
+        mallocCString2Packed,     -- :: CString -> IO PackedString
+        withCString,          -- :: PackedString -> (CString -> IO a) -> IO a
+        unpackFromUTF8,         -- :: PackedString -> String
+
         -- * Extensions to the I\/O interface
         LazyFile(..),
         readFileLazily,         -- :: FilePath -> IO LazyFile
 #if defined(USE_ZLIB)
-        gzReadFilePS,           -- :: FilePath -> IO PackedString
+        gzReadFile,             -- :: FilePath -> IO PackedString
+        gzWriteFile,            -- :: FilePath -> PackedString -> IO ()
         gzReadFileLazily,       -- :: FilePath -> IO LazyFile
-        gzWriteFilePS,          -- :: FilePath -> PackedString -> IO ()
         gzWriteFilePSs,         -- :: FilePath -> [PackedString] -> IO ()
 #endif
 
@@ -205,10 +194,9 @@ import Foreign.Ptr              (Ptr, FunPtr, plusPtr, nullPtr, minusPtr, castPt
 import Foreign.ForeignPtr       (newForeignPtr, withForeignPtr, mallocForeignPtrArray, ForeignPtr)
 import Foreign.Storable         (peekElemOff, peek, poke)
 import Foreign.C.String         (CString)
-import Foreign.C.Types          (CSize, CLong, CInt)
+import Foreign.C.Types          (CSize, CInt)
 import Foreign.Marshal.Alloc    (free)
 import Foreign.Marshal.Array
-import Foreign.Marshal.Utils    (with)
 
 #if defined(__GLASGOW_HASKELL__)
 import qualified Foreign.Concurrent as FC (newForeignPtr)
@@ -377,7 +365,7 @@ map k (PS ps s l) = createPS l $ \p -> withForeignPtr ps $ \f ->
 filter :: (Char -> Bool) -> PackedString -> PackedString
 filter k ps@(PS x s l)
     | null ps   = ps
-    | otherwise = unsafePerformIO $ generatePS l $ \p -> withForeignPtr x $ \f -> do
+    | otherwise = unsafePerformIO $ generate l $ \p -> withForeignPtr x $ \f -> do
         t <- go (f `plusPtr` s) p l
         return (t `minusPtr` p) -- actual length
     where
@@ -540,18 +528,6 @@ concat xs     = unsafePerformIO $ do
                             ptr' <- reallocArray ptr new_total
                             f ptr' len (new_total - len) pss
 
--- | Analogous to @concat@, only you tell it how big the result will
--- be. If you lie then Bad Things will happen.
-unsafeConcatLenPS :: Int -> [PackedString] -> PackedString
-unsafeConcatLenPS n []   = n `seq` empty
-unsafeConcatLenPS _ [ps] = ps
-unsafeConcatLenPS total_length pss = createPS total_length $ \p-> cpPSs p pss
-    where cpPSs :: Ptr Word8 -> [PackedString] -> IO ()
-          cpPSs _ [] = return ()
-          cpPSs p (PS x s l:rest) = do 
-                withForeignPtr x $ \pf -> c_memcpy p (pf `plusPtr` s) l
-                cpPSs (p `plusPtr` l) rest
-
 -- | 'PackedString' index (subscript) operator, starting from 0.
 index :: PackedString -> Int -> Char
 index ps n 
@@ -580,7 +556,7 @@ minimum xs@(PS x s l)
 lines :: PackedString -> [PackedString]
 lines ps 
     | null ps = []
-    | otherwise = case elemIndexWord8PS (c2w '\n') ps of
+    | otherwise = case elemIndexWord8 (c2w '\n') ps of
              Nothing -> [ps]
              Just n  -> take n ps : lines (drop (n+1) ps)
 {-# INLINE lines #-}
@@ -655,7 +631,7 @@ sort (PS x s l) = createPS l $ \p -> withForeignPtr x $ \f -> do
 -- in the given 'PackedString' which is equal (by memchr) to the query
 -- element, or 'Nothing' if there is no such element.
 elemIndex :: Char -> PackedString -> Maybe Int
-elemIndex c ps = elemIndexWord8PS (c2w c) ps
+elemIndex c = elemIndexWord8 (c2w c)
 {-# INLINE elemIndex #-}
 
 -- | The 'elemIndices' function extends 'elemIndex', by returning the
@@ -813,10 +789,21 @@ breakFirst c p = case elemIndex c p of
 -- > in if null x then Nothing else Just (reverse (drop 1 y), reverse x)
 --
 breakLast :: Char -> PackedString -> Maybe (PackedString,PackedString)
-breakLast c p = case findLastPS c p of
+breakLast c p = case elemIndexLast c p of
     Nothing -> Nothing
     Just n -> Just (take n p, drop (n+1) p)
 {-# INLINE breakLast #-}
+
+-- | /O(n)/ The 'elemIndexLast' function returns the last index of the
+-- element in the given 'PackedString' which is equal to the query
+-- element, or 'Nothing' if there is no such element. The following holds:
+--
+-- > elemIndexLast c xs == 
+-- > (-) (length xs - 1) `fmap` elemIndex c (reverse xs)
+--
+elemIndexLast :: Char -> PackedString -> Maybe Int
+elemIndexLast c = elemIndexLastWord8 (c2w c)
+{-# INLINE elemIndexLast #-}
 
 -- | /O(n)/ Hash a PackedString into an 'Int32' value, suitable for use as a key.
 hash :: PackedString -> Int32
@@ -829,16 +816,36 @@ hash (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p ->
                   let h' = (fromIntegral w) + (rotateL h 8)
                   go h' (p `advancePtr` 1) (n-1)
 
+-- | 'betweenLines' returns the PackedString between the two lines
+-- given, or Nothing if they do not appear.
+betweenLines :: PackedString -> PackedString -> PackedString -> Maybe (PackedString)
+betweenLines start end ps = 
+    case Prelude.break (start ==) (lines ps) of
+        (_, _:rest@(PS ps1 s1 _:_)) ->
+            case Prelude.break (end ==) rest of
+                (_, PS _ s2 _:_) -> Just $ PS ps1 s1 (s2 - s1)
+                _ -> Nothing
+        _ -> Nothing
+
 ------------------------------------------------------------------------
 
--- | (Internal) /O(n)/ 'elemIndexWord8PS' is like 'elemIndex', except
+-- | (Internal) /O(n)/ 'elemIndexWord8' is like 'elemIndex', except
 -- that it takes a 'Word8' as the element to search for.
-elemIndexWord8PS :: Word8 -> PackedString -> Maybe Int
-elemIndexWord8PS c (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> do
+elemIndexWord8 :: Word8 -> PackedString -> Maybe Int
+elemIndexWord8 c (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> do
     let p' = p `plusPtr` s
         q  = memchr p' (fromIntegral c) (fromIntegral l)
     return $ if q == nullPtr then Nothing else Just (q `minusPtr` p')
-{-# INLINE elemIndexWord8PS #-}
+{-# INLINE elemIndexWord8 #-}
+
+elemIndexLastWord8 :: Word8 -> PackedString -> Maybe Int
+elemIndexLastWord8 c (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> 
+        go (-1) (p `plusPtr` s) 0
+    where 
+        go h p i | i >= l    = return $ if h < 0 then Nothing else Just h
+                 | otherwise = do here <- peekElemOff p i
+                                  go (if c == here then i else h) p (i+1)
+{-# INLINE elemIndexLastWord8 #-}
 
 -- (Internal) unsafe 'PackedString' index (subscript) operator, starting
 -- from 0, returning a 'Word8'
@@ -861,102 +868,12 @@ findFromEndUntilPS f ps@(PS x s l) = seq f $
     else if f $ last ps then l
          else findFromEndUntilPS f (PS x s (l-1))
 
-{-# INLINE findLastPS #-}
-findLastPS :: Char -> PackedString -> Maybe Int
-findLastPS c ps = wfindLastPS (c2w c) ps
-
-{-# INLINE wfindLastPS #-}
-wfindLastPS :: Word8 -> PackedString -> Maybe Int
-wfindLastPS c (PS x s l) =
-    unsafePerformIO $ withForeignPtr x $ \p->
-                    findit (-1) (p `plusPtr` s) 0
-    where findit h p i = if i >= l
-                         then if h < 0
-                              then return Nothing
-                              else return $ Just h
-                         else do here <- peekElemOff p i
-                                 if c == here
-                                    then findit i p (i+1)
-                                    else findit h p (i+1)
-
+-- (Internal)
 splitWord8 :: Word8 -> PackedString -> [PackedString]
-splitWord8 c ps = case elemIndexWord8PS c ps of
+splitWord8 c ps = case elemIndexWord8 c ps of
     Nothing -> if null ps then [] else [ps]
     Just n  -> take n ps : splitWord8 c (drop (n+1) ps)
 {-# INLINE splitWord8 #-}
-
--- | readIntPS skips any whitespace at the beginning of its argument, and
--- reads an Int from the beginning of the PackedString.  If there is no
--- integer at the beginning of the string, it returns Nothing, otherwise it
--- just returns the int read, along with a PackedString containing the
--- remainder of its input.  The actual parsing is done by the standard C
--- library function strtol.
---
-readIntPS :: PackedString -> Maybe (Int, PackedString)
-readIntPS (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> 
-    with p $ \endpp -> do
-       val <- c_strtol (p `plusPtr` s) endpp 0
-       skipped <- (`minusPtr` (p `plusPtr` s)) `liftM` peek endpp
-       if skipped == 0
-          then return Nothing
-          else return $ Just (fromIntegral val,
-                              PS x (s+skipped) (l-skipped))
-
--- | fromPS2Hex
-fromPS2Hex :: PackedString -> PackedString
-fromPS2Hex (PS x s l) = createPS (2*l) $ \p -> withForeignPtr x $ \f ->
-           conv_to_hex p (f `plusPtr` s) l
-
--- | fromHex2PS
-fromHex2PS :: PackedString -> PackedString
-fromHex2PS (PS x s l) = createPS (l `div` 2) $ \p -> withForeignPtr x $ \f ->
-           conv_from_hex p (f `plusPtr` s) (l `div` 2)
-
--- | betweenLinesPS returns the PackedString between the two lines given,
--- or Nothing if they do not appear.
-betweenLinesPS :: PackedString -> PackedString -> PackedString -> Maybe (PackedString)
-betweenLinesPS start end ps = 
-    case Prelude.break (start ==) (lines ps) of
-        (_, _:rest@(PS ps1 s1 _:_)) ->
-            case Prelude.break (end ==) rest of
-                (_, PS _ s2 _:_) -> Just $ PS ps1 s1 (s2 - s1)
-                _ -> Nothing
-        _ -> Nothing
-
--- | breakAfterNthNewline
-breakAfterNthNewline :: Int -> PackedString -> Maybe (PackedString, PackedString)
-breakAfterNthNewline 0 the_ps | null the_ps = Just (empty, empty)
-breakAfterNthNewline n the_ps@(PS fp the_s l)
- = unsafePerformIO $ withForeignPtr fp $ \p ->
-   do let findit 0 s | s == end = return $ Just (the_ps, empty)
-          findit _ s | s == end = return Nothing
-          findit 0 s = let left_l = s - the_s
-                       in return $ Just (PS fp the_s left_l,
-                                         PS fp s (l - left_l))
-          findit i s = do w <- peekElemOff p s
-                          if w == nl then findit (i-1) (s+1)
-                                     else findit i (s+1)
-          nl = c2w '\n'
-          end = the_s + l
-      findit n the_s
-
--- | breakBeforeNthNewline
-breakBeforeNthNewline :: Int -> PackedString -> (PackedString, PackedString)
-breakBeforeNthNewline 0 the_ps | null the_ps = (empty, empty)
-breakBeforeNthNewline n the_ps@(PS fp the_s l)
- = unsafePerformIO $ withForeignPtr fp $ \p ->
-   do let findit _ s | s == end = return (the_ps, empty)
-          findit i s = do w <- peekElemOff p s
-                          if w == nl
-                            then if i == 0
-                                 then let left_l = s - the_s
-                                      in return (PS fp the_s left_l,
-                                                 PS fp s (l - left_l))
-                                 else findit (i-1) (s+1)
-                            else findit i (s+1)
-          nl = c2w '\n'
-          end = the_s + l
-      findit n the_s
 
 -- -----------------------------------------------------------------------------
 
@@ -979,11 +896,11 @@ unpackFromUTF8 (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> do
     return str
 
 -- | Given the maximum size needed and a function to make the contents
--- of a PackedString, generatePS makes the 'PackedString'. The
+-- of a PackedString, generate makes the 'PackedString'. The
 -- generating function is required to return the actual size (<= the
 -- maximum size).
-generatePS :: Int -> (Ptr Word8 -> IO Int) -> IO PackedString
-generatePS i f = do 
+generate :: Int -> (Ptr Word8 -> IO Int) -> IO PackedString
+generate i f = do 
     p <- mallocArray i
     i' <- f p
     p' <- reallocArray p i'
@@ -994,33 +911,28 @@ generatePS i f = do
 -- | Construct a 'PackedString' given a C Word8 buffer, a length, and an
 -- IO action representing a finalizer.  This function is not available
 -- on Hugs.
-constructPS :: (Ptr Word8) -> Int -> IO () -> IO PackedString
-constructPS p l f = do 
+construct :: (Ptr Word8) -> Int -> IO () -> IO PackedString
+construct p l f = do 
     fp <- FC.newForeignPtr p f
     return $ PS fp 0 l
 #endif
 
 -- | Build a @PackedString@ from a malloced @CString@
-mallocedCString2PS :: CString -> IO PackedString
-mallocedCString2PS cs = do 
+mallocCString2Packed :: CString -> IO PackedString
+mallocCString2Packed cs = do 
     fp <- newForeignPtr c_free (castPtr cs)
     l  <- c_strlen cs
     return $ PS fp 0 (fromIntegral l)
 
 -- | Use a @PackedString@ with a function requiring a @CString@
-withCStringPS :: PackedString -> (CString -> IO a) -> IO a
-withCStringPS (PS ps s l) = bracket alloc free_cstring
+withCString :: PackedString -> (CString -> IO a) -> IO a
+withCString (PS ps s l) = bracket alloc free_cstring
     where 
       alloc = withForeignPtr ps $ \p -> do 
                 buf <- c_malloc (fromIntegral l+1)
                 c_memcpy (castPtr buf) (castPtr p `plusPtr` s) (fromIntegral l)
                 poke (buf `plusPtr` l) (0::Word8)
                 return $ castPtr buf
-
--- | Do something with the internals of a 'PackedString'. Beware of
--- altering the contents!
-unsafeWithInternals :: PackedString -> (Ptr Word8 -> Int -> IO a) -> IO a
-unsafeWithInternals (PS fp s l) f = withForeignPtr fp $ \p -> f (p `plusPtr` s) l
 
 -- | A way of creating ForeignPtrs outside the IO monad (although it
 -- still isn't entirely "safe", but at least it's convenient.
@@ -1216,15 +1128,15 @@ readHandleLazily h
     where blocksize = 1024
 
 -- -----------------------------------------------------------------------------
--- gzReadFilePS
+-- gzReadFile
 
 -- | Read an entire file, which may or may not be gzip compressed, directly
 -- into a 'PackedString'.
 
 #if defined(USE_ZLIB)
 
-gzReadFilePS :: FilePath -> IO PackedString
-gzReadFilePS f = do
+gzReadFile :: FilePath -> IO PackedString
+gzReadFile f = do
     h <- openBinaryFile f ReadMode
     header <- hGetPS h 2
     if header /= pack "\31\139"
@@ -1279,8 +1191,8 @@ hGetLittleEndInt h = do
     b4 <- ord `liftM` hGetChar h
     return $ b1 + 256*b2 + 65536*b3 + 16777216*b4
 
-gzWriteFilePS :: FilePath -> PackedString -> IO ()
-gzWriteFilePS f ps = gzWriteFilePSs f [ps]
+gzWriteFile :: FilePath -> PackedString -> IO ()
+gzWriteFile f ps = gzWriteFilePSs f [ps]
 
 gzWriteFilePSs :: FilePath -> [PackedString] -> IO ()
 gzWriteFilePSs f pss  =
@@ -1322,9 +1234,6 @@ foreign import ccall unsafe "string.h memchr" memchr
 foreign import ccall unsafe "static string.h strlen" c_strlen
     :: CString -> IO CInt
 
-foreign import ccall unsafe "static stdlib.h strtol" c_strtol
-    :: Ptr Word8 -> Ptr (Ptr Word8) -> Int -> IO CLong
-
 ------------------------------------------------------------------------
 
 foreign import ccall unsafe "static fpstring.h utf8_to_ints" utf8_to_ints
@@ -1335,12 +1244,6 @@ foreign import ccall unsafe "fpstring.h firstnonspace" c_firstnonspace
 
 foreign import ccall unsafe "fpstring.h firstspace" c_firstspace
     :: Ptr Word8 -> Int -> Int
-
-foreign import ccall unsafe "static fpstring.h conv_to_hex" conv_to_hex
-    :: Ptr Word8 -> Ptr Word8 -> Int -> IO ()
-
-foreign import ccall unsafe "static fpstring.h conv_from_hex" conv_from_hex
-    :: Ptr Word8 -> Ptr Word8 -> Int -> IO ()
 
 foreign import ccall unsafe "static fpstring.h reverse" c_reverse
     :: Ptr Word8 -> Ptr Word8 -> Int -> IO ()
