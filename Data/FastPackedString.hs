@@ -41,14 +41,14 @@
 module Data.FastPackedString (
 
         -- * The @PackedString@ type
-        PackedString,           -- abstract, instances: Eq, Ord, Show, Typeable
+        PackedString, -- abstract, instances: Eq, Ord, Show, Typeable
 
-        -- * Introducing and eliminating @PackedString@s
-        empty,                  -- :: PackedString
-        pack,                   -- :: String -> PackedString
-        unpack,                 -- :: PackedString -> String
-        packWords,              -- :: [Word8] -> PackedString
-        unpackWords,            -- :: PackedString -> [Word8]
+        -- * Introducing and eliminating 'PackedString's
+        empty,        -- :: PackedString
+        pack,         -- :: String -> PackedString
+        unpack,       -- :: PackedString -> String
+        packWords,    -- :: [Word8] -> PackedString
+        unpackWords,  -- :: PackedString -> [Word8]
 
         -- * Basic list-like interface
         cons,         -- :: Char -> PackedString -> PackedString
