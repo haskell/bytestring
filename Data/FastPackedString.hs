@@ -789,9 +789,13 @@ breakAll f ps =
 -- | /O(n)/ 'breakFirst' breaks the given PackedString on the first
 -- occurence of @c@. It behaves like 'break', except the delimiter is
 -- not returned, and @Nothing@ is returned if the delimiter is not in
--- the PackedString.
+-- the PackedString. I.e.
 --
 -- > breakFirst 'b' "aabbcc" == Just ("aa","bcc")
+-- and
+-- > breakFirst c xs ==
+-- > let (x,y) = break (== c) xs 
+-- > in if null y then Nothing else Just (x, drop 1 y))
 --
 breakFirst :: Char -> PackedString -> Maybe (PackedString,PackedString)
 breakFirst c p = case elemIndex c p of
