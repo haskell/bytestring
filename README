@@ -11,8 +11,8 @@ Requirements:
 Building:
         > ln -s fps.cabal.mmap fps.cabal
         > runhaskell Setup.hs configure --prefix=/f/g
-        > runhaskell build
-        > runhaskell install
+        > runhaskell Setup.hs build
+        > runhaskell Setup.hs install
 
 If you have troubles with mmap (possibly you have a system without
 mmap), then try:
