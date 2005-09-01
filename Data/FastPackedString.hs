@@ -55,7 +55,7 @@ module Data.FastPackedString (
         transpose,    -- :: [PackedString] -> [PackedString]
         join,         -- :: PackedString -> [PackedString] -> PackedString
 
-        -- * Reducing 'PackedString's (folds)
+        -- * Reducing 'PackedString'
         foldl,        -- :: (a -> Char -> a) -> a -> PackedString -> a
         foldr,        -- :: (Char -> a -> a) -> a -> PackedString -> a
         foldl1,       -- :: (Char -> Char -> Char) -> PackedString -> Char
@@ -120,6 +120,9 @@ module Data.FastPackedString (
         hash,         -- :: PackedString -> Int32
         elemIndexLast,-- :: Char -> PackedString -> Maybe Int
         betweenLines, -- :: PackedString -> PackedString -> PackedString -> Maybe (PackedString)
+        lines',       -- :: PackedString -> [PackedString]
+        unlines',     -- :: [PackedString] -> PackedString
+        words',       -- :: PackedString -> [PackedString]
 
         ------------------------------------------------------------------------
 
@@ -172,7 +175,7 @@ import Control.Monad            (when, liftM)
 import Control.Exception        (bracket)
 
 import System.IO    hiding      (hGetContents,readFile,writeFile)
-import System.IO.Unsafe         (unsafePerformIO, unsafeInterleaveIO)
+import System.IO.Unsafe         (unsafePerformIO)
 import System.Mem               (performGC)
 
 import Foreign.Ptr              (Ptr, FunPtr, plusPtr, nullPtr, minusPtr, castPtr)
@@ -189,7 +192,10 @@ import qualified Foreign.Concurrent as FC (newForeignPtr)
 #if defined(USE_MMAP)
 import System.Posix             (handleToFd)
 #endif
+#endif
 
+#if !defined(USE_MMAP)
+import System.IO.Unsafe         (unsafeInterleaveIO)
 #endif
 
 -- -----------------------------------------------------------------------------
@@ -212,12 +218,14 @@ instance Show PackedString where
 
 ------------------------------------------------------------------------
 
--- | /O(n)/ Equality on the 'PackedString' type
+-- | /O(n)/ Equality on the 'PackedString' type. This implementation
+-- uses memcmp(3).
 eqPS :: PackedString -> PackedString -> Bool
 eqPS a b = (comparePS a b) == EQ
 {-# INLINE eqPS #-}
 
--- | /O(n)/ 'comparePS' provides an 'Ordering' for 'PackedStrings' supporting slices.
+-- | /O(n)/ 'comparePS' provides an 'Ordering' for 'PackedStrings' supporting slices. 
+-- This implementation uses memcmp(3)
 comparePS :: PackedString -> PackedString -> Ordering
 comparePS (PS _ _ 0) (PS _ _ 0) = EQ    -- short cut for empty strings
 comparePS (PS x1 s1 l1) (PS x2 s2 l2) = unsafePerformIO $ 
@@ -256,17 +264,6 @@ unpackWords ps@(PS x s _)
     | otherwise     =
         (unsafePerformIO $ withForeignPtr x $ \p -> peekElemOff p s) 
             : unpackWords (tail1 ps)
-
-------------------------------------------------------------------------
--- (Internal) Conversion between 'Word8' and 'Char'
-
-w2c :: Word8 -> Char
-w2c = chr . fromIntegral
-{-# INLINE w2c #-}
-
-c2w :: Char -> Word8
-c2w = fromIntegral . ord
-{-# INLINE c2w #-}
 
 -- -----------------------------------------------------------------------------
 -- List-like functions for PackedStrings
@@ -559,24 +556,6 @@ unlines ss = (concat $ List.intersperse nl ss) `append` nl -- half as much space
 words :: PackedString -> [PackedString]
 words ps = Prelude.filter (not.null) (breakAll isSpace ps)
 
-{-
--- darcs version has different behaviour.
--- We may wish to export these under an alternate name.
-
-lines :: PackedString -> [PackedString]
-lines ps = case wfind (c2w '\n') ps of
-             Nothing -> [ps]
-             Just n -> take n ps : lines (drop (n+1) ps)
-
-unlines :: [PackedString] -> PackedString
-unlines ss = concat $ intersperse_newlines ss
-    where intersperse_newlines (a:b:s) = a:newline: intersperse_newlines (b:s)
-          intersperse_newlines s = s
-          newline = pack "\n"
-
-words :: PackedString -> [PackedString]
-words ps = breakAll isSpace ps
--}
 
 -- | The 'unwords' function is analogous to the 'unwords' function.
 unwords :: [PackedString] -> PackedString
@@ -606,7 +585,7 @@ join filler pss = concat (splice pss)
         splice [x] = [x]
         splice (x:y:xs) = x:filler:splice (y:xs)
 
--- | /O(n log(n))/ Sort using an /unstable/ sorting algorithm (QSORT(3)).
+-- | /O(n log(n))/ Sort a PackedString using the C function qsort(3).
 sort :: PackedString -> PackedString
 sort (PS x s l) = createPS l $ \p -> withForeignPtr x $ \f -> do
         c_memcpy p (f `plusPtr` s) l
@@ -696,8 +675,8 @@ spanEnd :: (Char -> Bool) -> PackedString -> (PackedString, PackedString)
 spanEnd  p ps = splitAt (findFromEndUntilPS (not.p) ps) ps
 
 -- | 'breakOn' breaks its 'PackedString' argument at the first occurence
--- of the specified character, however it is more efficient, as it is
--- implemented using memchr(3). I.e.
+-- of the specified character. It is more efficient than 'break' as it
+-- is implemented with memchr(3). I.e.
 -- 
 -- > break (=='c') "abcd" == breakOn 'c' "abcd"
 --
@@ -813,6 +792,58 @@ betweenLines start end ps =
                 (_, PS _ s2 _:_) -> Just $ PS ps1 s1 (s2 - s1)
                 _ -> Nothing
         _ -> Nothing
+
+-- | 'lines\'' behaves like 'lines', in that it breaks a PackedString on
+-- newline characters. However, unlike the Prelude functions, 'lines\''
+-- and 'unlines\'' correctlyy reconstruct lines that are missing
+-- terminating newlines characters. I.e.
+--
+-- > unlines  (lines "a\nb\nc")  == "a\nb\nc\n"
+-- > unlines' (lines' "a\nb\nc") == "a\nb\nc"
+--
+-- Note that this means:
+--
+-- > lines  "a\nb\nc\n" == ["a","b","c"]
+-- > lines' "a\nb\nc\n" == ["a","b","c",""]
+--
+lines' :: PackedString -> [PackedString]
+lines' ps = case elemIndexWord8 (c2w '\n') ps of
+             Nothing -> [ps]
+             Just n -> take n ps : lines' (drop (n+1) ps)
+
+-- | 'unlines\'' behaves like 'unlines', except that it also correctly
+-- retores lines that do not have terminating newlines (see the
+-- description for 'lines\'').
+--
+unlines' :: [PackedString] -> PackedString
+unlines' ss = concat $ intersperse_newlines ss
+    where intersperse_newlines (a:b:s) = a:newline: intersperse_newlines (b:s)
+          intersperse_newlines s = s
+          newline = pack "\n"
+
+-- | 'words\'' behaves like 'words', with the exception that it produces
+-- output on PackedStrings with trailing whitespace that can be
+-- correctly inverted by 'unwords'. I.e.
+--
+-- > words  "a b c " == ["a","b","c"]
+-- > words' "a b c " == ["a","b","c",""]
+--
+-- > unwords $ words  "a b c " == "a b c"
+-- > unwords $ words' "a b c " == "a b c "
+--
+words' :: PackedString -> [PackedString]
+words' ps = breakAll isSpace ps
+
+------------------------------------------------------------------------
+-- (Internal) Conversion between 'Word8' and 'Char'
+
+w2c :: Word8 -> Char
+w2c = chr . fromIntegral
+{-# INLINE w2c #-}
+
+c2w :: Char -> Word8
+c2w = fromIntegral . ord
+{-# INLINE c2w #-}
 
 ------------------------------------------------------------------------
 
@@ -1032,13 +1063,6 @@ mmapFile f =
    readFile f
 #endif
 
-use_mmap :: Bool
-#if defined(USE_MMAP)
-use_mmap = True
-#else
-use_mmap = False
-#endif
-
 #if defined(USE_MMAP)
 mmap :: FilePath -> IO (ForeignPtr Word8, Int)
 mmap f = do
@@ -1089,30 +1113,29 @@ data LazyFile = LazyString String
     deriving Eq
 
 readFileLazily :: FilePath -> IO LazyFile
-readFileLazily f =
-#if defined(__GLASGOW_HASKELL__)
-    if use_mmap
-      then liftM MMappedPackedString (mmapFile f)
-      else
+readFileLazily f = do
+#if defined(USE_MMAP)
+    liftM MMappedPackedString (mmapFile f)
+#else
+    h <- openBinaryFile f ReadMode
+    liftM LazyPackedStrings $ readHandleLazily h
+  where
+    readHandleLazily :: Handle -> IO [PackedString]
+    readHandleLazily h
+     = do let read_rest = do
+                  -- We might be making too big a fp here
+                  fp <- mallocForeignPtr blocksize
+                  lread <- withForeignPtr fp
+                         $ \p -> hGetBuf h p blocksize
+                  case lread of
+                      0 -> return []
+                      l | l < blocksize -> do hClose h
+                                              return [PS fp 0 l]
+                      l -> do rest <- unsafeInterleaveIO read_rest
+                              return (PS fp 0 l:rest)
+          unsafeInterleaveIO read_rest
+        where blocksize = 1024
 #endif
-           do h <- openBinaryFile f ReadMode
-              liftM LazyPackedStrings $ readHandleLazily h
-
-readHandleLazily :: Handle -> IO [PackedString]
-readHandleLazily h
- = do let read_rest = do
-              -- We might be making too big a fp here
-              fp <- mallocForeignPtr blocksize
-              lread <- withForeignPtr fp
-                     $ \p -> hGetBuf h p blocksize
-              case lread of
-                  0 -> return []
-                  l | l < blocksize -> do hClose h
-                                          return [PS fp 0 l]
-                  l -> do rest <- unsafeInterleaveIO read_rest
-                          return (PS fp 0 l:rest)
-      unsafeInterleaveIO read_rest
-    where blocksize = 1024
 
 -- -----------------------------------------------------------------------------
 -- gzReadFile
@@ -1162,12 +1185,12 @@ gzReadFileLazily f = do
                            l -> do rest <- unsafeInterleaveIO read_rest
                                    return (PS fp 0 l:rest)
                liftM LazyPackedStrings read_rest
-#if defined(__GLASGOW_HASKELL__)
-        else if use_mmap then
-            do hClose h
-               liftM MMappedPackedString (mmapFile f)
+        else
+#if defined(USE_MMAP)
+             hClose h >> liftM MMappedPackedString (mmapFile f)
+#else
+             liftM (LazyPackedStrings . (header:)) $ readHandleLazily h
 #endif
-        else liftM (LazyPackedStrings . (header:)) $ readHandleLazily h
     where blocksize = 1024
 
 hGetLittleEndInt :: Handle -> IO Int
@@ -1253,8 +1276,10 @@ foreign import ccall unsafe "static fpstring.h minimum" c_minimum
 foreign import ccall unsafe "static fpstring.h my_mmap" my_mmap
     :: Int -> Int -> IO (Ptr Word8)
 
+#if !defined(__OpenBSD__)
 foreign import ccall unsafe "static sys/mman.h munmap" c_munmap
     :: Ptr Word8 -> Int -> IO Int
+#endif
 
 foreign import ccall unsafe "static unistd.h close" c_close
     :: Int -> IO Int
