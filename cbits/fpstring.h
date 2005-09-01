@@ -4,6 +4,7 @@ int wfindps_helper(char c, const char *s, int len);
 
 int firstspace(const char *s, int len);
 int firstnonspace(const char *s, int len);
+int lastnonspace(const char *s, int len);
 
 char *my_mmap(int len, int fd);
 

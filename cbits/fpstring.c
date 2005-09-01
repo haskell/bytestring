@@ -54,6 +54,17 @@ int firstnonspace(const char *s, int len)
     return s - start;
 }
 
+/* return index of last non-space character */
+int lastnonspace(const char *s, int len)
+{
+    const char *p;
+    const char *end;
+
+    for (p = s + len - 1, end = s; p >= end && ISSPACE(*p); p--);
+
+    return p - s;
+}
+
 // mmapping...
 
 #ifdef _WIN32

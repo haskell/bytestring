@@ -154,7 +154,9 @@ prop_minimum xs = (not (null xs)) ==> (minimum xs) == (P.minimum ( pack xs ))
 
 ------------------------------------------------------------------------
 
-prop_dropSpace xs = dropWhile isSpace xs == unpack (P.dropSpace (pack xs))
+prop_dropSpace xs    = dropWhile isSpace xs == unpack (P.dropSpace (pack xs))
+prop_dropSpaceEnd xs = (P.reverse . (P.dropWhile isSpace) . P.reverse) (pack xs) == 
+                       (P.dropSpaceEnd (pack xs))
 
 prop_breakSpace xs = (let (x,y) = P.breakSpace (pack xs)
                       in (unpack x, unpack y)) == (break isSpace xs)
@@ -260,6 +262,7 @@ main = do
         ,   run prop_elemIndexLast2
         ,   run prop_words'
         ,   run prop_lines'
+        ,   run prop_dropSpaceEnd
         ]
 
 instance Arbitrary Char where

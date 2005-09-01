@@ -114,6 +114,7 @@ module Data.FastPackedString (
         breakFirst,   -- :: Char -> PackedString -> Maybe (PackedString,PackedString)
         breakLast,    -- :: Char -> PackedString -> Maybe (PackedString,PackedString)
         dropSpace,    -- :: PackedString -> PackedString
+        dropSpaceEnd, -- :: PackedString -> PackedString
         spanEnd,      -- :: (Char -> Bool) -> PackedString -> (PackedString, PackedString)
         split,        -- :: Char -> PackedString -> [PackedString]
         tokens,       -- :: (Char -> Bool) -> PackedString -> [PackedString]
@@ -404,6 +405,8 @@ foldr1 f ps
     | length ps == 1 = head1 ps
     | otherwise      = f (head1 ps) (foldr1 f (tail1 ps))
 
+-- unfoldr
+
 -- | Applied to a predicate and a packed string, 'any' determines if
 -- any element of the 'PackedString' satisfies the predicate.
 any :: (Char -> Bool) -> PackedString -> Bool
@@ -636,8 +639,9 @@ tail1 (PS ps s l)
 ------------------------------------------------------------------------
 -- Extensions to the list interface
 
--- | 'dropWhite' returns the 'PackedString' argument with white space
--- removed from the front. I.e.
+-- | 'dropSpace' efficiently returns the 'PackedString' argument with
+-- white space removed from the front. It is more efficient than calling
+-- dropWhile for removing whitespace. I.e.
 -- 
 -- > dropWhile isSpace == dropSpace
 --
@@ -646,6 +650,17 @@ dropSpace (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> do
     let i = c_firstnonspace (p `plusPtr` s) l
     return $ if i == l then empty else PS x (s+i) (l-i)
 {-# INLINE dropSpace #-}
+
+-- | 'dropSpaceEnd' efficiently returns the 'PackedString' argument with
+-- white space removed from the end. I.e.
+-- 
+-- > reverse . (dropWhile isSpace) . reverse == dropSpaceEnd
+--
+dropSpaceEnd :: PackedString -> PackedString
+dropSpaceEnd (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> do
+    let i = c_lastnonspace (p `plusPtr` s) l
+    return $ if i == (-1) then empty else PS x s (i+1)
+{-# INLINE dropSpaceEnd #-}
 
 -- | 'breakSpace' returns the pair of 'PackedString's when the argument
 -- is broken at the first whitespace character. I.e.
@@ -1252,6 +1267,9 @@ foreign import ccall unsafe "static fpstring.h utf8_to_ints" utf8_to_ints
     :: Ptr Int -> Ptr Word8 -> Int -> IO Int
 
 foreign import ccall unsafe "fpstring.h firstnonspace" c_firstnonspace
+    :: Ptr Word8 -> Int -> Int
+
+foreign import ccall unsafe "fpstring.h lastnonspace" c_lastnonspace
     :: Ptr Word8 -> Int -> Int
 
 foreign import ccall unsafe "fpstring.h firstspace" c_firstspace
