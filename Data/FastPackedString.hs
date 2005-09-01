@@ -16,7 +16,7 @@
 -- This module is intended to be imported @qualified@, to avoid name
 -- clashes with Prelude functions.  eg.
 --
--- >  import Data.FastPackedString as P
+-- >  import qualified Data.FastPackedString as P
 --
 -- Original GHC implementation by Bryan O\'Sullivan. Rewritten to use
 -- UArray by Simon Marlow. Rewritten to support slices and use
