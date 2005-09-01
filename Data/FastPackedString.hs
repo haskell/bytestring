@@ -428,7 +428,7 @@ foldr1 f ps
 --
 -- The following equation connects the depth-limited unfoldr to the List unfoldr:
 --
--- > unfoldr n f c == take n $ List.unfoldr f c
+-- > unfoldr n == take n $ List.unfoldr
 --
 unfoldr :: Int -> (Char -> Maybe (Char, Char)) -> Char -> PackedString
 unfoldr i f b = unsafePerformIO $ generate i $ \p -> go p b 0
@@ -512,7 +512,8 @@ reverse :: PackedString -> PackedString
 reverse (PS x s l) = createPS l $ \p -> withForeignPtr x $ \f -> 
         c_reverse p (f `plusPtr` s) l -- 99% less space, very much faster
 
--- | 'elem' is the 'PackedString' membership predicate.
+-- | 'elem' is the 'PackedString' membership predicate. This
+-- implementation uses @memchr(3)@.
 elem :: Char -> PackedString -> Bool
 elem c ps = case elemIndex c ps of
     Nothing -> False
