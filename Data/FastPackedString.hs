@@ -425,6 +425,10 @@ foldr1 f ps
 --
 -- > unfoldr 10 (\x -> Just (x, chr (ord x + 1))) '0' == "0123456789"
 --
+-- The following equation connects the depth-limited unfoldr to the List unfoldr:
+--
+-- > unfoldr n f c == take n $ List.unfoldr f c
+--
 unfoldr :: Int -> (Char -> Maybe (Char, Char)) -> Char -> PackedString
 unfoldr i f b = unsafePerformIO $ generate i $ \p -> go p b 0
     where
