@@ -1,3 +1,4 @@
+--
 -- Module      : FastPackedString
 -- Copyright   : (c) The University of Glasgow 2001,
 --               (c) David Roundy 2003-2005,
@@ -267,8 +268,6 @@ unpack (PS ps s l) = unsafePerformIO $ withForeignPtr ps $ \p ->
 -- | /O(n)/ Convert a '[Word8]' into a 'PackedString'
 packWords :: [Word8] -> PackedString
 packWords s = createPS (Prelude.length s) $ \p -> pokeArray p s
-
---  peekArray l (p `plusPtr` s)
 
 -- | /O(n)/ Convert a 'PackedString' to a '[Word8]'
 unpackWords :: PackedString -> [Word8]
