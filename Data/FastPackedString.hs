@@ -25,7 +25,7 @@
 --
 
 --
--- | An time and space-efficient implementation of strings as packed
+-- | A time and space-efficient implementation of strings as packed
 -- byte arrays.
 --
 -- This module is intended to be imported @qualified@, to avoid name
