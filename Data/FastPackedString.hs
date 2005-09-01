@@ -250,16 +250,25 @@ empty = unsafePerformIO $ mallocForeignPtr 1 >>= \fp -> return $ PS fp 0 0
 
 -- | /O(n)/ Convert a 'String' into a 'PackedString'
 pack :: String -> PackedString
-pack str = createPS (Prelude.length str) $ \p -> pokeArray p $ Prelude.map c2w str
+pack str = createPS (Prelude.length str) $ \p -> go p str
+    where
+        go _ []     = return ()    
+        go p (x:xs) = poke p (c2w x) >> go (p `plusPtr` 1) xs -- less space than pokeElemOff
+
+-- | /O(n)/ Convert a 'PackedString' into a 'String'
+unpack :: PackedString -> String
+unpack (PS _  _ 0) = []
+unpack (PS ps s l) = unsafePerformIO $ withForeignPtr ps $ \p -> 
+        go (p `plusPtr` s) (l - 1) []
+    where
+        go p 0 acc = liftM w2c (peekElemOff p 0) >>= \e -> return (e : acc)
+        go p n acc = liftM w2c (peekElemOff p n) >>= \e -> go p (n-1) (e : acc)
 
 -- | /O(n)/ Convert a '[Word8]' into a 'PackedString'
 packWords :: [Word8] -> PackedString
 packWords s = createPS (Prelude.length s) $ \p -> pokeArray p s
 
--- | /O(n)/ Convert a 'PackedString' into a 'String'
-unpack :: PackedString -> String
-unpack (PS ps s l) = Prelude.map w2c $ unsafePerformIO $ withForeignPtr ps $ \p -> 
-    peekArray l (p `plusPtr` s)
+--  peekArray l (p `plusPtr` s)
 
 -- | /O(n)/ Convert a 'PackedString' to a '[Word8]'
 unpackWords :: PackedString -> [Word8]
