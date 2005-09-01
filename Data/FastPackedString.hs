@@ -139,12 +139,12 @@ module Data.FastPackedString (
         ------------------------------------------------------------------------
 
         -- * I\/O with @PackedString@s
-        hGetPS,                 -- :: Handle -> Int -> IO PackedString
-        hPutPS,                 -- :: Handle -> PackedString -> IO ()
-        hGetContentsPS,         -- :: Handle -> IO PackedString
-        readFilePS,             -- :: FilePath -> IO PackedString
-        writeFilePS,            -- :: FilePath -> PackedString -> IO ()
-        mmapFilePS,             -- :: FilePath -> IO PackedString
+        hGet,                 -- :: Handle -> Int -> IO PackedString
+        hPut,                 -- :: Handle -> PackedString -> IO ()
+        hGetContents,         -- :: Handle -> IO PackedString
+        readFile,             -- :: FilePath -> IO PackedString
+        writeFile,            -- :: FilePath -> PackedString -> IO ()
+        mmapFile,             -- :: FilePath -> IO PackedString
 
         -- * Lower-level constructors
         generate,             -- :: Int -> (Ptr Word8 -> Int -> IO Int) -> IO PackedString
@@ -173,7 +173,7 @@ import Prelude hiding (reverse,head,tail,last,init,null,
                        concat,any,take,drop,splitAt,takeWhile,
                        dropWhile,span,break,elem,filter,unwords,
                        words,maximum,minimum,all,concatMap,
-                       foldl1,foldr1)
+                       foldl1,foldr1,readFile,writeFile)
 
 import qualified Data.List as List (intersperse,transpose)
 
@@ -186,7 +186,7 @@ import Data.Maybe               (listToMaybe)
 import Control.Monad            (when, liftM)
 import Control.Exception        (bracket)
 
-import System.IO
+import System.IO    hiding      (hGetContents,readFile,writeFile)
 import System.IO.Unsafe         (unsafePerformIO, unsafeInterleaveIO)
 import System.Mem               (performGC)
 
@@ -959,31 +959,31 @@ mallocForeignPtr l = when (l > 1000000) performGC >> mallocForeignPtrArray l
 -- be in the ISO-8859-1 encoding.  In other words, only the least signficant
 -- byte is taken from each character in the 'PackedString'.
 --
-hPutPS :: Handle -> PackedString -> IO ()
-hPutPS _ (PS _ _ 0)  = return ()
-hPutPS h (PS ps 0 l) = withForeignPtr ps $ \p-> hPutBuf h p l
-hPutPS h (PS ps s l) = withForeignPtr ps $ \p-> hPutBuf h (p `plusPtr` s) l
+hPut :: Handle -> PackedString -> IO ()
+hPut _ (PS _ _ 0)  = return ()
+hPut h (PS ps 0 l) = withForeignPtr ps $ \p-> hPutBuf h p l
+hPut h (PS ps s l) = withForeignPtr ps $ \p-> hPutBuf h (p `plusPtr` s) l
 
 -- | Read a 'PackedString' directly from the specified 'Handle'.  This
 -- is far more efficient than reading the characters into a 'String'
 -- and then using 'pack'.
 --
--- NOTE: as with 'hPutPS', the string representation in the file is
+-- NOTE: as with 'hPut', the string representation in the file is
 -- assumed to be ISO-8859-1.
 --
-hGetPS :: Handle -> Int -> IO PackedString
-hGetPS _ 0 = return empty
-hGetPS h i = do fp <- mallocForeignPtr i
-                l  <- withForeignPtr fp $ \p-> hGetBuf h p i
-                return $ PS fp 0 l
+hGet :: Handle -> Int -> IO PackedString
+hGet _ 0 = return empty
+hGet h i = do fp <- mallocForeignPtr i
+              l  <- withForeignPtr fp $ \p-> hGetBuf h p i
+              return $ PS fp 0 l
 
 -- | Read entire handle contents into a 'PackedString'.
 --
--- NOTE: as with 'hGetPS', the string representation in the file is
+-- NOTE: as with 'hGet', the string representation in the file is
 -- assumed to be ISO-8859-1.
 --
-hGetContentsPS :: Handle -> IO PackedString
-hGetContentsPS h = do 
+hGetContents :: Handle -> IO PackedString
+hGetContents h = do 
     let start_size = 1024
     p <- mallocArray start_size
     i <- hGetBuf h p start_size
@@ -1007,44 +1007,44 @@ hGetContentsPS h = do
 -- | Read an entire file directly into a 'PackedString'.  This is far more
 -- efficient than reading the characters into a 'String' and then using
 -- 'pack'.  It also may be more efficient than opening the file and
--- reading it using hGetPS.
+-- reading it using hGet.
 --
--- NOTE: as with 'hGetPS', the string representation in the file is
+-- NOTE: as with 'hGet', the string representation in the file is
 -- assumed to be ISO-8859-1.
 --
-readFilePS :: FilePath -> IO PackedString
-readFilePS f = do 
+readFile :: FilePath -> IO PackedString
+readFile f = do 
     h <- openBinaryFile f ReadMode
     l <- hFileSize h
-    s <- hGetPS h $ fromIntegral l
+    s <- hGet h $ fromIntegral l
     hClose h
     return s
 
 -- | Write a 'PackedString' to a file.
 --
-writeFilePS :: FilePath -> PackedString -> IO ()
-writeFilePS f ps = do 
+writeFile :: FilePath -> PackedString -> IO ()
+writeFile f ps = do 
     h <- openBinaryFile f WriteMode
-    hPutPS h ps
+    hPut h ps
     hClose h
 
--- | Like readFilePS, this reads an entire file directly into a
+-- | Like readFile, this reads an entire file directly into a
 -- 'PackedString', but it is even more efficient.  It involves directly
 -- mapping the file to memory.  This has the advantage that the contents
 -- of the file never need to be copied.  Also, under memory pressure the
--- page may simply be discarded, wile in the case of readFilePS it would
--- need to be written to swap.  If you read many small files, mmapFilePS
--- will be less memory-efficient than readFilePS, since each mmapFilePS
+-- page may simply be discarded, wile in the case of readFile it would
+-- need to be written to swap.  If you read many small files, mmapFile
+-- will be less memory-efficient than readFile, since each mmapFile
 -- takes up a separate page of memory.  Also, you can run into bus
--- errors if the file is modified.  NOTE: as with 'readFilePS', the
+-- errors if the file is modified.  NOTE: as with 'readFile', the
 -- string representation in the file is assumed to be ISO-8859-1.
 --
-mmapFilePS :: FilePath -> IO PackedString
-mmapFilePS f = 
+mmapFile :: FilePath -> IO PackedString
+mmapFile f = 
 #if defined(USE_MMAP)
    mmap f >>= \(fp,l) -> return $ PS fp 0 l
 #else
-   readFilePS f
+   readFile f
 #endif
 
 use_mmap :: Bool
@@ -1107,7 +1107,7 @@ readFileLazily :: FilePath -> IO LazyFile
 readFileLazily f =
 #if defined(__GLASGOW_HASKELL__)
     if use_mmap
-      then liftM MMappedPackedString (mmapFilePS f)
+      then liftM MMappedPackedString (mmapFile f)
       else
 #endif
            do h <- openBinaryFile f ReadMode
@@ -1140,10 +1140,10 @@ readHandleLazily h
 gzReadFile :: FilePath -> IO PackedString
 gzReadFile f = do
     h <- openBinaryFile f ReadMode
-    header <- hGetPS h 2
+    header <- hGet h 2
     if header /= pack "\31\139"
        then do hClose h
-               mmapFilePS f
+               mmapFile f
        else do hSeek h SeekFromEnd (-4)
                len <- hGetLittleEndInt h
                hClose h
@@ -1159,7 +1159,7 @@ gzReadFile f = do
 gzReadFileLazily :: FilePath -> IO LazyFile
 gzReadFileLazily f = do
     h <- openBinaryFile f ReadMode
-    header <- hGetPS h 2
+    header <- hGet h 2
     if header == pack "\31\139" then
         do hClose h
            withCString f $ \fstr-> withCString "rb" $ \rb-> do
@@ -1180,7 +1180,7 @@ gzReadFileLazily f = do
 #if defined(__GLASGOW_HASKELL__)
         else if use_mmap then
             do hClose h
-               liftM MMappedPackedString (mmapFilePS f)
+               liftM MMappedPackedString (mmapFile f)
 #endif
         else liftM (LazyPackedStrings . (header:)) $ readHandleLazily h
     where blocksize = 1024
