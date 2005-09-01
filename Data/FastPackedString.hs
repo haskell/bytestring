@@ -345,13 +345,13 @@ append xs ys
 -- element of @xs@, i.e.,
 map :: (Char -> Char) -> PackedString -> PackedString
 map k (PS ps s l) = createPS l $ \p -> withForeignPtr ps $ \f -> 
-        go (f `plusPtr` s) p l
+        go (f `plusPtr` s) p (f `plusPtr` s `plusPtr` l)
     where 
-        go :: Ptr Word8 -> Ptr Word8 -> Int -> IO ()
-        go _ _ 0    = return ()
-        go f t len  = do w <- peek f
-                         ((poke t) . c2w . k . w2c) w
-                         go (f `plusPtr` 1) (t `plusPtr` 1) (len - 1)
+        go :: Ptr Word8 -> Ptr Word8 -> Ptr Word8 -> IO ()
+        go f t p | f == p    = return ()
+                 | otherwise = do w <- peek f
+                                  ((poke t) . c2w . k . w2c) w
+                                  go (f `plusPtr` 1) (t `plusPtr` 1) p
 
 -- | /O(n)/ 'filter', applied to a predicate and a packed string,
 -- returns a packed string containing those characters that satisfy the
