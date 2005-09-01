@@ -69,6 +69,9 @@ module Data.FastPackedString (
         maximum,      -- :: PackedString -> Char
         minimum,      -- :: PackedString -> Char
 
+        -- ** Unfolding
+        unfoldr,      -- :: (Char -> Maybe (Char, Char)) -> Char -> PackedString
+
         -- * Substrings
         take,         -- :: Int -> PackedString -> PackedString
         drop,         -- :: Int -> PackedString -> PackedString
@@ -405,7 +408,32 @@ foldr1 f ps
     | length ps == 1 = head1 ps
     | otherwise      = f (head1 ps) (foldr1 f (tail1 ps))
 
--- unfoldr
+-- | The 'unfoldr' function is analogous to the List \'unfoldr\'.
+-- 'unfoldr' builds a PackedString from a seed value.  The function
+-- takes the element and returns 'Nothing' if it is done producing the
+-- PackedString or returns 'Just' @(a,b)@, in which case, @a@ is a
+-- prepending to the PackedString and @b@ is used as the next element in
+-- a recursive call.
+--
+-- As prepending a character to a PackedString is /O(n)/, for reasonable
+-- efficiency unfoldr for PackedStrings requires a maximum final size of
+-- the PackedString as an argument, making 'cons' an /O(1)/ operation
+-- (i.e.  a 'poke'). The depth of the recursion is limited to this size,
+-- but may be less. For lazy, infinite unfoldr, use 'Data.List.unfoldr'.
+--
+-- Examples:
+--
+-- > unfoldr 10 (\x -> Just (x, chr (ord x + 1))) '0' == "0123456789"
+--
+unfoldr :: Int -> (Char -> Maybe (Char, Char)) -> Char -> PackedString
+unfoldr i f b = unsafePerformIO $ generate i $ \p -> go p b 0
+    where
+        go q c n | n == i    = return n      -- stop if we reach `i'
+                 | otherwise = case f c of
+                                   Nothing        -> return n
+                                   Just (a,new_c) -> do 
+                                        poke q (c2w a)
+                                        go (q `plusPtr` 1) new_c (n+1)
 
 -- | Applied to a predicate and a packed string, 'any' determines if
 -- any element of the 'PackedString' satisfies the predicate.
