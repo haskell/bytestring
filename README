@@ -32,3 +32,17 @@ Authors:
     originallly written by Bryan O'Sullivan, and then by Simon Marlow.
     It was adapted, and greatly extended for darcs by David Roundy, and
     others. Don Stewart cleaned up and extended the implementation.
+
+------------------------------------------------------------------------
+
+Performance:
+
+This table compares the performance of common operations in both
+PackedString and FastPackedString, on 1M of data:
+
+function:   FastPackedString        PackedString
+pack        21M, 0.08 secs          24M, 0.08 secs
+
+unpack . pack
+            40M, 0.14 secs          80M, 0.26 secs
+
