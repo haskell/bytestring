@@ -8,7 +8,7 @@ import Data.Char
 import Data.List
 import Data.Maybe
 
-import Data.FastPackedString (pack,unpack,mmapFilePS)
+import Data.FastPackedString (pack,unpack,mmapFile)
 import qualified Data.FastPackedString as P
 
 import TestFramework
@@ -21,9 +21,9 @@ import qualified Control.Exception
 
 ------------------------------------------------------------------------
     
-pstr = unsafePerformIO $ mmapFilePS "data"
+pstr = unsafePerformIO $ mmapFile "data"
 {-# NOINLINE pstr #-}
-qstr = unsafePerformIO $ mmapFilePS "Makefile"
+qstr = unsafePerformIO $ mmapFile "Makefile"
 {-# NOINLINE qstr #-}
 str  = unsafePerformIO $ readFile "data"
 {-# NOINLINE str #-}
