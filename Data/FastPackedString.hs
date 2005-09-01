@@ -415,8 +415,8 @@ foldr1 f ps
 -- prepending to the PackedString and @b@ is used as the next element in
 -- a recursive call.
 --
--- To preven unfoldr having O(n^2) complexity (as prepending a character
--- to a PackedString is /O(n)/), this unfoldr requires a maximum final
+-- To preven unfoldr having /O(n^2)/ complexity (as prepending a character
+-- to a PackedString is /O(n))/, this unfoldr requires a maximum final
 -- size of the PackedString as an argument. 'cons' can then be
 -- implemented in /O(1)/ (i.e.  a 'poke'), and the unfoldr itself has
 -- linear complexity. The depth of the recursion is limited to this
