@@ -618,13 +618,15 @@ findIndices p ps = loop 0 ps
        loop n ps' | p (head1 ps') = n : loop (n + 1) (tail1 ps')
                   | otherwise     = loop (n + 1) (tail1 ps')
 
--- | A variety of 'head' for non-empty 'packedString's.
+-- | A variety of 'head' for non-empty PackedStrings. 'head1' omits the
+-- check for the empty case.
 head1 :: PackedString -> Char
 head1 (PS x s _) = w2c $ unsafePerformIO $ 
     withForeignPtr x $ \p -> peekElemOff p s
 {-# INLINE head1 #-}
 
--- | A variety of 'tail' for non-empty 'packedString's
+-- | A variety of 'tail' for non-empty PackedStrings. 'tail1' omits the
+-- check for the empty case.
 tail1 :: PackedString -> PackedString
 tail1 (PS ps s l)
     | l == 1    = empty
