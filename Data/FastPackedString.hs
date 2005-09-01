@@ -55,7 +55,7 @@ module Data.FastPackedString (
         transpose,    -- :: [PackedString] -> [PackedString]
         join,         -- :: PackedString -> [PackedString] -> PackedString
 
-        -- * Reducing 'PackedString'
+        -- * Reducing 'PackedString's
         foldl,        -- :: (a -> Char -> a) -> a -> PackedString -> a
         foldr,        -- :: (Char -> a -> a) -> a -> PackedString -> a
         foldl1,       -- :: (Char -> Char -> Char) -> PackedString -> Char
