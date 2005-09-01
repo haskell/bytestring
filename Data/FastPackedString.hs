@@ -507,7 +507,7 @@ span  p ps = break (not . p) ps
 break :: (Char -> Bool) -> PackedString -> (PackedString, PackedString)
 break p ps = case findIndexOrEndPS p ps of n -> (take n ps, drop n ps)
 
--- | 'reverse' @xs@ returns the elements of @xs@ in reverse order.
+-- | /O(n)/ 'reverse' @xs@ efficiently returns the elements of @xs@ in reverse order.
 reverse :: PackedString -> PackedString
 reverse (PS x s l) = createPS l $ \p -> withForeignPtr x $ \f -> 
         c_reverse p (f `plusPtr` s) l -- 99% less space, very much faster
