@@ -38,11 +38,45 @@ Authors:
 Performance:
 
 This table compares the performance of common operations in both
-PackedString and FastPackedString, on 1M of data:
+PackedString and FastPackedString, on various packed strings.
 
-function:   FastPackedString        PackedString
-pack        21M, 0.08 secs          24M, 0.08 secs
+Remember that the actual packed strings are allocated in C land, and
+aren't measured in the FastPackedString space usage.
 
-unpack . pack
-            40M, 0.14 secs          80M, 0.26 secs
+Input size:     128k (hGetBuf has stack overflow with 1M data):
+input style:    mmapFile           hGetBuf
+
+Operation:       FastPackedString   PackedString
+    ==               6k, 0.00 s     11M, 0.14 s
+    compare          6k, 0.00 s     11M, 0.12 s
+    length           6k, 0.00 s      7M, 0.12 s
+    cons           137k, 0.00 s     16M, 0.16 s
+    head             6k, 0.00 s      7M, 0.12 s
+    tail             6k, 0.00 s     16M, 0.18 s
+    append           6k, 0.00 s     31M, 0.22 s
+    index            6k, 0.00 s      7M, 0.12 s
+    map toUpper      4M, 0.04 s     17M, 0.16 s
+    filter (=='a')   2M, 0.02 s     16M, 0.10 s
+   foldl (\x _->x+1) 4M, 0.04 s     15M, 0.12 s
+   foldr (\_ x->x+1) 4M, 0.10 s     15M, 0.18 s
+    elem 'x'         6k, 0.00 s      8M, 0.08 s
+    lines          400k, 0.00 s     15M, 0.12 s
+    reverse        137k, 0.00 s     17M, 0.12 s
+
+1M Strings:
+    pack            21M, 0.08 s     24M, 0.08 s
+    unpack . pack   40M, 0.14 s     80M, 0.26 s
+
+Some operations on a big packed strings (FastPackedString only, see hGetBuf issue above):
+1G strings:
+    length           0.00s user 0.00s system 0% cpu 0.013 total
+    ==               0.76s user 3.80s system 5% cpu 1:26.86 total
+
+A 200M string:
+    reverse          0.41s user 0.77s system 3%  cpu 30.534 total
+    sort            15.04s user 3.74s system 34% cpu 54.737 total
+ 
+Downsides:
+    * only provides 8bit chars
+    * relies on (hopefully portable) C fragments (17%)
 
