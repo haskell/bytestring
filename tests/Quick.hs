@@ -159,12 +159,13 @@ prop_dropSpace xs = dropWhile isSpace xs == unpack (P.dropSpace (pack xs))
 prop_breakSpace xs = (let (x,y) = P.breakSpace (pack xs)
                       in (unpack x, unpack y)) == (break isSpace xs)
 
-prop_spanEnd xs = (P.spanEnd (not . isSpace) (pack xs)) ==
-                  (let (x,y) = P.span (not.isSpace) (P.reverse (pack xs)) 
-                   in (P.reverse y,P.reverse x))
+prop_spanEnd xs = 
+        (P.spanEnd (not . isSpace) (pack xs)) ==
+        (let (x,y) = P.span (not.isSpace) (P.reverse (pack xs)) in (P.reverse y,P.reverse x))
 
-prop_breakOn c xs = (break (==c) xs) == 
-                    (let (x,y) = P.breakOn c (pack xs) in (unpack x, unpack y))
+prop_breakOn c xs = 
+        (break (==c) xs) == 
+        (let (x,y) = P.breakOn c (pack xs) in (unpack x, unpack y))
 
 prop_split xs = (map unpack (P.split '\n' (pack xs))) == lines xs
 
@@ -177,6 +178,10 @@ prop_breakLast c xs = (let (x,y) = break (==c) (reverse xs)
                        in if null y then Nothing
                                     else Just (pack (reverse $ drop 1 y), pack (reverse x))) ==
                        (P.breakLast c (pack xs))
+
+prop_words' xs = (unpack . P.unwords  . P.words' . pack) xs == 
+                 (map (\c -> if isSpace c then ' ' else c) xs)
+prop_lines' xs = (unpack . P.unlines' . P.lines' . pack) xs == (xs)
 
 ------------------------------------------------------------------------
 
@@ -253,6 +258,8 @@ main = do
         ,   run prop_breakLast
         ,   run prop_elemIndexLast1
         ,   run prop_elemIndexLast2
+        ,   run prop_words'
+        ,   run prop_lines'
         ]
 
 instance Arbitrary Char where
