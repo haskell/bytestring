@@ -408,18 +408,19 @@ foldr1 f ps
     | length ps == 1 = head1 ps
     | otherwise      = f (head1 ps) (foldr1 f (tail1 ps))
 
--- | The 'unfoldr' function is analogous to the List \'unfoldr\'.
+-- | /O(n)/ The 'unfoldr' function is analogous to the List \'unfoldr\'.
 -- 'unfoldr' builds a PackedString from a seed value.  The function
 -- takes the element and returns 'Nothing' if it is done producing the
 -- PackedString or returns 'Just' @(a,b)@, in which case, @a@ is a
 -- prepending to the PackedString and @b@ is used as the next element in
 -- a recursive call.
 --
--- As prepending a character to a PackedString is /O(n)/, for reasonable
--- efficiency unfoldr for PackedStrings requires a maximum final size of
--- the PackedString as an argument, making 'cons' an /O(1)/ operation
--- (i.e.  a 'poke'). The depth of the recursion is limited to this size,
--- but may be less. For lazy, infinite unfoldr, use 'Data.List.unfoldr'.
+-- To preven unfoldr having O(n^2) complexity (as prepending a character
+-- to a PackedString is /O(n)/), this unfoldr requires a maximum final
+-- size of the PackedString as an argument. 'cons' can then be
+-- implemented in /O(1)/ (i.e.  a 'poke'), and the unfoldr itself has
+-- linear complexity. The depth of the recursion is limited to this
+-- size, but may be less. For lazy, infinite unfoldr, use 'Data.List.unfoldr'.
 --
 -- Examples:
 --
