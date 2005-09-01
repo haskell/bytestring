@@ -185,6 +185,10 @@ prop_words' xs = (unpack . P.unwords  . P.words' . pack) xs ==
                  (map (\c -> if isSpace c then ' ' else c) xs)
 prop_lines' xs = (unpack . P.unlines' . P.lines' . pack) xs == (xs)
 
+prop_unfoldr c =
+    (P.unfoldr 100 (\x -> Just (x, chr (ord x + 1))) c) ==
+    (pack $ take 100 $ unfoldr (\x -> Just (x, chr (ord x + 1))) c)
+
 ------------------------------------------------------------------------
 
 main = do
@@ -263,6 +267,7 @@ main = do
         ,   run prop_words'
         ,   run prop_lines'
         ,   run prop_dropSpaceEnd
+        ,   run prop_unfoldr
         ]
 
 instance Arbitrary Char where
