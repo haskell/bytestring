@@ -30,10 +30,10 @@ prop_cons2 xs c = c : xs == unpack (c `P.cons` (pack xs))
 prop_snoc1 xs c = xs ++ [c] == unpack ((pack xs) `P.snoc` c)
 
 prop_head xs     = (not (null xs)) ==> head  xs  == (P.head . pack) xs
-prop_head1 xs    = (not (null xs)) ==> head xs == (P.head1 . pack) xs
+prop_head1 xs    = (not (null xs)) ==> head xs == (P.unsafeHead . pack) xs
 
 prop_tail xs     = (not (null xs)) ==> tail xs    == (unpack . P.tail . pack) xs
-prop_tail1 xs    = (not (null xs)) ==> tail xs    == (unpack . P.tail1. pack) xs
+prop_tail1 xs    = (not (null xs)) ==> tail xs    == (unpack . P.unsafeTail. pack) xs
 
 prop_init xs     = 
     (not (null xs)) ==>
