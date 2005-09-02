@@ -146,7 +146,7 @@ module Data.FastPackedString (
         construct,            -- :: (Ptr Word8) -> Int -> IO () -> IO FastString
 #endif
         mallocCString2FastString, -- :: CString -> IO FastString
-        withCString,          -- :: FastString -> (CString -> IO a) -> IO a
+        useAsCString,         -- :: FastString -> (CString -> IO a) -> IO a
         unpackFromUTF8,       -- :: FastString -> String
 
         -- * Extensions to the I\/O interface
@@ -186,7 +186,7 @@ import System.Mem               (performGC)
 
 import Foreign.Ptr              (Ptr, FunPtr, plusPtr, nullPtr, minusPtr, castPtr)
 import Foreign.ForeignPtr       (newForeignPtr, withForeignPtr, mallocForeignPtrArray, ForeignPtr)
-import Foreign.Storable         (peekElemOff, peek, poke)
+import Foreign.Storable         (peekByteOff, peek, poke)
 import Foreign.C.String         (CString)
 import Foreign.C.Types          (CSize, CInt)
 import Foreign.Marshal.Alloc    (free)
@@ -202,6 +202,16 @@ import System.Posix             (handleToFd)
 
 #if !defined(USE_MMAP)
 import System.IO.Unsafe         (unsafeInterleaveIO)
+#endif
+
+#if defined(__GLASGOW_HASKELL__)
+import GHC.Base (unsafeChr)
+
+import GHC.Ptr  (Ptr(..))
+import GHC.ST
+import GHC.Prim
+import GHC.Base (Int(..), Char(..))
+import Control.Monad.ST
 #endif
 
 -- -----------------------------------------------------------------------------
@@ -252,10 +262,23 @@ empty = unsafePerformIO $ mallocForeignPtr 1 >>= \fp -> return $ PS fp 0 0
 
 -- | /O(n)/ Convert a 'String' into a 'FastString'
 pack :: String -> FastString
+#if !defined(__GLASGOW_HASKELL__)
+
 pack str = createPS (Prelude.length str) $ \p -> go p str
     where
         go _ []     = return ()    
         go p (x:xs) = poke p (c2w x) >> go (p `plusPtr` 1) xs -- less space than pokeElemOff
+
+#else /* hack away */
+
+pack str = createPS (Prelude.length str) $ \(Ptr p) -> stToIO (go p 0# str)
+    where
+        go _ _ []        = return ()
+        go p i (C# c:cs) = writeByte p i c >> go p (i +# 1#) cs
+
+        writeByte p i c = ST $ \s# -> 
+            case writeCharOffAddr# p i c s# of s2# -> (# s2#, () #)
+#endif
 
 -- | /O(n)/ Convert a 'FastString' into a 'String'
 unpack :: FastString -> String
@@ -263,8 +286,8 @@ unpack (PS _  _ 0) = []
 unpack (PS ps s l) = unsafePerformIO $ withForeignPtr ps $ \p -> 
         go (p `plusPtr` s) (l - 1) []
     where
-        go p 0 acc = liftM w2c (peekElemOff p 0) >>= \e -> return (e : acc)
-        go p n acc = liftM w2c (peekElemOff p n) >>= \e -> go p (n-1) (e : acc)
+        go p 0 acc = liftM w2c (peekByteOff p 0) >>= \e -> return (e : acc)
+        go p n acc = liftM w2c (peekByteOff p n) >>= \e -> go p (n-1) (e : acc)
 
 -- | /O(n)/ Convert a '[Word8]' into a 'FastString'
 packWords :: [Word8] -> FastString
@@ -275,7 +298,7 @@ unpackWords :: FastString -> [Word8]
 unpackWords ps@(PS x s _)
     | null ps     = []
     | otherwise     =
-        (unsafePerformIO $ withForeignPtr x $ \p -> peekElemOff p s) 
+        (unsafePerformIO $ withForeignPtr x $ \p -> peekByteOff p s) 
             : unpackWords (unsafeTail ps)
 
 -- -----------------------------------------------------------------------------
@@ -297,7 +320,7 @@ snoc (PS x s l) c = createPS (l+1) $ \p -> withForeignPtr x $ \f -> do
 head :: FastString -> Char
 head ps@(PS x s _)        -- ps ! 0 is inlined manually to eliminate a (+0)
   | null ps   = errorEmptyList "head"
-  | otherwise = w2c $ unsafePerformIO $ withForeignPtr x $ \p -> peekElemOff p s
+  | otherwise = w2c $ unsafePerformIO $ withForeignPtr x $ \p -> peekByteOff p s
 {-# INLINE head #-}
 
 -- | /O(1)/ Extract the elements after the head of a packed string, which must be non-empty.
@@ -313,7 +336,7 @@ last :: FastString -> Char
 last ps@(PS x s l)        -- ps ! 0 is inlined manually to eliminate a (+0)
   | null ps   = errorEmptyList "last"
   | otherwise = w2c $ unsafePerformIO $ 
-        withForeignPtr x $ \p -> peekElemOff p (s+l-1)
+        withForeignPtr x $ \p -> peekByteOff p (s+l-1)
 {-# INLINE last #-}
 
 -- | /O(1)/ Return all the elements of a 'FastString' except the last one.
@@ -889,7 +912,7 @@ unwords' = unwords
 -- to provide a proof that the FastString is non-empty.
 unsafeHead :: FastString -> Char
 unsafeHead (PS x s _) = w2c $ unsafePerformIO $ 
-    withForeignPtr x $ \p -> peekElemOff p s
+    withForeignPtr x $ \p -> peekByteOff p s
 {-# INLINE unsafeHead #-}
 
 -- | A variety of 'tail' for non-empty FastStrings. 'unsafeTail' omits the
@@ -905,7 +928,11 @@ unsafeTail (PS ps s l)
 -- (Internal) Conversion between 'Word8' and 'Char'
 
 w2c :: Word8 -> Char
+#if !defined(__GLASGOW_HASKELL__)
 w2c = chr . fromIntegral
+#else
+w2c = unsafeChr . fromIntegral
+#endif
 {-# INLINE w2c #-}
 
 c2w :: Char -> Word8
@@ -928,14 +955,14 @@ elemIndexLastWord8 c (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p ->
         go (-1) (p `plusPtr` s) 0
     where 
         go h p i | i >= l    = return $ if h < 0 then Nothing else Just h
-                 | otherwise = do here <- peekElemOff p i
+                 | otherwise = do here <- peekByteOff p i
                                   go (if c == here then i else h) p (i+1)
 {-# INLINE elemIndexLastWord8 #-}
 
 -- (Internal) unsafe 'FastString' index (subscript) operator, starting
 -- from 0, returning a 'Word8'
 (!) :: FastString -> Int -> Word8
-(PS x s _l) ! i = unsafePerformIO $ withForeignPtr x $ \p -> peekElemOff p (s+i)
+(PS x s _l) ! i = unsafePerformIO $ withForeignPtr x $ \p -> peekByteOff p (s+i)
 {-# INLINE (!) #-}
 
 -- (Internal) 'findIndexOrEndPS' is a variant of findIndex, that returns the
@@ -1010,8 +1037,8 @@ mallocCString2FastString cs = do
     return $ PS fp 0 (fromIntegral l)
 
 -- | Use a @FastString@ with a function requiring a @CString@
-withCString :: FastString -> (CString -> IO a) -> IO a
-withCString (PS ps s l) = bracket alloc free_cstring
+useAsCString :: FastString -> (CString -> IO a) -> IO a
+useAsCString (PS ps s l) = bracket alloc free_cstring
     where 
       alloc = withForeignPtr ps $ \p -> do 
                 buf <- c_malloc (fromIntegral l+1)
