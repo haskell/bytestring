@@ -26,136 +26,137 @@
 
 module Data.FastPackedString (
 
-        -- * The @Packed@ type
-        Packed, -- abstract, instances: Eq, Ord, Show, Typeable
+        -- * The @FastString@ type
+        FastString, -- abstract, instances: Eq, Ord, Show, Typeable
 
-        -- * Introducing and eliminating 'Packed's
-        empty,        -- :: Packed
-        pack,         -- :: String -> Packed
-        unpack,       -- :: Packed -> String
-        packWords,    -- :: [Word8] -> Packed
-        unpackWords,  -- :: Packed -> [Word8]
+        -- * Introducing and eliminating 'FastString's
+        empty,        -- :: FastString
+        pack,         -- :: String -> FastString
+        unpack,       -- :: FastString -> String
+        packWords,    -- :: [Word8] -> FastString
+        unpackWords,  -- :: FastString -> [Word8]
 
         -- * Basic list-like interface
-        cons,         -- :: Char -> Packed -> Packed
-        snoc,         -- :: Packed -> Char -> Packed
-        append,       -- :: Packed -> Packed -> Packed
-        head,         -- :: Packed -> Char
-        tail,         -- :: Packed -> Packed
-        last,         -- :: Packed -> Char
-        init,         -- :: Packed -> Packed
-        null,         -- :: Packed -> Bool
-        length,       -- :: Packed -> Int
-        head1,        -- :: Packed -> Char
-        tail1,        -- :: Packed -> Packed
+        cons,         -- :: Char -> FastString -> FastString
+        snoc,         -- :: FastString -> Char -> FastString
+        append,       -- :: FastString -> FastString -> FastString
+        head,         -- :: FastString -> Char
+        tail,         -- :: FastString -> FastString
+        last,         -- :: FastString -> Char
+        init,         -- :: FastString -> FastString
+        null,         -- :: FastString -> Bool
+        length,       -- :: FastString -> Int
 
         -- * List transformations
-        map,          -- :: (Char -> Char) -> Packed -> Packed
-        reverse,      -- :: Packed -> Packed
-        intersperse,  -- :: Char -> Packed -> Packed
-        transpose,    -- :: [Packed] -> [Packed]
-        join,         -- :: Packed -> [Packed] -> Packed
+        map,          -- :: (Char -> Char) -> FastString -> FastString
+        reverse,      -- :: FastString -> FastString
+        intersperse,  -- :: Char -> FastString -> FastString
+        transpose,    -- :: [FastString] -> [FastString]
+        join,         -- :: FastString -> [FastString] -> FastString
 
-        -- * Reducing 'Packed's
-        foldl,        -- :: (a -> Char -> a) -> a -> Packed -> a
-        foldr,        -- :: (Char -> a -> a) -> a -> Packed -> a
-        foldl1,       -- :: (Char -> Char -> Char) -> Packed -> Char
-        foldr1,       -- :: (Char -> Char -> Char) -> Packed -> Char
+        -- * Reducing 'FastString's
+        foldl,        -- :: (a -> Char -> a) -> a -> FastString -> a
+        foldr,        -- :: (Char -> a -> a) -> a -> FastString -> a
+        foldl1,       -- :: (Char -> Char -> Char) -> FastString -> Char
+        foldr1,       -- :: (Char -> Char -> Char) -> FastString -> Char
 
         -- ** Special folds
-        concat,       -- :: [Packed] -> Packed
-        concatMap,    -- :: (Char -> Packed) -> Packed -> Packed
-        any,          -- :: (Char -> Bool) -> Packed -> Bool
-        all,          -- :: (Char -> Bool) -> Packed -> Bool
-        maximum,      -- :: Packed -> Char
-        minimum,      -- :: Packed -> Char
+        concat,       -- :: [FastString] -> FastString
+        concatMap,    -- :: (Char -> FastString) -> FastString -> FastString
+        any,          -- :: (Char -> Bool) -> FastString -> Bool
+        all,          -- :: (Char -> Bool) -> FastString -> Bool
+        maximum,      -- :: FastString -> Char
+        minimum,      -- :: FastString -> Char
 
         -- ** Unfolding
-        unfoldr,      -- :: (Char -> Maybe (Char, Char)) -> Char -> Packed
+        unfoldr,      -- :: (Char -> Maybe (Char, Char)) -> Char -> FastString
 
         -- * Substrings
-        take,         -- :: Int -> Packed -> Packed
-        drop,         -- :: Int -> Packed -> Packed
-        splitAt,      -- :: Int -> Packed -> (Packed, Packed)
+        take,         -- :: Int -> FastString -> FastString
+        drop,         -- :: Int -> FastString -> FastString
+        splitAt,      -- :: Int -> FastString -> (FastString, FastString)
 
-        takeWhile,    -- :: (Char -> Bool) -> Packed -> Packed
-        dropWhile,    -- :: (Char -> Bool) -> Packed -> Packed
-        span,         -- :: (Char -> Bool) -> Packed -> (Packed, Packed)
-        break,        -- :: (Char -> Bool) -> Packed -> (Packed, Packed)
+        takeWhile,    -- :: (Char -> Bool) -> FastString -> FastString
+        dropWhile,    -- :: (Char -> Bool) -> FastString -> FastString
+        span,         -- :: (Char -> Bool) -> FastString -> (FastString, FastString)
+        break,        -- :: (Char -> Bool) -> FastString -> (FastString, FastString)
 
-        -- * Searching 'Packed's
+        -- * Searching 'FastString's
 
         -- ** Searching by equality
-        elem,         -- :: Char -> Packed -> Bool
+        elem,         -- :: Char -> FastString -> Bool
 
         -- ** Searching with a predicate
-        filter,       -- :: (Char -> Bool) -> Packed -> Packed
-        find,         -- :: (Char -> Bool) -> Packed -> Maybe Char
+        filter,       -- :: (Char -> Bool) -> FastString -> FastString
+        find,         -- :: (Char -> Bool) -> FastString -> Maybe Char
 
-        -- * Indexing 'Packed's
-        index,        -- :: Packed -> Int -> Char
-        elemIndex,    -- :: Char -> Packed -> Maybe Int
-        elemIndices,  -- :: Char -> Packed -> [Int]
+        -- * Indexing 'FastString's
+        index,        -- :: FastString -> Int -> Char
+        elemIndex,    -- :: Char -> FastString -> Maybe Int
+        elemIndices,  -- :: Char -> FastString -> [Int]
 
-        findIndex,    -- :: (Char -> Bool) -> Packed -> Maybe Int
-        findIndices,  -- :: (Char -> Bool) -> Packed -> [Int]
+        findIndex,    -- :: (Char -> Bool) -> FastString -> Maybe Int
+        findIndices,  -- :: (Char -> Bool) -> FastString -> [Int]
 
-        -- * Special 'Packed's
+        -- * Special 'FastString's
 
         -- ** Lines and words
-        lines,        -- :: Packed -> [Packed]
-        words,        -- :: Packed -> [Packed]
-        unlines,      -- :: [Packed] -> Packed
-        unwords,      -- :: Packed -> [Packed]
+        lines,        -- :: FastString -> [FastString]
+        words,        -- :: FastString -> [FastString]
+        unlines,      -- :: [FastString] -> FastString
+        unwords,      -- :: FastString -> [FastString]
 
-        -- ** Ordered 'Packed's
-        sort,         -- :: Packed -> Packed
+        -- ** Ordered 'FastString's
+        sort,         -- :: FastString -> FastString
 
         -- * Extensions to the list interface
-        breakOn,      -- :: Char -> Packed -> (Packed, Packed)
-        breakSpace,   -- :: Packed -> Maybe (Packed,Packed)
-        breakAll,     -- :: (Char -> Bool) -> Packed -> [Packed]
-        breakFirst,   -- :: Char -> Packed -> Maybe (Packed,Packed)
-        breakLast,    -- :: Char -> Packed -> Maybe (Packed,Packed)
-        dropSpace,    -- :: Packed -> Packed
-        dropSpaceEnd, -- :: Packed -> Packed
-        spanEnd,      -- :: (Char -> Bool) -> Packed -> (Packed, Packed)
-        split,        -- :: Char -> Packed -> [Packed]
-        tokens,       -- :: (Char -> Bool) -> Packed -> [Packed]
-        hash,         -- :: Packed -> Int32
-        elemIndexLast,-- :: Char -> Packed -> Maybe Int
-        betweenLines, -- :: Packed -> Packed -> Packed -> Maybe (Packed)
-        lines',       -- :: Packed -> [Packed]
-        unlines',     -- :: [Packed] -> Packed
-        words',       -- :: Packed -> [Packed]
+        breakOn,      -- :: Char -> FastString -> (FastString, FastString)
+        breakSpace,   -- :: FastString -> Maybe (FastString,FastString)
+        breakAll,     -- :: (Char -> Bool) -> FastString -> [FastString]
+        breakFirst,   -- :: Char -> FastString -> Maybe (FastString,FastString)
+        breakLast,    -- :: Char -> FastString -> Maybe (FastString,FastString)
+        dropSpace,    -- :: FastString -> FastString
+        dropSpaceEnd, -- :: FastString -> FastString
+        spanEnd,      -- :: (Char -> Bool) -> FastString -> (FastString, FastString)
+        split,        -- :: Char -> FastString -> [FastString]
+        tokens,       -- :: (Char -> Bool) -> FastString -> [FastString]
+        hash,         -- :: FastString -> Int32
+        elemIndexLast,-- :: Char -> FastString -> Maybe Int
+        betweenLines, -- :: FastString -> FastString -> FastString -> Maybe (FastString)
+        lines',       -- :: FastString -> [FastString]
+        unlines',     -- :: [FastString] -> FastString
+        words',       -- :: FastString -> [FastString]
+        unwords',     -- :: FastString -> [FastString]
+        unsafeHead,   -- :: FastString -> Char
+        unsafeTail,   -- :: FastString -> FastString
 
         ------------------------------------------------------------------------
 
-        -- * I\/O with @Packed@s
-        hGet,                 -- :: Handle -> Int -> IO Packed
-        hPut,                 -- :: Handle -> Packed -> IO ()
-        hGetContents,         -- :: Handle -> IO Packed
-        readFile,             -- :: FilePath -> IO Packed
-        writeFile,            -- :: FilePath -> Packed -> IO ()
-        mmapFile,             -- :: FilePath -> IO Packed
+        -- * I\/O with @FastString@s
+        hGet,                 -- :: Handle -> Int -> IO FastString
+        hPut,                 -- :: Handle -> FastString -> IO ()
+        hGetContents,         -- :: Handle -> IO FastString
+        readFile,             -- :: FilePath -> IO FastString
+        writeFile,            -- :: FilePath -> FastString -> IO ()
+        mmapFile,             -- :: FilePath -> IO FastString
 
         -- * Lower-level constructors
-        generate,             -- :: Int -> (Ptr Word8 -> Int -> IO Int) -> IO Packed
+        generate,             -- :: Int -> (Ptr Word8 -> Int -> IO Int) -> IO FastString
 #if defined(__GLASGOW_HASKELL__)
-        construct,            -- :: (Ptr Word8) -> Int -> IO () -> IO Packed
+        construct,            -- :: (Ptr Word8) -> Int -> IO () -> IO FastString
 #endif
-        mallocCString2Packed, -- :: CString -> IO Packed
-        withCString,          -- :: Packed -> (CString -> IO a) -> IO a
-        unpackFromUTF8,       -- :: Packed -> String
+        mallocCString2FastString, -- :: CString -> IO FastString
+        withCString,          -- :: FastString -> (CString -> IO a) -> IO a
+        unpackFromUTF8,       -- :: FastString -> String
 
         -- * Extensions to the I\/O interface
         LazyFile(..),
         readFileLazily,         -- :: FilePath -> IO LazyFile
 #if defined(USE_ZLIB)
-        gzReadFile,             -- :: FilePath -> IO Packed
-        gzWriteFile,            -- :: FilePath -> Packed -> IO ()
+        gzReadFile,             -- :: FilePath -> IO FastString
+        gzWriteFile,            -- :: FilePath -> FastString -> IO ()
         gzReadFileLazily,       -- :: FilePath -> IO LazyFile
-        gzWriteFilePSs,         -- :: FilePath -> [Packed] -> IO ()
+        gzWriteFilePSs,         -- :: FilePath -> [FastString] -> IO ()
 #endif
 
    ) where
@@ -206,32 +207,32 @@ import System.IO.Unsafe         (unsafeInterleaveIO)
 -- -----------------------------------------------------------------------------
 
 -- | A space-efficient representation of a 'String', which supports various
--- efficient operations.  A 'Packed' contains 8-bit characters only.
+-- efficient operations.  A 'FastString' contains 8-bit characters only.
 --
-data Packed = PS {-# UNPACK #-} !(ForeignPtr Word8) !Int !Int
+data FastString = PS {-# UNPACK #-} !(ForeignPtr Word8) !Int !Int
 
 ------------------------------------------------------------------------
 
-instance Eq  Packed 
+instance Eq  FastString 
     where (==)    = eqPS
 
-instance Ord Packed 
+instance Ord FastString 
     where compare = comparePS
 
-instance Show Packed where
+instance Show FastString where
     showsPrec p ps r = showsPrec p (unpack ps) r
 
 ------------------------------------------------------------------------
 
--- | /O(n)/ Equality on the 'Packed' type. This implementation
+-- | /O(n)/ Equality on the 'FastString' type. This implementation
 -- uses memcmp(3).
-eqPS :: Packed -> Packed -> Bool
+eqPS :: FastString -> FastString -> Bool
 eqPS a b = (comparePS a b) == EQ
 {-# INLINE eqPS #-}
 
--- | /O(n)/ 'comparePS' provides an 'Ordering' for 'Packeds' supporting slices. 
+-- | /O(n)/ 'comparePS' provides an 'Ordering' for 'FastStrings' supporting slices. 
 -- This implementation uses memcmp(3)
-comparePS :: Packed -> Packed -> Ordering
+comparePS :: FastString -> FastString -> Ordering
 comparePS (PS _ _ 0) (PS _ _ 0) = EQ    -- short cut for empty strings
 comparePS (PS x1 s1 l1) (PS x2 s2 l2) = unsafePerformIO $ 
     withForeignPtr x1 $ \p1 -> 
@@ -244,20 +245,20 @@ comparePS (PS x1 s1 l1) (PS x2 s2 l2) = unsafePerformIO $
 -- -----------------------------------------------------------------------------
 -- Constructing and destructing packed strings
 
--- | /O(1)/ The empty 'Packed'
-empty :: Packed
+-- | /O(1)/ The empty 'FastString'
+empty :: FastString
 empty = unsafePerformIO $ mallocForeignPtr 1 >>= \fp -> return $ PS fp 0 0
 {-# NOINLINE empty #-}
 
--- | /O(n)/ Convert a 'String' into a 'Packed'
-pack :: String -> Packed
+-- | /O(n)/ Convert a 'String' into a 'FastString'
+pack :: String -> FastString
 pack str = createPS (Prelude.length str) $ \p -> go p str
     where
         go _ []     = return ()    
         go p (x:xs) = poke p (c2w x) >> go (p `plusPtr` 1) xs -- less space than pokeElemOff
 
--- | /O(n)/ Convert a 'Packed' into a 'String'
-unpack :: Packed -> String
+-- | /O(n)/ Convert a 'FastString' into a 'String'
+unpack :: FastString -> String
 unpack (PS _  _ 0) = []
 unpack (PS ps s l) = unsafePerformIO $ withForeignPtr ps $ \p -> 
         go (p `plusPtr` s) (l - 1) []
@@ -265,42 +266,42 @@ unpack (PS ps s l) = unsafePerformIO $ withForeignPtr ps $ \p ->
         go p 0 acc = liftM w2c (peekElemOff p 0) >>= \e -> return (e : acc)
         go p n acc = liftM w2c (peekElemOff p n) >>= \e -> go p (n-1) (e : acc)
 
--- | /O(n)/ Convert a '[Word8]' into a 'Packed'
-packWords :: [Word8] -> Packed
+-- | /O(n)/ Convert a '[Word8]' into a 'FastString'
+packWords :: [Word8] -> FastString
 packWords s = createPS (Prelude.length s) $ \p -> pokeArray p s
 
--- | /O(n)/ Convert a 'Packed' to a '[Word8]'
-unpackWords :: Packed -> [Word8]
+-- | /O(n)/ Convert a 'FastString' to a '[Word8]'
+unpackWords :: FastString -> [Word8]
 unpackWords ps@(PS x s _)
     | null ps     = []
     | otherwise     =
         (unsafePerformIO $ withForeignPtr x $ \p -> peekElemOff p s) 
-            : unpackWords (tail1 ps)
+            : unpackWords (unsafeTail ps)
 
 -- -----------------------------------------------------------------------------
--- List-like functions for Packeds
+-- List-like functions for FastStrings
 
 -- | /O(n)/ 'cons' is analogous to (:) for lists. Requires a memcpy.
-cons :: Char -> Packed -> Packed
+cons :: Char -> FastString -> FastString
 cons c (PS x s l) = createPS (l+1) $ \p -> withForeignPtr x $ \f -> do
         c_memcpy (p `plusPtr` 1) (f `plusPtr` s) l  -- 99% less space
         poke p (c2w c)
 
--- | /O(n)/ Append a character to the end of a 'Packed'
-snoc :: Packed -> Char -> Packed
+-- | /O(n)/ Append a character to the end of a 'FastString'
+snoc :: FastString -> Char -> FastString
 snoc (PS x s l) c = createPS (l+1) $ \p -> withForeignPtr x $ \f -> do
         c_memcpy p (f `plusPtr` s) l
         poke (p `plusPtr` l) (c2w c)
 
 -- | /O(1)/ Extract the first element of a packed string, which must be non-empty.
-head :: Packed -> Char
+head :: FastString -> Char
 head ps@(PS x s _)        -- ps ! 0 is inlined manually to eliminate a (+0)
   | null ps   = errorEmptyList "head"
   | otherwise = w2c $ unsafePerformIO $ withForeignPtr x $ \p -> peekElemOff p s
 {-# INLINE head #-}
 
 -- | /O(1)/ Extract the elements after the head of a packed string, which must be non-empty.
-tail :: Packed -> Packed
+tail :: FastString -> FastString
 tail (PS p s l) 
     | l <= 0    = errorEmptyList "tail"
     | l == 1    = empty                                                                    
@@ -308,15 +309,15 @@ tail (PS p s l)
 {-# INLINE tail #-}
 
 -- | /O(1)/ Extract the last element of a packed string, which must be finite and non-empty.
-last :: Packed -> Char
+last :: FastString -> Char
 last ps@(PS x s l)        -- ps ! 0 is inlined manually to eliminate a (+0)
   | null ps   = errorEmptyList "last"
   | otherwise = w2c $ unsafePerformIO $ 
         withForeignPtr x $ \p -> peekElemOff p (s+l-1)
 {-# INLINE last #-}
 
--- | /O(1)/ Return all the elements of a 'Packed' except the last one.
-init :: Packed -> Packed
+-- | /O(1)/ Return all the elements of a 'FastString' except the last one.
+init :: FastString -> FastString
 init (PS p s l) 
     | l <= 0    = errorEmptyList "init"
     | l == 1    = empty                                                                    
@@ -324,17 +325,17 @@ init (PS p s l)
 {-# INLINE init #-}
 
 -- | /O(1)/ Test whether a packed string is empty.
-null :: Packed -> Bool
+null :: FastString -> Bool
 null (PS _ _ l) = l == 0
 {-# INLINE null #-}
 
 -- | /O(1)/ 'length' returns the length of a packed string as an 'Int'.
-length :: Packed -> Int
+length :: FastString -> Int
 length (PS _ _ l) = l
 {-# INLINE length #-}
 
 -- | /O(n)/ Append two packed strings
-append :: Packed -> Packed -> Packed
+append :: FastString -> FastString -> FastString
 append xs ys
     | null xs = ys
     | null ys = xs
@@ -343,7 +344,7 @@ append xs ys
 
 -- | /O(n)/ 'map' @f xs@ is the packed string obtained by applying @f@ to each
 -- element of @xs@, i.e.,
-map :: (Char -> Char) -> Packed -> Packed
+map :: (Char -> Char) -> FastString -> FastString
 map k (PS ps s l) = createPS l $ \p -> withForeignPtr ps $ \f -> 
         go (f `plusPtr` s) p (f `plusPtr` s `plusPtr` l)
     where 
@@ -356,7 +357,7 @@ map k (PS ps s l) = createPS l $ \p -> withForeignPtr ps $ \f ->
 -- | /O(n)/ 'filter', applied to a predicate and a packed string,
 -- returns a packed string containing those characters that satisfy the
 -- predicate.
-filter :: (Char -> Bool) -> Packed -> Packed
+filter :: (Char -> Bool) -> FastString -> FastString
 filter k ps@(PS x s l)
     | null ps   = ps
     | otherwise = unsafePerformIO $ generate l $ \p -> withForeignPtr x $ \f -> do
@@ -373,15 +374,15 @@ filter k ps@(PS x s l)
 -- | /O(n)/ The 'find' function takes a predicate and a packed string
 -- and returns the first element in matching the predicate, or 'Nothing'
 -- if there is no such element.
-find :: (Char -> Bool) -> Packed -> Maybe Char
+find :: (Char -> Bool) -> FastString -> Maybe Char
 find p ps = case filter p ps of
         p' | null p' -> Nothing
-           | otherwise -> Just (head1 p')
+           | otherwise -> Just (unsafeHead p')
 
 -- | 'foldl', applied to a binary operator, a starting value (typically
 -- the left-identity of the operator), and a packed string, reduces the
 -- packed string using the binary operator, from left to right.
-foldl :: (a -> Char -> a) -> a -> Packed -> a
+foldl :: (a -> Char -> a) -> a -> FastString -> a
 foldl f v (PS x s l) = unsafePerformIO $ withForeignPtr x $ \ptr ->
         lgo v (ptr `plusPtr` s) (ptr `plusPtr` (s+l))
     where
@@ -392,7 +393,7 @@ foldl f v (PS x s l) = unsafePerformIO $ withForeignPtr x $ \ptr ->
 -- | 'foldr', applied to a binary operator, a starting value
 -- (typically the right-identity of the operator), and a packed string,
 -- reduces the packed string using the binary operator, from right to left.
-foldr :: (Char -> a -> a) -> a -> Packed -> a
+foldr :: (Char -> a -> a) -> a -> FastString -> a
 foldr k z (PS x s l) = unsafePerformIO $ withForeignPtr x $ \ptr ->
         go (ptr `plusPtr` s) (ptr `plusPtr` (s+l))
     where
@@ -402,30 +403,30 @@ foldr k z (PS x s l) = unsafePerformIO $ withForeignPtr x $ \ptr ->
                                 return $ c `k` ws
 
 -- | 'foldl1' is a variant of 'foldl' that has no starting value
--- argument, and thus must be applied to non-empty 'Packeds'.
-foldl1 :: (Char -> Char -> Char) -> Packed -> Char
+-- argument, and thus must be applied to non-empty 'FastStrings'.
+foldl1 :: (Char -> Char -> Char) -> FastString -> Char
 foldl1 f ps
     | null ps   = errorEmptyList "foldl1"
-    | otherwise = foldl f (head1 ps) (tail1 ps)
+    | otherwise = foldl f (unsafeHead ps) (unsafeTail ps)
 
 -- | 'foldr1' is a variant of 'foldr' that has no starting value argument,
--- and thus must be applied to non-empty 'Packed's
-foldr1 :: (Char -> Char -> Char) -> Packed -> Char
+-- and thus must be applied to non-empty 'FastString's
+foldr1 :: (Char -> Char -> Char) -> FastString -> Char
 foldr1 f ps
     | null ps        = errorEmptyList "foldr1"
-    | length ps == 1 = head1 ps
-    | otherwise      = f (head1 ps) (foldr1 f (tail1 ps))
+    | length ps == 1 = unsafeHead ps
+    | otherwise      = f (unsafeHead ps) (foldr1 f (unsafeTail ps))
 
 -- | /O(n)/ The 'unfoldr' function is analogous to the List \'unfoldr\'.
--- 'unfoldr' builds a Packed from a seed value.  The function
+-- 'unfoldr' builds a FastString from a seed value.  The function
 -- takes the element and returns 'Nothing' if it is done producing the
--- Packed or returns 'Just' @(a,b)@, in which case, @a@ is a
--- prepending to the Packed and @b@ is used as the next element in
+-- FastString or returns 'Just' @(a,b)@, in which case, @a@ is a
+-- prepending to the FastString and @b@ is used as the next element in
 -- a recursive call.
 --
 -- To preven unfoldr having /O(n^2)/ complexity (as prepending a character
--- to a Packed is /O(n))/, this unfoldr requires a maximum final
--- size of the Packed as an argument. 'cons' can then be
+-- to a FastString is /O(n))/, this unfoldr requires a maximum final
+-- size of the FastString as an argument. 'cons' can then be
 -- implemented in /O(1)/ (i.e.  a 'poke'), and the unfoldr itself has
 -- linear complexity. The depth of the recursion is limited to this
 -- size, but may be less. For lazy, infinite unfoldr, use 'Data.List.unfoldr'.
@@ -438,7 +439,7 @@ foldr1 f ps
 --
 -- > unfoldr n == take n $ List.unfoldr
 --
-unfoldr :: Int -> (Char -> Maybe (Char, Char)) -> Char -> Packed
+unfoldr :: Int -> (Char -> Maybe (Char, Char)) -> Char -> FastString
 unfoldr i f b = unsafePerformIO $ generate i $ \p -> go p b 0
     where
         go q c n | n == i    = return n      -- stop if we reach `i'
@@ -449,8 +450,8 @@ unfoldr i f b = unsafePerformIO $ generate i $ \p -> go p b 0
                                         go (q `plusPtr` 1) new_c (n+1)
 
 -- | Applied to a predicate and a packed string, 'any' determines if
--- any element of the 'Packed' satisfies the predicate.
-any :: (Char -> Bool) -> Packed -> Bool
+-- any element of the 'FastString' satisfies the predicate.
+any :: (Char -> Bool) -> FastString -> Bool
 any f (PS x s l) = unsafePerformIO $ withForeignPtr x $ \ptr ->
         go (ptr `plusPtr` s) (ptr `plusPtr` (s+l))
     where 
@@ -459,9 +460,9 @@ any f (PS x s l) = unsafePerformIO $ withForeignPtr x $ \ptr ->
                                 if f c then return True
                                        else go (p `plusPtr` 1) q
 
--- | Applied to a predicate and a 'Packed', 'all' determines if
--- all elements of the 'Packed' satisfy the predicate.
-all :: (Char -> Bool) -> Packed -> Bool
+-- | Applied to a predicate and a 'FastString', 'all' determines if
+-- all elements of the 'FastString' satisfy the predicate.
+all :: (Char -> Bool) -> FastString -> Bool
 all f (PS x s l) = unsafePerformIO $ withForeignPtr x $ \ptr ->
         go (ptr `plusPtr` s) (ptr `plusPtr` (s+l))
     where 
@@ -474,18 +475,18 @@ all f (PS x s l) = unsafePerformIO $ withForeignPtr x $ \ptr ->
 -- | 'takeWhile', applied to a predicate @p@ and a packed string @xs@,
 -- returns the longest prefix (possibly empty) of @xs@ of elements that
 -- satisfy @p@.
-takeWhile :: (Char -> Bool) -> Packed -> Packed
+takeWhile :: (Char -> Bool) -> FastString -> FastString
 takeWhile f ps = seq f $ take (findIndexOrEndPS (not . f) ps) ps
 {-# INLINE takeWhile #-}
 
 -- | 'dropWhile' @p xs@ returns the suffix remaining after 'takeWhile' @p xs@.
-dropWhile :: (Char -> Bool) -> Packed -> Packed
+dropWhile :: (Char -> Bool) -> FastString -> FastString
 dropWhile f ps = seq f $ drop (findIndexOrEndPS (not . f) ps) ps
 {-# INLINE dropWhile #-}
 
 -- | 'take' @n@, applied to a packed string @xs@, returns the prefix
 -- of @xs@ of length @n@, or @xs@ itself if @n > 'length' xs@.
-take :: Int -> Packed -> Packed
+take :: Int -> FastString -> FastString
 take n ps@(PS x s l)
     | n <= 0    = empty
     | n >= l    = ps
@@ -494,7 +495,7 @@ take n ps@(PS x s l)
 
 -- | 'drop' @n xs@ returns the suffix of @xs@ after the first @n@
 -- elements, or @[]@ if @n > 'length' xs@.
-drop  :: Int -> Packed -> Packed
+drop  :: Int -> FastString -> FastString
 drop n ps@(PS x s l)
     | n <= 0    = ps
     | n >  l    = empty
@@ -502,37 +503,37 @@ drop n ps@(PS x s l)
 {-# INLINE drop #-}
 
 -- | 'splitAt' @n xs@ is equivalent to @('take' n xs, 'drop' n xs)@.
-splitAt :: Int -> Packed -> (Packed, Packed)
+splitAt :: Int -> FastString -> (FastString, FastString)
 splitAt  n ps  = (take n ps, drop n ps)
 {-# INLINE splitAt #-}
 
 -- | 'span' @p xs@ breaks the packed string into two segments. It is
 -- equivalent to @('takeWhile' p xs, 'dropWhile' p xs)@
-span :: (Char -> Bool) -> Packed -> (Packed, Packed)
+span :: (Char -> Bool) -> FastString -> (FastString, FastString)
 span  p ps = break (not . p) ps
 
 -- | 'break' @p@ is equivalent to @'span' ('not' . p)@.
-break :: (Char -> Bool) -> Packed -> (Packed, Packed)
+break :: (Char -> Bool) -> FastString -> (FastString, FastString)
 break p ps = case findIndexOrEndPS p ps of n -> (take n ps, drop n ps)
 
 -- | /O(n)/ 'reverse' @xs@ efficiently returns the elements of @xs@ in reverse order.
-reverse :: Packed -> Packed
+reverse :: FastString -> FastString
 reverse (PS x s l) = createPS l $ \p -> withForeignPtr x $ \f -> 
         c_reverse p (f `plusPtr` s) l -- 99% less space, very much faster
 
--- | 'elem' is the 'Packed' membership predicate. This
+-- | 'elem' is the 'FastString' membership predicate. This
 -- implementation uses @memchr(3)@.
-elem :: Char -> Packed -> Bool
+elem :: Char -> FastString -> Bool
 elem c ps = case elemIndex c ps of
     Nothing -> False
     Just _  -> True
 
--- | Map a function over a 'Packed' and concatenate the results
-concatMap :: (Char -> Packed) -> Packed -> Packed
+-- | Map a function over a 'FastString' and concatenate the results
+concatMap :: (Char -> FastString) -> FastString -> FastString
 concatMap f = foldr (append . f) empty
 
 -- | Concatenate a list of packed strings.
-concat :: [Packed] -> Packed
+concat :: [FastString] -> FastString
 concat []     = empty
 concat [ps]   = ps
 concat xs     = unsafePerformIO $ do 
@@ -555,23 +556,23 @@ concat xs     = unsafePerformIO $ do
                             ptr' <- reallocArray ptr new_total
                             f ptr' len (new_total - len) pss
 
--- | 'Packed' index (subscript) operator, starting from 0.
-index :: Packed -> Int -> Char
+-- | 'FastString' index (subscript) operator, starting from 0.
+index :: FastString -> Int -> Char
 index ps n 
-    | n < 0          = error "FastPacked.index: negative index"
-    | n >= length ps = error "FastPacked.index: index too large"
+    | n < 0          = error "FastFastString.index: negative index"
+    | n >= length ps = error "FastFastString.index: index too large"
     | otherwise      = w2c $ ps ! n
 {-# INLINE index #-}
 
--- | 'maximum' returns the maximum value from a 'Packed'
-maximum :: Packed -> Char
+-- | 'maximum' returns the maximum value from a 'FastString'
+maximum :: FastString -> Char
 maximum xs@(PS x s l)
     | null xs   = errorEmptyList "maximum"
     | otherwise = unsafePerformIO $ withForeignPtr x $ \p -> 
                     return $ w2c $ c_maximum (p `plusPtr` s) l
 
--- | 'maximum' returns the maximum value from a 'Packed'
-minimum :: Packed -> Char
+-- | 'maximum' returns the maximum value from a 'FastString'
+minimum :: FastString -> Char
 minimum xs@(PS x s l)
     | null xs   = errorEmptyList "minimum"
     | otherwise = unsafePerformIO $ withForeignPtr x $ \p -> 
@@ -580,7 +581,7 @@ minimum xs@(PS x s l)
 -- | 'lines' breaks a packed string up into a list of packed strings
 -- at newline characters.  The resulting strings do not contain
 -- newlines.
-lines :: Packed -> [Packed]
+lines :: FastString -> [FastString]
 lines ps 
     | null ps = []
     | otherwise = case elemIndexWord8 (c2w '\n') ps of
@@ -590,7 +591,7 @@ lines ps
 
 -- | 'unlines' is an inverse operation to 'lines'.  It joins lines,
 -- after appending a terminating newline to each.
-unlines :: [Packed] -> Packed
+unlines :: [FastString] -> FastString
 unlines [] = empty
 unlines ss = (concat $ List.intersperse nl ss) `append` nl -- half as much space
     where
@@ -598,118 +599,103 @@ unlines ss = (concat $ List.intersperse nl ss) `append` nl -- half as much space
 
 -- | 'words' breaks a packed string up into a list of words, which
 -- were delimited by white space.
-words :: Packed -> [Packed]
+words :: FastString -> [FastString]
 words ps = Prelude.filter (not.null) (breakAll isSpace ps)
 
 
 -- | The 'unwords' function is analogous to the 'unwords' function.
-unwords :: [Packed] -> Packed
+unwords :: [FastString] -> FastString
 unwords = join $ pack " "
 
--- | The 'intersperse' function takes a 'Char' and a 'Packed' and
--- \`intersperses\' that 'Char' between the elements of the 'Packed'.
+-- | The 'intersperse' function takes a 'Char' and a 'FastString' and
+-- \`intersperses\' that 'Char' between the elements of the 'FastString'.
 -- It is analogous to the intersperse function on Lists.
-intersperse :: Char -> Packed -> Packed
+intersperse :: Char -> FastString -> FastString
 intersperse c ps@(PS x s l)
     | length ps < 2  = ps
     | otherwise      = createPS (2*l-1) $ \p -> withForeignPtr x $ \f ->
                             c_intersperse p (f `plusPtr` s) l (c2w c)
 
 -- | The 'transpose' function transposes the rows and columns of its
--- 'Packed' argument.
-transpose :: [Packed] -> [Packed]
+-- 'FastString' argument.
+transpose :: [FastString] -> [FastString]
 transpose ps = Prelude.map pack (List.transpose (Prelude.map unpack ps)) -- better
 
--- | The 'join' function takes a 'Packed' and a list of
--- 'Packed's and concatenates the list after interspersing the
+-- | The 'join' function takes a 'FastString' and a list of
+-- 'FastString's and concatenates the list after interspersing the
 -- first argument between each element of the list.
-join :: Packed -> [Packed] -> Packed
+join :: FastString -> [FastString] -> FastString
 join filler pss = concat (splice pss)
     where
         splice []  = []
         splice [x] = [x]
         splice (x:y:xs) = x:filler:splice (y:xs)
 
--- | /O(n log(n))/ Sort a Packed using the C function qsort(3).
-sort :: Packed -> Packed
+-- | /O(n log(n))/ Sort a FastString using the C function qsort(3).
+sort :: FastString -> FastString
 sort (PS x s l) = createPS l $ \p -> withForeignPtr x $ \f -> do
         c_memcpy p (f `plusPtr` s) l
         c_qsort p l -- inplace
 
 -- | /O(n)/ The 'elemIndex' function returns the index of the first element
--- in the given 'Packed' which is equal (by memchr) to the query
+-- in the given 'FastString' which is equal (by memchr) to the query
 -- element, or 'Nothing' if there is no such element.
-elemIndex :: Char -> Packed -> Maybe Int
+elemIndex :: Char -> FastString -> Maybe Int
 elemIndex c = elemIndexWord8 (c2w c)
 {-# INLINE elemIndex #-}
 
 -- | The 'elemIndices' function extends 'elemIndex', by returning the
 -- indices of all elements equal to the query element, in ascending order.
-elemIndices :: Char -> Packed -> [Int]
+elemIndices :: Char -> FastString -> [Int]
 elemIndices x = findIndices (x==)
 
--- | The 'findIndex' function takes a predicate and a 'Packed'
+-- | The 'findIndex' function takes a predicate and a 'FastString'
 -- and returns the index of the first element in the packed string
 -- satisfying the predicate.
-findIndex :: (Char -> Bool) -> Packed -> Maybe Int
+findIndex :: (Char -> Bool) -> FastString -> Maybe Int
 findIndex f = listToMaybe . findIndices f
 
 -- | The 'findIndices' function extends 'findIndex', by returning the
 -- indices of all elements satisfying the predicate, in ascending order.
-findIndices :: (Char -> Bool) -> Packed -> [Int]
+findIndices :: (Char -> Bool) -> FastString -> [Int]
 findIndices p ps = loop 0 ps
 	where
        loop _ ps' | null ps'      = []
-       loop n ps' | p (head1 ps') = n : loop (n + 1) (tail1 ps')
-                  | otherwise     = loop (n + 1) (tail1 ps')
-
--- | A variety of 'head' for non-empty Packeds. 'head1' omits the
--- check for the empty case.
-head1 :: Packed -> Char
-head1 (PS x s _) = w2c $ unsafePerformIO $ 
-    withForeignPtr x $ \p -> peekElemOff p s
-{-# INLINE head1 #-}
-
--- | A variety of 'tail' for non-empty Packeds. 'tail1' omits the
--- check for the empty case.
-tail1 :: Packed -> Packed
-tail1 (PS ps s l)
-    | l == 1    = empty
-    | otherwise = PS ps (s+1) (l-1)
-{-# INLINE tail1 #-}
+       loop n ps' | p (unsafeHead ps') = n : loop (n + 1) (unsafeTail ps')
+                  | otherwise     = loop (n + 1) (unsafeTail ps')
 
 ------------------------------------------------------------------------
 -- Extensions to the list interface
 
--- | 'dropSpace' efficiently returns the 'Packed' argument with
+-- | 'dropSpace' efficiently returns the 'FastString' argument with
 -- white space removed from the front. It is more efficient than calling
 -- dropWhile for removing whitespace. I.e.
 -- 
 -- > dropWhile isSpace == dropSpace
 --
-dropSpace :: Packed -> Packed
+dropSpace :: FastString -> FastString
 dropSpace (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> do
     let i = c_firstnonspace (p `plusPtr` s) l
     return $ if i == l then empty else PS x (s+i) (l-i)
 {-# INLINE dropSpace #-}
 
--- | 'dropSpaceEnd' efficiently returns the 'Packed' argument with
+-- | 'dropSpaceEnd' efficiently returns the 'FastString' argument with
 -- white space removed from the end. I.e.
 -- 
 -- > reverse . (dropWhile isSpace) . reverse == dropSpaceEnd
 --
-dropSpaceEnd :: Packed -> Packed
+dropSpaceEnd :: FastString -> FastString
 dropSpaceEnd (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> do
     let i = c_lastnonspace (p `plusPtr` s) l
     return $ if i == (-1) then empty else PS x s (i+1)
 {-# INLINE dropSpaceEnd #-}
 
--- | 'breakSpace' returns the pair of 'Packed's when the argument
+-- | 'breakSpace' returns the pair of 'FastString's when the argument
 -- is broken at the first whitespace character. I.e.
 -- 
 -- > break isSpace == breakSpace
 --
-breakSpace :: Packed -> (Packed,Packed)
+breakSpace :: FastString -> (FastString,FastString)
 breakSpace (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> do 
     let i = c_firstspace (p `plusPtr` s) l
     return $ case () of {_
@@ -720,7 +706,7 @@ breakSpace (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> do
 {-# INLINE breakSpace #-}
 
 -- | 'spanEnd' behaves like 'span' but from the end of the
--- 'Packed'. I.e.
+-- 'FastString'. I.e.
 --
 -- > spanEnd (not.isSpace) "x y z" == ("x y ","z")
 --
@@ -730,28 +716,28 @@ breakSpace (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> do
 -- >    == 
 -- > let (x,y) = span (not.isSpace) (reverse ps) in (reverse y, reverse x) 
 --
-spanEnd :: (Char -> Bool) -> Packed -> (Packed, Packed)
+spanEnd :: (Char -> Bool) -> FastString -> (FastString, FastString)
 spanEnd  p ps = splitAt (findFromEndUntilPS (not.p) ps) ps
 
--- | 'breakOn' breaks its 'Packed' argument at the first occurence
+-- | 'breakOn' breaks its 'FastString' argument at the first occurence
 -- of the specified character. It is more efficient than 'break' as it
 -- is implemented with memchr(3). I.e.
 -- 
 -- > break (=='c') "abcd" == breakOn 'c' "abcd"
 --
-breakOn :: Char -> Packed -> (Packed, Packed)
+breakOn :: Char -> FastString -> (FastString, FastString)
 breakOn c p = case elemIndex c p of
                     Nothing -> (p,empty)
                     Just n -> (take n p, drop n p)
 {-# INLINE breakOn #-}
 
--- | Break a 'Packed' into pieces separated by the 'Char'
+-- | Break a 'FastString' into pieces separated by the 'Char'
 -- argument, consuming the delimiter. I.e.
 --
 -- > split '\n' "a\nb\nd\ne" == ["a","b","d","e"]
 -- > split 'a'  "aXaXaXa"    == ["","X","X","X"]
 --
-split :: Char -> Packed -> [Packed]
+split :: Char -> FastString -> [FastString]
 split c = splitWord8 (c2w c)
 {-# INLINE split #-}
 
@@ -760,35 +746,35 @@ split c = splitWord8 (c2w c)
 -- 
 -- > tokens (=='a') "aabbaca" == ["bb","c"]
 --
-tokens :: (Char -> Bool) -> Packed -> [Packed]
+tokens :: (Char -> Bool) -> FastString -> [FastString]
 tokens p = Prelude.filter (not.null) . breakAll p
 
--- | Splits a 'Packed' into components delimited by separators,
+-- | Splits a 'FastString' into components delimited by separators,
 -- where the predicate returns True for a separator element.  The
 -- resulting components do not contain the separators.  Two adjacent
 -- separators result in an empty component in the output.  eg.
 --
 -- > breakAll (=='a') "aabbaca" == ["","","bb","c",""]
 --
-breakAll :: (Char -> Bool) -> Packed -> [Packed]
+breakAll :: (Char -> Bool) -> FastString -> [FastString]
 breakAll p ps = if null rest 
                     then [chunk] 
-                    else chunk : breakAll p (tail1 rest)
+                    else chunk : breakAll p (unsafeTail rest)
     where 
       (chunk,rest) = break p ps
 {-
 -- weird, inefficient version. Probably slightly different to the above
-breakAll :: (Char -> Bool) -> Packed -> [Packed]
+breakAll :: (Char -> Bool) -> FastString -> [FastString]
 breakAll f ps =
     case [ m | m <- [0..length ps-1], f (w2c (ps ! m)) ] of
         [] -> if null ps then [] else [ps]
         (n:_) -> take n ps : breakAll f (drop (n+1) ps)
 -}
 
--- | /O(n)/ 'breakFirst' breaks the given Packed on the first
+-- | /O(n)/ 'breakFirst' breaks the given FastString on the first
 -- occurence of @c@. It behaves like 'break', except the delimiter is
 -- not returned, and @Nothing@ is returned if the delimiter is not in
--- the Packed. I.e.
+-- the FastString. I.e.
 --
 -- > breakFirst 'b' "aabbcc" == Just ("aa","bcc")
 --
@@ -796,14 +782,14 @@ breakAll f ps =
 -- > let (x,y) = break (== c) xs 
 -- > in if null y then Nothing else Just (x, drop 1 y))
 --
-breakFirst :: Char -> Packed -> Maybe (Packed,Packed)
+breakFirst :: Char -> FastString -> Maybe (FastString,FastString)
 breakFirst c p = case elemIndex c p of
    Nothing -> Nothing
    Just n -> Just (take n p, drop (n+1) p)
 {-# INLINE breakFirst #-}
 
 -- | /O(n)/ 'breakLast' behaves like breakFirst, but from the end of the
--- Packed.
+-- FastString.
 --
 -- > breakLast ('b') (pack "aabbcc") == Just ("aab","cc")
 --
@@ -813,25 +799,25 @@ breakFirst c p = case elemIndex c p of
 -- > let (x,y) = break (=='c') (reverse "abcdef") 
 -- > in if null x then Nothing else Just (reverse (drop 1 y), reverse x)
 --
-breakLast :: Char -> Packed -> Maybe (Packed,Packed)
+breakLast :: Char -> FastString -> Maybe (FastString,FastString)
 breakLast c p = case elemIndexLast c p of
     Nothing -> Nothing
     Just n -> Just (take n p, drop (n+1) p)
 {-# INLINE breakLast #-}
 
 -- | /O(n)/ The 'elemIndexLast' function returns the last index of the
--- element in the given 'Packed' which is equal to the query
+-- element in the given 'FastString' which is equal to the query
 -- element, or 'Nothing' if there is no such element. The following holds:
 --
 -- > elemIndexLast c xs == 
 -- > (-) (length xs - 1) `fmap` elemIndex c (reverse xs)
 --
-elemIndexLast :: Char -> Packed -> Maybe Int
+elemIndexLast :: Char -> FastString -> Maybe Int
 elemIndexLast c = elemIndexLastWord8 (c2w c)
 {-# INLINE elemIndexLast #-}
 
--- | /O(n)/ Hash a Packed into an 'Int32' value, suitable for use as a key.
-hash :: Packed -> Int32
+-- | /O(n)/ Hash a FastString into an 'Int32' value, suitable for use as a key.
+hash :: FastString -> Int32
 hash (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> 
     go (0 :: Int32) (p `plusPtr` s) l
   where
@@ -841,9 +827,9 @@ hash (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p ->
                   let h' = (fromIntegral w) + (rotateL h 8)
                   go h' (p `advancePtr` 1) (n-1)
 
--- | 'betweenLines' returns the Packed between the two lines
+-- | 'betweenLines' returns the FastString between the two lines
 -- given, or Nothing if they do not appear.
-betweenLines :: Packed -> Packed -> Packed -> Maybe (Packed)
+betweenLines :: FastString -> FastString -> FastString -> Maybe (FastString)
 betweenLines start end ps = 
     case Prelude.break (start ==) (lines ps) of
         (_, _:rest@(PS ps1 s1 _:_)) ->
@@ -852,7 +838,7 @@ betweenLines start end ps =
                 _ -> Nothing
         _ -> Nothing
 
--- | 'lines\'' behaves like 'lines', in that it breaks a Packed on
+-- | 'lines\'' behaves like 'lines', in that it breaks a FastString on
 -- newline characters. However, unlike the Prelude functions, 'lines\''
 -- and 'unlines\'' correctly reconstruct lines that are missing
 -- terminating newlines characters. I.e.
@@ -865,7 +851,7 @@ betweenLines start end ps =
 -- > lines  "a\nb\nc\n" == ["a","b","c"]
 -- > lines' "a\nb\nc\n" == ["a","b","c",""]
 --
-lines' :: Packed -> [Packed]
+lines' :: FastString -> [FastString]
 lines' ps = case elemIndexWord8 (c2w '\n') ps of
              Nothing -> [ps]
              Just n -> take n ps : lines' (drop (n+1) ps)
@@ -874,14 +860,14 @@ lines' ps = case elemIndexWord8 (c2w '\n') ps of
 -- retores lines that do not have terminating newlines (see the
 -- description for 'lines\'').
 --
-unlines' :: [Packed] -> Packed
+unlines' :: [FastString] -> FastString
 unlines' ss = concat $ intersperse_newlines ss
     where intersperse_newlines (a:b:s) = a:newline: intersperse_newlines (b:s)
           intersperse_newlines s = s
           newline = pack "\n"
 
 -- | 'words\'' behaves like 'words', with the exception that it produces
--- output on Packeds with trailing whitespace that can be
+-- output on FastStrings with trailing whitespace that can be
 -- correctly inverted by 'unwords'. I.e.
 --
 -- > words  "a b c " == ["a","b","c"]
@@ -890,8 +876,30 @@ unlines' ss = concat $ intersperse_newlines ss
 -- > unwords $ words  "a b c " == "a b c"
 -- > unwords $ words' "a b c " == "a b c "
 --
-words' :: Packed -> [Packed]
+words' :: FastString -> [FastString]
 words' ps = breakAll isSpace ps
+
+-- | 'unwords\'' behaves like 'unwords'. It is provided for consistency
+-- with the other invertable words and lines functions.
+unwords' :: [FastString] -> FastString
+unwords' = unwords
+
+-- | A variety of 'head' for non-empty FastStrings. 'unsafeHead' omits the
+-- check for the empty case, so there is an obligation on the programmer
+-- to provide a proof that the FastString is non-empty.
+unsafeHead :: FastString -> Char
+unsafeHead (PS x s _) = w2c $ unsafePerformIO $ 
+    withForeignPtr x $ \p -> peekElemOff p s
+{-# INLINE unsafeHead #-}
+
+-- | A variety of 'tail' for non-empty FastStrings. 'unsafeTail' omits the
+-- check for the empty case. As with 'unsafeHead', the programmer must
+-- provide a separate proof that the FastString is non-empty.
+unsafeTail :: FastString -> FastString
+unsafeTail (PS ps s l)
+    | l == 1    = empty
+    | otherwise = PS ps (s+1) (l-1)
+{-# INLINE unsafeTail #-}
 
 ------------------------------------------------------------------------
 -- (Internal) Conversion between 'Word8' and 'Char'
@@ -908,14 +916,14 @@ c2w = fromIntegral . ord
 
 -- | (Internal) /O(n)/ 'elemIndexWord8' is like 'elemIndex', except
 -- that it takes a 'Word8' as the element to search for.
-elemIndexWord8 :: Word8 -> Packed -> Maybe Int
+elemIndexWord8 :: Word8 -> FastString -> Maybe Int
 elemIndexWord8 c (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> do
     let p' = p `plusPtr` s
         q  = memchr p' (fromIntegral c) (fromIntegral l)
     return $ if q == nullPtr then Nothing else Just (q `minusPtr` p')
 {-# INLINE elemIndexWord8 #-}
 
-elemIndexLastWord8 :: Word8 -> Packed -> Maybe Int
+elemIndexLastWord8 :: Word8 -> FastString -> Maybe Int
 elemIndexLastWord8 c (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> 
         go (-1) (p `plusPtr` s) 0
     where 
@@ -924,29 +932,29 @@ elemIndexLastWord8 c (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p ->
                                   go (if c == here then i else h) p (i+1)
 {-# INLINE elemIndexLastWord8 #-}
 
--- (Internal) unsafe 'Packed' index (subscript) operator, starting
+-- (Internal) unsafe 'FastString' index (subscript) operator, starting
 -- from 0, returning a 'Word8'
-(!) :: Packed -> Int -> Word8
+(!) :: FastString -> Int -> Word8
 (PS x s _l) ! i = unsafePerformIO $ withForeignPtr x $ \p -> peekElemOff p (s+i)
 {-# INLINE (!) #-}
 
 -- (Internal) 'findIndexOrEndPS' is a variant of findIndex, that returns the
 -- length of the string if no element is found, rather than Nothing.
-findIndexOrEndPS :: (Char -> Bool) -> Packed -> Int
+findIndexOrEndPS :: (Char -> Bool) -> FastString -> Int
 findIndexOrEndPS f ps
     | null ps      = 0
-    | f (head1 ps) = 0
-    | otherwise    = seq f $ 1 + findIndexOrEndPS f (tail1 ps)
+    | f (unsafeHead ps) = 0
+    | otherwise    = seq f $ 1 + findIndexOrEndPS f (unsafeTail ps)
 
 -- (Internal)
-findFromEndUntilPS :: (Char -> Bool) -> Packed -> Int
+findFromEndUntilPS :: (Char -> Bool) -> FastString -> Int
 findFromEndUntilPS f ps@(PS x s l) = seq f $
     if null ps then 0
     else if f $ last ps then l
          else findFromEndUntilPS f (PS x s (l-1))
 
 -- (Internal)
-splitWord8 :: Word8 -> Packed -> [Packed]
+splitWord8 :: Word8 -> FastString -> [FastString]
 splitWord8 c ps = case elemIndexWord8 c ps of
     Nothing -> if null ps then [] else [ps]
     Just n  -> take n ps : splitWord8 c (drop (n+1) ps)
@@ -957,12 +965,12 @@ splitWord8 c ps = case elemIndexWord8 c ps of
 -- Common up near identical calls to `error' to reduce the number
 -- constant strings created when compiled:
 errorEmptyList :: String -> a
-errorEmptyList fun = error ("FastPacked." ++ fun ++ ": empty Packed")
+errorEmptyList fun = error ("FastFastString." ++ fun ++ ": empty FastString")
 
 ------------------------------------------------------------------------
 
--- | Convert a 'Packed' in UTF8 form to a 'String'
-unpackFromUTF8 :: Packed -> String
+-- | Convert a 'FastString' in UTF8 form to a 'String'
+unpackFromUTF8 :: FastString -> String
 unpackFromUTF8 (PS _ _ 0) = []
 unpackFromUTF8 (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> do 
     outbuf <- mallocArray l
@@ -973,10 +981,10 @@ unpackFromUTF8 (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> do
     return str
 
 -- | Given the maximum size needed and a function to make the contents
--- of a Packed, generate makes the 'Packed'. The
+-- of a FastString, generate makes the 'FastString'. The
 -- generating function is required to return the actual size (<= the
 -- maximum size).
-generate :: Int -> (Ptr Word8 -> IO Int) -> IO Packed
+generate :: Int -> (Ptr Word8 -> IO Int) -> IO FastString
 generate i f = do 
     p <- mallocArray i
     i' <- f p
@@ -985,24 +993,24 @@ generate i f = do
     return $ PS fp 0 i'
 
 #if defined(__GLASGOW_HASKELL__)
--- | Construct a 'Packed' given a C Word8 buffer, a length, and an
+-- | Construct a 'FastString' given a C Word8 buffer, a length, and an
 -- IO action representing a finalizer.  This function is not available
 -- on Hugs.
-construct :: (Ptr Word8) -> Int -> IO () -> IO Packed
+construct :: (Ptr Word8) -> Int -> IO () -> IO FastString
 construct p l f = do 
     fp <- FC.newForeignPtr p f
     return $ PS fp 0 l
 #endif
 
--- | Build a @Packed@ from a malloced @CString@
-mallocCString2Packed :: CString -> IO Packed
-mallocCString2Packed cs = do 
+-- | Build a @FastString@ from a malloced @CString@
+mallocCString2FastString :: CString -> IO FastString
+mallocCString2FastString cs = do 
     fp <- newForeignPtr c_free (castPtr cs)
     l  <- c_strlen cs
     return $ PS fp 0 (fromIntegral l)
 
--- | Use a @Packed@ with a function requiring a @CString@
-withCString :: Packed -> (CString -> IO a) -> IO a
+-- | Use a @FastString@ with a function requiring a @CString@
+withCString :: FastString -> (CString -> IO a) -> IO a
 withCString (PS ps s l) = bracket alloc free_cstring
     where 
       alloc = withForeignPtr ps $ \p -> do 
@@ -1013,7 +1021,7 @@ withCString (PS ps s l) = bracket alloc free_cstring
 
 -- | A way of creating ForeignPtrs outside the IO monad (although it
 -- still isn't entirely "safe", but at least it's convenient.
-createPS :: Int -> (Ptr Word8 -> IO ()) -> Packed
+createPS :: Int -> (Ptr Word8 -> IO ()) -> FastString
 createPS l write_ptr = unsafePerformIO $ do 
     fp <- mallocForeignPtr l
     withForeignPtr fp $ \p -> write_ptr p
@@ -1028,36 +1036,36 @@ mallocForeignPtr l = when (l > 1000000) performGC >> mallocForeignPtrArray l
 -- -----------------------------------------------------------------------------
 -- I\/O functions
 
--- | Outputs a 'Packed' to the specified 'Handle'.
+-- | Outputs a 'FastString' to the specified 'Handle'.
 --
--- NOTE: the representation of the 'Packed' in the file is assumed to
+-- NOTE: the representation of the 'FastString' in the file is assumed to
 -- be in the ISO-8859-1 encoding.  In other words, only the least signficant
--- byte is taken from each character in the 'Packed'.
+-- byte is taken from each character in the 'FastString'.
 --
-hPut :: Handle -> Packed -> IO ()
+hPut :: Handle -> FastString -> IO ()
 hPut _ (PS _ _ 0)  = return ()
 hPut h (PS ps 0 l) = withForeignPtr ps $ \p-> hPutBuf h p l
 hPut h (PS ps s l) = withForeignPtr ps $ \p-> hPutBuf h (p `plusPtr` s) l
 
--- | Read a 'Packed' directly from the specified 'Handle'.  This
+-- | Read a 'FastString' directly from the specified 'Handle'.  This
 -- is far more efficient than reading the characters into a 'String'
 -- and then using 'pack'.
 --
 -- NOTE: as with 'hPut', the string representation in the file is
 -- assumed to be ISO-8859-1.
 --
-hGet :: Handle -> Int -> IO Packed
+hGet :: Handle -> Int -> IO FastString
 hGet _ 0 = return empty
 hGet h i = do fp <- mallocForeignPtr i
               l  <- withForeignPtr fp $ \p-> hGetBuf h p i
               return $ PS fp 0 l
 
--- | Read entire handle contents into a 'Packed'.
+-- | Read entire handle contents into a 'FastString'.
 --
 -- NOTE: as with 'hGet', the string representation in the file is
 -- assumed to be ISO-8859-1.
 --
-hGetContents :: Handle -> IO Packed
+hGetContents :: Handle -> IO FastString
 hGetContents h = do 
     let start_size = 1024
     p <- mallocArray start_size
@@ -1079,7 +1087,7 @@ hGetContents h = do
                     return $ PS fp 0 i'
             else f p' s'
 
--- | Read an entire file directly into a 'Packed'.  This is far more
+-- | Read an entire file directly into a 'FastString'.  This is far more
 -- efficient than reading the characters into a 'String' and then using
 -- 'pack'.  It also may be more efficient than opening the file and
 -- reading it using hGet.
@@ -1087,7 +1095,7 @@ hGetContents h = do
 -- NOTE: as with 'hGet', the string representation in the file is
 -- assumed to be ISO-8859-1.
 --
-readFile :: FilePath -> IO Packed
+readFile :: FilePath -> IO FastString
 readFile f = do 
     h <- openBinaryFile f ReadMode
     l <- hFileSize h
@@ -1095,16 +1103,16 @@ readFile f = do
     hClose h
     return s
 
--- | Write a 'Packed' to a file.
+-- | Write a 'FastString' to a file.
 --
-writeFile :: FilePath -> Packed -> IO ()
+writeFile :: FilePath -> FastString -> IO ()
 writeFile f ps = do 
     h <- openBinaryFile f WriteMode
     hPut h ps
     hClose h
 
 -- | Like readFile, this reads an entire file directly into a
--- 'Packed', but it is even more efficient.  It involves directly
+-- 'FastString', but it is even more efficient.  It involves directly
 -- mapping the file to memory.  This has the advantage that the contents
 -- of the file never need to be copied.  Also, under memory pressure the
 -- page may simply be discarded, wile in the case of readFile it would
@@ -1114,7 +1122,7 @@ writeFile f ps = do
 -- errors if the file is modified.  NOTE: as with 'readFile', the
 -- string representation in the file is assumed to be ISO-8859-1.
 --
-mmapFile :: FilePath -> IO Packed
+mmapFile :: FilePath -> IO FastString
 mmapFile f = 
 #if defined(USE_MMAP)
    mmap f >>= \(fp,l) -> return $ PS fp 0 l
@@ -1167,19 +1175,19 @@ mmap f = do
 -- -----------------------------------------------------------------------------
 
 data LazyFile = LazyString String
-              | MMappedPacked Packed
-              | LazyPackeds [Packed]
+              | MMappedFastString FastString
+              | LazyFastStrings [FastString]
     deriving Eq
 
 readFileLazily :: FilePath -> IO LazyFile
 readFileLazily f = do
 #if defined(USE_MMAP)
-    liftM MMappedPacked (mmapFile f)
+    liftM MMappedFastString (mmapFile f)
 #else
     h <- openBinaryFile f ReadMode
-    liftM LazyPackeds $ readHandleLazily h
+    liftM LazyFastStrings $ readHandleLazily h
   where
-    readHandleLazily :: Handle -> IO [Packed]
+    readHandleLazily :: Handle -> IO [FastString]
     readHandleLazily h
      = do let read_rest = do
                   -- We might be making too big a fp here
@@ -1200,11 +1208,11 @@ readFileLazily f = do
 -- gzReadFile
 
 -- | Read an entire file, which may or may not be gzip compressed, directly
--- into a 'Packed'.
+-- into a 'FastString'.
 
 #if defined(USE_ZLIB)
 
-gzReadFile :: FilePath -> IO Packed
+gzReadFile :: FilePath -> IO FastString
 gzReadFile f = do
     h <- openBinaryFile f ReadMode
     header <- hGet h 2
@@ -1243,12 +1251,12 @@ gzReadFileLazily f = do
                            -1 -> fail $ "problem gzreading file "++f
                            l -> do rest <- unsafeInterleaveIO read_rest
                                    return (PS fp 0 l:rest)
-               liftM LazyPackeds read_rest
+               liftM LazyFastStrings read_rest
         else
 #if defined(USE_MMAP)
-             hClose h >> liftM MMappedPacked (mmapFile f)
+             hClose h >> liftM MMappedFastString (mmapFile f)
 #else
-             liftM (LazyPackeds . (header:)) $ readHandleLazily h
+             liftM (LazyFastStrings . (header:)) $ readHandleLazily h
 #endif
     where blocksize = 1024
 
@@ -1260,10 +1268,10 @@ hGetLittleEndInt h = do
     b4 <- ord `liftM` hGetChar h
     return $ b1 + 256*b2 + 65536*b3 + 16777216*b4
 
-gzWriteFile :: FilePath -> Packed -> IO ()
+gzWriteFile :: FilePath -> FastString -> IO ()
 gzWriteFile f ps = gzWriteFilePSs f [ps]
 
-gzWriteFilePSs :: FilePath -> [Packed] -> IO ()
+gzWriteFilePSs :: FilePath -> [FastString] -> IO ()
 gzWriteFilePSs f pss  =
     withCString f $ \fstr -> withCString "wb" $ \wb -> do
     gzf <- c_gzopen fstr wb
@@ -1272,7 +1280,7 @@ gzWriteFilePSs f pss  =
               \_ -> fail $ "problem gzwriting file: "++f
     c_gzclose gzf
 
-gzWriteToGzf :: Ptr () -> Packed -> IO ()
+gzWriteToGzf :: Ptr () -> FastString -> IO ()
 gzWriteToGzf gzf (PS x s l) = do
     lw <- withForeignPtr x $ \p -> c_gzwrite gzf (p `plusPtr` s) l
     when (lw /= l) $ fail $ "problem in gzWriteToGzf"
