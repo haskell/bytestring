@@ -145,13 +145,13 @@ module Data.FastPackedString (
 #if defined(__GLASGOW_HASKELL__)
         construct,            -- :: (Ptr Word8) -> Int -> IO () -> IO FastString
         packAddress,          -- :: Addr# -> FastString
+        unsafeFinalize,       -- :: FastString -> IO ()
 #endif
         mallocCString2FastString, -- :: CString -> IO FastString
         useAsCString,         -- :: FastString -> (CString -> IO a) -> IO a
         unsafeUseAsCString,   -- :: FastString -> (CString -> IO a) -> IO a
         unsafeUseAsCStringLen,-- :: FastString -> (CStringLen -> IO a) -> IO a
         unpackFromUTF8,       -- :: FastString -> String
-        unsafeFinalize,       -- :: FastString -> IO ()
         
 
         -- * Extensions to the I\/O interface
