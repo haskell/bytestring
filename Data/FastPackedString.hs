@@ -151,6 +151,7 @@ module Data.FastPackedString (
         unsafeUseAsCString,   -- :: FastString -> (CString -> IO a) -> IO a
         unsafeUseAsCStringLen,-- :: FastString -> (CStringLen -> IO a) -> IO a
         unpackFromUTF8,       -- :: FastString -> String
+        unsafeFinalize,       -- :: FastString -> IO ()
         
 
         -- * Extensions to the I\/O interface
@@ -190,7 +191,7 @@ import System.Mem               (performGC)
 
 import Foreign.Ptr              (Ptr, FunPtr, plusPtr, nullPtr, minusPtr, castPtr)
 import Foreign.ForeignPtr       (newForeignPtr, newForeignPtr_, withForeignPtr, 
-                                 mallocForeignPtrArray, ForeignPtr)
+                                 finalizeForeignPtr, mallocForeignPtrArray, ForeignPtr)
 import Foreign.Storable         (peekByteOff, peek, poke)
 import Foreign.C.String         (CString, CStringLen)
 import Foreign.C.Types          (CSize, CInt)
@@ -1086,6 +1087,17 @@ createPS l write_ptr = unsafePerformIO $ do
     fp <- mallocForeignPtr l
     withForeignPtr fp $ \p -> write_ptr p
     return $ PS fp 0 l
+
+#if defined(__GLASGOW_HASKELL__)
+-- | Explicitly run the finaliser associated with a 'FastString'.
+-- Further references to this value may generate invalid memory
+-- references. This operation is unsafe, as there may be other
+-- 'FastStrings' referring to the same underlying pages. If you use
+-- this, you need to have a proof of some kind that all 'FastString's
+-- ever generated from the underlying byte array are no longer live.
+unsafeFinalize :: FastString -> IO ()
+unsafeFinalize (PS p _ _) = finalizeForeignPtr p
+#endif
 
 ------------------------------------------------------------------------
 
