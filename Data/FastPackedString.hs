@@ -147,6 +147,8 @@ module Data.FastPackedString (
 #endif
         mallocCString2FastString, -- :: CString -> IO FastString
         useAsCString,         -- :: FastString -> (CString -> IO a) -> IO a
+        unsafeUseAsCString,   -- :: FastString -> (CString -> IO a) -> IO a
+        unsafeUseAsCStringLen,-- :: FastString -> (CStringLen -> IO a) -> IO a
         unpackFromUTF8,       -- :: FastString -> String
 
         -- * Extensions to the I\/O interface
@@ -187,7 +189,7 @@ import System.Mem               (performGC)
 import Foreign.Ptr              (Ptr, FunPtr, plusPtr, nullPtr, minusPtr, castPtr)
 import Foreign.ForeignPtr       (newForeignPtr, withForeignPtr, mallocForeignPtrArray, ForeignPtr)
 import Foreign.Storable         (peekByteOff, peek, poke)
-import Foreign.C.String         (CString)
+import Foreign.C.String         (CString, CStringLen)
 import Foreign.C.Types          (CSize, CInt)
 import Foreign.Marshal.Alloc    (free)
 import Foreign.Marshal.Array
@@ -1036,7 +1038,8 @@ mallocCString2FastString cs = do
     l  <- c_strlen cs
     return $ PS fp 0 (fromIntegral l)
 
--- | Use a @FastString@ with a function requiring a @CString@
+-- | Use a @FastString@ with a function requiring a null-terminated @CString@.
+--   The @CString@ should not be freed afterwards.
 useAsCString :: FastString -> (CString -> IO a) -> IO a
 useAsCString (PS ps s l) = bracket alloc free_cstring
     where 
@@ -1045,6 +1048,16 @@ useAsCString (PS ps s l) = bracket alloc free_cstring
                 c_memcpy (castPtr buf) (castPtr p `plusPtr` s) (fromIntegral l)
                 poke (buf `plusPtr` l) (0::Word8)
                 return $ castPtr buf
+
+-- | Use a @FastString@ with a function requiring a @CString@.
+--   Warning: modifying the @CString@ will affect the @FastString@.
+unsafeUseAsCString :: FastString -> (CString -> IO a) -> IO a
+unsafeUseAsCString (PS ps s _) ac = withForeignPtr ps $ \p -> ac (castPtr p `plusPtr` s)
+
+-- | Use a @FastString@ with a function requiring a @CStringLen@.
+--   Warning: modifying the @CStringLen@ will affect the @FastString@.
+unsafeUseAsCStringLen :: FastString -> (CStringLen -> IO a) -> IO a
+unsafeUseAsCStringLen (PS ps s l) ac = withForeignPtr ps $ \p -> ac (castPtr p `plusPtr` s,l)
 
 -- | A way of creating ForeignPtrs outside the IO monad (although it
 -- still isn't entirely "safe", but at least it's convenient.
