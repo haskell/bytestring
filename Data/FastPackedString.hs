@@ -189,7 +189,8 @@ import System.IO.Unsafe         (unsafePerformIO)
 import System.Mem               (performGC)
 
 import Foreign.Ptr              (Ptr, FunPtr, plusPtr, nullPtr, minusPtr, castPtr)
-import Foreign.ForeignPtr       (newForeignPtr, withForeignPtr, mallocForeignPtrArray, ForeignPtr)
+import Foreign.ForeignPtr       (newForeignPtr, newForeignPtr_, withForeignPtr, 
+                                 mallocForeignPtrArray, ForeignPtr)
 import Foreign.Storable         (peekByteOff, peek, poke)
 import Foreign.C.String         (CString, CStringLen)
 import Foreign.C.Types          (CSize, CInt)
@@ -1015,14 +1016,17 @@ unpackFromUTF8 (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> do
 -- | /O(n)/ Pack a null-terminated of bytes, pointed to by and Addr\#
 -- (an arbitrary machine address assumed to point outside the
 -- garbage-collected heap) into a FastString. We assume the Addr\# was
--- created from an unboxed string literal. I.e.
+-- created from an unboxed string literal. Establishing the length of
+-- the string requires a call to /strlen(3)/.
 --
 -- literalFS = packAddr# "literal"#
 --
 packAddress :: Addr# -> FastString
 packAddress addr# = unsafePerformIO $ do
-    i <- liftM fromIntegral $ c_strlen (Ptr addr#)
-    return $ createPS i $ \to -> c_memcpy to (Ptr addr#) i       -- todo, can we avoid the copy?
+    p <- newForeignPtr_ cstr
+    return $ PS p 0 (fromIntegral $ c_strlen cstr)
+    where
+      cstr = Ptr addr# 
 #endif
 
 -- | Given the maximum size needed and a function to make the contents
@@ -1051,7 +1055,7 @@ construct p l f = do
 mallocCString2FastString :: CString -> IO FastString
 mallocCString2FastString cs = do 
     fp <- newForeignPtr c_free (castPtr cs)
-    l  <- c_strlen cs
+    let l = c_strlen cs
     return $ PS fp 0 (fromIntegral l)
 
 -- | Use a @FastString@ with a function requiring a null-terminated @CString@.
@@ -1365,7 +1369,7 @@ foreign import ccall unsafe "string.h memchr" memchr
     :: Ptr Word8 -> CInt -> CSize -> Ptr Word8
 
 foreign import ccall unsafe "static string.h strlen" c_strlen
-    :: CString -> IO CInt
+    :: CString -> CInt
 
 ------------------------------------------------------------------------
 
