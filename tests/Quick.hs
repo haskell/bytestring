@@ -1,3 +1,4 @@
+{-# OPTIONS -fglasgow-exts #-}
 
 import Data.Char
 import Data.List
@@ -189,6 +190,8 @@ prop_unfoldr c =
     (P.unfoldr 100 (\x -> Just (x, chr (ord x + 1))) c) ==
     (pack $ take 100 $ unfoldr (\x -> Just (x, chr (ord x + 1))) c)
 
+prop_addr = let s = "my\nstring\nhaskell"# in P.length (P.packAddress s) == 17
+
 ------------------------------------------------------------------------
 
 main = do
@@ -268,6 +271,7 @@ main = do
         ,   run prop_lines'
         ,   run prop_dropSpaceEnd
         ,   run prop_unfoldr
+        ,   run prop_addr
         ]
 
 instance Arbitrary Char where
