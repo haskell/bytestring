@@ -144,12 +144,14 @@ module Data.FastPackedString (
         generate,             -- :: Int -> (Ptr Word8 -> Int -> IO Int) -> IO FastString
 #if defined(__GLASGOW_HASKELL__)
         construct,            -- :: (Ptr Word8) -> Int -> IO () -> IO FastString
+        packAddress,          -- :: Addr# -> FastString
 #endif
         mallocCString2FastString, -- :: CString -> IO FastString
         useAsCString,         -- :: FastString -> (CString -> IO a) -> IO a
         unsafeUseAsCString,   -- :: FastString -> (CString -> IO a) -> IO a
         unsafeUseAsCStringLen,-- :: FastString -> (CStringLen -> IO a) -> IO a
         unpackFromUTF8,       -- :: FastString -> String
+        
 
         -- * Extensions to the I\/O interface
         LazyFile(..),
@@ -1008,6 +1010,20 @@ unpackFromUTF8 (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> do
     str    <- (Prelude.map chr) `liftM` peekArray lout outbuf
     free outbuf
     return str
+
+#if defined(__GLASGOW_HASKELL__)
+-- | /O(n)/ Pack a null-terminated of bytes, pointed to by and Addr\#
+-- (an arbitrary machine address assumed to point outside the
+-- garbage-collected heap) into a FastString. We assume the Addr\# was
+-- created from an unboxed string literal. I.e.
+--
+-- literalFS = packAddr# "literal"#
+--
+packAddress :: Addr# -> FastString
+packAddress addr# = unsafePerformIO $ do
+    i <- liftM fromIntegral $ c_strlen (Ptr addr#)
+    return $ createPS i $ \to -> c_memcpy to (Ptr addr#) i       -- todo, can we avoid the copy?
+#endif
 
 -- | Given the maximum size needed and a function to make the contents
 -- of a FastString, generate makes the 'FastString'. The
