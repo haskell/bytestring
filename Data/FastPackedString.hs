@@ -1025,7 +1025,7 @@ unpackFromUTF8 (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> do
 --
 -- An example:
 --
--- > literalFS = packAddr# "literal"#
+-- > literalFS = packAddress "literal"#
 --
 packAddress :: Addr# -> FastString
 packAddress addr# = unsafePerformIO $ do
