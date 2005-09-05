@@ -145,6 +145,8 @@ module Data.FastPackedString (
 #if defined(__GLASGOW_HASKELL__)
         construct,            -- :: (Ptr Word8) -> Int -> IO () -> IO FastString
         packAddress,          -- :: Addr# -> FastString
+        unsafePackAddress,    -- :: Int -> Addr# -> FastString
+        unsafeFinalize,       -- :: FastString -> IO ()
 #endif
         mallocCString2FastString, -- :: CString -> IO FastString
         useAsCString,         -- :: FastString -> (CString -> IO a) -> IO a
