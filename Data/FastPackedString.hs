@@ -145,7 +145,6 @@ module Data.FastPackedString (
 #if defined(__GLASGOW_HASKELL__)
         construct,            -- :: (Ptr Word8) -> Int -> IO () -> IO FastString
         packAddress,          -- :: Addr# -> FastString
-        unsafeFinalize,       -- :: FastString -> IO ()
 #endif
         mallocCString2FastString, -- :: CString -> IO FastString
         useAsCString,         -- :: FastString -> (CString -> IO a) -> IO a
@@ -1014,18 +1013,34 @@ unpackFromUTF8 (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> do
     return str
 
 #if defined(__GLASGOW_HASKELL__)
--- | /O(n)/ Pack a null-terminated of bytes, pointed to by and Addr\#
--- (an arbitrary machine address assumed to point outside the
--- garbage-collected heap) into a FastString. We assume the Addr\# was
--- created from an unboxed string literal. Establishing the length of
--- the string requires a call to /strlen(3)/.
+-- | /O(n)/ Pack a null-terminated sequence of bytes, pointed to by and
+-- Addr\# (an arbitrary machine address assumed to point outside the
+-- garbage-collected heap) into a FastString. A useful way to create an
+-- Addr\# is with an unboxed string literal, which is compiled to a
+-- @char []@. Establishing the length of the string requires a call to
+-- /strlen(3)/. Use 'unsafePackAddress' if you know the length of the
+-- string statically. 
 --
--- literalFS = packAddr# "literal"#
+-- An example:
+--
+-- > literalFS = packAddr# "literal"#
 --
 packAddress :: Addr# -> FastString
 packAddress addr# = unsafePerformIO $ do
     p <- newForeignPtr_ cstr
     return $ PS p 0 (fromIntegral $ c_strlen cstr)
+    where
+      cstr = Ptr addr# 
+{-# INLINE packAddress #-}
+
+-- | /O(1)/ Pack a null-terminated sequence of bytes into a
+-- 'FastString', given a raw 'Addr\#' to the string, and the length of
+-- the string. Make sure the length is correct, otherwise use the safer
+-- 'packAddress' (where the length will be calculated once at runtime).
+unsafePackAddress :: Int -> Addr# -> FastString
+unsafePackAddress len addr# = unsafePerformIO $ do
+    p <- newForeignPtr_ cstr
+    return $ PS p 0 len
     where
       cstr = Ptr addr# 
 #endif
