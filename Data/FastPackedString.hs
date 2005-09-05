@@ -1078,7 +1078,7 @@ packMallocCString cstr = unsafePerformIO $ do
     fp <- newForeignPtr c_free (castPtr cstr)
     return $ PS fp 0 (fromIntegral $ c_strlen cstr)
 
--- | /O(n)/ Build a @FastString@ from a @CString@. This value will have a /no/
+-- | /O(n)/ Build a @FastString@ from a @CString@. This value will have /no/
 -- finalizer associated to it.
 packCString :: CString -> FastString
 packCString cstr = unsafePerformIO $ do 
