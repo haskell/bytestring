@@ -148,7 +148,9 @@ module Data.FastPackedString (
         unsafePackAddress,    -- :: Int -> Addr# -> FastString
         unsafeFinalize,       -- :: FastString -> IO ()
 #endif
-        mallocCString2FastString, -- :: CString -> IO FastString
+        packMallocCString,    -- :: CString -> FastString
+        packCString,          -- :: CString -> FastString
+        packCStringLen,       -- :: CString -> FastString
         useAsCString,         -- :: FastString -> (CString -> IO a) -> IO a
         unsafeUseAsCString,   -- :: FastString -> (CString -> IO a) -> IO a
         unsafeUseAsCStringLen,-- :: FastString -> (CStringLen -> IO a) -> IO a
@@ -1069,12 +1071,26 @@ construct p l f = do
     return $ PS fp 0 l
 #endif
 
--- | Build a @FastString@ from a malloced @CString@
-mallocCString2FastString :: CString -> IO FastString
-mallocCString2FastString cs = do 
-    fp <- newForeignPtr c_free (castPtr cs)
-    let l = c_strlen cs
-    return $ PS fp 0 (fromIntegral l)
+-- | /O(n)/ Build a @FastString@ from a malloced @CString@. This value will
+-- have a /free(3)/ finalizer associated to it.
+packMallocCString :: CString -> FastString
+packMallocCString cstr = unsafePerformIO $ do 
+    fp <- newForeignPtr c_free (castPtr cstr)
+    return $ PS fp 0 (fromIntegral $ c_strlen cstr)
+
+-- | /O(n)/ Build a @FastString@ from a @CString@. This value will have a /no/
+-- finalizer associated to it.
+packCString :: CString -> FastString
+packCString cstr = unsafePerformIO $ do 
+    fp <- newForeignPtr_ (castPtr cstr)
+    return $ PS fp 0 (fromIntegral $ c_strlen cstr)
+
+-- | /O(1)/ Build a @FastString@ from a @CStringLen@. This value will
+-- have /no/ finalizer associated with it.
+packCStringLen :: CStringLen -> FastString
+packCStringLen (ptr,len) = unsafePerformIO $ do
+    fp <- newForeignPtr_ (castPtr ptr)
+    return $ PS fp 0 (fromIntegral len)
 
 -- | Use a @FastString@ with a function requiring a null-terminated @CString@.
 --   The @CString@ should not be freed afterwards.
