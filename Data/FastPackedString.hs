@@ -1017,13 +1017,13 @@ unpackFromUTF8 (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> do
     return str
 
 #if defined(__GLASGOW_HASKELL__)
--- | /O(n)/ Pack a null-terminated sequence of bytes, pointed to by and
+-- | /O(n)/ Pack a null-terminated sequence of bytes, pointed to by an
 -- Addr\# (an arbitrary machine address assumed to point outside the
--- garbage-collected heap) into a FastString. A useful way to create an
+-- garbage-collected heap) into a @FastString@. A useful way to create an
 -- Addr\# is with an unboxed string literal, which is compiled to a
--- @char []@. Establishing the length of the string requires a call to
--- /strlen(3)/. Use 'unsafePackAddress' if you know the length of the
--- string statically. 
+-- static @char []@ by GHC. Establishing the length of the string
+-- requires a call to /strlen(3)/. Use 'unsafePackAddress' if you know
+-- the length of the string statically. 
 --
 -- An example:
 --
@@ -1037,10 +1037,12 @@ packAddress addr# = unsafePerformIO $ do
       cstr = Ptr addr# 
 {-# INLINE packAddress #-}
 
--- | /O(1)/ Pack a null-terminated sequence of bytes into a
--- 'FastString', given a raw 'Addr\#' to the string, and the length of
--- the string. Make sure the length is correct, otherwise use the safer
--- 'packAddress' (where the length will be calculated once at runtime).
+-- | /O(1)/ 'unsafePackAddress' provides constant-time construction of
+-- 'FastStrings' -- which is ideal for string literals. It packs a
+-- null-terminated sequence of bytes into a 'FastString', given a raw
+-- 'Addr\#' to the string, and the length of the string. Make sure the
+-- length is correct, otherwise use the safer 'packAddress' (where the
+-- length will be calculated once at runtime).
 unsafePackAddress :: Int -> Addr# -> FastString
 unsafePackAddress len addr# = unsafePerformIO $ do
     p <- newForeignPtr_ cstr
