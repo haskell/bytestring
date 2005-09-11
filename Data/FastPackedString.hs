@@ -155,7 +155,6 @@ module Data.FastPackedString (
         unsafeUseAsCString,   -- :: FastString -> (CString -> IO a) -> IO a
         unsafeUseAsCStringLen,-- :: FastString -> (CStringLen -> IO a) -> IO a
         unpackFromUTF8,       -- :: FastString -> String
-        
 
         -- * Extensions to the I\/O interface
         LazyFile(..),
@@ -244,13 +243,13 @@ instance Show FastString where
 ------------------------------------------------------------------------
 
 -- | /O(n)/ Equality on the 'FastString' type. This implementation
--- uses memcmp(3).
+-- uses @memcmp(3)@.
 eqPS :: FastString -> FastString -> Bool
 eqPS a b = (comparePS a b) == EQ
 {-# INLINE eqPS #-}
 
 -- | /O(n)/ 'comparePS' provides an 'Ordering' for 'FastStrings' supporting slices. 
--- This implementation uses memcmp(3)
+-- This implementation uses @memcmp(3)@
 comparePS :: FastString -> FastString -> Ordering
 comparePS (PS _ _ 0) (PS _ _ 0) = EQ    -- short cut for empty strings
 comparePS (PS x1 s1 l1) (PS x2 s2 l2) = unsafePerformIO $ 
@@ -457,11 +456,11 @@ foldr1 f ps
 -- a recursive call.
 --
 -- To preven unfoldr having /O(n^2)/ complexity (as prepending a character
--- to a FastString is /O(n))/, this unfoldr requires a maximum final
--- size of the FastString as an argument. 'cons' can then be
--- implemented in /O(1)/ (i.e.  a 'poke'), and the unfoldr itself has
--- linear complexity. The depth of the recursion is limited to this
--- size, but may be less. For lazy, infinite unfoldr, use 'Data.List.unfoldr'.
+-- to a FastString is /O(n)/, this unfoldr requires a maximum final size
+-- of the FastString as an argument. 'cons' can then be implemented in
+-- /O(1)/ (i.e.  a 'poke'), and the unfoldr itself has linear
+-- complexity. The depth of the recursion is limited to this size, but
+-- may be less. For lazy, infinite unfoldr, use 'Data.List.unfoldr'.
 --
 -- Examples:
 --
@@ -663,7 +662,7 @@ join filler pss = concat (splice pss)
         splice [x] = [x]
         splice (x:y:xs) = x:filler:splice (y:xs)
 
--- | /O(n log(n))/ Sort a FastString using the C function qsort(3).
+-- | /O(n log(n))/ Sort a FastString using the C function @qsort(3)@.
 sort :: FastString -> FastString
 sort (PS x s l) = createPS l $ \p -> withForeignPtr x $ \f -> do
         c_memcpy p (f `plusPtr` s) l
@@ -753,7 +752,7 @@ spanEnd  p ps = splitAt (findFromEndUntilPS (not.p) ps) ps
 
 -- | 'breakOn' breaks its 'FastString' argument at the first occurence
 -- of the specified character. It is more efficient than 'break' as it
--- is implemented with memchr(3). I.e.
+-- is implemented with @memchr(3)@. I.e.
 -- 
 -- > break (=='c') "abcd" == breakOn 'c' "abcd"
 --
@@ -1022,7 +1021,7 @@ unpackFromUTF8 (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> do
 -- garbage-collected heap) into a @FastString@. A useful way to create an
 -- Addr\# is with an unboxed string literal, which is compiled to a
 -- static @char []@ by GHC. Establishing the length of the string
--- requires a call to /strlen(3)/. Use 'unsafePackAddress' if you know
+-- requires a call to @strlen(3)@. Use 'unsafePackAddress' if you know
 -- the length of the string statically. 
 --
 -- An example:
@@ -1074,7 +1073,7 @@ construct p l f = do
 #endif
 
 -- | /O(n)/ Build a @FastString@ from a malloced @CString@. This value will
--- have a /free(3)/ finalizer associated to it.
+-- have a @free(3)@ finalizer associated to it.
 packMallocCString :: CString -> FastString
 packMallocCString cstr = unsafePerformIO $ do 
     fp <- newForeignPtr c_free (castPtr cstr)
