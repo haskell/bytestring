@@ -11,7 +11,7 @@ if [ -z "origName" -o -z "$inName" -o -z "$outName" ] ; then
 fi
 
 if [ -z "$GM4" ] ; then
-    GM4=/usr/local/bin/gm4
+    GM4=`which m4` # /usr/local/bin/gm4
 else
     GM4=`which "$GM4"`
 fi
