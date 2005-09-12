@@ -14,7 +14,7 @@ all: run-utests
 
 # build executable, linking in all tests
 run-utests: $(SRCS)
-	$(GHC_) -o $@ UnitTestsMain.hs
+	GM4=$(GM4) $(GHC_) -o $@ UnitTestsMain.hs
 
 run:: run-utests
 	./run-utests
