@@ -515,7 +515,7 @@ dropWhile :: (Char -> Bool) -> FastString -> FastString
 dropWhile f ps = seq f $ drop (findIndexOrEndPS (not . f) ps) ps
 {-# INLINE dropWhile #-}
 
--- | 'take' @n@, applied to a packed string @xs@, returns the prefix
+-- | /O(1)/ 'take' @n@, applied to a packed string @xs@, returns the prefix
 -- of @xs@ of length @n@, or @xs@ itself if @n > 'length' xs@.
 take :: Int -> FastString -> FastString
 take n ps@(PS x s l)
@@ -524,7 +524,7 @@ take n ps@(PS x s l)
     | otherwise = PS x s n
 {-# INLINE take #-}
 
--- | 'drop' @n xs@ returns the suffix of @xs@ after the first @n@
+-- | /O(1)/ 'drop' @n xs@ returns the suffix of @xs@ after the first @n@
 -- elements, or @[]@ if @n > 'length' xs@.
 drop  :: Int -> FastString -> FastString
 drop n ps@(PS x s l)
@@ -533,7 +533,7 @@ drop n ps@(PS x s l)
     | otherwise = PS x (s+n) (l-n)
 {-# INLINE drop #-}
 
--- | 'splitAt' @n xs@ is equivalent to @('take' n xs, 'drop' n xs)@.
+-- | /O(1)/ 'splitAt' @n xs@ is equivalent to @('take' n xs, 'drop' n xs)@.
 splitAt :: Int -> FastString -> (FastString, FastString)
 splitAt  n ps  = (take n ps, drop n ps)
 {-# INLINE splitAt #-}
