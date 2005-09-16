@@ -49,6 +49,9 @@ module Data.FastPackedString (
 
         -- * List transformations
         map,          -- :: (Char -> Char) -> FastString -> FastString
+        mapIndexed,   -- :: (Int -> Char -> Char) -> FastString -> FastString
+        mapWords,     -- :: (Word8 -> Word8) -> FastString -> FastString
+        mapIndexedWords,-- :: (Int -> Word8 -> Word8) -> FastString -> FastString
         reverse,      -- :: FastString -> FastString
         intersperse,  -- :: Char -> FastString -> FastString
         transpose,    -- :: [FastString] -> [FastString]
@@ -92,7 +95,9 @@ module Data.FastPackedString (
 
         -- * Indexing 'FastString's
         index,        -- :: FastString -> Int -> Char
+        indexWord8,   -- :: FastString -> Int -> Word8
         elemIndex,    -- :: Char -> FastString -> Maybe Int
+        elemIndexWord8, -- :: Word8 -> FastString -> Maybe Int
         elemIndices,  -- :: Char -> FastString -> [Int]
 
         findIndex,    -- :: (Char -> Bool) -> FastString -> Maybe Int
@@ -122,6 +127,7 @@ module Data.FastPackedString (
         tokens,       -- :: (Char -> Bool) -> FastString -> [FastString]
         hash,         -- :: FastString -> Int32
         elemIndexLast,-- :: Char -> FastString -> Maybe Int
+        elemIndexLastWord8,-- :: Char -> FastString -> Maybe Int
         betweenLines, -- :: FastString -> FastString -> FastString -> Maybe (FastString)
         lines',       -- :: FastString -> [FastString]
         unlines',     -- :: [FastString] -> FastString
@@ -376,14 +382,25 @@ append xs ys
 -- | /O(n)/ 'map' @f xs@ is the packed string obtained by applying @f@ to each
 -- element of @xs@, i.e.,
 map :: (Char -> Char) -> FastString -> FastString
-map k (PS ps s l) = createPS l $ \p -> withForeignPtr ps $ \f -> 
-        go (f `plusPtr` s) p (f `plusPtr` s `plusPtr` l)
+map k = mapWords (c2w . k . w2c)
+
+mapIndexed :: (Int -> Char -> Char) -> FastString -> FastString
+mapIndexed k = mapIndexedWords (\idx w -> c2w (k idx (w2c w)))
+
+mapWords :: (Word8 -> Word8) -> FastString -> FastString
+mapWords k
+    = mapIndexedWords (const k)
+
+mapIndexedWords :: (Int -> Word8 -> Word8) -> FastString -> FastString
+mapIndexedWords k (PS ps s l)
+    = createPS l $ \p -> withForeignPtr ps $ \f -> 
+      go 0 (f `plusPtr` s) p (f `plusPtr` s `plusPtr` l)
     where 
-        go :: Ptr Word8 -> Ptr Word8 -> Ptr Word8 -> IO ()
-        go f t p | f == p    = return ()
-                 | otherwise = do w <- peek f
-                                  ((poke t) . c2w . k . w2c) w
-                                  go (f `plusPtr` 1) (t `plusPtr` 1) p
+        go :: Int -> Ptr Word8 -> Ptr Word8 -> Ptr Word8 -> IO ()
+        go n f t p | f == p    = return ()
+                   | otherwise = do w <- peek f
+                                    ((poke t) . k n) w
+                                    go (n+1) (f `plusPtr` 1) (t `plusPtr` 1) p
 
 -- | /O(n)/ 'filter', applied to a predicate and a packed string,
 -- returns a packed string containing those characters that satisfy the
@@ -594,6 +611,13 @@ index ps n
     | n >= length ps = error "FastFastString.index: index too large"
     | otherwise      = w2c $ ps ! n
 {-# INLINE index #-}
+
+indexWord8 :: FastString -> Int -> Word8
+indexWord8 ps n 
+    | n < 0          = error "FastFastString.indexWords: negative index"
+    | n >= length ps = error "FastFastString.indexWords: index too large"
+    | otherwise      = ps ! n
+{-# INLINE indexWord8 #-}
 
 -- | 'maximum' returns the maximum value from a 'FastString'
 maximum :: FastString -> Char
@@ -949,7 +973,7 @@ c2w = fromIntegral . ord
 
 ------------------------------------------------------------------------
 
--- | (Internal) /O(n)/ 'elemIndexWord8' is like 'elemIndex', except
+-- | /O(n)/ 'elemIndexWord8' is like 'elemIndex', except
 -- that it takes a 'Word8' as the element to search for.
 elemIndexWord8 :: Word8 -> FastString -> Maybe Int
 elemIndexWord8 c (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> do
@@ -958,6 +982,9 @@ elemIndexWord8 c (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> do
     return $ if q == nullPtr then Nothing else Just (q `minusPtr` p')
 {-# INLINE elemIndexWord8 #-}
 
+-- | /O(n)/ The 'elemIndexLastWord8' function returns the last index of the
+-- element in the given 'FastString' which is equal to the query
+-- element, or 'Nothing' if there is no such element.
 elemIndexLastWord8 :: Word8 -> FastString -> Maybe Int
 elemIndexLastWord8 c (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> 
         go (-1) (p `plusPtr` s) 0
