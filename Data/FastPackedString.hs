@@ -140,6 +140,7 @@ module Data.FastPackedString (
 
         -- * I\/O with @FastString@s
         hGet,                 -- :: Handle -> Int -> IO FastString
+        hGetNonBlocking,      -- :: Handle -> Int -> IO FastString
         hPut,                 -- :: Handle -> FastString -> IO ()
         hGetContents,         -- :: Handle -> IO FastString
         readFile,             -- :: FilePath -> IO FastString
@@ -1192,6 +1193,18 @@ hGet _ 0 = return empty
 hGet h i = do fp <- mallocForeignPtr i
               l  <- withForeignPtr fp $ \p-> hGetBuf h p i
               return $ PS fp 0 l
+
+
+-- | hGetNonBlocking is identical to 'hGet', except that it will never block
+-- waiting for data to become available, instead it returns only whatever data
+-- is available.
+--
+hGetNonBlocking :: Handle -> Int -> IO FastString
+hGetNonBlocking _ 0 = return empty
+hGetNonBlocking h i
+    = do fp <- mallocForeignPtr i
+         l  <- withForeignPtr fp $ \p -> hGetBufNonBlocking h p i
+         return $ PS fp 0 l
 
 -- | Read entire handle contents into a 'FastString'.
 --
