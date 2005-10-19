@@ -27,7 +27,7 @@
 module Data.FastPackedString (
 
         -- * The @FastString@ type
-        FastString, -- abstract, instances: Eq, Ord, Show, Typeable
+        FastString(..), -- abstract, instances: Eq, Ord, Show, Typeable
 
         -- * Introducing and eliminating 'FastString's
         empty,        -- :: FastString

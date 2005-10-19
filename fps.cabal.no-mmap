@@ -7,6 +7,6 @@ Maintainer:          dons@cse.unsw.edu.au
 Build-Depends:       base
 Exposed-modules:     Data.FastPackedString
 extensions:          CPP, ForeignFunctionInterface
-ghc-options:         -Wall -O2 -funbox-strict-fields -Icbits
+ghc-options:         -Wall -O2 -fglasgow-exts -funbox-strict-fields -Icbits
 c-sources:           cbits/fpstring.c
 include-dirs:        cbits
