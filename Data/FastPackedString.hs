@@ -163,6 +163,9 @@ module Data.FastPackedString (
         unsafeUseAsCStringLen,-- :: FastString -> (CStringLen -> IO a) -> IO a
         unpackFromUTF8,       -- :: FastString -> String
 
+        fromForeignPtr,       -- :: ForeignPtr Word8 -> Int -> FastString
+        toForeignPtr,         -- :: FastString -> (ForeignPtr Word8, Int, Int)
+
         -- * Extensions to the I\/O interface
         LazyFile(..),
         readFileLazily,         -- :: FilePath -> IO LazyFile
@@ -220,6 +223,8 @@ import System.IO.Unsafe         (unsafeInterleaveIO)
 #endif
 
 #if defined(__GLASGOW_HASKELL__)
+import Data.Typeable
+
 import GHC.Base (unsafeChr)
 
 import GHC.Ptr  (Ptr(..))
@@ -235,6 +240,9 @@ import Control.Monad.ST
 -- efficient operations.  A 'FastString' contains 8-bit characters only.
 --
 data FastString = PS {-# UNPACK #-} !(ForeignPtr Word8) !Int !Int
+#if defined(__GLASGOW_HASKELL__)
+    deriving Typeable
+#endif
 
 ------------------------------------------------------------------------
 
@@ -246,6 +254,9 @@ instance Ord FastString
 
 instance Show FastString where
     showsPrec p ps r = showsPrec p (unpack ps) r
+
+instance Read FastString where
+    readsPrec p str = [ (pack x, y) | (x, y) <- readsPrec p str ]
 
 ------------------------------------------------------------------------
 
@@ -1077,6 +1088,14 @@ unsafePackAddress len addr# = unsafePerformIO $ do
     where
       cstr = Ptr addr# 
 #endif
+
+-- | Build a FastString from a ForeignPtr
+fromForeignPtr :: ForeignPtr Word8 -> Int -> FastString
+fromForeignPtr fp l = PS fp 0 l
+
+-- | Deconstruct a ForeignPtr from a FastString
+toForeignPtr :: FastString -> (ForeignPtr Word8, Int, Int)
+toForeignPtr (PS ps s l) = (ps, s, l)
 
 -- | Given the maximum size needed and a function to make the contents
 -- of a FastString, generate makes the 'FastString'. The
