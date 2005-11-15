@@ -602,7 +602,8 @@ concat xs     = unsafePerformIO $ do
     f p 0 1024 xs
 
     where f ptr len _ [] = do 
-                ptr' <- reallocArray ptr len
+                ptr' <- reallocArray ptr (len+1)
+                poke (ptr' `plusPtr` len) (0::Word8)    -- XXX so CStrings work
                 fp   <- newForeignPtr c_free ptr'
                 return $ PS fp 0 len
 
@@ -1153,6 +1154,7 @@ useAsCString (PS ps s l) = bracket alloc free_cstring
 
 -- | Use a @FastString@ with a function requiring a @CString@.
 --   Warning: modifying the @CString@ will affect the @FastString@.
+-- It better be null terminated!
 unsafeUseAsCString :: FastString -> (CString -> IO a) -> IO a
 unsafeUseAsCString (PS ps s _) ac = withForeignPtr ps $ \p -> ac (castPtr p `plusPtr` s)
 
@@ -1165,7 +1167,7 @@ unsafeUseAsCStringLen (PS ps s l) ac = withForeignPtr ps $ \p -> ac (castPtr p `
 -- still isn't entirely "safe", but at least it's convenient.
 createPS :: Int -> (Ptr Word8 -> IO ()) -> FastString
 createPS l write_ptr = unsafePerformIO $ do 
-    fp <- mallocForeignPtr l
+    fp <- mallocForeignPtr (l+1)
     withForeignPtr fp $ \p -> write_ptr p
     return $ PS fp 0 l
 
@@ -1184,7 +1186,11 @@ unsafeFinalize (PS p _ _) = finalizeForeignPtr p
 
 -- (internal) GC wrapper of mallocForeignPtrArray
 mallocForeignPtr :: Int -> IO (ForeignPtr Word8)
-mallocForeignPtr l = when (l > 1000000) performGC >> mallocForeignPtrArray l
+mallocForeignPtr l = do 
+    when (l > 1000000) performGC
+    fp <- mallocForeignPtrArray (l+1)
+    withForeignPtr fp $ \p -> poke (p `plusPtr` l) (0::Word8)
+    return fp
 
 -- -----------------------------------------------------------------------------
 -- I\/O functions
