@@ -300,7 +300,10 @@ pack str = createPS (Prelude.length str) $ \p -> go p str
 pack str = createPS (Prelude.length str) $ \(Ptr p) -> stToIO (go p 0# str)
     where
         go _ _ []        = return ()
-        go p i (C# c:cs) = writeByte p i c >> go p (i +# 1#) cs
+        go p i (C# c:cs) 
+            | C# c > '\255' = error ("Data.FastPackedString.pack: "
+                                     ++ "character out of range")
+            | otherwise     = writeByte p i c >> go p (i +# 1#) cs
 
         writeByte p i c = ST $ \s# -> 
             case writeCharOffAddr# p i c s# of s2# -> (# s2#, () #)
