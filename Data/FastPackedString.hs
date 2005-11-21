@@ -225,7 +225,7 @@ import System.IO.Unsafe         (unsafeInterleaveIO)
 #if defined(__GLASGOW_HASKELL__)
 import Data.Typeable
 
-import GHC.Base (unsafeChr)
+import GHC.Base (unsafeChr, unpackCString#)
 
 import GHC.Ptr  (Ptr(..))
 import GHC.ST
@@ -307,6 +307,11 @@ pack str = createPS (Prelude.length str) $ \(Ptr p) -> stToIO (go p 0# str)
 
         writeByte p i c = ST $ \s# -> 
             case writeCharOffAddr# p i c s# of s2# -> (# s2#, () #)
+{-# RULES
+"pack/packAddress" forall s# .
+                   pack (unpackCString# s#) = packAddress s#
+ #-}
+
 #endif
 
 -- | /O(n)/ Convert a 'FastString' into a 'String'
