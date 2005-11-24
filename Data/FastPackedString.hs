@@ -102,6 +102,8 @@ module Data.FastPackedString (
 
         findIndex,    -- :: (Char -> Bool) -> FastString -> Maybe Int
         findIndices,  -- :: (Char -> Bool) -> FastString -> [Int]
+        isPrefixOf,   -- :: FastString -> FastString -> Bool
+        isSuffixOf,   -- :: FastString -> FastString -> Bool
 
         -- * Special 'FastString's
 
@@ -740,6 +742,20 @@ findIndices p ps = loop 0 ps
        loop n ps' | p (unsafeHead ps') = n : loop (n + 1) (unsafeTail ps')
                   | otherwise     = loop (n + 1) (unsafeTail ps')
 
+-- | The 'isPrefixOf' function takes two strings and returns 'True'
+-- iff the first string is a prefix of the second.
+isPrefixOf :: FastString -> FastString -> Bool
+isPrefixOf x y
+    | null x    = True
+    | null y    = False
+    | otherwise = unsafeHead x == unsafeHead y && isPrefixOf (unsafeTail x) (unsafeTail y)
+
+-- | The 'isSuffixOf' function takes two lists and returns 'True'
+-- iff the first list is a suffix of the second.
+-- Both lists must be finite.
+isSuffixOf     :: FastString -> FastString -> Bool
+isSuffixOf x y = reverse x `isPrefixOf` reverse y
+
 ------------------------------------------------------------------------
 -- Extensions to the list interface
 
@@ -1114,7 +1130,8 @@ generate :: Int -> (Ptr Word8 -> IO Int) -> IO FastString
 generate i f = do 
     p <- mallocArray i
     i' <- f p
-    p' <- reallocArray p i'
+    p' <- reallocArray p (i'+1)
+    poke (p' `plusPtr` i') (0::Word8)    -- XXX so CStrings work
     fp <- newForeignPtr c_free p'
     return $ PS fp 0 i'
 

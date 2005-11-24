@@ -192,6 +192,9 @@ prop_unfoldr c =
 
 prop_addr = let s = "my\nstring\nhaskell"# in P.length (P.packAddress s) == 17
 
+prop_prefix xs ys = isPrefixOf xs ys == (P.pack xs `P.isPrefixOf` P.pack ys)
+prop_suffix xs ys = isSuffixOf xs ys == (P.pack xs `P.isSuffixOf` P.pack ys)
+
 ------------------------------------------------------------------------
 
 main = do
@@ -272,6 +275,8 @@ main = do
         ,   run prop_dropSpaceEnd
         ,   run prop_unfoldr
         ,   run prop_addr
+        ,   run prop_prefix
+        ,   run prop_suffix
         ]
 
 instance Arbitrary Char where
