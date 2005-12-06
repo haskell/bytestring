@@ -1,6 +1,6 @@
 Name:                fps
 Version:             0.1
-License:             GPL
+License:             BSD3
 License-file:        LICENSE
 Author:              Don Stewart
 Maintainer:          dons@cse.unsw.edu.au
