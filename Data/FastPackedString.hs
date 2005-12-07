@@ -499,7 +499,8 @@ foldr1 f ps
 -- of the FastString as an argument. 'cons' can then be implemented in
 -- /O(1)/ (i.e.  a 'poke'), and the unfoldr itself has linear
 -- complexity. The depth of the recursion is limited to this size, but
--- may be less. For lazy, infinite unfoldr, use 'Data.List.unfoldr'.
+-- may be less. For lazy, infinite unfoldr, use 'Data.List.unfoldr'
+-- (from 'Data.List').
 --
 -- Examples:
 --
@@ -1311,7 +1312,7 @@ writeFile f ps = do
 -- 'FastString', but it is even more efficient.  It involves directly
 -- mapping the file to memory.  This has the advantage that the contents
 -- of the file never need to be copied.  Also, under memory pressure the
--- page may simply be discarded, wile in the case of readFile it would
+-- page may simply be discarded, while in the case of readFile it would
 -- need to be written to swap.  If you read many small files, mmapFile
 -- will be less memory-efficient than readFile, since each mmapFile
 -- takes up a separate page of memory.  Also, you can run into bus
