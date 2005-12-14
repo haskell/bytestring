@@ -1,5 +1,6 @@
 Name:                fps
 Version:             0.1
+Description:         Fast packed strings
 License:             GPL
 License-file:        LICENSE
 Author:              Don Stewart
