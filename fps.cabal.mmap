@@ -1,6 +1,7 @@
 Name:                fps
 Version:             0.1
-License:             GPL
+Description:         Fast packed strings
+License:             BSD3
 License-file:        LICENSE
 Author:              Don Stewart
 Maintainer:          dons@cse.unsw.edu.au
