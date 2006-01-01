@@ -32,6 +32,7 @@ module Data.FastPackedString (
         -- * Introducing and eliminating 'FastString's
         empty,        -- :: FastString
         pack,         -- :: String -> FastString
+        packChar,     -- :: String -> FastString
         unpack,       -- :: FastString -> String
         packWords,    -- :: [Word8] -> FastString
         unpackWords,  -- :: FastString -> [Word8]
@@ -46,6 +47,9 @@ module Data.FastPackedString (
         init,         -- :: FastString -> FastString
         null,         -- :: FastString -> Bool
         length,       -- :: FastString -> Int
+
+        idx,          -- :: FastString -> Int
+        lineIdxs,     -- :: FastString -> [Int]
 
         -- * List transformations
         map,          -- :: (Char -> Char) -> FastString -> FastString
@@ -106,6 +110,7 @@ module Data.FastPackedString (
         isSuffixOf,   -- :: FastString -> FastString -> Bool
 
         -- * Special 'FastString's
+        elems,        -- :: FastString -> [FastString]
 
         -- ** Lines and words
         lines,        -- :: FastString -> [FastString]
@@ -225,7 +230,7 @@ import System.IO.Unsafe         (unsafeInterleaveIO)
 #endif
 
 #if defined(__GLASGOW_HASKELL__)
-import Data.Typeable
+import Data.Generics
 
 import GHC.Base (unsafeChr, unpackCString#)
 
@@ -243,7 +248,7 @@ import Control.Monad.ST
 --
 data FastString = PS {-# UNPACK #-} !(ForeignPtr Word8) !Int !Int
 #if defined(__GLASGOW_HASKELL__)
-    deriving Typeable
+    deriving (Data, Typeable)
 #endif
 
 ------------------------------------------------------------------------
@@ -287,6 +292,13 @@ comparePS (PS x1 s1 l1) (PS x2 s2 l2) = unsafePerformIO $
 empty :: FastString
 empty = unsafePerformIO $ mallocForeignPtr 1 >>= \fp -> return $ PS fp 0 0
 {-# NOINLINE empty #-}
+
+-- | /O(n)/ Convert a 'Char' into a 'FastString'
+packChar :: Char -> FastString
+packChar c = unsafePerformIO $ mallocForeignPtr 2 >>= \fp -> do
+    withForeignPtr fp $ \p -> poke p (toEnum (ord c))
+    return $ PS fp 0 1
+{-# NOINLINE packChar #-}
 
 -- | /O(n)/ Convert a 'String' into a 'FastString'
 pack :: String -> FastString
@@ -363,7 +375,7 @@ head ps@(PS x s _)        -- ps ! 0 is inlined manually to eliminate a (+0)
 tail :: FastString -> FastString
 tail (PS p s l) 
     | l <= 0    = errorEmptyList "tail"
-    | l == 1    = empty                                                                    
+--  | l == 1    = empty                                                                    
     | otherwise = PS p (s+1) (l-1)
 {-# INLINE tail #-}
 
@@ -392,6 +404,19 @@ null (PS _ _ l) = l == 0
 length :: FastString -> Int
 length (PS _ _ l) = l
 {-# INLINE length #-}
+
+-- | /O(1)/ 'idx' returns the skipped index as an 'Int'.
+idx :: FastString -> Int
+idx (PS _ s _) = s
+{-# INLINE idx #-}
+
+-- a set of positions where newline occurs
+lineIdxs :: FastString -> [Int]
+lineIdxs ps 
+    | null ps = []
+    | otherwise = case elemIndexWord8 0x0A ps of
+             Nothing -> []
+             Just n  -> (n + idx ps:lineIdxs (drop (n+1) ps))
 
 -- | /O(n)/ Append two packed strings
 append :: FastString -> FastString -> FastString
@@ -559,7 +584,7 @@ dropWhile f ps = seq f $ drop (findIndexOrEndPS (not . f) ps) ps
 -- of @xs@ of length @n@, or @xs@ itself if @n > 'length' xs@.
 take :: Int -> FastString -> FastString
 take n ps@(PS x s l)
-    | n <= 0    = empty
+    | n < 0     = empty
     | n >= l    = ps
     | otherwise = PS x s n
 {-# INLINE take #-}
@@ -657,6 +682,12 @@ minimum xs@(PS x s l)
     | otherwise = unsafePerformIO $ withForeignPtr x $ \p -> 
                     return $ w2c $ c_minimum (p `plusPtr` s) l
 
+-- | /o(n)/ breaks a packed string to a list of packed strings, one byte each.
+elems :: FastString -> [FastString]
+elems (PS _ _ 0) = []
+elems (PS x s l) = (PS x s 1:elems (PS x (s+1) (l-1)))
+{-# INLINE elems #-}
+
 -- | 'lines' breaks a packed string up into a list of packed strings
 -- at newline characters.  The resulting strings do not contain
 -- newlines.
@@ -746,10 +777,13 @@ findIndices p ps = loop 0 ps
 -- | The 'isPrefixOf' function takes two strings and returns 'True'
 -- iff the first string is a prefix of the second.
 isPrefixOf :: FastString -> FastString -> Bool
-isPrefixOf x y
-    | null x    = True
-    | null y    = False
-    | otherwise = unsafeHead x == unsafeHead y && isPrefixOf (unsafeTail x) (unsafeTail y)
+isPrefixOf (PS x1 s1 l1) (PS x2 s2 l2)
+    | l1 == 0   = True
+    | l2 < l1   = False
+    | otherwise = unsafePerformIO $ withForeignPtr x1 $ \p1 -> 
+        withForeignPtr x2 $ \p2 -> do 
+            i <- c_memcmp (p1 `plusPtr` s1) (p2 `plusPtr` s2) l1
+            return (i == 0)
 
 -- | The 'isSuffixOf' function takes two lists and returns 'True'
 -- iff the first list is a suffix of the second.
@@ -989,9 +1023,9 @@ unsafeHead (PS x s _) = w2c $ unsafePerformIO $
 -- check for the empty case. As with 'unsafeHead', the programmer must
 -- provide a separate proof that the FastString is non-empty.
 unsafeTail :: FastString -> FastString
-unsafeTail (PS ps s l)
-    | l == 1    = empty
-    | otherwise = PS ps (s+1) (l-1)
+unsafeTail (PS ps s l) = PS ps (s+1) (l-1)
+--  | l == 1    = empty
+--  | otherwise = PS ps (s+1) (l-1)
 {-# INLINE unsafeTail #-}
 
 ------------------------------------------------------------------------
