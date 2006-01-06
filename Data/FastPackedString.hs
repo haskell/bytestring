@@ -956,7 +956,13 @@ hash (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p ->
 
 -- | 'betweenLines' returns the FastString between the two lines
 -- given, or Nothing if they do not appear.
-betweenLines :: FastString -> FastString -> FastString -> Maybe (FastString)
+-- The returned string is the first and shortest string such 
+-- that the line before it is the given first line, and the line 
+-- after it is the given second line.
+betweenLines :: FastString -- ^ First line to look for
+             -> FastString -- ^ Second line to look for
+             -> FastString -- ^ 'FastString' to look in
+             -> Maybe (FastString)
 betweenLines start end ps = 
     case Prelude.break (start ==) (lines ps) of
         (_, _:rest@(PS ps1 s1 _:_)) ->
