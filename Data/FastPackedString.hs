@@ -170,6 +170,8 @@ module Data.FastPackedString (
         unsafeUseAsCStringLen,-- :: FastString -> (CStringLen -> IO a) -> IO a
         unpackFromUTF8,       -- :: FastString -> String
 
+        copy,                 -- :: FastString -> FastString
+
         fromForeignPtr,       -- :: ForeignPtr Word8 -> Int -> FastString
         toForeignPtr,         -- :: FastString -> (ForeignPtr Word8, Int, Int)
 
@@ -1164,6 +1166,15 @@ fromForeignPtr fp l = PS fp 0 l
 -- | Deconstruct a ForeignPtr from a FastString
 toForeignPtr :: FastString -> (ForeignPtr Word8, Int, Int)
 toForeignPtr (PS ps s l) = (ps, s, l)
+
+-- | /O(n)/ Make a copy of the 'FastString' with its own storage. 
+--   This is mainly useful to allow the rest of the data pointed
+--   to by the 'FastString' to be garbage collected, for example
+--   if a large string has been read in, and only a small part of it 
+--   is needed in the rest of the program.
+copy :: FastString -> FastString
+copy (PS x s l) = createPS l $ \p -> withForeignPtr x $ \f -> 
+                    c_memcpy p (f `plusPtr` s) l
 
 -- | Given the maximum size needed and a function to make the contents
 -- of a FastString, generate makes the 'FastString'. The
