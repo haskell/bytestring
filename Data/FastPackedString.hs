@@ -656,15 +656,15 @@ concat xs     = unsafePerformIO $ do
 -- | 'FastString' index (subscript) operator, starting from 0.
 index :: FastString -> Int -> Char
 index ps n 
-    | n < 0          = error "FastFastString.index: negative index"
-    | n >= length ps = error "FastFastString.index: index too large"
+    | n < 0          = error "FastPackedString.index: negative index"
+    | n >= length ps = error "FastPackedString.index: index too large"
     | otherwise      = w2c $ ps ! n
 {-# INLINE index #-}
 
 indexWord8 :: FastString -> Int -> Word8
 indexWord8 ps n 
-    | n < 0          = error "FastFastString.indexWords: negative index"
-    | n >= length ps = error "FastFastString.indexWords: index too large"
+    | n < 0          = error "FastPackedString.indexWords: negative index"
+    | n >= length ps = error "FastPackedString.indexWords: index too large"
     | otherwise      = ps ! n
 {-# INLINE indexWord8 #-}
 
@@ -1105,7 +1105,7 @@ splitWord8 c ps = case elemIndexWord8 c ps of
 -- Common up near identical calls to `error' to reduce the number
 -- constant strings created when compiled:
 errorEmptyList :: String -> a
-errorEmptyList fun = error ("FastFastString." ++ fun ++ ": empty FastString")
+errorEmptyList fun = error ("FastPackedString." ++ fun ++ ": empty FastString")
 
 ------------------------------------------------------------------------
 
