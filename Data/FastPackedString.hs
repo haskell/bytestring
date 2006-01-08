@@ -656,15 +656,17 @@ concat xs     = unsafePerformIO $ do
 -- | 'FastString' index (subscript) operator, starting from 0.
 index :: FastString -> Int -> Char
 index ps n 
-    | n < 0          = error "FastPackedString.index: negative index"
-    | n >= length ps = error "FastPackedString.index: index too large"
+    | n < 0          = error $ "FastPackedString.index: negative index: " ++ show n
+    | n >= length ps = error $ "FastPackedString.index: index too large: " ++ show n 
+                                ++ ", length = " ++ show (length ps)
     | otherwise      = w2c $ ps ! n
 {-# INLINE index #-}
 
 indexWord8 :: FastString -> Int -> Word8
 indexWord8 ps n 
-    | n < 0          = error "FastPackedString.indexWords: negative index"
-    | n >= length ps = error "FastPackedString.indexWords: index too large"
+    | n < 0          = error $ "FastPackedString.indexWord8: negative index: " ++ show n
+    | n >= length ps = error $ "FastPackedString.indexWord8: index too large: " ++ show n 
+                                ++ ", length = " ++ show (length ps)
     | otherwise      = ps ! n
 {-# INLINE indexWord8 #-}
 
