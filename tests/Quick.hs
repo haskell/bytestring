@@ -201,6 +201,15 @@ prop_inits xs = inits xs == map P.unpack (P.inits (P.pack xs))
 
 prop_tails xs = tails xs == map P.unpack (P.tails (P.pack xs))
 
+prop_findSubstrings s x l 
+    = P.findSubstrings (P.pack p) (P.pack s) == naive_findSubstrings p s
+    where 
+    -- we look for some random substring of the test string
+    p = take (abs l) $ drop (abs x) s 
+    -- naive reference implementation
+    naive_findSubstrings :: String -> String -> [Int]
+    naive_findSubstrings p s = [x | x <- [0..length s], p `isPrefixOf` drop x s]
+
 ------------------------------------------------------------------------
 
 main = do
@@ -286,6 +295,7 @@ main = do
         ,   run prop_copy
         ,   run prop_inits
         ,   run prop_tails
+        ,   run prop_findSubstrings
         ]
 
 instance Arbitrary Char where

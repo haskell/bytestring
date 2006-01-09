@@ -3,6 +3,7 @@
 -- Copyright   : (c) The University of Glasgow 2001,
 --               (c) David Roundy 2003-2005,
 --               (c) Don Stewart 2005
+--               (c) Bjorn Bringert 2006
 -- License     : BSD-style
 --
 -- Maintainer  : dons@cse.unsw.edu.au
@@ -98,6 +99,11 @@ module Data.FastPackedString (
         -- ** Searching with a predicate
         filter,       -- :: (Char -> Bool) -> FastString -> FastString
         find,         -- :: (Char -> Bool) -> FastString -> Maybe Char
+
+        -- ** Searching for substrings
+        isSubstringOf, -- :: FastString -> FastString -> Bool
+        findSubstring, -- :: FastString -> FastString -> Maybe Int
+        findSubstrings, -- :: FastString -> FastString -> [Int]
 
         -- * Indexing 'FastString's
         index,        -- :: FastString -> Int -> Char
@@ -199,6 +205,8 @@ import Prelude hiding (reverse,head,tail,last,init,null,
 
 import qualified Data.List as List (intersperse,transpose)
 
+import Data.Array               (Array,listArray)
+import qualified Data.Array     ((!))
 import Data.Bits                (rotateL)
 import Data.Char                (chr, ord, String, isSpace)
 import Data.Int                 (Int32)
@@ -1047,6 +1055,49 @@ unsafeTail (PS ps s l) = PS ps (s+1) (l-1)
 --  | l == 1    = empty
 --  | otherwise = PS ps (s+1) (l-1)
 {-# INLINE unsafeTail #-}
+
+------------------------------------------------------------------------
+-- Searching for substrings
+
+-- | Check whether one string is a substring of another.
+--   @isSubstringOf p s@ is equivalent to @not (null (findSubstrings p s))@.
+isSubstringOf :: FastString -- ^ String to search for.
+              -> FastString -- ^ String to search in.
+              -> Bool
+isSubstringOf p s = not $ Prelude.null $ findSubstrings p s
+
+-- | Get the first index of a substring in another string,
+--   or 'Nothing' if the string is not found.
+--   @findSubstring p s@ is equivalent to @listToMaybe (findSubstrings p s)@.
+findSubstring :: FastString -- ^ String to search for.
+              -> FastString -- ^ String to seach in.
+              -> Maybe Int
+findSubstring p s = listToMaybe $ findSubstrings p s
+
+-- Find the indexes of all (possibly overlapping) occurances 
+-- of a substring in a string.
+-- This function uses the Knuth-Morris-Pratt string matching algorithm.
+findSubstrings :: FastString -- ^ String to search for.
+               -> FastString -- ^ String to seach in.
+               -> [Int]
+findSubstrings pat str = search 0 0
+  where
+  m = length pat
+  n = length str
+  patc x = w2c (pat ! x)
+  strc x = w2c (str ! x)
+  kmpNext = listArray (0,m) (-1:kmpNextL pat (-1))
+  kmpNextL p _ | null p = []
+  kmpNextL p j = let j' = next (unsafeHead p) j + 1
+                     ps = unsafeTail p
+                     x = if not (null ps) && unsafeHead ps == patc j' 
+                            then kmpNext Data.Array.! j' else j'
+                    in x:kmpNextL ps j'
+  search i j = match ++ rest -- i: position in string, j: position in pattern
+    where match = if j == m then [(i - j)] else []
+          rest = if i == n then [] else search (i+1) (next (strc i) j + 1)
+  next c j | j >= 0 && (j == m || c /= patc j) = next c (kmpNext Data.Array.! j)
+           | otherwise = j
 
 ------------------------------------------------------------------------
 -- (Internal) Conversion between 'Word8' and 'Char'
