@@ -195,6 +195,8 @@ prop_addr = let s = "my\nstring\nhaskell"# in P.length (P.packAddress s) == 17
 prop_prefix xs ys = isPrefixOf xs ys == (P.pack xs `P.isPrefixOf` P.pack ys)
 prop_suffix xs ys = isSuffixOf xs ys == (P.pack xs `P.isSuffixOf` P.pack ys)
 
+prop_copy xs = let p = P.pack xs in P.copy p == p
+
 ------------------------------------------------------------------------
 
 main = do
@@ -277,6 +279,7 @@ main = do
         ,   run prop_addr
         ,   run prop_prefix
         ,   run prop_suffix
+        ,   run prop_copy
         ]
 
 instance Arbitrary Char where
