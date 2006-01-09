@@ -206,7 +206,7 @@ import Prelude hiding (reverse,head,tail,last,init,null,
 import qualified Data.List as List (intersperse,transpose)
 
 import Data.Array               (Array,listArray)
-import qualified Data.Array     ((!))
+import qualified Data.Array as Array ((!))
 import Data.Bits                (rotateL)
 import Data.Char                (chr, ord, String, isSpace)
 import Data.Int                 (Int32)
@@ -1080,23 +1080,22 @@ findSubstring p s = listToMaybe $ findSubstrings p s
 findSubstrings :: FastString -- ^ String to search for.
                -> FastString -- ^ String to seach in.
                -> [Int]
-findSubstrings pat str = search 0 0
+findSubstrings pat@(PS _ _ m) str@(PS _ _ n) = search 0 0
   where
-  m = length pat
-  n = length str
   patc x = w2c (pat ! x)
   strc x = w2c (str ! x)
+  -- maybe we should make kmpNext a UArray before using it in search?
   kmpNext = listArray (0,m) (-1:kmpNextL pat (-1))
   kmpNextL p _ | null p = []
   kmpNextL p j = let j' = next (unsafeHead p) j + 1
                      ps = unsafeTail p
                      x = if not (null ps) && unsafeHead ps == patc j' 
-                            then kmpNext Data.Array.! j' else j'
+                            then kmpNext Array.! j' else j'
                     in x:kmpNextL ps j'
   search i j = match ++ rest -- i: position in string, j: position in pattern
     where match = if j == m then [(i - j)] else []
           rest = if i == n then [] else search (i+1) (next (strc i) j + 1)
-  next c j | j >= 0 && (j == m || c /= patc j) = next c (kmpNext Data.Array.! j)
+  next c j | j >= 0 && (j == m || c /= patc j) = next c (kmpNext Array.! j)
            | otherwise = j
 
 ------------------------------------------------------------------------
