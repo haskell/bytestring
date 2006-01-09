@@ -47,6 +47,8 @@ module Data.FastPackedString (
         init,         -- :: FastString -> FastString
         null,         -- :: FastString -> Bool
         length,       -- :: FastString -> Int
+        inits,        -- :: FastString -> [FastString]
+        tails,        -- :: FastString -> [FastString]
 
         idx,          -- :: FastString -> Int
         lineIdxs,     -- :: FastString -> [Int]
@@ -406,6 +408,14 @@ null (PS _ _ l) = l == 0
 length :: FastString -> Int
 length (PS _ _ l) = l
 {-# INLINE length #-}
+
+-- | Return all initial segments of the given 'FastString', shortest first.
+inits :: FastString -> [FastString]
+inits (PS x s l) = [PS x s n | n <- [0..l]]
+
+-- | Return all final segments of the given 'FastString', longest first.
+tails :: FastString -> [FastString]
+tails (PS x s l) = [PS x (s+n) (l-n) | n <- [0..l]]
 
 -- | /O(1)/ 'idx' returns the skipped index as an 'Int'.
 idx :: FastString -> Int

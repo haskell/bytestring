@@ -197,6 +197,10 @@ prop_suffix xs ys = isSuffixOf xs ys == (P.pack xs `P.isSuffixOf` P.pack ys)
 
 prop_copy xs = let p = P.pack xs in P.copy p == p
 
+prop_inits xs = inits xs == map P.unpack (P.inits (P.pack xs))
+
+prop_tails xs = tails xs == map P.unpack (P.tails (P.pack xs))
+
 ------------------------------------------------------------------------
 
 main = do
@@ -280,6 +284,8 @@ main = do
         ,   run prop_prefix
         ,   run prop_suffix
         ,   run prop_copy
+        ,   run prop_inits
+        ,   run prop_tails
         ]
 
 instance Arbitrary Char where
