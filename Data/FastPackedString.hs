@@ -1,3 +1,4 @@
+{-# OPTIONS -fglasgow-exts -cpp #-}
 --
 -- Module      : FastPackedString
 -- Copyright   : (c) The University of Glasgow 2001,
@@ -146,6 +147,8 @@ module Data.FastPackedString (
         betweenLines, -- :: FastString -> FastString -> FastString -> Maybe (FastString)
         lines',       -- :: FastString -> [FastString]
         unlines',     -- :: [FastString] -> FastString
+        linesCRLF',   -- :: FastString -> [FastString]
+        unlinesCRLF', -- :: [FastString] -> FastString
         words',       -- :: FastString -> [FastString]
         unwords',     -- :: FastString -> [FastString]
         unsafeHead,   -- :: FastString -> Char
@@ -1011,6 +1014,14 @@ lines' ps = case elemIndexWord8 (c2w '\n') ps of
              Nothing -> [ps]
              Just n -> take n ps : lines' (drop (n+1) ps)
 
+-- | 'linesCRLF\'' behaves like 'lines\'', but breaks on (\\cr?\\lf)
+linesCRLF' :: FastString -> [FastString]
+linesCRLF' ps = case elemIndexWord8 (c2w '\n') ps of
+                 Nothing -> [ps]
+                 Just 0  -> empty : linesCRLF' (drop 1 ps)
+                 Just n  -> let k = if ps ! (n-1) == 0xD then n-1 else n
+                            in take k ps : linesCRLF' (drop (n+1) ps)
+
 -- | 'unlines\'' behaves like 'unlines', except that it also correctly
 -- retores lines that do not have terminating newlines (see the
 -- description for 'lines\'').
@@ -1020,6 +1031,16 @@ unlines' ss = concat $ intersperse_newlines ss
     where intersperse_newlines (a:b:s) = a:newline: intersperse_newlines (b:s)
           intersperse_newlines s = s
           newline = pack "\n"
+
+-- | 'unlines\'' behaves like 'unlines', except that it also correctly
+-- retores lines that do not have terminating newlines (see the
+-- description for 'lines\''). Uses CRLF instead of LF.
+--
+unlinesCRLF' :: [FastString] -> FastString
+unlinesCRLF' ss = concat $ intersperse_newlines ss
+    where intersperse_newlines (a:b:s) = a:newline: intersperse_newlines (b:s)
+          intersperse_newlines s = s
+          newline = pack "\r\n"
 
 -- | 'words\'' behaves like 'words', with the exception that it produces
 -- output on FastStrings with trailing whitespace that can be
