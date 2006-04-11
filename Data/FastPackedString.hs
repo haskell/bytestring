@@ -79,6 +79,9 @@ module Data.FastPackedString (
         maximum,      -- :: FastString -> Char
         minimum,      -- :: FastString -> Char
 
+        -- ** Infinite lists
+        replicate,    -- :: Int -> Char -> P.FastString
+
         -- ** Unfolding
         unfoldr,      -- :: (Char -> Maybe (Char, Char)) -> Char -> FastString
 
@@ -204,11 +207,11 @@ import Prelude hiding (reverse,head,tail,last,init,null,
                        concat,any,take,drop,splitAt,takeWhile,
                        dropWhile,span,break,elem,filter,unwords,
                        words,maximum,minimum,all,concatMap,
-                       foldl1,foldr1,readFile,writeFile)
+                       foldl1,foldr1,readFile,writeFile,replicate)
 
 import qualified Data.List as List (intersperse,transpose)
 
-import Data.Array               (Array,listArray)
+import Data.Array               (listArray)
 import qualified Data.Array as Array ((!))
 import Data.Bits                (rotateL)
 import Data.Char                (chr, ord, String, isSpace)
@@ -455,7 +458,7 @@ map :: (Char -> Char) -> FastString -> FastString
 map k = mapWords (c2w . k . w2c)
 
 mapIndexed :: (Int -> Char -> Char) -> FastString -> FastString
-mapIndexed k = mapIndexedWords (\idx w -> c2w (k idx (w2c w)))
+mapIndexed k = mapIndexedWords (\i w -> c2w (k i (w2c w)))
 
 mapWords :: (Word8 -> Word8) -> FastString -> FastString
 mapWords k
@@ -534,6 +537,19 @@ foldr1 f ps
     | null ps        = errorEmptyList "foldr1"
     | length ps == 1 = unsafeHead ps
     | otherwise      = f (unsafeHead ps) (foldr1 f (unsafeTail ps))
+
+-- | 'replicate' @n x@ is a packed string of length @n@ with @x@ the
+-- value of every element. The following holds:
+--
+-- > replicate w c = unfoldr w (\u -> Just (u,u)) c
+--
+replicate :: Int -> Char -> FastString
+replicate w c = unsafePerformIO $ generate w $ \ptr -> go ptr w
+    where 
+        x = fromIntegral . ord $ c
+        go _   0 = return w
+        go ptr n = poke ptr x >> go (ptr `plusPtr` 1) (n-1)
+
 
 -- | /O(n)/ The 'unfoldr' function is analogous to the List \'unfoldr\'.
 -- 'unfoldr' builds a FastString from a seed value.  The function

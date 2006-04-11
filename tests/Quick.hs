@@ -9,6 +9,8 @@ import qualified Data.FastPackedString as P
 import Test.QuickCheck.Batch
 import Test.QuickCheck
 
+import Debug.Trace
+
 ------------------------------------------------------------------------
 -- at first we just check the correspondence to List functions
 
@@ -210,6 +212,16 @@ prop_findSubstrings s x l
     naive_findSubstrings :: String -> String -> [Int]
     naive_findSubstrings p s = [x | x <- [0..length s], p `isPrefixOf` drop x s]
 
+prop_replicate1 n c =
+    (n >= 0) ==>
+    unpack (P.replicate n c) == replicate n c
+
+prop_replicate2 n c =
+    (n >= 0) ==>
+    P.replicate n c == P.unfoldr n (\u -> Just (u,u)) c
+
+prop_replicate3 c = unpack (P.replicate 0 c) == replicate 0 c
+
 ------------------------------------------------------------------------
 
 main = do
@@ -296,6 +308,9 @@ main = do
         ,   run prop_inits
         ,   run prop_tails
         ,   run prop_findSubstrings
+        ,   run prop_replicate1
+        ,   run prop_replicate2
+        ,   run prop_replicate3
         ]
 
 instance Arbitrary Char where
