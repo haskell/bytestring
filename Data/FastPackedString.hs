@@ -3,13 +3,13 @@
 -- Module      : FastPackedString
 -- Copyright   : (c) The University of Glasgow 2001,
 --               (c) David Roundy 2003-2005,
---               (c) Don Stewart 2005
+--               (c) Don Stewart 2005-2006
 --               (c) Bjorn Bringert 2006
 -- License     : BSD-style
 --
 -- Maintainer  : dons@cse.unsw.edu.au
 -- Stability   : experimental
--- Portability : portable
+-- Portability : portable, requires ffi
 -- 
 
 --
@@ -184,7 +184,11 @@ module Data.FastPackedString (
         unsafeUseAsCStringLen,-- :: FastString -> (CStringLen -> IO a) -> IO a
         unpackFromUTF8,       -- :: FastString -> String
 
-        copy,                 -- :: FastString -> FastString
+        copy,                    -- :: FastString -> FastString
+        copyCStringToFastString, -- :: CString -> FastString
+
+        readInt,              -- :: FastString -> Maybe Int
+        unsafeReadInt,        -- :: FastString -> Maybe Int
 
         fromForeignPtr,       -- :: ForeignPtr Word8 -> Int -> FastString
         toForeignPtr,         -- :: FastString -> (ForeignPtr Word8, Int, Int)
@@ -223,7 +227,6 @@ import Control.Monad            (when, liftM)
 import Control.Exception        (bracket)
 
 import System.IO    hiding      (hGetContents,readFile,writeFile)
-import System.IO.Unsafe         (unsafePerformIO)
 import System.Mem               (performGC)
 
 import Foreign.Ptr              (Ptr, FunPtr, plusPtr, nullPtr, minusPtr, castPtr)
@@ -231,8 +234,9 @@ import Foreign.ForeignPtr       (newForeignPtr, newForeignPtr_, withForeignPtr,
                                  finalizeForeignPtr, mallocForeignPtrArray, ForeignPtr)
 import Foreign.Storable         (peekByteOff, peek, poke)
 import Foreign.C.String         (CString, CStringLen)
-import Foreign.C.Types          (CSize, CInt)
+import Foreign.C.Types          (CSize, CInt, CLong)
 import Foreign.Marshal.Alloc    (free)
+import Foreign.Marshal.Utils    (with)
 import Foreign.Marshal.Array
 
 #if defined(__GLASGOW_HASKELL__)
@@ -243,13 +247,14 @@ import System.Posix             (handleToFd)
 #endif
 #endif
 
-#if !defined(USE_MMAP)
+#if !defined(USE_MMAP) && !defined(__GLASGOW_HASKELL__)
 import System.IO.Unsafe         (unsafeInterleaveIO)
 #endif
 
 #if defined(__GLASGOW_HASKELL__)
 import Data.Generics
 
+import GHC.IOBase
 import GHC.Base (unsafeChr, unpackCString#)
 
 import GHC.Ptr  (Ptr(..))
@@ -295,7 +300,7 @@ eqPS a b = (comparePS a b) == EQ
 -- This implementation uses @memcmp(3)@
 comparePS :: FastString -> FastString -> Ordering
 comparePS (PS _ _ 0) (PS _ _ 0) = EQ    -- short cut for empty strings
-comparePS (PS x1 s1 l1) (PS x2 s2 l2) = unsafePerformIO $ 
+comparePS (PS x1 s1 l1) (PS x2 s2 l2) = inlinePerformIO $ 
     withForeignPtr x1 $ \p1 -> 
         withForeignPtr x2 $ \p2 -> do 
             i <- c_memcmp (p1 `plusPtr` s1) (p2 `plusPtr` s2) (min l1 l2)
@@ -308,12 +313,12 @@ comparePS (PS x1 s1 l1) (PS x2 s2 l2) = unsafePerformIO $
 
 -- | /O(1)/ The empty 'FastString'
 empty :: FastString
-empty = unsafePerformIO $ mallocForeignPtr 1 >>= \fp -> return $ PS fp 0 0
+empty = inlinePerformIO $ mallocForeignPtr 1 >>= \fp -> return $ PS fp 0 0
 {-# NOINLINE empty #-}
 
 -- | /O(n)/ Convert a 'Char' into a 'FastString'
 packChar :: Char -> FastString
-packChar c = unsafePerformIO $ mallocForeignPtr 2 >>= \fp -> do
+packChar c = inlinePerformIO $ mallocForeignPtr 2 >>= \fp -> do
     withForeignPtr fp $ \p -> poke p (toEnum (ord c))
     return $ PS fp 0 1
 {-# NOINLINE packChar #-}
@@ -349,7 +354,7 @@ pack str = createPS (Prelude.length str) $ \(Ptr p) -> stToIO (go p 0# str)
 -- | /O(n)/ Convert a 'FastString' into a 'String'
 unpack :: FastString -> String
 unpack (PS _  _ 0) = []
-unpack (PS ps s l) = unsafePerformIO $ withForeignPtr ps $ \p -> 
+unpack (PS ps s l) = inlinePerformIO $ withForeignPtr ps $ \p -> 
         go (p `plusPtr` s) (l - 1) []
     where
         go p 0 acc = liftM w2c (peekByteOff p 0) >>= \e -> return (e : acc)
@@ -364,7 +369,7 @@ unpackWords :: FastString -> [Word8]
 unpackWords ps@(PS x s _)
     | null ps     = []
     | otherwise     =
-        (unsafePerformIO $ withForeignPtr x $ \p -> peekByteOff p s) 
+        (inlinePerformIO $ withForeignPtr x $ \p -> peekByteOff p s) 
             : unpackWords (unsafeTail ps)
 
 -- -----------------------------------------------------------------------------
@@ -386,7 +391,7 @@ snoc (PS x s l) c = createPS (l+1) $ \p -> withForeignPtr x $ \f -> do
 head :: FastString -> Char
 head ps@(PS x s _)        -- ps ! 0 is inlined manually to eliminate a (+0)
   | null ps   = errorEmptyList "head"
-  | otherwise = w2c $ unsafePerformIO $ withForeignPtr x $ \p -> peekByteOff p s
+  | otherwise = w2c $ inlinePerformIO $ withForeignPtr x $ \p -> peekByteOff p s
 {-# INLINE head #-}
 
 -- | /O(1)/ Extract the elements after the head of a packed string, which must be non-empty.
@@ -401,7 +406,7 @@ tail (PS p s l)
 last :: FastString -> Char
 last ps@(PS x s l)        -- ps ! 0 is inlined manually to eliminate a (+0)
   | null ps   = errorEmptyList "last"
-  | otherwise = w2c $ unsafePerformIO $ 
+  | otherwise = w2c $ inlinePerformIO $ 
         withForeignPtr x $ \p -> peekByteOff p (s+l-1)
 {-# INLINE last #-}
 
@@ -481,7 +486,7 @@ mapIndexedWords k (PS ps s l)
 filter :: (Char -> Bool) -> FastString -> FastString
 filter k ps@(PS x s l)
     | null ps   = ps
-    | otherwise = unsafePerformIO $ generate l $ \p -> withForeignPtr x $ \f -> do
+    | otherwise = inlinePerformIO $ generate l $ \p -> withForeignPtr x $ \f -> do
         t <- go (f `plusPtr` s) p l
         return (t `minusPtr` p) -- actual length
     where
@@ -504,7 +509,7 @@ find p ps = case filter p ps of
 -- the left-identity of the operator), and a packed string, reduces the
 -- packed string using the binary operator, from left to right.
 foldl :: (a -> Char -> a) -> a -> FastString -> a
-foldl f v (PS x s l) = unsafePerformIO $ withForeignPtr x $ \ptr ->
+foldl f v (PS x s l) = inlinePerformIO $ withForeignPtr x $ \ptr ->
         lgo v (ptr `plusPtr` s) (ptr `plusPtr` (s+l))
     where
         lgo z p q | p == q    = return z
@@ -515,7 +520,7 @@ foldl f v (PS x s l) = unsafePerformIO $ withForeignPtr x $ \ptr ->
 -- (typically the right-identity of the operator), and a packed string,
 -- reduces the packed string using the binary operator, from right to left.
 foldr :: (Char -> a -> a) -> a -> FastString -> a
-foldr k z (PS x s l) = unsafePerformIO $ withForeignPtr x $ \ptr ->
+foldr k z (PS x s l) = inlinePerformIO $ withForeignPtr x $ \ptr ->
         go (ptr `plusPtr` s) (ptr `plusPtr` (s+l))
     where
         go p q | p == q    = return z
@@ -544,7 +549,7 @@ foldr1 f ps
 -- > replicate w c = unfoldr w (\u -> Just (u,u)) c
 --
 replicate :: Int -> Char -> FastString
-replicate w c = unsafePerformIO $ generate w $ \ptr -> go ptr w
+replicate w c = inlinePerformIO $ generate w $ \ptr -> go ptr w
     where 
         x = fromIntegral . ord $ c
         go _   0 = return w
@@ -575,7 +580,7 @@ replicate w c = unsafePerformIO $ generate w $ \ptr -> go ptr w
 -- > unfoldr n == take n $ List.unfoldr
 --
 unfoldr :: Int -> (Char -> Maybe (Char, Char)) -> Char -> FastString
-unfoldr i f b = unsafePerformIO $ generate i $ \p -> go p b 0
+unfoldr i f b = inlinePerformIO $ generate i $ \p -> go p b 0
     where
         go q c n | n == i    = return n      -- stop if we reach `i'
                  | otherwise = case f c of
@@ -587,7 +592,7 @@ unfoldr i f b = unsafePerformIO $ generate i $ \p -> go p b 0
 -- | Applied to a predicate and a packed string, 'any' determines if
 -- any element of the 'FastString' satisfies the predicate.
 any :: (Char -> Bool) -> FastString -> Bool
-any f (PS x s l) = unsafePerformIO $ withForeignPtr x $ \ptr ->
+any f (PS x s l) = inlinePerformIO $ withForeignPtr x $ \ptr ->
         go (ptr `plusPtr` s) (ptr `plusPtr` (s+l))
     where 
         go p q | p == q    = return False
@@ -598,7 +603,7 @@ any f (PS x s l) = unsafePerformIO $ withForeignPtr x $ \ptr ->
 -- | Applied to a predicate and a 'FastString', 'all' determines if
 -- all elements of the 'FastString' satisfy the predicate.
 all :: (Char -> Bool) -> FastString -> Bool
-all f (PS x s l) = unsafePerformIO $ withForeignPtr x $ \ptr ->
+all f (PS x s l) = inlinePerformIO $ withForeignPtr x $ \ptr ->
         go (ptr `plusPtr` s) (ptr `plusPtr` (s+l))
     where 
         go p q | p == q     = return True  -- end of list
@@ -671,7 +676,7 @@ concatMap f = foldr (append . f) empty
 concat :: [FastString] -> FastString
 concat []     = empty
 concat [ps]   = ps
-concat xs     = unsafePerformIO $ do 
+concat xs     = inlinePerformIO $ do 
     let start_size = 1024
     p <- mallocArray start_size
     f p 0 1024 xs
@@ -713,14 +718,14 @@ indexWord8 ps n
 maximum :: FastString -> Char
 maximum xs@(PS x s l)
     | null xs   = errorEmptyList "maximum"
-    | otherwise = unsafePerformIO $ withForeignPtr x $ \p -> 
+    | otherwise = inlinePerformIO $ withForeignPtr x $ \p -> 
                     return $ w2c $ c_maximum (p `plusPtr` s) l
 
 -- | 'maximum' returns the maximum value from a 'FastString'
 minimum :: FastString -> Char
 minimum xs@(PS x s l)
     | null xs   = errorEmptyList "minimum"
-    | otherwise = unsafePerformIO $ withForeignPtr x $ \p -> 
+    | otherwise = inlinePerformIO $ withForeignPtr x $ \p -> 
                     return $ w2c $ c_minimum (p `plusPtr` s) l
 
 -- | /o(n)/ breaks a packed string to a list of packed strings, one byte each.
@@ -821,7 +826,7 @@ isPrefixOf :: FastString -> FastString -> Bool
 isPrefixOf (PS x1 s1 l1) (PS x2 s2 l2)
     | l1 == 0   = True
     | l2 < l1   = False
-    | otherwise = unsafePerformIO $ withForeignPtr x1 $ \p1 -> 
+    | otherwise = inlinePerformIO $ withForeignPtr x1 $ \p1 -> 
         withForeignPtr x2 $ \p2 -> do 
             i <- c_memcmp (p1 `plusPtr` s1) (p2 `plusPtr` s2) l1
             return (i == 0)
@@ -842,7 +847,7 @@ isSuffixOf x y = reverse x `isPrefixOf` reverse y
 -- > dropWhile isSpace == dropSpace
 --
 dropSpace :: FastString -> FastString
-dropSpace (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> do
+dropSpace (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
     let i = c_firstnonspace (p `plusPtr` s) l
     return $ if i == l then empty else PS x (s+i) (l-i)
 {-# INLINE dropSpace #-}
@@ -853,7 +858,7 @@ dropSpace (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> do
 -- > reverse . (dropWhile isSpace) . reverse == dropSpaceEnd
 --
 dropSpaceEnd :: FastString -> FastString
-dropSpaceEnd (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> do
+dropSpaceEnd (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
     let i = c_lastnonspace (p `plusPtr` s) l
     return $ if i == (-1) then empty else PS x s (i+1)
 {-# INLINE dropSpaceEnd #-}
@@ -864,7 +869,7 @@ dropSpaceEnd (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> do
 -- > break isSpace == breakSpace
 --
 breakSpace :: FastString -> (FastString,FastString)
-breakSpace (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> do 
+breakSpace (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do 
     let i = c_firstspace (p `plusPtr` s) l
     return $ case () of {_
         | i == 0    -> (empty, PS x s l)
@@ -986,7 +991,7 @@ elemIndexLast c = elemIndexLastWord8 (c2w c)
 
 -- | /O(n)/ Hash a FastString into an 'Int32' value, suitable for use as a key.
 hash :: FastString -> Int32
-hash (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> 
+hash (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> 
     go (0 :: Int32) (p `plusPtr` s) l
   where
     go :: Int32 -> Ptr Word8 -> Int -> IO Int32
@@ -1080,7 +1085,7 @@ unwords' = unwords
 -- check for the empty case, so there is an obligation on the programmer
 -- to provide a proof that the FastString is non-empty.
 unsafeHead :: FastString -> Char
-unsafeHead (PS x s _) = w2c $ unsafePerformIO $ 
+unsafeHead (PS x s _) = w2c $ inlinePerformIO $ 
     withForeignPtr x $ \p -> peekByteOff p s
 {-# INLINE unsafeHead #-}
 
@@ -1155,7 +1160,7 @@ c2w = fromIntegral . ord
 -- | /O(n)/ 'elemIndexWord8' is like 'elemIndex', except
 -- that it takes a 'Word8' as the element to search for.
 elemIndexWord8 :: Word8 -> FastString -> Maybe Int
-elemIndexWord8 c (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> do
+elemIndexWord8 c (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
     let p' = p `plusPtr` s
         q  = memchr p' (fromIntegral c) (fromIntegral l)
     return $ if q == nullPtr then Nothing else Just (q `minusPtr` p')
@@ -1165,7 +1170,7 @@ elemIndexWord8 c (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> do
 -- element in the given 'FastString' which is equal to the query
 -- element, or 'Nothing' if there is no such element.
 elemIndexLastWord8 :: Word8 -> FastString -> Maybe Int
-elemIndexLastWord8 c (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> 
+elemIndexLastWord8 c (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> 
         go (-1) (p `plusPtr` s) 0
     where 
         go h p i | i >= l    = return $ if h < 0 then Nothing else Just h
@@ -1176,7 +1181,7 @@ elemIndexLastWord8 c (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p ->
 -- (Internal) unsafe 'FastString' index (subscript) operator, starting
 -- from 0, returning a 'Word8'
 (!) :: FastString -> Int -> Word8
-(PS x s _l) ! i = unsafePerformIO $ withForeignPtr x $ \p -> peekByteOff p (s+i)
+(PS x s _l) ! i = inlinePerformIO $ withForeignPtr x $ \p -> peekByteOff p (s+i)
 {-# INLINE (!) #-}
 
 -- (Internal) 'findIndexOrEndPS' is a variant of findIndex, that returns the
@@ -1213,7 +1218,7 @@ errorEmptyList fun = error ("FastPackedString." ++ fun ++ ": empty FastString")
 -- | Convert a 'FastString' in UTF8 form to a 'String'
 unpackFromUTF8 :: FastString -> String
 unpackFromUTF8 (PS _ _ 0) = []
-unpackFromUTF8 (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> do 
+unpackFromUTF8 (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do 
     outbuf <- mallocArray l
     lout   <- utf8_to_ints outbuf (p `plusPtr` s) l
     when (lout < 0) $ error "Bad UTF8!"
@@ -1235,7 +1240,7 @@ unpackFromUTF8 (PS x s l) = unsafePerformIO $ withForeignPtr x $ \p -> do
 -- > literalFS = packAddress "literal"#
 --
 packAddress :: Addr# -> FastString
-packAddress addr# = unsafePerformIO $ do
+packAddress addr# = inlinePerformIO $ do
     p <- newForeignPtr_ cstr
     return $ PS p 0 (fromIntegral $ c_strlen cstr)
     where
@@ -1249,7 +1254,7 @@ packAddress addr# = unsafePerformIO $ do
 -- length is correct, otherwise use the safer 'packAddress' (where the
 -- length will be calculated once at runtime).
 unsafePackAddress :: Int -> Addr# -> FastString
-unsafePackAddress len addr# = unsafePerformIO $ do
+unsafePackAddress len addr# = inlinePerformIO $ do
     p <- newForeignPtr_ cstr
     return $ PS p 0 len
     where
@@ -1299,21 +1304,21 @@ construct p l f = do
 -- | /O(n)/ Build a @FastString@ from a malloced @CString@. This value will
 -- have a @free(3)@ finalizer associated to it.
 packMallocCString :: CString -> FastString
-packMallocCString cstr = unsafePerformIO $ do 
+packMallocCString cstr = inlinePerformIO $ do 
     fp <- newForeignPtr c_free (castPtr cstr)
     return $ PS fp 0 (fromIntegral $ c_strlen cstr)
 
 -- | /O(n)/ Build a @FastString@ from a @CString@. This value will have /no/
 -- finalizer associated to it.
 packCString :: CString -> FastString
-packCString cstr = unsafePerformIO $ do 
+packCString cstr = inlinePerformIO $ do 
     fp <- newForeignPtr_ (castPtr cstr)
     return $ PS fp 0 (fromIntegral $ c_strlen cstr)
 
 -- | /O(1)/ Build a @FastString@ from a @CStringLen@. This value will
 -- have /no/ finalizer associated with it.
 packCStringLen :: CStringLen -> FastString
-packCStringLen (ptr,len) = unsafePerformIO $ do
+packCStringLen (ptr,len) = inlinePerformIO $ do
     fp <- newForeignPtr_ (castPtr ptr)
     return $ PS fp 0 (fromIntegral len)
 
@@ -1342,7 +1347,7 @@ unsafeUseAsCStringLen (PS ps s l) ac = withForeignPtr ps $ \p -> ac (castPtr p `
 -- | A way of creating ForeignPtrs outside the IO monad (although it
 -- still isn't entirely "safe", but at least it's convenient.
 createPS :: Int -> (Ptr Word8 -> IO ()) -> FastString
-createPS l write_ptr = unsafePerformIO $ do 
+createPS l write_ptr = inlinePerformIO $ do 
     fp <- mallocForeignPtr (l+1)
     withForeignPtr fp $ \p -> write_ptr p
     return $ PS fp 0 l
@@ -1357,6 +1362,36 @@ createPS l write_ptr = unsafePerformIO $ do
 unsafeFinalize :: FastString -> IO ()
 unsafeFinalize (PS p _ _) = finalizeForeignPtr p
 #endif
+
+-- | Duplicate a CString as a FastString
+copyCStringToFastString :: CString -> FastString
+copyCStringToFastString cstr = inlinePerformIO $ do
+    let len = fromIntegral $ c_strlen cstr
+    fp <- mallocForeignPtrArray (len+1)
+    withForeignPtr fp $ \p -> do
+        c_memcpy p (castPtr cstr) len
+        poke (p `plusPtr` len) (0 :: Word8)
+    return $! PS fp 0 len
+
+-- | readInt skips any whitespace at the beginning of its argument, and
+-- reads an Int from the beginning of the FastString.  If there is no
+-- integer at the beginning of the string, it returns Nothing, otherwise
+-- it just returns the int read.
+readInt :: FastString -> Maybe Int
+readInt p = inlinePerformIO $ useAsCString p $ \cstr ->
+    with (castPtr cstr) $ \endpp -> do
+        val     <- c_strtol (castPtr cstr) endpp 0
+        skipped <- (`minusPtr` cstr) `liftM` peek endpp
+        return $ if skipped == 0 then Nothing else Just (fromIntegral val)
+
+-- | unsafeReadInt is like readInt, but requires a null terminated
+-- FastString. It avoids a copy if this is the case.
+unsafeReadInt :: FastString -> Maybe Int
+unsafeReadInt p = inlinePerformIO $ unsafeUseAsCString p $ \cstr ->
+    with (castPtr cstr) $ \endpp -> do
+        val     <- c_strtol (castPtr cstr) endpp 0
+        skipped <- (`minusPtr` cstr) `liftM` peek endpp
+        return $ if skipped == 0 then Nothing else Just (fromIntegral val)
 
 ------------------------------------------------------------------------
 
@@ -1658,6 +1693,9 @@ foreign import ccall unsafe "string.h memchr" memchr
 foreign import ccall unsafe "static string.h strlen" c_strlen
     :: CString -> CInt
 
+foreign import ccall unsafe "static stdlib.h strtol" c_strtol
+    :: Ptr Word8 -> Ptr (Ptr Word8) -> Int -> IO CLong
+
 ------------------------------------------------------------------------
 
 foreign import ccall unsafe "static fpstring.h utf8_to_ints" utf8_to_ints
@@ -1714,4 +1752,13 @@ foreign import ccall unsafe "static zlib.h gzread" c_gzread
 
 foreign import ccall unsafe "static zlib.h gzwrite" c_gzwrite
     :: Ptr () -> Ptr Word8 -> Int -> IO Int
+#endif
+
+-- Just like inlinePerformIO, but we inline it.
+{-# INLINE inlinePerformIO #-}
+inlinePerformIO :: IO a -> a
+#if defined(__GLASGOW_HASKELL__)
+inlinePerformIO (IO m) = case m realWorld# of (# _, r #) -> r
+#else
+inlinePerformIO = unsafePerformIO
 #endif

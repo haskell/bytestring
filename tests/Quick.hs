@@ -222,6 +222,12 @@ prop_replicate2 n c =
 
 prop_replicate3 c = unpack (P.replicate 0 c) == replicate 0 c
 
+prop_readint (n::Int) = P.readInt ((pack . show) n) == Just n
+
+prop_readint2 s =
+    let s' = filter (\c -> c `notElem` ['0'..'9']) s
+    in P.readInt (pack s') == Nothing
+
 ------------------------------------------------------------------------
 
 main = do
@@ -311,6 +317,8 @@ main = do
         ,   run prop_replicate1
         ,   run prop_replicate2
         ,   run prop_replicate3
+        ,   run prop_readint
+        ,   run prop_readint2
         ]
 
 instance Arbitrary Char where
