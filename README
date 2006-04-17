@@ -31,11 +31,11 @@ Authors:
     FastPackedString is derived from the GHC PackedString library, 
     originallly written by Bryan O'Sullivan, and then by Simon Marlow.
     It was adapted, and greatly extended for darcs by David Roundy, and
-    others. Don Stewart cleaned up and extended the implementation.
+    others. Don Stewart cleaned up and greatly extended the implementation.
 
 ------------------------------------------------------------------------
 
-Performance:
+Performance, some random numbers:
 
 This table compares the performance of common operations in both
 PackedString and FastPackedString, on various packed strings.

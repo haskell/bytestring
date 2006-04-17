@@ -1,8 +1,8 @@
-{-# OPTIONS -fglasgow-exts -cpp #-}
 --
 -- Module      : FastPackedString
 -- Copyright   : (c) The University of Glasgow 2001,
 --               (c) David Roundy 2003-2005,
+--               (c) Simon Marlow 2005
 --               (c) Don Stewart 2005-2006
 --               (c) Bjorn Bringert 2006
 -- License     : BSD-style
@@ -160,6 +160,7 @@ module Data.FastPackedString (
         ------------------------------------------------------------------------
 
         -- * I\/O with @FastString@s
+        hGetLine,             -- :: Handle -> IO FastString
         hGet,                 -- :: Handle -> Int -> IO FastString
         hGetNonBlocking,      -- :: Handle -> Int -> IO FastString
         hPut,                 -- :: Handle -> FastString -> IO ()
@@ -182,7 +183,6 @@ module Data.FastPackedString (
         useAsCString,         -- :: FastString -> (CString -> IO a) -> IO a
         unsafeUseAsCString,   -- :: FastString -> (CString -> IO a) -> IO a
         unsafeUseAsCStringLen,-- :: FastString -> (CStringLen -> IO a) -> IO a
-        unpackFromUTF8,       -- :: FastString -> String
 
         copy,                    -- :: FastString -> FastString
         copyCStringToFastString, -- :: CString -> FastString
@@ -192,16 +192,6 @@ module Data.FastPackedString (
 
         fromForeignPtr,       -- :: ForeignPtr Word8 -> Int -> FastString
         toForeignPtr,         -- :: FastString -> (ForeignPtr Word8, Int, Int)
-
-        -- * Extensions to the I\/O interface
-        LazyFile(..),
-        readFileLazily,         -- :: FilePath -> IO LazyFile
-#if defined(USE_ZLIB)
-        gzReadFile,             -- :: FilePath -> IO FastString
-        gzWriteFile,            -- :: FilePath -> FastString -> IO ()
-        gzReadFileLazily,       -- :: FilePath -> IO LazyFile
-        gzWriteFilePSs,         -- :: FilePath -> [FastString] -> IO ()
-#endif
 
    ) where
 
@@ -213,29 +203,32 @@ import Prelude hiding (reverse,head,tail,last,init,null,
                        words,maximum,minimum,all,concatMap,
                        foldl1,foldr1,readFile,writeFile,replicate)
 
-import qualified Data.List as List (intersperse,transpose)
+import qualified Data.List as List (intersperse,transpose
+#if !defined(USE_CBITS)
+                                        ,sort
+#endif
+        )
 
 import Data.Array               (listArray)
 import qualified Data.Array as Array ((!))
 import Data.Bits                (rotateL)
-import Data.Char                (chr, ord, String, isSpace)
+import Data.Char                (ord, String, isSpace)
 import Data.Int                 (Int32)
 import Data.Word                (Word8)
 import Data.Maybe               (listToMaybe)
 
-import Control.Monad            (when, liftM)
+import Control.Monad            (liftM)
 import Control.Exception        (bracket)
 
-import System.IO    hiding      (hGetContents,readFile,writeFile)
-import System.Mem               (performGC)
+import System.IO    hiding      (hGetLine,hGetContents,readFile,writeFile)
+import System.IO.Error
 
 import Foreign.Ptr              (Ptr, FunPtr, plusPtr, nullPtr, minusPtr, castPtr)
 import Foreign.ForeignPtr       (newForeignPtr, newForeignPtr_, withForeignPtr, 
                                  finalizeForeignPtr, mallocForeignPtrArray, ForeignPtr)
-import Foreign.Storable         (peekByteOff, peek, poke)
+import Foreign.Storable         (peekByteOff, peekElemOff, pokeElemOff, peek, poke)
 import Foreign.C.String         (CString, CStringLen)
 import Foreign.C.Types          (CSize, CInt, CLong)
-import Foreign.Marshal.Alloc    (free)
 import Foreign.Marshal.Utils    (with)
 import Foreign.Marshal.Array
 
@@ -252,10 +245,11 @@ import System.IO.Unsafe         (unsafeInterleaveIO)
 #endif
 
 #if defined(__GLASGOW_HASKELL__)
-import Data.Generics
+import Data.Generics (Data(..), Typeable(..))
 
 import GHC.IOBase
-import GHC.Base (unsafeChr, unpackCString#)
+import GHC.Base                 (unsafeChr, unpackCString#)
+import GHC.Handle
 
 import GHC.Ptr  (Ptr(..))
 import GHC.ST
@@ -264,22 +258,29 @@ import GHC.Base (Int(..), Char(..))
 import Control.Monad.ST
 #endif
 
+#define STRICT1(f) f a b c | a `seq` False = undefined
+#define STRICT2(f) f a b | a `seq` b `seq` False = undefined
+#define STRICT3(f) f a b c | a `seq` b `seq` c `seq` False = undefined
+#define STRICT4(f) f a b c d | a `seq` b `seq` c `seq` d `seq` False = undefined
+#define STRICT5(f) f a b c d e | a `seq` b `seq` c `seq` d `seq` e `seq` False = undefined
+#define STRICT6(f) f a b c d e f | a `seq` b `seq` c `seq` d `seq` e `seq` f `seq` False = undefined
+
 -- -----------------------------------------------------------------------------
 
 -- | A space-efficient representation of a 'String', which supports various
 -- efficient operations.  A 'FastString' contains 8-bit characters only.
+--
+-- Instances of Eq, Ord, Read, Show, Data, Typeable
 --
 data FastString = PS {-# UNPACK #-} !(ForeignPtr Word8) !Int !Int
 #if defined(__GLASGOW_HASKELL__)
     deriving (Data, Typeable)
 #endif
 
-------------------------------------------------------------------------
+instance Eq  FastString
+    where (==)    = eq
 
-instance Eq  FastString 
-    where (==)    = eqPS
-
-instance Ord FastString 
+instance Ord FastString
     where compare = comparePS
 
 instance Show FastString where
@@ -292,21 +293,22 @@ instance Read FastString where
 
 -- | /O(n)/ Equality on the 'FastString' type. This implementation
 -- uses @memcmp(3)@.
-eqPS :: FastString -> FastString -> Bool
-eqPS a b = (comparePS a b) == EQ
-{-# INLINE eqPS #-}
+eq :: FastString -> FastString -> Bool
+eq a b = (comparePS a b) == EQ
+{-# INLINE eq #-}
 
 -- | /O(n)/ 'comparePS' provides an 'Ordering' for 'FastStrings' supporting slices. 
 -- This implementation uses @memcmp(3)@
 comparePS :: FastString -> FastString -> Ordering
 comparePS (PS _ _ 0) (PS _ _ 0) = EQ    -- short cut for empty strings
-comparePS (PS x1 s1 l1) (PS x2 s2 l2) = inlinePerformIO $ 
-    withForeignPtr x1 $ \p1 -> 
-        withForeignPtr x2 $ \p2 -> do 
+comparePS (PS x1 s1 l1) (PS x2 s2 l2) = inlinePerformIO $
+    withForeignPtr x1 $ \p1 ->
+        withForeignPtr x2 $ \p2 -> do
             i <- c_memcmp (p1 `plusPtr` s1) (p2 `plusPtr` s2) (min l1 l2)
             return $ case i `compare` 0 of
                 EQ  -> l1 `compare` l2
                 x   -> x
+{-# INLINE comparePS #-}
 
 -- -----------------------------------------------------------------------------
 -- Constructing and destructing packed strings
@@ -329,7 +331,7 @@ pack :: String -> FastString
 
 pack str = createPS (Prelude.length str) $ \p -> go p str
     where
-        go _ []     = return ()    
+        go _ []     = return ()
         go p (x:xs) = poke p (c2w x) >> go (p `plusPtr` 1) xs -- less space than pokeElemOff
 
 #else /* hack away */
@@ -380,12 +382,15 @@ cons :: Char -> FastString -> FastString
 cons c (PS x s l) = createPS (l+1) $ \p -> withForeignPtr x $ \f -> do
         c_memcpy (p `plusPtr` 1) (f `plusPtr` s) l  -- 99% less space
         poke p (c2w c)
+{-# INLINE cons #-}
+
 
 -- | /O(n)/ Append a character to the end of a 'FastString'
 snoc :: FastString -> Char -> FastString
 snoc (PS x s l) c = createPS (l+1) $ \p -> withForeignPtr x $ \f -> do
         c_memcpy p (f `plusPtr` s) l
         poke (p `plusPtr` l) (c2w c)
+{-# INLINE snoc #-}
 
 -- | /O(1)/ Extract the first element of a packed string, which must be non-empty.
 head :: FastString -> Char
@@ -396,7 +401,7 @@ head ps@(PS x s _)        -- ps ! 0 is inlined manually to eliminate a (+0)
 
 -- | /O(1)/ Extract the elements after the head of a packed string, which must be non-empty.
 tail :: FastString -> FastString
-tail (PS p s l) 
+tail (PS p s l)
     | l <= 0    = errorEmptyList "tail"
 --  | l == 1    = empty                                                                    
     | otherwise = PS p (s+1) (l-1)
@@ -406,16 +411,16 @@ tail (PS p s l)
 last :: FastString -> Char
 last ps@(PS x s l)        -- ps ! 0 is inlined manually to eliminate a (+0)
   | null ps   = errorEmptyList "last"
-  | otherwise = w2c $ inlinePerformIO $ 
+  | otherwise = w2c $ inlinePerformIO $
         withForeignPtr x $ \p -> peekByteOff p (s+l-1)
 {-# INLINE last #-}
 
 -- | /O(1)/ Return all the elements of a 'FastString' except the last one.
 init :: FastString -> FastString
-init (PS p s l) 
+init (PS p s l)
     | l <= 0    = errorEmptyList "init"
-    | l == 1    = empty                                                                    
-    | otherwise = PS p s (l-1)                                                          
+    | l == 1    = empty
+    | otherwise = PS p s (l-1)
 {-# INLINE init #-}
 
 -- | /O(1)/ Test whether a packed string is empty.
@@ -443,7 +448,7 @@ idx (PS _ s _) = s
 
 -- a set of positions where newline occurs
 lineIdxs :: FastString -> [Int]
-lineIdxs ps 
+lineIdxs ps
     | null ps = []
     | otherwise = case elemIndexWord8 0x0A ps of
              Nothing -> []
@@ -460,25 +465,44 @@ append xs ys
 -- | /O(n)/ 'map' @f xs@ is the packed string obtained by applying @f@ to each
 -- element of @xs@, i.e.,
 map :: (Char -> Char) -> FastString -> FastString
-map k = mapWords (c2w . k . w2c)
+map f (PS fp start len) = inlinePerformIO $ withForeignPtr fp $ \p -> do
+    new_fp <- mallocForeignPtr len
+    withForeignPtr new_fp $ \new_p -> do
+        map_ f (len-1) (p `offPS` start) new_p
+        return (PS new_fp 0 len)
+  where
+    STRICT4(map_)
+    map_ f' n p1 p2
+       | n < 0 = return ()
+       | otherwise = do
+            x <- peekElemOff p1 n
+            pokeElemOff p2 n (c2w (f' (w2c x)))
+            map_ f' (n-1) p1 p2
+    {-# INLINE map_ #-}
+
+    offPS :: Ptr Word8 -> Int -> Ptr Word8
+    offPS p i = p `plusPtr` i
+{-# INLINE map #-}
+
+------------------------------------------------------------------------
+
+mapWords :: (Word8 -> Word8) -> FastString -> FastString
+mapWords k = mapIndexedWords (const k)
 
 mapIndexed :: (Int -> Char -> Char) -> FastString -> FastString
 mapIndexed k = mapIndexedWords (\i w -> c2w (k i (w2c w)))
 
-mapWords :: (Word8 -> Word8) -> FastString -> FastString
-mapWords k
-    = mapIndexedWords (const k)
-
 mapIndexedWords :: (Int -> Word8 -> Word8) -> FastString -> FastString
-mapIndexedWords k (PS ps s l)
-    = createPS l $ \p -> withForeignPtr ps $ \f -> 
+mapIndexedWords k (PS ps s l) = createPS l $ \p -> withForeignPtr ps $ \f ->
       go 0 (f `plusPtr` s) p (f `plusPtr` s `plusPtr` l)
-    where 
+    where
         go :: Int -> Ptr Word8 -> Ptr Word8 -> Ptr Word8 -> IO ()
         go n f t p | f == p    = return ()
                    | otherwise = do w <- peek f
                                     ((poke t) . k n) w
                                     go (n+1) (f `plusPtr` 1) (t `plusPtr` 1) p
+
+------------------------------------------------------------------------
 
 -- | /O(n)/ 'filter', applied to a predicate and a packed string,
 -- returns a packed string containing those characters that satisfy the
@@ -550,7 +574,7 @@ foldr1 f ps
 --
 replicate :: Int -> Char -> FastString
 replicate w c = inlinePerformIO $ generate w $ \ptr -> go ptr w
-    where 
+    where
         x = fromIntegral . ord $ c
         go _   0 = return w
         go ptr n = poke ptr x >> go (ptr `plusPtr` 1) (n-1)
@@ -585,7 +609,7 @@ unfoldr i f b = inlinePerformIO $ generate i $ \p -> go p b 0
         go q c n | n == i    = return n      -- stop if we reach `i'
                  | otherwise = case f c of
                                    Nothing        -> return n
-                                   Just (a,new_c) -> do 
+                                   Just (a,new_c) -> do
                                         poke q (c2w a)
                                         go (q `plusPtr` 1) new_c (n+1)
 
@@ -594,7 +618,7 @@ unfoldr i f b = inlinePerformIO $ generate i $ \p -> go p b 0
 any :: (Char -> Bool) -> FastString -> Bool
 any f (PS x s l) = inlinePerformIO $ withForeignPtr x $ \ptr ->
         go (ptr `plusPtr` s) (ptr `plusPtr` (s+l))
-    where 
+    where
         go p q | p == q    = return False
                | otherwise = do c <- liftM w2c $ peek p
                                 if f c then return True
@@ -605,7 +629,7 @@ any f (PS x s l) = inlinePerformIO $ withForeignPtr x $ \ptr ->
 all :: (Char -> Bool) -> FastString -> Bool
 all f (PS x s l) = inlinePerformIO $ withForeignPtr x $ \ptr ->
         go (ptr `plusPtr` s) (ptr `plusPtr` (s+l))
-    where 
+    where
         go p q | p == q     = return True  -- end of list
                | otherwise  = do c <- liftM w2c $ peek p
                                  if f c
@@ -658,8 +682,12 @@ break p ps = case findIndexOrEndPS p ps of n -> (take n ps, drop n ps)
 
 -- | /O(n)/ 'reverse' @xs@ efficiently returns the elements of @xs@ in reverse order.
 reverse :: FastString -> FastString
-reverse (PS x s l) = createPS l $ \p -> withForeignPtr x $ \f -> 
-        c_reverse p (f `plusPtr` s) l -- 99% less space, very much faster
+#if defined(USE_CBITS)
+reverse (PS x s l) = createPS l $ \p -> withForeignPtr x $ \f ->
+        c_reverse p (f `plusPtr` s) l
+#else
+reverse = pack . Prelude.reverse . unpack
+#endif
 
 -- | 'elem' is the 'FastString' membership predicate. This
 -- implementation uses @memchr(3)@.
@@ -676,12 +704,12 @@ concatMap f = foldr (append . f) empty
 concat :: [FastString] -> FastString
 concat []     = empty
 concat [ps]   = ps
-concat xs     = inlinePerformIO $ do 
+concat xs     = inlinePerformIO $ do
     let start_size = 1024
     p <- mallocArray start_size
     f p 0 1024 xs
 
-    where f ptr len _ [] = do 
+    where f ptr len _ [] = do
                 ptr' <- reallocArray ptr (len+1)
                 poke (ptr' `plusPtr` len) (0::Word8)    -- XXX so CStrings work
                 fp   <- newForeignPtr c_free ptr'
@@ -699,34 +727,44 @@ concat xs     = inlinePerformIO $ do
 
 -- | 'FastString' index (subscript) operator, starting from 0.
 index :: FastString -> Int -> Char
-index ps n 
+index ps n
     | n < 0          = error $ "FastPackedString.index: negative index: " ++ show n
-    | n >= length ps = error $ "FastPackedString.index: index too large: " ++ show n 
+    | n >= length ps = error $ "FastPackedString.index: index too large: " ++ show n
                                 ++ ", length = " ++ show (length ps)
     | otherwise      = w2c $ ps ! n
 {-# INLINE index #-}
 
 indexWord8 :: FastString -> Int -> Word8
-indexWord8 ps n 
+indexWord8 ps n
     | n < 0          = error $ "FastPackedString.indexWord8: negative index: " ++ show n
-    | n >= length ps = error $ "FastPackedString.indexWord8: index too large: " ++ show n 
+    | n >= length ps = error $ "FastPackedString.indexWord8: index too large: " ++ show n
                                 ++ ", length = " ++ show (length ps)
     | otherwise      = ps ! n
 {-# INLINE indexWord8 #-}
 
 -- | 'maximum' returns the maximum value from a 'FastString'
 maximum :: FastString -> Char
+#if defined(USE_CBITS)
 maximum xs@(PS x s l)
     | null xs   = errorEmptyList "maximum"
-    | otherwise = inlinePerformIO $ withForeignPtr x $ \p -> 
+    | otherwise = inlinePerformIO $ withForeignPtr x $ \p ->
                     return $ w2c $ c_maximum (p `plusPtr` s) l
+#else
+maximum = Prelude.maximum . unpack
+#endif
+{-# INLINE maximum #-}
 
 -- | 'maximum' returns the maximum value from a 'FastString'
 minimum :: FastString -> Char
+#if defined(USE_CBITS)
 minimum xs@(PS x s l)
     | null xs   = errorEmptyList "minimum"
-    | otherwise = inlinePerformIO $ withForeignPtr x $ \p -> 
+    | otherwise = inlinePerformIO $ withForeignPtr x $ \p ->
                     return $ w2c $ c_minimum (p `plusPtr` s) l
+#else
+minimum = Prelude.minimum . unpack
+#endif
+{-# INLINE minimum #-}
 
 -- | /o(n)/ breaks a packed string to a list of packed strings, one byte each.
 elems :: FastString -> [FastString]
@@ -738,7 +776,7 @@ elems (PS x s l) = (PS x s 1:elems (PS x (s+1) (l-1)))
 -- at newline characters.  The resulting strings do not contain
 -- newlines.
 lines :: FastString -> [FastString]
-lines ps 
+lines ps
     | null ps = []
     | otherwise = case elemIndexWord8 (c2w '\n') ps of
              Nothing -> [ps]
@@ -767,10 +805,14 @@ unwords = join $ pack " "
 -- \`intersperses\' that 'Char' between the elements of the 'FastString'.
 -- It is analogous to the intersperse function on Lists.
 intersperse :: Char -> FastString -> FastString
+#if defined(USE_CBITS)
 intersperse c ps@(PS x s l)
     | length ps < 2  = ps
     | otherwise      = createPS (2*l-1) $ \p -> withForeignPtr x $ \f ->
                             c_intersperse p (f `plusPtr` s) l (c2w c)
+#else
+intersperse c = pack . List.intersperse c . unpack
+#endif
 
 -- | The 'transpose' function transposes the rows and columns of its
 -- 'FastString' argument.
@@ -789,9 +831,13 @@ join filler pss = concat (splice pss)
 
 -- | /O(n log(n))/ Sort a FastString using the C function @qsort(3)@.
 sort :: FastString -> FastString
+#if defined(USE_CBITS)
 sort (PS x s l) = createPS l $ \p -> withForeignPtr x $ \f -> do
         c_memcpy p (f `plusPtr` s) l
         c_qsort p l -- inplace
+#else
+sort = pack . List.sort . unpack
+#endif
 
 -- | /O(n)/ The 'elemIndex' function returns the index of the first element
 -- in the given 'FastString' which is equal (by memchr) to the query
@@ -815,7 +861,7 @@ findIndex f = listToMaybe . findIndices f
 -- indices of all elements satisfying the predicate, in ascending order.
 findIndices :: (Char -> Bool) -> FastString -> [Int]
 findIndices p ps = loop 0 ps
-	where
+        where
        loop _ ps' | null ps'      = []
        loop n ps' | p (unsafeHead ps') = n : loop (n + 1) (unsafeTail ps')
                   | otherwise     = loop (n + 1) (unsafeTail ps')
@@ -826,8 +872,8 @@ isPrefixOf :: FastString -> FastString -> Bool
 isPrefixOf (PS x1 s1 l1) (PS x2 s2 l2)
     | l1 == 0   = True
     | l2 < l1   = False
-    | otherwise = inlinePerformIO $ withForeignPtr x1 $ \p1 -> 
-        withForeignPtr x2 $ \p2 -> do 
+    | otherwise = inlinePerformIO $ withForeignPtr x1 $ \p1 ->
+        withForeignPtr x2 $ \p2 -> do
             i <- c_memcmp (p1 `plusPtr` s1) (p2 `plusPtr` s2) l1
             return (i == 0)
 
@@ -847,9 +893,13 @@ isSuffixOf x y = reverse x `isPrefixOf` reverse y
 -- > dropWhile isSpace == dropSpace
 --
 dropSpace :: FastString -> FastString
+#if defined(USE_CBITS)
 dropSpace (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
     let i = c_firstnonspace (p `plusPtr` s) l
     return $ if i == l then empty else PS x (s+i) (l-i)
+#else
+dropSpace = error "dropSpace only available if compiled with USE_CBITS"
+#endif
 {-# INLINE dropSpace #-}
 
 -- | 'dropSpaceEnd' efficiently returns the 'FastString' argument with
@@ -858,9 +908,13 @@ dropSpace (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
 -- > reverse . (dropWhile isSpace) . reverse == dropSpaceEnd
 --
 dropSpaceEnd :: FastString -> FastString
+#if defined(USE_CBITS)
 dropSpaceEnd (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
     let i = c_lastnonspace (p `plusPtr` s) l
     return $ if i == (-1) then empty else PS x s (i+1)
+#else
+dropSpaceEnd = error "dropSpaceEnd only available if compiled with USE_CBITS"
+#endif
 {-# INLINE dropSpaceEnd #-}
 
 -- | 'breakSpace' returns the pair of 'FastString's when the argument
@@ -869,13 +923,17 @@ dropSpaceEnd (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
 -- > break isSpace == breakSpace
 --
 breakSpace :: FastString -> (FastString,FastString)
-breakSpace (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do 
+#if defined(USE_CBITS)
+breakSpace (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
     let i = c_firstspace (p `plusPtr` s) l
     return $ case () of {_
         | i == 0    -> (empty, PS x s l)
         | i == l    -> (PS x s l, empty)
         | otherwise -> (PS x s i, PS x (s+i) (l-i))
     }
+#else
+breakSpace = error "break space only available if compiled with USE_CBITS"
+#endif
 {-# INLINE breakSpace #-}
 
 -- | 'spanEnd' behaves like 'span' but from the end of the
@@ -1131,7 +1189,7 @@ findSubstrings pat@(PS _ _ m) str@(PS _ _ n) = search 0 0
   kmpNextL p _ | null p = []
   kmpNextL p j = let j' = next (unsafeHead p) j + 1
                      ps = unsafeTail p
-                     x = if not (null ps) && unsafeHead ps == patc j' 
+                     x = if not (null ps) && unsafeHead ps == patc j'
                             then kmpNext Array.! j' else j'
                     in x:kmpNextL ps j'
   search i j = match ++ rest -- i: position in string, j: position in pattern
@@ -1170,9 +1228,9 @@ elemIndexWord8 c (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
 -- element in the given 'FastString' which is equal to the query
 -- element, or 'Nothing' if there is no such element.
 elemIndexLastWord8 :: Word8 -> FastString -> Maybe Int
-elemIndexLastWord8 c (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> 
+elemIndexLastWord8 c (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p ->
         go (-1) (p `plusPtr` s) 0
-    where 
+    where
         go h p i | i >= l    = return $ if h < 0 then Nothing else Just h
                  | otherwise = do here <- peekByteOff p i
                                   go (if c == here then i else h) p (i+1)
@@ -1215,17 +1273,6 @@ errorEmptyList fun = error ("FastPackedString." ++ fun ++ ": empty FastString")
 
 ------------------------------------------------------------------------
 
--- | Convert a 'FastString' in UTF8 form to a 'String'
-unpackFromUTF8 :: FastString -> String
-unpackFromUTF8 (PS _ _ 0) = []
-unpackFromUTF8 (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do 
-    outbuf <- mallocArray l
-    lout   <- utf8_to_ints outbuf (p `plusPtr` s) l
-    when (lout < 0) $ error "Bad UTF8!"
-    str    <- (Prelude.map chr) `liftM` peekArray lout outbuf
-    free outbuf
-    return str
-
 #if defined(__GLASGOW_HASKELL__)
 -- | /O(n)/ Pack a null-terminated sequence of bytes, pointed to by an
 -- Addr\# (an arbitrary machine address assumed to point outside the
@@ -1244,7 +1291,7 @@ packAddress addr# = inlinePerformIO $ do
     p <- newForeignPtr_ cstr
     return $ PS p 0 (fromIntegral $ c_strlen cstr)
     where
-      cstr = Ptr addr# 
+      cstr = Ptr addr#
 {-# INLINE packAddress #-}
 
 -- | /O(1)/ 'unsafePackAddress' provides constant-time construction of
@@ -1258,7 +1305,7 @@ unsafePackAddress len addr# = inlinePerformIO $ do
     p <- newForeignPtr_ cstr
     return $ PS p 0 len
     where
-      cstr = Ptr addr# 
+      cstr = Ptr addr#
 #endif
 
 -- | Build a FastString from a ForeignPtr
@@ -1275,7 +1322,7 @@ toForeignPtr (PS ps s l) = (ps, s, l)
 --   if a large string has been read in, and only a small part of it 
 --   is needed in the rest of the program.
 copy :: FastString -> FastString
-copy (PS x s l) = createPS l $ \p -> withForeignPtr x $ \f -> 
+copy (PS x s l) = createPS l $ \p -> withForeignPtr x $ \f ->
                     c_memcpy p (f `plusPtr` s) l
 
 -- | Given the maximum size needed and a function to make the contents
@@ -1283,7 +1330,7 @@ copy (PS x s l) = createPS l $ \p -> withForeignPtr x $ \f ->
 -- generating function is required to return the actual size (<= the
 -- maximum size).
 generate :: Int -> (Ptr Word8 -> IO Int) -> IO FastString
-generate i f = do 
+generate i f = do
     p <- mallocArray i
     i' <- f p
     p' <- reallocArray p (i'+1)
@@ -1296,7 +1343,7 @@ generate i f = do
 -- IO action representing a finalizer.  This function is not available
 -- on Hugs.
 construct :: (Ptr Word8) -> Int -> IO () -> IO FastString
-construct p l f = do 
+construct p l f = do
     fp <- FC.newForeignPtr p f
     return $ PS fp 0 l
 #endif
@@ -1304,14 +1351,14 @@ construct p l f = do
 -- | /O(n)/ Build a @FastString@ from a malloced @CString@. This value will
 -- have a @free(3)@ finalizer associated to it.
 packMallocCString :: CString -> FastString
-packMallocCString cstr = inlinePerformIO $ do 
+packMallocCString cstr = inlinePerformIO $ do
     fp <- newForeignPtr c_free (castPtr cstr)
     return $ PS fp 0 (fromIntegral $ c_strlen cstr)
 
 -- | /O(n)/ Build a @FastString@ from a @CString@. This value will have /no/
 -- finalizer associated to it.
 packCString :: CString -> FastString
-packCString cstr = inlinePerformIO $ do 
+packCString cstr = inlinePerformIO $ do
     fp <- newForeignPtr_ (castPtr cstr)
     return $ PS fp 0 (fromIntegral $ c_strlen cstr)
 
@@ -1326,8 +1373,8 @@ packCStringLen (ptr,len) = inlinePerformIO $ do
 --   The @CString@ should not be freed afterwards.
 useAsCString :: FastString -> (CString -> IO a) -> IO a
 useAsCString (PS ps s l) = bracket alloc free_cstring
-    where 
-      alloc = withForeignPtr ps $ \p -> do 
+    where
+      alloc = withForeignPtr ps $ \p -> do
                 buf <- c_malloc (fromIntegral l+1)
                 c_memcpy (castPtr buf) (castPtr p `plusPtr` s) (fromIntegral l)
                 poke (buf `plusPtr` l) (0::Word8)
@@ -1347,10 +1394,11 @@ unsafeUseAsCStringLen (PS ps s l) ac = withForeignPtr ps $ \p -> ac (castPtr p `
 -- | A way of creating ForeignPtrs outside the IO monad (although it
 -- still isn't entirely "safe", but at least it's convenient.
 createPS :: Int -> (Ptr Word8 -> IO ()) -> FastString
-createPS l write_ptr = inlinePerformIO $ do 
+createPS l write_ptr = inlinePerformIO $ do
     fp <- mallocForeignPtr (l+1)
     withForeignPtr fp $ \p -> write_ptr p
     return $ PS fp 0 l
+{-# INLINE createPS #-}
 
 #if defined(__GLASGOW_HASKELL__)
 -- | Explicitly run the finaliser associated with a 'FastString'.
@@ -1397,14 +1445,86 @@ unsafeReadInt p = inlinePerformIO $ unsafeUseAsCString p $ \cstr ->
 
 -- (internal) GC wrapper of mallocForeignPtrArray
 mallocForeignPtr :: Int -> IO (ForeignPtr Word8)
-mallocForeignPtr l = do 
-    when (l > 1000000) performGC
+mallocForeignPtr l = do
+--  when (l > 1000000) performGC
     fp <- mallocForeignPtrArray (l+1)
     withForeignPtr fp $ \p -> poke (p `plusPtr` l) (0::Word8)
     return fp
 
 -- -----------------------------------------------------------------------------
 -- I\/O functions
+
+#if defined(__GLASGOW_HASKELL__)
+
+-- | hGetLine. read a FastPackedString from a handle
+hGetLine :: Handle -> IO FastString
+hGetLine h = wantReadableHandle "FPS.hGetLine" h $ \ handle_ -> do
+    case haBufferMode handle_ of
+       NoBuffering -> error "no buffering"
+       _other      -> hGetLineBuffered handle_
+
+ where
+    hGetLineBuffered handle_ = do
+        let ref = haBuffer handle_
+        buf <- readIORef ref
+        hGetLineBufferedLoop handle_ ref buf 0 []
+
+    hGetLineBufferedLoop handle_ ref
+            buf@Buffer{ bufRPtr=r, bufWPtr=w, bufBuf=raw } len xss =
+        len `seq` do
+        off <- findEOL r w raw
+        let new_len = len + off - r
+        xs <- mkPS raw r off
+
+      -- if eol == True, then off is the offset of the '\n'
+      -- otherwise off == w and the buffer is now empty.
+        if off /= w
+            then do if (w == off + 1)
+                            then writeIORef ref buf{ bufRPtr=0, bufWPtr=0 }
+                            else writeIORef ref buf{ bufRPtr = off + 1 }
+                    mkBigPS new_len (xs:xss)
+            else do
+                 maybe_buf <- maybeFillReadBuffer (haFD handle_) True (haIsStream handle_)
+                                    buf{ bufWPtr=0, bufRPtr=0 }
+                 case maybe_buf of
+                    -- Nothing indicates we caught an EOF, and we may have a
+                    -- partial line to return.
+                    Nothing -> do
+                         writeIORef ref buf{ bufRPtr=0, bufWPtr=0 }
+                         if new_len > 0
+                            then mkBigPS new_len (xs:xss)
+                            else ioe_EOF
+                    Just new_buf ->
+                         hGetLineBufferedLoop handle_ ref new_buf new_len (xs:xss)
+
+    -- find the end-of-line character, if there is one
+    findEOL r w raw
+        | r == w = return w
+        | otherwise =  do
+            (c,r') <- readCharFromBuffer raw r
+            if c == '\n'
+                then return r -- NB. not r': don't include the '\n'
+                else findEOL r' w raw
+
+    maybeFillReadBuffer fd is_line is_stream buf = catch
+        (do buf' <- fillReadBuffer fd is_line is_stream buf
+            return (Just buf'))
+        (\e -> if isEOFError e then return Nothing else ioError e)
+
+mkPS :: RawBuffer -> Int -> Int -> IO FastString
+mkPS buf start end = do
+    let len = end - start
+    fp <- mallocForeignPtr (len `quot` 8)
+    withForeignPtr fp $ \p -> do
+        memcpy_ptr_baoff p buf start (fromIntegral len)
+        return (PS fp 0 len)
+
+mkBigPS :: Int -> [FastString] -> IO FastString
+mkBigPS _ [ps] = return ps
+mkBigPS _ pss = return $! concat (Prelude.reverse pss)
+#endif
+
+------------------------------------------------------------------------
 
 -- | Outputs a 'FastString' to the specified 'Handle'.
 --
@@ -1448,7 +1568,7 @@ hGetNonBlocking h i
 -- assumed to be ISO-8859-1.
 --
 hGetContents :: Handle -> IO FastString
-hGetContents h = do 
+hGetContents h = do
     let start_size = 1024
     p <- mallocArray start_size
     i <- hGetBuf h p start_size
@@ -1457,12 +1577,12 @@ hGetContents h = do
                 fp <- newForeignPtr c_free p'
                 return $ PS fp 0 i
         else f p start_size
-    where 
-        f p s = do 
+    where
+        f p s = do
         let s' = 2 * s
         p' <- reallocArray p s'
         i  <- hGetBuf h (p' `plusPtr` s) s
-        if i < s 
+        if i < s
             then do let i' = s + i
                     p'' <- reallocArray p' i'
                     fp  <- newForeignPtr c_free p''
@@ -1478,7 +1598,7 @@ hGetContents h = do
 -- assumed to be ISO-8859-1.
 --
 readFile :: FilePath -> IO FastString
-readFile f = do 
+readFile f = do
     h <- openBinaryFile f ReadMode
     l <- hFileSize h
     s <- hGet h $ fromIntegral l
@@ -1488,7 +1608,7 @@ readFile f = do
 -- | Write a 'FastString' to a file.
 --
 writeFile :: FilePath -> FastString -> IO ()
-writeFile f ps = do 
+writeFile f ps = do
     h <- openBinaryFile f WriteMode
     hPut h ps
     hClose h
@@ -1505,7 +1625,7 @@ writeFile f ps = do
 -- string representation in the file is assumed to be ISO-8859-1.
 --
 mmapFile :: FilePath -> IO FastString
-mmapFile f = 
+mmapFile f =
 #if defined(USE_MMAP)
    mmap f >>= \(fp,l) -> return $ PS fp 0 l
 #else
@@ -1554,123 +1674,24 @@ mmap f = do
 
 #endif /* USE_MMAP */
 
--- -----------------------------------------------------------------------------
+------------------------------------------------------------------------
 
-data LazyFile = LazyString String
-              | MMappedFastString FastString
-              | LazyFastStrings [FastString]
-    deriving Eq
+-- Just like inlinePerformIO, but we inline it. Big performance gains as
+-- it exposes lots of things to further inlining
+--
 
-readFileLazily :: FilePath -> IO LazyFile
-readFileLazily f = do
-#if defined(USE_MMAP)
-    liftM MMappedFastString (mmapFile f)
+{-# INLINE inlinePerformIO #-}
+inlinePerformIO :: IO a -> a
+#if defined(__GLASGOW_HASKELL__)
+inlinePerformIO (IO m) = case m realWorld# of (# _, r #) -> r
 #else
-    h <- openBinaryFile f ReadMode
-    liftM LazyFastStrings $ readHandleLazily h
-  where
-    readHandleLazily :: Handle -> IO [FastString]
-    readHandleLazily h
-     = do let read_rest = do
-                  -- We might be making too big a fp here
-                  fp <- mallocForeignPtr blocksize
-                  lread <- withForeignPtr fp
-                         $ \p -> hGetBuf h p blocksize
-                  case lread of
-                      0 -> return []
-                      l | l < blocksize -> do hClose h
-                                              return [PS fp 0 l]
-                      l -> do rest <- unsafeInterleaveIO read_rest
-                              return (PS fp 0 l:rest)
-          unsafeInterleaveIO read_rest
-        where blocksize = 1024
+inlinePerformIO = unsafePerformIO
 #endif
-
--- -----------------------------------------------------------------------------
--- gzReadFile
-
--- | Read an entire file, which may or may not be gzip compressed, directly
--- into a 'FastString'.
-
-#if defined(USE_ZLIB)
-
-gzReadFile :: FilePath -> IO FastString
-gzReadFile f = do
-    h <- openBinaryFile f ReadMode
-    header <- hGet h 2
-    if header /= pack "\31\139"
-       then do hClose h
-               mmapFile f
-       else do hSeek h SeekFromEnd (-4)
-               len <- hGetLittleEndInt h
-               hClose h
-               withCString f $ \fstr-> withCString "rb" $ \rb-> do
-                 gzf <- c_gzopen fstr rb
-                 when (gzf == nullPtr) $ fail $ "problem opening file "++f
-                 fp <- mallocForeignPtr len
-                 lread <- withForeignPtr fp $ \p -> c_gzread gzf p len
-                 c_gzclose gzf
-                 when (lread /= len) $ fail $ "problem gzreading file "++f
-                 return $ PS fp 0 len
-
-gzReadFileLazily :: FilePath -> IO LazyFile
-gzReadFileLazily f = do
-    h <- openBinaryFile f ReadMode
-    header <- hGet h 2
-    if header == pack "\31\139" then
-        do hClose h
-           withCString f $ \fstr-> withCString "rb" $ \rb-> do
-               gzf <- c_gzopen fstr rb
-               when (gzf == nullPtr) $ fail $ "problem opening file "++f
-               let read_rest = do
-                       -- We might be making too big a fp here
-                       fp <- mallocForeignPtr blocksize
-                       lread <- withForeignPtr fp
-                              $ \p -> c_gzread gzf p blocksize
-                       case lread of
-                           0 -> do c_gzclose gzf
-                                   return []
-                           -1 -> fail $ "problem gzreading file "++f
-                           l -> do rest <- unsafeInterleaveIO read_rest
-                                   return (PS fp 0 l:rest)
-               liftM LazyFastStrings read_rest
-        else
-#if defined(USE_MMAP)
-             hClose h >> liftM MMappedFastString (mmapFile f)
-#else
-             liftM (LazyFastStrings . (header:)) $ readHandleLazily h
-#endif
-    where blocksize = 1024
-
-hGetLittleEndInt :: Handle -> IO Int
-hGetLittleEndInt h = do
-    b1 <- ord `liftM` hGetChar h
-    b2 <- ord `liftM` hGetChar h
-    b3 <- ord `liftM` hGetChar h
-    b4 <- ord `liftM` hGetChar h
-    return $ b1 + 256*b2 + 65536*b3 + 16777216*b4
-
-gzWriteFile :: FilePath -> FastString -> IO ()
-gzWriteFile f ps = gzWriteFilePSs f [ps]
-
-gzWriteFilePSs :: FilePath -> [FastString] -> IO ()
-gzWriteFilePSs f pss  =
-    withCString f $ \fstr -> withCString "wb" $ \wb -> do
-    gzf <- c_gzopen fstr wb
-    when (gzf == nullPtr) $ fail $ "problem gzopening file for write: "++f
-    mapM_ (gzWriteToGzf gzf) pss `catch`
-              \_ -> fail $ "problem gzwriting file: "++f
-    c_gzclose gzf
-
-gzWriteToGzf :: Ptr () -> FastString -> IO ()
-gzWriteToGzf gzf (PS x s l) = do
-    lw <- withForeignPtr x $ \p -> c_gzwrite gzf (p `plusPtr` s) l
-    when (lw /= l) $ fail $ "problem in gzWriteToGzf"
-
-#endif /* USE_ZLIB */
 
 ------------------------------------------------------------------------
--- TODO reduce the number of foreign imports if possible
+-- 
+-- Uses standard headers
+--
 
 foreign import ccall unsafe "static stdlib.h malloc" c_malloc
     :: CInt -> IO (Ptr Word8)
@@ -1696,11 +1717,15 @@ foreign import ccall unsafe "static string.h strlen" c_strlen
 foreign import ccall unsafe "static stdlib.h strtol" c_strtol
     :: Ptr Word8 -> Ptr (Ptr Word8) -> Int -> IO CLong
 
+foreign import ccall unsafe "__hscore_memcpy_src_off"
+   memcpy_ptr_baoff :: Ptr a -> RawBuffer -> Int -> CSize -> IO (Ptr ())
+
 ------------------------------------------------------------------------
+--
+-- Uses our C code (sometimes just wrappers)
+--
 
-foreign import ccall unsafe "static fpstring.h utf8_to_ints" utf8_to_ints
-    :: Ptr Int -> Ptr Word8 -> Int -> IO Int
-
+#if defined(USE_CBITS)
 foreign import ccall unsafe "fpstring.h firstnonspace" c_firstnonspace
     :: Ptr Word8 -> Int -> Int
 
@@ -1724,6 +1749,7 @@ foreign import ccall unsafe "static fpstring.h maximum" c_maximum
 
 foreign import ccall unsafe "static fpstring.h minimum" c_minimum
     :: Ptr Word8 -> Int -> Word8
+#endif
 
 ------------------------------------------------------------------------
 
@@ -1738,27 +1764,4 @@ foreign import ccall unsafe "static sys/mman.h munmap" c_munmap
 
 foreign import ccall unsafe "static unistd.h close" c_close
     :: Int -> IO Int
-#endif
-
-#if defined(USE_ZLIB)
-foreign import ccall unsafe "static zlib.h gzopen" c_gzopen
-    :: CString -> CString -> IO (Ptr ())
-
-foreign import ccall unsafe "static zlib.h gzclose" c_gzclose
-    :: Ptr () -> IO ()
-
-foreign import ccall unsafe "static zlib.h gzread" c_gzread
-    :: Ptr () -> Ptr Word8 -> Int -> IO Int
-
-foreign import ccall unsafe "static zlib.h gzwrite" c_gzwrite
-    :: Ptr () -> Ptr Word8 -> Int -> IO Int
-#endif
-
--- Just like inlinePerformIO, but we inline it.
-{-# INLINE inlinePerformIO #-}
-inlinePerformIO :: IO a -> a
-#if defined(__GLASGOW_HASKELL__)
-inlinePerformIO (IO m) = case m realWorld# of (# _, r #) -> r
-#else
-inlinePerformIO = unsafePerformIO
 #endif
