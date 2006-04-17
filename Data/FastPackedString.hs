@@ -1,3 +1,4 @@
+{-# OPTIONS -cpp -fglasgow-exts -O2 -optc-O2 -funbox-strict-fields #-}
 --
 -- Module      : FastPackedString
 -- Copyright   : (c) The University of Glasgow 2001,
