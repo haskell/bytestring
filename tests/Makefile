@@ -20,6 +20,10 @@ run:: run-utests
 	./run-utests
 	runhaskell Quick.hs
 
+bench::
+	ghc -no-recomp -O -funbox-strict-fields Bench.hs -o bench -package fps SimonPackedString.o
+	./bench +RTS -H64m
+
 .PHONY: clean
 clean:
-	rm -f *~ *.o *.hi $(BIN) */*.o */*.hi */*~
+	rm -f *~ *.o *.hi $(BIN) bench */*.o */*.hi */*~

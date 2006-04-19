@@ -32,8 +32,8 @@ str' = unsafePerformIO $ readFile "Makefile"
 
 ------------------------------------------------------------------------
 
-$(tests "fps" [d| 
-    test_unpack = assertEqual (str) (unpack pstr) 
+$(tests "fps" [d|
+    test_unpack = assertEqual (str) (unpack pstr)
 
     test_eqPS     = do assert (pstr == pstr)
                        assert (P.empty == P.empty)
@@ -53,7 +53,7 @@ $(tests "fps" [d|
                       assert (a `compare` a == EQ)
                       assert (b `compare` b == EQ)
 
-    test_empty = do assertEqual (length [])     (P.length P.empty) 
+    test_empty = do assertEqual (length [])   (P.length P.empty)
     test_cons   = assertEqual ('X' : str)     (unpack $ 'X' `P.cons` pstr)
     test_head   = assertEqual (head str)      (P.head pstr)
     test_tail   = assertEqual (tail str)      (unpack (P.tail pstr))
@@ -61,7 +61,7 @@ $(tests "fps" [d|
     test_init   = assertEqual (init str)      (unpack (P.init pstr))
     test_null   = do assertEqual (null [])    (P.null P.empty)
                      assertEqual (null str)   (P.null pstr)
-    test_length = assertEqual (length str)    (P.length pstr)  
+    test_length = assertEqual (length str)    (P.length pstr)
     test_append = assertEqual (str ++ str)    (unpack $ pstr `P.append` pstr)
     test_map    = do assertEqual (map toUpper str) (unpack $ P.map toUpper pstr)
                      assertEqual (map toUpper []) (unpack $ P.map toUpper P.empty)
@@ -72,7 +72,7 @@ $(tests "fps" [d|
     test_foldr  = assertEqual (foldr (\c x -> if c == 'a' then x + 1 else x)  0 str)
                                 (P.foldr (\c x -> if c == 'a' then x + 1 else x)  0 pstr)
 
-    test_takeWhile  = do assertEqual (takeWhile (/= 'X') str) 
+    test_takeWhile  = do assertEqual (takeWhile (/= 'X') str)
                                        (unpack $ P.takeWhile (/= 'X') pstr)
                          assertEqual (takeWhile (/= 'X') [])
                                        (unpack $ P.takeWhile (/= 'X') P.empty)
@@ -85,17 +85,17 @@ $(tests "fps" [d|
     test_drop  = do assertEqual (drop 1000 str) (unpack $ P.drop 1000 pstr)
                     assertEqual (drop 1000 []) (unpack $ P.drop 1000 P.empty)
 
-    test_splitAtPS = assertEqual (splitAt 1000 str) 
+    test_splitAtPS = assertEqual (splitAt 1000 str)
                                 (let (x,y) = P.splitAt 1000 pstr in (unpack x, unpack y))
 
-    test_spanPS = do assertEqual (span (/= 'X') str) 
+    test_spanPS = do assertEqual (span (/= 'X') str)
                                 (let (x,y) = P.span (/= 'X') pstr in (unpack x, unpack y))
-                     assertEqual (span (/= 'X') []) 
+                     assertEqual (span (/= 'X') [])
                                 (let (x,y) = P.span (/= 'X') P.empty in (unpack x, unpack y))
 
-    test_breakPS = do assertEqual (break (/= 'X') str) 
+    test_breakPS = do assertEqual (break (/= 'X') str)
                                 (let (x,y) = P.break (/= 'X') pstr in (unpack x, unpack y))
-                      assertEqual (break (/= 'X') []) 
+                      assertEqual (break (/= 'X') [])
                                 (let (x,y) = P.break (/= 'X') P.empty in (unpack x, unpack y))
 
     test_reversePS = do assertEqual (reverse str)  (unpack $ P.reverse pstr)
@@ -113,20 +113,20 @@ $(tests "fps" [d|
         assertEqual (concat [str,str',[]])    (unpack $ P.concat [pstr, qstr, P.empty])
         assertEqual (concat [[],str,str',[]]) (unpack $ P.concat [P.empty,pstr, qstr])
 
-    test_index  = do 
+    test_index  = do
         assertEqual (str !! 1000)   (pstr `P.index` 1000)
-        e <- Control.Exception.catch 
-                  (Control.Exception.evaluate $ [] !! 1000)           
+        e <- Control.Exception.catch
+                  (Control.Exception.evaluate $ [] !! 1000)
                   (\_ -> return (chr 0))
         f <- Control.Exception.catch
-                  (Control.Exception.evaluate $ P.empty `P.index` 1000) 
+                  (Control.Exception.evaluate $ P.empty `P.index` 1000)
                   (\_ -> return (chr 0))
         assertEqual e f
 
     test_any   = do assertEqual (any (== 'X') str) (P.any (== 'X') pstr)
                     assertEqual (any (== '~') str) (P.any (== '~') pstr)
 
-    test_lines    = do 
+    test_lines    = do
         assertEqual (lines str)  (map unpack $ P.lines pstr)
         assertEqual (lines [])   (map unpack  $ P.lines P.empty)
         assertEqual (lines str') (map unpack  $ P.lines qstr)

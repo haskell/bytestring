@@ -2,22 +2,22 @@
                        fps : Fast Packed Strings
 ------------------------------------------------------------------------
 
-This library provides the FastPackedString library from darcs as a
-cabalised package.
+This library provides a FastPackedString library: byte arrays
+manipulable as strings, providing very time and space efficient string
+and IO operations.
 
 Requirements:
         > Cabal
 
 Building:
-        > ln -s fps.cabal.mmap fps.cabal
-        > runhaskell Setup.hs configure --prefix=/f/g
-        > runhaskell Setup.hs build
-        > runhaskell Setup.hs install
+        > chmod +x Setup.hs
+        > ./Setup.hs configure --prefix=/f/g
+        > ./Setup.hs build
+        > ./Setup.hs install
 
-If you have troubles with mmap (possibly you have a system without
-mmap), then try:
+If you wish to use the mmap extensions:
 
-        > ln -s fps.cabal.no-mmap fps.cabal
+        > mv fps.cabal.mmap fps.cabal
 
 as your first step.
 
@@ -31,7 +31,7 @@ Authors:
     FastPackedString is derived from the GHC PackedString library, 
     originallly written by Bryan O'Sullivan, and then by Simon Marlow.
     It was adapted, and greatly extended for darcs by David Roundy, and
-    others. Don Stewart cleaned up and greatly extended the implementation.
+    others. Don Stewart cleaned up and further extended the implementation.
 
 ------------------------------------------------------------------------
 

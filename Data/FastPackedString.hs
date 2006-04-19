@@ -194,6 +194,9 @@ module Data.FastPackedString (
         fromForeignPtr,       -- :: ForeignPtr Word8 -> Int -> FastString
         toForeignPtr,         -- :: FastString -> (ForeignPtr Word8, Int, Int)
 
+        -- * Misc
+        unpackList, -- eek, otherwise it gets thrown away by the simplifier
+
    ) where
 
 import qualified Prelude
@@ -249,13 +252,11 @@ import System.IO.Unsafe         (unsafeInterleaveIO)
 import Data.Generics (Data(..), Typeable(..))
 
 import GHC.IOBase
-import GHC.Base                 (unsafeChr, unpackCString#)
 import GHC.Handle
-
 import GHC.Ptr  (Ptr(..))
 import GHC.ST
 import GHC.Prim
-import GHC.Base (Int(..), Char(..))
+import GHC.Base (Int(..), Char(..), build, unpackCString#, unsafeChr)
 import Control.Monad.ST
 #endif
 
@@ -299,6 +300,33 @@ eq a b = (comparePS a b) == EQ
 {-# INLINE eq #-}
 
 -- | /O(n)/ 'comparePS' provides an 'Ordering' for 'FastStrings' supporting slices. 
+comparePS :: FastString -> FastString -> Ordering
+comparePS (PS fp1 off1 len1) (PS fp2 off2 len2) = inlinePerformIO $
+    withForeignPtr fp1 $ \p1 ->
+        withForeignPtr fp2 $ \p2 ->
+            cmp (p1 `offPS` off1)
+                (p2 `offPS` off2) 0 len1 len2
+
+cmp :: Ptr Word8 -> Ptr Word8 -> Int -> Int -> Int-> IO Ordering
+STRICT5(cmp)
+cmp p1 p2 n len1 len2
+      | n == len1 = if n == len2 then return EQ else return LT
+      | n == len2 = return GT
+      | otherwise = do
+          a <- peekElemOff p1 n
+          b <- peekElemOff p2 n
+          case a `compare` b of
+                EQ -> cmp p1 p2 (n+1) len1 len2
+                LT -> return LT
+                GT -> return GT
+{-# INLINE comparePS #-}
+
+offPS :: Ptr Word8 -> Int -> Ptr Word8
+offPS p i = p `plusPtr` i
+{-# INLINE offPS #-}
+
+{-
+-- | /O(n)/ 'comparePS' provides an 'Ordering' for 'FastStrings' supporting slices. 
 -- This implementation uses @memcmp(3)@
 comparePS :: FastString -> FastString -> Ordering
 comparePS (PS _ _ 0) (PS _ _ 0) = EQ    -- short cut for empty strings
@@ -310,6 +338,7 @@ comparePS (PS x1 s1 l1) (PS x2 s2 l2) = inlinePerformIO $
                 EQ  -> l1 `compare` l2
                 x   -> x
 {-# INLINE comparePS #-}
+-}
 
 -- -----------------------------------------------------------------------------
 -- Constructing and destructing packed strings
@@ -340,12 +369,12 @@ pack str = createPS (Prelude.length str) $ \p -> go p str
 pack str = createPS (Prelude.length str) $ \(Ptr p) -> stToIO (go p 0# str)
     where
         go _ _ []        = return ()
-        go p i (C# c:cs) 
+        go p i (C# c:cs)
             | C# c > '\255' = error ("Data.FastPackedString.pack: "
                                      ++ "character out of range")
             | otherwise     = writeByte p i c >> go p (i +# 1#) cs
 
-        writeByte p i c = ST $ \s# -> 
+        writeByte p i c = ST $ \s# ->
             case writeCharOffAddr# p i c s# of s2# -> (# s2#, () #)
 {-# RULES
 "pack/packAddress" forall s# .
@@ -354,14 +383,52 @@ pack str = createPS (Prelude.length str) $ \(Ptr p) -> stToIO (go p 0# str)
 
 #endif
 
+------------------------------------------------------------------------
+
 -- | /O(n)/ Convert a 'FastString' into a 'String'
+{-
 unpack :: FastString -> String
 unpack (PS _  _ 0) = []
-unpack (PS ps s l) = inlinePerformIO $ withForeignPtr ps $ \p -> 
+unpack (PS ps s l) = inlinePerformIO $ withForeignPtr ps $ \p ->
         go (p `plusPtr` s) (l - 1) []
     where
         go p 0 acc = liftM w2c (peekByteOff p 0) >>= \e -> return (e : acc)
         go p n acc = liftM w2c (peekByteOff p n) >>= \e -> go p (n-1) (e : acc)
+{-# INLINE unpack #-}
+-}
+
+-- | /O(n)/ Converts a 'FastString' to a 'String'.
+unpack :: FastString -> String
+unpack ps = build (unpackFoldr ps)
+{-# INLINE unpack #-}
+
+unpackList :: FastString -> [Char]
+unpackList (PS fp off len) = withFastString fp $ \p -> do
+    let loop _ (-1) acc = return acc
+        loop q n acc = do
+           a <- peekElemOff q n
+           loop q (n-1) (w2c a : acc)
+    loop (p `offPS` off) (len-1) []
+
+{-# RULES
+"unpack-list"  [1]  forall p  . unpackFoldr p (:) [] = unpackList p
+ #-}
+
+unpackFoldr :: FastString -> (Char -> a -> a) -> a -> a
+unpackFoldr (PS fp off len) f c = withFastString fp $ \p -> do
+    let loop _ (-1) acc = return acc
+        loop q n acc = do
+           a <- peekElemOff q n
+           loop q (n-1) (w2c a `f` acc)
+    loop (p `offPS` off) (len-1) c
+{-# INLINE [0] unpackFoldr #-}
+
+------------------------------------------------------------------------
+
+withFastString :: ForeignPtr a -> (Ptr a -> IO b) -> b
+withFastString fp io = inlinePerformIO (withForeignPtr fp io)
+
+------------------------------------------------------------------------
 
 -- | /O(n)/ Convert a '[Word8]' into a 'FastString'
 packWords :: [Word8] -> FastString
@@ -372,7 +439,7 @@ unpackWords :: FastString -> [Word8]
 unpackWords ps@(PS x s _)
     | null ps     = []
     | otherwise     =
-        (inlinePerformIO $ withForeignPtr x $ \p -> peekByteOff p s) 
+        (inlinePerformIO $ withForeignPtr x $ \p -> peekByteOff p s)
             : unpackWords (unsafeTail ps)
 
 -- -----------------------------------------------------------------------------
@@ -471,19 +538,17 @@ map f (PS fp start len) = inlinePerformIO $ withForeignPtr fp $ \p -> do
     withForeignPtr new_fp $ \new_p -> do
         map_ f (len-1) (p `offPS` start) new_p
         return (PS new_fp 0 len)
-  where
-    STRICT4(map_)
-    map_ f' n p1 p2
-       | n < 0 = return ()
-       | otherwise = do
-            x <- peekElemOff p1 n
-            pokeElemOff p2 n (c2w (f' (w2c x)))
-            map_ f' (n-1) p1 p2
-    {-# INLINE map_ #-}
-
-    offPS :: Ptr Word8 -> Int -> Ptr Word8
-    offPS p i = p `plusPtr` i
 {-# INLINE map #-}
+
+map_ :: (Char -> Char) -> Int -> Ptr Word8 -> Ptr Word8 -> IO ()
+STRICT4(map_)
+map_ f' n p1 p2
+   | n < 0 = return ()
+   | otherwise = do
+        x <- peekElemOff p1 n
+        pokeElemOff p2 n (c2w (f' (w2c x)))
+        map_ f' (n-1) p1 p2
+{-# INLINE map_ #-}
 
 ------------------------------------------------------------------------
 
@@ -568,8 +633,8 @@ foldr1 f ps
     | length ps == 1 = unsafeHead ps
     | otherwise      = f (unsafeHead ps) (foldr1 f (unsafeTail ps))
 
--- | 'replicate' @n x@ is a packed string of length @n@ with @x@ the
--- value of every element. The following holds:
+-- | /O(n)/ 'replicate' @n x@ is a packed string of length @n@ with @x@
+-- the value of every element. The following holds:
 --
 -- > replicate w c = unfoldr w (\u -> Just (u,u)) c
 --
@@ -767,7 +832,7 @@ minimum = Prelude.minimum . unpack
 #endif
 {-# INLINE minimum #-}
 
--- | /o(n)/ breaks a packed string to a list of packed strings, one byte each.
+-- | /O(n)/ breaks a packed string to a list of packed strings, one byte each.
 elems :: FastString -> [FastString]
 elems (PS _ _ 0) = []
 elems (PS x s l) = (PS x s 1:elems (PS x (s+1) (l-1)))
@@ -795,8 +860,38 @@ unlines ss = (concat $ List.intersperse nl ss) `append` nl -- half as much space
 -- | 'words' breaks a packed string up into a list of words, which
 -- were delimited by white space.
 words :: FastString -> [FastString]
+#if defined(__GLASGOW_HASKELL__)
+words ps = Prelude.filter (not.null) (splitWith isSpace ps)
+#else
 words ps = Prelude.filter (not.null) (breakAll isSpace ps)
+#endif
 
+------------------------------------------------------------------------
+
+#if defined(__GLASGOW_HASKELL__)
+
+{-# INLINE splitWith #-}
+splitWith :: (Char -> Bool) -> FastString -> [FastString]
+splitWith _pred (PS _  _   0) = []
+splitWith pred_ (PS fp off len) = splitWith' pred# off len fp
+  where pred# c# = pred_ (C# c#)
+
+        splitWith' pred' off' len' fp' = withFastString fp $ \p -> 
+            splitLoop pred' p 0 off' len' fp'
+
+        STRICT6(splitLoop)
+        splitLoop pred' p idx' off' len' fp'
+            | idx' >= len'  = return [PS fp' off' idx']
+            | otherwise = do
+                w <- peekElemOff p (off'+idx')
+                if pred' (case (w2c w) of C# c# -> c#)
+                   then return (PS fp' off' idx' :
+                              splitWith' pred' (off'+idx'+1) (len'-idx'-1) fp')
+                   else splitLoop pred' p (idx'+1) off' len' fp'
+
+#endif
+
+------------------------------------------------------------------------
 
 -- | The 'unwords' function is analogous to the 'unwords' function.
 unwords :: [FastString] -> FastString
