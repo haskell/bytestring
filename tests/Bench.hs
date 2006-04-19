@@ -50,8 +50,8 @@ tests  :: [(String,[F])]
 
 tests =
     [ ("++",    [F (FPS.append fps fps)
-                ,F () {-F (SPS.append sps sps)-}
-                ,F () -- (PS.appendPS ps ps)
+                ,F () -- SPS.append sps sps)
+                ,F () -- PS.appendPS ps ps)
                 ,F (list ++ list)])
 
     , ("length",[F (FPS.length fps)
@@ -84,7 +84,7 @@ tests =
               ,F (map toUpper list)])
 
     , ("filter", [F (FPS.filter (=='f') fps)
-                 ,F () {-F (SPS.filter (=='f') sps)-}
+                 ,F (SPS.filter (=='f') sps)
                  ,F (PS.filterPS (=='f') ps)
                  ,F (filter (=='f') list)])
 
@@ -125,7 +125,7 @@ tests =
 
     , ("unlines",[F (FPS.unlines [fps,fps',fps])
                    ,F () {-F (SPS.unlines [sps,sps',sps])-}
-                   ,F (PS.unlinesPS [ps,ps',ps])
+                   ,F () -- (PS.unlinesPS [ps,ps',ps])
                    ,F (unlines [list,list',list])])
 
     , ("words",[F (FPS.words fps)
@@ -135,7 +135,7 @@ tests =
 
     , ("unwords",[F (FPS.unwords [fps,fps',fps])
                    ,F () {-(SPS.unwords [sps,sps',sps])-}
-                   ,F (PS.unwordsPS [ps,ps',ps])
+                   ,F () -- PS.unwordsPS [ps,ps',ps])
                    ,F (unwords [list,list',list])])
 
     , ("reverse",[F (FPS.reverse fps)
@@ -216,7 +216,7 @@ tests =
     , ("sort",[F (FPS.sort fps)
               ,F ()
               ,F ()
-              ,F (sort list)])
+              ,F ()]) -- sort list)])
 
     , ("maximum",[F (FPS.maximum fps)
               ,F ()
