@@ -31,6 +31,7 @@ doit (s,ls) = do
     printf "%-16s" s
     mapM_ (\s -> time s >> performGC) ls
     putChar '\n'
+    hFlush stdout
 
 time :: F -> IO ()
 time (F a) = do
