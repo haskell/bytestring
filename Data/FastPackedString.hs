@@ -876,7 +876,7 @@ splitWith _pred (PS _  _   0) = []
 splitWith pred_ (PS fp off len) = splitWith' pred# off len fp
   where pred# c# = pred_ (C# c#)
 
-        splitWith' pred' off' len' fp' = withFastString fp $ \p -> 
+        splitWith' pred' off' len' fp' = withFastString fp $ \p ->
             splitLoop pred' p 0 off' len' fp'
 
         STRICT6(splitLoop)
@@ -893,7 +893,7 @@ splitWith pred_ (PS fp off len) = splitWith' pred# off len fp
 
 ------------------------------------------------------------------------
 
--- | The 'unwords' function is analogous to the 'unwords' function.
+-- | The 'unwords' function is analogous to the 'unlines' function, on words.
 unwords :: [FastString] -> FastString
 unwords = join $ pack " "
 
