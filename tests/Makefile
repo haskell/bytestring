@@ -21,7 +21,7 @@ run:: run-utests
 	runhaskell Quick.hs
 
 bench::
-	ghc -no-recomp -O -funbox-strict-fields Bench.hs -o bench -package fps SimonPackedString.o
+	ghc --make -O -funbox-strict-fields Bench.hs -o bench -package fps
 	./bench +RTS -H64m
 
 .PHONY: clean
