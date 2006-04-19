@@ -41,7 +41,8 @@ time (F a) = do
         _ -> do
             end   <- getCPUTime
             let diff = (fromIntegral (end - start)) / (10^12)
-            printf "%0.3f\t" (diff :: Double) >> hFlush stdout
+            printf "%0.3f\t" (diff :: Double)
+    hFlush stdout
 
 -- compare the 3 implementations
 tests  :: [(String,[F])]
