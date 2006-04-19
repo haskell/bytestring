@@ -79,21 +79,21 @@ tests =
              ,F (SPS.drop 100000 sps)
              ,F (drop 100000 list)])
 
-    , ("takeWhile",[F (FPS.takeWhile (/='Z') fps)
-                   ,F (SPS.takeWhile (/='Z') sps)
-                   ,F (takeWhile (/='Z') list)])
+    , ("takeWhile",[F (FPS.takeWhile (/='z') fps)
+                   ,F (SPS.takeWhile (/='z') sps)
+                   ,F (takeWhile (/='z') list)])
 
-    , ("dropWhile",[F (FPS.dropWhile (/='Z') fps)
-                   ,F (SPS.dropWhile (/='Z') sps)
-                   ,F (dropWhile (/='Z') list)])
+    , ("dropWhile",[F (FPS.dropWhile (/='z') fps)
+                   ,F (SPS.dropWhile (/='z') sps)
+                   ,F (dropWhile (/='z') list)])
 
-    , ("span",[F (FPS.span (/='Z') fps)
-                   ,F (SPS.span (/='Z') sps)
-                   ,F (span (/='Z') list)])
+    , ("span",[F (FPS.span (/='z') fps)
+                   ,F (SPS.span (/='z') sps)
+                   ,F (span (/='z') list)])
 
-    , ("break",[F (FPS.break (=='Z') fps)
-               ,F (SPS.break (=='Z') sps)
-               ,F (break (=='Z') list)])
+    , ("break",[F (FPS.break (=='z') fps)
+               ,F (SPS.break (=='z') sps)
+               ,F (break (=='z') list)])
 
     , ("lines",[F (FPS.lines fps)
                ,F (SPS.lines sps)
@@ -163,13 +163,13 @@ tests =
                   ,F ()
                   ,F (concatMap (\c -> [c]) list)])
 
-    , ("any",[F (FPS.any (=='Z') fps)
+    , ("any",[F (FPS.any (=='z') fps)
               ,F ()
-              ,F (any (=='Z') list)])
+              ,F (any (=='z') list)])
 
-    , ("all",[F (FPS.all (=='Z') fps)
+    , ("all",[F (FPS.all (=='z') fps)
               ,F ()
-              ,F (all (=='Z') list)])
+              ,F (all (=='z') list)])
 
     , ("maximum",[F (FPS.maximum fps)
               ,F ()
@@ -183,21 +183,21 @@ tests =
               ,F ()
               ,F (replicate 1000000 'x')])
 
-    , ("elem",[F (FPS.elem 'Z' fps)
-              ,F (SPS.elem 'Z' sps)
-              ,F (elem 'Z' list)])
+    , ("elem",[F (FPS.elem 'z' fps)
+              ,F (SPS.elem 'z' sps)
+              ,F (elem 'z' list)])
 
-    , ("find",[F (FPS.find (=='Z') fps)
+    , ("find",[F (FPS.find (=='z') fps)
               ,F ()
-              ,F (find (=='Z') list)])
+              ,F (find (=='z') list)])
 
-    , ("elemIndex",[F (FPS.elemIndex 'Z' fps)
+    , ("elemIndex",[F (FPS.elemIndex 'z' fps)
                    ,F ()
-                   ,F (elemIndex 'Z' list)])
+                   ,F (elemIndex 'z' list)])
 
-    , ("elemIndicies",[F (FPS.elemIndices 'Z' fps)
+    , ("elemIndicies",[F (FPS.elemIndices 'z' fps)
                       ,F ()
-                      ,F (elemIndices 'Z' list)])
+                      ,F (elemIndices 'z' list)])
 
     ]
 
