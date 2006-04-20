@@ -592,7 +592,7 @@ filter k ps@(PS x s l)
     -- Almost as good: pack $ foldl (\xs c -> if f c then c : xs else xs) [] ps
 
 --
--- | /O(n)/ A monomorphic equivalent of /filter/, for the common case of
+-- | /O(n)/ A first order equivalent of /filter/, for the common case of
 -- filtering a single char. It is more efficient to use /filterChar/ in
 -- this case.
 --
