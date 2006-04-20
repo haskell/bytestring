@@ -79,7 +79,7 @@ replicate       0.008   ~       -       -       0.053
 elem            0.000   ~       1.490   0.001   0.000   
 find            0.278   0.366   -       -       0.000   
 elemIndex       0.000   ~       -       -       0.000   
-elemIndicies    4.192   ~       -       -       0.314   
+elemIndicies    0.492   4.192   -       -       0.314   
 
 
 Key: FPS2 = Fast Packed String v2
