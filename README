@@ -156,6 +156,20 @@ Almost made it though, just need a tad more ram than I had.
     pack            !           -- constructing 1G [Char] is not ok.
     unpack          !            
 
+Transforming 1 0.5G string into another requires holding both in memory:
+
+Fine:
+    filter          7.264
+    unwords         1.715
+    reverse         1.980
+    cons            0.976
+    snoc            0.689
+    ++              2.845
+
+Still wouldn't work at 0.5G
+    unlines         !
+    concat          !
+
 Lesssons, you can play with 1G strings in Haskell. Having more than 2G
 ram is useful though. Replacing higher order functions with hard coded
 first order equivalents can help.
