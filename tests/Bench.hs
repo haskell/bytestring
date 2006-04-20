@@ -1,5 +1,11 @@
 {-# OPTIONS -fglasgow-exts #-}
 
+--
+-- Benchmark tool.
+-- Compare a function against equivalent code from other libraries for
+-- space and time.
+--
+
 import qualified Data.PackedString     as PS
 import qualified Data.FastPackedString as FPS
 import qualified SimonPackedString     as SPS
@@ -29,7 +35,9 @@ main = do
 
 doit (s,ls) = do
     printf "%-16s" s
-    mapM_ (\s -> time s >> performGC) ls
+--  mapM_ (\s -> time s >> performGC) ls
+    (\s -> time s >> performGC) (head ls) -- only test fps now, 
+                                          -- we don't care about beating the other code.
     putChar '\n'
     hFlush stdout
 
@@ -49,7 +57,7 @@ time (F a) = do
 tests  :: [(String,[F])]
 
 tests =
-    [ 
+    [
       ("++",    [F ({-# SCC "append" #-}FPS.append fps fps)
                 ,F () -- SPS.append sps sps)
                 ,F () -- PS.appendPS ps ps)
