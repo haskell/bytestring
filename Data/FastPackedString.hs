@@ -507,7 +507,10 @@ inits (PS x s l) = [PS x s n | n <- [0..l]]
 
 -- | Return all final segments of the given 'FastString', longest first.
 tails :: FastString -> [FastString]
-tails (PS x s l) = [PS x (s+n) (l-n) | n <- [0..l]]
+tails p | null p    = [empty]
+        | otherwise = p : tails (unsafeTail p)
+
+-- less efficent spacewise: tails (PS x s l) = [PS x (s+n) (l-n) | n <- [0..l]]
 
 -- | /O(1)/ 'idx' returns the skipped index as an 'Int'.
 idx :: FastString -> Int
@@ -972,7 +975,27 @@ elemIndex = elemIndexWord8 . c2w
 -- | The 'elemIndices' function extends 'elemIndex', by returning the
 -- indices of all elements equal to the query element, in ascending order.
 elemIndices :: Char -> FastString -> [Int]
-elemIndices = findIndices . (==)
+elemIndices c ps = loop 0 ps
+   where STRICT2(loop)
+         loop _ ps' | null ps'            = []
+         loop n ps' | c == unsafeHead ps' = n : loop (n+1) (unsafeTail ps')
+                    | otherwise           = loop (n+1) (unsafeTail ps')
+
+{-
+-- only marginally faster, but more complex
+
+elemIndices c (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
+    loop (p `plusPtr` s) 0 (fromIntegral l) []
+
+    where
+        w = fromIntegral . c2w $ c
+        STRICT4(loop)
+        loop ptr n m ls = do
+            let q = memchr (ptr `plusPtr` n) w (fromIntegral (m - n))
+            if q == nullPtr then return ls
+                            else do let i = q `minusPtr` ptr
+                                    loop ptr (n+i) m (i:ls)
+-}
 
 -- | The 'findIndex' function takes a predicate and a 'FastString'
 -- and returns the index of the first element in the packed string
@@ -984,11 +1007,10 @@ findIndex = (listToMaybe .) . findIndices
 -- indices of all elements satisfying the predicate, in ascending order.
 findIndices :: (Char -> Bool) -> FastString -> [Int]
 findIndices p ps = loop 0 ps
-   where
-       STRICT2(loop)
-       loop _ ps' | null ps'           = []
-       loop n ps' | p (unsafeHead ps') = n : loop (n + 1) (unsafeTail ps')
-                  | otherwise          = loop (n + 1) (unsafeTail ps')
+   where STRICT2(loop)
+         loop _ ps' | null ps'           = []
+         loop n ps' | p (unsafeHead ps') = n : loop (n + 1) (unsafeTail ps')
+                    | otherwise          = loop (n + 1) (unsafeTail ps')
 
 -- | The 'isPrefixOf' function takes two strings and returns 'True'
 -- iff the first string is a prefix of the second.
