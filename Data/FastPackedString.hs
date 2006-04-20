@@ -966,28 +966,29 @@ sort = pack . List.sort . unpack
 -- in the given 'FastString' which is equal (by memchr) to the query
 -- element, or 'Nothing' if there is no such element.
 elemIndex :: Char -> FastString -> Maybe Int
-elemIndex c = elemIndexWord8 (c2w c)
+elemIndex = elemIndexWord8 . c2w
 {-# INLINE elemIndex #-}
 
 -- | The 'elemIndices' function extends 'elemIndex', by returning the
 -- indices of all elements equal to the query element, in ascending order.
 elemIndices :: Char -> FastString -> [Int]
-elemIndices x = findIndices (x==)
+elemIndices = findIndices . (==)
 
 -- | The 'findIndex' function takes a predicate and a 'FastString'
 -- and returns the index of the first element in the packed string
 -- satisfying the predicate.
 findIndex :: (Char -> Bool) -> FastString -> Maybe Int
-findIndex f = listToMaybe . findIndices f
+findIndex = (listToMaybe .) . findIndices
 
 -- | The 'findIndices' function extends 'findIndex', by returning the
 -- indices of all elements satisfying the predicate, in ascending order.
 findIndices :: (Char -> Bool) -> FastString -> [Int]
 findIndices p ps = loop 0 ps
-        where
-       loop _ ps' | null ps'      = []
+   where
+       STRICT2(loop)
+       loop _ ps' | null ps'           = []
        loop n ps' | p (unsafeHead ps') = n : loop (n + 1) (unsafeTail ps')
-                  | otherwise     = loop (n + 1) (unsafeTail ps')
+                  | otherwise          = loop (n + 1) (unsafeTail ps')
 
 -- | The 'isPrefixOf' function takes two strings and returns 'True'
 -- iff the first string is a prefix of the second.
