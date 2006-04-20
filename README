@@ -93,3 +93,70 @@ Key: FPS2 = Fast Packed String v2
      !    = stack or memory exhaustion
 
      * rewritten in pure haskell from v0.1 to 0.2
+
+------------------------------------------------------------------------
+
+Question:
+    Can I manipulate 1G strings in Haskell?
+
+Short answer:
+    Yes! Mostly.
+
+Doing some stress testing of FPS, here are some results for 1G strings.
+
+3.2Ghz box, 2G physical mem.
+Size of input string: 1G
+
+N.B. 2G of physical ram is not enough when trying to benchmark functions
+that copy 1G strings around :)
+
+    Function        Time in seconds
+
+All O(1) functions:
+    length          O
+    index           0
+    head            0
+    tail            0
+    last            0
+    init            0
+
+O(n) , but answer found early on:
+    compare         0           
+    any             0
+    all             0
+    elem            0
+    elemIndex       0
+
+O(n) mostly:
+    maximum         3.855    
+    minimum         4.666   
+    filterChar      8.084   
+    elemIndicies    11.504  
+    lines           12.247  
+    find            14.046  
+    tails           27.328
+    inits           33.620  
+    words           100.963
+    map toUpper     143.871
+
+Failed due to memory exhaustion. 
+Almost made it though, just need a tad more ram than I had.
+
+    filter          !     
+    unlines         !
+    unwords         !
+    reverse         !           -- copy
+    cons            !           -- copy
+    snoc            !           -- involves a copy
+    ++              !           -- can't concat two 1G strings on this box
+
+    sort            ? taking too long, but space was ok.
+
+[Char] functions are much more costly.
+    pack            !           -- constructing 1G [Char] is not ok.
+    unpack          !            
+
+Lesssons, you can play with 1G strings in Haskell. Having more than 2G
+ram is useful though. Replacing higher order functions with hard coded
+first order equivalents can help.
+
