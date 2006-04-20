@@ -810,27 +810,50 @@ indexWord8 ps n
 
 -- | 'maximum' returns the maximum value from a 'FastString'
 maximum :: FastString -> Char
-#if defined(USE_CBITS)
+maximum xs@(PS x s l)
+    | null xs   = errorEmptyList "maximum"
+    | otherwise = inlinePerformIO $ withForeignPtr x $ \p -> do
+                        (w :: Word8) <- peek p
+                        maximum_ (p `offPS` s) 0 l w
+{-# INLINE maximum #-}
+
+maximum_ :: Ptr Word8 -> Int -> Int -> Word8 -> IO Char
+STRICT4(maximum_)
+maximum_ ptr n m c
+    | n >= m    = return (w2c c)
+    | otherwise = do w <- peekByteOff ptr n
+                     maximum_ ptr (n+1) m (if w > c then w else c)
+
+{-
+-- not much better to call into C.
 maximum xs@(PS x s l)
     | null xs   = errorEmptyList "maximum"
     | otherwise = inlinePerformIO $ withForeignPtr x $ \p ->
                     return $ w2c $ c_maximum (p `plusPtr` s) l
-#else
-maximum = Prelude.maximum . unpack
-#endif
-{-# INLINE maximum #-}
+-}
 
--- | 'maximum' returns the maximum value from a 'FastString'
+-- | 'minimum' returns the maximum value from a 'FastString'
 minimum :: FastString -> Char
-#if defined(USE_CBITS)
+minimum xs@(PS x s l)
+    | null xs   = errorEmptyList "minimum"
+    | otherwise = inlinePerformIO $ withForeignPtr x $ \p -> do
+                        (w :: Word8) <- peek p
+                        minimum_ (p `offPS` s) 0 l w
+{-# INLINE minimum #-}
+
+minimum_ :: Ptr Word8 -> Int -> Int -> Word8 -> IO Char
+STRICT4(minimum_)
+minimum_ ptr n m c
+    | n >= m    = return (w2c c)
+    | otherwise = do w <- peekByteOff ptr n
+                     minimum_ ptr (n+1) m (if w < c then w else c)
+
+{-
 minimum xs@(PS x s l)
     | null xs   = errorEmptyList "minimum"
     | otherwise = inlinePerformIO $ withForeignPtr x $ \p ->
                     return $ w2c $ c_minimum (p `plusPtr` s) l
-#else
-minimum = Prelude.minimum . unpack
-#endif
-{-# INLINE minimum #-}
+-}
 
 -- | /O(n)/ breaks a packed string to a list of packed strings, one byte each.
 elems :: FastString -> [FastString]
@@ -1840,11 +1863,6 @@ foreign import ccall unsafe "static fpstring.h my_qsort" c_qsort
 foreign import ccall unsafe "static fpstring.h intersperse" c_intersperse
     :: Ptr Word8 -> Ptr Word8 -> Int -> Word8 -> IO ()
 
-foreign import ccall unsafe "static fpstring.h maximum" c_maximum
-    :: Ptr Word8 -> Int -> Word8
-
-foreign import ccall unsafe "static fpstring.h minimum" c_minimum
-    :: Ptr Word8 -> Int -> Word8
 #endif
 
 ------------------------------------------------------------------------
