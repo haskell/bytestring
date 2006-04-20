@@ -228,6 +228,9 @@ prop_readint2 s =
     let s' = filter (\c -> c `notElem` ['0'..'9']) s
     in P.readInt (pack s') == Nothing
 
+prop_filterChar1 c xs = (filter (==c) xs) == ((P.unpack . P.filterChar c . P.pack) xs)
+prop_filterChar2 c xs = (P.filter (==c) (P.pack xs)) == (P.filterChar c (P.pack xs))
+
 ------------------------------------------------------------------------
 
 main = do
@@ -319,6 +322,8 @@ main = do
         ,   run prop_replicate3
         ,   run prop_readint
         ,   run prop_readint2
+        ,   run prop_filterChar1
+        ,   run prop_filterChar2
         ]
 
 instance Arbitrary Char where

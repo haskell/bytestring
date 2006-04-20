@@ -89,6 +89,11 @@ tests =
                  ,F (PS.filterPS (=='f') ps)
                  ,F (filter (=='f') list)])
 
+    , ("filterChar", [F ({-# SCC "filterChar"    #-}FPS.filterChar 'f' fps)
+                 ,F ()
+                 ,F ()
+                 ,F ()])
+
     , ("take",[F ({-# SCC "take"      #-}FPS.take 100000 fps)
              ,F (SPS.take 100000 sps)
              ,F (PS.takePS 100000 ps)

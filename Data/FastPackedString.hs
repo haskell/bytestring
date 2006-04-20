@@ -103,6 +103,7 @@ module Data.FastPackedString (
 
         -- ** Searching with a predicate
         filter,       -- :: (Char -> Bool) -> FastString -> FastString
+        filterChar,   -- :: Char -> FastString -> FastString
         find,         -- :: (Char -> Bool) -> FastString -> Maybe Char
 
         -- ** Searching for substrings
@@ -589,6 +590,31 @@ filter k ps@(PS x s l)
                         then poke t w >> go (f `plusPtr` 1) (t `plusPtr` 1) (e - 1)
                         else             go (f `plusPtr` 1) t               (e - 1)
     -- Almost as good: pack $ foldl (\xs c -> if f c then c : xs else xs) [] ps
+
+--
+-- | /O(n)/ A monomorphic equivalent of /filter/, for the common case of
+-- filtering a single char. It is more efficient to use /filterChar/ in
+-- this case.
+--
+-- > filterChar == filter . (==)
+--
+-- filterChar is around 3x faster, and uses much less space, than its
+-- filter equivalent
+--
+filterChar :: Char -> FastString -> FastString
+filterChar c ps@(PS x s l)
+    | null ps   = ps
+    | otherwise = inlinePerformIO $ generate l $ \p -> withForeignPtr x $ \f -> do
+        t <- go (f `plusPtr` s) p l
+        return (t `minusPtr` p) -- actual length
+    where
+        cw = c2w c
+
+        go _ t 0 = return t
+        go f t e = do w <- peek f
+                      if w == cw
+                        then poke t w >> go (f `plusPtr` 1) (t `plusPtr` 1) (e - 1)
+                        else             go (f `plusPtr` 1) t               (e - 1)
 
 -- | /O(n)/ The 'find' function takes a predicate and a packed string
 -- and returns the first element in matching the predicate, or 'Nothing'
