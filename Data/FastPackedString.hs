@@ -783,8 +783,8 @@ concat xs     = inlinePerformIO $ do
 
           f ptr len to_go pss@(PS p s l:pss')
            | l <= to_go = do withForeignPtr p $ \pf ->
-                                 c_memcpy (ptr `advancePtr` len)
-                                          (pf `advancePtr` s) l
+                                 c_memcpy (ptr `plusPtr` len)
+                                          (pf `plusPtr` s) l
                              f ptr (len + l) (to_go - l) pss'
 
            | otherwise = do let new_total = ((len + to_go) * 2) `max` (len + l)
@@ -1203,7 +1203,7 @@ hash (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p ->
     go h _ 0 = return h
     go h p n = do w <- peek p
                   let h' = (fromIntegral w) + (rotateL h 8)
-                  go h' (p `advancePtr` 1) (n-1)
+                  go h' (p `plusPtr` 1) (n-1)
 
 -- | 'betweenLines' returns the FastString between the two lines
 -- given, or Nothing if they do not appear.

@@ -1,4 +1,4 @@
-* get rid of cbits as much as possible. benchmark new impls
+
 * Unicode support
 * ByteArray# versus ForeignPtrs (that are usually on the haskell heap anyway)
 * explain better the Char Word8 distinction
@@ -29,10 +29,6 @@ operators - i will be glad    (compareWith?)
 String can be converted to FastPackedString. it will be also helpful
 addtion
     convertible = all (<256 . ord)
-
-4) several times you use advancePtr, which may be replaced with
-plusPtr in this cases. moreover, i can sell you the following
-mini-library for all those Ptr operations:
 
 may be it can be named ByteArray? and then FastString.Latin1,
 FastString.UTF8... will use its utilities
