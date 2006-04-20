@@ -25,6 +25,11 @@ bench::
 	ghc --make -O -funbox-strict-fields Bench.hs -o bench -package fps
 	./bench +RTS -H64m
 
+prof::
+	if [ ! -f "bigdata" ] ; then ln -s data bigdata ; fi
+	ghc -prof -auto-all --make -O -funbox-strict-fields Bench.hs -o bench -package fps
+	./bench +RTS -H64m -p
+
 .PHONY: clean
 clean:
 	rm -f *~ *.o *.hi $(BIN) bench */*.o */*.hi */*~
