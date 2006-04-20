@@ -1012,14 +1012,18 @@ isSuffixOf x y = reverse x `isPrefixOf` reverse y
 -- > dropWhile isSpace == dropSpace
 --
 dropSpace :: FastString -> FastString
-#if defined(USE_CBITS)
 dropSpace (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
-    let i = c_firstnonspace (p `plusPtr` s) l
+    i <- firstnonspace (p `plusPtr` s) 0 l
     return $ if i == l then empty else PS x (s+i) (l-i)
-#else
-dropSpace = error "dropSpace only available if compiled with USE_CBITS"
-#endif
 {-# INLINE dropSpace #-}
+
+firstnonspace :: Ptr Word8 -> Int -> Int -> IO Int
+STRICT3(firstnonspace)
+firstnonspace ptr n m
+    | n >= m    = return n
+    | otherwise = do w <- peekElemOff ptr n
+                     if (isSpace . w2c) w then firstnonspace ptr (n+1) m
+                                          else return n
 
 -- | 'dropSpaceEnd' efficiently returns the 'FastString' argument with
 -- white space removed from the end. I.e.
@@ -1027,14 +1031,18 @@ dropSpace = error "dropSpace only available if compiled with USE_CBITS"
 -- > reverse . (dropWhile isSpace) . reverse == dropSpaceEnd
 --
 dropSpaceEnd :: FastString -> FastString
-#if defined(USE_CBITS)
 dropSpaceEnd (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
-    let i = c_lastnonspace (p `plusPtr` s) l
+    i <- lastnonspace (p `plusPtr` s) (l-1)
     return $ if i == (-1) then empty else PS x s (i+1)
-#else
-dropSpaceEnd = error "dropSpaceEnd only available if compiled with USE_CBITS"
-#endif
 {-# INLINE dropSpaceEnd #-}
+
+lastnonspace :: Ptr Word8 -> Int -> IO Int
+STRICT2(lastnonspace)
+lastnonspace ptr n
+    | n < 0     = return n
+    | otherwise = do w <- peekElemOff ptr n
+                     if (isSpace . w2c) w then lastnonspace ptr (n-1)
+                                          else return n
 
 -- | 'breakSpace' returns the pair of 'FastString's when the argument
 -- is broken at the first whitespace character. I.e.
@@ -1042,7 +1050,25 @@ dropSpaceEnd = error "dropSpaceEnd only available if compiled with USE_CBITS"
 -- > break isSpace == breakSpace
 --
 breakSpace :: FastString -> (FastString,FastString)
-#if defined(USE_CBITS)
+breakSpace (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
+    i <- firstspace (p `plusPtr` s) 0 l
+    return $ case () of {_
+        | i == 0    -> (empty, PS x s l)
+        | i == l    -> (PS x s l, empty)
+        | otherwise -> (PS x s i, PS x (s+i) (l-i))
+    }
+{-# INLINE breakSpace #-}
+
+firstspace :: Ptr Word8 -> Int -> Int -> IO Int
+STRICT3(firstspace)
+firstspace ptr n m
+    | n >= m    = return n
+    | otherwise = do w <- peekElemOff ptr n
+                     if (not . isSpace . w2c) w then firstspace ptr (n+1) m
+                                                else return n
+
+
+{-
 breakSpace (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
     let i = c_firstspace (p `plusPtr` s) l
     return $ case () of {_
@@ -1050,10 +1076,7 @@ breakSpace (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
         | i == l    -> (PS x s l, empty)
         | otherwise -> (PS x s i, PS x (s+i) (l-i))
     }
-#else
-breakSpace = error "break space only available if compiled with USE_CBITS"
-#endif
-{-# INLINE breakSpace #-}
+-}
 
 -- | 'spanEnd' behaves like 'span' but from the end of the
 -- 'FastString'. I.e.
@@ -1107,11 +1130,12 @@ tokens p = Prelude.filter (not.null) . breakAll p
 -- > breakAll (=='a') "aabbaca" == ["","","bb","c",""]
 --
 breakAll :: (Char -> Bool) -> FastString -> [FastString]
-breakAll p ps = if null rest 
-                    then [chunk] 
+breakAll p ps = if null rest
+                    then [chunk]
                     else chunk : breakAll p (unsafeTail rest)
-    where 
+    where
       (chunk,rest) = break p ps
+
 {-
 -- weird, inefficient version. Probably slightly different to the above
 breakAll :: (Char -> Bool) -> FastString -> [FastString]
@@ -1168,7 +1192,7 @@ elemIndexLast c = elemIndexLastWord8 (c2w c)
 
 -- | /O(n)/ Hash a FastString into an 'Int32' value, suitable for use as a key.
 hash :: FastString -> Int32
-hash (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> 
+hash (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p ->
     go (0 :: Int32) (p `plusPtr` s) l
   where
     go :: Int32 -> Ptr Word8 -> Int -> IO Int32
@@ -1186,7 +1210,7 @@ betweenLines :: FastString -- ^ First line to look for
              -> FastString -- ^ Second line to look for
              -> FastString -- ^ 'FastString' to look in
              -> Maybe (FastString)
-betweenLines start end ps = 
+betweenLines start end ps =
     case Prelude.break (start ==) (lines ps) of
         (_, _:rest@(PS ps1 s1 _:_)) ->
             case Prelude.break (end ==) rest of
@@ -1845,15 +1869,6 @@ foreign import ccall unsafe "__hscore_memcpy_src_off"
 --
 
 #if defined(USE_CBITS)
-foreign import ccall unsafe "fpstring.h firstnonspace" c_firstnonspace
-    :: Ptr Word8 -> Int -> Int
-
-foreign import ccall unsafe "fpstring.h lastnonspace" c_lastnonspace
-    :: Ptr Word8 -> Int -> Int
-
-foreign import ccall unsafe "fpstring.h firstspace" c_firstspace
-    :: Ptr Word8 -> Int -> Int
-
 foreign import ccall unsafe "static fpstring.h reverse" c_reverse
     :: Ptr Word8 -> Ptr Word8 -> Int -> IO ()
 
@@ -1862,7 +1877,6 @@ foreign import ccall unsafe "static fpstring.h my_qsort" c_qsort
 
 foreign import ccall unsafe "static fpstring.h intersperse" c_intersperse
     :: Ptr Word8 -> Ptr Word8 -> Int -> Word8 -> IO ()
-
 #endif
 
 ------------------------------------------------------------------------
@@ -1871,11 +1885,12 @@ foreign import ccall unsafe "static fpstring.h intersperse" c_intersperse
 foreign import ccall unsafe "static fpstring.h my_mmap" my_mmap
     :: Int -> Int -> IO (Ptr Word8)
 
+foreign import ccall unsafe "static unistd.h close" c_close
+    :: Int -> IO Int
+
 #if !defined(__OpenBSD__)
 foreign import ccall unsafe "static sys/mman.h munmap" c_munmap
     :: Ptr Word8 -> Int -> IO Int
 #endif
 
-foreign import ccall unsafe "static unistd.h close" c_close
-    :: Int -> IO Int
 #endif

@@ -49,7 +49,8 @@ time (F a) = do
 tests  :: [(String,[F])]
 
 tests =
-    [ ("++",    [F (FPS.append fps fps)
+    [ 
+      ("++",    [F (FPS.append fps fps)
                 ,F () -- SPS.append sps sps)
                 ,F () -- PS.appendPS ps ps)
                 ,F (list ++ list)])
@@ -253,6 +254,10 @@ tests =
                       ,F ()
                       ,F (elemIndices 'z' list)])
 
+    , ("dropSpace",[F (FPS.dropSpace fps)
+                  ,F ()
+                  ,F ()
+                  ,F ()])
     ]
 
 ------------------------------------------------------------------------
