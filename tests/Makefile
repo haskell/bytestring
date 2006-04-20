@@ -10,7 +10,7 @@ GHC_ = $(GHC) -threaded $(PP_OPTS) -fglasgow-exts --make
 
 SRCS= TestFramework.hs UnitTestsMain.hs Tests.hs Quick.hs
 
-all: run-utests
+all: run bench
 
 # build executable, linking in all tests
 run-utests: $(SRCS)
@@ -21,6 +21,7 @@ run:: run-utests
 	runhaskell Quick.hs
 
 bench::
+	if [ ! -f "bigdata" ] ; then ln -s data bigdata ; fi
 	ghc --make -O -funbox-strict-fields Bench.hs -o bench -package fps
 	./bench +RTS -H64m
 
