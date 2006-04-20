@@ -36,7 +36,7 @@ Performance, some random numbers:
 This table compares the performance of common operations in both
 PackedString and FastPackedString, on various packed strings.
 
-Size of test data: 21256k
+Size of test data: 21256k, Linux 3.2Ghz P4
 
                 FPS2    FPS1    SPS     PS      [a]
 ++              0.078   ~       !       !       1.288   
