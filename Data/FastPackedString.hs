@@ -260,7 +260,7 @@ import GHC.Base (Int(..), Char(..), build, unpackCString#, unsafeChr)
 import Control.Monad.ST
 #endif
 
-#define STRICT1(f) f a b c | a `seq` False = undefined
+#define STRICT1(f) f a | a `seq` False = undefined
 #define STRICT2(f) f a b | a `seq` b `seq` False = undefined
 #define STRICT3(f) f a b c | a `seq` b `seq` c `seq` False = undefined
 #define STRICT4(f) f a b c d | a `seq` b `seq` c `seq` d `seq` False = undefined
@@ -922,7 +922,7 @@ splitWith pred_ (PS fp off len) = splitWith' pred# off len fp
 
 -- | The 'unwords' function is analogous to the 'unlines' function, on words.
 unwords :: [FastString] -> FastString
-unwords = join $ pack " "
+unwords = join (pack " ")
 
 -- | The 'intersperse' function takes a 'Char' and a 'FastString' and
 -- \`intersperses\' that 'Char' between the elements of the 'FastString'.
