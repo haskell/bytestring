@@ -877,8 +877,7 @@ lines ps
 unlines :: [FastString] -> FastString
 unlines [] = empty
 unlines ss = (concat $ List.intersperse nl ss) `append` nl -- half as much space
-    where
-      nl = pack "\n"
+    where nl = pack "\n"
 
 -- | 'words' breaks a packed string up into a list of words, which
 -- were delimited by white space.
@@ -902,8 +901,13 @@ splitWith pred_ (PS fp off len) = splitWith' pred# off len fp
         splitWith' pred' off' len' fp' = withFastString fp $ \p ->
             splitLoop pred' p 0 off' len' fp'
 
-        STRICT6(splitLoop)
+        splitLoop :: (Char# -> Bool)
+                  -> Ptr Word8
+                  -> Int -> Int -> Int
+                  -> ForeignPtr Word8
+                  -> IO [FastString]
         splitLoop pred' p idx' off' len' fp'
+            | pred' `seq` p `seq` idx' `seq` off' `seq` len' `seq` fp' `seq` False = undefined
             | idx' >= len'  = return [PS fp' off' idx']
             | otherwise = do
                 w <- peekElemOff p (off'+idx')
@@ -1286,7 +1290,7 @@ unwords' = unwords
 -- check for the empty case, so there is an obligation on the programmer
 -- to provide a proof that the FastString is non-empty.
 unsafeHead :: FastString -> Char
-unsafeHead (PS x s _) = w2c $ inlinePerformIO $ 
+unsafeHead (PS x s _) = w2c $ inlinePerformIO $
     withForeignPtr x $ \p -> peekByteOff p s
 {-# INLINE unsafeHead #-}
 
@@ -1423,7 +1427,7 @@ errorEmptyList fun = error ("FastPackedString." ++ fun ++ ": empty FastString")
 -- Addr\# is with an unboxed string literal, which is compiled to a
 -- static @char []@ by GHC. Establishing the length of the string
 -- requires a call to @strlen(3)@. Use 'unsafePackAddress' if you know
--- the length of the string statically. 
+-- the length of the string statically.
 --
 -- An example:
 --
@@ -1524,13 +1528,21 @@ useAsCString (PS ps s l) = bracket alloc free_cstring
                 return $ castPtr buf
 
 -- | Use a @FastString@ with a function requiring a @CString@.
---   Warning: modifying the @CString@ will affect the @FastString@.
--- It better be null terminated!
+--  Warning: modifying the @CString@ will affect the @FastString@.
+-- Why is this function unsafe? It relies on the null byte at the end of
+-- the FastString to be there. This is /not/ the case if your FastString
+-- has been spliced from a larger string (i.e. with take or drop).
+-- Unless you can guarantee the null byte, you should use the safe
+-- version, which will copy the string first.
+--
 unsafeUseAsCString :: FastString -> (CString -> IO a) -> IO a
 unsafeUseAsCString (PS ps s _) ac = withForeignPtr ps $ \p -> ac (castPtr p `plusPtr` s)
 
 -- | Use a @FastString@ with a function requiring a @CStringLen@.
---   Warning: modifying the @CStringLen@ will affect the @FastString@.
+-- Warning: modifying the @CStringLen@ will affect the @FastString@.
+-- This is analogous to unsafeUseAsCString, and comes with the same
+-- safety requirements.
+--
 unsafeUseAsCStringLen :: FastString -> (CStringLen -> IO a) -> IO a
 unsafeUseAsCStringLen (PS ps s l) ac = withForeignPtr ps $ \p -> ac (castPtr p `plusPtr` s,l)
 
