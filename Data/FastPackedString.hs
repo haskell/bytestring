@@ -545,7 +545,7 @@ map_ f' n p1 p2
    | n < 0 = return ()
    | otherwise = do
         x <- peekElemOff p1 n
-        pokeElemOff p2 n (c2w (f' (w2c x)))
+        pokeElemOff p2 n ((c2w . f' . w2c) x)
         map_ f' (n-1) p1 p2
 {-# INLINE map_ #-}
 
@@ -587,6 +587,7 @@ filter k ps@(PS x s l)
                       if k (w2c w)
                         then poke t w >> go (f `plusPtr` 1) (t `plusPtr` 1) (e - 1)
                         else             go (f `plusPtr` 1) t               (e - 1)
+
     -- Almost as good: pack $ foldl (\xs c -> if f c then c : xs else xs) [] ps
 
 --
@@ -891,12 +892,17 @@ elems (PS x s l) = (PS x s 1:elems (PS x (s+1) (l-1)))
 -- | 'lines' breaks a packed string up into a list of packed strings
 -- at newline characters.  The resulting strings do not contain
 -- newlines.
+--
+-- TODO it would be worth optimising this code further.
+--
 lines :: FastString -> [FastString]
 lines ps
     | null ps = []
-    | otherwise = case elemIndexWord8 (c2w '\n') ps of
+    | otherwise = case search ps of
              Nothing -> [ps]
              Just n  -> take n ps : lines (drop (n+1) ps)
+
+    where search = elemIndexWord8 0x0a
 {-# INLINE lines #-}
 
 -- | 'unlines' is an inverse operation to 'lines'.  It joins lines,
