@@ -1,5 +1,4 @@
 
-* explain better the Char Word8 distinction
 * Perhaps rename as ByteVector or ByteSequence?
 * testing with large numbers of smallish 10-100 char strings
 * remove Posix dependency for mmap.
