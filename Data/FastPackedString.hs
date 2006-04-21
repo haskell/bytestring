@@ -15,7 +15,8 @@
 
 --
 -- | A time and space-efficient implementation of strings as packed
--- byte arrays.
+-- byte arrays. Strings are encoded as Word8 arrays of bytes, and
+-- functions on Chars are provided as a convenience.
 --
 -- This module is intended to be imported @qualified@, to avoid name
 -- clashes with Prelude functions.  eg.
