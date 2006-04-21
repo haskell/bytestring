@@ -3,6 +3,10 @@
 * ByteArray# versus ForeignPtrs (that are usually on the haskell heap anyway)
 * explain better the Char Word8 distinction
 
+* testing with large numbers of smallish 10-100 char strings
+
+* remove Posix dependency
+
 ------------------------------------------------------------------------
 
 We should have Data.PackedString.UTF16 too; it'll make interoperating

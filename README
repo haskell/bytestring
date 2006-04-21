@@ -73,8 +73,8 @@ concatMap       !       -       -       -       1.131
 any             0.000   ~       -       -       0.000   
 all             0.000   ~       -       -       0.000   
 sort            14.380  15.773  -       -       !
-maximum*        0.068   0.024   -       -       0.183
-minimum*        0.093   0.025   -       -       0.185
+maximum         0.024   0.068   -       -       0.183
+minimum         0.025   0.093   -       -       0.185
 replicate       0.008   ~       -       -       0.053   
 elem            0.000   ~       1.490   0.001   0.000   
 find            0.278   0.366   -       -       0.000   
@@ -91,8 +91,6 @@ Key: FPS2 = Fast Packed String v2
      ~    = unchanged from FPS2
      -    = no function exists
      !    = stack or memory exhaustion
-
-     * rewritten in pure haskell from v0.1 to 0.2
 
 ------------------------------------------------------------------------
 

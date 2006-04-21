@@ -837,8 +837,25 @@ indexWord8 ps n
     | otherwise      = ps ! n
 {-# INLINE indexWord8 #-}
 
+#if defined(USE_CBITS)
+
 -- | 'maximum' returns the maximum value from a 'FastString'
 maximum :: FastString -> Char
+maximum xs@(PS x s l)
+    | null xs   = errorEmptyList "maximum"
+    | otherwise = inlinePerformIO $ withForeignPtr x $ \p ->
+                    return $ w2c $ c_maximum (p `plusPtr` s) l
+
+-- | 'minimum' returns the maximum value from a 'FastString'
+minimum :: FastString -> Char
+minimum xs@(PS x s l)
+    | null xs   = errorEmptyList "minimum"
+    | otherwise = inlinePerformIO $ withForeignPtr x $ \p ->
+                    return $ w2c $ c_minimum (p `plusPtr` s) l
+
+#else
+
+-- | 'maximum' returns the maximum value from a 'FastString'
 maximum xs@(PS x s l)
     | null xs   = errorEmptyList "maximum"
     | otherwise = inlinePerformIO $ withForeignPtr x $ \p -> do
@@ -852,14 +869,6 @@ maximum_ ptr n m c
     | n >= m    = return (w2c c)
     | otherwise = do w <- peekByteOff ptr n
                      maximum_ ptr (n+1) m (if w > c then w else c)
-
-{-
--- not much better to call into C.
-maximum xs@(PS x s l)
-    | null xs   = errorEmptyList "maximum"
-    | otherwise = inlinePerformIO $ withForeignPtr x $ \p ->
-                    return $ w2c $ c_maximum (p `plusPtr` s) l
--}
 
 -- | 'minimum' returns the maximum value from a 'FastString'
 minimum :: FastString -> Char
@@ -876,13 +885,7 @@ minimum_ ptr n m c
     | n >= m    = return (w2c c)
     | otherwise = do w <- peekByteOff ptr n
                      minimum_ ptr (n+1) m (if w < c then w else c)
-
-{-
-minimum xs@(PS x s l)
-    | null xs   = errorEmptyList "minimum"
-    | otherwise = inlinePerformIO $ withForeignPtr x $ \p ->
-                    return $ w2c $ c_minimum (p `plusPtr` s) l
--}
+#endif
 
 -- | /O(n)/ breaks a packed string to a list of packed strings, one byte each.
 elems :: FastString -> [FastString]
@@ -1850,8 +1853,9 @@ mmap f = do
                return (thefp, l)
        else do
 #if defined(__GLASGOW_HASKELL__)
+               -- unix only :(
                fd <- fromIntegral `liftM` handleToFd h
-               p <- my_mmap l fd
+               p  <- my_mmap l fd
                fp <- if p == nullPtr
                      then
 #else
@@ -1938,6 +1942,12 @@ foreign import ccall unsafe "static fpstring.h my_qsort" c_qsort
 
 foreign import ccall unsafe "static fpstring.h intersperse" c_intersperse
     :: Ptr Word8 -> Ptr Word8 -> Int -> Word8 -> IO ()
+
+foreign import ccall unsafe "static fpstring.h maximum" c_maximum
+    :: Ptr Word8 -> Int -> Word8
+
+foreign import ccall unsafe "static fpstring.h minimum" c_minimum
+    :: Ptr Word8 -> Int -> Word8
 #endif
 
 ------------------------------------------------------------------------

@@ -14,7 +14,7 @@ import Debug.Trace
 ------------------------------------------------------------------------
 -- at first we just check the correspondence to List functions
 
-prop_eq1 xs      = xs            == (unpack . pack $ xs) 
+prop_eq1 xs      = xs            == (unpack . pack $ xs)
 
 prop_compare1 xs  = (pack xs         `compare` pack xs) == EQ
 prop_compare2 xs  = (pack (xs++"X")  `compare` pack xs) == GT
@@ -38,7 +38,7 @@ prop_head1 xs    = (not (null xs)) ==> head xs == (P.unsafeHead . pack) xs
 prop_tail xs     = (not (null xs)) ==> tail xs    == (unpack . P.tail . pack) xs
 prop_tail1 xs    = (not (null xs)) ==> tail xs    == (unpack . P.unsafeTail. pack) xs
 
-prop_init xs     = 
+prop_init xs     =
     (not (null xs)) ==>
     init xs    == (unpack . P.init . pack) xs
 
@@ -56,25 +56,25 @@ prop_filter2 xs c = (filter (==c) xs) == (unpack $ P.filter (==c) (pack xs))
 
 prop_find xs c = find (==c) xs == P.find (==c) (pack xs)
 
-prop_foldl1 xs = ((foldl (\x c -> if c == 'a' then x else c:x) [] xs)) ==  
+prop_foldl1 xs = ((foldl (\x c -> if c == 'a' then x else c:x) [] xs)) ==
                 (unpack $ P.foldl (\x c -> if c == 'a' then x else c `P.cons` x) P.empty (pack xs))
 
 prop_foldl2 xs = P.foldl (\xs c -> c `P.cons` xs) P.empty (pack xs) == P.reverse (pack xs)
 
-prop_foldl11 xs = 
-    (not (null xs)) ==> 
-    (P.foldl1 (\x y -> chr $ ord x + ord y)   (pack xs)) == 
+prop_foldl11 xs =
+    (not (null xs)) ==>
+    (P.foldl1 (\x y -> chr $ ord x + ord y)   (pack xs)) ==
     (P.foldl  (\x y -> chr $ ord x + ord y) '\0' (pack xs))
 
-prop_foldr1 xs = ((foldr (\c x -> if c == 'a' then x else c:x) [] xs)) ==  
-                (unpack $ P.foldr (\c x -> if c == 'a' then x else c `P.cons` x) 
+prop_foldr1 xs = ((foldr (\c x -> if c == 'a' then x else c:x) [] xs)) ==
+                (unpack $ P.foldr (\c x -> if c == 'a' then x else c `P.cons` x)
                     P.empty (pack xs))
 
 prop_foldr2 xs = P.foldr (\c xs -> c `P.cons` xs) P.empty (pack xs) == (pack xs)
 
-prop_foldr11 xs = 
-    (not (null xs)) ==> 
-    (P.foldr1 (\x y -> chr $ ord x + ord y) (pack xs)) == 
+prop_foldr11 xs =
+    (not (null xs)) ==>
+    (P.foldr1 (\x y -> chr $ ord x + ord y) (pack xs)) ==
     (P.foldr  (\x y -> chr $ ord x + ord y) '\0' (pack xs))
 
 prop_takeWhile xs = (takeWhile (/= 'X') xs) == (unpack . (P.takeWhile (/= 'X')) . pack) xs
@@ -85,13 +85,13 @@ prop_take xs = (take 10 xs) == (unpack . (P.take 10) . pack) xs
 
 prop_drop xs = (drop 10 xs) == (unpack . (P.drop 10) . pack) xs
 
-prop_splitAt xs = (splitAt 1000 xs) == (let (x,y) = P.splitAt 1000 (pack xs) 
+prop_splitAt xs = (splitAt 1000 xs) == (let (x,y) = P.splitAt 1000 (pack xs)
                                       in (unpack x, unpack y))
 
-prop_span xs = (span (/='X') xs) == (let (x,y) = P.span (/='X') (pack xs) 
+prop_span xs = (span (/='X') xs) == (let (x,y) = P.span (/='X') (pack xs)
                                      in (unpack x, unpack y))
 
-prop_break xs = (break (/='X') xs) == (let (x,y) = P.break (/='X') (pack xs) 
+prop_break xs = (break (/='X') xs) == (let (x,y) = P.break (/='X') (pack xs)
                                        in (unpack x, unpack y))
 
 prop_reverse xs = (reverse xs) == (unpack . P.reverse . pack) xs
@@ -122,11 +122,11 @@ prop_elemIndex1 xs   = (elemIndex 'X' xs) == (P.elemIndex 'X' (pack xs))
 prop_elemIndex2 xs c = (elemIndex c xs) == (P.elemIndex c (pack xs))
 
 prop_elemIndexLast1 c xs = (P.elemIndexLast c (pack xs)) ==
-                           (case P.elemIndex c (pack (reverse xs)) of 
+                           (case P.elemIndex c (pack (reverse xs)) of
                                 Nothing -> Nothing
                                 Just i  -> Just (length xs -1 -i))
 
-prop_elemIndexLast2 c xs = (P.elemIndexLast c (pack xs)) == 
+prop_elemIndexLast2 c xs = (P.elemIndexLast c (pack xs)) ==
                            ((-) (length xs - 1) `fmap` P.elemIndex c (pack $ reverse xs))
 
 prop_elemIndices xs c = elemIndices c xs == P.elemIndices c (pack xs)
@@ -158,18 +158,18 @@ prop_minimum xs = (not (null xs)) ==> (minimum xs) == (P.minimum ( pack xs ))
 ------------------------------------------------------------------------
 
 prop_dropSpace xs    = dropWhile isSpace xs == unpack (P.dropSpace (pack xs))
-prop_dropSpaceEnd xs = (P.reverse . (P.dropWhile isSpace) . P.reverse) (pack xs) == 
+prop_dropSpaceEnd xs = (P.reverse . (P.dropWhile isSpace) . P.reverse) (pack xs) ==
                        (P.dropSpaceEnd (pack xs))
 
 prop_breakSpace xs = (let (x,y) = P.breakSpace (pack xs)
                       in (unpack x, unpack y)) == (break isSpace xs)
 
-prop_spanEnd xs = 
+prop_spanEnd xs =
         (P.spanEnd (not . isSpace) (pack xs)) ==
         (let (x,y) = P.span (not.isSpace) (P.reverse (pack xs)) in (P.reverse y,P.reverse x))
 
-prop_breakOn c xs = 
-        (break (==c) xs) == 
+prop_breakOn c xs =
+        (break (==c) xs) ==
         (let (x,y) = P.breakOn c (pack xs) in (unpack x, unpack y))
 
 prop_split xs = (map unpack (P.split '\n' (pack xs))) == lines xs
@@ -184,7 +184,7 @@ prop_breakLast c xs = (let (x,y) = break (==c) (reverse xs)
                                     else Just (pack (reverse $ drop 1 y), pack (reverse x))) ==
                        (P.breakLast c (pack xs))
 
-prop_words' xs = (unpack . P.unwords  . P.words' . pack) xs == 
+prop_words' xs = (unpack . P.unwords  . P.words' . pack) xs ==
                  (map (\c -> if isSpace c then ' ' else c) xs)
 prop_lines' xs = (unpack . P.unlines' . P.lines' . pack) xs == (xs)
 
@@ -203,11 +203,11 @@ prop_inits xs = inits xs == map P.unpack (P.inits (P.pack xs))
 
 prop_tails xs = tails xs == map P.unpack (P.tails (P.pack xs))
 
-prop_findSubstrings s x l 
+prop_findSubstrings s x l
     = P.findSubstrings (P.pack p) (P.pack s) == naive_findSubstrings p s
-    where 
+    where
     -- we look for some random substring of the test string
-    p = take (abs l) $ drop (abs x) s 
+    p = take (abs l) $ drop (abs x) s
     -- naive reference implementation
     naive_findSubstrings :: String -> String -> [Int]
     naive_findSubstrings p s = [x | x <- [0..length s], p `isPrefixOf` drop x s]
