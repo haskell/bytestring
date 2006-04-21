@@ -1,15 +1,104 @@
-{-# OPTIONS -fglasgow-exts #-}
-
-import Data.Char
-import Data.List
-import Data.Maybe
-import Data.FastPackedString (pack,unpack)
-import qualified Data.FastPackedString as P
+{-# OPTIONS_GHC -cpp -fglasgow-exts #-}
 
 import Test.QuickCheck.Batch
 import Test.QuickCheck
+import Text.Show.Functions
+import System.Random
+import Data.List
+import Data.Char
+import Data.Maybe
+import Text.Printf
 
-import Debug.Trace
+import Data.FastPackedString (FastString, pack , unpack)
+import qualified Data.FastPackedString as P
+
+instance Arbitrary Char where
+  arbitrary = choose (minBound, chr 0xff)
+  coarbitrary c = variant (ord c `rem` 16)
+
+instance Arbitrary FastString where
+  arbitrary = P.pack `fmap` arbitrary
+  coarbitrary s = coarbitrary (P.unpack s)
+
+------------------------------------------------------------------------
+-- Simon's functions:
+
+prop_pack string = string == P.unpack (P.pack string)
+
+prop_nil1 = P.length P.empty == 0
+prop_nil2 = P.unpack P.empty == ""
+
+prop_cons c xs = P.unpack (P.cons c (P.pack xs)) == (c:xs)
+
+prop_headS xs = not (P.null xs) ==> P.head xs == head (P.unpack xs)
+
+prop_tailS xs = not (P.null xs) ==> P.tail xs == P.pack (tail (P.unpack xs))
+
+prop_null xs = null (P.unpack xs) == P.null xs
+
+prop_append xs ys = P.append xs ys == P.pack (P.unpack xs ++ P.unpack ys)
+
+prop_lengthS xs = length xs == P.length (P.pack xs)
+
+prop_index xs =
+  not (null xs) ==>
+	forAll indices $ \i -> (xs !! i) == P.pack xs `P.index` i
+  where indices = choose (0, length xs -1)
+
+prop_unsafeIndex xs =
+  not (null xs) ==>
+    forAll indices $ \i -> (xs !! i) == P.pack xs `P.unsafeIndex` i
+  where indices = choose (0, length xs -1)
+
+prop_mapS f xs = P.map f (P.pack xs) == P.pack (map f xs)
+
+prop_filter f xs = P.filter f (P.pack xs) == P.pack (filter f xs)
+
+prop_reverseS xs = P.reverse (P.pack xs) == P.pack (reverse xs)
+
+prop_concat xss = P.concat (map P.pack xss) == P.pack (concat xss)
+
+prop_elemS x xs = P.elem x (P.pack xs) == elem x xs
+
+prop_takeS i xs = P.take i (P.pack xs) == P.pack (take i xs)
+
+prop_dropS i xs = P.drop i (P.pack xs) == P.pack (drop i xs)
+
+prop_splitAtS i xs = collect (i >= 0 && i < length xs) $
+    P.splitAt i (P.pack xs) ==
+    let (a,b) = splitAt i xs in (P.pack a, P.pack b)
+
+prop_foldl f c xs = P.foldl f c (P.pack xs) == foldl f c xs
+  where types = c :: Char
+
+prop_foldr f c xs = P.foldl f c (P.pack xs) == foldl f c xs
+  where types = c :: Char
+
+prop_takeWhileS f xs = P.takeWhile f (P.pack xs) == P.pack (takeWhile f xs)
+
+prop_dropWhileS f xs = P.dropWhile f (P.pack xs) == P.pack (dropWhile f xs)
+
+prop_spanS f xs = P.span f (P.pack xs) ==
+    let (a,b) = span f xs in (P.pack a, P.pack b)
+
+prop_breakS f xs = P.break f (P.pack xs) ==
+    let (a,b) = break f xs in (P.pack a, P.pack b)
+
+prop_linesS xs = P.lines (P.pack xs) == map P.pack (lines xs)
+
+prop_unlinesS xss = P.unlines (map P.pack xss) == P.pack (unlines xss)
+
+prop_wordsS xs = P.words (P.pack xs) == map P.pack (words xs)
+
+prop_unwordsS xss = P.unwords (map P.pack xss) == P.pack (unwords xss)
+
+prop_splitWith f xs = (l1 == l2 || l1 == l2+1) &&
+        sum (map P.length splits) == P.length xs - l2
+  where splits = P.splitWith f xs
+        l1 = length splits
+        l2 = P.length (P.filter f xs)
+
+prop_joinsplit c xs = P.join (P.pack [c]) (P.split c xs) == xs
 
 ------------------------------------------------------------------------
 -- at first we just check the correspondence to List functions
@@ -85,8 +174,9 @@ prop_take xs = (take 10 xs) == (unpack . (P.take 10) . pack) xs
 
 prop_drop xs = (drop 10 xs) == (unpack . (P.drop 10) . pack) xs
 
-prop_splitAt xs = (splitAt 1000 xs) == (let (x,y) = P.splitAt 1000 (pack xs)
-                                      in (unpack x, unpack y))
+prop_splitAt i xs = collect (i >= 0 && i < length xs) $
+    splitAt i xs ==
+    let (x,y) = P.splitAt i (pack xs) in (unpack x, unpack y)
 
 prop_span xs = (span (/='X') xs) == (let (x,y) = P.span (/='X') (pack xs)
                                      in (unpack x, unpack y))
@@ -172,8 +262,6 @@ prop_breakOn c xs =
         (break (==c) xs) ==
         (let (x,y) = P.breakOn c (pack xs) in (unpack x, unpack y))
 
-prop_split xs = (map unpack (P.split '\n' (pack xs))) == lines xs
-
 prop_breakFirst c xs = (let (x,y) = break (==c) xs
                         in if null y then Nothing
                                      else Just (pack x, pack $ drop 1 y)) ==
@@ -233,100 +321,131 @@ prop_filterChar2 c xs = (P.filter (==c) (P.pack xs)) == (P.filterChar c (P.pack 
 
 ------------------------------------------------------------------------
 
-main = do
-    runTests "fps" (defOpt { no_of_tests = 200, length_of_tests= 10 } )
-        [   run prop_eq1
-        ,   run prop_compare1
-        ,   run prop_compare2
-        ,   run prop_compare3
-        ,   run prop_compare4
-        ,   run prop_compare5
-        ,   run prop_compare6
-    --  ,   run prop_nil1
-    --  ,   run prop_nil2
-        ,   run prop_cons1
-        ,   run prop_cons2
-        ,   run prop_snoc1
-        ,   run prop_head
-        ,   run prop_head1
-        ,   run prop_tail
-        ,   run prop_tail1
-        ,   run prop_init
-    --  ,   run prop_null
-        ,   run prop_length
-        ,   run prop_append1
-        ,   run prop_append2
-        ,   run prop_map
-        ,   run prop_filter1
-        ,   run prop_filter2
-        ,   run prop_foldl1
-        ,   run prop_foldl2
-        ,   run prop_foldr1
-        ,   run prop_foldr2
-        ,   run prop_foldl11
-        ,   run prop_foldr11
-        ,   run prop_take
-        ,   run prop_drop
-        ,   run prop_takeWhile
-        ,   run prop_dropWhile
-        ,   run prop_splitAt
-        ,   run prop_span
-        ,   run prop_break
-        ,   run prop_reverse
-        ,   run prop_elem
-        ,   run prop_concat1
-        ,   run prop_concat2
-        ,   run prop_any
-        ,   run prop_all
-        ,   run prop_lines
-        ,   run prop_unlines
-        ,   run prop_words
-        ,   run prop_unwords
-        ,   run prop_join
-        ,   run prop_elemIndex1
-        ,   run prop_elemIndex2
-        ,   run prop_elemIndices
-        ,   run prop_findIndex
-        ,   run prop_findIndicies
-        ,   run prop_find
-        ,   run prop_sort1
-        ,   run prop_sort2
-        ,   run prop_sort3
-        ,   run prop_sort4
-        ,   run prop_sort5
-        ,   run prop_intersperse
-        ,   run prop_maximum
-        ,   run prop_minimum
-        ,   run prop_breakOn
-        ,   run prop_breakSpace
-        ,   run prop_dropSpace
-        ,   run prop_spanEnd
-        ,   run prop_split
-        ,   run prop_breakFirst
-        ,   run prop_breakLast
-        ,   run prop_elemIndexLast1
-        ,   run prop_elemIndexLast2
-        ,   run prop_words'
-        ,   run prop_lines'
-        ,   run prop_dropSpaceEnd
-        ,   run prop_unfoldr
-        ,   run prop_addr
-        ,   run prop_prefix
-        ,   run prop_suffix
-        ,   run prop_copy
-        ,   run prop_inits
-        ,   run prop_tails
-        ,   run prop_findSubstrings
-        ,   run prop_replicate1
-        ,   run prop_replicate2
-        ,   run prop_replicate3
-        ,   run prop_readint
-        ,   run prop_readint2
-        ,   run prop_filterChar1
-        ,   run prop_filterChar2
-        ]
+main =
+    do mapM_ (runTests "test" (defOpt { no_of_tests = 300, length_of_tests = 10 })) $
+         breakUp 25 tests []
 
-instance Arbitrary Char where
-  arbitrary = oneof $ map return
-                (['a'..'z']++['A'..'Z']++['1'..'9']++['\n','\t','0','~','.',',','-','/'])
-  coarbitrary c = coarbitrary (ord c)
+ where
+    breakUp _ [] acc = reverse acc
+    breakUp n xs acc = let h = take n xs
+                           r = drop n xs
+                       in breakUp n r (h:acc)
+
+    tests = [    run prop_eq1
+            ,    run prop_compare1
+            ,    run prop_compare2
+            ,    run prop_compare3
+            ,    run prop_compare4
+            ,    run prop_compare5
+            ,    run prop_compare6
+            ,    run prop_cons1
+            ,    run prop_cons2
+            ,    run prop_snoc1
+            ,    run prop_head
+            ,    run prop_head1
+            ,    run prop_tail
+            ,    run prop_tail1
+            ,    run prop_init
+            ,    run prop_length
+            ,    run prop_append1
+            ,    run prop_append2
+            ,    run prop_map
+            ,    run prop_filter1
+            ,    run prop_filter2
+            ,    run prop_foldl1
+            ,    run prop_foldl2
+            ,    run prop_foldr1
+            ,    run prop_foldr2
+            ,    run prop_foldl11
+            ,    run prop_foldr11
+            ,    run prop_take
+            ,    run prop_drop
+            ,    run prop_takeWhile
+            ,    run prop_dropWhile
+            ,    run prop_splitAt
+            ,    run prop_span
+            ,    run prop_break
+            ,    run prop_reverse
+            ,    run prop_elem
+            ,    run prop_concat1
+            ,    run prop_concat2
+            ,    run prop_any
+            ,    run prop_all
+            ,    run prop_lines
+            ,    run prop_unlines
+            ,    run prop_words
+            ,    run prop_unwords
+            ,    run prop_join
+            ,    run prop_elemIndex1
+            ,    run prop_elemIndex2
+            ,    run prop_elemIndices
+            ,    run prop_findIndex
+            ,    run prop_findIndicies
+            ,    run prop_find
+            ,    run prop_sort1
+            ,    run prop_sort2
+            ,    run prop_sort3
+            ,    run prop_sort4
+            ,    run prop_sort5
+            ,    run prop_intersperse
+            ,    run prop_maximum
+            ,    run prop_minimum
+            ,    run prop_breakOn
+            ,    run prop_breakSpace
+            ,    run prop_dropSpace
+            ,    run prop_spanEnd
+            ,    run prop_breakFirst
+            ,    run prop_breakLast
+            ,    run prop_elemIndexLast1
+            ,    run prop_elemIndexLast2
+            ,    run prop_words'
+            ,    run prop_lines'
+            ,    run prop_dropSpaceEnd
+            ,    run prop_unfoldr
+            ,    run prop_addr
+            ,    run prop_prefix
+            ,    run prop_suffix
+            ,    run prop_copy
+            ,    run prop_inits
+            ,    run prop_tails
+            ,    run prop_findSubstrings
+            ,    run prop_replicate1
+            ,    run prop_replicate2
+            ,    run prop_replicate3
+            ,    run prop_readint
+            ,    run prop_readint2
+            ,    run prop_filterChar1
+            ,    run prop_filterChar2
+            ,    run prop_pack
+            ,    run prop_nil1
+            ,    run prop_nil2
+            ,    run prop_cons
+            ,    run prop_headS
+            ,    run prop_lengthS
+            ,    run prop_tailS
+            ,    run prop_null
+            ,    run prop_append
+            ,    run prop_index
+            ,    run prop_unsafeIndex
+            ,    run prop_mapS
+            ,    run prop_filter
+            ,    run prop_reverseS
+            ,    run prop_concat
+            ,    run prop_elemS
+    --      ,    run prop_substr
+            ,    run prop_takeS
+            ,    run prop_dropS
+            ,    run prop_splitAtS
+            ,    run prop_foldl
+            ,    run prop_foldr
+            ,    run prop_takeWhileS
+            ,    run prop_dropWhileS
+            ,    run prop_spanS
+            ,    run prop_breakS
+            ,    run prop_linesS
+            ,    run prop_unlinesS
+            ,    run prop_wordsS
+            ,    run prop_unwordsS
+            ,    run prop_splitWith
+            ,    run prop_joinsplit
+            ]

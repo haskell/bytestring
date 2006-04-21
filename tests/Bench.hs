@@ -6,9 +6,9 @@
 -- space and time.
 --
 
-import qualified Data.PackedString     as PS
 import qualified Data.FastPackedString as FPS
-import qualified SimonPackedString     as SPS
+-- import qualified Data.PackedString     as PS
+-- import qualified SimonPackedString     as SPS
 import Data.List
 import Data.Char
 
@@ -25,10 +25,10 @@ main :: IO ()
 main = do
     -- initialise
     printf "Initialising test data...\n"
-    force (fps,fps') >> force (sps,sps') >> force (ps,ps') >> force (list,list')
+    force (fps,fps') >> force (list)
 
     printf "Size of test data: %dk\n" ((floor $ (fromIntegral (FPS.length fps)) / 1024) :: Int)
-    printf "                FPS\tSPS\tPS\t[a]\n"
+    printf "                FPS\n"
 
     -- now get to it
     sequence_ . map doit $ tests
@@ -58,219 +58,178 @@ tests  :: [(String,[F])]
 
 tests =
     [
-      ("++",    [F ({-# SCC "append" #-}FPS.append fps fps)
-                ,F () -- SPS.append sps sps)
-                ,F () -- PS.appendPS ps ps)
-                ,F (list ++ list)])
+      ("++",    [F ({-# SCC "append" #-}FPS.append fps fps)])
+--              ,F () -- SPS.append sps sps)
+--              ,F () -- PS.appendPS ps ps)
+--              ,F (list ++ list)])
 
-    , ("length",[F ({-# SCC "length"    #-}FPS.length fps)
-                ,F (SPS.length sps)
-                ,F (PS.lengthPS ps)
-                ,F (length list)])
+    , ("length",[F ({-# SCC "length"    #-}FPS.length fps)])
+--              ,F (SPS.length sps)
+--              ,F (PS.lengthPS ps)
+--              ,F (length list)])
 
-    , ("pack",  [F ({-# SCC "pack"      #-}FPS.pack list)
-                ,F (SPS.pack list)
-                ,F (PS.packString list)
-                ,F ()])
+    , ("pack",  [F ({-# SCC "pack"      #-}FPS.pack list)])
+--              ,F (SPS.pack list)
+--              ,F (PS.packString list)
+--              ,F ()])
 
-    , ("unpack",[F ({-# SCC "unpack"    #-}FPS.unpack fps)
-                ,F (SPS.unpack sps)
-                ,F (PS.unpackPS ps) ,F ()])
+    , ("unpack",[F ({-# SCC "unpack"    #-}FPS.unpack fps)])
+--              ,F (SPS.unpack sps)
+--              ,F (PS.unpackPS ps) ,F ()])
 
-    , ("compare",[F ({-# SCC "compare"   #-}compare fps fps')
-                 ,F (compare sps sps')
-                 ,F (compare ps ps')
-                 ,F (compare list list')])
+    , ("compare",[F ({-# SCC "compare"   #-}compare fps fps')])
+--               ,F (compare sps sps')
+--               ,F (compare ps ps')
+--               ,F (compare list list')])
 
-    , ("index", [F ({-# SCC "index" #-}FPS.index fps 10000)
-                ,F (SPS.index sps 10000)
-                ,F (PS.indexPS ps 10000)
-                ,F (list !! 10000)])
+    , ("index", [F ({-# SCC "index" #-}FPS.index fps 10000)])
+--              ,F (SPS.index sps 10000)
+--              ,F (PS.indexPS ps 10000)
+--              ,F (list !! 10000)])
 
-    , ("map", [F ({-# SCC "map"       #-}FPS.map toUpper fps)
-              ,F (SPS.map toUpper sps)
-              ,F (PS.mapPS toUpper ps)
-              ,F (map toUpper list)])
+    , ("map", [F ({-# SCC "map"       #-}FPS.map toUpper fps)])
+--            ,F (SPS.map toUpper sps)
+--            ,F (PS.mapPS toUpper ps)
+--            ,F (map toUpper list)])
 
-    , ("filter", [F ({-# SCC "filter"    #-}FPS.filter (=='f') fps)
-                 ,F (SPS.filter (=='f') sps)
-                 ,F (PS.filterPS (=='f') ps)
-                 ,F (filter (=='f') list)])
+    , ("filter", [F ({-# SCC "filter"    #-}FPS.filter (=='f') fps)])
+--               ,F (SPS.filter (=='f') sps)
+--               ,F (PS.filterPS (=='f') ps)
+--               ,F (filter (=='f') list)])
 
-    , ("filterChar", [F ({-# SCC "filterChar"    #-}FPS.filterChar 'f' fps)
-                 ,F ()
-                 ,F ()
-                 ,F ()])
+    , ("filterChar", [F ({-# SCC "filterChar"    #-}FPS.filterChar 'f' fps)])
 
-    , ("take",[F ({-# SCC "take"      #-}FPS.take 100000 fps)
-             ,F (SPS.take 100000 sps)
-             ,F (PS.takePS 100000 ps)
-             ,F (take 100000 list)])
+    , ("take",[F ({-# SCC "take"      #-}FPS.take 100000 fps)])
+--           ,F (SPS.take 100000 sps)
+--           ,F (PS.takePS 100000 ps)
+--           ,F (take 100000 list)])
 
-    , ("drop",[F ({-# SCC "drop"      #-}FPS.drop 100000 fps)
-             ,F (SPS.drop 100000 sps)
-             ,F (PS.dropPS 100000 ps)
-             ,F (drop 100000 list)])
+    , ("drop",[F ({-# SCC "drop"      #-}FPS.drop 100000 fps)])
+--           ,F (SPS.drop 100000 sps)
+--           ,F (PS.dropPS 100000 ps)
+--           ,F (drop 100000 list)])
 
-    , ("takeWhile",[F ({-# SCC "takeWhile" #-}FPS.takeWhile (/='z') fps)
-                   ,F (SPS.takeWhile (/='z') sps)
-                   ,F (PS.takeWhilePS (/='z') ps)
-                   ,F (takeWhile (/='z') list)])
+    , ("takeWhile",[F ({-# SCC "takeWhile" #-}FPS.takeWhile (/='z') fps)])
+--                 ,F (SPS.takeWhile (/='z') sps)
+--                 ,F (PS.takeWhilePS (/='z') ps)
+--                 ,F (takeWhile (/='z') list)])
 
-    , ("dropWhile",[F ({-# SCC "dropWhile" #-}FPS.dropWhile (/='z') fps)
-                   ,F (SPS.dropWhile (/='z') sps)
-                   ,F (PS.dropWhilePS (/='z') ps)
-                   ,F (dropWhile (/='z') list)])
+    , ("dropWhile",[F ({-# SCC "dropWhile" #-}FPS.dropWhile (/='z') fps)])
+--                 ,F (SPS.dropWhile (/='z') sps)
+--                 ,F (PS.dropWhilePS (/='z') ps)
+--                 ,F (dropWhile (/='z') list)])
 
-    , ("span",[F ({-# SCC "span"      #-}FPS.span (/='z') fps)
-                   ,F (SPS.span (/='z') sps)
-                   ,F (PS.spanPS (/='z') ps)
-                   ,F (span (/='z') list)])
+    , ("span",[F ({-# SCC "span"      #-}FPS.span (/='z') fps)])
+--                 ,F (SPS.span (/='z') sps)
+--                 ,F (PS.spanPS (/='z') ps)
+--                 ,F (span (/='z') list)])
 
-    , ("break",[F ({-# SCC "break"     #-}FPS.break (=='z') fps)
-               ,F (SPS.break (=='z') sps)
-               ,F (PS.breakPS (=='z') ps)
-               ,F (break (=='z') list)])
+    , ("break",[F ({-# SCC "break"     #-}FPS.break (=='z') fps)])
+--             ,F (SPS.break (=='z') sps)
+--             ,F (PS.breakPS (=='z') ps)
+--             ,F (break (=='z') list)])
 
-    , ("lines",[F ({-# SCC "lines"     #-}FPS.lines fps)
-               ,F (SPS.lines sps)
-               ,F (PS.linesPS ps)
-               ,F (lines list)])
+    , ("lines",[F ({-# SCC "lines"     #-}FPS.lines fps)])
+--             ,F (SPS.lines sps)
+--             ,F (PS.linesPS ps)
+--             ,F (lines list)])
 
-    , ("unlines",[F ({-# SCC "unlines"   #-}FPS.unlines [fps,fps',fps])
-                   ,F () {-F (SPS.unlines [sps,sps',sps])-}
-                   ,F () -- (PS.unlinesPS [ps,ps',ps])
-                   ,F (unlines [list,list',list])])
+    , ("unlines",[F ({-# SCC "unlines"   #-}FPS.unlines [fps,fps',fps])])
+--                 ,F () {-F (SPS.unlines [sps,sps',sps])-}
+--                 ,F () -- (PS.unlinesPS [ps,ps',ps])
+--                 ,F (unlines [list,list',list])])
 
-    , ("words",[F ({-# SCC "words"     #-}FPS.words fps)
-                   ,F (SPS.words sps)
-                   ,F (PS.wordsPS ps)
-                   ,F (words list)])
+    , ("words",[F ({-# SCC "words"     #-}FPS.words fps)])
+--                 ,F (SPS.words sps)
+--                 ,F (PS.wordsPS ps)
+--                 ,F (words list)])
 
-    , ("unwords",[F ({-# SCC "unwords"   #-}FPS.unwords [fps,fps',fps])
-                   ,F () {-(SPS.unwords [sps,sps',sps])-}
-                   ,F () -- PS.unwordsPS [ps,ps',ps])
-                   ,F (unwords [list,list',list])])
+    , ("unwords",[F ({-# SCC "unwords"   #-}FPS.unwords [fps,fps',fps])])
+--                 ,F () {-(SPS.unwords [sps,sps',sps])-}
+--                 ,F () -- PS.unwordsPS [ps,ps',ps])
+--                 ,F (unwords [list,list',list])])
 
-    , ("reverse",[F ({-# SCC "reverse"   #-}FPS.reverse fps)
-                   ,F (SPS.reverse sps)
-                   ,F (PS.reversePS ps)
-                   ,F (reverse list)])
+    , ("reverse",[F ({-# SCC "reverse"   #-}FPS.reverse fps)])
+--                 ,F (SPS.reverse sps)
+--                 ,F (PS.reversePS ps)
+--                 ,F (reverse list)])
 
-    , ("concat",[F ({-# SCC "concat"    #-}FPS.concat [fps,fps'])
-                   ,F (SPS.concat [sps,sps'])
-                   ,F (PS.concatPS [ps,ps'])
-                   ,F (concat [list,list'])])
+    , ("concat",[F ({-# SCC "concat"    #-}FPS.concat [fps,fps'])])
+--                 ,F (SPS.concat [sps,sps'])
+--                 ,F (PS.concatPS [ps,ps'])
+--                 ,F (concat [list,list'])])
 
-    , ("cons",[F ({-# SCC "cons"      #-}FPS.cons 'x' fps)
-              ,F (SPS.cons 'x' sps)
-              ,F (PS.consPS 'x' ps)
-              ,F ('x' : list)])
+    , ("cons",[F ({-# SCC "cons"      #-}FPS.cons 'x' fps)])
+--            ,F (SPS.cons 'x' sps)
+--            ,F (PS.consPS 'x' ps)
+--            ,F ('x' : list)])
 
-    , ("snoc",[F ({-# SCC "snoc"      #-}FPS.snoc fps 'x')
-              ,F ()
-              ,F ()
-              ,F ()])
+    , ("snoc",[F ({-# SCC "snoc"      #-}FPS.snoc fps 'x')])
 
-    , ("empty",[F ({-# SCC "empty"     #-}FPS.empty)
-              ,F (SPS.nil)
-              ,F (PS.nilPS)
-              ,F []])
+    , ("empty",[F ({-# SCC "empty"     #-}FPS.empty)])
+--            ,F (SPS.nil)
+--            ,F (PS.nilPS)
+--            ,F []])
 
-    , ("head",[F ({-# SCC "head"      #-}FPS.head fps)
-              ,F (SPS.head sps)
-              ,F (PS.headPS ps)
-              ,F (head list)])
+    , ("head",[F ({-# SCC "head"      #-}FPS.head fps)])
+--            ,F (SPS.head sps)
+--            ,F (PS.headPS ps)
+--            ,F (head list)])
 
-    , ("tail",[F ({-# SCC "tail"      #-}FPS.tail fps)
-              ,F (SPS.tail sps)
-              ,F (PS.tailPS ps)
-              ,F (tail list)])
+    , ("tail",[F ({-# SCC "tail"      #-}FPS.tail fps)])
+--            ,F (SPS.tail sps)
+--            ,F (PS.tailPS ps)
+--            ,F (tail list)])
 
-    , ("last",[F ({-# SCC "last"      #-}FPS.last fps)
-              ,F ()
-              ,F ()
-              ,F (last list)])
+    , ("last",[F ({-# SCC "last"      #-}FPS.last fps)])
+--            ,F (last list)])
 
-    , ("init",[F ({-# SCC "init"      #-}FPS.init fps)
-              ,F ()
-              ,F ()
-              ,F (init list)])
+    , ("init",[F ({-# SCC "init"      #-}FPS.init fps)])
+--            ,F (init list)])
 
-    , ("inits",[F ({-# SCC "inits"     #-}FPS.inits fps)
-              ,F ()
-              ,F ()
-              ,F ()])
+    , ("inits",[F ({-# SCC "inits"     #-}FPS.inits fps)])
 
-    , ("tails",[F ({-# SCC "tails"     #-}FPS.tails fps)
-              ,F ()
-              ,F ()
-              ,F (tails list)])
+    , ("tails",[F ({-# SCC "tails"     #-}FPS.tails fps)])
+--            ,F (tails list)])
 
-    , ("intersperse",[F ({-# SCC "intersperse" #-}FPS.intersperse 'x' fps)
-              ,F ()
-              ,F ()
-              ,F (intersperse 'x' list)])
+    , ("intersperse",[F ({-# SCC "intersperse" #-}FPS.intersperse 'x' fps)])
+--            ,F (intersperse 'x' list)])
 
-    , ("concatMap",[{-# SCC "concatMap" #-}F ()
-                  ,F ()
-                  ,F ()
-                  ,F (concatMap (\c -> [c]) list)])
+    , ("concatMap",[{-# SCC "concatMap" #-}F ()])
+--                ,F (concatMap (\c -> [c]) list)])
 
-    , ("any",[F ({-# SCC "any"       #-}FPS.any (=='z') fps)
-              ,F ()
-              ,F ()
-              ,F (any (=='z') list)])
+    , ("any",[F ({-# SCC "any"       #-}FPS.any (=='z') fps)])
+--            ,F (any (=='z') list)])
 
-    , ("all",[F ({-# SCC "all"       #-}FPS.all (=='z') fps)
-              ,F ()
-              ,F ()
-              ,F (all (=='z') list)])
+    , ("all",[F ({-# SCC "all"       #-}FPS.all (=='z') fps)])
+--            ,F (all (=='z') list)])
 
-    , ("sort",[F ({-# SCC "sort"      #-}FPS.sort fps)
-              ,F ()
-              ,F ()
-              ,F ()]) -- sort list)])
+    , ("sort",[F ({-# SCC "sort"      #-}FPS.sort fps)])
 
-    , ("maximum",[F ({-# SCC "maximum"   #-}FPS.maximum fps)
-              ,F ()
-              ,F ()
-              ,F (maximum list)])
+    , ("maximum",[F ({-# SCC "maximum"   #-}FPS.maximum fps)])
+--            ,F (maximum list)])
 
-    , ("minimum",[F ({-# SCC "minimum"   #-}FPS.minimum fps)
-              ,F ()
-              ,F ()
-              ,F (minimum list)])
+    , ("minimum",[F ({-# SCC "minimum"   #-}FPS.minimum fps)])
+--            ,F (minimum list)])
 
-    , ("replicate",[F ({-# SCC "replicate" #-}FPS.replicate 1000000 'x')
-              ,F ()
-              ,F ()
-              ,F (replicate 1000000 'x')])
+    , ("replicate",[F ({-# SCC "replicate" #-}FPS.replicate 1000000 'x')])
+--            ,F (replicate 1000000 'x')])
 
-    , ("elem",[F ({-# SCC "elem"      #-}FPS.elem 'z' fps)
-              ,F (SPS.elem 'z' sps)
-              ,F (PS.elemPS 'z' ps)
-              ,F (elem 'z' list)])
+    , ("elem",[F ({-# SCC "elem"      #-}FPS.elem 'z' fps)])
+--            ,F (SPS.elem 'z' sps)
+--            ,F (PS.elemPS 'z' ps)
+ --           ,F (elem 'z' list)])
 
-    , ("find",[F ({-# SCC "find"      #-}FPS.find (=='z') fps)
-              ,F ()
-              ,F ()
-              ,F (find (=='z') list)])
+    , ("find",[F ({-# SCC "find"      #-}FPS.find (=='z') fps)])
+--            ,F (find (=='z') list)])
 
-    , ("elemIndex",[F ({-# SCC "elemIndex" #-}FPS.elemIndex 'z' fps)
-                   ,F ()
-                   ,F ()
-                   ,F (elemIndex 'z' list)])
+    , ("elemIndex",[F ({-# SCC "elemIndex" #-}FPS.elemIndex 'z' fps)])
+--                 ,F (elemIndex 'z' list)])
 
-    , ("elemIndicies",[F ({-# SCC "elemIndicies" #-} FPS.elemIndices 'z' fps)
-                      ,F ()
-                      ,F ()
-                      ,F (elemIndices 'z' list)])
+    , ("elemIndicies",[F ({-# SCC "elemIndicies" #-} FPS.elemIndices 'z' fps)])
+--                    ,F (elemIndices 'z' list)])
 
-    , ("dropSpace",[F ({-# SCC "dropSpace" #-} FPS.dropSpace fps)
-                  ,F ()
-                  ,F ()
-                  ,F ()])
+    , ("dropSpace",[F ({-# SCC "dropSpace" #-} FPS.dropSpace fps)])
     ]
 
 ------------------------------------------------------------------------
@@ -291,11 +250,11 @@ class Forceable a where
 instance Forceable FPS.FastString where
     force v = FPS.length v `seq` return T
 
-instance Forceable SPS.PackedString where
-    force v = SPS.length v `seq` return T
+-- instance Forceable SPS.PackedString where
+--     force v = SPS.length v `seq` return T
 
-instance Forceable PS.PackedString where
-    force v = PS.lengthPS v `seq` return T
+-- instance Forceable PS.PackedString where
+--     force v = PS.lengthPS v `seq` return T
 
 instance Forceable a => Forceable (Maybe a) where
     force Nothing  = return T
@@ -328,6 +287,7 @@ fps' :: FPS.FastString
 fps' = unsafePerformIO $ FPS.mmapFile dict'
 {-# NOINLINE fps' #-}
 
+{-
 sps :: SPS.PackedString
 sps = unsafePerformIO $ do
     h  <- openFile dict ReadMode
@@ -364,6 +324,7 @@ ps' = unsafePerformIO $ do
     hClose h
     return $! PS.packString s
 {-# NOINLINE ps' #-}
+-}
 
 list :: [Char]
 list = unsafePerformIO $ do
@@ -374,6 +335,7 @@ list = unsafePerformIO $ do
     return s
 {-# NOINLINE list #-}
 
+{-
 list' :: [Char]
 list' = unsafePerformIO $ do
     h  <- openFile dict' ReadMode
@@ -382,6 +344,7 @@ list' = unsafePerformIO $ do
     hClose h
     return s
 {-# NOINLINE list' #-}
+-}
 
 dict = "bigdata"
 dict' = "data"

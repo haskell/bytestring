@@ -10,14 +10,16 @@ GHC_ = $(GHC) -threaded $(PP_OPTS) -fglasgow-exts --make
 
 SRCS= TestFramework.hs UnitTestsMain.hs Tests.hs Quick.hs
 
-all: run bench
+all: htest qc bench
 
 # build executable, linking in all tests
 run-utests: $(SRCS)
 	GM4=$(GM4) $(GHC_) -o $@ UnitTestsMain.hs
 
-run:: run-utests
+htest:: run-utests
 	./run-utests
+
+qc: Quick.hs
 	runhaskell Quick.hs
 
 bench::
