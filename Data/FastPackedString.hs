@@ -1654,22 +1654,29 @@ copyCStringToFastString cstr = inlinePerformIO $ do
 -- | readInt skips any whitespace at the beginning of its argument, and
 -- reads an Int from the beginning of the FastString.  If there is no
 -- integer at the beginning of the string, it returns Nothing, otherwise
--- it just returns the int read.
-readInt :: FastString -> Maybe Int
-readInt p = inlinePerformIO $ useAsCString p $ \cstr ->
+-- it just returns the int read, and the rest of the string.
+readInt :: FastString -> Maybe (Int, FastString)
+readInt p@(PS x s l) = inlinePerformIO $ useAsCString p $ \cstr ->
     with (castPtr cstr) $ \endpp -> do
         val     <- c_strtol (castPtr cstr) endpp 0
         skipped <- (`minusPtr` cstr) `liftM` peek endpp
-        return $ if skipped == 0 then Nothing else Just (fromIntegral val)
+        return $ if skipped == 0
+                 then Nothing
+                 else Just (fromIntegral val, PS x (s+skipped) (l-skipped))
 
 -- | unsafeReadInt is like readInt, but requires a null terminated
--- FastString. It avoids a copy if this is the case.
-unsafeReadInt :: FastString -> Maybe Int
-unsafeReadInt p = inlinePerformIO $ unsafeUseAsCString p $ \cstr ->
+-- FastString. It avoids a copy if this is the case. It returns the Int
+-- read, if any, and the rest of the string.
+unsafeReadInt :: FastString -> Maybe (Int, FastString)
+unsafeReadInt p@(PS x s l) = inlinePerformIO $ unsafeUseAsCString p $ \cstr ->
     with (castPtr cstr) $ \endpp -> do
         val     <- c_strtol (castPtr cstr) endpp 0
         skipped <- (`minusPtr` cstr) `liftM` peek endpp
-        return $ if skipped == 0 then Nothing else Just (fromIntegral val)
+        return $ if skipped == 0
+                 then Nothing
+                 else Just (fromIntegral val, PS x (s+skipped) (l-skipped))
+
+-- TODO, this can still be better, I feel.
 
 ------------------------------------------------------------------------
 
