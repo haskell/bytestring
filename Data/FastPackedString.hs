@@ -102,8 +102,10 @@ module Data.FastPackedString (
         find,         -- :: (Char -> Bool) -> FastString -> Maybe Char
 
         -- ** Searching for substrings
-        isSubstringOf, -- :: FastString -> FastString -> Bool
-        findSubstring, -- :: FastString -> FastString -> Maybe Int
+        isPrefixOf,     -- :: FastString -> FastString -> Bool
+        isSuffixOf,     -- :: FastString -> FastString -> Bool
+        isSubstringOf,  -- :: FastString -> FastString -> Bool
+        findSubstring,  -- :: FastString -> FastString -> Maybe Int
         findSubstrings, -- :: FastString -> FastString -> [Int]
 
         -- * Indexing 'FastString's
@@ -111,11 +113,8 @@ module Data.FastPackedString (
         unsafeIndex,  -- :: FastString -> Int -> Char
         elemIndex,    -- :: Char -> FastString -> Maybe Int
         elemIndices,  -- :: Char -> FastString -> [Int]
-
         findIndex,    -- :: (Char -> Bool) -> FastString -> Maybe Int
         findIndices,  -- :: (Char -> Bool) -> FastString -> [Int]
-        isPrefixOf,   -- :: FastString -> FastString -> Bool
-        isSuffixOf,   -- :: FastString -> FastString -> Bool
 
         -- * Special 'FastString's
         elems,        -- :: FastString -> [FastString]
@@ -783,7 +782,7 @@ reverse (PS x s l) = createPS l $ \p -> withForeignPtr x $ \f ->
 reverse = pack . Prelude.reverse . unpack
 #endif
 
--- | 'elem' is the 'FastString' membership predicate. This
+-- | /O(n)/ 'elem' is the 'FastString' membership predicate. This
 -- implementation uses @memchr(3)@.
 elem :: Char -> FastString -> Bool
 elem c ps = case elemIndex c ps of
