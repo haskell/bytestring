@@ -1463,7 +1463,7 @@ elemIndexLastWord8 c (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p ->
 -- Unsafe 'FastString' index (subscript) operator, starting from 0,
 -- returning a 'Word8'
 (!) :: FastString -> Int -> Word8
-(PS x s _l) ! i = inlinePerformIO $ withForeignPtr x $ \p -> peekByteOff p (s+i)
+(!) (PS x s _) i = inlinePerformIO $ withForeignPtr x $ \p -> peekByteOff p (s+i)
 {-# INLINE (!) #-}
 
 -- | /O(1)/ Like 'index', but without any bounds checking.
