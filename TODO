@@ -1,42 +1,6 @@
 
-* Unicode support
-* ByteArray# versus ForeignPtrs (that are usually on the haskell heap anyway)
 * explain better the Char Word8 distinction
-
+* Perhaps rename as ByteVector or ByteSequence?
 * testing with large numbers of smallish 10-100 char strings
-
-* remove Posix dependency
-
-------------------------------------------------------------------------
-
-We should have Data.PackedString.UTF16 too; it'll make interoperating
-with Win32 APIs easier as Bulat pointed out.
-
-I like John Meacham's suggestion of changing the UTF8 representation to
-include a count of characters as well as bytes.  I'm not volunteering to
-do it, just adding my "+1" in case anyone else wanted to :-)
-
-------------------------------------------------------------------------
--- character set layer
--- 
-
-1) your code include explicit references to Prelude.map,
-Prelude.length and other list functions inlcuded in Prelude. imho,
-this references will look better if you explicitily state List module:
-List.map, List.length and so on...
-
-2) as i say you before, i need to sort filenames in windows fashion                              
- (case-ignoring), so if you will include case-ignoring comparision                                
-operators - i will be glad    (compareWith?)
-
-3) afair, your library don't contain function to test whether a given
-String can be converted to FastPackedString. it will be also helpful
-addtion
-    convertible = all (<256 . ord)
-
-may be it can be named ByteArray? and then FastString.Latin1,
-FastString.UTF8... will use its utilities
-
-also, all UTF8 utilities may be placed outside of FastString.UTF8
-module, because it can be used for something else  
+* remove Posix dependency for mmap.
 
