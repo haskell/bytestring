@@ -30,11 +30,12 @@
  */
 
 #include <stdlib.h>
+#include "fpstring.h"
+
+#if defined(USE_MMAP)
 
 #include <sys/types.h>
 #include <sys/mman.h>
-
-#include "fpstring.h"
 
 /* could be replaced with some .hsc magic */
 
@@ -45,6 +46,8 @@ char *my_mmap(int len, int fd) {
   else
         return (char *)maybeok;
 }
+
+#endif
 
 /* copy a string in reverse */
 void reverse(unsigned char *dest, unsigned char *from, int len)
