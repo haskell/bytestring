@@ -310,7 +310,7 @@ prop_replicate2 n c =
 
 prop_replicate3 c = unpack (P.replicate 0 c) == replicate 0 c
 
-prop_readint (n::Int) = P.readInt ((pack . show) n) == Just n
+prop_readint (n::Int) = (fst . fromJust . P.readInt . pack . show) n == n
 
 prop_readint2 s =
     let s' = filter (\c -> c `notElem` ['0'..'9']) s
