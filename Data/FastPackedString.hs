@@ -113,6 +113,7 @@ module Data.FastPackedString (
 
         -- * Indexing 'FastString's
         index,        -- :: FastString -> Int -> Char
+        unsafeIndex,  -- :: FastString -> Int -> Char
         indexWord8,   -- :: FastString -> Int -> Word8
         elemIndex,    -- :: Char -> FastString -> Maybe Int
         elemIndexWord8, -- :: Word8 -> FastString -> Maybe Int
@@ -145,6 +146,7 @@ module Data.FastPackedString (
         dropSpaceEnd, -- :: FastString -> FastString
         spanEnd,      -- :: (Char -> Bool) -> FastString -> (FastString, FastString)
         split,        -- :: Char -> FastString -> [FastString]
+        splitWith,    -- :: (Char -> Bool) -> FastString -> [FastString]
         tokens,       -- :: (Char -> Bool) -> FastString -> [FastString]
         hash,         -- :: FastString -> Int32
         elemIndexLast,-- :: Char -> FastString -> Maybe Int
@@ -370,10 +372,11 @@ pack str = createPS (Prelude.length str) $ \p -> go p str
 pack str = createPS (Prelude.length str) $ \(Ptr p) -> stToIO (go p 0# str)
     where
         go _ _ []        = return ()
-        go p i (C# c:cs)
-            | C# c > '\255' = error ("Data.FastPackedString.pack: "
-                                     ++ "character out of range")
-            | otherwise     = writeByte p i c >> go p (i +# 1#) cs
+        go p i (C# c:cs) = writeByte p i c >> go p (i +# 1#) cs
+
+--          | C# c > '\255' = error ("Data.FastPackedString.pack: "
+--                                   ++ "character out of range")
+--          | otherwise     = writeByte p i c >> go p (i +# 1#) cs
 
         writeByte p i c = ST $ \s# ->
             case writeCharOffAddr# p i c s# of s2# -> (# s2#, () #)
@@ -925,6 +928,8 @@ words ps = Prelude.filter (not.null) (breakAll isSpace ps)
 #if defined(__GLASGOW_HASKELL__)
 
 {-# INLINE splitWith #-}
+-- | /O(n)/  Break a given FastString into substrings, using predicate
+-- to find delimiters
 splitWith :: (Char -> Bool) -> FastString -> [FastString]
 splitWith _pred (PS _  _   0) = []
 splitWith pred_ (PS fp off len) = splitWith' pred# off len fp
@@ -1160,14 +1165,22 @@ breakOn c p = case elemIndex c p of
                     Just n -> (take n p, drop n p)
 {-# INLINE breakOn #-}
 
--- | Break a 'FastString' into pieces separated by the 'Char'
+-- | /O(n)/ Break a 'FastString' into pieces separated by the 'Char'
 -- argument, consuming the delimiter. I.e.
 --
 -- > split '\n' "a\nb\nd\ne" == ["a","b","d","e"]
 -- > split 'a'  "aXaXaXa"    == ["","X","X","X"]
+-- > split 'x'  "x"          == ["",""]
+-- 
+-- and
+--
+-- > join [c] . split c == id
+-- 
+-- This function does not copy the substrings, it just constructs new
+-- 'FastStrings' that are slices of the original, so it is quite fast.
 --
 split :: Char -> FastString -> [FastString]
-split c = splitWord8 (c2w c)
+split = splitWith . (==)
 {-# INLINE split #-}
 
 -- | Like 'breakAll', except that sequences of adjacent separators are
@@ -1435,11 +1448,16 @@ elemIndexLastWord8 c (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p ->
                                   go (if c == here then i else h) p (i+1)
 {-# INLINE elemIndexLastWord8 #-}
 
--- (Internal) unsafe 'FastString' index (subscript) operator, starting
--- from 0, returning a 'Word8'
+-- Unsafe 'FastString' index (subscript) operator, starting from 0,
+-- returning a 'Word8'
 (!) :: FastString -> Int -> Word8
 (PS x s _l) ! i = inlinePerformIO $ withForeignPtr x $ \p -> peekByteOff p (s+i)
 {-# INLINE (!) #-}
+
+-- | /O(1)/ Like 'index', but without any bounds checking.
+unsafeIndex :: FastString -> Int -> Char
+unsafeIndex = (w2c .) . (!)
+{-# INLINE unsafeIndex #-}
 
 -- (Internal) 'findIndexOrEndPS' is a variant of findIndex, that returns the
 -- length of the string if no element is found, rather than Nothing.
@@ -1455,13 +1473,6 @@ findFromEndUntilPS f ps@(PS x s l) = seq f $
     if null ps then 0
     else if f $ last ps then l
          else findFromEndUntilPS f (PS x s (l-1))
-
--- (Internal)
-splitWord8 :: Word8 -> FastString -> [FastString]
-splitWord8 c ps = case elemIndexWord8 c ps of
-    Nothing -> if null ps then [] else [ps]
-    Just n  -> take n ps : splitWord8 c (drop (n+1) ps)
-{-# INLINE splitWord8 #-}
 
 -- -----------------------------------------------------------------------------
 
