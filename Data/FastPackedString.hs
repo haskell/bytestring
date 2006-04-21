@@ -14,9 +14,11 @@
 -- 
 
 --
--- | A time and space-efficient implementation of strings as packed
--- byte arrays. Strings are encoded as Word8 arrays of bytes, and
--- functions on Chars are provided as a convenience.
+-- | A time and space-efficient implementation of strings as packed byte
+-- arrays, suitable for high performance requirements. Strings are
+-- encoded as Word8 arrays of bytes, and functions on Chars are provided
+-- as a convenience. At all times characters are assumed to be in
+-- ISO-8859-1 form.
 --
 -- This module is intended to be imported @qualified@, to avoid name
 -- clashes with Prelude functions.  eg.
@@ -38,10 +40,8 @@ module Data.FastPackedString (
         pack,         -- :: String -> FastString
         packChar,     -- :: String -> FastString
         unpack,       -- :: FastString -> String
-        packWords,    -- :: [Word8] -> FastString
-        unpackWords,  -- :: FastString -> [Word8]
 
-        -- * Basic list-like interface
+        -- * Basic interface
         cons,         -- :: Char -> FastString -> FastString
         snoc,         -- :: FastString -> Char -> FastString
         append,       -- :: FastString -> FastString -> FastString
@@ -54,14 +54,8 @@ module Data.FastPackedString (
         inits,        -- :: FastString -> [FastString]
         tails,        -- :: FastString -> [FastString]
 
-        idx,          -- :: FastString -> Int
-        lineIdxs,     -- :: FastString -> [Int]
-
         -- * List transformations
         map,          -- :: (Char -> Char) -> FastString -> FastString
-        mapIndexed,   -- :: (Int -> Char -> Char) -> FastString -> FastString
-        mapWords,     -- :: (Word8 -> Word8) -> FastString -> FastString
-        mapIndexedWords,-- :: (Int -> Word8 -> Word8) -> FastString -> FastString
         reverse,      -- :: FastString -> FastString
         intersperse,  -- :: Char -> FastString -> FastString
         transpose,    -- :: [FastString] -> [FastString]
@@ -115,9 +109,7 @@ module Data.FastPackedString (
         -- * Indexing 'FastString's
         index,        -- :: FastString -> Int -> Char
         unsafeIndex,  -- :: FastString -> Int -> Char
-        indexWord8,   -- :: FastString -> Int -> Word8
         elemIndex,    -- :: Char -> FastString -> Maybe Int
-        elemIndexWord8, -- :: Word8 -> FastString -> Maybe Int
         elemIndices,  -- :: Char -> FastString -> [Int]
 
         findIndex,    -- :: (Char -> Bool) -> FastString -> Maybe Int
@@ -138,6 +130,9 @@ module Data.FastPackedString (
         sort,         -- :: FastString -> FastString
 
         -- * Extensions to the list interface
+        idx,          -- :: FastString -> Int
+        mapIndexed,   -- :: (Int -> Char -> Char) -> FastString -> FastString
+        lineIndices,  -- :: FastString -> [Int]
         breakOn,      -- :: Char -> FastString -> (FastString, FastString)
         breakSpace,   -- :: FastString -> Maybe (FastString,FastString)
         breakAll,     -- :: (Char -> Bool) -> FastString -> [FastString]
@@ -151,7 +146,6 @@ module Data.FastPackedString (
         tokens,       -- :: (Char -> Bool) -> FastString -> [FastString]
         hash,         -- :: FastString -> Int32
         elemIndexLast,-- :: Char -> FastString -> Maybe Int
-        elemIndexLastWord8,-- :: Char -> FastString -> Maybe Int
         betweenLines, -- :: FastString -> FastString -> FastString -> Maybe (FastString)
         lines',       -- :: FastString -> [FastString]
         unlines',     -- :: [FastString] -> FastString
@@ -161,6 +155,17 @@ module Data.FastPackedString (
         unwords',     -- :: FastString -> [FastString]
         unsafeHead,   -- :: FastString -> Char
         unsafeTail,   -- :: FastString -> FastString
+
+        ------------------------------------------------------------------------
+
+        -- * Word8 interface
+        packWords,       -- :: [Word8] -> FastString
+        unpackWords,     -- :: FastString -> [Word8]
+        mapWords,        -- :: (Word8 -> Word8) -> FastString -> FastString
+        mapIndexedWords, -- :: (Int -> Word8 -> Word8) -> FastString -> FastString
+        indexWord8,      -- :: FastString -> Int -> Word8
+        elemIndexWord8,  -- :: Word8 -> FastString -> Maybe Int
+        elemIndexLastWord8,-- :: Char -> FastString -> Maybe Int
 
         ------------------------------------------------------------------------
 
@@ -390,8 +395,8 @@ pack str = createPS (Prelude.length str) $ \(Ptr p) -> stToIO (go p 0# str)
 
 ------------------------------------------------------------------------
 
--- | /O(n)/ Convert a 'FastString' into a 'String'
 {-
+-- | /O(n)/ Convert a 'FastString' into a 'String'
 unpack :: FastString -> String
 unpack (PS _  _ 0) = []
 unpack (PS ps s l) = inlinePerformIO $ withForeignPtr ps $ \p ->
@@ -517,19 +522,6 @@ tails p | null p    = [empty]
 
 -- less efficent spacewise: tails (PS x s l) = [PS x (s+n) (l-n) | n <- [0..l]]
 
--- | /O(1)/ 'idx' returns the skipped index as an 'Int'.
-idx :: FastString -> Int
-idx (PS _ s _) = s
-{-# INLINE idx #-}
-
--- a set of positions where newline occurs
-lineIdxs :: FastString -> [Int]
-lineIdxs ps
-    | null ps = []
-    | otherwise = case elemIndexWord8 0x0A ps of
-             Nothing -> []
-             Just n  -> (n + idx ps:lineIdxs (drop (n+1) ps))
-
 -- | /O(n)/ Append two packed strings
 append :: FastString -> FastString -> FastString
 append xs ys
@@ -560,12 +552,15 @@ map_ f' n p1 p2
 
 ------------------------------------------------------------------------
 
+-- | /O(n)/ A map for Word8 operations
 mapWords :: (Word8 -> Word8) -> FastString -> FastString
 mapWords k = mapIndexedWords (const k)
 
+-- | /O(n)/ map, provided with the index at each position
 mapIndexed :: (Int -> Char -> Char) -> FastString -> FastString
 mapIndexed k = mapIndexedWords (\i w -> c2w (k i (w2c w)))
 
+-- | /O(n)/ map Word8 functions, provided with the index at each position
 mapIndexedWords :: (Int -> Word8 -> Word8) -> FastString -> FastString
 mapIndexedWords k (PS ps s l) = createPS l $ \p -> withForeignPtr ps $ \f ->
       go 0 (f `plusPtr` s) p (f `plusPtr` s `plusPtr` l)
@@ -799,7 +794,7 @@ elem c ps = case elemIndex c ps of
 concatMap :: (Char -> FastString) -> FastString -> FastString
 concatMap f = foldr (append . f) empty
 
--- | Concatenate a list of packed strings.
+-- | /O(n)/ Concatenate a list of packed strings.
 concat :: [FastString] -> FastString
 concat []     = empty
 concat [ps]   = ps
@@ -824,15 +819,12 @@ concat xs     = inlinePerformIO $ do
                             ptr' <- reallocArray ptr new_total
                             f ptr' len (new_total - len) pss
 
--- | 'FastString' index (subscript) operator, starting from 0.
+-- | /O(1)/ 'FastString' index (subscript) operator, starting from 0.
 index :: FastString -> Int -> Char
-index ps n
-    | n < 0          = error $ "FastPackedString.index: negative index: " ++ show n
-    | n >= length ps = error $ "FastPackedString.index: index too large: " ++ show n
-                                ++ ", length = " ++ show (length ps)
-    | otherwise      = w2c $ ps ! n
+index = (w2c .) . indexWord8
 {-# INLINE index #-}
 
+-- | /O(1)/ 'FastString' index, returning a Word8
 indexWord8 :: FastString -> Int -> Word8
 indexWord8 ps n
     | n < 0          = error $ "FastPackedString.indexWord8: negative index: " ++ show n
@@ -962,7 +954,7 @@ splitWith pred_ (PS fp off len) = splitWith' pred# off len fp
 unwords :: [FastString] -> FastString
 unwords = join (pack " ")
 
--- | The 'intersperse' function takes a 'Char' and a 'FastString' and
+-- | /O(n)/ The 'intersperse' function takes a 'Char' and a 'FastString' and
 -- \`intersperses\' that 'Char' between the elements of the 'FastString'.
 -- It is analogous to the intersperse function on Lists.
 intersperse :: Char -> FastString -> FastString
@@ -1066,6 +1058,20 @@ isSuffixOf x y = reverse x `isPrefixOf` reverse y
 
 ------------------------------------------------------------------------
 -- Extensions to the list interface
+
+-- | /O(1)/ 'idx' returns the internal skipped index of the current
+-- 'FastString' from any larger string it was created from, as an 'Int'.
+idx :: FastString -> Int
+idx (PS _ s _) = s
+{-# INLINE idx #-}
+
+-- | /O(n)/ Indicies of newlines
+lineIndices :: FastString -> [Int]
+lineIndices ps
+    | null ps = []
+    | otherwise = case elemIndexWord8 0x0A ps of
+             Nothing -> []
+             Just n  -> n + idx ps : lineIndices (drop (n+1) ps)
 
 -- | 'dropSpace' efficiently returns the 'FastString' argument with
 -- white space removed from the front. It is more efficient than calling
@@ -1519,11 +1525,11 @@ unsafePackAddress len addr# = inlinePerformIO $ do
       cstr = Ptr addr#
 #endif
 
--- | Build a FastString from a ForeignPtr
+-- | /O(1)/ Build a FastString from a ForeignPtr
 fromForeignPtr :: ForeignPtr Word8 -> Int -> FastString
 fromForeignPtr fp l = PS fp 0 l
 
--- | Deconstruct a ForeignPtr from a FastString
+-- | /O(1)/ Deconstruct a ForeignPtr from a FastString
 toForeignPtr :: FastString -> (ForeignPtr Word8, Int, Int)
 toForeignPtr (PS ps s l) = (ps, s, l)
 
@@ -1580,7 +1586,7 @@ packCStringLen (ptr,len) = inlinePerformIO $ do
     fp <- newForeignPtr_ (castPtr ptr)
     return $ PS fp 0 (fromIntegral len)
 
--- | Use a @FastString@ with a function requiring a null-terminated @CString@.
+-- | /O(n) construction/ Use a @FastString@ with a function requiring a null-terminated @CString@.
 --   The @CString@ should not be freed afterwards.
 useAsCString :: FastString -> (CString -> IO a) -> IO a
 useAsCString (PS ps s l) = bracket alloc free_cstring
@@ -1591,8 +1597,8 @@ useAsCString (PS ps s l) = bracket alloc free_cstring
                 poke (buf `plusPtr` l) (0::Word8)
                 return $ castPtr buf
 
--- | Use a @FastString@ with a function requiring a @CString@.
---  Warning: modifying the @CString@ will affect the @FastString@.
+-- | /O(1) construction/ Use a @FastString@ with a function requiring a @CString@.
+-- Warning: modifying the @CString@ will affect the @FastString@.
 -- Why is this function unsafe? It relies on the null byte at the end of
 -- the FastString to be there. This is /not/ the case if your FastString
 -- has been spliced from a larger string (i.e. with take or drop).
@@ -1602,7 +1608,7 @@ useAsCString (PS ps s l) = bracket alloc free_cstring
 unsafeUseAsCString :: FastString -> (CString -> IO a) -> IO a
 unsafeUseAsCString (PS ps s _) ac = withForeignPtr ps $ \p -> ac (castPtr p `plusPtr` s)
 
--- | Use a @FastString@ with a function requiring a @CStringLen@.
+-- | /O(1) construction/ Use a @FastString@ with a function requiring a @CStringLen@.
 -- Warning: modifying the @CStringLen@ will affect the @FastString@.
 -- This is analogous to unsafeUseAsCString, and comes with the same
 -- safety requirements.
@@ -1630,7 +1636,7 @@ unsafeFinalize :: FastString -> IO ()
 unsafeFinalize (PS p _ _) = finalizeForeignPtr p
 #endif
 
--- | Duplicate a CString as a FastString
+-- | /O(n)/ Duplicate a CString as a FastString
 copyCStringToFastString :: CString -> FastString
 copyCStringToFastString cstr = inlinePerformIO $ do
     let len = fromIntegral $ c_strlen cstr
