@@ -6,7 +6,7 @@
 -- space and time.
 --
 
-import qualified Data.FastPackedString as FPS
+import qualified Data.ByteString as FPS
 -- import qualified Data.PackedString     as PS
 -- import qualified SimonPackedString     as SPS
 import Data.List
@@ -247,7 +247,7 @@ class Forceable a where
     force :: a -> IO Result
     force v = v `seq` return T
 
-instance Forceable FPS.FastString where
+instance Forceable FPS.ByteString where
     force v = FPS.length v `seq` return T
 
 -- instance Forceable SPS.PackedString where
@@ -279,11 +279,11 @@ instance Forceable () where force () = return B
 -- some large strings to play with
 --
 
-fps :: FPS.FastString
+fps :: FPS.ByteString
 fps = unsafePerformIO $ FPS.mmapFile dict
 {-# NOINLINE fps #-}
 
-fps' :: FPS.FastString
+fps' :: FPS.ByteString
 fps' = unsafePerformIO $ FPS.mmapFile dict'
 {-# NOINLINE fps' #-}
 

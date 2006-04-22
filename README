@@ -1,8 +1,8 @@
 ------------------------------------------------------------------------
-                       fps : Fast Packed Strings
+                 FPS : Fast, packed strings
 ------------------------------------------------------------------------
 
-This library provides a FastPackedString library: byte arrays
+This library provides the Data.ByteString library: latin-1 byte arrays
 manipulable as strings, providing very time and space efficient string
 and IO operations.
 
@@ -24,7 +24,7 @@ After installation, you can run the testsuite and benchmarks:
         > cd tests ; make ; make run
 
 Authors:
-    FastPackedString is derived from the GHC PackedString library, 
+    ByteString is derived from the GHC PackedString library, 
     originallly written by Bryan O'Sullivan, and then by Simon Marlow.
     It was adapted, and greatly extended for darcs by David Roundy, and
     others. Don Stewart cleaned up and further extended the implementation.
@@ -34,7 +34,7 @@ Authors:
 Performance, some random numbers:
 
 This table compares the performance of common operations in both
-PackedString and FastPackedString, on various packed strings.
+PackedString and ByteString, on various packed strings.
 
 Size of test data: 21256k, Linux 3.2Ghz P4
 
@@ -82,8 +82,8 @@ elemIndex       0.000        ~       ~       -       -       0.000
 elemIndicies    0.161        0.224   4.192   -       -       0.314   
 
 
-Key: FPS2 = Fast Packed String v2
-     FPS1 = Fast Packed String v1
+Key: FPS2 = Byte String v2
+     FPS1 = Byte String v1
      SPS  = Simon Marlow's packedstring prototype
      PS   = Data.PackedString
      [a]  = [Char]

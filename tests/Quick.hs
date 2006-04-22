@@ -9,14 +9,14 @@ import Data.Char
 import Data.Maybe
 import Text.Printf
 
-import Data.FastPackedString (FastString, pack , unpack)
-import qualified Data.FastPackedString as P
+import Data.ByteString (ByteString, pack , unpack)
+import qualified Data.ByteString as P
 
 instance Arbitrary Char where
   arbitrary = choose (minBound, chr 0xff)
   coarbitrary c = variant (ord c `rem` 16)
 
-instance Arbitrary FastString where
+instance Arbitrary ByteString where
   arbitrary = P.pack `fmap` arbitrary
   coarbitrary s = coarbitrary (P.unpack s)
 
