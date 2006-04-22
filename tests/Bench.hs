@@ -25,7 +25,7 @@ main :: IO ()
 main = do
     -- initialise
     printf "Initialising test data...\n"
-    force (fps,fps') >> force (list)
+    force (fps,fps') -- >> force (list)
 
     printf "Size of test data: %dk\n" ((floor $ (fromIntegral (FPS.length fps)) / 1024) :: Int)
     printf "                FPS\n"
@@ -68,6 +68,7 @@ tests =
 --              ,F (PS.lengthPS ps)
 --              ,F (length list)])
 
+{-
     , ("pack",  [F ({-# SCC "pack"      #-}FPS.pack list)])
 --              ,F (SPS.pack list)
 --              ,F (PS.packString list)
@@ -76,6 +77,7 @@ tests =
     , ("unpack",[F ({-# SCC "unpack"    #-}FPS.unpack fps)])
 --              ,F (SPS.unpack sps)
 --              ,F (PS.unpackPS ps) ,F ()])
+-}
 
     , ("compare",[F ({-# SCC "compare"   #-}compare fps fps')])
 --               ,F (compare sps sps')
@@ -133,6 +135,7 @@ tests =
 --             ,F (SPS.lines sps)
 --             ,F (PS.linesPS ps)
 --             ,F (lines list)])
+    , ("split",[F ({-# SCC "split"     #-}FPS.split '\n' fps)])
 
     , ("unlines",[F ({-# SCC "unlines"   #-}FPS.unlines [fps,fps',fps])])
 --                 ,F () {-F (SPS.unlines [sps,sps',sps])-}
@@ -195,6 +198,10 @@ tests =
     , ("intersperse",[F ({-# SCC "intersperse" #-}FPS.intersperse 'x' fps)])
 --            ,F (intersperse 'x' list)])
 
+--  , ("transpose",[F ({-# SCC "transpose" #-}FPS.transpose [fps,fps'])])
+
+    , ("join",[F ({-# SCC "join" #-}FPS.join (FPS.pack "xxx") [fps,fps',fps])])
+
     , ("concatMap",[{-# SCC "concatMap" #-}F ()])
 --                ,F (concatMap (\c -> [c]) list)])
 
@@ -226,10 +233,24 @@ tests =
     , ("elemIndex",[F ({-# SCC "elemIndex" #-}FPS.elemIndex 'z' fps)])
 --                 ,F (elemIndex 'z' list)])
 
-    , ("elemIndicies",[F ({-# SCC "elemIndicies" #-} FPS.elemIndices 'z' fps)])
+    , ("findIndex",[F ({-# SCC "findIndex" #-}FPS.findIndex (=='z') fps)])
+
+    , ("elemIndices",[F ({-# SCC "elemIndicies" #-} FPS.elemIndices 'z' fps)])
 --                    ,F (elemIndices 'z' list)])
 
+    , ("findIndices",[F ({-# SCC "findIndicies" #-} FPS.findIndices (=='z') fps)])
+
+    , ("splitAt",[F ({-# SCC "splitAt" #-} FPS.splitAt 10000 fps)])
+
+------------------------------------------------------------------------
+
+    , ("lineIndices",[F ({-# SCC "lineIndicies" #-} FPS.lineIndices fps)])
+    , ("breakOn",[F ({-# SCC "breakOn" #-} FPS.breakOn 'z' fps)])
+    , ("breakSpace",[F ({-# SCC "breakSpace" #-} FPS.breakSpace fps)])
+    , ("breakAll",[F ({-# SCC "breakAll" #-} FPS.breakAll (=='z') fps)])
+
     , ("dropSpace",[F ({-# SCC "dropSpace" #-} FPS.dropSpace fps)])
+    , ("dropSpaceEnd",[F ({-# SCC "dropSpaceEnd" #-} FPS.dropSpaceEnd fps)])
     ]
 
 ------------------------------------------------------------------------
@@ -326,6 +347,7 @@ ps' = unsafePerformIO $ do
 {-# NOINLINE ps' #-}
 -}
 
+{-
 list :: [Char]
 list = unsafePerformIO $ do
     h  <- openFile dict ReadMode
@@ -335,7 +357,6 @@ list = unsafePerformIO $ do
     return s
 {-# NOINLINE list #-}
 
-{-
 list' :: [Char]
 list' = unsafePerformIO $ do
     h  <- openFile dict' ReadMode

@@ -100,6 +100,15 @@ prop_splitWith f xs = (l1 == l2 || l1 == l2+1) &&
 
 prop_joinsplit c xs = P.join (P.pack [c]) (P.split c xs) == xs
 
+prop_linessplit xs =
+    (not . P.null) xs ==>
+    P.lines' xs == P.split '\n' xs
+
+prop_linessplit2 xs =
+    P.lines xs == P.split '\n' xs ++ (if P.last xs == '\n' then [P.empty] else [])
+
+prop_splitsplitWith c xs = P.split c xs == P.splitWith (== c) xs
+
 ------------------------------------------------------------------------
 -- at first we just check the correspondence to List functions
 
@@ -210,6 +219,8 @@ prop_join xs = (concat . (intersperse "XYX") . lines) xs ==
 
 prop_elemIndex1 xs   = (elemIndex 'X' xs) == (P.elemIndex 'X' (pack xs))
 prop_elemIndex2 xs c = (elemIndex c xs) == (P.elemIndex c (pack xs))
+
+prop_lineIndices1 xs = P.elemIndices '\n' xs == P.lineIndices xs
 
 prop_elemIndexLast1 c xs = (P.elemIndexLast c (pack xs)) ==
                            (case P.elemIndex c (pack (reverse xs)) of
@@ -322,7 +333,7 @@ prop_filterChar2 c xs = (P.filter (==c) (P.pack xs)) == (P.filterChar c (P.pack 
 ------------------------------------------------------------------------
 
 main =
-    do mapM_ (runTests "test" (defOpt { no_of_tests = 300, length_of_tests = 10 })) $
+    do mapM_ (runTests "test" (defOpt { no_of_tests = 1000, length_of_tests = 10 })) $
          breakUp 25 tests []
 
  where
@@ -356,6 +367,7 @@ main =
             ,    run prop_foldl2
             ,    run prop_foldr1
             ,    run prop_foldr2
+
             ,    run prop_foldl11
             ,    run prop_foldr11
             ,    run prop_take
@@ -378,9 +390,10 @@ main =
             ,    run prop_join
             ,    run prop_elemIndex1
             ,    run prop_elemIndex2
-            ,    run prop_elemIndices
             ,    run prop_findIndex
             ,    run prop_findIndicies
+            ,    run prop_elemIndices
+
             ,    run prop_find
             ,    run prop_sort1
             ,    run prop_sort2
@@ -448,4 +461,7 @@ main =
             ,    run prop_unwordsS
             ,    run prop_splitWith
             ,    run prop_joinsplit
+            ,    run prop_lineIndices1
+            ,    run prop_linessplit
+            ,    run prop_splitsplitWith
             ]
