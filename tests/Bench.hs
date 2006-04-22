@@ -247,7 +247,7 @@ tests =
     , ("lineIndices",[F ({-# SCC "lineIndicies" #-} FPS.lineIndices fps)])
     , ("breakOn",[F ({-# SCC "breakOn" #-} FPS.breakOn 'z' fps)])
     , ("breakSpace",[F ({-# SCC "breakSpace" #-} FPS.breakSpace fps)])
-    , ("breakAll",[F ({-# SCC "breakAll" #-} FPS.breakAll (=='z') fps)])
+    , ("splitWith",[F ({-# SCC "splitWith" #-} FPS.splitWith (=='z') fps)])
 
     , ("dropSpace",[F ({-# SCC "dropSpace" #-} FPS.dropSpace fps)])
     , ("dropSpaceEnd",[F ({-# SCC "dropSpaceEnd" #-} FPS.dropSpaceEnd fps)])

@@ -126,19 +126,15 @@ module Data.ByteString (
         sort,         -- :: ByteString -> ByteString
 
         -- * Extensions to the list interface
-        idx,          -- :: ByteString -> Int
-        mapIndexed,   -- :: (Int -> Char -> Char) -> ByteString -> ByteString
-        lineIndices,  -- :: ByteString -> [Int]
+        split,        -- :: Char -> ByteString -> [ByteString]
+        splitWith,    -- :: (Char -> Bool) -> ByteString -> [ByteString]
         breakOn,      -- :: Char -> ByteString -> (ByteString, ByteString)
         breakSpace,   -- :: ByteString -> Maybe (ByteString,ByteString)
-        breakAll,     -- :: (Char -> Bool) -> ByteString -> [ByteString]
         breakFirst,   -- :: Char -> ByteString -> Maybe (ByteString,ByteString)
         breakLast,    -- :: Char -> ByteString -> Maybe (ByteString,ByteString)
         dropSpace,    -- :: ByteString -> ByteString
         dropSpaceEnd, -- :: ByteString -> ByteString
         spanEnd,      -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
-        split,        -- :: Char -> ByteString -> [ByteString]
-        splitWith,    -- :: (Char -> Bool) -> ByteString -> [ByteString]
         tokens,       -- :: (Char -> Bool) -> ByteString -> [ByteString]
         hash,         -- :: ByteString -> Int32
         elemIndexLast,-- :: Char -> ByteString -> Maybe Int
@@ -151,6 +147,9 @@ module Data.ByteString (
         unwords',     -- :: ByteString -> [ByteString]
         unsafeHead,   -- :: ByteString -> Char
         unsafeTail,   -- :: ByteString -> ByteString
+        idx,          -- :: ByteString -> Int
+        mapIndexed,   -- :: (Int -> Char -> Char) -> ByteString -> ByteString
+        lineIndices,  -- :: ByteString -> [Int]
 
         ------------------------------------------------------------------------
 
@@ -265,6 +264,7 @@ import GHC.Handle
 import GHC.Ptr  (Ptr(..))
 import GHC.ST
 import GHC.Prim
+import GHC.Word hiding (Word8)
 import GHC.Base (Int(..), Char(..), build, unpackCString#, unsafeChr)
 import Control.Monad.ST
 #endif
@@ -901,7 +901,7 @@ lines ps
 {-# INLINE lines #-}
 
 {-
--- Just as fast, but more complex
+-- Just as fast, but more complex. Should be much faster, I thought.
 lines :: ByteString -> [ByteString]
 lines (PS _ _ 0) = []
 lines (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
@@ -926,22 +926,25 @@ unlines ss = (concat $ List.intersperse nl ss) `append` nl -- half as much space
     where nl = pack "\n"
 
 -- | 'words' breaks a packed string up into a list of words, which
--- were delimited by white space.
+-- were delimited by white space.And
+--
+-- > tokens isSpace = words
+--
 words :: ByteString -> [ByteString]
-#if defined(__GLASGOW_HASKELL__)
-words ps = Prelude.filter (not.null) (splitWith isSpace ps)
-#else
-words ps = Prelude.filter (not.null) (breakAll isSpace ps)
-#endif
+words = tokens isSpace
 
 ------------------------------------------------------------------------
 
-#if defined(__GLASGOW_HASKELL__)
-
-{-# INLINE splitWith #-}
--- | /O(n)/  Break a given ByteString into substrings, using predicate
--- to find delimiters
+-- | /O(n)/ Splits a 'ByteString' into components delimited by separators,
+-- where the predicate returns True for a separator element.  The
+-- resulting components do not contain the separators.  Two adjacent
+-- separators result in an empty component in the output.  eg.
+--
+-- > splitWith (=='a') "aabbaca" == ["","","bb","c",""]
+--
 splitWith :: (Char -> Bool) -> ByteString -> [ByteString]
+
+#if defined(__GLASGOW_HASKELL__)
 splitWith _pred (PS _  _   0) = []
 splitWith pred_ (PS fp off len) = splitWith' pred# off len fp
   where pred# c# = pred_ (C# c#)
@@ -963,7 +966,11 @@ splitWith pred_ (PS fp off len) = splitWith' pred# off len fp
                    then return (PS fp' off' idx' :
                               splitWith' pred' (off'+idx'+1) (len'-idx'-1) fp')
                    else splitLoop pred' p (idx'+1) off' len' fp'
+{-# INLINE splitWith #-}
 
+#else
+splitWith p ps = if null rest then [chunk] else chunk : splitWith p (unsafeTail rest)
+    where (chunk,rest) = break p ps
 #endif
 
 ------------------------------------------------------------------------
@@ -1154,17 +1161,6 @@ firstspace ptr n m
                      if (not . isSpace . w2c) w then firstspace ptr (n+1) m
                                                 else return n
 
-
-{-
-breakSpace (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
-    let i = c_firstspace (p `plusPtr` s) l
-    return $ case () of {_
-        | i == 0    -> (empty, PS x s l)
-        | i == l    -> (PS x s l, empty)
-        | otherwise -> (PS x s i, PS x (s+i) (l-i))
-    }
--}
-
 -- | 'spanEnd' behaves like 'span' but from the end of the
 -- 'ByteString'. I.e.
 --
@@ -1206,39 +1202,45 @@ breakOn c p = case elemIndex c p of
 -- 'ByteStrings' that are slices of the original, so it is quite fast.
 --
 split :: Char -> ByteString -> [ByteString]
-split = splitWith . (==)
+
+#if defined(__GLASGOW_HASKELL__)
+--
+-- Even better would be to use memchr, in the style of `lines'
+-- 
+split _ (PS _  _   0) = []
+split c (PS fp off len) = splitWith' off len fp
+    where
+        (W8# w#) = c2w c
+
+        splitWith' off' len' fp' = withByteString fp $ \p ->
+            splitLoop p 0 off' len' fp'
+
+        splitLoop :: Ptr Word8
+                  -> Int -> Int -> Int
+                  -> ForeignPtr Word8
+                  -> IO [ByteString]
+        splitLoop p idx' off' len' fp'
+            | p `seq` idx' `seq` off' `seq` len' `seq` fp' `seq` False = undefined
+            | idx' >= len'  = return [PS fp' off' idx']
+            | otherwise = do
+                (W8# x#) <- peekElemOff p (off'+idx')
+                if word2Int# w# ==# word2Int# x#
+                   then return (PS fp' off' idx' :
+                              splitWith' (off'+idx'+1) (len'-idx'-1) fp')
+                   else splitLoop p (idx'+1) off' len' fp'
 {-# INLINE split #-}
 
--- | Like 'breakAll', except that sequences of adjacent separators are
+#else
+split = splitWith . (==)
+#endif
+
+-- | Like 'splitWith', except that sequences of adjacent separators are
 -- treated as a single separator. eg.
 -- 
 -- > tokens (=='a') "aabbaca" == ["bb","c"]
 --
 tokens :: (Char -> Bool) -> ByteString -> [ByteString]
-tokens p = Prelude.filter (not.null) . breakAll p
-
--- | Splits a 'ByteString' into components delimited by separators,
--- where the predicate returns True for a separator element.  The
--- resulting components do not contain the separators.  Two adjacent
--- separators result in an empty component in the output.  eg.
---
--- > breakAll (=='a') "aabbaca" == ["","","bb","c",""]
---
-breakAll :: (Char -> Bool) -> ByteString -> [ByteString]
-breakAll p ps = if null rest
-                    then [chunk]
-                    else chunk : breakAll p (unsafeTail rest)
-    where
-      (chunk,rest) = break p ps
-
-{-
--- weird, inefficient version. Probably slightly different to the above
-breakAll :: (Char -> Bool) -> ByteString -> [ByteString]
-breakAll f ps =
-    case [ m | m <- [0..length ps-1], f (w2c (ps ! m)) ] of
-        [] -> if null ps then [] else [ps]
-        (n:_) -> take n ps : breakAll f (drop (n+1) ps)
--}
+tokens p = Prelude.filter (not.null) . splitWith p
 
 -- | /O(n)/ 'breakFirst' breaks the given ByteString on the first
 -- occurence of @c@. It behaves like 'break', except the delimiter is
@@ -1370,7 +1372,7 @@ unlinesCRLF' ss = concat $ intersperse_newlines ss
 -- > unwords $ words' "a b c " == "a b c "
 --
 words' :: ByteString -> [ByteString]
-words' ps = breakAll isSpace ps
+words' ps = splitWith isSpace ps
 
 -- | 'unwords\'' behaves like 'unwords'. It is provided for consistency
 -- with the other invertable words and lines functions.

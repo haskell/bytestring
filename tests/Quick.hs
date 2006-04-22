@@ -13,7 +13,9 @@ import Data.ByteString (ByteString, pack , unpack)
 import qualified Data.ByteString as P
 
 instance Arbitrary Char where
-  arbitrary = choose (minBound, chr 0xff)
+  arbitrary = oneof $ map return
+                (['a'..'z']++['A'..'Z']++['1'..'9']++['\n','\t','0','~','.',',','-','/'])
+-- arbitrary = choose (minBound, chr 0xff)
   coarbitrary c = variant (ord c `rem` 16)
 
 instance Arbitrary ByteString where
@@ -211,6 +213,7 @@ prop_lines xs = (lines xs) == ((map unpack) . P.lines . pack) xs
 prop_unlines xs = (unlines.lines) xs == (unpack. P.unlines . P.lines .pack) xs
 
 prop_words xs = (words xs) == ((map unpack) . P.words . pack) xs
+prop_wordstokens xs = P.words xs == P.tokens isSpace xs
 
 prop_unwords xs = (pack.unwords.words) xs == (P.unwords . P.words .pack) xs
 
@@ -459,6 +462,7 @@ main =
             ,    run prop_unlinesS
             ,    run prop_wordsS
             ,    run prop_unwordsS
+            ,    run prop_wordstokens
             ,    run prop_splitWith
             ,    run prop_joinsplit
             ,    run prop_lineIndices1
