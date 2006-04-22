@@ -24,7 +24,7 @@ qc: Quick.hs
 
 bench::
 	if [ ! -f "bigdata" ] ; then ln -s data bigdata ; fi
-	ghc --make -O -funbox-strict-fields Bench.hs -o bench -package fps
+	ghc --make -O -funbox-strict-fields Bench.hs -o bench -package fps -no-recomp
 	./bench +RTS -H64m
 
 prof::

@@ -264,7 +264,6 @@ import GHC.Handle
 import GHC.Ptr  (Ptr(..))
 import GHC.ST
 import GHC.Prim
-import GHC.Word hiding (Word8)
 import GHC.Base (Int(..), Char(..), build, unpackCString#, unsafeChr)
 import Control.Monad.ST
 #endif
@@ -1197,20 +1196,34 @@ breakOn c p = case elemIndex c p of
 -- and
 --
 -- > join [c] . split c == id
+-- > split == splitWith . (==)
 -- 
--- This function does not copy the substrings, it just constructs new
--- 'ByteStrings' that are slices of the original, so it is quite fast.
+-- As for all splitting functions in this library, this function does
+-- not copy the substrings, it just constructs new 'ByteStrings' that
+-- are slices of the original.
 --
 split :: Char -> ByteString -> [ByteString]
+split _ (PS _ _ 0) = []
+split c (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
+    let ptr = p `plusPtr` s
+        w   = fromIntegral (c2w c)
 
-#if defined(__GLASGOW_HASKELL__)
---
--- Even better would be to use memchr, in the style of `lines'
--- 
+        STRICT1(loop)
+        loop n = do
+            let q = memchr (ptr `plusPtr` n) w (fromIntegral (l-n))
+            if q == nullPtr
+                then return [PS x (s+n) (l-n)]
+                else do let i = q `minusPtr` ptr
+                        ls <- loop (i+1)
+                        return $! PS x (s+n) (i-n) : ls
+    loop 0
+
+{-
+-- slower. but stays inside Haskell.
 split _ (PS _  _   0) = []
-split c (PS fp off len) = splitWith' off len fp
+split x (PS fp off len) = splitWith' off len fp
     where
-        (W8# w#) = c2w c
+        (W8# w#) = c2w x
 
         splitWith' off' len' fp' = withByteString fp $ \p ->
             splitLoop p 0 off' len' fp'
@@ -1219,6 +1232,8 @@ split c (PS fp off len) = splitWith' off len fp
                   -> Int -> Int -> Int
                   -> ForeignPtr Word8
                   -> IO [ByteString]
+
+        STRICT5(splitLoop)
         splitLoop p idx' off' len' fp'
             | p `seq` idx' `seq` off' `seq` len' `seq` fp' `seq` False = undefined
             | idx' >= len'  = return [PS fp' off' idx']
@@ -1228,11 +1243,9 @@ split c (PS fp off len) = splitWith' off len fp
                    then return (PS fp' off' idx' :
                               splitWith' (off'+idx'+1) (len'-idx'-1) fp')
                    else splitLoop p (idx'+1) off' len' fp'
-{-# INLINE split #-}
+-}
 
-#else
-split = splitWith . (==)
-#endif
+{-# INLINE split #-}
 
 -- | Like 'splitWith', except that sequences of adjacent separators are
 -- treated as a single separator. eg.
@@ -1392,8 +1405,6 @@ unsafeHead (PS x s _) = w2c $ inlinePerformIO $
 -- provide a separate proof that the ByteString is non-empty.
 unsafeTail :: ByteString -> ByteString
 unsafeTail (PS ps s l) = PS ps (s+1) (l-1)
---  | l == 1    = empty
---  | otherwise = PS ps (s+1) (l-1)
 {-# INLINE unsafeTail #-}
 
 ------------------------------------------------------------------------
@@ -1412,31 +1423,32 @@ isSubstringOf p s = not $ Prelude.null $ findSubstrings p s
 findSubstring :: ByteString -- ^ String to search for.
               -> ByteString -- ^ String to seach in.
               -> Maybe Int
-findSubstring p s = listToMaybe $ findSubstrings p s
+findSubstring = (listToMaybe .) . findSubstrings
 
--- Find the indexes of all (possibly overlapping) occurances 
--- of a substring in a string.
--- This function uses the Knuth-Morris-Pratt string matching algorithm.
+-- | Find the indexes of all (possibly overlapping) occurances of a
+-- substring in a string.  This function uses the Knuth-Morris-Pratt
+-- string matching algorithm.
 findSubstrings :: ByteString -- ^ String to search for.
                -> ByteString -- ^ String to seach in.
                -> [Int]
 findSubstrings pat@(PS _ _ m) str@(PS _ _ n) = search 0 0
   where
-  patc x = w2c (pat ! x)
-  strc x = w2c (str ! x)
-  -- maybe we should make kmpNext a UArray before using it in search?
-  kmpNext = listArray (0,m) (-1:kmpNextL pat (-1))
-  kmpNextL p _ | null p = []
-  kmpNextL p j = let j' = next (unsafeHead p) j + 1
-                     ps = unsafeTail p
-                     x = if not (null ps) && unsafeHead ps == patc j'
-                            then kmpNext Array.! j' else j'
-                    in x:kmpNextL ps j'
-  search i j = match ++ rest -- i: position in string, j: position in pattern
-    where match = if j == m then [(i - j)] else []
-          rest = if i == n then [] else search (i+1) (next (strc i) j + 1)
-  next c j | j >= 0 && (j == m || c /= patc j) = next c (kmpNext Array.! j)
-           | otherwise = j
+      patc x = w2c (pat ! x)
+      strc x = w2c (str ! x)
+
+      -- maybe we should make kmpNext a UArray before using it in search?
+      kmpNext = listArray (0,m) (-1:kmpNextL pat (-1))
+      kmpNextL p _ | null p = []
+      kmpNextL p j = let j' = next (unsafeHead p) j + 1
+                         ps = unsafeTail p
+                         x = if not (null ps) && unsafeHead ps == patc j'
+                                then kmpNext Array.! j' else j'
+                        in x:kmpNextL ps j'
+      search i j = match ++ rest -- i: position in string, j: position in pattern
+        where match = if j == m then [(i - j)] else []
+              rest = if i == n then [] else search (i+1) (next (strc i) j + 1)
+      next c j | j >= 0 && (j == m || c /= patc j) = next c (kmpNext Array.! j)
+               | otherwise = j
 
 ------------------------------------------------------------------------
 -- (Internal) Conversion between 'Word8' and 'Char'
