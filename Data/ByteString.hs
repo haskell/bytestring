@@ -22,7 +22,7 @@
 -- This module is intended to be imported @qualified@, to avoid name
 -- clashes with Prelude functions.  eg.
 --
--- >  import qualified Data.ByteString as P
+-- > import qualified Data.ByteString as B
 --
 -- Original GHC implementation by Bryan O\'Sullivan. Rewritten to use
 -- UArray by Simon Marlow. Rewritten to support slices and use
@@ -167,10 +167,12 @@ module Data.ByteString (
 
         -- * I\/O with @ByteString@s
         hGetLine,             -- :: Handle -> IO ByteString
+        getLine,              -- :: IO ByteString
         hGet,                 -- :: Handle -> Int -> IO ByteString
         hGetNonBlocking,      -- :: Handle -> Int -> IO ByteString
         hPut,                 -- :: Handle -> ByteString -> IO ()
         hGetContents,         -- :: Handle -> IO ByteString
+        getContents,          -- :: IO ByteString
         readFile,             -- :: FilePath -> IO ByteString
         writeFile,            -- :: FilePath -> ByteString -> IO ()
         mmapFile,             -- :: FilePath -> IO ByteString
@@ -211,7 +213,8 @@ import Prelude hiding (reverse,head,tail,last,init,null,
                        concat,any,take,drop,splitAt,takeWhile,
                        dropWhile,span,break,elem,filter,unwords,
                        words,maximum,minimum,all,concatMap,
-                       foldl1,foldr1,readFile,writeFile,replicate)
+                       foldl1,foldr1,readFile,writeFile,replicate,
+                       getContents,getLine)
 
 import qualified Data.List as List (intersperse,transpose
 #if !defined(USE_CBITS)
@@ -230,7 +233,7 @@ import Data.Maybe               (listToMaybe)
 import Control.Monad            (liftM)
 import Control.Exception        (bracket)
 
-import System.IO    hiding      (hGetLine,hGetContents,readFile,writeFile)
+import System.IO    hiding (hGetLine,hGetContents,readFile,writeFile,getContents,getLine)
 import System.IO.Error
 
 import Foreign.Ptr              (Ptr, FunPtr, plusPtr, nullPtr, minusPtr, castPtr)
@@ -890,13 +893,30 @@ elems (PS x s l) = (PS x s 1:elems (PS x (s+1) (l-1)))
 --
 lines :: ByteString -> [ByteString]
 lines ps
-    | null ps = []  -- TODO it would be worth optimising this code further.
+    | null ps = []
     | otherwise = case search ps of
              Nothing -> [ps]
              Just n  -> take n ps : lines (drop (n+1) ps)
-
     where search = elemIndexWord8 0x0a
 {-# INLINE lines #-}
+
+{-
+-- Just as fast, but more complex
+lines :: ByteString -> [ByteString]
+lines (PS _ _ 0) = []
+lines (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
+        let ptr = p `plusPtr` s
+
+            STRICT1(loop)
+            loop n = do
+                let q = memchr (ptr `plusPtr` n) 0x0a (fromIntegral (l-n))
+                if q == nullPtr
+                    then return [PS x (s+n) (l-n)]
+                    else do let i = q `minusPtr` ptr
+                            ls <- loop (i+1)
+                            return $! PS x (s+n) (i-n) : ls
+        loop 0
+-}
 
 -- | 'unlines' is an inverse operation to 'lines'.  It joins lines,
 -- after appending a terminating newline to each.
@@ -965,14 +985,14 @@ intersperse c ps@(PS x s l)
 intersperse c = pack . List.intersperse c . unpack
 #endif
 
--- | The 'transpose' function transposes the rows and columns of its
--- 'ByteString' argument.
+-- | /O(n^2)/ The 'transpose' function transposes the rows and columns
+-- of its 'ByteString' argument.
 transpose :: [ByteString] -> [ByteString]
 transpose ps = Prelude.map pack (List.transpose (Prelude.map unpack ps)) -- better
 
--- | The 'join' function takes a 'ByteString' and a list of
--- 'ByteString's and concatenates the list after interspersing the
--- first argument between each element of the list.
+-- | /O(n)/ The 'join' function takes a 'ByteString' and a list of
+-- 'ByteString's and concatenates the list after interspersing the first
+-- argument between each element of the list.
 join :: ByteString -> [ByteString] -> ByteString
 join filler pss = concat (splice pss)
     where
@@ -997,29 +1017,31 @@ elemIndex :: Char -> ByteString -> Maybe Int
 elemIndex = elemIndexWord8 . c2w
 {-# INLINE elemIndex #-}
 
--- | The 'elemIndices' function extends 'elemIndex', by returning the
--- indices of all elements equal to the query element, in ascending order.
+-- | /O(n)/ The 'elemIndices' function extends 'elemIndex', by returning
+-- the indices of all elements equal to the query element, in ascending order.
+elemIndices :: Char -> ByteString -> [Int]
+elemIndices ch (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
+    let w = fromIntegral . c2w $ ch
+        ptr = p `plusPtr` s
+
+        STRICT1(loop)
+        loop n = do
+                let q = memchr (ptr `plusPtr` n) w (fromIntegral (l - n))
+                if q == nullPtr
+                    then return []
+                    else do let i = q `minusPtr` ptr
+                            ls <- loop (i+1)
+                            return $! i:ls
+    loop 0
+
+{-
+-- much slower
 elemIndices :: Char -> ByteString -> [Int]
 elemIndices c ps = loop 0 ps
    where STRICT2(loop)
          loop _ ps' | null ps'            = []
          loop n ps' | c == unsafeHead ps' = n : loop (n+1) (unsafeTail ps')
                     | otherwise           = loop (n+1) (unsafeTail ps')
-
-{-
--- only marginally faster, but more complex
-
-elemIndices c (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
-    loop (p `plusPtr` s) 0 (fromIntegral l) []
-
-    where
-        w = fromIntegral . c2w $ c
-        STRICT4(loop)
-        loop ptr n m ls = do
-            let q = memchr (ptr `plusPtr` n) w (fromIntegral (m - n))
-            if q == nullPtr then return ls
-                            else do let i = q `minusPtr` ptr
-                                    loop ptr (n+i) m (i:ls)
 -}
 
 -- | The 'findIndex' function takes a predicate and a 'ByteString'
@@ -1063,13 +1085,12 @@ idx :: ByteString -> Int
 idx (PS _ s _) = s
 {-# INLINE idx #-}
 
--- | /O(n)/ Indicies of newlines
+-- | /O(n)/ Indicies of newlines. Shorthand for 
+--
+-- > elemIndices '\n'
+--
 lineIndices :: ByteString -> [Int]
-lineIndices ps
-    | null ps = []
-    | otherwise = case elemIndexWord8 0x0A ps of
-             Nothing -> []
-             Just n  -> n + idx ps : lineIndices (drop (n+1) ps)
+lineIndices = elemIndices '\n'
 
 -- | 'dropSpace' efficiently returns the 'ByteString' argument with
 -- white space removed from the front. It is more efficient than calling
@@ -1438,7 +1459,7 @@ elemIndexWord8 :: Word8 -> ByteString -> Maybe Int
 elemIndexWord8 c (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
     let p' = p `plusPtr` s
         q  = memchr p' (fromIntegral c) (fromIntegral l)
-    return $ if q == nullPtr then Nothing else Just (q `minusPtr` p')
+    return $ if q == nullPtr then Nothing else Just $! q `minusPtr` p'
 {-# INLINE elemIndexWord8 #-}
 
 -- | /O(n)/ The 'elemIndexLastWord8' function returns the last index of the
@@ -1690,6 +1711,12 @@ mallocForeignPtr l = do
 
 #if defined(__GLASGOW_HASKELL__)
 
+--
+-- | getLine, read a line from stdin.
+--
+getLine :: IO ByteString
+getLine = hGetLine stdin
+
 -- | hGetLine. read a ByteString from a handle
 hGetLine :: Handle -> IO ByteString
 hGetLine h = wantReadableHandle "FPS.hGetLine" h $ \ handle_ -> do
@@ -1795,6 +1822,12 @@ hGetNonBlocking h i
     = do fp <- mallocForeignPtr i
          l  <- withForeignPtr fp $ \p -> hGetBufNonBlocking h p i
          return $ PS fp 0 l
+
+--
+-- | getContents. Equivalent to hGetContents stdin
+--
+getContents :: IO ByteString
+getContents = hGetContents stdin
 
 -- | Read entire handle contents into a 'ByteString'.
 --
