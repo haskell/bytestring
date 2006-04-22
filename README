@@ -55,6 +55,7 @@ dropWhile       0.000        ~       ~       1.985   8.447   0.130
 span            0.000        ~       ~       9.289   11.144  0.131   
 break           0.000        ~       ~       9.383   11.268  0.133   
 lines           0.028        0.421   ~       1.114   1.367   2.790   
+split           0.118  
 unlines         0.123        ~       ~       !       !       10.950  
 words           1.583        2.115   3.202   2.128   5.644   4.184   
 unwords         0.058        ~       ~       !       !       1.305   
@@ -67,9 +68,10 @@ head            0.000        ~       ~       0.000   0.000   0.000
 tail            0.000        ~       ~       0.000   14.490  0.130   
 last            0.000        ~       ~       -       -       0.143   
 init            0.000        ~       ~       -       -       1.147   
-inits           0.777        5.350   -       -       -       !       
-tails           0.836        6.634   -       -       -       1.136   
+inits           0.717        5.350   -       -       -       !       
+tails           0.786        6.634   -       -       -       1.136   
 intersperse     0.034        ~       4.590   -       -       10.517  
+join            0.061
 any             0.000        ~       ~       -       -       0.000   
 all             0.000        ~       ~       -       -       0.000   
 sort            13.985       14.380  15.773  -       -       !
@@ -79,8 +81,15 @@ replicate       0.008        ~       ~       -       -       0.053
 elem            0.000        ~       ~       1.490   0.001   0.000   
 find            0.259        0.278   0.366   -       -       0.000   
 elemIndex       0.000        ~       ~       -       -       0.000   
-elemIndicies    0.161        0.224   4.192   -       -       0.314   
-
+elemIndicies    0.010        0.224   4.192   -       -       0.314   
+findIndices     0.422   
+splitAt         0.000   
+lineIndices     0.052   
+breakOn         0.000   
+breakSpace      0.000   
+splitWith       0.329   
+dropSpace       0.000   
+dropSpaceEnd    0.000
 
 Key: FPS2 = Byte String v2
      FPS1 = Byte String v1
