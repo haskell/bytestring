@@ -9,6 +9,6 @@ Build-Depends:       base, unix
 Exposed-modules:     Data.ByteString,
                      Data.FastPackedString
 extensions:          CPP, ForeignFunctionInterface
-ghc-options:         -Wall -DUSE_MMAP -DUSE_CBITS -Icbits -fglasgow-exts -O2 -optc-O2 -funbox-strict-fields
+ghc-options:         -Wall -DUSE_MMAP -DUSE_CBITS -Icbits
 c-sources:           cbits/fpstring.c
 include-dirs:        cbits
