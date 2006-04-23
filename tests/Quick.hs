@@ -336,6 +336,13 @@ prop_filterChar2 c xs = (P.filter (==c) (P.pack xs)) == (P.filterChar c (P.pack 
 
 prop_joinjoinpath xs ys = P.join2 ' ' xs ys == P.join (P.packChar ' ') [xs,ys]
 
+prop_zip  xs ys = zip xs ys == P.zip (pack xs) (pack ys)
+prop_zip1 xs ys = P.zip xs ys == zip (P.unpack xs) (P.unpack ys)
+
+prop_zipWith xs ys = P.zipWith (,) xs ys == P.zip xs ys
+
+prop_unzip x = let (xs,ys) = unzip x in (pack xs, pack ys) == P.unzip x
+
 ------------------------------------------------------------------------
 
 main = do
@@ -474,4 +481,8 @@ main = do
             ,    run prop_linessplit
             ,    run prop_splitsplitWith
             ,    run prop_joinjoinpath
+            ,    run prop_zip
+            ,    run prop_zip1
+            ,    run prop_zipWith
+            ,    run prop_unzip
             ]

@@ -115,6 +115,11 @@ module Data.ByteString (
         findIndex,    -- :: (Char -> Bool) -> ByteString -> Maybe Int
         findIndices,  -- :: (Char -> Bool) -> ByteString -> [Int]
 
+        -- * Zipping and unzipping ByteString
+        zip,              -- :: ByteString -> ByteString -> [(Char,Char)]
+        zipWith,          -- :: (Char -> Char -> c) -> ByteString -> ByteString -> [c]
+        unzip,            -- :: [(Char,Char)] -> (ByteString,ByteString)
+
         -- * Special 'ByteString's
         elems,        -- :: ByteString -> [ByteString]
 
@@ -228,7 +233,7 @@ import Prelude hiding (reverse,head,tail,last,init,null,
                        dropWhile,span,break,elem,filter,unwords,
                        words,maximum,minimum,all,concatMap,
                        foldl1,foldr1,readFile,writeFile,replicate,
-                       getContents,getLine,putStr,putStrLn)
+                       getContents,getLine,putStr,putStrLn,zip,zipWith,unzip)
 
 import qualified Data.List as List (intersperse,transpose
 #if !defined(USE_CBITS)
@@ -1081,6 +1086,30 @@ findIndices p ps = loop 0 ps
          loop _ ps' | null ps'           = []
          loop n ps' | p (unsafeHead ps') = n : loop (n + 1) (unsafeTail ps')
                     | otherwise          = loop (n + 1) (unsafeTail ps')
+
+-- | /O(n)/ 'zip' takes two ByteStrings and returns a list of
+-- corresponding pairs. If one input ByteString is short, excess
+-- elements of the longer ByteString are discarded. This is equivalent
+-- to a pair of 'unpack' operations.
+zip :: ByteString -> ByteString -> [(Char,Char)]
+zip ps qs
+    | null ps || null qs = []
+    | otherwise = (unsafeHead ps, unsafeHead qs) : zip (unsafeTail ps) (unsafeTail qs)
+
+-- | 'zipWith' generalises 'zip' by zipping with the function given
+-- as the first argument, instead of a tupling function.  For example,
+-- @'zipWith' ((. ord) . (+) . ord)@ is applied to two ByteStrings to
+-- produce the list of corresponding sums.
+zipWith :: (Char -> Char -> a) -> ByteString -> ByteString -> [a]
+zipWith f ps qs
+    | null ps || null qs = []
+    | otherwise = f (unsafeHead ps) (unsafeHead qs) : zipWith f (unsafeTail ps) (unsafeTail qs)
+
+-- | 'unzip' transforms a list of pairs of Chars into a pair of ByteStrings
+-- Note that this performs two 'pack' operations.
+unzip :: [(Char,Char)] -> (ByteString,ByteString)
+unzip ls = (pack (Prelude.map fst ls), pack (Prelude.map snd ls))
+{-# INLINE unzip #-}
 
 -- | The 'isPrefixOf' function takes two strings and returns 'True'
 -- iff the first string is a prefix of the second.
