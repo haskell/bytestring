@@ -1,5 +1,5 @@
-{-# OPTIONS_GHC -cpp -fglasgow-exts #-}
-
+#!/usr/bin/env runhaskell
+{-# OPTIONS_GHC -fglasgow-exts #-}
 import Test.QuickCheck.Batch
 import Test.QuickCheck
 import Text.Show.Functions
@@ -8,6 +8,7 @@ import Data.List
 import Data.Char
 import Data.Maybe
 import Text.Printf
+import System.Environment
 
 import Data.ByteString (ByteString, pack , unpack)
 import qualified Data.ByteString as P
@@ -333,10 +334,14 @@ prop_readint2 s =
 prop_filterChar1 c xs = (filter (==c) xs) == ((P.unpack . P.filterChar c . P.pack) xs)
 prop_filterChar2 c xs = (P.filter (==c) (P.pack xs)) == (P.filterChar c (P.pack xs))
 
+prop_joinjoinpath xs ys = P.join2 ' ' xs ys == P.join (P.packChar ' ') [xs,ys]
+
 ------------------------------------------------------------------------
 
-main =
-    do mapM_ (runTests "test" (defOpt { no_of_tests = 1000, length_of_tests = 10 })) $
+main = do
+    x <- getArgs 
+    let n = if null x then 1000 else read . head $ x
+    do mapM_ (runTests "test" (defOpt { no_of_tests = n, length_of_tests = 10 })) $
          breakUp 25 tests []
 
  where
@@ -468,4 +473,5 @@ main =
             ,    run prop_lineIndices1
             ,    run prop_linessplit
             ,    run prop_splitsplitWith
+            ,    run prop_joinjoinpath
             ]

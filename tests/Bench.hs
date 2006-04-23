@@ -200,7 +200,7 @@ tests =
 
 --  , ("transpose",[F ({-# SCC "transpose" #-}FPS.transpose [fps,fps'])])
 
-    , ("join",[F ({-# SCC "join" #-}FPS.join (FPS.pack "xxx") [fps,fps',fps])])
+    , ("join",[F ({-# SCC "join" #-}FPS.join (FPS.pack "xxx") [fps,fps'])])
 
     , ("concatMap",[{-# SCC "concatMap" #-}F ()])
 --                ,F (concatMap (\c -> [c]) list)])
@@ -251,6 +251,9 @@ tests =
 
     , ("dropSpace",[F ({-# SCC "dropSpace" #-} FPS.dropSpace fps)])
     , ("dropSpaceEnd",[F ({-# SCC "dropSpaceEnd" #-} FPS.dropSpaceEnd fps)])
+
+    , ("join2",[F ({-# SCC "join2" #-} FPS.join2 ' ' fps fps')])
+    , ("join /",[F ({-# SCC "join" #-} FPS.join (FPS.packChar ' ') [fps,fps'])])
     ]
 
 ------------------------------------------------------------------------

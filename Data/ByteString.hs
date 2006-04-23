@@ -128,6 +128,7 @@ module Data.ByteString (
         -- * Extensions to the list interface
         split,        -- :: Char -> ByteString -> [ByteString]
         splitWith,    -- :: (Char -> Bool) -> ByteString -> [ByteString]
+        join2,        -- :: Char -> ByteString -> ByteString -> ByteString
         breakOn,      -- :: Char -> ByteString -> (ByteString, ByteString)
         breakSpace,   -- :: ByteString -> Maybe (ByteString,ByteString)
         breakFirst,   -- :: Char -> ByteString -> Maybe (ByteString,ByteString)
@@ -138,6 +139,7 @@ module Data.ByteString (
         tokens,       -- :: (Char -> Bool) -> ByteString -> [ByteString]
         hash,         -- :: ByteString -> Int32
         elemIndexLast,-- :: Char -> ByteString -> Maybe Int
+        lineIndices,  -- :: ByteString -> [Int]
         betweenLines, -- :: ByteString -> ByteString -> ByteString -> Maybe (ByteString)
         lines',       -- :: ByteString -> [ByteString]
         unlines',     -- :: [ByteString] -> ByteString
@@ -149,7 +151,6 @@ module Data.ByteString (
         unsafeTail,   -- :: ByteString -> ByteString
         idx,          -- :: ByteString -> Int
         mapIndexed,   -- :: (Int -> Char -> Char) -> ByteString -> ByteString
-        lineIndices,  -- :: ByteString -> [Int]
 
         ------------------------------------------------------------------------
 
@@ -175,9 +176,9 @@ module Data.ByteString (
         readFile,             -- :: FilePath -> IO ByteString
         writeFile,            -- :: FilePath -> ByteString -> IO ()
         mmapFile,             -- :: FilePath -> IO ByteString
+        getArgs,              -- :: IO [ByteString]
 
         -- * Lower-level constructors
-        withByteString,       -- :: ForeignPtr a -> (Ptr a -> IO b) -> b
         generate,             -- :: Int -> (Ptr Word8 -> Int -> IO Int) -> IO ByteString
 #if defined(__GLASGOW_HASKELL__)
         construct,            -- :: (Ptr Word8) -> Int -> IO () -> IO ByteString
@@ -241,6 +242,7 @@ import Foreign.ForeignPtr       (newForeignPtr, newForeignPtr_, withForeignPtr,
 import Foreign.Storable         (peekByteOff, peekElemOff, pokeElemOff, peek, poke)
 import Foreign.C.String         (CString, CStringLen)
 import Foreign.C.Types          (CSize, CInt, CLong)
+import Foreign.Marshal          (alloca)
 import Foreign.Marshal.Utils    (with)
 import Foreign.Marshal.Array
 
@@ -414,7 +416,7 @@ unpack ps = build (unpackFoldr ps)
 {-# INLINE unpack #-}
 
 unpackList :: ByteString -> [Char]
-unpackList (PS fp off len) = withByteString fp $ \p -> do
+unpackList (PS fp off len) = withPtr fp $ \p -> do
     let loop _ (-1) acc = return acc
         loop q n acc = do
            a <- peekElemOff q n
@@ -426,7 +428,7 @@ unpackList (PS fp off len) = withByteString fp $ \p -> do
  #-}
 
 unpackFoldr :: ByteString -> (Char -> a -> a) -> a -> a
-unpackFoldr (PS fp off len) f c = withByteString fp $ \p -> do
+unpackFoldr (PS fp off len) f c = withPtr fp $ \p -> do
     let loop _ (-1) acc = return acc
         loop q n acc = do
            a <- peekElemOff q n
@@ -948,7 +950,7 @@ splitWith _pred (PS _  _   0) = []
 splitWith pred_ (PS fp off len) = splitWith' pred# off len fp
   where pred# c# = pred_ (C# c#)
 
-        splitWith' pred' off' len' fp' = withByteString fp $ \p ->
+        splitWith' pred' off' len' fp' = withPtr fp $ \p ->
             splitLoop pred' p 0 off' len' fp'
 
         splitLoop :: (Char# -> Bool)
@@ -1091,6 +1093,26 @@ idx :: ByteString -> Int
 idx (PS _ s _) = s
 {-# INLINE idx #-}
 
+--
+-- | /O(n)/ join2. An efficient way to join to two ByteStrings with a
+-- char. Around 4 times faster than the generalised join.
+--
+join2 :: Char -> ByteString -> ByteString -> ByteString
+join2 c f g =
+    let (ffp, s, l) = toForeignPtr f
+        (fgp, t, m) = toForeignPtr g
+    in inlinePerformIO $ generate len $ \ptr ->
+            withForeignPtr ffp $ \fp ->
+                withForeignPtr fgp $ \gp -> do
+                    c_memcpy ptr (fp `plusPtr` s) l
+                    poke (ptr `plusPtr` l) (sep :: Word8)
+                    c_memcpy (ptr `plusPtr` (l + 1)) (gp `plusPtr` t) m
+                    return len
+    where
+      len = length f + length g + 1
+      sep = c2w c
+{-# INLINE join2 #-}
+
 -- | /O(n)/ Indicies of newlines. Shorthand for 
 --
 -- > elemIndices '\n'
@@ -1225,7 +1247,7 @@ split x (PS fp off len) = splitWith' off len fp
     where
         (W8# w#) = c2w x
 
-        splitWith' off' len' fp' = withByteString fp $ \p ->
+        splitWith' off' len' fp' = withPtr fp $ \p ->
             splitLoop p 0 off' len' fp'
 
         splitLoop :: Ptr Word8
@@ -1598,10 +1620,6 @@ construct p l f = do
     return $ PS fp 0 l
 #endif
 
--- | Perform an operation with a temporary ByteString
-withByteString :: ForeignPtr a -> (Ptr a -> IO b) -> b
-withByteString fp io = inlinePerformIO (withForeignPtr fp io)
-
 -- | /O(n)/ Build a @ByteString@ from a malloced @CString@. This value will
 -- have a @free(3)@ finalizer associated to it.
 packMallocCString :: CString -> ByteString
@@ -1957,6 +1975,21 @@ mmap f = do
 #endif /* USE_MMAP */
 
 ------------------------------------------------------------------------
+-- Extended IO 
+
+--
+-- | A ByteString equivalent for getArgs. More efficient for large argument lists
+--
+getArgs :: IO [ByteString]
+getArgs =
+  alloca $ \ p_argc ->
+  alloca $ \ p_argv -> do
+    getProgArgv p_argc p_argv
+    p    <- fromIntegral `liftM` peek p_argc
+    argv <- peek p_argv
+    Prelude.map packCString `fmap` peekArray (p - 1) (advancePtr argv 1)
+
+------------------------------------------------------------------------
 
 -- Just like inlinePerformIO, but we inline it. Big performance gains as
 -- it exposes lots of things to further inlining
@@ -1969,6 +2002,11 @@ inlinePerformIO (IO m) = case m realWorld# of (# _, r #) -> r
 #else
 inlinePerformIO = unsafePerformIO
 #endif
+
+-- | Perform an operation with a temporary ByteString
+withPtr :: ForeignPtr a -> (Ptr a -> IO b) -> b
+withPtr fp io = inlinePerformIO (withForeignPtr fp io)
+{-# INLINE withPtr #-}
 
 ------------------------------------------------------------------------
 -- 
@@ -2001,6 +2039,11 @@ foreign import ccall unsafe "static stdlib.h strtol" c_strtol
 
 foreign import ccall unsafe "__hscore_memcpy_src_off"
    memcpy_ptr_baoff :: Ptr a -> RawBuffer -> Int -> CSize -> IO (Ptr ())
+
+------------------------------------------------------------------------
+
+foreign import ccall unsafe "RtsAPI.h getProgArgv"
+    getProgArgv :: Ptr CInt -> Ptr (Ptr CString) -> IO ()
 
 ------------------------------------------------------------------------
 --
