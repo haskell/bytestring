@@ -254,6 +254,10 @@ tests =
 
     , ("join2",[F ({-# SCC "join2" #-} FPS.join2 ' ' fps fps')])
     , ("join /",[F ({-# SCC "join" #-} FPS.join (FPS.packChar ' ') [fps,fps'])])
+
+    , ("zip",[F ({-# SCC "zip" #-} FPS.zip fps fps)])
+    , ("zipWith",[F ({-# SCC "zipWith" #-} FPS.zipWith ((. ord) . (+) . ord) fps fps)])
+
     ]
 
 ------------------------------------------------------------------------
