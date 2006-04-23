@@ -258,6 +258,8 @@ tests =
     , ("zip",[F ({-# SCC "zip" #-} FPS.zip fps fps)])
     , ("zipWith",[F ({-# SCC "zipWith" #-} FPS.zipWith ((. ord) . (+) . ord) fps fps)])
 
+    , ("isSubstringOf",  [F ({-# SCC "isSubstringOf" #-} FPS.isSubstringOf (FPS.pack "email news") fps)])
+
     ]
 
 ------------------------------------------------------------------------
