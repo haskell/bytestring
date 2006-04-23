@@ -6,7 +6,8 @@ License-file:        LICENSE
 Author:              Don Stewart
 Maintainer:          dons@cse.unsw.edu.au
 Build-Depends:       base
-Exposed-modules:     Data.ByteString
+Exposed-modules:     Data.ByteString,
+                     Data.FastPackedString
 extensions:          CPP, ForeignFunctionInterface
 ghc-options:         -Wall -DUSE_CBITS -Icbits -fglasgow-exts -O2 -optc-O2 -funbox-strict-fields
 c-sources:           cbits/fpstring.c
