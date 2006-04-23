@@ -14,10 +14,11 @@
 
 --
 -- | A time and space-efficient implementation of strings as packed byte
--- arrays, suitable for high performance requirements. Strings are
--- encoded as Word8 arrays of bytes, and functions on Chars are provided
--- as a convenience. At all times characters are assumed to be in
--- ISO-8859-1 form.
+-- arrays, suitable for high performance use, both in terms of large
+-- data quantities, or high speed requirements. Strings are encoded as
+-- Word8 arrays of bytes, and functions on Chars are provided as a
+-- convenience. At all times characters are assumed to be in ISO-8859-1
+-- form.
 --
 -- This module is intended to be imported @qualified@, to avoid name
 -- clashes with Prelude functions.  eg.
@@ -32,194 +33,188 @@
 module Data.ByteString (
 
         -- * The @ByteString@ type
-        ByteString(..), -- abstract, instances: Eq, Ord, Show, Typeable
+        ByteString(..),         -- abstract, instances: Eq, Ord, Show, Read, Data, Typeable
 
         -- * Introducing and eliminating 'ByteString's
-        empty,        -- :: ByteString
-        pack,         -- :: String -> ByteString
-        packChar,     -- :: String -> ByteString
-        unpack,       -- :: ByteString -> String
+        empty,                  -- :: ByteString
+        pack,                   -- :: String -> ByteString
+        packChar,               -- :: String -> ByteString
+        unpack,                 -- :: ByteString -> String
 
         -- * Basic interface
-        cons,         -- :: Char -> ByteString -> ByteString
-        snoc,         -- :: ByteString -> Char -> ByteString
-        append,       -- :: ByteString -> ByteString -> ByteString
-        head,         -- :: ByteString -> Char
-        tail,         -- :: ByteString -> ByteString
-        last,         -- :: ByteString -> Char
-        init,         -- :: ByteString -> ByteString
-        null,         -- :: ByteString -> Bool
-        length,       -- :: ByteString -> Int
-        inits,        -- :: ByteString -> [ByteString]
-        tails,        -- :: ByteString -> [ByteString]
+        cons,                   -- :: Char -> ByteString -> ByteString
+        snoc,                   -- :: ByteString -> Char -> ByteString
+        append,                 -- :: ByteString -> ByteString -> ByteString
+        head,                   -- :: ByteString -> Char
+        tail,                   -- :: ByteString -> ByteString
+        last,                   -- :: ByteString -> Char
+        init,                   -- :: ByteString -> ByteString
+        null,                   -- :: ByteString -> Bool
+        length,                 -- :: ByteString -> Int
+        inits,                  -- :: ByteString -> [ByteString]
+        tails,                  -- :: ByteString -> [ByteString]
 
         -- * List transformations
-        map,          -- :: (Char -> Char) -> ByteString -> ByteString
-        reverse,      -- :: ByteString -> ByteString
-        intersperse,  -- :: Char -> ByteString -> ByteString
-        transpose,    -- :: [ByteString] -> [ByteString]
+        map,                    -- :: (Char -> Char) -> ByteString -> ByteString
+        reverse,                -- :: ByteString -> ByteString
+        intersperse,            -- :: Char -> ByteString -> ByteString
+        transpose,              -- :: [ByteString] -> [ByteString]
 
         -- * Reducing 'ByteString's
-        foldl,        -- :: (a -> Char -> a) -> a -> ByteString -> a
-        foldr,        -- :: (Char -> a -> a) -> a -> ByteString -> a
-        foldl1,       -- :: (Char -> Char -> Char) -> ByteString -> Char
-        foldr1,       -- :: (Char -> Char -> Char) -> ByteString -> Char
+        foldl,                  -- :: (a -> Char -> a) -> a -> ByteString -> a
+        foldr,                  -- :: (Char -> a -> a) -> a -> ByteString -> a
+        foldl1,                 -- :: (Char -> Char -> Char) -> ByteString -> Char
+        foldr1,                 -- :: (Char -> Char -> Char) -> ByteString -> Char
 
         -- ** Special folds
-        concat,       -- :: [ByteString] -> ByteString
-        concatMap,    -- :: (Char -> ByteString) -> ByteString -> ByteString
-        any,          -- :: (Char -> Bool) -> ByteString -> Bool
-        all,          -- :: (Char -> Bool) -> ByteString -> Bool
-        maximum,      -- :: ByteString -> Char
-        minimum,      -- :: ByteString -> Char
+        concat,                 -- :: [ByteString] -> ByteString
+        concatMap,              -- :: (Char -> ByteString) -> ByteString -> ByteString
+        any,                    -- :: (Char -> Bool) -> ByteString -> Bool
+        all,                    -- :: (Char -> Bool) -> ByteString -> Bool
+        maximum,                -- :: ByteString -> Char
+        minimum,                -- :: ByteString -> Char
 
         -- ** Unfolds and string generators
-        replicate,    -- :: Int -> Char -> ByteString
-        unfoldr,      -- :: (Char -> Maybe (Char, Char)) -> Char -> ByteString
+        replicate,              -- :: Int -> Char -> ByteString
+        unfoldr,                -- :: (Char -> Maybe (Char, Char)) -> Char -> ByteString
 
         -- * Substrings
-        take,         -- :: Int -> ByteString -> ByteString
-        drop,         -- :: Int -> ByteString -> ByteString
-        splitAt,      -- :: Int -> ByteString -> (ByteString, ByteString)
+        take,                   -- :: Int -> ByteString -> ByteString
+        drop,                   -- :: Int -> ByteString -> ByteString
+        splitAt,                -- :: Int -> ByteString -> (ByteString, ByteString)
 
-        takeWhile,    -- :: (Char -> Bool) -> ByteString -> ByteString
-        dropWhile,    -- :: (Char -> Bool) -> ByteString -> ByteString
-        span,         -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
-        break,        -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
+        takeWhile,              -- :: (Char -> Bool) -> ByteString -> ByteString
+        dropWhile,              -- :: (Char -> Bool) -> ByteString -> ByteString
+        span,                   -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
+        break,                  -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
 
-        join,         -- :: ByteString -> [ByteString] -> ByteString
-        join2,        -- :: Char -> ByteString -> ByteString -> ByteString
+        join,                   -- :: ByteString -> [ByteString] -> ByteString
+        join2,                  -- :: Char -> ByteString -> ByteString -> ByteString
 
         -- * Searching 'ByteString's
 
         -- ** Searching by equality
-        elem,         -- :: Char -> ByteString -> Bool
+        elem,                   -- :: Char -> ByteString -> Bool
 
         -- ** Searching with a predicate
-        filter,       -- :: (Char -> Bool) -> ByteString -> ByteString
-        filterChar,   -- :: Char -> ByteString -> ByteString
-        find,         -- :: (Char -> Bool) -> ByteString -> Maybe Char
+        filter,                 -- :: (Char -> Bool) -> ByteString -> ByteString
+        filterChar,             -- :: Char -> ByteString -> ByteString
+        find,                   -- :: (Char -> Bool) -> ByteString -> Maybe Char
 
         -- ** Searching for substrings
-        isPrefixOf,     -- :: ByteString -> ByteString -> Bool
-        isSuffixOf,     -- :: ByteString -> ByteString -> Bool
-        isSubstringOf,  -- :: ByteString -> ByteString -> Bool
-        findSubstring,  -- :: ByteString -> ByteString -> Maybe Int
-        findSubstrings, -- :: ByteString -> ByteString -> [Int]
+        isPrefixOf,             -- :: ByteString -> ByteString -> Bool
+        isSuffixOf,             -- :: ByteString -> ByteString -> Bool
+        isSubstringOf,          -- :: ByteString -> ByteString -> Bool
+        findSubstring,          -- :: ByteString -> ByteString -> Maybe Int
+        findSubstrings,         -- :: ByteString -> ByteString -> [Int]
 
         -- * Indexing 'ByteString's
-        index,        -- :: ByteString -> Int -> Char
-        unsafeIndex,  -- :: ByteString -> Int -> Char
-        elemIndex,    -- :: Char -> ByteString -> Maybe Int
-        elemIndices,  -- :: Char -> ByteString -> [Int]
-        findIndex,    -- :: (Char -> Bool) -> ByteString -> Maybe Int
-        findIndices,  -- :: (Char -> Bool) -> ByteString -> [Int]
+        index,                  -- :: ByteString -> Int -> Char
+        unsafeIndex,            -- :: ByteString -> Int -> Char
+        elemIndex,              -- :: Char -> ByteString -> Maybe Int
+        elemIndices,            -- :: Char -> ByteString -> [Int]
+        findIndex,              -- :: (Char -> Bool) -> ByteString -> Maybe Int
+        findIndices,            -- :: (Char -> Bool) -> ByteString -> [Int]
 
         -- * Zipping and unzipping ByteString
-        zip,              -- :: ByteString -> ByteString -> [(Char,Char)]
-        zipWith,          -- :: (Char -> Char -> c) -> ByteString -> ByteString -> [c]
-        unzip,            -- :: [(Char,Char)] -> (ByteString,ByteString)
+        zip,                    -- :: ByteString -> ByteString -> [(Char,Char)]
+        zipWith,                -- :: (Char -> Char -> c) -> ByteString -> ByteString -> [c]
+        unzip,                  -- :: [(Char,Char)] -> (ByteString,ByteString)
 
         -- * Special 'ByteString's
-        elems,        -- :: ByteString -> [ByteString]
+        elems,                  -- :: ByteString -> [ByteString]
 
         -- ** Lines and words
-        lines,        -- :: ByteString -> [ByteString]
-        words,        -- :: ByteString -> [ByteString]
-        unlines,      -- :: [ByteString] -> ByteString
-        unwords,      -- :: ByteString -> [ByteString]
+        lines,                  -- :: ByteString -> [ByteString]
+        words,                  -- :: ByteString -> [ByteString]
+        unlines,                -- :: [ByteString] -> ByteString
+        unwords,                -- :: ByteString -> [ByteString]
 
         -- ** Ordered 'ByteString's
-        sort,         -- :: ByteString -> ByteString
+        sort,                   -- :: ByteString -> ByteString
 
         -- * Extensions to the list interface
 
         -- ** Splitting strings
-        split,        -- :: Char -> ByteString -> [ByteString]
-        splitWith,    -- :: (Char -> Bool) -> ByteString -> [ByteString]
-        breakOn,      -- :: Char -> ByteString -> (ByteString, ByteString)
-        breakSpace,   -- :: ByteString -> Maybe (ByteString,ByteString)
-        breakFirst,   -- :: Char -> ByteString -> Maybe (ByteString,ByteString)
-        breakLast,    -- :: Char -> ByteString -> Maybe (ByteString,ByteString)
-        dropSpace,    -- :: ByteString -> ByteString
-        dropSpaceEnd, -- :: ByteString -> ByteString
-        spanEnd,      -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
-        tokens,       -- :: (Char -> Bool) -> ByteString -> [ByteString]
+        split,                  -- :: Char -> ByteString -> [ByteString]
+        splitWith,              -- :: (Char -> Bool) -> ByteString -> [ByteString]
+        breakOn,                -- :: Char -> ByteString -> (ByteString, ByteString)
+        breakSpace,             -- :: ByteString -> Maybe (ByteString,ByteString)
+        breakFirst,             -- :: Char -> ByteString -> Maybe (ByteString,ByteString)
+        breakLast,              -- :: Char -> ByteString -> Maybe (ByteString,ByteString)
+        dropSpace,              -- :: ByteString -> ByteString
+        dropSpaceEnd,           -- :: ByteString -> ByteString
+        spanEnd,                -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
+        tokens,                 -- :: (Char -> Bool) -> ByteString -> [ByteString]
 
         -- ** Indexing
-        elemIndexLast,-- :: Char -> ByteString -> Maybe Int
-        lineIndices,  -- :: ByteString -> [Int]
+        elemIndexLast,          -- :: Char -> ByteString -> Maybe Int
+        lineIndices,            -- :: ByteString -> [Int]
 
         -- ** Lines and words
-        lines',       -- :: ByteString -> [ByteString]
-        unlines',     -- :: [ByteString] -> ByteString
-        linesCRLF',   -- :: ByteString -> [ByteString]
-        unlinesCRLF', -- :: [ByteString] -> ByteString
-        words',       -- :: ByteString -> [ByteString]
-        unwords',     -- :: ByteString -> [ByteString]
-        betweenLines, -- :: ByteString -> ByteString -> ByteString -> Maybe (ByteString)
+        lines',                 -- :: ByteString -> [ByteString]
+        unlines',               -- :: [ByteString] -> ByteString
+        linesCRLF',             -- :: ByteString -> [ByteString]
+        unlinesCRLF',           -- :: [ByteString] -> ByteString
+        words',                 -- :: ByteString -> [ByteString]
+        unwords',               -- :: ByteString -> [ByteString]
+        betweenLines,           -- :: ByteString -> ByteString -> ByteString -> Maybe (ByteString)
 
         -- ** Unchecked access
-        unsafeHead,   -- :: ByteString -> Char
-        unsafeTail,   -- :: ByteString -> ByteString
+        unsafeHead,             -- :: ByteString -> Char
+        unsafeTail,             -- :: ByteString -> ByteString
 
         -- ** Misc
-        idx,          -- :: ByteString -> Int
-        hash,         -- :: ByteString -> Int32
-        mapIndexed,   -- :: (Int -> Char -> Char) -> ByteString -> ByteString
-
-        ------------------------------------------------------------------------
+        idx,                    -- :: ByteString -> Int
+        hash,                   -- :: ByteString -> Int32
+        mapIndexed,             -- :: (Int -> Char -> Char) -> ByteString -> ByteString
 
         -- * Word8 interface
-        packWords,         -- :: [Word8] -> ByteString
-        unpackWords,       -- :: ByteString -> [Word8]
-        mapWords,          -- :: (Word8 -> Word8) -> ByteString -> ByteString
-        mapIndexedWords,   -- :: (Int -> Word8 -> Word8) -> ByteString -> ByteString
-        indexWord8,        -- :: ByteString -> Int -> Word8
-        unsafeIndexWord8,  -- :: ByteString -> Int -> Word8
-        elemIndexWord8,    -- :: Word8 -> ByteString -> Maybe Int
-        elemIndexLastWord8,-- :: Char -> ByteString -> Maybe Int
-
-        ------------------------------------------------------------------------
+        packWords,              -- :: [Word8] -> ByteString
+        unpackWords,            -- :: ByteString -> [Word8]
+        mapWords,               -- :: (Word8 -> Word8) -> ByteString -> ByteString
+        mapIndexedWords,        -- :: (Int -> Word8 -> Word8) -> ByteString -> ByteString
+        indexWord8,             -- :: ByteString -> Int -> Word8
+        unsafeIndexWord8,       -- :: ByteString -> Int -> Word8
+        elemIndexWord8,         -- :: Word8 -> ByteString -> Maybe Int
+        elemIndexLastWord8,     -- :: Char -> ByteString -> Maybe Int
+        readInt,                -- :: ByteString -> Maybe Int
+        unsafeReadInt,          -- :: ByteString -> Maybe Int
 
         -- * I\/O with @ByteString@s
-        hGetLine,             -- :: Handle -> IO ByteString
-        getLine,              -- :: IO ByteString
-        hGet,                 -- :: Handle -> Int -> IO ByteString
-        hGetNonBlocking,      -- :: Handle -> Int -> IO ByteString
-        hPut,                 -- :: Handle -> ByteString -> IO ()
-        putStr,               -- :: ByteString -> IO ()
-        putStrLn,             -- :: ByteString -> IO ()
-        hGetContents,         -- :: Handle -> IO ByteString
-        getContents,          -- :: IO ByteString
-        readFile,             -- :: FilePath -> IO ByteString
-        writeFile,            -- :: FilePath -> ByteString -> IO ()
-        mmapFile,             -- :: FilePath -> IO ByteString
-        getArgs,              -- :: IO [ByteString]
+        hGetLine,               -- :: Handle -> IO ByteString
+        getLine,                -- :: IO ByteString
+        hGet,                   -- :: Handle -> Int -> IO ByteString
+        hGetNonBlocking,        -- :: Handle -> Int -> IO ByteString
+        hPut,                   -- :: Handle -> ByteString -> IO ()
+        putStr,                 -- :: ByteString -> IO ()
+        putStrLn,               -- :: ByteString -> IO ()
+        hGetContents,           -- :: Handle -> IO ByteString
+        getContents,            -- :: IO ByteString
+        readFile,               -- :: FilePath -> IO ByteString
+        writeFile,              -- :: FilePath -> ByteString -> IO ()
+        mmapFile,               -- :: FilePath -> IO ByteString
+        getArgs,                -- :: IO [ByteString]
 
         -- * Lower-level constructors
-        generate,             -- :: Int -> (Ptr Word8 -> Int -> IO Int) -> IO ByteString
+        generate,               -- :: Int -> (Ptr Word8 -> Int -> IO Int) -> IO ByteString
+        packMallocCString,      -- :: CString -> ByteString
+        packCString,            -- :: CString -> ByteString
+        packCStringLen,         -- :: CString -> ByteString
+        useAsCString,           -- :: ByteString -> (CString -> IO a) -> IO a
+        unsafeUseAsCString,     -- :: ByteString -> (CString -> IO a) -> IO a
+        unsafeUseAsCStringLen,  -- :: ByteString -> (CStringLen -> IO a) -> IO a
+        copy,                   -- :: ByteString -> ByteString
+        copyCStringToByteString,-- :: CString -> ByteString
+        fromForeignPtr,         -- :: ForeignPtr Word8 -> Int -> ByteString
+        toForeignPtr,           -- :: ByteString -> (ForeignPtr Word8, Int, Int)
+
 #if defined(__GLASGOW_HASKELL__)
-        construct,            -- :: (Ptr Word8) -> Int -> IO () -> IO ByteString
-        packAddress,          -- :: Addr# -> ByteString
-        unsafePackAddress,    -- :: Int -> Addr# -> ByteString
-        unsafeFinalize,       -- :: ByteString -> IO ()
+        construct,              -- :: (Ptr Word8) -> Int -> IO () -> IO ByteString
+        packAddress,            -- :: Addr# -> ByteString
+        unsafePackAddress,      -- :: Int -> Addr# -> ByteString
+        unsafeFinalize,         -- :: ByteString -> IO ()
 #endif
-        packMallocCString,    -- :: CString -> ByteString
-        packCString,          -- :: CString -> ByteString
-        packCStringLen,       -- :: CString -> ByteString
-        useAsCString,         -- :: ByteString -> (CString -> IO a) -> IO a
-        unsafeUseAsCString,   -- :: ByteString -> (CString -> IO a) -> IO a
-        unsafeUseAsCStringLen,-- :: ByteString -> (CStringLen -> IO a) -> IO a
-
-        copy,                    -- :: ByteString -> ByteString
-        copyCStringToByteString, -- :: CString -> ByteString
-
-        readInt,              -- :: ByteString -> Maybe Int
-        unsafeReadInt,        -- :: ByteString -> Maybe Int
-
-        fromForeignPtr,       -- :: ForeignPtr Word8 -> Int -> ByteString
-        toForeignPtr,         -- :: ByteString -> (ForeignPtr Word8, Int, Int)
 
         -- * Misc
         unpackList, -- eek, otherwise it gets thrown away by the simplifier
@@ -227,19 +222,16 @@ module Data.ByteString (
    ) where
 
 import qualified Prelude
-import Prelude hiding (reverse,head,tail,last,init,null,
-                       length,map,lines,foldl,foldr,unlines,
-                       concat,any,take,drop,splitAt,takeWhile,
-                       dropWhile,span,break,elem,filter,unwords,
-                       words,maximum,minimum,all,concatMap,
-                       foldl1,foldr1,readFile,writeFile,replicate,
-                       getContents,getLine,putStr,putStrLn,zip,zipWith,unzip)
+import Prelude hiding           (reverse,head,tail,last,init,null,
+                                 length,map,lines,foldl,foldr,unlines,
+                                 concat,any,take,drop,splitAt,takeWhile,
+                                 dropWhile,span,break,elem,filter,unwords,
+                                 words,maximum,minimum,all,concatMap,
+                                 foldl1,foldr1,readFile,writeFile,replicate,
+                                 getContents,getLine,putStr,putStrLn,
+                                 zip,zipWith,unzip)
 
-import qualified Data.List as List (intersperse,transpose
-#if !defined(USE_CBITS)
-                                        ,sort
-#endif
-        )
+import qualified Data.List as List
 
 import Data.Array               (listArray)
 import qualified Data.Array as Array ((!))
@@ -252,8 +244,8 @@ import Data.Maybe               (listToMaybe)
 import Control.Monad            (liftM)
 import Control.Exception        (bracket)
 
-import System.IO    hiding (hGetLine,hGetContents,readFile,writeFile
-                           ,getContents,getLine,putStr,putStrLn)
+import System.IO    hiding      (hGetLine,hGetContents,readFile,writeFile,
+                                 getContents,getLine,putStr,putStrLn)
 import System.IO.Error
 
 import Foreign.Ptr              (Ptr, FunPtr, plusPtr, nullPtr, minusPtr, castPtr)
@@ -269,26 +261,24 @@ import Foreign.Marshal.Array
 #if defined(__GLASGOW_HASKELL__)
 import qualified Foreign.Concurrent as FC (newForeignPtr)
 
-#if defined(USE_MMAP)
+# if defined(USE_MMAP)
 import System.Posix             (handleToFd)
-#endif
-#endif
+# endif
 
-#if !defined(USE_MMAP) && !defined(__GLASGOW_HASKELL__)
-import System.IO.Unsafe         (unsafeInterleaveIO)
-#endif
+import Data.Generics            (Data(..), Typeable(..))
 
-#if defined(__GLASGOW_HASKELL__)
-import Data.Generics (Data(..), Typeable(..))
-
-import GHC.IOBase
+import GHC.Base                 (Int(..), Char(..), build, unpackCString#, unsafeChr)
 import GHC.Handle
-import GHC.Ptr  (Ptr(..))
-import GHC.ST
+import GHC.IOBase
 import GHC.Prim
-import GHC.Base (Int(..), Char(..), build, unpackCString#, unsafeChr)
-import Control.Monad.ST
+import GHC.Ptr                  (Ptr(..))
+import GHC.ST                   (ST(..))
 #endif
+
+-- -----------------------------------------------------------------------------
+--
+-- Useful macros, until we have bang patterns
+--
 
 #define STRICT1(f) f a | a `seq` False = undefined
 #define STRICT2(f) f a b | a `seq` b `seq` False = undefined
@@ -389,6 +379,7 @@ packChar c = inlinePerformIO $ mallocForeignPtr 2 >>= \fp -> do
 
 -- | /O(n)/ Convert a 'String' into a 'ByteString'
 pack :: String -> ByteString
+
 #if !defined(__GLASGOW_HASKELL__)
 
 pack str = createPS (Prelude.length str) $ \p -> go p str
@@ -403,12 +394,9 @@ pack str = createPS (Prelude.length str) $ \(Ptr p) -> stToIO (go p 0# str)
         go _ _ []        = return ()
         go p i (C# c:cs) = writeByte p i c >> go p (i +# 1#) cs
 
---          | C# c > '\255' = error ("Data.ByteString.pack: "
---                                   ++ "character out of range")
---          | otherwise     = writeByte p i c >> go p (i +# 1#) cs
-
         writeByte p i c = ST $ \s# ->
             case writeCharOffAddr# p i c s# of s2# -> (# s2#, () #)
+
 {-# RULES
 "pack/packAddress" forall s# .
                    pack (unpackCString# s#) = packAddress s#
@@ -417,18 +405,6 @@ pack str = createPS (Prelude.length str) $ \(Ptr p) -> stToIO (go p 0# str)
 #endif
 
 ------------------------------------------------------------------------
-
-{-
--- | /O(n)/ Convert a 'ByteString' into a 'String'
-unpack :: ByteString -> String
-unpack (PS _  _ 0) = []
-unpack (PS ps s l) = inlinePerformIO $ withForeignPtr ps $ \p ->
-        go (p `plusPtr` s) (l - 1) []
-    where
-        go p 0 acc = liftM w2c (peekByteOff p 0) >>= \e -> return (e : acc)
-        go p n acc = liftM w2c (peekByteOff p n) >>= \e -> go p (n-1) (e : acc)
-{-# INLINE unpack #-}
--}
 
 -- | /O(n)/ Converts a 'ByteString' to a 'String'.
 unpack :: ByteString -> String
@@ -456,7 +432,20 @@ unpackFoldr (PS fp off len) f c = withPtr fp $ \p -> do
     loop (p `offPS` off) (len-1) c
 {-# INLINE [0] unpackFoldr #-}
 
-------------------------------------------------------------------------
+{-
+--  
+-- Abotu the same speed. No nice fusion rules.
+--
+-- | /O(n)/ Convert a 'ByteString' into a 'String'
+unpack :: ByteString -> String
+unpack (PS _  _ 0) = []
+unpack (PS ps s l) = inlinePerformIO $ withForeignPtr ps $ \p ->
+        go (p `plusPtr` s) (l - 1) []
+    where
+        go p 0 acc = liftM w2c (peekByteOff p 0) >>= \e -> return (e : acc)
+        go p n acc = liftM w2c (peekByteOff p n) >>= \e -> go p (n-1) (e : acc)
+{-# INLINE unpack #-}
+-}
 
 -- | /O(n)/ Convert a '[Word8]' into a 'ByteString'
 packWords :: [Word8] -> ByteString
@@ -548,8 +537,11 @@ append xs ys
     | otherwise  = concat [xs,ys]
 {-# INLINE append #-}
 
+-- ---------------------------------------------------------------------
+
 -- | /O(n)/ 'map' @f xs@ is the packed string obtained by applying @f@ to each
 -- element of @xs@, i.e.,
+--
 map :: (Char -> Char) -> ByteString -> ByteString
 map f (PS fp start len) = inlinePerformIO $ withForeignPtr fp $ \p -> do
     new_fp <- mallocForeignPtr len
@@ -568,32 +560,12 @@ map_ f' n p1 p2
         map_ f' (n-1) p1 p2
 {-# INLINE map_ #-}
 
-------------------------------------------------------------------------
-
--- | /O(n)/ A map for Word8 operations
-mapWords :: (Word8 -> Word8) -> ByteString -> ByteString
-mapWords k = mapIndexedWords (const k)
-
--- | /O(n)/ map, provided with the index at each position
-mapIndexed :: (Int -> Char -> Char) -> ByteString -> ByteString
-mapIndexed k = mapIndexedWords (\i w -> c2w (k i (w2c w)))
-
--- | /O(n)/ map Word8 functions, provided with the index at each position
-mapIndexedWords :: (Int -> Word8 -> Word8) -> ByteString -> ByteString
-mapIndexedWords k (PS ps s l) = createPS l $ \p -> withForeignPtr ps $ \f ->
-      go 0 (f `plusPtr` s) p (f `plusPtr` s `plusPtr` l)
-    where
-        go :: Int -> Ptr Word8 -> Ptr Word8 -> Ptr Word8 -> IO ()
-        go n f t p | f == p    = return ()
-                   | otherwise = do w <- peek f
-                                    ((poke t) . k n) w
-                                    go (n+1) (f `plusPtr` 1) (t `plusPtr` 1) p
-
-------------------------------------------------------------------------
+-- ---------------------------------------------------------------------
 
 -- | /O(n)/ 'filter', applied to a predicate and a packed string,
 -- returns a packed string containing those characters that satisfy the
 -- predicate.
+--
 filter :: (Char -> Bool) -> ByteString -> ByteString
 filter k ps@(PS x s l)
     | null ps   = ps
@@ -607,7 +579,7 @@ filter k ps@(PS x s l)
                         then poke t w >> go (f `plusPtr` 1) (t `plusPtr` 1) (e - 1)
                         else             go (f `plusPtr` 1) t               (e - 1)
 
-    -- Almost as good: pack $ foldl (\xs c -> if f c then c : xs else xs) [] ps
+-- Almost as good: pack $ foldl (\xs c -> if f c then c : xs else xs) [] ps
 
 --
 -- | /O(n)/ A first order equivalent of /filter/, for the common case of
@@ -641,6 +613,8 @@ find :: (Char -> Bool) -> ByteString -> Maybe Char
 find p ps = case filter p ps of
         p' | null p' -> Nothing
            | otherwise -> Just (unsafeHead p')
+
+-- ---------------------------------------------------------------------
 
 -- | 'foldl', applied to a binary operator, a starting value (typically
 -- the left-identity of the operator), and a packed string, reduces the
@@ -679,6 +653,8 @@ foldr1 f ps
     | null ps        = errorEmptyList "foldr1"
     | length ps == 1 = unsafeHead ps
     | otherwise      = f (unsafeHead ps) (foldr1 f (unsafeTail ps))
+
+-- ---------------------------------------------------------------------
 
 -- | /O(n)/ 'replicate' @n x@ is a packed string of length @n@ with @x@
 -- the value of every element. The following holds:
@@ -725,6 +701,8 @@ unfoldr i f b = inlinePerformIO $ generate i $ \p -> go p b 0
                                    Just (a,new_c) -> do
                                         poke q (c2w a)
                                         go (q `plusPtr` 1) new_c (n+1)
+
+-- ---------------------------------------------------------------------
 
 -- | Applied to a predicate and a packed string, 'any' determines if
 -- any element of the 'ByteString' satisfies the predicate.
@@ -1137,6 +1115,25 @@ idx :: ByteString -> Int
 idx (PS _ s _) = s
 {-# INLINE idx #-}
 
+-- | /O(n)/ A map for Word8 operations
+mapWords :: (Word8 -> Word8) -> ByteString -> ByteString
+mapWords k = mapIndexedWords (const k)
+
+-- | /O(n)/ map, provided with the index at each position
+mapIndexed :: (Int -> Char -> Char) -> ByteString -> ByteString
+mapIndexed k = mapIndexedWords (\i w -> c2w (k i (w2c w)))
+
+-- | /O(n)/ map Word8 functions, provided with the index at each position
+mapIndexedWords :: (Int -> Word8 -> Word8) -> ByteString -> ByteString
+mapIndexedWords k (PS ps s l) = createPS l $ \p -> withForeignPtr ps $ \f ->
+      go 0 (f `plusPtr` s) p (f `plusPtr` s `plusPtr` l)
+    where
+        go :: Int -> Ptr Word8 -> Ptr Word8 -> Ptr Word8 -> IO ()
+        go n f t p | f == p    = return ()
+                   | otherwise = do w <- peek f
+                                    ((poke t) . k n) w
+                                    go (n+1) (f `plusPtr` 1) (t `plusPtr` 1) p
+
 --
 -- | /O(n)/ join2. An efficient way to join to two ByteStrings with a
 -- char. Around 4 times faster than the generalised join.
@@ -1283,6 +1280,7 @@ split c (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
                         ls <- loop (i+1)
                         return $! PS x (s+n) (i-n) : ls
     loop 0
+{-# INLINE split #-}
 
 {-
 -- slower. but stays inside Haskell.
@@ -1310,8 +1308,6 @@ split x (PS fp off len) = splitWith' off len fp
                               splitWith' (off'+idx'+1) (len'-idx'-1) fp')
                    else splitLoop p (idx'+1) off' len' fp'
 -}
-
-{-# INLINE split #-}
 
 -- | Like 'splitWith', except that sequences of adjacent separators are
 -- treated as a single separator. eg.
@@ -1386,6 +1382,7 @@ betweenLines :: ByteString -- ^ First line to look for
              -> ByteString -- ^ Second line to look for
              -> ByteString -- ^ 'ByteString' to look in
              -> Maybe (ByteString)
+
 betweenLines start end ps =
     case Prelude.break (start ==) (lines ps) of
         (_, _:rest@(PS ps1 s1 _:_)) ->
@@ -1481,6 +1478,7 @@ unsafeTail (PS ps s l) = PS ps (s+1) (l-1)
 isSubstringOf :: ByteString -- ^ String to search for.
               -> ByteString -- ^ String to search in.
               -> Bool
+
 isSubstringOf p s = not $ Prelude.null $ findSubstrings p s
 
 -- | Get the first index of a substring in another string,
@@ -1489,6 +1487,7 @@ isSubstringOf p s = not $ Prelude.null $ findSubstrings p s
 findSubstring :: ByteString -- ^ String to search for.
               -> ByteString -- ^ String to seach in.
               -> Maybe Int
+
 findSubstring = (listToMaybe .) . findSubstrings
 
 -- | Find the indexes of all (possibly overlapping) occurances of a
@@ -1497,6 +1496,7 @@ findSubstring = (listToMaybe .) . findSubstrings
 findSubstrings :: ByteString -- ^ String to search for.
                -> ByteString -- ^ String to seach in.
                -> [Int]
+
 findSubstrings pat@(PS _ _ m) str@(PS _ _ n) = search 0 0
   where
       patc x = w2c (pat ! x)
@@ -1516,22 +1516,7 @@ findSubstrings pat@(PS _ _ m) str@(PS _ _ n) = search 0 0
       next c j | j >= 0 && (j == m || c /= patc j) = next c (kmpNext Array.! j)
                | otherwise = j
 
-------------------------------------------------------------------------
--- (Internal) Conversion between 'Word8' and 'Char'
-
-w2c :: Word8 -> Char
-#if !defined(__GLASGOW_HASKELL__)
-w2c = chr . fromIntegral
-#else
-w2c = unsafeChr . fromIntegral
-#endif
-{-# INLINE w2c #-}
-
-c2w :: Char -> Word8
-c2w = fromIntegral . ord
-{-# INLINE c2w #-}
-
-------------------------------------------------------------------------
+-- ---------------------------------------------------------------------
 
 -- | /O(n)/ 'elemIndexWord8' is like 'elemIndex', except
 -- that it takes a 'Word8' as the element to search for.
@@ -1553,11 +1538,6 @@ elemIndexLastWord8 c (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p ->
                  | otherwise = do here <- peekByteOff p i
                                   go (if c == here then i else h) p (i+1)
 {-# INLINE elemIndexLastWord8 #-}
-
--- Unsafe 'ByteString' index (subscript) operator, starting from 0, returning a 'Word8'
-(!) :: ByteString -> Int -> Word8
-(!) (PS x s _) i = inlinePerformIO $ withForeignPtr x $ \p -> peekByteOff p (s+i)
-{-# INLINE (!) #-}
 
 -- | /O(1)/ Like 'index', but without any bounds checking.
 unsafeIndex :: ByteString -> Int -> Char
@@ -1584,12 +1564,6 @@ findFromEndUntilPS f ps@(PS x s l) = seq f $
     else if f $ last ps then l
          else findFromEndUntilPS f (PS x s (l-1))
 
--- -----------------------------------------------------------------------------
-
--- Common up near identical calls to `error' to reduce the number
--- constant strings created when compiled:
-errorEmptyList :: String -> a
-errorEmptyList fun = error ("ByteString." ++ fun ++ ": empty ByteString")
 
 ------------------------------------------------------------------------
 
@@ -1774,17 +1748,7 @@ unsafeReadInt p@(PS x s l) = inlinePerformIO $ unsafeUseAsCString p $ \cstr ->
                  then Nothing
                  else Just (fromIntegral val, PS x (s+skipped) (l-skipped))
 
--- TODO, this can still be better, I feel.
-
-------------------------------------------------------------------------
-
--- (internal) GC wrapper of mallocForeignPtrArray
-mallocForeignPtr :: Int -> IO (ForeignPtr Word8)
-mallocForeignPtr l = do
---  when (l > 1000000) performGC
-    fp <- mallocForeignPtrArray (l+1)
-    withForeignPtr fp $ \p -> poke (p `plusPtr` l) (0::Word8)
-    return fp
+-- TODO poner how this can still be better
 
 -- -----------------------------------------------------------------------------
 -- I\/O functions
@@ -1869,7 +1833,7 @@ mkBigPS _ pss = return $! concat (Prelude.reverse pss)
 
 -- | Outputs a 'ByteString' to the specified 'Handle'.
 --
--- NOTE: the representation of the 'ByteString' in the file is assumed to
+-- The representation of the 'ByteString' in the file is assumed to
 -- be in the ISO-8859-1 encoding.  In other words, only the least signficant
 -- byte is taken from each character in the 'ByteString'.
 --
@@ -1895,15 +1859,14 @@ putStrLn ps = hPut stdout ps >> hPut stdout nl
 -- is far more efficient than reading the characters into a 'String'
 -- and then using 'pack'.
 --
--- NOTE: as with 'hPut', the string representation in the file is
--- assumed to be ISO-8859-1.
+-- As with 'hPut', the string representation in the file is assumed to
+-- be ISO-8859-1.
 --
 hGet :: Handle -> Int -> IO ByteString
 hGet _ 0 = return empty
 hGet h i = do fp <- mallocForeignPtr i
               l  <- withForeignPtr fp $ \p-> hGetBuf h p i
               return $ PS fp 0 l
-
 
 -- | hGetNonBlocking is identical to 'hGet', except that it will never block
 -- waiting for data to become available, instead it returns only whatever data
@@ -1924,8 +1887,8 @@ getContents = hGetContents stdin
 
 -- | Read entire handle contents into a 'ByteString'.
 --
--- NOTE: as with 'hGet', the string representation in the file is
--- assumed to be ISO-8859-1.
+-- As with 'hGet', the string representation in the file is assumed to
+-- be ISO-8859-1.
 --
 hGetContents :: Handle -> IO ByteString
 hGetContents h = do
@@ -1954,8 +1917,8 @@ hGetContents h = do
 -- 'pack'.  It also may be more efficient than opening the file and
 -- reading it using hGet.
 --
--- NOTE: as with 'hGet', the string representation in the file is
--- assumed to be ISO-8859-1.
+-- As with 'hGet', the string representation in the file is assumed to
+-- be ISO-8859-1.
 --
 readFile :: FilePath -> IO ByteString
 readFile f = do
@@ -1981,8 +1944,8 @@ writeFile f ps = do
 -- need to be written to swap.  If you read many small files, mmapFile
 -- will be less memory-efficient than readFile, since each mmapFile
 -- takes up a separate page of memory.  Also, you can run into bus
--- errors if the file is modified.  NOTE: as with 'readFile', the
--- string representation in the file is assumed to be ISO-8859-1.
+-- errors if the file is modified.  As with 'readFile', the string
+-- representation in the file is assumed to be ISO-8859-1.
 --
 mmapFile :: FilePath -> IO ByteString
 mmapFile f =
@@ -2050,12 +2013,42 @@ getArgs =
     argv <- peek p_argv
     Prelude.map packCString `fmap` peekArray (p - 1) (advancePtr argv 1)
 
-------------------------------------------------------------------------
+-- ---------------------------------------------------------------------
+-- Internal
+
+-- Wrapper of mallocForeignPtrArray
+mallocForeignPtr :: Int -> IO (ForeignPtr Word8)
+mallocForeignPtr l = do
+    fp <- mallocForeignPtrArray (l+1)
+    withForeignPtr fp $ \p -> poke (p `plusPtr` l) (0::Word8)
+    return fp
+
+-- Common up near identical calls to `error' to reduce the number
+-- constant strings created when compiled:
+errorEmptyList :: String -> a
+errorEmptyList fun = error ("ByteString." ++ fun ++ ": empty ByteString")
+
+-- Unsafe 'ByteString' index (subscript) operator, starting from 0, returning a 'Word8'
+(!) :: ByteString -> Int -> Word8
+(!) (PS x s _) i = inlinePerformIO $ withForeignPtr x $ \p -> peekByteOff p (s+i)
+{-# INLINE (!) #-}
+
+-- Conversion between 'Word8' and 'Char'
+w2c :: Word8 -> Char
+#if !defined(__GLASGOW_HASKELL__)
+w2c = chr . fromIntegral
+#else
+w2c = unsafeChr . fromIntegral
+#endif
+{-# INLINE w2c #-}
+
+c2w :: Char -> Word8
+c2w = fromIntegral . ord
+{-# INLINE c2w #-}
 
 -- Just like inlinePerformIO, but we inline it. Big performance gains as
 -- it exposes lots of things to further inlining
 --
-
 {-# INLINE inlinePerformIO #-}
 inlinePerformIO :: IO a -> a
 #if defined(__GLASGOW_HASKELL__)
@@ -2069,7 +2062,7 @@ withPtr :: ForeignPtr a -> (Ptr a -> IO b) -> b
 withPtr fp io = inlinePerformIO (withForeignPtr fp io)
 {-# INLINE withPtr #-}
 
-------------------------------------------------------------------------
+-- ---------------------------------------------------------------------
 -- 
 -- Uses standard headers
 --
@@ -2098,15 +2091,17 @@ foreign import ccall unsafe "static string.h strlen" c_strlen
 foreign import ccall unsafe "static stdlib.h strtol" c_strtol
     :: Ptr Word8 -> Ptr (Ptr Word8) -> Int -> IO CLong
 
-foreign import ccall unsafe "__hscore_memcpy_src_off"
-   memcpy_ptr_baoff :: Ptr a -> RawBuffer -> Int -> CSize -> IO (Ptr ())
-
-------------------------------------------------------------------------
+-- ---------------------------------------------------------------------
+--
+-- Internal magic stuff
 
 foreign import ccall unsafe "RtsAPI.h getProgArgv"
     getProgArgv :: Ptr CInt -> Ptr (Ptr CString) -> IO ()
 
-------------------------------------------------------------------------
+foreign import ccall unsafe "__hscore_memcpy_src_off"
+   memcpy_ptr_baoff :: Ptr a -> RawBuffer -> Int -> CSize -> IO (Ptr ())
+
+-- ---------------------------------------------------------------------
 --
 -- Uses our C code (sometimes just wrappers)
 --
@@ -2128,7 +2123,9 @@ foreign import ccall unsafe "static fpstring.h minimum" c_minimum
     :: Ptr Word8 -> Int -> Word8
 #endif
 
-------------------------------------------------------------------------
+-- ---------------------------------------------------------------------
+-- 
+-- Mmap things
 
 #if defined(USE_MMAP)
 foreign import ccall unsafe "static fpstring.h my_mmap" my_mmap
