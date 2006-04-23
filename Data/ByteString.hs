@@ -183,6 +183,8 @@ module Data.ByteString (
         hGet,                 -- :: Handle -> Int -> IO ByteString
         hGetNonBlocking,      -- :: Handle -> Int -> IO ByteString
         hPut,                 -- :: Handle -> ByteString -> IO ()
+        putStr,               -- :: ByteString -> IO ()
+        putStrLn,             -- :: ByteString -> IO ()
         hGetContents,         -- :: Handle -> IO ByteString
         getContents,          -- :: IO ByteString
         readFile,             -- :: FilePath -> IO ByteString
@@ -226,7 +228,7 @@ import Prelude hiding (reverse,head,tail,last,init,null,
                        dropWhile,span,break,elem,filter,unwords,
                        words,maximum,minimum,all,concatMap,
                        foldl1,foldr1,readFile,writeFile,replicate,
-                       getContents,getLine)
+                       getContents,getLine,putStr,putStrLn)
 
 import qualified Data.List as List (intersperse,transpose
 #if !defined(USE_CBITS)
@@ -245,7 +247,8 @@ import Data.Maybe               (listToMaybe)
 import Control.Monad            (liftM)
 import Control.Exception        (bracket)
 
-import System.IO    hiding (hGetLine,hGetContents,readFile,writeFile,getContents,getLine)
+import System.IO    hiding (hGetLine,hGetContents,readFile,writeFile
+                           ,getContents,getLine,putStr,putStrLn)
 import System.IO.Error
 
 import Foreign.Ptr              (Ptr, FunPtr, plusPtr, nullPtr, minusPtr, castPtr)
@@ -1845,6 +1848,19 @@ hPut :: Handle -> ByteString -> IO ()
 hPut _ (PS _ _ 0)  = return ()
 hPut h (PS ps 0 l) = withForeignPtr ps $ \p-> hPutBuf h p l
 hPut h (PS ps s l) = withForeignPtr ps $ \p-> hPutBuf h (p `plusPtr` s) l
+
+--
+-- | Write a ByteString to stdout
+--
+putStr :: ByteString -> IO ()
+putStr = hPut stdout
+
+--
+-- | Write a ByteString to stdout, appending a newline character
+--
+putStrLn :: ByteString -> IO ()
+putStrLn ps = hPut stdout ps >> hPut stdout nl
+    where nl = packChar '\n'
 
 -- | Read a 'ByteString' directly from the specified 'Handle'.  This
 -- is far more efficient than reading the characters into a 'String'
