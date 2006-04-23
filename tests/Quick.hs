@@ -45,7 +45,7 @@ prop_lengthS xs = length xs == P.length (P.pack xs)
 
 prop_index xs =
   not (null xs) ==>
-	forAll indices $ \i -> (xs !! i) == P.pack xs `P.index` i
+    forAll indices $ \i -> (xs !! i) == P.pack xs `P.index` i
   where indices = choose (0, length xs -1)
 
 prop_unsafeIndex xs =
@@ -339,7 +339,7 @@ prop_joinjoinpath xs ys = P.join2 ' ' xs ys == P.join (P.packChar ' ') [xs,ys]
 ------------------------------------------------------------------------
 
 main = do
-    x <- getArgs 
+    x <- getArgs
     let n = if null x then 1000 else read . head $ x
     do mapM_ (runTests "test" (defOpt { no_of_tests = n, length_of_tests = 10 })) $
          breakUp 25 tests []
