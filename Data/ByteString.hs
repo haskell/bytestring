@@ -58,7 +58,6 @@ module Data.ByteString (
         reverse,      -- :: ByteString -> ByteString
         intersperse,  -- :: Char -> ByteString -> ByteString
         transpose,    -- :: [ByteString] -> [ByteString]
-        join,         -- :: ByteString -> [ByteString] -> ByteString
 
         -- * Reducing 'ByteString's
         foldl,        -- :: (a -> Char -> a) -> a -> ByteString -> a
@@ -87,6 +86,9 @@ module Data.ByteString (
         dropWhile,    -- :: (Char -> Bool) -> ByteString -> ByteString
         span,         -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
         break,        -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
+
+        join,         -- :: ByteString -> [ByteString] -> ByteString
+        join2,        -- :: Char -> ByteString -> ByteString -> ByteString
 
         -- * Searching 'ByteString's
 
@@ -126,9 +128,10 @@ module Data.ByteString (
         sort,         -- :: ByteString -> ByteString
 
         -- * Extensions to the list interface
+
+        -- ** Splitting strings
         split,        -- :: Char -> ByteString -> [ByteString]
         splitWith,    -- :: (Char -> Bool) -> ByteString -> [ByteString]
-        join2,        -- :: Char -> ByteString -> ByteString -> ByteString
         breakOn,      -- :: Char -> ByteString -> (ByteString, ByteString)
         breakSpace,   -- :: ByteString -> Maybe (ByteString,ByteString)
         breakFirst,   -- :: Char -> ByteString -> Maybe (ByteString,ByteString)
@@ -137,19 +140,27 @@ module Data.ByteString (
         dropSpaceEnd, -- :: ByteString -> ByteString
         spanEnd,      -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
         tokens,       -- :: (Char -> Bool) -> ByteString -> [ByteString]
-        hash,         -- :: ByteString -> Int32
+
+        -- ** Indexing
         elemIndexLast,-- :: Char -> ByteString -> Maybe Int
         lineIndices,  -- :: ByteString -> [Int]
-        betweenLines, -- :: ByteString -> ByteString -> ByteString -> Maybe (ByteString)
+
+        -- ** Lines and words
         lines',       -- :: ByteString -> [ByteString]
         unlines',     -- :: [ByteString] -> ByteString
         linesCRLF',   -- :: ByteString -> [ByteString]
         unlinesCRLF', -- :: [ByteString] -> ByteString
         words',       -- :: ByteString -> [ByteString]
         unwords',     -- :: ByteString -> [ByteString]
+        betweenLines, -- :: ByteString -> ByteString -> ByteString -> Maybe (ByteString)
+
+        -- ** Unchecked access
         unsafeHead,   -- :: ByteString -> Char
         unsafeTail,   -- :: ByteString -> ByteString
+
+        -- ** Misc
         idx,          -- :: ByteString -> Int
+        hash,         -- :: ByteString -> Int32
         mapIndexed,   -- :: (Int -> Char -> Char) -> ByteString -> ByteString
 
         ------------------------------------------------------------------------
