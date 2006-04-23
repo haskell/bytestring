@@ -77,19 +77,24 @@ all             0.000        ~       ~       -       -       0.000
 sort            13.985       14.380  15.773  -       -       !
 maximum         0.024        ~       0.068   -       -       0.183
 minimum         0.025        ~       0.093   -       -       0.185
-replicate       0.008        ~       ~       -       -       0.053   
+replicate       0.000        0.008   ~       -       -       0.053   
 elem            0.000        ~       ~       1.490   0.001   0.000   
 find            0.259        0.278   0.366   -       -       0.000   
 elemIndex       0.000        ~       ~       -       -       0.000   
 elemIndicies    0.010        0.224   4.192   -       -       0.314   
 findIndices     0.422   
 splitAt         0.000   
-lineIndices     0.052   
+lineIndices     0.029   
 breakOn         0.000   
 breakSpace      0.000   
 splitWith       0.329   
 dropSpace       0.000   
 dropSpaceEnd    0.000
+join2           0.028   
+join /          0.030   
+zip             1.323   
+zipWith         1.145   
+isSubstringOf   0.055   
 
 Key: FPS2 = Byte String v2
      FPS1 = Byte String v1
