@@ -166,12 +166,13 @@ module Data.ByteString (
         ------------------------------------------------------------------------
 
         -- * Word8 interface
-        packWords,       -- :: [Word8] -> ByteString
-        unpackWords,     -- :: ByteString -> [Word8]
-        mapWords,        -- :: (Word8 -> Word8) -> ByteString -> ByteString
-        mapIndexedWords, -- :: (Int -> Word8 -> Word8) -> ByteString -> ByteString
-        indexWord8,      -- :: ByteString -> Int -> Word8
-        elemIndexWord8,  -- :: Word8 -> ByteString -> Maybe Int
+        packWords,         -- :: [Word8] -> ByteString
+        unpackWords,       -- :: ByteString -> [Word8]
+        mapWords,          -- :: (Word8 -> Word8) -> ByteString -> ByteString
+        mapIndexedWords,   -- :: (Int -> Word8 -> Word8) -> ByteString -> ByteString
+        indexWord8,        -- :: ByteString -> Int -> Word8
+        unsafeIndexWord8,  -- :: ByteString -> Int -> Word8
+        elemIndexWord8,    -- :: Word8 -> ByteString -> Maybe Int
         elemIndexLastWord8,-- :: Char -> ByteString -> Maybe Int
 
         ------------------------------------------------------------------------
@@ -1521,8 +1522,7 @@ elemIndexLastWord8 c (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p ->
                                   go (if c == here then i else h) p (i+1)
 {-# INLINE elemIndexLastWord8 #-}
 
--- Unsafe 'ByteString' index (subscript) operator, starting from 0,
--- returning a 'Word8'
+-- Unsafe 'ByteString' index (subscript) operator, starting from 0, returning a 'Word8'
 (!) :: ByteString -> Int -> Word8
 (!) (PS x s _) i = inlinePerformIO $ withForeignPtr x $ \p -> peekByteOff p (s+i)
 {-# INLINE (!) #-}
@@ -1531,6 +1531,11 @@ elemIndexLastWord8 c (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p ->
 unsafeIndex :: ByteString -> Int -> Char
 unsafeIndex = (w2c .) . (!)
 {-# INLINE unsafeIndex #-}
+
+-- | /O(1)/ Like 'index', but without any bounds checking.
+unsafeIndexWord8 :: ByteString -> Int -> Word8
+unsafeIndexWord8 = (!)
+{-# INLINE unsafeIndexWord8 #-}
 
 -- (Internal) 'findIndexOrEndPS' is a variant of findIndex, that returns the
 -- length of the string if no element is found, rather than Nothing.
