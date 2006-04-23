@@ -1,3 +1,5 @@
-module Data.FastPackedString (module Data.ByteString) where
+module Data.FastPackedString (module Data.ByteString, FastString) where
 
 import Data.ByteString
+
+types FastString = ByteString
