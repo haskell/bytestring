@@ -219,7 +219,7 @@ tests =
     , ("minimum",[F ({-# SCC "minimum"   #-}FPS.minimum fps)])
 --            ,F (minimum list)])
 
-    , ("replicate",[F ({-# SCC "replicate" #-}FPS.replicate 1000000 'x')])
+    , ("replicate",[F ({-# SCC "replicate" #-}FPS.replicate 10000000 'x')])
 --            ,F (replicate 1000000 'x')])
 
     , ("elem",[F ({-# SCC "elem"      #-}FPS.elem 'z' fps)])

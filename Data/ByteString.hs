@@ -661,13 +661,21 @@ foldr1 f ps
 --
 -- > replicate w c = unfoldr w (\u -> Just (u,u)) c
 --
+-- This implemenation uses @memset(3)@
+--
 replicate :: Int -> Char -> ByteString
+replicate w c = inlinePerformIO $ generate w $ \ptr -> do
+    memset ptr (fromIntegral . c2w $ c) (fromIntegral w)
+    return w
+
+{-
+-- About 5x slower
 replicate w c = inlinePerformIO $ generate w $ \ptr -> go ptr w
     where
         x = fromIntegral . ord $ c
         go _   0 = return w
         go ptr n = poke ptr x >> go (ptr `plusPtr` 1) (n-1)
-
+-}
 
 -- | /O(n)/ The 'unfoldr' function is analogous to the List \'unfoldr\'.
 -- 'unfoldr' builds a ByteString from a seed value.  The function
@@ -2084,6 +2092,9 @@ foreign import ccall unsafe "static string.h memcpy" c_memcpy
 
 foreign import ccall unsafe "string.h memchr" memchr
     :: Ptr Word8 -> CInt -> CSize -> Ptr Word8
+
+foreign import ccall unsafe "string.h memset" memset
+    :: Ptr Word8 -> CInt -> CSize -> IO (Ptr Word8)
 
 foreign import ccall unsafe "static string.h strlen" c_strlen
     :: CString -> CInt
