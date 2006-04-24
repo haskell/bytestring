@@ -197,25 +197,33 @@ module Data.ByteString (
         mmapFile,               -- :: FilePath -> IO ByteString
         getArgs,                -- :: IO [ByteString]
 
-        -- * Lower-level constructors
+        -- * Low-level construction
         generate,               -- :: Int -> (Ptr Word8 -> Int -> IO Int) -> IO ByteString
-        packMallocCString,      -- :: CString -> ByteString
+
+        -- ** Packing CStrings and pointers
         packCString,            -- :: CString -> ByteString
         packCStringLen,         -- :: CString -> ByteString
-        useAsCString,           -- :: ByteString -> (CString -> IO a) -> IO a
-        unsafeUseAsCString,     -- :: ByteString -> (CString -> IO a) -> IO a
-        unsafeUseAsCStringLen,  -- :: ByteString -> (CStringLen -> IO a) -> IO a
-        copy,                   -- :: ByteString -> ByteString
-        copyCStringToByteString,-- :: CString -> ByteString
-        fromForeignPtr,         -- :: ForeignPtr Word8 -> Int -> ByteString
-        toForeignPtr,           -- :: ByteString -> (ForeignPtr Word8, Int, Int)
+        packMallocCString,      -- :: CString -> ByteString
 
 #if defined(__GLASGOW_HASKELL__)
-        construct,              -- :: (Ptr Word8) -> Int -> IO () -> IO ByteString
+        packCStringFinalizer,   -- :: Ptr Word8 -> Int -> IO () -> IO ByteString
         packAddress,            -- :: Addr# -> ByteString
         unsafePackAddress,      -- :: Int -> Addr# -> ByteString
         unsafeFinalize,         -- :: ByteString -> IO ()
 #endif
+
+        -- ** Using ByteStrings as CStrings
+        useAsCString,           -- :: ByteString -> (CString -> IO a) -> IO a
+        unsafeUseAsCString,     -- :: ByteString -> (CString -> IO a) -> IO a
+        unsafeUseAsCStringLen,  -- :: ByteString -> (CStringLen -> IO a) -> IO a
+
+        -- ** Copying ByteStrings
+        copy,                   -- :: ByteString -> ByteString
+        copyCStringToByteString,-- :: CString -> ByteString
+
+        -- ** Deconstruction
+        fromForeignPtr,         -- :: ForeignPtr Word8 -> Int -> ByteString
+        toForeignPtr,           -- :: ByteString -> (ForeignPtr Word8, Int, Int)
 
         -- * Misc
         unpackList, -- eek, otherwise it gets thrown away by the simplifier
@@ -1629,9 +1637,13 @@ copy (PS x s l) = createPS l $ \p -> withForeignPtr x $ \f ->
                     c_memcpy p (f `plusPtr` s) l
 
 -- | Given the maximum size needed and a function to make the contents
--- of a ByteString, generate makes the 'ByteString'. The
--- generating function is required to return the actual size (<= the
--- maximum size).
+-- of a ByteString, generate makes the 'ByteString'. The generating
+-- function is required to return the actual size (<= the maximum size).
+-- The string is padded at the end with a null byte.
+--
+-- generate is the main mechanism for creating custom, efficient
+-- ByteString functions, using Haskell or C functions to fill the space.
+--
 generate :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
 generate i f = do
     p <- mallocArray i
@@ -1640,23 +1652,6 @@ generate i f = do
     poke (p' `plusPtr` i') (0::Word8)    -- XXX so CStrings work
     fp <- newForeignPtr c_free p'
     return $ PS fp 0 i'
-
-#if defined(__GLASGOW_HASKELL__)
--- | Construct a 'ByteString' given a C Word8 buffer, a length, and an
--- IO action representing a finalizer.  This function is not available
--- on Hugs.
-construct :: (Ptr Word8) -> Int -> IO () -> IO ByteString
-construct p l f = do
-    fp <- FC.newForeignPtr p f
-    return $ PS fp 0 l
-#endif
-
--- | /O(n)/ Build a @ByteString@ from a malloced @CString@. This value will
--- have a @free(3)@ finalizer associated to it.
-packMallocCString :: CString -> ByteString
-packMallocCString cstr = inlinePerformIO $ do
-    fp <- newForeignPtr c_free (castPtr cstr)
-    return $ PS fp 0 (fromIntegral $ c_strlen cstr)
 
 -- | /O(n)/ Build a @ByteString@ from a @CString@. This value will have /no/
 -- finalizer associated to it.
@@ -1671,6 +1666,26 @@ packCStringLen :: CStringLen -> ByteString
 packCStringLen (ptr,len) = inlinePerformIO $ do
     fp <- newForeignPtr_ (castPtr ptr)
     return $ PS fp 0 (fromIntegral len)
+
+-- | /O(n)/ Build a @ByteString@ from a malloced @CString@. This value will
+-- have a @free(3)@ finalizer associated to it.
+packMallocCString :: CString -> ByteString
+packMallocCString cstr = inlinePerformIO $ do
+    fp <- newForeignPtr c_free (castPtr cstr)
+    return $ PS fp 0 (fromIntegral $ c_strlen cstr)
+
+#if defined(__GLASGOW_HASKELL__)
+-- | /O(1)/ Construct a 'ByteString' given a C Ptr Word8 buffer, a
+-- length, and an IO action representing a finalizer. This function is
+-- not available on Hugs.
+--
+packCStringFinalizer :: Ptr Word8 -> Int -> IO () -> IO ByteString
+packCStringFinalizer p l f = do
+    fp <- FC.newForeignPtr p f
+    return $ PS fp 0 l
+#endif
+
+------------------------------------------------------------------------
 
 -- | /O(n) construction/ Use a @ByteString@ with a function requiring a null-terminated @CString@.
 --   The @CString@ should not be freed afterwards.
@@ -2025,7 +2040,8 @@ getArgs =
 -- ---------------------------------------------------------------------
 -- Internal
 
--- Wrapper of mallocForeignPtrArray
+-- Wrapper of mallocForeignPtrArray. Any ByteString allocated this way
+-- is padded with a null byte.
 mallocForeignPtr :: Int -> IO (ForeignPtr Word8)
 mallocForeignPtr l = do
     fp <- mallocForeignPtrArray (l+1)
