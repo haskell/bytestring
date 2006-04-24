@@ -1575,12 +1575,14 @@ elemIndexWord8 c (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
 -- element in the given 'ByteString' which is equal to the query
 -- element, or 'Nothing' if there is no such element.
 elemIndexLastWord8 :: Word8 -> ByteString -> Maybe Int
-elemIndexLastWord8 c (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p ->
+elemIndexLastWord8 ch (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p ->
         go (-1) (p `plusPtr` s) 0
     where
+        -- todo: think about how this can be as efficient as elemIndex
+        STRICT3(go)
         go h p i | i >= l    = return $ if h < 0 then Nothing else Just h
                  | otherwise = do here <- peekByteOff p i
-                                  go (if c == here then i else h) p (i+1)
+                                  go (if ch == here then i else h) p (i+1)
 {-# INLINE elemIndexLastWord8 #-}
 
 -- | /O(1)/ Like 'index', but without any bounds checking.
