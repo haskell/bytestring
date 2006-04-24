@@ -100,6 +100,7 @@ tests =
 --               ,F (filter (=='f') list)])
 
     , ("filterChar", [F ({-# SCC "filterChar"    #-}FPS.filterChar 'f' fps)])
+    , ("filterNotChar", [F ({-# SCC "filterNotChar"    #-}FPS.filterNotChar 'f' fps)])
 
     , ("take",[F ({-# SCC "take"      #-}FPS.take 100000 fps)])
 --           ,F (SPS.take 100000 sps)
@@ -226,6 +227,7 @@ tests =
 --            ,F (SPS.elem 'z' sps)
 --            ,F (PS.elemPS 'z' ps)
  --           ,F (elem 'z' list)])
+    , ("notElem",[F ({-# SCC "notElem"      #-}FPS.notElem 'z' fps)])
 
     , ("find",[F ({-# SCC "find"      #-}FPS.find (=='z') fps)])
 --            ,F (find (=='z') list)])

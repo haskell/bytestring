@@ -101,6 +101,7 @@ module Data.ByteString (
         -- ** Searching with a predicate
         filter,                 -- :: (Char -> Bool) -> ByteString -> ByteString
         filterChar,             -- :: Char -> ByteString -> ByteString
+        filterNotChar,          -- :: Char -> ByteString -> ByteString
         find,                   -- :: (Char -> Bool) -> ByteString -> Maybe Char
 
         -- ** Searching for substrings
@@ -592,9 +593,9 @@ filter k ps@(PS x s l)
 -- Almost as good: pack $ foldl (\xs c -> if f c then c : xs else xs) [] ps
 
 --
--- | /O(n)/ A first order equivalent of /filter/, for the common case of
--- filtering a single char. It is more efficient to use /filterChar/ in
--- this case.
+-- | /O(n)/ A first order equivalent of /filter . (==)/, for the common
+-- case of filtering a single char. It is more efficient to use
+-- /filterChar/ in this case.
 --
 -- > filterChar == filter . (==)
 --
@@ -609,10 +610,33 @@ filterChar c ps@(PS x s l)
         return (t `minusPtr` p) -- actual length
     where
         cw = c2w c
-
         go _ t 0 = return t
         go f t e = do w <- peek f
                       if w == cw
+                        then poke t w >> go (f `plusPtr` 1) (t `plusPtr` 1) (e - 1)
+                        else             go (f `plusPtr` 1) t               (e - 1)
+
+--
+-- | /O(n)/ A first order equivalent of /filter . (/=)/, for the common
+-- case of filtering a single char out of a list. It is more efficient
+-- to use /filterNotChar/ in this case.
+--
+-- > filterNotChar == filter . (/=)
+--
+-- filterNotChar is around 3x faster, and uses much less space, than its
+-- filter equivalent
+--
+filterNotChar :: Char -> ByteString -> ByteString
+filterNotChar c ps@(PS x s l)
+    | null ps   = ps
+    | otherwise = inlinePerformIO $ generate l $ \p -> withForeignPtr x $ \f -> do
+        t <- go (f `plusPtr` s) p l
+        return (t `minusPtr` p) -- actual length
+    where
+        cw = c2w c
+        go _ t 0 = return t
+        go f t e = do w <- peek f
+                      if w /= cw
                         then poke t w >> go (f `plusPtr` 1) (t `plusPtr` 1) (e - 1)
                         else             go (f `plusPtr` 1) t               (e - 1)
 

@@ -336,6 +336,9 @@ prop_readint2 s =
 prop_filterChar1 c xs = (filter (==c) xs) == ((P.unpack . P.filterChar c . P.pack) xs)
 prop_filterChar2 c xs = (P.filter (==c) (P.pack xs)) == (P.filterChar c (P.pack xs))
 
+prop_filterNotChar1 c xs = (filter (/=c) xs) == ((P.unpack . P.filterNotChar c . P.pack) xs)
+prop_filterNotChar2 c xs = (P.filter (/=c) (P.pack xs)) == (P.filterNotChar c (P.pack xs))
+
 prop_joinjoinpath xs ys = P.join2 ' ' xs ys == P.join (P.packChar ' ') [xs,ys]
 
 prop_zip  xs ys = zip xs ys == P.zip (pack xs) (pack ys)
@@ -447,6 +450,8 @@ main = do
             ,    run prop_readint2
             ,    run prop_filterChar1
             ,    run prop_filterChar2
+            ,    run prop_filterNotChar1
+            ,    run prop_filterNotChar2
             ,    run prop_pack
             ,    run prop_nil1
             ,    run prop_nil2
