@@ -96,6 +96,7 @@ module Data.ByteString (
 
         -- ** Searching by equality
         elem,                   -- :: Char -> ByteString -> Bool
+        notElem,                -- :: Char -> ByteString -> Bool
 
         -- ** Searching with a predicate
         filter,                 -- :: (Char -> Bool) -> ByteString -> ByteString
@@ -238,7 +239,7 @@ import Prelude hiding           (reverse,head,tail,last,init,null,
                                  words,maximum,minimum,all,concatMap,
                                  foldl1,foldr1,readFile,writeFile,replicate,
                                  getContents,getLine,putStr,putStrLn,
-                                 zip,zipWith,unzip)
+                                 zip,zipWith,unzip,notElem)
 
 import qualified Data.List as List
 
@@ -800,9 +801,11 @@ reverse = pack . Prelude.reverse . unpack
 -- | /O(n)/ 'elem' is the 'ByteString' membership predicate. This
 -- implementation uses @memchr(3)@.
 elem :: Char -> ByteString -> Bool
-elem c ps = case elemIndex c ps of
-    Nothing -> False
-    Just _  -> True
+elem c ps = case elemIndex c ps of Nothing -> False ; _       -> True
+
+-- | /O(n)/ 'notElem' is the inverse of 'elem'
+notElem :: Char -> ByteString -> Bool
+notElem c ps = case elemIndex c ps of Nothing -> True ; _       -> False
 
 -- | Map a function over a 'ByteString' and concatenate the results
 concatMap :: (Char -> ByteString) -> ByteString -> ByteString

@@ -200,6 +200,8 @@ prop_reverse xs = (reverse xs) == (unpack . P.reverse . pack) xs
 
 prop_elem xs = ('X' `elem` xs) == ('X' `P.elem` (pack xs))
 
+prop_notElem c xs = P.notElem c (P.pack xs) == notElem c xs
+
 -- should try to stress it
 prop_concat1 xs = (concat [xs,xs]) == (unpack $ P.concat [pack xs, pack xs])
 
@@ -394,6 +396,7 @@ main = do
             ,    run prop_break
             ,    run prop_reverse
             ,    run prop_elem
+            ,    run prop_notElem
             ,    run prop_concat1
             ,    run prop_concat2
             ,    run prop_any
