@@ -235,6 +235,8 @@ tests =
     , ("elemIndex",[F ({-# SCC "elemIndex" #-}FPS.elemIndex 'z' fps)])
 --                 ,F (elemIndex 'z' list)])
 
+    , ("elemIndexLast",[F ({-# SCC "elemIndexLast" #-}FPS.elemIndexLast 'z' fps)])
+
     , ("findIndex",[F ({-# SCC "findIndex" #-}FPS.findIndex (=='z') fps)])
 
     , ("elemIndices",[F ({-# SCC "elemIndicies" #-} FPS.elemIndices 'z' fps)])
