@@ -613,8 +613,8 @@ filterChar c ps@(PS x s l)
         go _ t 0 = return t
         go f t e = do w <- peek f
                       if w == cw
-                        then poke t w >> go (f `plusPtr` 1) (t `plusPtr` 1) (e - 1)
-                        else             go (f `plusPtr` 1) t               (e - 1)
+                        then poke t w >> go (f `plusPtr` 1) (t `plusPtr` 1) (e-1)
+                        else             go (f `plusPtr` 1) t               (e-1)
 
 --
 -- | /O(n)/ A first order equivalent of /filter . (/=)/, for the common
@@ -637,8 +637,8 @@ filterNotChar c ps@(PS x s l)
         go _ t 0 = return t
         go f t e = do w <- peek f
                       if w /= cw
-                        then poke t w >> go (f `plusPtr` 1) (t `plusPtr` 1) (e - 1)
-                        else             go (f `plusPtr` 1) t               (e - 1)
+                        then poke t w >> go (f `plusPtr` 1) (t `plusPtr` 1) (e-1)
+                        else             go (f `plusPtr` 1) t               (e-1)
 
 -- | /O(n)/ The 'find' function takes a predicate and a packed string
 -- and returns the first element in matching the predicate, or 'Nothing'
