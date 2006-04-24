@@ -180,7 +180,7 @@ module Data.ByteString (
         indexWord8,             -- :: ByteString -> Int -> Word8
         unsafeIndexWord8,       -- :: ByteString -> Int -> Word8
         elemIndexWord8,         -- :: Word8 -> ByteString -> Maybe Int
-        elemIndexLastWord8,     -- :: Char -> ByteString -> Maybe Int
+        elemIndexLastWord8,     -- :: Word8 -> ByteString -> Maybe Int
         readInt,                -- :: ByteString -> Maybe Int
         unsafeReadInt,          -- :: ByteString -> Maybe Int
 
@@ -1268,7 +1268,8 @@ firstspace ptr n m
                                                 else return n
 
 -- | 'spanEnd' behaves like 'span' but from the end of the
--- 'ByteString'. I.e.
+-- 'ByteString'. This is more efficient than, say, breakLast, if you
+-- need to break near the end of the string. I.e.
 --
 -- > spanEnd (not.isSpace) "x y z" == ("x y ","z")
 --
@@ -1401,6 +1402,8 @@ breakLast c p = case elemIndexLast c p of
 --
 -- > elemIndexLast c xs == 
 -- > (-) (length xs - 1) `fmap` elemIndex c (reverse xs)
+--
+-- elemIndexLast needs to 
 --
 elemIndexLast :: Char -> ByteString -> Maybe Int
 elemIndexLast c = elemIndexLastWord8 (c2w c)
@@ -1576,13 +1579,14 @@ elemIndexWord8 c (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
 -- element, or 'Nothing' if there is no such element.
 elemIndexLastWord8 :: Word8 -> ByteString -> Maybe Int
 elemIndexLastWord8 ch (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p ->
-        go (-1) (p `plusPtr` s) 0
-    where
-        -- todo: think about how this can be as efficient as elemIndex
-        STRICT3(go)
-        go h p i | i >= l    = return $ if h < 0 then Nothing else Just h
-                 | otherwise = do here <- peekByteOff p i
-                                  go (if ch == here then i else h) p (i+1)
+    go (p `plusPtr` s) (l-1)
+  where
+    STRICT2(go)
+    go p i | i < 0     = return Nothing
+           | otherwise = do ch' <- peekByteOff p i
+                            if ch == ch'
+                                then return $ Just i
+                                else go p (i-1)
 {-# INLINE elemIndexLastWord8 #-}
 
 -- | /O(1)/ Like 'index', but without any bounds checking.
