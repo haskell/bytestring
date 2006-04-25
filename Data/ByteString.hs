@@ -455,6 +455,7 @@ unpack (PS ps s l) = inlinePerformIO $ withForeignPtr ps $ \p ->
 ------------------------------------------------------------------------
 
 -- | /O(n)/ Convert a '[Word8]' into a 'ByteString' using some
+-- conversion function
 packWith :: (a -> Word8) -> [a] -> ByteString
 packWith k str = create (P.length str) $ \p -> go p str
     where
