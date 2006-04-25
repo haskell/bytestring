@@ -92,12 +92,12 @@ module Data.ByteString.Char (
         -- ** Searching by equality
         elem,                   -- :: Char -> ByteString -> Bool
         notElem,                -- :: Char -> ByteString -> Bool
+        filterChar,             -- :: Char -> ByteString -> ByteString
+        filterNotChar,          -- :: Char -> ByteString -> ByteString
 
         -- ** Searching with a predicate
         filter,                 -- :: (Char -> Bool) -> ByteString -> ByteString
         find,                   -- :: (Char -> Bool) -> ByteString -> Maybe Char
-        filterChar,             -- :: Char -> ByteString -> ByteString
-        filterNotChar,          -- :: Char -> ByteString -> ByteString
 
         -- * Zipping and unzipping ByteString
         zip,                    -- :: ByteString -> ByteString -> [(Char,Char)]

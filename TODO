@@ -4,3 +4,7 @@
 * check the append can't be improved with a direct memcpy
 
 * search backwards in isSuffixOf.
+
+* explcitly export all things from Data.ByteString.Char
+
+* move words/unwords/* into *.Char

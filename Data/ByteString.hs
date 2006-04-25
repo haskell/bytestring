@@ -145,12 +145,12 @@ module Data.ByteString (
         -- ** Searching by equality
         elem,                   -- :: Word8 -> ByteString -> Bool
         notElem,                -- :: Word8 -> ByteString -> Bool
+        filterByte,             -- :: Word8 -> ByteString -> ByteString
+        filterNotByte,          -- :: Word8 -> ByteString -> ByteString
 
         -- ** Searching with a predicate
         filter,                 -- :: (Word8 -> Bool) -> ByteString -> ByteString
         find,                   -- :: (Word8 -> Bool) -> ByteString -> Maybe Word8
-        filterByte,             -- :: Word8 -> ByteString -> ByteString
-        filterNotByte,          -- :: Word8 -> ByteString -> ByteString
 
         -- ** Searching for substrings
         isPrefixOf,             -- :: ByteString -> ByteString -> Bool
