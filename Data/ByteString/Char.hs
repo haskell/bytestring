@@ -10,7 +10,7 @@
 -- 
 
 --
--- Manipulate 'ByteString's using Char operations. All Chars will be
+-- | Manipulate 'ByteString's using Char operations. All Chars will be
 -- truncated to 8 bits. Operations on Chars will be marginally slower
 -- than the corresponding operations on Word8s alone.
 --
