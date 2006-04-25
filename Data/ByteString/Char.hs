@@ -134,6 +134,13 @@ import Data.ByteString (ByteString
                        ,words',unwords',lineIndices,betweenLines,join
                        ,sort,isPrefixOf,isSuffixOf,isSubstringOf,findSubstring
                        ,findSubstrings,unsafeTail,readInt,unsafeReadInt,copy
+
+                       ,getContents, putStr, putStrLn,
+                       ,readFile, mmapFile, writeFile,
+                       ,hGetContents, hGet, hPut, hGetNonBlocking,
+#if defined(__GLASGOW_HASKELL__)
+                       ,getLine, getArgs, hGetLine
+#endif
                        )
 
 import Data.Word
