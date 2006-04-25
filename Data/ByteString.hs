@@ -17,9 +17,7 @@
 -- | A time and space-efficient implementation of strings as packed byte
 -- arrays, suitable for high performance use, both in terms of large
 -- data quantities, or high speed requirements. Strings are encoded as
--- Word8 arrays of bytes, and functions on Chars are provided as a
--- convenience. At all times characters are assumed to be in ISO-8859-1
--- form.
+-- Word8 arrays of bytes.
 --
 -- This module is intended to be imported @qualified@, to avoid name
 -- clashes with Prelude functions.  eg.
