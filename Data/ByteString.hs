@@ -205,14 +205,18 @@ module Data.ByteString (
 
         -- * I\/O with @ByteString@s
 
+        -- ** Standard input and output
+
 #if defined(__GLASGOW_HASKELL__)
         getLine,                -- :: IO ByteString
 #endif
         getContents,            -- :: IO ByteString
-        readFile,               -- :: FilePath -> IO ByteString
-        mmapFile,               -- :: FilePath -> IO ByteString
         putStr,                 -- :: ByteString -> IO ()
         putStrLn,               -- :: ByteString -> IO ()
+
+        -- ** Files
+        readFile,               -- :: FilePath -> IO ByteString
+        mmapFile,               -- :: FilePath -> IO ByteString
         writeFile,              -- :: FilePath -> ByteString -> IO ()
 
         -- ** I\/O with Handles
@@ -1270,7 +1274,7 @@ filterByte ch ps@(PS x s l)
                         else             go (f `plusPtr` 1) t               (e-1)
 
 --
--- | /O(n)/ A first order equivalent of /filter . (/=)/, for the common
+-- | /O(n)/ A first order equivalent of /filter . (\/=)/, for the common
 -- case of filtering a single byte out of a list. It is more efficient
 -- to use /filterNotByte/ in this case.
 --

@@ -10,8 +10,8 @@ import Data.Maybe
 import Text.Printf
 import System.Environment
 
-import Data.PackedString.Latin1 (PackedString, pack , unpack)
-import qualified Data.PackedString.Latin1 as P
+import Data.ByteString.Char (ByteString, pack , unpack)
+import qualified Data.ByteString.Char as P
 
 import Data.ByteString (packAddress)
 
@@ -21,7 +21,7 @@ instance Arbitrary Char where
 -- arbitrary = choose (minBound, chr 0xff)
   coarbitrary c = variant (ord c `rem` 16)
 
-instance Arbitrary PackedString where
+instance Arbitrary ByteString where
   arbitrary = P.pack `fmap` arbitrary
   coarbitrary s = coarbitrary (P.unpack s)
 

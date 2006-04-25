@@ -7,7 +7,7 @@ Author:              Don Stewart
 Maintainer:          dons@cse.unsw.edu.au
 Build-Depends:       base, unix
 Exposed-modules:     Data.ByteString,
-                     Data.PackedString.Latin1
+                     Data.ByteString.Char
 extensions:          CPP, ForeignFunctionInterface
 ghc-options:         -Wall -DUSE_MMAP -DUSE_CBITS -Icbits
 c-sources:           cbits/fpstring.c
