@@ -1251,7 +1251,7 @@ find p ps = case filter p ps of
 --
 -- | /O(n)/ A first order equivalent of /filter . (==)/, for the common
 -- case of filtering a single byte. It is more efficient to use
--- /filterWord8/ in this case.
+-- /filterByte/ in this case.
 --
 -- > filterByte == filter . (==)
 --
