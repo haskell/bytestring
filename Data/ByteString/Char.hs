@@ -413,6 +413,7 @@ split c = B.split (c2w c)
 splitWith :: (Char -> Bool) -> ByteString -> [ByteString]
 splitWith f = B.splitWith (f . w2c)
 {-# INLINE splitWith #-}
+-- the inline makes a big difference here.
 
 -- | Like 'splitWith', except that sequences of adjacent separators are
 -- treated as a single separator. eg.
@@ -470,7 +471,6 @@ findIndex f = B.findIndex (f . w2c)
 -- indices of all elements satisfying the predicate, in ascending order.
 findIndices :: (Char -> Bool) -> ByteString -> [Int]
 findIndices f = B.findIndices (f . w2c)
-{-# INLINE findIndices #-}
 
 -- | /O(n)/ 'elem' is the 'ByteString' membership predicate. This
 -- implementation uses @memchr(3)@.
@@ -534,7 +534,6 @@ zip :: ByteString -> ByteString -> [(Char,Char)]
 zip ps qs
     | B.null ps || B.null qs = []
     | otherwise = (unsafeHead ps, unsafeHead qs) : zip (B.unsafeTail ps) (B.unsafeTail qs)
-{-# INLINE zip #-}
 
 -- | 'zipWith' generalises 'zip' by zipping with the function given as
 -- the first argument, instead of a tupling function.  For example,
@@ -542,7 +541,6 @@ zip ps qs
 -- of corresponding sums.
 zipWith :: (Char -> Char -> a) -> ByteString -> ByteString -> [a]
 zipWith f = B.zipWith (\c d -> f (w2c c) (w2c d))
-{-# INLINE zipWith #-}
 
 -- | 'unzip' transforms a list of pairs of Chars into a pair of
 -- ByteStrings. Note that this performs two 'pack' operations.
