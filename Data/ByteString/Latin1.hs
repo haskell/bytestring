@@ -1,4 +1,4 @@
-{-# OPTIONS -cpp -O -fglasgow-exts -funbox-strict-fields #-}
+{-# OPTIONS -cpp -O -optc-O2 -fglasgow-exts -funbox-strict-fields #-}
 --
 -- Module      : Data.ByteString.Char
 -- Copyright   : (c) Don Stewart 2006
@@ -10,21 +10,34 @@
 -- 
 
 --
--- | Manipulate 'ByteString's using Char operations. All Chars will be
--- truncated to 8 bits. Operations on Chars will be marginally slower
--- than the corresponding operations on Word8s alone.
+-- | Manipulate ByteStrings using Char operations. All Chars will be
+-- truncated to 8 bits.
+--
+-- More specifically these byte strings are taken to be in the
+-- subset of Unicode covered by code points 0-255. This covers
+-- Unicode Basic Latin, Latin-1 Supplement and C0+C1 Controls.
+-- 
+-- See: 
+--
+--  * <http://www.unicode.org/charts/>
+--
+--  * <http://www.unicode.org/charts/PDF/U0000.pdf>
+--
+--  * <http://www.unicode.org/charts/PDF/U0080.pdf>
 --
 -- This module is intended to be imported @qualified@, to avoid name
 -- clashes with Prelude functions.  eg.
 --
--- > import qualified Data.ByteString.Char as P
+-- > import qualified Data.ByteString.Latin1 as P
 --
 
-module Data.ByteString.Char (
+module Data.ByteString.Latin1 (
 
-        module Data.ByteString, -- All of the list interface
+        -- * The @ByteString@ type
+        ByteString(..),         -- instances: Eq, Ord, Show, Read, Data, Typeable
 
         -- * Introducing and eliminating 'ByteString's
+        empty,                  -- :: ByteString
         packChar,               -- :: Char   -> ByteString
         pack,                   -- :: String -> ByteString
         unpack,                 -- :: ByteString -> String
@@ -32,12 +45,24 @@ module Data.ByteString.Char (
         -- * Basic interface
         cons,                   -- :: Char -> ByteString -> ByteString
         snoc,                   -- :: Char -> ByteString -> ByteString
+        null,                   -- :: ByteString -> Bool
+        length,                 -- :: ByteString -> Int
         head,                   -- :: ByteString -> Char
+        tail,                   -- :: ByteString -> ByteString
         last,                   -- :: ByteString -> Char
+        init,                   -- :: ByteString -> ByteString
+        append,                 -- :: ByteString -> ByteString -> ByteString
+
+        -- * Special ByteStrings
+        inits,                  -- :: ByteString -> [ByteString]
+        tails,                  -- :: ByteString -> [ByteString]
+        elems,                  -- :: ByteString -> [ByteString]
 
         -- * Transformating ByteStrings
         map,                    -- :: (Char -> Char) -> ByteString -> ByteString
+        reverse,                -- :: ByteString -> ByteString
         intersperse,            -- :: Char -> ByteString -> ByteString
+        transpose,              -- :: [ByteString] -> [ByteString]
 
         -- * Reducing 'ByteString's
         foldl,                  -- :: (a -> Char -> a) -> a -> ByteString -> a
@@ -46,12 +71,14 @@ module Data.ByteString.Char (
         foldr1,                 -- :: (Char -> Char -> Char) -> ByteString -> Char
 
         -- ** Special folds
+        concat,                 -- :: [ByteString] -> ByteString
         concatMap,              -- :: (Char -> ByteString) -> ByteString -> ByteString
         any,                    -- :: (Char -> Bool) -> ByteString -> Bool
         all,                    -- :: (Char -> Bool) -> ByteString -> Bool
         maximum,                -- :: ByteString -> Char
         minimum,                -- :: ByteString -> Char
         mapIndexed,             -- :: (Int -> Char -> Char) -> ByteString -> ByteString
+        hash,                   -- :: ByteString -> Int32
 
         -- * Generating and unfolding ByteStrings
         replicate,              -- :: Int -> Char -> ByteString
@@ -60,6 +87,9 @@ module Data.ByteString.Char (
         -- * Substrings
 
         -- ** Breaking strings
+        take,                   -- :: Int -> ByteString -> ByteString
+        drop,                   -- :: Int -> ByteString -> ByteString
+        splitAt,                -- :: Int -> ByteString -> (ByteString, ByteString)
         takeWhile,              -- :: (Char -> Bool) -> ByteString -> ByteString
         dropWhile,              -- :: (Char -> Bool) -> ByteString -> ByteString
         break,                  -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
@@ -70,13 +100,33 @@ module Data.ByteString.Char (
         breakChar,              -- :: Char -> ByteString -> (ByteString, ByteString)
         breakFirst,             -- :: Char -> ByteString -> Maybe (ByteString,ByteString)
         breakLast,              -- :: Char -> ByteString -> Maybe (ByteString,ByteString)
+        breakSpace,             -- :: ByteString -> Maybe (ByteString,ByteString)
+        dropSpace,              -- :: ByteString -> ByteString
+        dropSpaceEnd,           -- :: ByteString -> ByteString
 
         -- ** Breaking into many substrings
         split,                  -- :: Char -> ByteString -> [ByteString]
         splitWith,              -- :: (Char -> Bool) -> ByteString -> [ByteString]
         tokens,                 -- :: (Char -> Bool) -> ByteString -> [ByteString]
 
+        -- ** Breaking into lines and words
+        lines,                  -- :: ByteString -> [ByteString]
+        words,                  -- :: ByteString -> [ByteString]
+        unlines,                -- :: [ByteString] -> ByteString
+        unwords,                -- :: ByteString -> [ByteString]
+
+        lines',                 -- :: ByteString -> [ByteString]
+        unlines',               -- :: [ByteString] -> ByteString
+        linesCRLF',             -- :: ByteString -> [ByteString]
+        unlinesCRLF',           -- :: [ByteString] -> ByteString
+        words',                 -- :: ByteString -> [ByteString]
+        unwords',               -- :: ByteString -> [ByteString]
+
+        lineIndices,            -- :: ByteString -> [Int]
+        betweenLines,           -- :: ByteString -> ByteString -> ByteString -> Maybe (ByteString)
+
         -- ** Joining strings
+        join,                   -- :: ByteString -> [ByteString] -> ByteString
         joinWithChar,           -- :: Char -> ByteString -> ByteString -> ByteString
 
         -- * Indexing ByteStrings
@@ -86,6 +136,9 @@ module Data.ByteString.Char (
         elemIndices,            -- :: Char -> ByteString -> [Int]
         findIndex,              -- :: (Char -> Bool) -> ByteString -> Maybe Int
         findIndices,            -- :: (Char -> Bool) -> ByteString -> [Int]
+
+        -- * Ordered ByteStrings
+        sort,                   -- :: ByteString -> ByteString
 
         -- * Searching ByteStrings
 
@@ -99,6 +152,13 @@ module Data.ByteString.Char (
         filter,                 -- :: (Char -> Bool) -> ByteString -> ByteString
         find,                   -- :: (Char -> Bool) -> ByteString -> Maybe Char
 
+        -- ** Searching for substrings
+        isPrefixOf,             -- :: ByteString -> ByteString -> Bool
+        isSuffixOf,             -- :: ByteString -> ByteString -> Bool
+        isSubstringOf,          -- :: ByteString -> ByteString -> Bool
+        findSubstring,          -- :: ByteString -> ByteString -> Maybe Int
+        findSubstrings,         -- :: ByteString -> ByteString -> [Int]
+
         -- * Zipping and unzipping ByteString
         zip,                    -- :: ByteString -> ByteString -> [(Char,Char)]
         zipWith,                -- :: (Char -> Char -> c) -> ByteString -> ByteString -> [c]
@@ -106,9 +166,43 @@ module Data.ByteString.Char (
 
         -- * Unchecked access
         unsafeHead,             -- :: ByteString -> Char
+        unsafeTail,             -- :: ByteString -> ByteString
         unsafeIndex,            -- :: ByteString -> Int -> Char
         w2c,                    -- :: Word8 -> Char
         c2w,                    -- :: Char  -> Word8
+
+        -- * Reading from ByteStrings
+        readInt,                -- :: ByteString -> Maybe Int
+        unsafeReadInt,          -- :: ByteString -> Maybe Int
+
+        -- * Copying ByteStrings
+        copy,                   -- :: ByteString -> ByteString
+
+        -- * I\/O with @ByteString@s
+
+        -- ** Standard input and output
+
+#if defined(__GLASGOW_HASKELL__)
+        getLine,                -- :: IO ByteString
+#endif
+        getContents,            -- :: IO ByteString
+        putStr,                 -- :: ByteString -> IO ()
+        putStrLn,               -- :: ByteString -> IO ()
+
+        -- ** Files
+        readFile,               -- :: FilePath -> IO ByteString
+        mmapFile,               -- :: FilePath -> IO ByteString
+        writeFile,              -- :: FilePath -> ByteString -> IO ()
+
+        -- ** I\/O with Handles
+#if defined(__GLASGOW_HASKELL__)
+        getArgs,                -- :: IO [ByteString]
+        hGetLine,               -- :: Handle -> IO ByteString
+#endif
+        hGetContents,           -- :: Handle -> IO ByteString
+        hGet,                   -- :: Handle -> Int -> IO ByteString
+        hPut,                   -- :: Handle -> ByteString -> IO ()
+        hGetNonBlocking,        -- :: Handle -> Int -> IO ByteString
 
     ) where
 
@@ -125,13 +219,10 @@ import Prelude hiding           (reverse,head,tail,last,init,null
 import qualified Data.ByteString as B
 
 -- Listy functions transparently exported
-import Data.ByteString (ByteString
+import Data.ByteString (ByteString(..)
                        ,empty,null,length,tail,init,append
                        ,inits,tails,elems,reverse,transpose
-                       ,concat,hash,take,drop,splitAt,breakSpace,
-                       ,dropSpace,dropSpaceEnd,lines,words,unlines
-                       ,unwords,lines',unlines',linesCRLF',unlinesCRLF'
-                       ,words',unwords',lineIndices,betweenLines,join
+                       ,concat,hash,take,drop,splitAt,join
                        ,sort,isPrefixOf,isSuffixOf,isSubstringOf,findSubstring
                        ,findSubstrings,unsafeTail,readInt,unsafeReadInt,copy
 
@@ -143,13 +234,18 @@ import Data.ByteString (ByteString
 #endif
                        )
 
-import Data.Word
-import Data.Char (ord)
+import Data.Char        (ord,isSpace)
+import qualified Data.List as List (intersperse)
+
+import Foreign
 
 #if defined(__GLASGOW_HASKELL__)
-import GHC.Base (unsafeChr,unpackCString#)
+import GHC.Base     (unsafeChr,unpackCString#)
+import GHC.IOBase   (IO(..))
+import GHC.Prim     (realWorld#)
 #endif
 
+#define STRICT2(f) f a b | a `seq` b `seq` False = undefined
 #define STRICT3(f) f a b c | a `seq` b `seq` c `seq` False = undefined
 
 ------------------------------------------------------------------------
@@ -577,3 +673,220 @@ w2c = unsafeChr . fromIntegral
 c2w :: Char -> Word8
 c2w = fromIntegral . ord
 {-# INLINE c2w #-}
+
+-- ---------------------------------------------------------------------
+-- Things that depend on the encoding
+
+-- | 'breakSpace' returns the pair of ByteStrings when the argument is
+-- broken at the first whitespace byte. I.e.
+-- 
+-- > break isSpace == breakSpace
+--
+breakSpace :: ByteString -> (ByteString,ByteString)
+breakSpace (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
+    i <- firstspace (p `plusPtr` s) 0 l
+    return $ case () of {_
+        | i == 0    -> (empty, PS x s l)
+        | i == l    -> (PS x s l, empty)
+        | otherwise -> (PS x s i, PS x (s+i) (l-i))
+    }
+{-# INLINE breakSpace #-}
+
+firstspace :: Ptr Word8 -> Int -> Int -> IO Int
+STRICT3(firstspace)
+firstspace ptr n m
+    | n >= m    = return n
+    | otherwise = do w <- peekByteOff ptr n
+                     if (not . isSpace . w2c) w then firstspace ptr (n+1) m
+                                                else return n
+
+-- | 'dropSpace' efficiently returns the 'ByteString' argument with
+-- white space bytes removed from the front. It is more efficient than
+-- calling dropWhile for removing whitespace. I.e.
+-- 
+-- > dropWhile isSpace == dropSpace
+--
+dropSpace :: ByteString -> ByteString
+dropSpace (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
+    i <- firstnonspace (p `plusPtr` s) 0 l
+    return $ if i == l then empty else PS x (s+i) (l-i)
+{-# INLINE dropSpace #-}
+
+firstnonspace :: Ptr Word8 -> Int -> Int -> IO Int
+STRICT3(firstnonspace)
+firstnonspace ptr n m
+    | n >= m    = return n
+    | otherwise = do w <- peekElemOff ptr n
+                     if (isSpace . w2c) w then firstnonspace ptr (n+1) m
+                                          else return n
+
+-- | 'dropSpaceEnd' efficiently returns the 'ByteString' argument with
+-- white space removed from the end. I.e.
+-- 
+-- > reverse . (dropWhile isSpace) . reverse == dropSpaceEnd
+--
+-- but it is more efficient than using multiple reverses.
+--
+dropSpaceEnd :: ByteString -> ByteString
+dropSpaceEnd (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
+    i <- lastnonspace (p `plusPtr` s) (l-1)
+    return $ if i == (-1) then empty else PS x s (i+1)
+{-# INLINE dropSpaceEnd #-}
+
+lastnonspace :: Ptr Word8 -> Int -> IO Int
+STRICT2(lastnonspace)
+lastnonspace ptr n
+    | n < 0     = return n
+    | otherwise = do w <- peekElemOff ptr n
+                     if (isSpace . w2c) w then lastnonspace ptr (n-1)
+                                          else return n
+
+-- | 'lines' breaks a ByteString up into a list of ByteStrings at
+-- newline bytes. The resulting strings do not contain newlines.
+lines :: ByteString -> [ByteString]
+lines ps
+    | null ps = []
+    | otherwise = case search ps of
+             Nothing -> [ps]
+             Just n  -> take n ps : lines (drop (n+1) ps)
+    where search = elemIndex '\n'
+{-# INLINE lines #-}
+
+{-
+-- Just as fast, but more complex. Should be much faster, I thought.
+lines :: ByteString -> [ByteString]
+lines (PS _ _ 0) = []
+lines (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
+        let ptr = p `plusPtr` s
+
+            STRICT1(loop)
+            loop n = do
+                let q = memchr (ptr `plusPtr` n) 0x0a (fromIntegral (l-n))
+                if q == nullPtr
+                    then return [PS x (s+n) (l-n)]
+                    else do let i = q `minusPtr` ptr
+                            ls <- loop (i+1)
+                            return $! PS x (s+n) (i-n) : ls
+        loop 0
+-}
+
+-- | 'unlines' is an inverse operation to 'lines'.  It joins lines,
+-- after appending a terminating newline to each.
+unlines :: [ByteString] -> ByteString
+unlines [] = empty
+unlines ss = (concat $ List.intersperse nl ss) `append` nl -- half as much space
+    where nl = packChar '\n'
+
+-- | 'words' breaks a ByteString up into a list of words, which
+-- were delimited by bytes representing white space. And
+--
+-- > tokens isSpace = words
+--
+words :: ByteString -> [ByteString]
+words = tokens isSpace
+
+-- | The 'unwords' function is analogous to the 'unlines' function, on words.
+unwords :: [ByteString] -> ByteString
+unwords = join (packChar ' ')
+
+-- | /O(n)/ Indicies of newlines. Shorthand for 
+--
+-- > elemIndices '\n'
+--
+lineIndices :: ByteString -> [Int]
+lineIndices = elemIndices '\n'
+
+-- | 'lines\'' behaves like 'lines', in that it breaks a ByteString on
+-- newline bytes. However, unlike the Prelude functions, 'lines\'' and
+-- 'unlines\'' correctly reconstruct lines that are missing terminating
+-- newlines characters. I.e.
+--
+-- > unlines  (lines "a\nb\nc")  == "a\nb\nc\n"
+-- > unlines' (lines' "a\nb\nc") == "a\nb\nc"
+--
+-- Note that this means:
+--
+-- > lines  "a\nb\nc\n" == ["a","b","c"]
+-- > lines' "a\nb\nc\n" == ["a","b","c",""]
+--
+lines' :: ByteString -> [ByteString]
+lines' ps = ps `seq` case elemIndex '\n' ps of
+     Nothing -> [ps]
+     Just n -> take n ps : lines' (drop (n+1) ps)
+
+-- | 'linesCRLF\'' behaves like 'lines\'', but breaks on (\\cr?\\lf)
+linesCRLF' :: ByteString -> [ByteString]
+linesCRLF' ps = ps `seq` case elemIndex '\n' ps of
+     Nothing -> [ps]
+     Just 0  -> empty : linesCRLF' (drop 1 ps)
+     Just n  -> let k = if ps `unsafeIndex` (n-1) == '\r' then n-1 else n
+                in take k ps : linesCRLF' (drop (n+1) ps)
+
+-- | 'unlines\'' behaves like 'unlines', except that it also correctly
+-- retores lines that do not have terminating newlines (see the
+-- description for 'lines\'').
+--
+unlines' :: [ByteString] -> ByteString
+unlines' ss = concat $ intersperse_newlines ss
+    where intersperse_newlines (a:b:s) = a:newline: intersperse_newlines (b:s)
+          intersperse_newlines s = s
+          newline = packChar '\n'
+
+-- | 'unlines\'' behaves like 'unlines', except that it also correctly
+-- retores lines that do not have terminating newlines (see the
+-- description for 'lines\''). Uses CRLF instead of LF.
+--
+unlinesCRLF' :: [ByteString] -> ByteString
+unlinesCRLF' ss = concat $ intersperse_newlines ss
+    where intersperse_newlines (a:b:s) = a:newline: intersperse_newlines (b:s)
+          intersperse_newlines s = s
+          newline = pack "\r\n"
+
+-- | 'words\'' behaves like 'words', with the exception that it produces
+-- output on ByteStrings with trailing whitespace that can be
+-- correctly inverted by 'unwords'. I.e.
+--
+-- > words  "a b c " == ["a","b","c"]
+-- > words' "a b c " == ["a","b","c",""]
+--
+-- > unwords $ words  "a b c " == "a b c"
+-- > unwords $ words' "a b c " == "a b c "
+--
+words' :: ByteString -> [ByteString]
+words' = splitWith isSpace
+
+-- | 'unwords\'' behaves like 'unwords'. It is provided for consistency
+-- with the other invertable words and lines functions.
+unwords' :: [ByteString] -> ByteString
+unwords' = unwords
+
+-- | 'betweenLines' returns the ByteString between the two lines given,
+-- or Nothing if they do not appear.  The returned string is the first
+-- and shortest string such that the line before it is the given first
+-- line, and the line after it is the given second line.
+betweenLines :: ByteString -- ^ First line to look for
+             -> ByteString -- ^ Second line to look for
+             -> ByteString -- ^ 'ByteString' to look in
+             -> Maybe (ByteString)
+
+betweenLines start end ps =
+    case P.break (start ==) (lines ps) of
+        (_, _:rest@(PS ps1 s1 _:_)) ->
+            case P.break (end ==) rest of
+                (_, PS _ s2 _:_) -> Just $ PS ps1 s1 (s2 - s1)
+                _ -> Nothing
+        _ -> Nothing
+
+-- ---------------------------------------------------------------------
+-- Internals
+
+-- Just like inlinePerformIO, but we inline it. Big performance gains as
+-- it exposes lots of things to further inlining
+--
+{-# INLINE inlinePerformIO #-}
+inlinePerformIO :: IO a -> a
+#if defined(__GLASGOW_HASKELL__)
+inlinePerformIO (IO m) = case m realWorld# of (# _, r #) -> r
+#else
+inlinePerformIO = unsafePerformIO
+#endif

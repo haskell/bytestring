@@ -1,4 +1,4 @@
-import Data.ByteString hiding (length)
+import Data.ByteString.Latin1 hiding (length)
 import Prelude hiding (getContents,lines)
 import System.IO (stdin)
 

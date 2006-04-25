@@ -10,8 +10,8 @@ import Data.Maybe
 import Text.Printf
 import System.Environment
 
-import Data.ByteString.Char (ByteString, pack , unpack)
-import qualified Data.ByteString.Char as P
+import Data.ByteString.Latin1 (ByteString, pack , unpack)
+import qualified Data.ByteString.Latin1 as P
 
 import Data.ByteString (packAddress)
 

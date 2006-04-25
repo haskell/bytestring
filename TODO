@@ -5,8 +5,10 @@
 
 * search backwards in isSuffixOf.
 
-* explcitly export all things from Data.ByteString.Char
-
-* move words/unwords/* into *.Char
-
 * make a blanket statement about the functions that use memchr
+
+* benchmark Word8 functions vs Char
+
+* port to hugs
+
+* pure Haskell readInt

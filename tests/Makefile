@@ -35,7 +35,7 @@ prof::
 .PHONY: wc
 wc: wc.o
 	@if [ ! -f "bigdata" ] ; then ln -s data bigdata ; fi
-	time ./wc < bigdata
+	/usr/bin/time ./wc < bigdata
     
 wc.o: wc.hs
 	ghc -O wc.hs -o wc -package fps

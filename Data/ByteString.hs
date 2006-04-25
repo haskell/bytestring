@@ -1,4 +1,4 @@
-{-# OPTIONS -cpp -fglasgow-exts -O -funbox-strict-fields #-}
+{-# OPTIONS -cpp -fglasgow-exts -O -optc-O2 -funbox-strict-fields #-}
 --
 -- Module      : ByteString
 -- Copyright   : (c) The University of Glasgow 2001,
@@ -14,10 +14,11 @@
 -- 
 
 --
--- | A time and space-efficient implementation of strings as packed byte
--- arrays, suitable for high performance use, both in terms of large
--- data quantities, or high speed requirements. Strings are encoded as
--- Word8 arrays of bytes.
+-- | A time and space-efficient implementation of byte vectors using
+-- packed Word8 arrays, suitable for high performance use, both in terms
+-- of large data quantities, or high speed requirements. Byte vectors
+-- are encoded as Word8 arrays of bytes, held in a ForeignPtr, and can
+-- be passed between C and Haskell with little effort.
 --
 -- This module is intended to be imported @qualified@, to avoid name
 -- clashes with Prelude functions.  eg.
@@ -100,30 +101,11 @@ module Data.ByteString (
         breakByte,              -- :: Word8 -> ByteString -> (ByteString, ByteString)
         breakFirst,             -- :: Word8 -> ByteString -> Maybe (ByteString,ByteString)
         breakLast,              -- :: Word8 -> ByteString -> Maybe (ByteString,ByteString)
-        breakSpace,             -- :: ByteString -> Maybe (ByteString,ByteString)
-        dropSpace,              -- :: ByteString -> ByteString
-        dropSpaceEnd,           -- :: ByteString -> ByteString
 
         -- ** Breaking into many substrings
         split,                  -- :: Word8 -> ByteString -> [ByteString]
         splitWith,              -- :: (Word8 -> Bool) -> ByteString -> [ByteString]
         tokens,                 -- :: (Word8 -> Bool) -> ByteString -> [ByteString]
-
-        -- ** Breaking into lines and words
-        lines,                  -- :: ByteString -> [ByteString]
-        words,                  -- :: ByteString -> [ByteString]
-        unlines,                -- :: [ByteString] -> ByteString
-        unwords,                -- :: ByteString -> [ByteString]
-
-        lines',                 -- :: ByteString -> [ByteString]
-        unlines',               -- :: [ByteString] -> ByteString
-        linesCRLF',             -- :: ByteString -> [ByteString]
-        unlinesCRLF',           -- :: [ByteString] -> ByteString
-        words',                 -- :: ByteString -> [ByteString]
-        unwords',               -- :: ByteString -> [ByteString]
-
-        lineIndices,            -- :: ByteString -> [Int]
-        betweenLines,           -- :: ByteString -> ByteString -> ByteString -> Maybe (ByteString)
 
         -- ** Joining strings
         join,                   -- :: ByteString -> [ByteString] -> ByteString
@@ -244,7 +226,7 @@ import Prelude hiding           (reverse,head,tail,last,init,null
 
 import qualified Data.List as List
 
-import Data.Char                (isSpace,ord)
+import Data.Char                (ord) -- just for the Show instance
 import Data.Word                (Word8)
 import Data.Int                 (Int32)
 import Data.Bits                (rotateL)
@@ -300,7 +282,7 @@ import GHC.IOBase
 
 -- -----------------------------------------------------------------------------
 
--- | A space-efficient representation of a 'String', which supports various
+-- | A space-efficient representation of a Word8 vector, supporting many
 -- efficient operations.  A 'ByteString' contains 8-bit characters only.
 --
 -- Instances of Eq, Ord, Read, Show, Data, Typeable
@@ -915,70 +897,6 @@ breakLast c p = case elemIndexLast c p of
     Just n -> Just (take n p, drop (n+1) p)
 {-# INLINE breakLast #-}
 
--- | 'breakSpace' returns the pair of ByteStrings when the argument is
--- broken at the first whitespace byte. I.e.
--- 
--- > break isSpace == breakSpace
---
-breakSpace :: ByteString -> (ByteString,ByteString)
-breakSpace (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
-    i <- firstspace (p `plusPtr` s) 0 l
-    return $ case () of {_
-        | i == 0    -> (empty, PS x s l)
-        | i == l    -> (PS x s l, empty)
-        | otherwise -> (PS x s i, PS x (s+i) (l-i))
-    }
-{-# INLINE breakSpace #-}
-
-firstspace :: Ptr Word8 -> Int -> Int -> IO Int
-STRICT3(firstspace)
-firstspace ptr n m
-    | n >= m    = return n
-    | otherwise = do w <- peekByteOff ptr n
-                     if (not . isSpace . w2c) w then firstspace ptr (n+1) m
-                                                else return n
-
--- | 'dropSpace' efficiently returns the 'ByteString' argument with
--- white space bytes removed from the front. It is more efficient than
--- calling dropWhile for removing whitespace. I.e.
--- 
--- > dropWhile isSpace == dropSpace
---
-dropSpace :: ByteString -> ByteString
-dropSpace (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
-    i <- firstnonspace (p `plusPtr` s) 0 l
-    return $ if i == l then empty else PS x (s+i) (l-i)
-{-# INLINE dropSpace #-}
-
-firstnonspace :: Ptr Word8 -> Int -> Int -> IO Int
-STRICT3(firstnonspace)
-firstnonspace ptr n m
-    | n >= m    = return n
-    | otherwise = do w <- peekElemOff ptr n
-                     if (isSpace . w2c) w then firstnonspace ptr (n+1) m
-                                          else return n
-
--- | 'dropSpaceEnd' efficiently returns the 'ByteString' argument with
--- white space removed from the end. I.e.
--- 
--- > reverse . (dropWhile isSpace) . reverse == dropSpaceEnd
---
--- but it is more efficient than using multiple reverses.
---
-dropSpaceEnd :: ByteString -> ByteString
-dropSpaceEnd (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
-    i <- lastnonspace (p `plusPtr` s) (l-1)
-    return $ if i == (-1) then empty else PS x s (i+1)
-{-# INLINE dropSpaceEnd #-}
-
-lastnonspace :: Ptr Word8 -> Int -> IO Int
-STRICT2(lastnonspace)
-lastnonspace ptr n
-    | n < 0     = return n
-    | otherwise = do w <- peekElemOff ptr n
-                     if (isSpace . w2c) w then lastnonspace ptr (n-1)
-                                          else return n
-
 -- | 'span' @p xs@ breaks the ByteString into two segments. It is
 -- equivalent to @('takeWhile' p xs, 'dropWhile' p xs)@
 span :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
@@ -1408,145 +1326,6 @@ elems :: ByteString -> [ByteString]
 elems (PS _ _ 0) = []
 elems (PS x s l) = (PS x s 1:elems (PS x (s+1) (l-1)))
 {-# INLINE elems #-}
-
--- ---------------------------------------------------------------------
--- Lines and words
-
--- | 'lines' breaks a ByteString up into a list of ByteStrings at
--- newline bytes. The resulting strings do not contain newlines.
-lines :: ByteString -> [ByteString]
-lines ps
-    | null ps = []
-    | otherwise = case search ps of
-             Nothing -> [ps]
-             Just n  -> take n ps : lines (drop (n+1) ps)
-    where search = elemIndex 0x0a
-{-# INLINE lines #-}
-
-{-
--- Just as fast, but more complex. Should be much faster, I thought.
-lines :: ByteString -> [ByteString]
-lines (PS _ _ 0) = []
-lines (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
-        let ptr = p `plusPtr` s
-
-            STRICT1(loop)
-            loop n = do
-                let q = memchr (ptr `plusPtr` n) 0x0a (fromIntegral (l-n))
-                if q == nullPtr
-                    then return [PS x (s+n) (l-n)]
-                    else do let i = q `minusPtr` ptr
-                            ls <- loop (i+1)
-                            return $! PS x (s+n) (i-n) : ls
-        loop 0
--}
-
--- | 'unlines' is an inverse operation to 'lines'.  It joins lines,
--- after appending a terminating newline to each.
-unlines :: [ByteString] -> ByteString
-unlines [] = empty
-unlines ss = (concat $ List.intersperse nl ss) `append` nl -- half as much space
-    where nl = packByte 0x0a
-
--- | 'words' breaks a ByteString up into a list of words, which
--- were delimited by bytes representing white space. And
---
--- > tokens isSpace = words
---
-words :: ByteString -> [ByteString]
-words = tokens (isSpace.w2c)
-
--- | The 'unwords' function is analogous to the 'unlines' function, on words.
-unwords :: [ByteString] -> ByteString
-unwords = join (packByte 32)
-
--- | /O(n)/ Indicies of newlines. Shorthand for 
---
--- > elemIndices 0x0a
---
-lineIndices :: ByteString -> [Int]
-lineIndices = elemIndices 0x0a
-
--- | 'lines\'' behaves like 'lines', in that it breaks a ByteString on
--- newline bytes. However, unlike the Prelude functions, 'lines\'' and
--- 'unlines\'' correctly reconstruct lines that are missing terminating
--- newlines characters. I.e.
---
--- > unlines  (lines "a\nb\nc")  == "a\nb\nc\n"
--- > unlines' (lines' "a\nb\nc") == "a\nb\nc"
---
--- Note that this means:
---
--- > lines  "a\nb\nc\n" == ["a","b","c"]
--- > lines' "a\nb\nc\n" == ["a","b","c",""]
---
-lines' :: ByteString -> [ByteString]
-lines' ps = ps `seq` case elemIndex 0x0a ps of
-     Nothing -> [ps]
-     Just n -> take n ps : lines' (drop (n+1) ps)
-
--- | 'linesCRLF\'' behaves like 'lines\'', but breaks on (\\cr?\\lf)
-linesCRLF' :: ByteString -> [ByteString]
-linesCRLF' ps = ps `seq` case elemIndex 0x0a ps of
-     Nothing -> [ps]
-     Just 0  -> empty : linesCRLF' (drop 1 ps)
-     Just n  -> let k = if ps `unsafeIndex` (n-1) == 0xD then n-1 else n
-                in take k ps : linesCRLF' (drop (n+1) ps)
-
--- | 'unlines\'' behaves like 'unlines', except that it also correctly
--- retores lines that do not have terminating newlines (see the
--- description for 'lines\'').
---
-unlines' :: [ByteString] -> ByteString
-unlines' ss = concat $ intersperse_newlines ss
-    where intersperse_newlines (a:b:s) = a:newline: intersperse_newlines (b:s)
-          intersperse_newlines s = s
-          newline = packByte 0x0a
-
--- | 'unlines\'' behaves like 'unlines', except that it also correctly
--- retores lines that do not have terminating newlines (see the
--- description for 'lines\''). Uses CRLF instead of LF.
---
-unlinesCRLF' :: [ByteString] -> ByteString
-unlinesCRLF' ss = concat $ intersperse_newlines ss
-    where intersperse_newlines (a:b:s) = a:newline: intersperse_newlines (b:s)
-          intersperse_newlines s = s
-          newline = pack [(fromIntegral. ord) '\r',(fromIntegral. ord) '\n']
-
--- | 'words\'' behaves like 'words', with the exception that it produces
--- output on ByteStrings with trailing whitespace that can be
--- correctly inverted by 'unwords'. I.e.
---
--- > words  "a b c " == ["a","b","c"]
--- > words' "a b c " == ["a","b","c",""]
---
--- > unwords $ words  "a b c " == "a b c"
--- > unwords $ words' "a b c " == "a b c "
---
-words' :: ByteString -> [ByteString]
-words' = splitWith (isSpace.w2c)
-
--- | 'unwords\'' behaves like 'unwords'. It is provided for consistency
--- with the other invertable words and lines functions.
-unwords' :: [ByteString] -> ByteString
-unwords' = unwords
-
--- | 'betweenLines' returns the ByteString between the two lines given,
--- or Nothing if they do not appear.  The returned string is the first
--- and shortest string such that the line before it is the given first
--- line, and the line after it is the given second line.
-betweenLines :: ByteString -- ^ First line to look for
-             -> ByteString -- ^ Second line to look for
-             -> ByteString -- ^ 'ByteString' to look in
-             -> Maybe (ByteString)
-
-betweenLines start end ps =
-    case P.break (start ==) (lines ps) of
-        (_, _:rest@(PS ps1 s1 _:_)) ->
-            case P.break (end ==) rest of
-                (_, PS _ s2 _:_) -> Just $ PS ps1 s1 (s2 - s1)
-                _ -> Nothing
-        _ -> Nothing
 
 -- ---------------------------------------------------------------------
 -- ** Ordered 'ByteString's
@@ -2056,17 +1835,6 @@ create l write_ptr = inlinePerformIO $ do
     return $ PS fp 0 l
 {-# INLINE create #-}
 
--- Just like inlinePerformIO, but we inline it. Big performance gains as
--- it exposes lots of things to further inlining
---
-{-# INLINE inlinePerformIO #-}
-inlinePerformIO :: IO a -> a
-#if defined(__GLASGOW_HASKELL__)
-inlinePerformIO (IO m) = case m realWorld# of (# _, r #) -> r
-#else
-inlinePerformIO = unsafePerformIO
-#endif
-
 -- | Perform an operation with a temporary ByteString
 withPtr :: ForeignPtr a -> (Ptr a -> IO b) -> b
 withPtr fp io = inlinePerformIO (withForeignPtr fp io)
@@ -2095,6 +1863,17 @@ findFromEndUntil f ps@(PS x s l) =
     if null ps then 0
     else if f (last ps) then l
          else findFromEndUntil f (PS x s (l-1))
+
+-- Just like inlinePerformIO, but we inline it. Big performance gains as
+-- it exposes lots of things to further inlining
+--
+{-# INLINE inlinePerformIO #-}
+inlinePerformIO :: IO a -> a
+#if defined(__GLASGOW_HASKELL__)
+inlinePerformIO (IO m) = case m realWorld# of (# _, r #) -> r
+#else
+inlinePerformIO = unsafePerformIO
+#endif
 
 -- ---------------------------------------------------------------------
 -- 
