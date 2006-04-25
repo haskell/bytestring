@@ -8,8 +8,8 @@ import Data.Char
 import Data.List
 import Data.Maybe
 
-import Data.ByteString (pack,unpack,mmapFile)
-import qualified Data.ByteString as P
+import Data.PackedString.Latin1 (pack,unpack,mmapFile)
+import qualified Data.PackedString.Latin1 as P
 
 import TestFramework
 import Language.Haskell.TH
@@ -63,8 +63,10 @@ $(tests "fps" [d|
                      assertEqual (null str)   (P.null pstr)
     test_length = assertEqual (length str)    (P.length pstr)
     test_append = assertEqual (str ++ str)    (unpack $ pstr `P.append` pstr)
+
     test_map    = do assertEqual (map toUpper str) (unpack $ P.map toUpper pstr)
                      assertEqual (map toUpper []) (unpack $ P.map toUpper P.empty)
+
     test_filter = do assertEqual (filter (=='X') str) (unpack (P.filter (=='X') pstr))
 
     test_foldl  = assertEqual (foldl (\x c -> if c == 'a' then x + 1 else x)  0 str)

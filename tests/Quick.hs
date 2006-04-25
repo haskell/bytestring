@@ -10,8 +10,10 @@ import Data.Maybe
 import Text.Printf
 import System.Environment
 
-import Data.ByteString (ByteString, pack , unpack)
-import qualified Data.ByteString as P
+import Data.PackedString.Latin1 (PackedString, pack , unpack)
+import qualified Data.PackedString.Latin1 as P
+
+import Data.ByteString (packAddress)
 
 instance Arbitrary Char where
   arbitrary = oneof $ map return
@@ -19,7 +21,7 @@ instance Arbitrary Char where
 -- arbitrary = choose (minBound, chr 0xff)
   coarbitrary c = variant (ord c `rem` 16)
 
-instance Arbitrary ByteString where
+instance Arbitrary PackedString where
   arbitrary = P.pack `fmap` arbitrary
   coarbitrary s = coarbitrary (P.unpack s)
 
@@ -162,21 +164,21 @@ prop_foldl1 xs = ((foldl (\x c -> if c == 'a' then x else c:x) [] xs)) ==
 
 prop_foldl2 xs = P.foldl (\xs c -> c `P.cons` xs) P.empty (pack xs) == P.reverse (pack xs)
 
-prop_foldl11 xs =
-    (not (null xs)) ==>
-    (P.foldl1 (\x y -> chr $ ord x + ord y)   (pack xs)) ==
-    (P.foldl  (\x y -> chr $ ord x + ord y) '\0' (pack xs))
-
 prop_foldr1 xs = ((foldr (\c x -> if c == 'a' then x else c:x) [] xs)) ==
                 (unpack $ P.foldr (\c x -> if c == 'a' then x else c `P.cons` x)
                     P.empty (pack xs))
 
 prop_foldr2 xs = P.foldr (\c xs -> c `P.cons` xs) P.empty (pack xs) == (pack xs)
 
-prop_foldr11 xs =
-    (not (null xs)) ==>
-    (P.foldr1 (\x y -> chr $ ord x + ord y) (pack xs)) ==
-    (P.foldr  (\x y -> chr $ ord x + ord y) '\0' (pack xs))
+prop_foldl1_1 xs =
+    (not . P.null) xs ==>
+    P.foldl1 (\x c -> if c > x then c else x)      xs ==
+    P.foldl  (\x c -> if c > x then c else x) '\0' xs
+
+prop_foldr1_1 xs =
+    (not . P.null) xs ==>
+    P.foldr1 (\c x -> if c > x then c else x)      xs ==
+    P.foldr  (\c x -> if c > x then c else x) '\0' xs
 
 prop_takeWhile xs = (takeWhile (/= 'X') xs) == (unpack . (P.takeWhile (/= 'X')) . pack) xs
 
@@ -209,7 +211,6 @@ prop_concat2 xs = (concat [xs,[]]) == (unpack $ P.concat [pack xs, pack []])
 
 prop_any xs = (any (== 'X') xs) == (P.any (== 'X') (pack xs))
 prop_all xs = (all (== 'X') xs) == (P.all (== 'X') (pack xs))
-
 
 prop_lines xs = (lines xs) == ((map unpack) . P.lines . pack) xs
 
@@ -275,9 +276,9 @@ prop_spanEnd xs =
         (P.spanEnd (not . isSpace) (pack xs)) ==
         (let (x,y) = P.span (not.isSpace) (P.reverse (pack xs)) in (P.reverse y,P.reverse x))
 
-prop_breakOn c xs =
+prop_breakChar c xs =
         (break (==c) xs) ==
-        (let (x,y) = P.breakOn c (pack xs) in (unpack x, unpack y))
+        (let (x,y) = P.breakChar c (pack xs) in (unpack x, unpack y))
 
 prop_breakFirst c xs = (let (x,y) = break (==c) xs
                         in if null y then Nothing
@@ -294,10 +295,10 @@ prop_words' xs = (unpack . P.unwords  . P.words' . pack) xs ==
 prop_lines' xs = (unpack . P.unlines' . P.lines' . pack) xs == (xs)
 
 prop_unfoldr c =
-    (P.unfoldr 100 (\x -> Just (x, chr (ord x + 1))) c) ==
+    (P.unfoldrN 100 (\x -> Just (x, chr (ord x + 1))) c) ==
     (pack $ take 100 $ unfoldr (\x -> Just (x, chr (ord x + 1))) c)
 
-prop_addr = let s = "my\nstring\nhaskell"# in P.length (P.packAddress s) == 17
+prop_addr = let s = "my\nstring\nhaskell"# in P.length (packAddress s) == 17
 
 prop_prefix xs ys = isPrefixOf xs ys == (P.pack xs `P.isPrefixOf` P.pack ys)
 prop_suffix xs ys = isSuffixOf xs ys == (P.pack xs `P.isSuffixOf` P.pack ys)
@@ -323,7 +324,7 @@ prop_replicate1 n c =
 
 prop_replicate2 n c =
     (n >= 0) ==>
-    P.replicate n c == P.unfoldr n (\u -> Just (u,u)) c
+    P.replicate n c == P.unfoldrN n (\u -> Just (u,u)) c
 
 prop_replicate3 c = unpack (P.replicate 0 c) == replicate 0 c
 
@@ -339,7 +340,7 @@ prop_filterChar2 c xs = (P.filter (==c) (P.pack xs)) == (P.filterChar c (P.pack 
 prop_filterNotChar1 c xs = (filter (/=c) xs) == ((P.unpack . P.filterNotChar c . P.pack) xs)
 prop_filterNotChar2 c xs = (P.filter (/=c) (P.pack xs)) == (P.filterNotChar c (P.pack xs))
 
-prop_joinjoinpath xs ys = P.join2 ' ' xs ys == P.join (P.packChar ' ') [xs,ys]
+prop_joinjoinpath xs ys = P.joinWithChar ' ' xs ys == P.join (P.packChar ' ') [xs,ys]
 
 prop_zip  xs ys = zip xs ys == P.zip (pack xs) (pack ys)
 prop_zip1 xs ys = P.zip xs ys == zip (P.unpack xs) (P.unpack ys)
@@ -362,7 +363,8 @@ main = do
                            r = drop n xs
                        in breakUp n r (h:acc)
 
-    tests = [    run prop_eq1
+    tests = [
+                 run prop_eq1
             ,    run prop_compare1
             ,    run prop_compare2
             ,    run prop_compare3
@@ -387,9 +389,7 @@ main = do
             ,    run prop_foldl2
             ,    run prop_foldr1
             ,    run prop_foldr2
-
-            ,    run prop_foldl11
-            ,    run prop_foldr11
+            ,    run prop_all
             ,    run prop_take
             ,    run prop_drop
             ,    run prop_takeWhile
@@ -403,7 +403,6 @@ main = do
             ,    run prop_concat1
             ,    run prop_concat2
             ,    run prop_any
-            ,    run prop_all
             ,    run prop_lines
             ,    run prop_unlines
             ,    run prop_words
@@ -424,7 +423,7 @@ main = do
             ,    run prop_intersperse
             ,    run prop_maximum
             ,    run prop_minimum
-            ,    run prop_breakOn
+            ,    run prop_breakChar
             ,    run prop_breakSpace
             ,    run prop_dropSpace
             ,    run prop_spanEnd

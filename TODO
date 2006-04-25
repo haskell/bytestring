@@ -1,3 +1,6 @@
 
 * remove Posix dependency for mmap.
 
+* check the append can't be improved with a direct memcpy
+
+* search backwards in isSuffixOf.

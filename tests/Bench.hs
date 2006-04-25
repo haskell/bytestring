@@ -6,7 +6,7 @@
 -- space and time.
 --
 
-import qualified Data.ByteString as FPS
+import qualified Data.PackedString.Latin1 as FPS
 -- import qualified Data.PackedString     as PS
 -- import qualified SimonPackedString     as SPS
 import Data.List
@@ -249,14 +249,14 @@ tests =
 ------------------------------------------------------------------------
 
     , ("lineIndices",[F ({-# SCC "lineIndicies" #-} FPS.lineIndices fps)])
-    , ("breakOn",[F ({-# SCC "breakOn" #-} FPS.breakOn 'z' fps)])
+    , ("breakChar",[F ({-# SCC "breakOn" #-} FPS.breakChar 'z' fps)])
     , ("breakSpace",[F ({-# SCC "breakSpace" #-} FPS.breakSpace fps)])
     , ("splitWith",[F ({-# SCC "splitWith" #-} FPS.splitWith (=='z') fps)])
 
     , ("dropSpace",[F ({-# SCC "dropSpace" #-} FPS.dropSpace fps)])
     , ("dropSpaceEnd",[F ({-# SCC "dropSpaceEnd" #-} FPS.dropSpaceEnd fps)])
 
-    , ("join2",[F ({-# SCC "join2" #-} FPS.join2 ' ' fps fps')])
+    , ("joinWithChar",[F ({-# SCC "joinWithChar" #-} FPS.joinWithChar ' ' fps fps')])
     , ("join /",[F ({-# SCC "join" #-} FPS.join (FPS.packChar ' ') [fps,fps'])])
 
     , ("zip",[F ({-# SCC "zip" #-} FPS.zip fps fps)])
@@ -281,7 +281,7 @@ class Forceable a where
     force :: a -> IO Result
     force v = v `seq` return T
 
-instance Forceable FPS.ByteString where
+instance Forceable FPS.PackedString where
     force v = FPS.length v `seq` return T
 
 -- instance Forceable SPS.PackedString where
@@ -313,11 +313,11 @@ instance Forceable () where force () = return B
 -- some large strings to play with
 --
 
-fps :: FPS.ByteString
+fps :: FPS.PackedString
 fps = unsafePerformIO $ FPS.mmapFile dict
 {-# NOINLINE fps #-}
 
-fps' :: FPS.ByteString
+fps' :: FPS.PackedString
 fps' = unsafePerformIO $ FPS.mmapFile dict'
 {-# NOINLINE fps' #-}
 

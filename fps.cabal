@@ -1,13 +1,13 @@
 Name:                fps
 Version:             0.4
-Description:         Fast, packed, latin-1 strings
+Description:         Fast, packed byte arrays with string-like operations
 License:             BSD3
 License-file:        LICENSE
 Author:              Don Stewart
 Maintainer:          dons@cse.unsw.edu.au
 Build-Depends:       base
 Exposed-modules:     Data.ByteString,
-                     Data.FastPackedString
+                     Data.PackedString.Latin1
 extensions:          CPP, ForeignFunctionInterface
 ghc-options:         -Wall -DUSE_CBITS -Icbits
 c-sources:           cbits/fpstring.c
