@@ -255,7 +255,7 @@ maximum :: ByteString -> Char
 maximum = w2c . B.maximum
 {-# INLINE maximum #-}
 
--- | 'minimum' returns the maximum value from a 'ByteString'
+-- | 'minimum' returns the minimum value from a 'ByteString'
 minimum :: ByteString -> Char
 minimum = w2c . B.minimum
 {-# INLINE minimum #-}

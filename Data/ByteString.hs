@@ -692,17 +692,19 @@ all f (PS x s l) = inlinePerformIO $ withForeignPtr x $ \ptr ->
                                     then go (p `plusPtr` 1) q
                                     else return False
 
+-- | /O(n)/ 'maximum' returns the maximum value from a 'ByteString'
+maximum :: ByteString -> Word8
+
+-- | /O(n)/ 'minimum' returns the minimum value from a 'ByteString'
+minimum :: ByteString -> Word8
+
 #if defined(USE_CBITS)
 
--- | 'maximum' returns the maximum value from a 'ByteString'
-maximum :: ByteString -> Word8
 maximum xs@(PS x s l)
     | null xs   = errorEmptyList "maximum"
     | otherwise = inlinePerformIO $ withForeignPtr x $ \p ->
                     return $ c_maximum (p `plusPtr` s) l
 
--- | 'minimum' returns the maximum value from a 'ByteString'
-minimum :: ByteString -> Word8
 minimum xs@(PS x s l)
     | null xs   = errorEmptyList "minimum"
     | otherwise = inlinePerformIO $ withForeignPtr x $ \p ->
@@ -710,7 +712,6 @@ minimum xs@(PS x s l)
 
 #else
 
--- | 'maximum' returns the maximum value from a 'ByteString'
 maximum xs@(PS x s l)
     | null xs   = errorEmptyList "maximum"
     | otherwise = inlinePerformIO $ withForeignPtr x $ \p -> do
@@ -725,8 +726,6 @@ maximum_ ptr n m c
     | otherwise = do w <- peekByteOff ptr n
                      maximum_ ptr (n+1) m (if w > c then w else c)
 
--- | 'minimum' returns the maximum value from a 'ByteString'
-minimum :: ByteString -> Word8
 minimum xs@(PS x s l)
     | null xs   = errorEmptyList "minimum"
     | otherwise = inlinePerformIO $ withForeignPtr x $ \p -> do
