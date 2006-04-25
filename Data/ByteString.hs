@@ -159,7 +159,7 @@ module Data.ByteString (
         findSubstring,          -- :: ByteString -> ByteString -> Maybe Int
         findSubstrings,         -- :: ByteString -> ByteString -> [Int]
 
-        -- * Zipping and unzipping ByteString
+        -- * Zipping and unzipping ByteStrings
         zip,                    -- :: ByteString -> ByteString -> [(Word8,Word8)]
         zipWith,                -- :: (Word8 -> Word8 -> c) -> ByteString -> ByteString -> [c]
         unzip,                  -- :: [(Word8,Word8)] -> (ByteString,ByteString)
