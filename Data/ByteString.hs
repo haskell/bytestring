@@ -380,7 +380,7 @@ empty :: ByteString
 empty = inlinePerformIO $ mallocByteString 1 >>= \fp -> return $ PS fp 0 0
 {-# NOINLINE empty #-}
 
--- | /O(n)/ Convert a 'Word8' into a 'ByteString'
+-- | /O(1)/ Convert a 'Word8' into a 'ByteString'
 packByte :: Word8 -> ByteString
 packByte c = inlinePerformIO $ mallocByteString 2 >>= \fp -> do
     withForeignPtr fp $ \p -> poke p c

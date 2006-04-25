@@ -95,7 +95,7 @@ module Data.ByteString.Char (
 
         -- ** Searching with a predicate
         filter,                 -- :: (Char -> Bool) -> ByteString -> ByteString
-        find,                   -- :: (Char -> Bool) -> ByteString -> Maybe Word8
+        find,                   -- :: (Char -> Bool) -> ByteString -> Maybe Char
         filterChar,             -- :: Char -> ByteString -> ByteString
         filterNotChar,          -- :: Char -> ByteString -> ByteString
 
@@ -147,7 +147,7 @@ import GHC.Base (unsafeChr,unpackCString#)
 
 ------------------------------------------------------------------------
 
--- | /O(n)/ Convert a 'Word8' into a 'ByteString'
+-- | /O(1)/ Convert a 'Char' into a 'ByteString'
 packChar :: Char -> ByteString
 packChar = B.packByte . c2w
 
@@ -160,7 +160,7 @@ pack = B.packWith c2w
                    pack (unpackCString# s#) = B.packAddress s#
  #-}
 
--- | /O(n)/ Converts a 'ByteString' to a '[Word8]'.
+-- | /O(n)/ Converts a 'ByteString' to a 'String'.
 unpack :: ByteString -> [Char]
 unpack = B.unpackWith w2c
 
