@@ -523,6 +523,16 @@ init (PS p s l)
 
 -- | /O(n)/ Append two ByteStrings
 append :: ByteString -> ByteString -> ByteString
+append xs ys | null xs   = ys
+             | null ys   = xs
+             | otherwise = concat [xs,ys]
+{-# INLINE append #-}
+
+{-
+--
+-- About 30% faster, but allocating in a big chunk isn't good for memory use
+--
+append :: ByteString -> ByteString -> ByteString
 append xs@(PS ffp s l) ys@(PS fgp t m)
     | null xs   = ys
     | null ys   = xs
@@ -532,14 +542,6 @@ append xs@(PS ffp s l) ys@(PS fgp t m)
             memcpy ptr               (fp `plusPtr` s) l
             memcpy (ptr `plusPtr` l) (gp `plusPtr` t) m
         where len = length xs + length ys
-{-# INLINE append #-}
-
-{-
--- about 30% slower 
-append :: ByteString -> ByteString -> ByteString
-append xs ys | null xs   = ys
-             | null ys   = xs
-             | otherwise = concat [xs,ys]  -- todo, try a direct memcpy
 -}
 
 -- ---------------------------------------------------------------------
