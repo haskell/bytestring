@@ -1001,7 +1001,7 @@ split w (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
                 then return [PS x (s+n) (l-n)]
                 else do let i = q `minusPtr` ptr
                         ls <- loop (i+1)
-                        return $ PS x (s+n) (i-n) : ls
+                        return $! PS x (s+n) (i-n) : ls
     loop 0
 {-# INLINE split #-}
 
