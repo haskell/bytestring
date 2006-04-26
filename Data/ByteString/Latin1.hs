@@ -97,7 +97,7 @@ module Data.ByteString.Latin1 (
         span,                   -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
         spanEnd,                -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
 
-        -- ** Breaking and dropping on specific bytes
+        -- ** Breaking and dropping on specific Chars
         breakChar,              -- :: Char -> ByteString -> (ByteString, ByteString)
         breakFirst,             -- :: Char -> ByteString -> Maybe (ByteString,ByteString)
         breakLast,              -- :: Char -> ByteString -> Maybe (ByteString,ByteString)
@@ -665,7 +665,7 @@ unsafeIndex :: ByteString -> Int -> Char
 unsafeIndex p i = w2c (B.unsafeIndex p i)
 {-# INLINE unsafeIndex #-}
 
--- | Conversion between 'Word8' and 'Char'
+-- Conversion between 'Word8' and 'Char'. A no-op.
 w2c :: Word8 -> Char
 #if !defined(__GLASGOW_HASKELL__)
 w2c = chr . fromIntegral
@@ -674,7 +674,9 @@ w2c = unsafeChr . fromIntegral
 #endif
 {-# INLINE w2c #-}
 
--- | Conversion between 'Word8' and 'Char'
+-- Unsafe conversion between 'Char' and 'Word8'. This is a no-op and
+-- silently truncates to 8 bits Chars > '\255'. It is provided as
+-- convenience for ByteString construction.
 c2w :: Char -> Word8
 c2w = fromIntegral . ord
 {-# INLINE c2w #-}
@@ -706,7 +708,7 @@ firstspace ptr n m
                                                 else return n
 
 -- | 'dropSpace' efficiently returns the 'ByteString' argument with
--- white space bytes removed from the front. It is more efficient than
+-- white space Chars removed from the front. It is more efficient than
 -- calling dropWhile for removing whitespace. I.e.
 -- 
 -- > dropWhile isSpace == dropSpace
@@ -747,7 +749,7 @@ lastnonspace ptr n
                                           else return n
 
 -- | 'lines' breaks a ByteString up into a list of ByteStrings at
--- newline bytes. The resulting strings do not contain newlines.
+-- newline Chars. The resulting strings do not contain newlines.
 lines :: ByteString -> [ByteString]
 lines ps
     | null ps = []
@@ -783,7 +785,7 @@ unlines ss = (concat $ List.intersperse nl ss) `append` nl -- half as much space
     where nl = packChar '\n'
 
 -- | 'words' breaks a ByteString up into a list of words, which
--- were delimited by bytes representing white space. And
+-- were delimited by Chars representing white space. And
 --
 -- > tokens isSpace = words
 --
@@ -802,7 +804,7 @@ lineIndices :: ByteString -> [Int]
 lineIndices = elemIndices '\n'
 
 -- | 'lines\'' behaves like 'lines', in that it breaks a ByteString on
--- newline bytes. However, unlike the Prelude functions, 'lines\'' and
+-- newline Chars. However, unlike the Prelude functions, 'lines\'' and
 -- 'unlines\'' correctly reconstruct lines that are missing terminating
 -- newlines characters. I.e.
 --
