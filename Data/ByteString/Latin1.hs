@@ -665,7 +665,7 @@ unsafeIndex :: ByteString -> Int -> Char
 unsafeIndex p i = w2c (B.unsafeIndex p i)
 {-# INLINE unsafeIndex #-}
 
--- Conversion between 'Word8' and 'Char'. A no-op.
+-- | Conversion between 'Word8' and 'Char'. A no-op.
 w2c :: Word8 -> Char
 #if !defined(__GLASGOW_HASKELL__)
 w2c = chr . fromIntegral
@@ -674,7 +674,7 @@ w2c = unsafeChr . fromIntegral
 #endif
 {-# INLINE w2c #-}
 
--- Unsafe conversion between 'Char' and 'Word8'. This is a no-op and
+-- | Unsafe conversion between 'Char' and 'Word8'. This is a no-op and
 -- silently truncates to 8 bits Chars > '\255'. It is provided as
 -- convenience for ByteString construction.
 c2w :: Char -> Word8
