@@ -11,7 +11,8 @@
 
 --
 -- | Manipulate ByteStrings using Char operations. All Chars will be
--- truncated to 8 bits.
+-- truncated to 8 bits. It can be expected that these functions will run
+-- at identical speeds to their Word8 equivalents in @Data.ByteString@.
 --
 -- More specifically these byte strings are taken to be in the
 -- subset of Unicode covered by code points 0-255. This covers
@@ -28,7 +29,7 @@
 -- This module is intended to be imported @qualified@, to avoid name
 -- clashes with Prelude functions.  eg.
 --
--- > import qualified Data.ByteString.Latin1 as P
+-- > import qualified Data.ByteString.Latin1 as B
 --
 
 module Data.ByteString.Latin1 (
@@ -279,7 +280,8 @@ cons :: Char -> ByteString -> ByteString
 cons c p = B.cons (c2w c) p
 {-# INLINE cons #-}
 
--- | /O(n)/ Append a Char to the end of a 'ByteString'
+-- | /O(n)/ Append a Char to the end of a 'ByteString'. Similar to
+-- 'cons', this function performs a memcpy.
 snoc :: ByteString -> Char -> ByteString
 snoc p c = B.snoc p (c2w c)
 {-# INLINE snoc #-}
@@ -289,7 +291,7 @@ head :: ByteString -> Char
 head = w2c . B.head
 {-# INLINE head #-}
 
--- | /O(1)/ Extract the last element of a packed string, which must be finite and non-empty.
+-- | /O(1)/ Extract the last element of a packed string, which must be non-empty.
 last :: ByteString -> Char
 last = w2c . B.last
 {-# INLINE last #-}

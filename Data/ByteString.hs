@@ -443,7 +443,7 @@ unpack (PS ps s l) = inlinePerformIO $ withForeignPtr ps $ \p ->
 
 ------------------------------------------------------------------------
 
--- | /O(n)/ Convert a '[Word8]' into a 'ByteString' using some
+-- | /O(n)/ Convert a '[a]' into a 'ByteString' using some
 -- conversion function
 packWith :: (a -> Word8) -> [a] -> ByteString
 packWith k str = create (P.length str) $ \p -> go p str
@@ -591,8 +591,8 @@ intersperse c ps@(PS x s l)
 intersperse c = pack . List.intersperse c . unpack
 #endif
 
--- | /O(n^2)/ The 'transpose' function transposes the rows and columns
--- of its 'ByteString' argument.
+-- | The 'transpose' function transposes the rows and columns of its
+-- 'ByteString' argument.
 transpose :: [ByteString] -> [ByteString]
 transpose ps = P.map pack (List.transpose (P.map unpack ps))
 
@@ -670,8 +670,8 @@ concat xs     = inlinePerformIO $ do
 concatMap :: (Word8 -> ByteString) -> ByteString -> ByteString
 concatMap f = foldr (append . f) empty
 
--- | Applied to a predicate and a ByteString, 'any' determines if any
--- element of the 'ByteString' satisfies the predicate.
+-- | /O(n)/ Applied to a predicate and a ByteString, 'any' determines if
+-- any element of the 'ByteString' satisfies the predicate.
 any :: (Word8 -> Bool) -> ByteString -> Bool
 any _ (PS _ _ 0) = False
 any f (PS x s l) = inlinePerformIO $ withForeignPtr x $ \ptr ->
@@ -683,8 +683,8 @@ any f (PS x s l) = inlinePerformIO $ withForeignPtr x $ \ptr ->
                                 if f c then return True
                                        else go (p `plusPtr` 1) q
 
--- | Applied to a predicate and a 'ByteString', 'all' determines if
--- all elements of the 'ByteString' satisfy the predicate.
+-- | /O(n)/ Applied to a predicate and a 'ByteString', 'all' determines
+-- if all elements of the 'ByteString' satisfy the predicate.
 all :: (Word8 -> Bool) -> ByteString -> Bool
 all _ (PS _ _ 0) = True
 all f (PS x s l) = inlinePerformIO $ withForeignPtr x $ \ptr ->
@@ -778,7 +778,6 @@ hash (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p ->
 -- > replicate w c = unfoldr w (\u -> Just (u,u)) c
 --
 -- This implemenation uses @memset(3)@
---
 replicate :: Int -> Word8 -> ByteString
 replicate w c = create w $ \ptr -> memset ptr c (fromIntegral w) >> return ()
 
@@ -813,7 +812,6 @@ replicate w c = inlinePerformIO $ generate w $ \ptr -> go ptr w
 -- The following equation connects the depth-limited unfoldr to the List unfoldr:
 --
 -- > unfoldrN n == take n $ List.unfoldr
---
 unfoldrN :: Int -> (Word8 -> Maybe (Word8, Word8)) -> Word8 -> ByteString
 unfoldrN i f w = inlinePerformIO $ generate i $ \p -> go p w 0
     where
@@ -1238,7 +1236,7 @@ find p ps = case filter p ps of
 -- ---------------------------------------------------------------------
 -- Searching for substrings
 
--- | The 'isPrefixOf' function takes two ByteStrings and returns 'True'
+-- | /O(n)/ The 'isPrefixOf' function takes two ByteStrings and returns 'True'
 -- iff the first is a prefix of the second.
 isPrefixOf :: ByteString -> ByteString -> Bool
 isPrefixOf (PS x1 s1 l1) (PS x2 s2 l2)
@@ -1249,12 +1247,12 @@ isPrefixOf (PS x1 s1 l1) (PS x2 s2 l2)
             i <- memcmp (p1 `plusPtr` s1) (p2 `plusPtr` s2) l1
             return (i == 0)
 
--- | The 'isSuffixOf' function takes two ByteStrings and returns 'True'
+-- | /O(n)/ The 'isSuffixOf' function takes two ByteStrings and returns 'True'
 -- iff the first is a suffix of the second.
 -- 
 -- The following holds:
 --
--- isSuffixOf x y == reverse x `isPrefixOf` reverse y
+-- > isSuffixOf x y == reverse x `isPrefixOf` reverse y
 --
 -- However, the real implemenation uses memcmp to compare the end of the
 -- string only, with no reverse required..
@@ -1329,7 +1327,7 @@ zipWith f ps qs
     | null ps || null qs = []
     | otherwise = f (unsafeHead ps) (unsafeHead qs) : zipWith f (unsafeTail ps) (unsafeTail qs)
 
--- | 'unzip' transforms a list of pairs of bytes into a pair of
+-- | /O(n)/ 'unzip' transforms a list of pairs of bytes into a pair of
 -- ByteStrings. Note that this performs two 'pack' operations.
 unzip :: [(Word8,Word8)] -> (ByteString,ByteString)
 unzip ls = (pack (P.map fst ls), pack (P.map snd ls))
@@ -1338,11 +1336,11 @@ unzip ls = (pack (P.map fst ls), pack (P.map snd ls))
 -- ---------------------------------------------------------------------
 -- Special lists
 
--- | Return all initial segments of the given 'ByteString', shortest first.
+-- | /O(n)/ Return all initial segments of the given 'ByteString', shortest first.
 inits :: ByteString -> [ByteString]
 inits (PS x s l) = [PS x s n | n <- [0..l]]
 
--- | Return all final segments of the given 'ByteString', longest first.
+-- | /O(n)/ Return all final segments of the given 'ByteString', longest first.
 tails :: ByteString -> [ByteString]
 tails p | null p    = [empty]
         | otherwise = p : tails (unsafeTail p)
@@ -1449,14 +1447,17 @@ skipIndex (PS _ s _) = s
 {-# INLINE skipIndex #-}
 
 -- | /O(n)/ Build a @ByteString@ from a @CString@. This value will have /no/
--- finalizer associated to it.
+-- finalizer associated to it. The ByteString length is calculated using
+-- /strlen(3)/, and thus the complexity is a /O(n)/.
 packCString :: CString -> ByteString
 packCString cstr = inlinePerformIO $ do
     fp <- newForeignPtr_ (castPtr cstr)
     return $ PS fp 0 (fromIntegral $ c_strlen cstr)
 
 -- | /O(1)/ Build a @ByteString@ from a @CStringLen@. This value will
--- have /no/ finalizer associated with it.
+-- have /no/ finalizer associated with it. This operation has /O(1)/
+-- complexity as we already know the final size, so no /strlen(3)/ is
+-- required.
 packCStringLen :: CStringLen -> ByteString
 packCStringLen (ptr,len) = inlinePerformIO $ do
     fp <- newForeignPtr_ (castPtr ptr)
@@ -1804,7 +1805,9 @@ getArgs =
 -- ---------------------------------------------------------------------
 -- Internal utilities
 
--- Unsafe conversion between 'Word8' and 'Char'
+-- Unsafe conversion between 'Word8' and 'Char'. These are nops, and
+-- silently truncate to 8 bits Chars > '\255'. They are provided as
+-- convenience for ByteString construction.
 w2c :: Word8 -> Char
 #if !defined(__GLASGOW_HASKELL__)
 w2c = chr . fromIntegral
@@ -1825,7 +1828,10 @@ mallocByteString l = do
     withForeignPtr fp $ \p -> poke (p `plusPtr` l) (0::Word8)
     return fp
 
--- | A way of creating ForeignPtrs outside the IO monad.
+-- | A way of creating ForeignPtrs outside the IO monad. The @Int@
+-- argument gives the final size of the ByteString. Unlike 'generate'
+-- the ByteString is no reallocated if the final size is less than the
+-- estimated size.
 create :: Int -> (Ptr Word8 -> IO ()) -> ByteString
 create l write_ptr = inlinePerformIO $ do
     fp <- mallocByteString (l+1)
