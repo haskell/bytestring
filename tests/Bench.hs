@@ -9,6 +9,8 @@
 import qualified Data.ByteString.Latin1 as P
 import Data.ByteString (ByteString,mmapFile)
 
+import qualified Data.ByteString as B
+
 -- import qualified Data.PackedString     as PS
 -- import qualified SimonPackedString     as SPS
 import Data.List
