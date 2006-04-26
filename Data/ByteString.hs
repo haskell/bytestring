@@ -114,8 +114,8 @@ module Data.ByteString (
         -- * Indexing ByteStrings
         index,                  -- :: ByteString -> Int -> Word8
         elemIndex,              -- :: Word8 -> ByteString -> Maybe Int
-        elemIndexLast,          -- :: Word8 -> ByteString -> Maybe Int
         elemIndices,            -- :: Word8 -> ByteString -> [Int]
+        elemIndexLast,          -- :: Word8 -> ByteString -> Maybe Int
         findIndex,              -- :: (Word8 -> Bool) -> ByteString -> Maybe Int
         findIndices,            -- :: (Word8 -> Bool) -> ByteString -> [Int]
 
@@ -125,6 +125,8 @@ module Data.ByteString (
         -- * Searching ByteStrings
 
         -- ** Searching by equality
+        -- | These functions use memchr(3) to efficiently search the ByteString
+
         elem,                   -- :: Word8 -> ByteString -> Bool
         notElem,                -- :: Word8 -> ByteString -> Bool
         filterByte,             -- :: Word8 -> ByteString -> ByteString
@@ -134,9 +136,12 @@ module Data.ByteString (
         filter,                 -- :: (Word8 -> Bool) -> ByteString -> ByteString
         find,                   -- :: (Word8 -> Bool) -> ByteString -> Maybe Word8
 
-        -- ** Searching for substrings
+        -- ** Prefixes and suffixes
+        -- | These functions use memcmp(3) to efficiently compare substrings
         isPrefixOf,             -- :: ByteString -> ByteString -> Bool
         isSuffixOf,             -- :: ByteString -> ByteString -> Bool
+
+        -- ** Search for arbitrary substrings
         isSubstringOf,          -- :: ByteString -> ByteString -> Bool
         findSubstring,          -- :: ByteString -> ByteString -> Maybe Int
         findSubstrings,         -- :: ByteString -> ByteString -> [Int]
@@ -180,6 +185,7 @@ module Data.ByteString (
         unsafeUseAsCStringLen,  -- :: ByteString -> (CStringLen -> IO a) -> IO a
 
         -- ** Copying ByteStrings
+        -- | These functions perform memcpy(3) operations
         copy,                   -- :: ByteString -> ByteString
         copyCString,            -- :: CString -> ByteString
 
@@ -522,10 +528,24 @@ init (PS p s l)
 
 -- | /O(n)/ Append two ByteStrings
 append :: ByteString -> ByteString -> ByteString
+append xs@(PS ffp s l) ys@(PS fgp t m)
+    | null xs   = ys
+    | null ys   = xs
+    | otherwise = create len $ \ptr ->
+        withForeignPtr ffp $ \fp ->
+        withForeignPtr fgp $ \gp -> do
+            memcpy ptr               (fp `plusPtr` s) l
+            memcpy (ptr `plusPtr` l) (gp `plusPtr` t) m
+        where len = length xs + length ys
+{-# INLINE append #-}
+
+{-
+-- about 30% slower 
+append :: ByteString -> ByteString -> ByteString
 append xs ys | null xs   = ys
              | null ys   = xs
              | otherwise = concat [xs,ys]  -- todo, try a direct memcpy
-{-# INLINE append #-}
+-}
 
 -- ---------------------------------------------------------------------
 -- Transformations
@@ -984,7 +1004,7 @@ split w (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
                 then return [PS x (s+n) (l-n)]
                 else do let i = q `minusPtr` ptr
                         ls <- loop (i+1)
-                        return $! PS x (s+n) (i-n) : ls
+                        return $ PS x (s+n) (i-n) : ls
     loop 0
 {-# INLINE split #-}
 
@@ -1059,8 +1079,9 @@ index ps n
 {-# INLINE index #-}
 
 -- | /O(n)/ The 'elemIndex' function returns the index of the first
--- element in the given 'ByteString' which is equal (by memchr) to the
--- query element, or 'Nothing' if there is no such element.
+-- element in the given 'ByteString' which is equal to the query
+-- element, or 'Nothing' if there is no such element. 
+-- This implementation uses memchr(3).
 elemIndex :: Word8 -> ByteString -> Maybe Int
 elemIndex c (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
     let p' = p `plusPtr` s
@@ -1090,6 +1111,7 @@ elemIndexLast ch (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p ->
 
 -- | /O(n)/ The 'elemIndices' function extends 'elemIndex', by returning
 -- the indices of all elements equal to the query element, in ascending order.
+-- This implementation uses memchr(3).
 elemIndices :: Word8 -> ByteString -> [Int]
 elemIndices w (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
     let ptr = p `plusPtr` s
@@ -1133,8 +1155,7 @@ findIndices p ps = loop 0 ps
 -- ---------------------------------------------------------------------
 -- Searching ByteStrings
 
--- | /O(n)/ 'elem' is the 'ByteString' membership predicate. This
--- implementation uses @memchr(3)@.
+-- | /O(n)/ 'elem' is the 'ByteString' membership predicate.
 elem :: Word8 -> ByteString -> Bool
 elem c ps = case elemIndex c ps of Nothing -> False ; _ -> True
 {-# INLINE elem #-}
@@ -1143,6 +1164,52 @@ elem c ps = case elemIndex c ps of Nothing -> False ; _ -> True
 notElem :: Word8 -> ByteString -> Bool
 notElem c ps = case elemIndex c ps of Nothing -> True ; _ -> False
 {-# INLINE notElem #-}
+
+--
+-- | /O(n)/ A first order equivalent of /filter . (==)/, for the common
+-- case of filtering a single byte. It is more efficient to use
+-- /filterByte/ in this case.
+--
+-- > filterByte == filter . (==)
+--
+-- filterByte is around 3x faster, and uses much less space, than its
+-- filter equivalent
+filterByte :: Word8 -> ByteString -> ByteString
+filterByte ch ps@(PS x s l)
+    | null ps   = ps
+    | otherwise = inlinePerformIO $ generate l $ \p -> withForeignPtr x $ \f -> do
+        t <- go (f `plusPtr` s) p l
+        return (t `minusPtr` p) -- actual length
+    where
+        STRICT3(go)
+        go _ t 0 = return t
+        go f t e = do w <- peek f
+                      if w == ch
+                        then poke t w >> go (f `plusPtr` 1) (t `plusPtr` 1) (e-1)
+                        else             go (f `plusPtr` 1) t               (e-1)
+
+--
+-- | /O(n)/ A first order equivalent of /filter . (\/=)/, for the common
+-- case of filtering a single byte out of a list. It is more efficient
+-- to use /filterNotByte/ in this case.
+--
+-- > filterNotByte == filter . (/=)
+--
+-- filterNotByte is around 3x faster, and uses much less space, than its
+-- filter equivalent
+filterNotByte :: Word8 -> ByteString -> ByteString
+filterNotByte ch ps@(PS x s l)
+    | null ps   = ps
+    | otherwise = inlinePerformIO $ generate l $ \p -> withForeignPtr x $ \f -> do
+        t <- go (f `plusPtr` s) p l
+        return (t `minusPtr` p) -- actual length
+    where
+        STRICT3(go)
+        go _ t 0 = return t
+        go f t e = do w <- peek f
+                      if w /= ch
+                        then poke t w >> go (f `plusPtr` 1) (t `plusPtr` 1) (e-1)
+                        else             go (f `plusPtr` 1) t               (e-1)
 
 -- | /O(n)/ 'filter', applied to a predicate and a ByteString,
 -- returns a ByteString containing those characters that satisfy the
@@ -1171,59 +1238,11 @@ find p ps = case filter p ps of
     q | null q -> Nothing
       | otherwise -> Just (unsafeHead q)
 
---
--- | /O(n)/ A first order equivalent of /filter . (==)/, for the common
--- case of filtering a single byte. It is more efficient to use
--- /filterByte/ in this case.
---
--- > filterByte == filter . (==)
---
--- filterByte is around 3x faster, and uses much less space, than its
--- filter equivalent
---
-filterByte :: Word8 -> ByteString -> ByteString
-filterByte ch ps@(PS x s l)
-    | null ps   = ps
-    | otherwise = inlinePerformIO $ generate l $ \p -> withForeignPtr x $ \f -> do
-        t <- go (f `plusPtr` s) p l
-        return (t `minusPtr` p) -- actual length
-    where
-        STRICT3(go)
-        go _ t 0 = return t
-        go f t e = do w <- peek f
-                      if w == ch
-                        then poke t w >> go (f `plusPtr` 1) (t `plusPtr` 1) (e-1)
-                        else             go (f `plusPtr` 1) t               (e-1)
-
---
--- | /O(n)/ A first order equivalent of /filter . (\/=)/, for the common
--- case of filtering a single byte out of a list. It is more efficient
--- to use /filterNotByte/ in this case.
---
--- > filterNotByte == filter . (/=)
---
--- filterNotByte is around 3x faster, and uses much less space, than its
--- filter equivalent
---
-filterNotByte :: Word8 -> ByteString -> ByteString
-filterNotByte ch ps@(PS x s l)
-    | null ps   = ps
-    | otherwise = inlinePerformIO $ generate l $ \p -> withForeignPtr x $ \f -> do
-        t <- go (f `plusPtr` s) p l
-        return (t `minusPtr` p) -- actual length
-    where
-        STRICT3(go)
-        go _ t 0 = return t
-        go f t e = do w <- peek f
-                      if w /= ch
-                        then poke t w >> go (f `plusPtr` 1) (t `plusPtr` 1) (e-1)
-                        else             go (f `plusPtr` 1) t               (e-1)
-
 -- ---------------------------------------------------------------------
 -- Searching for substrings
 
--- | The 'isPrefixOf' function takes two strings and returns 'True' iff
--- the first string is a prefix of the second.
+-- | The 'isPrefixOf' function takes two ByteStrings and returns 'True'
+-- iff the first is a prefix of the second.
 isPrefixOf :: ByteString -> ByteString -> Bool
 isPrefixOf (PS x1 s1 l1) (PS x2 s2 l2)
     | l1 == 0   = True
@@ -1233,11 +1252,23 @@ isPrefixOf (PS x1 s1 l1) (PS x2 s2 l2)
             i <- memcmp (p1 `plusPtr` s1) (p2 `plusPtr` s2) l1
             return (i == 0)
 
--- | The 'isSuffixOf' function takes two lists and returns 'True'
--- iff the first list is a suffix of the second.
--- Both lists must be finite.
-isSuffixOf     :: ByteString -> ByteString -> Bool
-isSuffixOf x y = reverse x `isPrefixOf` reverse y -- todo, search backwards.
+-- | The 'isSuffixOf' function takes two ByteStrings and returns 'True'
+-- iff the first is a suffix of the second.
+-- 
+-- The following holds:
+--
+-- isSuffixOf x y == reverse x `isPrefixOf` reverse y
+--
+-- However, the real implemenation uses memcmp to compare the end of the
+-- string only, with no reverse required..
+isSuffixOf :: ByteString -> ByteString -> Bool
+isSuffixOf (PS x1 s1 l1) (PS x2 s2 l2)
+    | l1 == 0   = True
+    | l2 < l1   = False
+    | otherwise = inlinePerformIO $ withForeignPtr x1 $ \p1 ->
+        withForeignPtr x2 $ \p2 -> do
+            i <- memcmp (p1 `plusPtr` s1) (p2 `plusPtr` s2 `plusPtr` (l2 - l1)) l1
+            return (i == 0)
 
 -- | Check whether one string is a substring of another. @isSubstringOf
 -- p s@ is equivalent to @not (null (findSubstrings p s))@.
@@ -1330,7 +1361,7 @@ elems (PS x s l) = (PS x s 1:elems (PS x (s+1) (l-1)))
 -- ---------------------------------------------------------------------
 -- ** Ordered 'ByteString's
 
--- | /O(n log(n))/ Sort a ByteString efficiently
+-- | /O(n log(n))/ Sort a ByteString efficiently, using qsort(3).
 sort :: ByteString -> ByteString
 #if defined(USE_CBITS)
 sort (PS x s l) = create l $ \p -> withForeignPtr x $ \f -> do
@@ -1493,7 +1524,7 @@ unsafeFinalize (PS p _ _) = finalizeForeignPtr p
 #endif
 
 -- | /O(n) construction/ Use a @ByteString@ with a function requiring a null-terminated @CString@.
---   The @CString@ should not be freed afterwards.
+--   The @CString@ should not be freed afterwards. This is a memcpy(3).
 useAsCString :: ByteString -> (CString -> IO a) -> IO a
 useAsCString (PS ps s l) = bracket alloc free_cstring
     where

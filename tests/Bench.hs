@@ -60,7 +60,7 @@ tests  :: [(String,[F])]
 
 tests =
     [
-      ("++",    [F ({-# SCC "append" #-}P.append fps fps)])
+      ("++",    [F ({-# SCC "append" #-}P.append fps fps')])
 --              ,F () -- SPS.append sps sps)
 --              ,F () -- PS.appendPS ps ps)
 --              ,F (list ++ list)])
@@ -265,6 +265,9 @@ tests =
     , ("zipWith",[F ({-# SCC "zipWith" #-} P.zipWith ((. ord) . (+) . ord) fps fps)])
 
     , ("isSubstringOf",  [F ({-# SCC "isSubstringOf" #-} P.isSubstringOf (P.pack "email news") fps)])
+
+    , ("isPrefixOf",  [F ({-# SCC "isPrefixOf" #-} P.isPrefixOf (P.pack "The Project Gutenberg eBook") fps)])
+    , ("isSuffixOf",  [F ({-# SCC "isSuffixOf" #-} P.isSuffixOf (P.pack "new eBooks") fps)])
 
     ]
 
