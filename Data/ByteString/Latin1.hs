@@ -224,7 +224,7 @@ import Data.ByteString (ByteString(..)
                        ,inits,tails,elems,reverse,transpose
                        ,concat,hash,take,drop,splitAt,join
                        ,sort,isPrefixOf,isSuffixOf,isSubstringOf,findSubstring
-                       ,findSubstrings,unsafeTail,readInt,unsafeReadInt,copy
+                       ,findSubstrings,unsafeTail,copy
 
                        ,getContents, putStr, putStrLn,
                        ,readFile, mmapFile, writeFile,
@@ -232,12 +232,15 @@ import Data.ByteString (ByteString(..)
 #if defined(__GLASGOW_HASKELL__)
                        ,getLine, getArgs, hGetLine
 #endif
+                       ,useAsCString, unsafeUseAsCString
                        )
 
 import Data.Char        (ord,isSpace)
 import qualified Data.List as List (intersperse)
 
 import Foreign
+import Foreign.C.Types          (CLong)
+import Foreign.Marshal.Utils    (with)
 
 #if defined(__GLASGOW_HASKELL__)
 import GHC.Base     (unsafeChr,unpackCString#)
@@ -876,6 +879,65 @@ betweenLines start end ps =
                 (_, PS _ s2 _:_) -> Just $ PS ps1 s1 (s2 - s1)
                 _ -> Nothing
         _ -> Nothing
+
+-- ---------------------------------------------------------------------
+-- Reading from ByteStrings
+
+-- | readInt skips any whitespace at the beginning of its argument, and
+-- reads an Int from the beginning of the ByteString.  If there is no
+-- integer at the beginning of the string, it returns Nothing, otherwise
+-- it just returns the int read, and the rest of the string.
+readInt :: ByteString -> Maybe (Int, ByteString)
+readInt p@(PS x s l) = inlinePerformIO $ useAsCString p $ \cstr ->
+    with (castPtr cstr) $ \endpp -> do
+        val     <- c_strtol (castPtr cstr) endpp 0
+        skipped <- (`minusPtr` cstr) `fmap` peek endpp
+        return $ if skipped == 0
+                 then Nothing
+                 else Just (fromIntegral val, PS x (s+skipped) (l-skipped))
+
+-- | unsafeReadInt is like readInt, but requires a null terminated
+-- ByteString. It avoids a copy if this is the case. It returns the Int
+-- read, if any, and the rest of the string.
+unsafeReadInt :: ByteString -> Maybe (Int, ByteString)
+unsafeReadInt p@(PS x s l) = inlinePerformIO $ unsafeUseAsCString p $ \cstr ->
+    with (castPtr cstr) $ \endpp -> do
+        val     <- c_strtol (castPtr cstr) endpp 0
+        skipped <- (`minusPtr` cstr) `fmap` peek endpp
+        return $ if skipped == 0
+                 then Nothing
+                 else Just (fromIntegral val, PS x (s+skipped) (l-skipped))
+
+foreign import ccall unsafe "stdlib.h strtol" c_strtol
+    :: Ptr Word8 -> Ptr (Ptr Word8) -> Int -> IO CLong
+
+{-
+--
+-- not quite there yet
+--
+readInt :: ByteString -> Maybe (Int, ByteString)
+readInt = go 0
+    where
+        STRICT2(go)
+        go i ps
+            | B.null ps = Nothing
+            | x == '-'  = neg 0 xs
+            | otherwise = pos (parse x) xs
+            where (x, xs) = (ps `unsafeIndex` 0, unsafeTail ps)
+
+        STRICT2(neg)
+        neg n qs | isSpace x   = return $ Just ((i-n),xs)
+                 | otherwise   = neg (parse x + (10 * n)) xs
+                 where (x, xs) = (qs `unsafeIndex` 0, unsafeTail qs)
+
+        STRICT2(pos)
+        pos n qs | isSpace x = go (i+n) xs
+                 | otherwise = pos (parse x + (10 * n)) xs
+                 where (x, xs) = (qs `unsafeIndexWord8` 0, unsafeTail qs)
+
+        parse w = fromIntegral (w - 48) :: Int
+        {-# INLINE parse #-}
+-}
 
 -- ---------------------------------------------------------------------
 -- Internals

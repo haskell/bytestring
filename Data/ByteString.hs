@@ -156,10 +156,6 @@ module Data.ByteString (
         unsafeTail,             -- :: ByteString -> ByteString
         unsafeIndex,            -- :: ByteString -> Int -> Word8
 
-        -- * Reading from ByteStrings
-        readInt,                -- :: ByteString -> Maybe Int
-        unsafeReadInt,          -- :: ByteString -> Maybe Int
-
         -- * Low level introduction and elimination
         generate,               -- :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
         create,                 -- :: Int -> (Ptr Word8 -> IO ()) -> ByteString
@@ -242,13 +238,12 @@ import qualified Data.Array as Array ((!))
 
 import Control.Exception        (bracket)
 
-import Foreign.C.Types          (CSize, CInt, CLong)
+import Foreign.C.Types          (CSize, CInt)
 import Foreign.C.String         (CString, CStringLen)
 import Foreign.Storable
 import Foreign.ForeignPtr
 import Foreign.Ptr
 import Foreign.Marshal.Array
-import Foreign.Marshal.Utils    (with)
 
 import System.IO                (stdin,stdout,hClose,hFileSize
                                 ,hGetBuf,hPutBuf,openBinaryFile,hGetBufNonBlocking)
@@ -1399,36 +1394,6 @@ unsafeIndex (PS x s _) i = inlinePerformIO $ withForeignPtr x $ \p -> peekByteOf
 {-# INLINE unsafeIndex #-}
 
 -- ---------------------------------------------------------------------
--- Reading from ByteStrings
-
--- | readInt skips any whitespace at the beginning of its argument, and
--- reads an Int from the beginning of the ByteString.  If there is no
--- integer at the beginning of the string, it returns Nothing, otherwise
--- it just returns the int read, and the rest of the string.
-readInt :: ByteString -> Maybe (Int, ByteString)
-readInt p@(PS x s l) = inlinePerformIO $ useAsCString p $ \cstr ->
-    with (castPtr cstr) $ \endpp -> do
-        val     <- c_strtol (castPtr cstr) endpp 0
-        skipped <- (`minusPtr` cstr) `fmap` peek endpp
-        return $ if skipped == 0
-                 then Nothing
-                 else Just (fromIntegral val, PS x (s+skipped) (l-skipped))
-
--- | unsafeReadInt is like readInt, but requires a null terminated
--- ByteString. It avoids a copy if this is the case. It returns the Int
--- read, if any, and the rest of the string.
-unsafeReadInt :: ByteString -> Maybe (Int, ByteString)
-unsafeReadInt p@(PS x s l) = inlinePerformIO $ unsafeUseAsCString p $ \cstr ->
-    with (castPtr cstr) $ \endpp -> do
-        val     <- c_strtol (castPtr cstr) endpp 0
-        skipped <- (`minusPtr` cstr) `fmap` peek endpp
-        return $ if skipped == 0
-                 then Nothing
-                 else Just (fromIntegral val, PS x (s+skipped) (l-skipped))
-
--- TODO ponder how this can still be better
-
--- ---------------------------------------------------------------------
 -- Low level constructors
 
 #if defined(__GLASGOW_HASKELL__)
@@ -1913,9 +1878,6 @@ inlinePerformIO = unsafePerformIO
 
 foreign import ccall unsafe "string.h strlen" c_strlen
     :: CString -> CInt
-
-foreign import ccall unsafe "stdlib.h strtol" c_strtol
-    :: Ptr Word8 -> Ptr (Ptr Word8) -> Int -> IO CLong
 
 foreign import ccall unsafe "static stdlib.h malloc" c_malloc
     :: CInt -> IO (Ptr Word8)
