@@ -8,8 +8,8 @@ import Data.Char
 import Data.List
 import Data.Maybe
 
-import qualified Data.ByteString.Latin1 as P
-import Data.ByteString.Latin1 (pack,unpack,ByteString,mmapFile)
+import qualified Data.ByteString.Char8 as P
+import Data.ByteString.Char8 (pack,unpack,ByteString,mmapFile)
 
 import TestFramework
 import Language.Haskell.TH

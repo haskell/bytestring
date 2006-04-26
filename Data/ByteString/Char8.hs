@@ -1,6 +1,6 @@
 {-# OPTIONS -cpp -O -optc-O2 -fglasgow-exts -funbox-strict-fields #-}
 --
--- Module      : Data.ByteString.Char
+-- Module      : Data.ByteString.Char8
 -- Copyright   : (c) Don Stewart 2006
 -- License     : BSD-style
 --
@@ -29,10 +29,10 @@
 -- This module is intended to be imported @qualified@, to avoid name
 -- clashes with Prelude functions.  eg.
 --
--- > import qualified Data.ByteString.Latin1 as B
+-- > import qualified Data.ByteString.Char8 as B
 --
 
-module Data.ByteString.Latin1 (
+module Data.ByteString.Char8 (
 
         -- * The @ByteString@ type
         ByteString(..),         -- instances: Eq, Ord, Show, Read, Data, Typeable

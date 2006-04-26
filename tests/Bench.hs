@@ -6,7 +6,7 @@
 -- space and time.
 --
 
-import qualified Data.ByteString.Latin1 as P
+import qualified Data.ByteString.Char8 as P
 import Data.ByteString (ByteString,mmapFile)
 
 import qualified Data.ByteString as B
