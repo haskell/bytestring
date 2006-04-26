@@ -423,9 +423,11 @@ unpackList (PS fp off len) = withPtr fp $ \p -> do
            loop q (n-1) (a : acc)
     loop (p `plusPtr` off) (len-1) []
 
+#if defined(__GLASGOW_HASKELL__)
 {-# RULES
 "unpack-list"  [1]  forall p  . unpackFoldr p (:) [] = unpackList p
  #-}
+#endif
 
 unpackFoldr :: ByteString -> (Word8 -> a -> a) -> a -> a
 unpackFoldr (PS fp off len) f ch = withPtr fp $ \p -> do
@@ -435,7 +437,11 @@ unpackFoldr (PS fp off len) f ch = withPtr fp $ \p -> do
            a <- peekByteOff q n
            loop q (n-1) (a `f` acc)
     loop (p `plusPtr` off) (len-1) ch
+#if defined(__GLASGOW_HASKELL__)
 {-# INLINE [0] unpackFoldr #-}
+#else
+{-# INLINE unpackFoldr #-}
+#endif
 
 {-
 --  
