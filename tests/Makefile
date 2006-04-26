@@ -42,4 +42,4 @@ wc.o: wc.hs
 
 .PHONY: clean
 clean:
-	rm -f *~ *.o *.hi $(BIN) bench */*.o */*.hi */*~
+	rm -f *~ *.o *.hi $(BIN) bench */*.o */*.hi */*~ wc
