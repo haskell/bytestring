@@ -229,6 +229,8 @@ prop_elemIndex2 xs c = (elemIndex c xs) == (P.elemIndex c (pack xs))
 
 prop_lineIndices1 xs = P.elemIndices '\n' xs == P.lineIndices xs
 
+prop_count c xs = length (P.elemIndices c xs) == P.count c xs
+
 prop_elemIndexLast1 c xs = (P.elemIndexLast c (pack xs)) ==
                            (case P.elemIndex c (pack (reverse xs)) of
                                 Nothing -> Nothing
@@ -336,6 +338,7 @@ prop_readint2 s =
 
 prop_filterChar1 c xs = (filter (==c) xs) == ((P.unpack . P.filterChar c . P.pack) xs)
 prop_filterChar2 c xs = (P.filter (==c) (P.pack xs)) == (P.filterChar c (P.pack xs))
+prop_filterChar3 c xs = P.filterChar c xs == P.replicate (P.count c xs) c
 
 prop_filterNotChar1 c xs = (filter (/=c) xs) == ((P.unpack . P.filterNotChar c . P.pack) xs)
 prop_filterNotChar2 c xs = (P.filter (/=c) (P.pack xs)) == (P.filterNotChar c (P.pack xs))
@@ -449,6 +452,7 @@ main = do
             ,    run prop_readint2
             ,    run prop_filterChar1
             ,    run prop_filterChar2
+            ,    run prop_filterChar3
             ,    run prop_filterNotChar1
             ,    run prop_filterNotChar2
             ,    run prop_pack
@@ -485,6 +489,7 @@ main = do
             ,    run prop_splitWith
             ,    run prop_joinsplit
             ,    run prop_lineIndices1
+            ,    run prop_count
             ,    run prop_linessplit
             ,    run prop_splitsplitWith
             ,    run prop_joinjoinpath

@@ -118,6 +118,7 @@ module Data.ByteString (
         elemIndexLast,          -- :: Word8 -> ByteString -> Maybe Int
         findIndex,              -- :: (Word8 -> Bool) -> ByteString -> Maybe Int
         findIndices,            -- :: (Word8 -> Bool) -> ByteString -> [Int]
+        count,                  -- :: Word8 -> ByteString -> Int
 
         -- * Ordered ByteStrings
         sort,                   -- :: ByteString -> ByteString
@@ -1131,6 +1132,25 @@ elemIndices c ps = loop 0 ps
                     | otherwise           = loop (n+1) (unsafeTail ps')
 -}
 
+-- | count returns the number of times its argument appears in the ByteString
+--
+-- > count = length . elemIndices
+--
+-- But more efficiently than using length on the intermediate list.
+count :: Word8 -> ByteString -> Int
+count w (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
+    let ptr = p `plusPtr` s
+        STRICT2(loop)
+        loop n i = do
+                let q = memchr (ptr `plusPtr` n) w (fromIntegral (l - n))
+                if q == nullPtr
+                    then return i
+                    else do let r = q `minusPtr` ptr
+                            k <- loop (r+1) (i+1)
+                            return k
+    loop 0 0
+{-# INLINE count #-}
+
 -- | The 'findIndex' function takes a predicate and a 'ByteString' and
 -- returns the index of the first element in the ByteString
 -- satisfying the predicate.
@@ -1170,6 +1190,11 @@ notElem c ps = case elemIndex c ps of Nothing -> True ; _ -> False
 -- filterByte is around 3x faster, and uses much less space, than its
 -- filter equivalent
 filterByte :: Word8 -> ByteString -> ByteString
+filterByte w ps = replicate (count w ps) w
+
+{-
+-- slower than the replicate version
+
 filterByte ch ps@(PS x s l)
     | null ps   = ps
     | otherwise = inlinePerformIO $ generate l $ \p -> withForeignPtr x $ \f -> do
@@ -1182,6 +1207,7 @@ filterByte ch ps@(PS x s l)
                       if w == ch
                         then poke t w >> go (f `plusPtr` 1) (t `plusPtr` 1) (e-1)
                         else             go (f `plusPtr` 1) t               (e-1)
+-}
 
 --
 -- | /O(n)/ A first order equivalent of /filter . (\/=)/, for the common

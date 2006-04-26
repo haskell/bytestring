@@ -176,4 +176,7 @@ $(tests "fps" [d|
     test_maximum = assertEqual (maximum str) (P.maximum pstr)
     test_minimum = assertEqual (minimum str) (P.minimum pstr)
 
+    test_dropSpace = assertEqual (dropWhile isSpace str) (unpack (P.dropSpace pstr))
+    test_count     = assertEqual (length (P.elemIndices 'X' pstr)) (P.count 'X' pstr)
+
  |])

@@ -321,6 +321,8 @@ tests =
     , ("isPrefixOf",  [F ({-# SCC "isPrefixOf" #-} P.isPrefixOf (P.pack "The Project Gutenberg eBook") fps)])
     , ("isSuffixOf",  [F ({-# SCC "isSuffixOf" #-} P.isSuffixOf (P.pack "new eBooks") fps)])
 
+    , ("count",  [F ({-# SCC "count" #-} P.count '\n' fps)])
+
     ]
 
 ------------------------------------------------------------------------

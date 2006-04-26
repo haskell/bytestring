@@ -137,6 +137,7 @@ module Data.ByteString.Char8 (
         elemIndices,            -- :: Char -> ByteString -> [Int]
         findIndex,              -- :: (Char -> Bool) -> ByteString -> Maybe Int
         findIndices,            -- :: (Char -> Bool) -> ByteString -> [Int]
+        count,                  -- :: Char -> ByteString -> Int
 
         -- * Ordered ByteStrings
         sort,                   -- :: ByteString -> ByteString
@@ -572,6 +573,14 @@ findIndex f = B.findIndex (f . w2c)
 -- indices of all elements satisfying the predicate, in ascending order.
 findIndices :: (Char -> Bool) -> ByteString -> [Int]
 findIndices f = B.findIndices (f . w2c)
+
+-- | count returns the number of times its argument appears in the ByteString
+--
+-- > count = length . elemIndices
+--
+-- But more efficiently than using length on the intermediate list.
+count :: Char -> ByteString -> Int
+count c = B.count (c2w c)
 
 -- | /O(n)/ 'elem' is the 'ByteString' membership predicate. This
 -- implementation uses @memchr(3)@.
