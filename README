@@ -38,7 +38,7 @@ PackedString and ByteString, on various packed strings.
 
 Size of test data: 21256k, Linux 3.2Ghz P4
 
-                FPS5/Byte FPS5/Char  FPS3/6.6 FPS2    FPS1    SPS     PS      [a]    
+                          FPS5       FPS3/6.6 FPS2    FPS1    SPS     PS      [a]    
 ++                        0.039      0.058    0.078   ~       !       !       1.288   
 length                    0.000      ~        ~       ~       0.000   0.000   0.131   
 pack                      0.303      ~        0.345   2.043   0.502   0.337   -       
