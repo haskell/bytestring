@@ -680,7 +680,7 @@ unsafeIndex :: ByteString -> Int -> Char
 unsafeIndex p i = w2c (B.unsafeIndex p i)
 {-# INLINE unsafeIndex #-}
 
--- | Conversion between 'Word8' and 'Char'. A no-op.
+-- | Conversion between 'Word8' and 'Char'. Should compile to a no-op.
 w2c :: Word8 -> Char
 #if !defined(__GLASGOW_HASKELL__)
 w2c = chr . fromIntegral

@@ -1,11 +1,13 @@
 #!/usr/bin/env runhaskell
 {-# OPTIONS_GHC -fglasgow-exts #-}
+
 import Test.QuickCheck.Batch
 import Test.QuickCheck
 import Text.Show.Functions
 import System.Random
 import Data.List
 import Data.Char
+import Data.Word
 import Data.Maybe
 import Text.Printf
 import System.Environment
@@ -16,8 +18,18 @@ import qualified Data.ByteString.Char8 as P
 instance Arbitrary Char where
   arbitrary = oneof $ map return
                 (['a'..'z']++['A'..'Z']++['1'..'9']++['\n','\t','0','~','.',',','-','/'])
--- arbitrary = choose (minBound, chr 0xff)
   coarbitrary c = variant (ord c `rem` 16)
+
+instance Arbitrary Word8 where
+  arbitrary = choose (minBound, maxBound)
+  coarbitrary c = variant (fromIntegral ((fromIntegral c) `rem` 16))
+
+instance Random Word8 where
+  randomR (a,b) g = case randomR (fromIntegral a :: Integer
+                                 ,fromIntegral b :: Integer) g of
+                            (x,g) -> (fromIntegral x :: Word8, g)
+
+  random g        = randomR (minBound,maxBound) g
 
 instance Arbitrary ByteString where
   arbitrary = P.pack `fmap` arbitrary
@@ -111,6 +123,9 @@ prop_linessplit2 xs =
     P.lines xs == P.split '\n' xs ++ (if P.last xs == '\n' then [P.empty] else [])
 
 prop_splitsplitWith c xs = P.split c xs == P.splitWith (== c) xs
+
+prop_bijection  c = (P.w2c . P.c2w) c == id c
+prop_bijection' w = (P.c2w . P.w2c) w == id w
 
 ------------------------------------------------------------------------
 -- at first we just check the correspondence to List functions
@@ -366,7 +381,9 @@ main = do
                        in breakUp n r (h:acc)
 
     tests = [
-                 run prop_eq1
+                 run prop_bijection
+            ,    run prop_bijection'
+            ,    run prop_eq1
             ,    run prop_compare1
             ,    run prop_compare2
             ,    run prop_compare3
