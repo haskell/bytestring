@@ -10,7 +10,7 @@ GHC_ = $(GHC) -threaded $(PP_OPTS) -fglasgow-exts --make
 
 SRCS= TestFramework.hs UnitTestsMain.hs Tests.hs Quick.hs
 
-all: htest qc bench wc
+all: qc htest bench wc
 
 # build executable, linking in all tests
 run-utests: $(SRCS)

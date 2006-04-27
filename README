@@ -19,7 +19,13 @@ If you wish to use the mmap extensions, then as your first step.
 
         > mv fps.cabal.mmap fps.cabal
 
-After installation, you can run the testsuite and benchmarks:
+After installation, you can run the testsuite as follows:
+    
+        > cd tests ; runghc Quick.hs
+    or
+        > cd tests ; runhugs Quick.hs
+
+For the full test and benchmark suite, you need GHC:
 
         > cd tests ; make ; make run
 

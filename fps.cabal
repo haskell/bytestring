@@ -5,7 +5,7 @@ License:             BSD3
 License-file:        LICENSE
 Author:              Don Stewart
 Maintainer:          dons@cse.unsw.edu.au
-tested-with:         hugs March2005, ghc 6.4.1, ghc 6.5.20060420
+-- tested-with:         hugs March2005, ghc 6.4.1, ghc 6.5.20060420
 Build-Depends:       base
 Exposed-modules:     Data.ByteString,
                      Data.ByteString.Char8

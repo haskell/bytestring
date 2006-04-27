@@ -326,6 +326,9 @@ tests =
 
     , ("count",  [F ({-# SCC "count" #-} P.count '\n' fps)])
 
+    , ("addr1",  [F (let s = "my\nstring\nhaskell"# in P.length (P.packAddress s) == 17)])
+    , ("addr2",  [F (let s = "my\nstring\nhaskell"# in P.unsafePackAddress 17 s == P.packAddress s)])
+
     ]
 
 ------------------------------------------------------------------------

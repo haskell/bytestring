@@ -313,9 +313,6 @@ prop_unfoldr c =
     (P.unfoldrN 100 (\x -> Just (x, chr (ord x + 1))) c) ==
     (pack $ take 100 $ unfoldr (\x -> Just (x, chr (ord x + 1))) c)
 
-prop_addr = let s = "my\nstring\nhaskell"# in P.length (P.packAddress s) == 17
-prop_addr2 = let s = "my\nstring\nhaskell"# in P.unsafePackAddress 17 s == P.packAddress s
-
 prop_prefix xs ys = isPrefixOf xs ys == (P.pack xs `P.isPrefixOf` P.pack ys)
 prop_suffix xs ys = isSuffixOf xs ys == (P.pack xs `P.isSuffixOf` P.pack ys)
 
@@ -344,7 +341,7 @@ prop_replicate2 n c =
 
 prop_replicate3 c = unpack (P.replicate 0 c) == replicate 0 c
 
-prop_readint (n::Int) = (fst . fromJust . P.readInt . pack . show) n == n
+prop_readint n = (fst . fromJust . P.readInt . pack . show) n == (n :: Int)
 
 prop_readint2 s =
     let s' = filter (\c -> c `notElem` ['0'..'9']) s
@@ -454,8 +451,8 @@ main = do
             ,    run prop_lines'
             ,    run prop_dropSpaceEnd
             ,    run prop_unfoldr
-            ,    run prop_addr
-            ,    run prop_addr2
+--          ,    run prop_addr
+--          ,    run prop_addr2
             ,    run prop_prefix
             ,    run prop_suffix
             ,    run prop_copy
