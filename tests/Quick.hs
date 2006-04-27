@@ -13,8 +13,6 @@ import System.Environment
 import Data.ByteString.Char8 (ByteString, pack , unpack)
 import qualified Data.ByteString.Char8 as P
 
-import Data.ByteString (packAddress)
-
 instance Arbitrary Char where
   arbitrary = oneof $ map return
                 (['a'..'z']++['A'..'Z']++['1'..'9']++['\n','\t','0','~','.',',','-','/'])
@@ -300,7 +298,8 @@ prop_unfoldr c =
     (P.unfoldrN 100 (\x -> Just (x, chr (ord x + 1))) c) ==
     (pack $ take 100 $ unfoldr (\x -> Just (x, chr (ord x + 1))) c)
 
-prop_addr = let s = "my\nstring\nhaskell"# in P.length (packAddress s) == 17
+prop_addr = let s = "my\nstring\nhaskell"# in P.length (P.packAddress s) == 17
+prop_addr2 = let s = "my\nstring\nhaskell"# in P.unsafePackAddress 17 s == P.packAddress s
 
 prop_prefix xs ys = isPrefixOf xs ys == (P.pack xs `P.isPrefixOf` P.pack ys)
 prop_suffix xs ys = isSuffixOf xs ys == (P.pack xs `P.isSuffixOf` P.pack ys)
@@ -356,7 +355,7 @@ prop_unzip x = let (xs,ys) = unzip x in (pack xs, pack ys) == P.unzip x
 
 main = do
     x <- getArgs
-    let n = if null x then 1000 else read . head $ x
+    let n = if null x then 200 else read . head $ x
     do mapM_ (runTests "test" (defOpt { no_of_tests = n, length_of_tests = 10 })) $
          breakUp 25 tests []
 
@@ -439,6 +438,7 @@ main = do
             ,    run prop_dropSpaceEnd
             ,    run prop_unfoldr
             ,    run prop_addr
+            ,    run prop_addr2
             ,    run prop_prefix
             ,    run prop_suffix
             ,    run prop_copy

@@ -657,7 +657,7 @@ concat xs     = inlinePerformIO $ do
     where f ptr len _ [] = do
                 ptr' <- reallocArray ptr (len+1)
                 poke (ptr' `plusPtr` len) (0::Word8)    -- XXX so CStrings work
-                fp   <- newForeignPtr c_free ptr'
+                fp   <- newForeignFreePtr ptr'
                 return $ PS fp 0 len
 
           f ptr len to_go pss@(PS p s l:pss')
@@ -1496,7 +1496,7 @@ packCStringLen (ptr,len) = inlinePerformIO $ do
 -- have a @free(3)@ finalizer associated to it.
 packMallocCString :: CString -> ByteString
 packMallocCString cstr = inlinePerformIO $ do
-    fp <- newForeignPtr c_free (castPtr cstr)
+    fp <- newForeignFreePtr (castPtr cstr)
     return $ PS fp 0 (fromIntegral $ c_strlen cstr)
 
 #if defined(__GLASGOW_HASKELL__)
@@ -1523,7 +1523,7 @@ unsafeFinalize (PS p _ _) = finalizeForeignPtr p
 -- | /O(n) construction/ Use a @ByteString@ with a function requiring a null-terminated @CString@.
 --   The @CString@ should not be freed afterwards. This is a memcpy(3).
 useAsCString :: ByteString -> (CString -> IO a) -> IO a
-useAsCString (PS ps s l) = bracket alloc free_cstring
+useAsCString (PS ps s l) = bracket alloc (c_free.castPtr)
     where
       alloc = withForeignPtr ps $ \p -> do
                 buf <- c_malloc (fromIntegral l+1)
@@ -1584,7 +1584,7 @@ generate i f = do
     i' <- f p
     p' <- reallocArray p (i'+1)
     poke (p' `plusPtr` i') (0::Word8)    -- XXX so CStrings work
-    fp <- newForeignPtr c_free p'
+    fp <- newForeignFreePtr p'
     return $ PS fp 0 i'
 
 -- ---------------------------------------------------------------------
@@ -1715,7 +1715,7 @@ hGetContents h = do
     i <- hGetBuf h p start_size
     if i < start_size
         then do p' <- reallocArray p i
-                fp <- newForeignPtr c_free p'
+                fp <- newForeignFreePtr p'
                 return $ PS fp 0 i
         else f p start_size
     where
@@ -1726,7 +1726,7 @@ hGetContents h = do
         if i < s
             then do let i' = s + i
                     p'' <- reallocArray p' i'
-                    fp  <- newForeignPtr c_free p''
+                    fp  <- newForeignFreePtr p''
                     return $ PS fp 0 i'
             else f p' s'
 
@@ -1908,6 +1908,14 @@ inlinePerformIO (IO m) = case m realWorld# of (# _, r #) -> r
 inlinePerformIO = unsafePerformIO
 #endif
 
+{-# INLINE newForeignFreePtr #-}
+newForeignFreePtr :: Ptr Word8 -> IO (ForeignPtr Word8)
+#if defined(__GLASGOW_HASKELL__)
+newForeignFreePtr p = FC.newForeignPtr p (c_free p)
+#else
+newForeignFreePtr p = newForeignPtr c_free_finalizer p
+#endif
+
 -- ---------------------------------------------------------------------
 -- 
 -- Standard C functions
@@ -1916,14 +1924,16 @@ inlinePerformIO = unsafePerformIO
 foreign import ccall unsafe "string.h strlen" c_strlen
     :: CString -> CInt
 
-foreign import ccall unsafe "static stdlib.h malloc" c_malloc
+foreign import ccall unsafe "stdlib.h malloc" c_malloc
     :: CInt -> IO (Ptr Word8)
 
-foreign import ccall unsafe "static stdio.h &free" c_free
-    :: FunPtr (Ptr Word8 -> IO ())
+foreign import ccall unsafe "static stdlib.h free" c_free
+    :: Ptr Word8 -> IO ()
 
-foreign import ccall unsafe "static stdlib.h free" free_cstring
-    :: CString -> IO ()
+#if !defined(__GLASGOW_HASKELL__)
+foreign import ccall unsafe "static stdio.h &free" c_free_finalizer
+    :: FunPtr (Ptr Word8 -> IO ())
+#endif
 
 foreign import ccall unsafe "string.h memset" memset
     :: Ptr Word8 -> Word8 -> CSize -> IO (Ptr Word8)

@@ -1,6 +1,8 @@
 
 * remove Posix dependency for mmap.
 
-* benchmark Word8 functions vs Char
+* fix the pack issue. check it runs as fast as 0.3
 
 * port to hugs
+
+

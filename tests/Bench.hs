@@ -113,10 +113,10 @@ tests =
 --               ,F (filter (=='f') list)])
 
     , ("filterChar", [F ({-# SCC "filterChar"    #-}P.filterChar 'f' fps)
-                 ,F (B.filterByte 102 fps)])
+                 ,F (B.filterByte 103 fps)])
 
     , ("filterNotChar", [F ({-# SCC "filterNotChar"    #-}P.filterNotChar 'f' fps)
-                 ,F (B.filterNotByte 102 fps)])
+                 ,F (B.filterNotByte 103 fps)])
 
     , ("take",[F ({-# SCC "take"      #-}P.take 100000 fps)])
 
