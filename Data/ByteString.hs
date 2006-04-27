@@ -289,7 +289,9 @@ import GHC.IOBase
 --
 -- Instances of Eq, Ord, Read, Show, Data, Typeable
 --
-data ByteString = PS {-# UNPACK #-} !(ForeignPtr Word8) !Int !Int
+data ByteString = PS {-# UNPACK #-} !(ForeignPtr Word8)
+                     {-# UNPACK #-} !Int
+                     {-# UNPACK #-} !Int
 
 #if defined(__GLASGOW_HASKELL__)
     deriving (Data, Typeable)
@@ -449,6 +451,7 @@ unpack (PS ps s l) = inlinePerformIO $ withForeignPtr ps $ \p ->
 packWith :: (a -> Word8) -> [a] -> ByteString
 packWith k str = create (P.length str) $ \p -> go p str
     where
+        STRICT2(go)
         go _ []     = return ()
         go p (x:xs) = poke p (k x) >> go (p `plusPtr` 1) xs -- less space than pokeElemOff
 {-# INLINE packWith #-}

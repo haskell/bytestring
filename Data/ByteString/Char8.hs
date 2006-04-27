@@ -206,6 +206,12 @@ module Data.ByteString.Char8 (
         hPut,                   -- :: Handle -> ByteString -> IO ()
         hGetNonBlocking,        -- :: Handle -> Int -> IO ByteString
 
+#if defined(__GLASGOW_HASKELL__)
+        -- * Low level construction
+        packAddress,            -- :: Addr# -> ByteString
+        unsafePackAddress,      -- :: Int -> Addr# -> ByteString
+#endif
+
     ) where
 
 import qualified Prelude as P
@@ -232,7 +238,7 @@ import Data.ByteString (ByteString(..)
                        ,readFile, mmapFile, writeFile,
                        ,hGetContents, hGet, hPut, hGetNonBlocking,
 #if defined(__GLASGOW_HASKELL__)
-                       ,getLine, getArgs, hGetLine
+                       ,getLine, getArgs, hGetLine, packAddress, unsafePackAddress
 #endif
                        ,useAsCString, unsafeUseAsCString
                        )
