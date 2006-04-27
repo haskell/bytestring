@@ -208,6 +208,7 @@ module Data.ByteString.Char8 (
 
 #if defined(__GLASGOW_HASKELL__)
         -- * Low level construction
+        -- | For constructors from foreign language types see /Data.ByteString/
         packAddress,            -- :: Addr# -> ByteString
         unsafePackAddress,      -- :: Int -> Addr# -> ByteString
 #endif
