@@ -1190,7 +1190,7 @@ notElem c ps = case elemIndex c ps of Nothing -> True ; _ -> False
 --
 -- > filterByte == filter . (==)
 --
--- filterByte is around 3x faster, and uses much less space, than its
+-- filterByte is around 10x faster, and uses much less space, than its
 -- filter equivalent
 filterByte :: Word8 -> ByteString -> ByteString
 filterByte w ps = replicate (count w ps) w

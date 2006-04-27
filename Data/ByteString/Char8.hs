@@ -641,7 +641,7 @@ find f ps = w2c `fmap` B.find (f . w2c) ps
 --
 -- > filterChar == filter . (==)
 --
--- filterChar is around 3x faster, and uses much less space, than its
+-- filterChar is around 10x faster, and uses much less space, than its
 -- filter equivalent
 --
 filterChar :: Char -> ByteString -> ByteString
