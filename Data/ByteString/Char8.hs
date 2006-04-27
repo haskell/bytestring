@@ -6,7 +6,7 @@
 --
 -- Maintainer  : dons@cse.unsw.edu.au
 -- Stability   : experimental
--- Portability : portable
+-- Portability : portable (tested with GHC>=6.4.1 and Hugs 2005)
 -- 
 
 --
@@ -235,16 +235,17 @@ import Data.ByteString (ByteString(..)
                        ,sort,isPrefixOf,isSuffixOf,isSubstringOf,findSubstring
                        ,findSubstrings,unsafeTail,copy
 
-                       ,getContents, putStr, putStrLn,
-                       ,readFile, mmapFile, writeFile,
-                       ,hGetContents, hGet, hPut, hGetNonBlocking,
+                       ,getContents, putStr, putStrLn
+                       ,readFile, mmapFile, writeFile
+                       ,hGetContents, hGet, hPut
 #if defined(__GLASGOW_HASKELL__)
-                       ,getLine, getArgs, hGetLine, packAddress, unsafePackAddress
+                       ,getLine, getArgs, hGetLine, hGetNonBlocking
+                       ,packAddress, unsafePackAddress
 #endif
                        ,useAsCString, unsafeUseAsCString
                        )
 
-import Data.Char        (ord)
+import Data.Char
 
 import qualified Data.List as List (intersperse)
 

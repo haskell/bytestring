@@ -10,7 +10,8 @@
 --
 -- Maintainer  : dons@cse.unsw.edu.au
 -- Stability   : experimental
--- Portability : portable, requires ffi
+-- Portability : portable, requires ffi and cpp
+-- Tested with : GHC 6.4.1 and Hugs March 2005
 -- 
 
 --
@@ -211,11 +212,11 @@ module Data.ByteString (
         hGetContents,           -- :: Handle -> IO ByteString
         hGet,                   -- :: Handle -> Int -> IO ByteString
         hPut,                   -- :: Handle -> ByteString -> IO ()
-#if defined(__GLASGOW_HASKELL__)
-#endif
 
+#if defined(__GLASGOW_HASKELL__)
         -- * Miscellaneous
         unpackList, -- eek, otherwise it gets thrown away by the simplifier
+#endif
 
   ) where
 
@@ -231,7 +232,7 @@ import Prelude hiding           (reverse,head,tail,last,init,null
 
 import qualified Data.List as List
 
-import Data.Char                (ord) -- just for the Show instance
+import Data.Char
 import Data.Word                (Word8)
 import Data.Int                 (Int32)
 import Data.Bits                (rotateL)
@@ -250,6 +251,7 @@ import Foreign.Marshal.Array
 
 import System.IO                (stdin,stdout,hClose,hFileSize
                                 ,hGetBuf,hPutBuf,openBinaryFile
+                                ,Handle,IOMode(..))
 
 #if defined(__GLASGOW_HASKELL__)
 
@@ -273,6 +275,10 @@ import GHC.Word hiding (Word8)
 import GHC.Ptr                  (Ptr(..))
 import GHC.ST                   (ST(..))
 import GHC.IOBase
+#endif
+
+#if !defined(__GLASGOW_HASKELL__)
+import System.IO.Unsafe
 #endif
 
 -- -----------------------------------------------------------------------------
@@ -401,6 +407,20 @@ pack str = create (P.length str) $ \(Ptr p) -> stToIO (go p 0# str)
 
 -- | /O(n)/ Converts a 'ByteString' to a '[Word8]'.
 unpack :: ByteString -> [Word8]
+
+#if !defined(__GLASGOW_HASKELL__)
+
+unpack (PS _  _ 0) = []
+unpack (PS ps s l) = inlinePerformIO $ withForeignPtr ps $ \p ->
+        go (p `plusPtr` s) (l - 1) []
+    where
+        STRICT3(go)
+        go p 0 acc = peek p          >>= \e -> return (e : acc)
+        go p n acc = peekByteOff p n >>= \e -> go p (n-1) (e : acc)
+{-# INLINE unpack #-}
+
+#else
+
 unpack ps = build (unpackFoldr ps)
 {-# INLINE unpack #-}
 
@@ -413,11 +433,9 @@ unpackList (PS fp off len) = withPtr fp $ \p -> do
            loop q (n-1) (a : acc)
     loop (p `plusPtr` off) (len-1) []
 
-#if defined(__GLASGOW_HASKELL__)
 {-# RULES
 "unpack-list"  [1]  forall p  . unpackFoldr p (:) [] = unpackList p
  #-}
-#endif
 
 unpackFoldr :: ByteString -> (Word8 -> a -> a) -> a -> a
 unpackFoldr (PS fp off len) f ch = withPtr fp $ \p -> do
@@ -427,26 +445,9 @@ unpackFoldr (PS fp off len) f ch = withPtr fp $ \p -> do
            a <- peekByteOff q n
            loop q (n-1) (a `f` acc)
     loop (p `plusPtr` off) (len-1) ch
-#if defined(__GLASGOW_HASKELL__)
 {-# INLINE [0] unpackFoldr #-}
-#else
-{-# INLINE unpackFoldr #-}
-#endif
 
-{-
---  
--- Abotu the same speed. No nice fusion rules.
---
-unpack :: ByteString -> [Word8]
-unpack (PS _  _ 0) = []
-unpack (PS ps s l) = inlinePerformIO $ withForeignPtr ps $ \p ->
-        go (p `plusPtr` s) (l - 1) []
-    where
-        STRICT3(go)
-        go p 0 acc = peek p          >>= \e -> return (e : acc)
-        go p n acc = peekByteOff p n >>= \e -> go p (n-1) (e : acc)
-{-# INLINE unpack #-}
--}
+#endif
 
 ------------------------------------------------------------------------
 
@@ -728,7 +729,7 @@ minimum xs@(PS x s l)
 maximum xs@(PS x s l)
     | null xs   = errorEmptyList "maximum"
     | otherwise = inlinePerformIO $ withForeignPtr x $ \p -> do
-                        (w :: Word8) <- peek p
+                        w <- peek p
                         maximum_ (p `plusPtr` s) 0 l w
 {-# INLINE maximum #-}
 
@@ -742,7 +743,7 @@ maximum_ ptr n m c
 minimum xs@(PS x s l)
     | null xs   = errorEmptyList "minimum"
     | otherwise = inlinePerformIO $ withForeignPtr x $ \p -> do
-                        (w :: Word8) <- peek p
+                        w <- peek p
                         minimum_ (p `plusPtr` s) 0 l w
 {-# INLINE minimum #-}
 
@@ -1939,7 +1940,7 @@ foreign import ccall unsafe "static stdlib.h free" c_free
     :: Ptr Word8 -> IO ()
 
 #if !defined(__GLASGOW_HASKELL__)
-foreign import ccall unsafe "static stdio.h &free" c_free_finalizer
+foreign import ccall unsafe "static stdlib.h &free" c_free_finalizer
     :: FunPtr (Ptr Word8 -> IO ())
 #endif
 
