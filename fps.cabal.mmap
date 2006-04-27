@@ -1,5 +1,5 @@
 Name:                fps
-Version:             0.4
+Version:             0.5
 Description:         Fast, packed byte arrays with string-like operations
 License:             BSD3
 License-file:        LICENSE
