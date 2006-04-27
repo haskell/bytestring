@@ -147,6 +147,9 @@ tests =
     , ("span",[F ({-# SCC "span"      #-}P.span (/='z') fps)
                  ,F (B.span (/=122) fps)])
 
+    , ("spanEnd",[F ({-# SCC "spanEnd"      #-}P.spanEnd (/='z') fps)
+                 ,F (B.span (/=122) fps)])
+
 --                 ,F (SPS.span (/='z') sps)
 --                 ,F (PS.spanPS (/='z') ps)
 --                 ,F (span (/='z') list)])

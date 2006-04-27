@@ -243,7 +243,8 @@ import Data.ByteString (ByteString(..)
                        ,useAsCString, unsafeUseAsCString
                        )
 
-import Data.Char        (ord,isSpace)
+import Data.Char        (ord)
+
 import qualified Data.List as List (intersperse)
 
 import Foreign
@@ -741,8 +742,7 @@ STRICT3(firstspace)
 firstspace ptr n m
     | n >= m    = return n
     | otherwise = do w <- peekByteOff ptr n
-                     if (not . isSpace . w2c) w then firstspace ptr (n+1) m
-                                                else return n
+                     if (not . isSpaceWord8) w then firstspace ptr (n+1) m else return n
 
 -- | 'dropSpace' efficiently returns the 'ByteString' argument with
 -- white space Chars removed from the front. It is more efficient than
@@ -761,8 +761,7 @@ STRICT3(firstnonspace)
 firstnonspace ptr n m
     | n >= m    = return n
     | otherwise = do w <- peekElemOff ptr n
-                     if (isSpace . w2c) w then firstnonspace ptr (n+1) m
-                                          else return n
+                     if isSpaceWord8 w then firstnonspace ptr (n+1) m else return n
 
 -- | 'dropSpaceEnd' efficiently returns the 'ByteString' argument with
 -- white space removed from the end. I.e.
@@ -782,8 +781,7 @@ STRICT2(lastnonspace)
 lastnonspace ptr n
     | n < 0     = return n
     | otherwise = do w <- peekElemOff ptr n
-                     if (isSpace . w2c) w then lastnonspace ptr (n-1)
-                                          else return n
+                     if isSpaceWord8 w then lastnonspace ptr (n-1) else return n
 
 -- | 'lines' breaks a ByteString up into a list of ByteStrings at
 -- newline Chars. The resulting strings do not contain newlines.
@@ -827,7 +825,7 @@ unlines ss = (concat $ List.intersperse nl ss) `append` nl -- half as much space
 -- > tokens isSpace = words
 --
 words :: ByteString -> [ByteString]
-words = tokens isSpace
+words = B.tokens isSpaceWord8
 
 -- | The 'unwords' function is analogous to the 'unlines' function, on words.
 unwords :: [ByteString] -> ByteString
@@ -897,7 +895,7 @@ unlinesCRLF' ss = concat $ intersperse_newlines ss
 -- > unwords $ words' "a b c " == "a b c "
 --
 words' :: ByteString -> [ByteString]
-words' = splitWith isSpace
+words' = B.splitWith isSpaceWord8
 
 -- | 'unwords\'' behaves like 'unwords'. It is provided for consistency
 -- with the other invertable words and lines functions.
@@ -993,3 +991,17 @@ inlinePerformIO (IO m) = case m realWorld# of (# _, r #) -> r
 #else
 inlinePerformIO = unsafePerformIO
 #endif
+
+-- ordered by frequency
+-- Idea from Ketil
+isSpaceWord8 :: Word8 -> Bool
+isSpaceWord8 w = case w of
+    0x20 -> True -- SPACE
+    0x0A -> True -- LF, \n
+    0x09 -> True -- HT, \t
+    0x0C -> True -- FF, \f
+    0x0D -> True -- CR, \r
+    0x0B -> True -- VT, \v
+    _    -> False
+{-# INLINE isSpaceWord8 #-}
+
