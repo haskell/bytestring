@@ -1141,17 +1141,17 @@ elemIndices c ps = loop 0 ps
 --
 -- But more efficiently than using length on the intermediate list.
 count :: Word8 -> ByteString -> Int
-count w (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
-    let ptr = p `plusPtr` s
-        STRICT2(loop)
-        loop n i = do
-                let q = memchr (ptr `plusPtr` n) w (fromIntegral (l - n))
-                if q == nullPtr
-                    then return i
-                    else do let r = q `minusPtr` ptr
-                            k <- loop (r+1) (i+1)
-                            return k
-    loop 0 0
+count w (PS x s m) = inlinePerformIO $ withForeignPtr x $ \p ->
+     go (p `plusPtr` s) (fromIntegral m) 0
+    where
+        go :: Ptr Word8 -> CSize -> Int -> IO Int
+        STRICT3(go)
+        go p l i = do
+            let q = memchr p w l
+            if q == nullPtr
+                then return i
+                else do let k = fromIntegral $ q `minusPtr` p
+                        go (q `plusPtr` 1) (l-k-1) (i+1)
 {-# INLINE count #-}
 
 -- | The 'findIndex' function takes a predicate and a 'ByteString' and
