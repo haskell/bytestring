@@ -322,6 +322,21 @@ eq a b = (compareBytes a b) == EQ
 
 -- | /O(n)/ 'compareBytes' provides an 'Ordering' for 'ByteStrings' supporting slices. 
 compareBytes :: ByteString -> ByteString -> Ordering
+compareBytes (PS _ _ 0) (PS _ _ 0) = EQ    -- short cut for empty strings
+compareBytes (PS x1 s1 l1) (PS x2 s2 l2) = inlinePerformIO $
+    withForeignPtr x1 $ \p1 ->
+    withForeignPtr x2 $ \p2 -> do
+        i <- memcmp (p1 `plusPtr` s1) (p2 `plusPtr` s2) (min l1 l2)
+        return $ case i `compare` 0 of
+                    EQ  -> l1 `compare` l2
+                    x   -> x
+{-# INLINE compareBytes #-}
+
+{-
+--
+-- About 4x slower over 32M
+--
+compareBytes :: ByteString -> ByteString -> Ordering
 compareBytes (PS fp1 off1 len1) (PS fp2 off2 len2) = inlinePerformIO $
     withForeignPtr fp1 $ \p1 ->
         withForeignPtr fp2 $ \p2 ->
@@ -341,21 +356,6 @@ cmp p1 p2 n len1 len2
                 LT -> return LT
                 GT -> return GT
 {-# INLINE compareBytes #-}
-
-{-
--- Only marginally faster, and only on hugh data sets.
--- This implementation uses @memcmp(3)@ 
-
-compare :: ByteString -> ByteString -> Ordering
-compare (PS _ _ 0) (PS _ _ 0) = EQ    -- short cut for empty strings
-compare (PS x1 s1 l1) (PS x2 s2 l2) = inlinePerformIO $
-    withForeignPtr x1 $ \p1 ->
-        withForeignPtr x2 $ \p2 -> do
-            i <- c_memcmp (p1 `plusPtr` s1) (p2 `plusPtr` s2) (min l1 l2)
-            return $ case i `compare` 0 of
-                EQ  -> l1 `compare` l2
-                x   -> x
-{-# INLINE compare #-}
 -}
 
 -- -----------------------------------------------------------------------------
