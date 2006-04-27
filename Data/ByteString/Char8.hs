@@ -307,13 +307,13 @@ unpack = B.unpackWith w2c
 -- | /O(n)/ 'cons' is analogous to (:) for lists, but of different
 -- complexity, as it requires a memcpy.
 cons :: Char -> ByteString -> ByteString
-cons c p = B.cons (c2w c) p
+cons = B.cons . c2w
 {-# INLINE cons #-}
 
 -- | /O(n)/ Append a Char to the end of a 'ByteString'. Similar to
 -- 'cons', this function performs a memcpy.
 snoc :: ByteString -> Char -> ByteString
-snoc p c = B.snoc p (c2w c)
+snoc p = B.snoc p . c2w
 {-# INLINE snoc #-}
 
 -- | /O(1)/ Extract the first element of a ByteString, which must be non-empty.
@@ -335,7 +335,7 @@ map f = B.map (c2w . f . w2c)
 -- and \`intersperses\' that Char between the elements of the
 -- 'ByteString'.  It is analogous to the intersperse function on Lists.
 intersperse :: Char -> ByteString -> ByteString
-intersperse c = B.intersperse (c2w c)
+intersperse = B.intersperse . c2w
 {-# INLINE intersperse #-}
 
 -- | 'foldl', applied to a binary operator, a starting value (typically
@@ -393,7 +393,7 @@ minimum = w2c . B.minimum
 
 -- | /O(n)/ map Char functions, provided with the index at each position
 mapIndexed :: (Int -> Char -> Char) -> ByteString -> ByteString
-mapIndexed f ps = B.mapIndexed (\i c -> c2w (f i (w2c c))) ps
+mapIndexed f = B.mapIndexed (\i c -> c2w (f i (w2c c)))
 {-# INLINE mapIndexed #-}
 
 -- | /O(n)/ 'replicate' @n x@ is a ByteString of length @n@ with @x@
@@ -403,7 +403,7 @@ mapIndexed f ps = B.mapIndexed (\i c -> c2w (f i (w2c c))) ps
 --
 -- This implemenation uses @memset(3)@
 replicate :: Int -> Char -> ByteString
-replicate w c = B.replicate w (c2w c)
+replicate w = B.replicate w . c2w
 {-# INLINE replicate #-}
 
 -- | /O(n)/ The 'unfoldrN' function is analogous to the List \'unfoldr\'.
@@ -430,10 +430,8 @@ replicate w c = B.replicate w (c2w c)
 -- > unfoldrN n == take n $ List.unfoldr
 --
 unfoldrN :: Int -> (Char -> Maybe (Char, Char)) -> Char -> ByteString
-unfoldrN n f w = B.unfoldrN n f' (c2w w)
-    where f' c = case f (w2c c) of
-                    Nothing    -> Nothing
-                    Just (i,j) -> Just ((c2w i),(c2w j))
+unfoldrN n f w = B.unfoldrN n ((k `fmap`) . f . w2c) (c2w w)
+    where k (i,j) = (c2w i, c2w j) -- (c2w *** c2w)
 {-# INLINE unfoldrN #-}
 
 -- | 'takeWhile', applied to a predicate @p@ and a ByteString @xs@,
@@ -481,7 +479,7 @@ spanEnd f = B.spanEnd (f . w2c)
 -- > break (=='c') "abcd" == breakChar 'c' "abcd"
 --
 breakChar :: Char -> ByteString -> (ByteString, ByteString)
-breakChar c = B.breakByte (c2w c)
+breakChar = B.breakByte . c2w
 {-# INLINE breakChar #-}
 
 -- | /O(n)/ 'breakFirst' breaks the given ByteString on the first
@@ -496,7 +494,7 @@ breakChar c = B.breakByte (c2w c)
 -- > in if null y then Nothing else Just (x, drop 1 y))
 --
 breakFirst :: Char -> ByteString -> Maybe (ByteString,ByteString)
-breakFirst c = B.breakFirst (c2w c)
+breakFirst = B.breakFirst . c2w
 {-# INLINE breakFirst #-}
 
 -- | /O(n)/ 'breakLast' behaves like breakFirst, but from the end of the
@@ -511,7 +509,7 @@ breakFirst c = B.breakFirst (c2w c)
 -- > in if null x then Nothing else Just (reverse (drop 1 y), reverse x)
 --
 breakLast :: Char -> ByteString -> Maybe (ByteString,ByteString)
-breakLast  c = B.breakLast (c2w c)
+breakLast = B.breakLast . c2w
 {-# INLINE breakLast #-}
 
 -- | /O(n)/ Break a 'ByteString' into pieces separated by the byte
@@ -531,7 +529,7 @@ breakLast  c = B.breakLast (c2w c)
 -- are slices of the original.
 --
 split :: Char -> ByteString -> [ByteString]
-split c = B.split (c2w c)
+split = B.split . c2w
 {-# INLINE split #-}
 
 -- | /O(n)/ Splits a 'ByteString' into components delimited by
@@ -559,19 +557,19 @@ tokens f = B.tokens (f . w2c)
 -- char. Around 4 times faster than the generalised join.
 --
 joinWithChar :: Char -> ByteString -> ByteString -> ByteString
-joinWithChar c = B.joinWithByte (c2w c)
+joinWithChar = B.joinWithByte . c2w
 {-# INLINE joinWithChar #-}
 
 -- | /O(1)/ 'ByteString' index (subscript) operator, starting from 0.
 index :: ByteString -> Int -> Char
-index p i = w2c (B.index p i)
+index = (w2c .) . B.index
 {-# INLINE index #-}
 
 -- | /O(n)/ The 'elemIndex' function returns the index of the first
 -- element in the given 'ByteString' which is equal (by memchr) to the
 -- query element, or 'Nothing' if there is no such element.
 elemIndex :: Char -> ByteString -> Maybe Int
-elemIndex c = B.elemIndex (c2w c)
+elemIndex = B.elemIndex . c2w
 {-# INLINE elemIndex #-}
 
 -- | /O(n)/ The 'elemIndexLast' function returns the last index of the
@@ -583,13 +581,13 @@ elemIndex c = B.elemIndex (c2w c)
 -- > (-) (length xs - 1) `fmap` elemIndex c (reverse xs)
 --
 elemIndexLast :: Char -> ByteString -> Maybe Int
-elemIndexLast c = B.elemIndexLast (c2w c)
+elemIndexLast = B.elemIndexLast . c2w
 {-# INLINE elemIndexLast #-}
 
 -- | /O(n)/ The 'elemIndices' function extends 'elemIndex', by returning
 -- the indices of all elements equal to the query element, in ascending order.
 elemIndices :: Char -> ByteString -> [Int]
-elemIndices c = B.elemIndices (c2w c)
+elemIndices = B.elemIndices . c2w
 {-# INLINE elemIndices #-}
 
 -- | The 'findIndex' function takes a predicate and a 'ByteString' and
@@ -633,9 +631,7 @@ filter f = B.filter (f . w2c)
 -- and returns the first element in matching the predicate, or 'Nothing'
 -- if there is no such element.
 find :: (Char -> Bool) -> ByteString -> Maybe Char
-find f ps = case B.find (f . w2c) ps of
-                Nothing -> Nothing
-                Just w  -> Just (w2c w)
+find f ps = w2c `fmap` B.find (f . w2c) ps
 {-# INLINE find #-}
 
 -- | /O(n)/ A first order equivalent of /filter . (==)/, for the common
@@ -648,7 +644,7 @@ find f ps = case B.find (f . w2c) ps of
 -- filter equivalent
 --
 filterChar :: Char -> ByteString -> ByteString
-filterChar    c = B.filterByte (c2w c)
+filterChar c = B.filterByte (c2w c)
 {-# INLINE filterChar #-}
 
 -- | /O(n)/ A first order equivalent of /filter . (\/=)/, for the common
@@ -679,7 +675,7 @@ zip ps qs
 -- @'zipWith' (+)@ is applied to two ByteStrings to produce the list
 -- of corresponding sums.
 zipWith :: (Char -> Char -> a) -> ByteString -> ByteString -> [a]
-zipWith f = B.zipWith (\c d -> f (w2c c) (w2c d))
+zipWith f = B.zipWith ((. w2c) . f . w2c)
 
 -- | 'unzip' transforms a list of pairs of Chars into a pair of
 -- ByteStrings. Note that this performs two 'pack' operations.
@@ -700,7 +696,7 @@ unsafeHead  = w2c . B.unsafeHead
 -- obligation on the programmer to ensure the bounds are checked in some
 -- other way.
 unsafeIndex :: ByteString -> Int -> Char
-unsafeIndex p i = w2c (B.unsafeIndex p i)
+unsafeIndex = (w2c .) . B.unsafeIndex
 {-# INLINE unsafeIndex #-}
 
 -- | Conversion between 'Word8' and 'Char'. Should compile to a no-op.
