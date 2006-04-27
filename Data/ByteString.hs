@@ -206,11 +206,13 @@ module Data.ByteString (
 #if defined(__GLASGOW_HASKELL__)
         getArgs,                -- :: IO [ByteString]
         hGetLine,               -- :: Handle -> IO ByteString
+        hGetNonBlocking,        -- :: Handle -> Int -> IO ByteString
 #endif
         hGetContents,           -- :: Handle -> IO ByteString
         hGet,                   -- :: Handle -> Int -> IO ByteString
         hPut,                   -- :: Handle -> ByteString -> IO ()
-        hGetNonBlocking,        -- :: Handle -> Int -> IO ByteString
+#if defined(__GLASGOW_HASKELL__)
+#endif
 
         -- * Miscellaneous
         unpackList, -- eek, otherwise it gets thrown away by the simplifier
@@ -247,9 +249,11 @@ import Foreign.Ptr
 import Foreign.Marshal.Array
 
 import System.IO                (stdin,stdout,hClose,hFileSize
-                                ,hGetBuf,hPutBuf,openBinaryFile,hGetBufNonBlocking)
+                                ,hGetBuf,hPutBuf,openBinaryFile
 
 #if defined(__GLASGOW_HASKELL__)
+
+import System.IO                (hGetBufNonBlocking)
 
 import qualified Foreign.Concurrent as FC (newForeignPtr)
 
@@ -1695,6 +1699,7 @@ hGet h i = do fp <- mallocByteString i
               l  <- withForeignPtr fp $ \p-> hGetBuf h p i
               return $ PS fp 0 l
 
+#if defined(__GLASGOW_HASKELL__)
 -- | hGetNonBlocking is identical to 'hGet', except that it will never block
 -- waiting for data to become available, instead it returns only whatever data
 -- is available.
@@ -1704,6 +1709,7 @@ hGetNonBlocking h i = do
     fp <- mallocByteString i
     l  <- withForeignPtr fp $ \p -> hGetBufNonBlocking h p i
     return $ PS fp 0 l
+#endif
 
 -- | Read entire handle contents into a 'ByteString'.
 --

@@ -200,11 +200,11 @@ module Data.ByteString.Char8 (
 #if defined(__GLASGOW_HASKELL__)
         getArgs,                -- :: IO [ByteString]
         hGetLine,               -- :: Handle -> IO ByteString
+        hGetNonBlocking,        -- :: Handle -> Int -> IO ByteString
 #endif
         hGetContents,           -- :: Handle -> IO ByteString
         hGet,                   -- :: Handle -> Int -> IO ByteString
         hPut,                   -- :: Handle -> ByteString -> IO ()
-        hGetNonBlocking,        -- :: Handle -> Int -> IO ByteString
 
 #if defined(__GLASGOW_HASKELL__)
         -- * Low level construction
