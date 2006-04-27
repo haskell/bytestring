@@ -251,11 +251,14 @@ import Foreign.C.Types          (CLong)
 import Foreign.Marshal.Utils    (with)
 
 #if defined(__GLASGOW_HASKELL__)
-import GHC.Base     (unsafeChr,unpackCString#)
-import GHC.IOBase   (IO(..))
-import GHC.Prim     (realWorld#)
+import GHC.Base                 (Char(..),unsafeChr,unpackCString#,unsafeCoerce#)
+import GHC.IOBase               (IO(..),stToIO)
+import GHC.Prim                 (Addr#,writeWord8OffAddr#,realWorld#,plusAddr#)
+import GHC.Ptr                  (Ptr(..))
+import GHC.ST                   (ST(..))
 #endif
 
+#define STRICT1(f) f a | a `seq` False = undefined
 #define STRICT2(f) f a b | a `seq` b `seq` False = undefined
 #define STRICT3(f) f a b c | a `seq` b `seq` c `seq` False = undefined
 
@@ -268,13 +271,32 @@ packChar = B.packByte . c2w
 
 -- | /O(n)/ Convert a 'String' into a 'ByteString'
 pack :: String -> ByteString
-pack = B.packWith c2w
-{-# INLINE pack #-}
+#if !defined(__GLASGOW_HASKELL__)
+
+pack str = B.create (P.length str) $ \p -> go p str
+    where go _ []     = return ()
+          go p (x:xs) = poke p (c2w x) >> go (p `plusPtr` 1) xs
+
+#else /* hack away */
+
+pack str = B.create (P.length str) $ \(Ptr p) -> stToIO (go p str)
+  where
+    go :: Addr# -> [Char] -> ST a ()
+    go _ []        = return ()
+    go p (C# c:cs) = writeByte p (unsafeCoerce# c) >> go (p `plusAddr#` 1#) cs
+
+    writeByte p c = ST $ \s# ->
+        case writeWord8OffAddr# p 0# c s# of s2# -> (# s2#, () #)
+    {-# INLINE writeByte #-}
 
 {-# RULES
 "pack/packAddress" forall s# .
                    pack (unpackCString# s#) = B.packAddress s#
  #-}
+
+#endif
+
+{-# INLINE pack #-}
 
 -- | /O(n)/ Converts a 'ByteString' to a 'String'.
 unpack :: ByteString -> [Char]
