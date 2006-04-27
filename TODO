@@ -1,8 +1,5 @@
 
 * remove Posix dependency for mmap.
 
-* fix the pack issue. check it runs as fast as 0.3
-
-* port to hugs
-
+* prepare ghc patch. tests go into testsuite. check the performance afterwards.
 

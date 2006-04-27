@@ -383,7 +383,10 @@ packByte c = inlinePerformIO $ mallocByteString 2 >>= \fp -> do
     return $ PS fp 0 1
 {-# NOINLINE packByte #-}
 
--- | /O(n)/ Convert a '[Word8]' into a 'ByteString'.
+-- | /O(n)/ Convert a '[Word8]' into a 'ByteString'. 
+--
+-- For applications with large numbers of string literals, pack can be a
+-- bottleneck. In such cases, consider using packAddress (GHC only).
 pack :: [Word8] -> ByteString
 
 #if !defined(__GLASGOW_HASKELL__)

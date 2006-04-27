@@ -273,6 +273,9 @@ packChar = B.packByte . c2w
 {-# INLINE packChar #-}
 
 -- | /O(n)/ Convert a 'String' into a 'ByteString'
+--
+-- For applications with large numbers of string literals, pack can be a
+-- bottleneck. In such cases, consider using packAddress (GHC only).
 pack :: String -> ByteString
 #if !defined(__GLASGOW_HASKELL__)
 
