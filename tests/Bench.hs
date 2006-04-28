@@ -7,7 +7,7 @@
 --
 
 import qualified Data.ByteString.Char8 as P
-import Data.ByteString (ByteString,mmapFile)
+import Data.ByteString (ByteString)
 
 import qualified Data.ByteString as B
 
@@ -380,11 +380,11 @@ instance Forceable () where force () = return B
 --
 
 fps :: P.ByteString
-fps = unsafePerformIO $ mmapFile dict
+fps = unsafePerformIO $ P.readFile dict
 {-# NOINLINE fps #-}
 
 fps' :: P.ByteString
-fps' = unsafePerformIO $ mmapFile dict'
+fps' = unsafePerformIO $ P.readFile dict'
 {-# NOINLINE fps' #-}
 
 {-

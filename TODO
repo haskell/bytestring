@@ -4,3 +4,4 @@
 * prepare ghc patch. tests go into testsuite. check the performance afterwards.
 
 * mmap can't go in base libraries. relies on 'unix' for handleToFd.
+    System.Posix.Mmap

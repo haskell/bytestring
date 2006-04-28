@@ -186,6 +186,7 @@ module Data.ByteString (
         -- | These functions perform memcpy(3) operations
         copy,                   -- :: ByteString -> ByteString
         copyCString,            -- :: CString -> ByteString
+        copyCStringLen,         -- :: CStringLen -> ByteString
 
         -- * I\/O with @ByteString@s
 
@@ -1569,8 +1570,11 @@ copy (PS x s l) = create l $ \p -> withForeignPtr x $ \f -> memcpy p (f `plusPtr
 -- | /O(n)/ Duplicate a CString as a ByteString. Useful if you know the
 -- CString is going to be deallocated from C land.
 copyCString :: CString -> ByteString
-copyCString cstr = inlinePerformIO $ do
-    let len = fromIntegral $ c_strlen cstr
+copyCString cstr = copyCStringLen (cstr, (fromIntegral $ c_strlen cstr))
+
+-- | /O(n)/ Same as copyCString, but saves a strlen call when the length is known.
+copyCStringLen :: CStringLen -> ByteString
+copyCStringLen (cstr, len) = inlinePerformIO $ do
     fp <- mallocForeignPtrArray (len+1)
     withForeignPtr fp $ \p -> do
         memcpy p (castPtr cstr) len
