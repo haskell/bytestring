@@ -979,8 +979,13 @@ splitWith pred_ (PS fp off len) = splitWith' pred# off len fp
 {-# INLINE splitWith #-}
 
 #else
-splitWith p ps = if null rest then [chunk] else chunk : splitWith p (unsafeTail rest)
-    where (chunk,rest) = break p ps
+STRICT2(splitWith)
+splitWith _ (PS _ _ 0) = []
+splitWith p ps = splitWith' p ps
+    where
+        splitWith' q qs = if null rest then [chunk]
+                                       else chunk : splitWith q (unsafeTail rest)
+            where (chunk,rest) = break q qs
 #endif
 
 -- | /O(n)/ Break a 'ByteString' into pieces separated by the byte
