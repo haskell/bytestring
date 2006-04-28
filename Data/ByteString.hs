@@ -332,7 +332,7 @@ eq a b = (compareBytes a b) == EQ
 
 -- | /O(n)/ 'compareBytes' provides an 'Ordering' for 'ByteStrings' supporting slices. 
 compareBytes :: ByteString -> ByteString -> Ordering
-compareBytes (PS _ _ 0) (PS _ _ 0) = EQ    -- short cut for empty strings
+compareBytes (PS _ _ 0) (PS _ _ 0)       = EQ    -- short cut for empty strings
 compareBytes (PS x1 s1 l1) (PS x2 s2 l2) = inlinePerformIO $
     withForeignPtr x1 $ \p1 ->
     withForeignPtr x2 $ \p2 -> do
