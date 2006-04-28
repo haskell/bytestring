@@ -224,9 +224,9 @@ import qualified Prelude as P
 import Prelude hiding           (reverse,head,tail,last,init,null
                                 ,length,map,lines,foldl,foldr,unlines
                                 ,concat,any,take,drop,splitAt,takeWhile
-                                ,dropWhile,span,break,elem,filter,unwords
-                                ,words,maximum,minimum,all,concatMap
-                                ,foldl1,foldr1,readFile,writeFile,replicate
+                                ,dropWhile,span,break,elem,filter,maximum
+                                ,minimum,all,concatMap,foldl1,foldr1
+                                ,readFile,writeFile,replicate
                                 ,getContents,getLine,putStr,putStrLn
                                 ,zip,zipWith,unzip,notElem)
 
@@ -950,6 +950,7 @@ spanEnd  p ps = splitAt (findFromEndUntil (not.p) ps) ps
 -- separators result in an empty component in the output.  eg.
 --
 -- > splitWith (=='a') "aabbaca" == ["","","bb","c",""]
+-- > splitWith (=='a') []        == []
 --
 splitWith :: (Word8 -> Bool) -> ByteString -> [ByteString]
 
@@ -979,12 +980,12 @@ splitWith pred_ (PS fp off len) = splitWith' pred# off len fp
 {-# INLINE splitWith #-}
 
 #else
-STRICT2(splitWith)
 splitWith _ (PS _ _ 0) = []
 splitWith p ps = splitWith' p ps
     where
+        STRICT2(splitWith')
         splitWith' q qs = if null rest then [chunk]
-                                       else chunk : splitWith q (unsafeTail rest)
+                                       else chunk : splitWith' q (unsafeTail rest)
             where (chunk,rest) = break q qs
 #endif
 
