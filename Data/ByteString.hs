@@ -2002,7 +2002,7 @@ foreign import ccall unsafe "static sys/mman.h munmap" c_munmap
 #endif
 
 -- ---------------------------------------------------------------------
--- Internal Haskell magic
+-- Internal GHC Haskell magic
 
 #if defined(__GLASGOW_HASKELL__)
 foreign import ccall unsafe "RtsAPI.h getProgArgv"
