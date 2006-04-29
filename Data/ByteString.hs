@@ -1166,7 +1166,6 @@ count w (PS x s m) = inlinePerformIO $ withForeignPtr x $ \p ->
 --
 -- around 30% slower
 --
-count :: Word8 -> ByteString -> Int
 count w (PS x s m) = inlinePerformIO $ withForeignPtr x $ \p ->
      go (p `plusPtr` s) (fromIntegral m) 0
     where
