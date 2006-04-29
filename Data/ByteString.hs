@@ -238,6 +238,7 @@ import Data.Maybe               (listToMaybe)
 import Data.Array               (listArray)
 import qualified Data.Array as Array ((!))
 
+-- Control.Exception.bracket not available in yhc or nhc
 import Control.Exception        (bracket)
 
 import Foreign.C.String         (CString, CStringLen)
@@ -247,6 +248,7 @@ import Foreign.Marshal.Array
 import Foreign.Ptr
 import Foreign.Storable         (Storable(..))
 
+-- hGetBuf and hPutBuf not available in yhc or nhc
 import System.IO                (stdin,stdout,hClose,hFileSize
                                 ,hGetBuf,hPutBuf,openBinaryFile
                                 ,Handle,IOMode(..))
