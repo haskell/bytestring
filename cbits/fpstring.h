@@ -1,4 +1,3 @@
-#include <HsFFI.h>
 
 char *my_mmap(int len, int fd);
 
