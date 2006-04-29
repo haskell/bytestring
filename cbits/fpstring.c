@@ -29,21 +29,7 @@
  * SUCH DAMAGE.
  */
 
-#include <stdlib.h>
 #include "fpstring.h"
-
-#include <sys/types.h>
-#include <sys/mman.h>
-
-/* could be replaced with some .hsc magic */
-
-char *my_mmap(int len, int fd) {
-  void *maybeok = mmap(NULL, len, PROT_READ, MAP_SHARED, fd, 0);
-  if (maybeok == MAP_FAILED)
-        return NULL;
-  else
-        return (char *)maybeok;
-}
 
 /* copy a string in reverse */
 void reverse(unsigned char *dest, unsigned char *from, int len) {

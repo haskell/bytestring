@@ -1,5 +1,4 @@
-
-char *my_mmap(int len, int fd);
+#include <stdlib.h>
 
 void reverse(unsigned char *dest, unsigned char *from, int len);
 void my_qsort(unsigned char *base, size_t size);

@@ -9,7 +9,7 @@ import Data.List
 import Data.Maybe
 
 import qualified Data.ByteString.Char8 as P
-import Data.ByteString.Char8 (pack,unpack,ByteString,mmapFile)
+import Data.ByteString.Char8 (pack,unpack,ByteString)
 
 import TestFramework
 import Language.Haskell.TH
@@ -21,9 +21,9 @@ import qualified Control.Exception
 
 ------------------------------------------------------------------------
     
-pstr = unsafePerformIO $ mmapFile "data"
+pstr = unsafePerformIO $ P.readFile "data"
 {-# NOINLINE pstr #-}
-qstr = unsafePerformIO $ mmapFile "Makefile"
+qstr = unsafePerformIO $ P.readFile "Makefile"
 {-# NOINLINE qstr #-}
 str  = unsafePerformIO $ readFile "data"
 {-# NOINLINE str #-}

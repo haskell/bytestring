@@ -1,4 +1,4 @@
-{-# OPTIONS -cpp -fglasgow-exts -O -optc-O2 -funbox-strict-fields #-}
+{-# OPTIONS_GHC -cpp -fffi #-}
 --
 -- Module      : ByteString
 -- Copyright   : (c) The University of Glasgow 2001,
@@ -80,7 +80,6 @@ module Data.ByteString (
         maximum,                -- :: ByteString -> Word8
         minimum,                -- :: ByteString -> Word8
         mapIndexed,             -- :: (Int -> Word8 -> Word8) -> ByteString -> ByteString
-        hash,                   -- :: ByteString -> Int32
 
         -- * Generating and unfolding ByteStrings
         replicate,              -- :: Int -> Word8 -> ByteString
@@ -201,8 +200,8 @@ module Data.ByteString (
 
         -- ** Files
         readFile,               -- :: FilePath -> IO ByteString
-        mmapFile,               -- :: FilePath -> IO ByteString
         writeFile,              -- :: FilePath -> ByteString -> IO ()
+--      mmapFile,               -- :: FilePath -> IO ByteString
 
         -- ** I\/O with Handles
 #if defined(__GLASGOW_HASKELL__)
@@ -235,52 +234,49 @@ import qualified Data.List as List
 
 import Data.Char
 import Data.Word                (Word8)
-import Data.Int                 (Int32)
-import Data.Bits                (rotateL)
 import Data.Maybe               (listToMaybe)
 import Data.Array               (listArray)
 import qualified Data.Array as Array ((!))
 
 import Control.Exception        (bracket)
 
-import Foreign.C.Types          (CSize, CInt)
 import Foreign.C.String         (CString, CStringLen)
-import Foreign.Storable
+import Foreign.C.Types          (CSize, CInt)
 import Foreign.ForeignPtr
-import Foreign.Ptr
 import Foreign.Marshal.Array
+import Foreign.Ptr
+import Foreign.Storable         (Storable(..))
 
 import System.IO                (stdin,stdout,hClose,hFileSize
                                 ,hGetBuf,hPutBuf,openBinaryFile
                                 ,Handle,IOMode(..))
 
+#if !defined(__GLASGOW_HASKELL__)
+import System.IO.Unsafe
+#endif
+
 #if defined(__GLASGOW_HASKELL__)
-
-import System.IO                (hGetBufNonBlocking)
-
-import qualified Foreign.Concurrent as FC (newForeignPtr)
-
-# if defined(USE_MMAP)
-import System.Posix             (handleToFd)
-# endif
 
 import Data.Generics            (Data(..), Typeable(..))
 
+import System.IO                (hGetBufNonBlocking)
 import System.IO.Error          (isEOFError)
+
 import Foreign.Marshal          (alloca)
+import qualified Foreign.Concurrent as FC (newForeignPtr)
 
 import GHC.Handle
-import GHC.Prim
+import GHC.Prim                 (realWorld#, Addr#, Word#, (+#), writeWord8OffAddr#)
 import GHC.Base                 (build, unsafeChr)
 import GHC.Word hiding (Word8)
 import GHC.Ptr                  (Ptr(..))
 import GHC.ST                   (ST(..))
 import GHC.IOBase
+
 #endif
 
-#if !defined(__GLASGOW_HASKELL__)
-import System.IO.Unsafe
-#endif
+-- CFILES stuff is Hugs only
+{-# CFILES cbits/fpstring.c #-}
 
 -- -----------------------------------------------------------------------------
 --
@@ -583,26 +579,26 @@ map_ f n p1 p2
 
 -- | /O(n)/ 'reverse' @xs@ efficiently returns the elements of @xs@ in reverse order.
 reverse :: ByteString -> ByteString
-#if defined(USE_CBITS)
 reverse (PS x s l) = create l $ \p -> withForeignPtr x $ \f ->
         c_reverse p (f `plusPtr` s) l
-#else
+
+{-
 reverse = pack . P.reverse . unpack
-#endif
+-}
 
 -- | /O(n)/ The 'intersperse' function takes a 'Word8' and a
 -- 'ByteString' and \`intersperses\' that byte between the elements of
 -- the 'ByteString'.  It is analogous to the intersperse function on
 -- Lists.
 intersperse :: Word8 -> ByteString -> ByteString
-#if defined(USE_CBITS)
 intersperse c ps@(PS x s l)
     | length ps < 2  = ps
     | otherwise      = create (2*l-1) $ \p -> withForeignPtr x $ \f ->
         c_intersperse p (f `plusPtr` s) l c
-#else
+
+{-
 intersperse c = pack . List.intersperse c . unpack
-#endif
+-}
 
 -- | The 'transpose' function transposes the rows and columns of its
 -- 'ByteString' argument.
@@ -712,30 +708,26 @@ all f (PS x s l) = inlinePerformIO $ withForeignPtr x $ \ptr ->
 
 -- | /O(n)/ 'maximum' returns the maximum value from a 'ByteString'
 maximum :: ByteString -> Word8
-
--- | /O(n)/ 'minimum' returns the minimum value from a 'ByteString'
-minimum :: ByteString -> Word8
-
-#if defined(USE_CBITS)
-
 maximum xs@(PS x s l)
     | null xs   = errorEmptyList "maximum"
     | otherwise = inlinePerformIO $ withForeignPtr x $ \p ->
                     return $ c_maximum (p `plusPtr` s) l
+{-# INLINE maximum #-}
 
+-- | /O(n)/ 'minimum' returns the minimum value from a 'ByteString'
+minimum :: ByteString -> Word8
 minimum xs@(PS x s l)
     | null xs   = errorEmptyList "minimum"
     | otherwise = inlinePerformIO $ withForeignPtr x $ \p ->
                     return $ c_minimum (p `plusPtr` s) l
+{-# INLINE minimum #-}
 
-#else
-
+{-
 maximum xs@(PS x s l)
     | null xs   = errorEmptyList "maximum"
     | otherwise = inlinePerformIO $ withForeignPtr x $ \p -> do
                         w <- peek p
                         maximum_ (p `plusPtr` s) 0 l w
-{-# INLINE maximum #-}
 
 maximum_ :: Ptr Word8 -> Int -> Int -> Word8 -> IO Word8
 STRICT4(maximum_)
@@ -749,7 +741,6 @@ minimum xs@(PS x s l)
     | otherwise = inlinePerformIO $ withForeignPtr x $ \p -> do
                         w <- peek p
                         minimum_ (p `plusPtr` s) 0 l w
-{-# INLINE minimum #-}
 
 minimum_ :: Ptr Word8 -> Int -> Int -> Word8 -> IO Word8
 STRICT4(minimum_)
@@ -757,7 +748,7 @@ minimum_ ptr n m c
     | n >= m    = return c
     | otherwise = do w <- peekByteOff ptr n
                      minimum_ ptr (n+1) m (if w < c then w else c)
-#endif
+-}
 
 -- | /O(n)/ map Word8 functions, provided with the index at each position
 mapIndexed :: (Int -> Word8 -> Word8) -> ByteString -> ByteString
@@ -770,17 +761,6 @@ mapIndexed k (PS ps s l) = create l $ \p -> withForeignPtr ps $ \f ->
                | otherwise = do w <- peek f
                                 ((poke t) . k n) w
                                 go (n+1) (f `plusPtr` 1) (t `plusPtr` 1) p
-
--- | /O(n)/ Hash a ByteString into an 'Int32' value, suitable for use as a key.
-hash :: ByteString -> Int32
-hash (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p ->
-    go (0 :: Int32) (p `plusPtr` s) l
-  where
-    go :: Int32 -> Ptr Word8 -> Int -> IO Int32
-    STRICT3(go)
-    go h _ 0 = return h
-    go h p n = do w <- peek p
-                  go (fromIntegral w + rotateL h 8) (p `plusPtr` 1) (n-1)
 
 -- ---------------------------------------------------------------------
 -- Unfolds and replicates
@@ -1156,13 +1136,11 @@ elemIndices c ps = loop 0 ps
 --
 -- But more efficiently than using length on the intermediate list.
 count :: Word8 -> ByteString -> Int
-
-#if defined(USE_CBITS)
-
 count w (PS x s m) = inlinePerformIO $ withForeignPtr x $ \p ->
     return $ c_count (p `plusPtr` s) (fromIntegral m) w
+{-# INLINE count #-}
 
-#else
+{-
 --
 -- around 30% slower
 --
@@ -1177,9 +1155,7 @@ count w (PS x s m) = inlinePerformIO $ withForeignPtr x $ \p ->
                 then return i
                 else do let k = fromIntegral $ q `minusPtr` p
                         go (q `plusPtr` 1) (l-k-1) (i+1)
-#endif
-
-{-# INLINE count #-}
+-}
 
 -- | The 'findIndex' function takes a predicate and a 'ByteString' and
 -- returns the index of the first element in the ByteString
@@ -1414,13 +1390,13 @@ elems (PS x s l) = (PS x s 1:elems (PS x (s+1) (l-1)))
 
 -- | /O(n log(n))/ Sort a ByteString efficiently, using qsort(3).
 sort :: ByteString -> ByteString
-#if defined(USE_CBITS)
 sort (PS x s l) = create l $ \p -> withForeignPtr x $ \f -> do
         memcpy p (f `plusPtr` s) l
         c_qsort p l -- inplace
-#else
+
+{-
 sort = pack . List.sort . unpack
-#endif
+-}
 
 -- ---------------------------------------------------------------------
 --
@@ -1787,6 +1763,11 @@ writeFile f ps = do
     hPut h ps
     hClose h
 
+{-
+--
+-- Disable until we can move it into a portable .hsc file
+--
+
 -- | Like readFile, this reads an entire file directly into a
 -- 'ByteString', but it is even more efficient.  It involves directly
 -- mapping the file to memory.  This has the advantage that the contents
@@ -1801,14 +1782,8 @@ writeFile f ps = do
 -- On systems without mmap, this is the same as a readFile.
 --
 mmapFile :: FilePath -> IO ByteString
-mmapFile f =
-#if defined(USE_MMAP)
-   mmap f >>= \(fp,l) -> return $ PS fp 0 l
-#else
-   readFile f
-#endif
+mmapFile f = mmap f >>= \(fp,l) -> return $ PS fp 0 l
 
-#if defined(USE_MMAP)
 mmap :: FilePath -> IO (ForeignPtr Word8, Int)
 mmap f = do
     h <- openBinaryFile f ReadMode
@@ -1821,35 +1796,28 @@ mmap f = do
                hClose h
                return (thefp, l)
        else do
-#if defined(__GLASGOW_HASKELL__)
                -- unix only :(
                fd <- fromIntegral `fmap` handleToFd h
                p  <- my_mmap l fd
                fp <- if p == nullPtr
-                     then
-#else
-               fp <-
-#endif
-                          do thefp <- mallocByteString l
+                     then do thefp <- mallocByteString l
                              withForeignPtr thefp $ \p' -> hGetBuf h p' l
                              return thefp
-#if defined(__GLASGOW_HASKELL__)
                      else do
                           -- The munmap leads to crashes on OpenBSD.
                           -- maybe there's a use after unmap in there somewhere?
 #if !defined(__OpenBSD__)
-                             fp <- FC.newForeignPtr p (c_munmap p l >> return ())
+                             let unmap = c_munmap p l >> return ()
 #else
-                             fp <- FC.newForeignPtr p (return ())
+                             let unmap = return ()
 #endif
+                             fp <- FC.newForeignPtr p unmap
                              return fp
                c_close fd
-#endif
                hClose h
                return (fp, l)
     where mmap_limit = 16*1024
-
-#endif /* USE_MMAP */
+-}
 
 #if defined(__GLASGOW_HASKELL__)
 --
@@ -1986,7 +1954,6 @@ foreign import ccall unsafe "string.h memcpy" memcpy
 -- Uses our C code
 --
 
-#if defined(USE_CBITS)
 foreign import ccall unsafe "static fpstring.h reverse" c_reverse
     :: Ptr Word8 -> Ptr Word8 -> Int -> IO ()
 
@@ -2005,7 +1972,10 @@ foreign import ccall unsafe "static fpstring.h count" c_count
 foreign import ccall unsafe "static fpstring.h my_qsort" c_qsort
     :: Ptr Word8 -> Int -> IO ()
 
-# if defined(USE_MMAP)
+-- ---------------------------------------------------------------------
+-- MMap
+
+{-
 foreign import ccall unsafe "static fpstring.h my_mmap" my_mmap
     :: Int -> Int -> IO (Ptr Word8)
 
@@ -2016,9 +1986,7 @@ foreign import ccall unsafe "static unistd.h close" c_close
 foreign import ccall unsafe "static sys/mman.h munmap" c_munmap
     :: Ptr Word8 -> Int -> IO Int
 #  endif
-
-# endif
-#endif
+-}
 
 -- ---------------------------------------------------------------------
 -- Internal GHC Haskell magic

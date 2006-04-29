@@ -1,15 +1,15 @@
 Name:                fps
-Version:             0.5
+Version:             0.6
 Description:         Fast, packed byte arrays with string-like operations
 License:             BSD3
 License-file:        LICENSE
 Author:              Don Stewart
 Maintainer:          dons@cse.unsw.edu.au
--- tested-with:         hugs March2005, ghc 6.4.1, ghc 6.5.20060420
+-- Tested-with:         hugs March2005, ghc 6.4.1, ghc 6.5.20060420
 Build-Depends:       base
 Exposed-modules:     Data.ByteString,
                      Data.ByteString.Char8
 extensions:          CPP, ForeignFunctionInterface
-ghc-options:         -Wall -DUSE_CBITS -Icbits
+ghc-options:         -Wall -fglasgow-exts -O -optc-O2 -funbox-strict-fields
 c-sources:           cbits/fpstring.c
 include-dirs:        cbits

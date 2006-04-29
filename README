@@ -15,10 +15,6 @@ Building:
         > ./Setup.hs build
         > ./Setup.hs install
 
-If you wish to use the mmap extensions, then as your first step.
-
-        > mv fps.cabal.mmap fps.cabal
-
 After installation, you can run the testsuite as follows:
     
         > cd tests ; runghc Quick.hs
