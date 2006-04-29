@@ -1665,7 +1665,7 @@ hGetLine h = wantReadableHandle "Data.ByteString.hGetLine" h $ \ handle_ -> do
 mkPS :: RawBuffer -> Int -> Int -> IO ByteString
 mkPS buf start end = do
     let len = end - start
-    fp <- mallocByteString (len `quot` 8)
+    fp <- mallocByteString len
     withForeignPtr fp $ \p -> do
         memcpy_ptr_baoff p buf start (fromIntegral len)
         return (PS fp 0 len)
