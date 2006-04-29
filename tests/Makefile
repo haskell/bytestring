@@ -10,7 +10,7 @@ GHC_ = $(GHC) -threaded $(PP_OPTS) -fglasgow-exts --make
 
 SRCS= TestFramework.hs UnitTestsMain.hs Tests.hs Quick.hs
 
-all: qc htest bench wc
+all: qc htest bench wc spellcheck
 
 # build executable, linking in all tests
 run-utests: $(SRCS)
@@ -24,12 +24,12 @@ qc: Quick.hs
 
 bench::
 	@if [ ! -f "bigdata" ] ; then ln -s data bigdata ; fi
-	ghc --make -O -funbox-strict-fields Bench.hs -o bench -package fps -no-recomp
+	ghc -package fps --make -O -funbox-strict-fields Bench.hs -o bench -no-recomp
 	./bench +RTS -H64m
 
 prof::
 	@if [ ! -f "bigdata" ] ; then ln -s data bigdata ; fi
-	ghc -prof -auto-all --make -O -funbox-strict-fields Bench.hs -o bench -package fps
+	ghc -package fps -prof -auto-all --make -O -funbox-strict-fields Bench.hs -o bench
 	./bench +RTS -H64m -p
 
 .PHONY: wc
@@ -38,7 +38,14 @@ wc: wc.o
 	/usr/bin/time ./wc < bigdata
     
 wc.o: wc.hs
-	ghc -O wc.hs -o wc -package fps
+	ghc -package fps -O wc.hs -o wc
+
+.PHONY: spellcheck
+spellcheck: spellcheck.o
+	/usr/bin/time ./spellcheck < spellcheck-input.txt
+    
+spellcheck.o: spellcheck.hs
+	ghc -package fps -O $< -o spellcheck
 
 .PHONY: clean
 clean:
