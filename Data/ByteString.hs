@@ -1156,6 +1156,17 @@ elemIndices c ps = loop 0 ps
 --
 -- But more efficiently than using length on the intermediate list.
 count :: Word8 -> ByteString -> Int
+
+#if defined(USE_CBITS)
+
+count w (PS x s m) = inlinePerformIO $ withForeignPtr x $ \p ->
+    return $ c_count (p `plusPtr` s) (fromIntegral m) w
+
+#else
+--
+-- around 30% slower
+--
+count :: Word8 -> ByteString -> Int
 count w (PS x s m) = inlinePerformIO $ withForeignPtr x $ \p ->
      go (p `plusPtr` s) (fromIntegral m) 0
     where
@@ -1167,6 +1178,8 @@ count w (PS x s m) = inlinePerformIO $ withForeignPtr x $ \p ->
                 then return i
                 else do let k = fromIntegral $ q `minusPtr` p
                         go (q `plusPtr` 1) (l-k-1) (i+1)
+#endif
+
 {-# INLINE count #-}
 
 -- | The 'findIndex' function takes a predicate and a 'ByteString' and
@@ -1986,6 +1999,9 @@ foreign import ccall unsafe "static fpstring.h maximum" c_maximum
 
 foreign import ccall unsafe "static fpstring.h minimum" c_minimum
     :: Ptr Word8 -> Int -> Word8
+
+foreign import ccall unsafe "static fpstring.h count" c_count
+    :: Ptr Word8 -> Int -> Word8 -> Int
 
 foreign import ccall unsafe "static fpstring.h my_qsort" c_qsort
     :: Ptr Word8 -> Int -> IO ()

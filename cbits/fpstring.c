@@ -46,8 +46,7 @@ char *my_mmap(int len, int fd) {
 }
 
 /* copy a string in reverse */
-void reverse(unsigned char *dest, unsigned char *from, int len)
-{
+void reverse(unsigned char *dest, unsigned char *from, int len) {
     unsigned char *p, *q;
     p = from + len - 1;
     q = dest;
@@ -62,15 +61,13 @@ static int cmp(const void *p, const void *q) {
 }
 
 /* quicksort wrapper */
-void my_qsort(unsigned char *base, size_t size)
-{
+void my_qsort(unsigned char *base, size_t size) {
     qsort(base, size, sizeof(char), cmp);
 }
 
 /* duplicate a string, interspersing the character through the elements
    of the duplicated string */
-void intersperse(unsigned char *dest, unsigned char *from, int len, char c)
-{
+void intersperse(unsigned char *dest, unsigned char *from, int len, char c) {
     unsigned char *p, *q;
     p = from;
     q = dest;
@@ -82,8 +79,7 @@ void intersperse(unsigned char *dest, unsigned char *from, int len, char c)
 }
 
 /* find maximum char in a packed string */
-unsigned char maximum(unsigned char *p, int len)
-{
+unsigned char maximum(unsigned char *p, int len) {
     unsigned char *q, c = *p;
     for (q = p; q < p + len; q++)
         if (*q > c)
@@ -92,11 +88,19 @@ unsigned char maximum(unsigned char *p, int len)
 }
 
 /* find minimum char in a packed string */
-unsigned char minimum(unsigned char *p, int len)
-{
+unsigned char minimum(unsigned char *p, int len) {
     unsigned char *q, c = *p;
     for (q = p; q < p + len; q++)
         if (*q < c)
             c = *q;
+    return c;
+}
+
+/* count the number of occurences of a char in a string */
+int count(unsigned char *p, int len, unsigned char w) {
+    int c;
+    for (c = 0; len--; ++p)
+        if (*p == w)
+            ++c;
     return c;
 }
