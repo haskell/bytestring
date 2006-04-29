@@ -2,12 +2,13 @@
                  FPS : Fast, packed strings
 ------------------------------------------------------------------------
 
-This library provides the Data.ByteString library: latin-1 byte arrays
+This library provides the Data.ByteString library: byte arrays
 manipulable as strings, providing very time and space efficient string
 and IO operations.
 
 Requirements:
         > Cabal
+        > GHC 6.4 or greater, or hugs Mar-2005
 
 Building:
         > chmod +x Setup.hs
@@ -33,82 +34,80 @@ Authors:
 
 ------------------------------------------------------------------------
 
-Performance, some random numbers:
+Performance, some random numbers (with GHC):
 
-This table compares the performance of common operations in both
-PackedString and ByteString, on various packed strings.
+This table compares the performance of common operations ByteString,
+from various string libraries.
 
 Size of test data: 21256k, Linux 3.2Ghz P4
 
-                          FPS5       FPS3/6.6 FPS2    FPS1    SPS     PS      [a]    
-++                        0.039      0.058    0.078   ~       !       !       1.288   
-length                    0.000      ~        ~       ~       0.000   0.000   0.131   
-pack                      0.303      ~        0.345   2.043   0.502   0.337   -       
-unpack                    3.319*     ~        1.596   ~       1.630   7.445   -       
-compare                   0.000      ~        ~       ~       0.000   0.000   0.000   
-index                     0.000      ~        ~       ~       0.000   0.000   0.000   
-map                       2.762*     2.582    2.664   4.283   2.917   4.813   7.286   
-filter                    0.263      ~        0.282   0.482   2.805   0.954   0.305   
-filterChar                0.031      0.151
-filterNotChar             0.202      ~
-take                      0.000      ~        ~       ~       0.000   0.024   0.005   
-drop                      0.000      ~        ~       ~       0.000   11.768  0.130   
-takeWhile                 0.000      ~        ~       ~       1.498   0.000   0.000   
-dropWhile                 0.000      ~        ~       ~       1.985   8.447   0.130   
-span                      0.000      ~        ~       ~       9.289   11.144  0.131   
-break                     0.000      ~        ~       ~       9.383   11.268  0.133   
-lines                     0.028      ~        0.421   ~       1.114   1.367   2.790   
-split                     0.071      ~        0.118  
-unlines                   0.123      ~        ~       ~       !       !       10.950  
-words                     1.583      ~        2.115   3.202   2.128   5.644   4.184   
-unwords                   0.058      ~        ~       ~       !       !       1.305   
-reverse                   0.024      ~        ~       4.606   12.997  13.018  1.622   
-concat                    0.000      0.029    ~       ~       12.701  11.459  1.163   
-cons                      0.016      ~        ~       3.094   2.064   8.358   0.131   
-snoc                      0.017      ~        ~       1.536   -       -       -       
-empty                     0.000      ~        ~       ~       0.000   0.000   0.000   
-head                      0.000      ~        ~       ~       0.000   0.000   0.000   
-tail                      0.000      ~        ~       ~       0.000   14.490  0.130   
-last                      0.000      ~        ~       ~       -       -       0.143   
-init                      0.000      ~        ~       ~       -       -       1.147   
-inits                     0.414      0.717    5.350   -       -       -       !       
-tails                     0.460      0.786    6.634   -       -       -       1.136   
-intersperse               0.070*     0.034    ~       4.590   -       -       10.517  
-join                      0.029      0.061
-any                       0.000      ~        ~       ~       -       -       0.000   
-all                       0.000      ~        ~       ~       -       -       0.000   
-sort                     13.985      ~       14.380  15.773   -       -       !
-maximum                   0.024      ~        ~       0.068   -       -       0.183
-minimum                   0.025      ~        ~       0.093   -       -       0.185
-replicate                 0.000      ~        0.008   ~       -       -       0.053   
-elem                      0.000      ~        ~       ~       1.490   0.001   0.000   
-find                      0.259      ~        0.278   0.366   -       -       0.000   
-elemIndex                 0.000      ~        ~       ~       -       -       0.000   
-elemIndicies              0.010      ~        0.224   4.192   -       -       0.314   
-findIndices               0.422      ~
-splitAt                   0.000      ~
-lineIndices               0.029      ~
-breakOn                   0.000      ~
-breakSpace                0.000      ~
-splitWith                 0.329      ~
-dropSpace                 0.000      ~
-dropSpaceEnd              0.000      ~
-joinWithChar              0.017      0.028   
-join /                    0.030      ~
-zip                       0.960      1.323
-zipWith                   0.892      1.145
-isSubstringOf             0.039      0.055
-isPrefixOf                0.000      ~
-isSuffixOf                0.000      0.080
+                          FPS6       SPS     PS      [a]    
+++                        0.032      !       !       1.288   
+length                    0.000      0.000   0.000   0.131   
+pack                      0.303      0.502   0.337   -       
+unpack                    3.319*     1.630   7.445   -       
+compare                   0.000      0.000   0.000   0.000   
+index                     0.000      0.000   0.000   0.000   
+map                       2.762*     2.917   4.813   7.286   
+filter                    0.260      2.805   0.954   0.305   
+take                      0.000      0.000   0.024   0.005   
+drop                      0.000      0.000   11.768  0.130   
+takeWhile                 0.000      1.498   0.000   0.000   
+dropWhile                 0.000      1.985   8.447   0.130   
+span                      0.000      9.289   11.144  0.131   
+break                     0.000      9.383   11.268  0.133   
+lines                     0.052      1.114   1.367   2.790   
+unlines                   0.120      !       !       10.950  
+words                     1.583      2.128   5.644   4.184   
+unwords                   0.058      !       !       1.305   
+reverse                   0.024      12.997  13.018  1.622   
+concat                    0.000      12.701  11.459  1.163   
+cons                      0.016      2.064   8.358   0.131   
+empty                     0.000      0.000   0.000   0.000   
+head                      0.000      0.000   0.000   0.000   
+tail                      0.000      0.000   14.490  0.130   
+elem                      0.000      1.490   0.001   0.000   
+last                      0.000      -       -       0.143   
+init                      0.000      -       -       1.147   
+inits                     0.414      -       -       !       
+tails                     0.460      -       -       1.136   
+intersperse               0.070*     -       -       10.517  
+any                       0.000      -       -       0.000   
+all                       0.000      -       -       0.000   
+sort                     13.985      -       -       !
+maximum                   0.024      -       -       0.183
+minimum                   0.025      -       -       0.185
+replicate                 0.000      -       -       0.053   
+find                      0.259      -       -       0.000   
+elemIndex                 0.000      -       -       0.000   
+elemIndicies              0.010      -       -       0.314   
+filterChar                0.031      
+filterNotChar             0.202      
+join                      0.029      
+split                     0.071      
+snoc                      0.017
+findIndices               0.408      
+splitAt                   0.000      
+lineIndices               0.029      
+breakOn                   0.000      
+breakSpace                0.000 
+splitWith                 0.329 
+dropSpace                 0.000 
+dropSpaceEnd              0.000 
+joinWithChar              0.017
+join /                    0.030 
+zip                       0.960 
+zipWith                   0.892 
+isSubstringOf             0.039 
+isPrefixOf                0.000 
+isSuffixOf                0.000
 count                     0.021
 
-Key: FPS2 = Byte String v2
-     FPS1 = Byte String v1
+Key: FPS6 = FPS 0.6
      SPS  = Simon Marlow's packedstring prototype
      PS   = Data.PackedString
      [a]  = [Char]
 
-     ~    = unchanged from FPS2
      -    = no function exists
      !    = stack or memory exhaustion
 
