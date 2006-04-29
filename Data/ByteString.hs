@@ -1754,15 +1754,15 @@ hGetContents h = do
         else f p start_size
     where
         f p s = do
-        let s' = 2 * s
-        p' <- reallocArray p s'
-        i  <- hGetBuf h (p' `plusPtr` s) s
-        if i < s
-            then do let i' = s + i
-                    p'' <- reallocArray p' i'
-                    fp  <- newForeignFreePtr p''
-                    return $ PS fp 0 i'
-            else f p' s'
+            let s' = 2 * s
+            p' <- reallocArray p s'
+            i  <- hGetBuf h (p' `plusPtr` s) s
+            if i < s
+                then do let i' = s + i
+                        p'' <- reallocArray p' i'
+                        fp  <- newForeignFreePtr p''
+                        return $ PS fp 0 i'
+                else f p' s'
 
 -- | getContents. Equivalent to hGetContents stdin
 getContents :: IO ByteString
