@@ -647,7 +647,7 @@ foldl1 f ps
 foldr1 :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldr1 f ps
     | null ps        = errorEmptyList "foldr1"
-    | otherwise      = f (unsafeHead ps) (foldr1 f (unsafeTail ps))
+    | otherwise      = foldr f (last ps) (init ps)
 
 -- ---------------------------------------------------------------------
 -- Special folds

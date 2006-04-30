@@ -365,7 +365,7 @@ foldl1 f ps = w2c (B.foldl1 (\x y -> c2w (f (w2c x) (w2c y))) ps)
 -- | 'foldr1' is a variant of 'foldr' that has no starting value argument,
 -- and thus must be applied to non-empty 'ByteString's
 foldr1 :: (Char -> Char -> Char) -> ByteString -> Char
-foldr1 f ps = w2c (B.foldl1 (\x y -> c2w (f (w2c x) (w2c y))) ps)
+foldr1 f ps = w2c (B.foldr1 (\x y -> c2w (f (w2c x) (w2c y))) ps)
 {-# INLINE foldr1 #-}
 
 -- | Map a function over a 'ByteString' and concatenate the results
