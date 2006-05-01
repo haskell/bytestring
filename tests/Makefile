@@ -47,6 +47,13 @@ spellcheck: spellcheck.o
 spellcheck.o: spellcheck.hs
 	ghc -package fps -O $< -o spellcheck
 
+.PHONY: sjanssen
+sjanssen: sjanssen.o
+	/usr/bin/time ./sjanssen < Usr.Dict.Words
+
+sjanssen.o: sjanssen.hs
+	ghc -package fps -O $< -o sjanssen
+
 .PHONY: clean
 clean:
-	rm -f *~ *.o *.hi $(BIN) bench */*.o */*.hi */*~ wc
+	rm -f *~ *.o *.hi $(BIN) bench */*.o */*.hi */*~ wc sjanssen spellcheck
