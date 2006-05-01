@@ -183,6 +183,8 @@ tests =
 --                 ,F () {-(SPS.unwords [sps,sps',sps])-}
 --                 ,F () -- PS.unwordsPS [ps,ps',ps])
 --                 ,F (unwords [list,list',list])])
+    , ("group",[F ({-# SCC "group"   #-}P.group fps)])
+    , ("groupBy",[F ({-# SCC "groupBy"   #-}P.groupBy (==) fps)])
 
     , ("reverse",[F ({-# SCC "reverse"   #-}P.reverse fps)])
 --                 ,F (SPS.reverse sps)
@@ -299,8 +301,11 @@ tests =
 
     , ("lineIndices",[F ({-# SCC "lineIndicies" #-} P.lineIndices fps)])
 
-    , ("breakChar",[F ({-# SCC "breakOn" #-} P.breakChar 'z' fps)
+    , ("breakChar",[F ({-# SCC "breakChar" #-} P.breakChar 'z' fps)
                  ,F (B.breakByte 122 fps)])
+
+    , ("spanChar",[F ({-# SCC "spanChar" #-} P.spanChar 'z' fps)
+                 ,F (B.spanByte 122 fps)])
 
     , ("breakSpace",[F ({-# SCC "breakSpace" #-} P.breakSpace fps)])
 
