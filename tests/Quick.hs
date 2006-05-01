@@ -259,6 +259,7 @@ prop_unwords xs = (pack.unwords.words) xs == (P.unwords . P.words .pack) xs
 prop_group xs   = group xs == (map unpack . P.group . pack) xs
 
 prop_groupBy xs = groupBy (==) xs == (map unpack . P.groupBy (==) . pack) xs
+prop_groupBy1 xs = groupBy (/=) xs == (map unpack . P.groupBy (/=) . pack) xs
 
 prop_join xs = (concat . (intersperse "XYX") . lines) xs ==
                (unpack $ P.join (pack "XYX") (P.lines (pack xs)))
@@ -459,6 +460,7 @@ main = do
             ,    ("unwords",       mytest prop_unwords)
             ,    ("group",      mytest prop_group)
             ,    ("groupBy",    mytest prop_groupBy)
+            ,    ("groupBy1",    mytest prop_groupBy1)
             ,    ("join",       mytest prop_join)
             ,    ("elemIndex1",       mytest prop_elemIndex1)
             ,    ("elemIndex2",       mytest prop_elemIndex2)
