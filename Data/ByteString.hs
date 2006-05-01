@@ -99,6 +99,7 @@ module Data.ByteString (
 
         -- ** Breaking and dropping on specific bytes
         breakByte,              -- :: Word8 -> ByteString -> (ByteString, ByteString)
+        spanByte,               -- :: Word8 -> ByteString -> (ByteString, ByteString)
         breakFirst,             -- :: Word8 -> ByteString -> Maybe (ByteString,ByteString)
         breakLast,              -- :: Word8 -> ByteString -> Maybe (ByteString,ByteString)
 
@@ -106,6 +107,8 @@ module Data.ByteString (
         split,                  -- :: Word8 -> ByteString -> [ByteString]
         splitWith,              -- :: (Word8 -> Bool) -> ByteString -> [ByteString]
         tokens,                 -- :: (Word8 -> Bool) -> ByteString -> [ByteString]
+        group,                  -- :: ByteString -> [ByteString]
+        groupBy,                -- :: (Word8 -> Word8 -> Bool) -> ByteString -> [ByteString]
 
         -- ** Joining strings
         join,                   -- :: ByteString -> [ByteString] -> ByteString
@@ -873,6 +876,24 @@ breakByte c p = case elemIndex c p of
     Just n  -> (take n p, drop n p)
 {-# INLINE breakByte #-}
 
+-- | 'spanByte' breaks its ByteString argument at the first
+-- occurence of a byte other than its argument. It is more efficient
+-- than 'span (==)'
+--
+-- > span  (=='c') "abcd" == spanByte 'c' "abcd"
+--
+spanByte :: Word8 -> ByteString -> (ByteString, ByteString)
+spanByte c ps@(PS x s l) = inlinePerformIO $ withForeignPtr x $ \p ->
+    go (p `plusPtr` s) 0
+  where
+    STRICT2(go)
+    go p i | i >= l    = return (ps, empty)
+           | otherwise = do c' <- peekByteOff p i
+                            if c /= c'
+                                then return (take i ps, drop i ps)
+                                else go p (i+1)
+{-# INLINE spanByte #-}
+
 -- | /O(n)/ 'breakFirst' breaks the given ByteString on the first
 -- occurence of @w@. It behaves like 'break', except the delimiter is
 -- not returned, and @Nothing@ is returned if the delimiter is not in
@@ -910,7 +931,7 @@ breakLast c p = case elemIndexLast c p of
 -- | 'span' @p xs@ breaks the ByteString into two segments. It is
 -- equivalent to @('takeWhile' p xs, 'dropWhile' p xs)@
 span :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
-span  p ps = break (not . p) ps
+span p ps = break (not . p) ps
 {-# INLINE span #-}
 
 -- | 'spanEnd' behaves like 'span' but from the end of the 'ByteString'.
@@ -1036,6 +1057,31 @@ split (W8# w#) (PS fp off len) = splitWith' off len fp
 --
 tokens :: (Word8 -> Bool) -> ByteString -> [ByteString]
 tokens f = P.filter (not.null) . splitWith f
+
+-- | The 'group' function takes a ByteString and returns a list of
+-- ByteStrings such that the concatenation of the result is equal to the
+-- argument.  Moreover, each sublist in the result contains only equal
+-- elements.  For example,
+--
+-- > group "Mississippi" = ["M","i","ss","i","ss","i","pp","i"]
+--
+-- It is a special case of 'groupBy', which allows the programmer to
+-- supply their own equality test. It is about 40% faster than 
+-- /groupBy (==)/
+group :: ByteString -> [ByteString]
+group xs
+    | null xs   = []
+    | otherwise = ys : group zs
+    where
+        (ys, zs) = spanByte (unsafeHead xs) xs
+
+-- | The 'groupBy' function is the non-overloaded version of 'group'.
+groupBy :: (Word8 -> Word8 -> Bool) -> ByteString -> [ByteString]
+groupBy k xs
+    | null xs   = []
+    | otherwise = ys : groupBy k zs
+    where
+        (ys, zs) = span (k (unsafeHead xs)) xs
 
 -- | /O(n)/ The 'join' function takes a 'ByteString' and a list of
 -- 'ByteString's and concatenates the list after interspersing the first

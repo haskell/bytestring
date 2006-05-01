@@ -98,6 +98,7 @@ module Data.ByteString.Char8 (
 
         -- ** Breaking and dropping on specific Chars
         breakChar,              -- :: Char -> ByteString -> (ByteString, ByteString)
+        spanChar,           -- :: Char -> ByteString -> (ByteString, ByteString)
         breakFirst,             -- :: Char -> ByteString -> Maybe (ByteString,ByteString)
         breakLast,              -- :: Char -> ByteString -> Maybe (ByteString,ByteString)
         breakSpace,             -- :: ByteString -> Maybe (ByteString,ByteString)
@@ -108,6 +109,8 @@ module Data.ByteString.Char8 (
         split,                  -- :: Char -> ByteString -> [ByteString]
         splitWith,              -- :: (Char -> Bool) -> ByteString -> [ByteString]
         tokens,                 -- :: (Char -> Bool) -> ByteString -> [ByteString]
+        group,                  -- :: ByteString -> [ByteString]
+        groupBy,                -- :: (Word8 -> Word8 -> Bool) -> ByteString -> [ByteString]
 
         -- ** Breaking into lines and words
         lines,                  -- :: ByteString -> [ByteString]
@@ -232,7 +235,7 @@ import Data.ByteString (ByteString(..)
                        ,inits,tails,elems,reverse,transpose
                        ,concat,take,drop,splitAt,join
                        ,sort,isPrefixOf,isSuffixOf,isSubstringOf,findSubstring
-                       ,findSubstrings,unsafeTail,copy
+                       ,findSubstrings,unsafeTail,copy,group
 
                        ,getContents, putStr, putStrLn
                        ,readFile, {-mmapFile,-} writeFile
@@ -486,6 +489,16 @@ breakChar :: Char -> ByteString -> (ByteString, ByteString)
 breakChar = B.breakByte . c2w
 {-# INLINE breakChar #-}
 
+-- | 'spanChar' breaks its ByteString argument at the first
+-- occurence of a Char other than its argument. It is more efficient
+-- than 'span (==)'
+--
+-- > span  (=='c') "abcd" == spanByte 'c' "abcd"
+--
+spanChar :: Char -> ByteString -> (ByteString, ByteString)
+spanChar = B.spanByte . c2w
+{-# INLINE spanChar #-}
+
 -- | /O(n)/ 'breakFirst' breaks the given ByteString on the first
 -- occurence of @w@. It behaves like 'break', except the delimiter is
 -- not returned, and @Nothing@ is returned if the delimiter is not in
@@ -556,6 +569,10 @@ splitWith f = B.splitWith (f . w2c)
 tokens :: (Char -> Bool) -> ByteString -> [ByteString]
 tokens f = B.tokens (f . w2c)
 {-# INLINE tokens #-}
+
+-- | The 'groupBy' function is the non-overloaded version of 'group'.
+groupBy :: (Char -> Char -> Bool) -> ByteString -> [ByteString]
+groupBy k = B.groupBy (\a b -> k (w2c a) (w2c b))
 
 -- | /O(n)/ joinWithChar. An efficient way to join to two ByteStrings with a
 -- char. Around 4 times faster than the generalised join.
