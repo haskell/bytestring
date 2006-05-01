@@ -1079,9 +1079,9 @@ group xs
 groupBy :: (Word8 -> Word8 -> Bool) -> ByteString -> [ByteString]
 groupBy k xs
     | null xs   = []
-    | otherwise = ys : groupBy k zs
+    | otherwise = take n xs : groupBy k (drop n xs)
     where
-        (ys, zs) = span (k (unsafeHead xs)) xs
+        n = 1 + findIndexOrEnd (not . k (unsafeHead xs)) (unsafeTail xs)
 
 -- | /O(n)/ The 'join' function takes a 'ByteString' and a list of
 -- 'ByteString's and concatenates the list after interspersing the first
