@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -cpp -fffi #-}
+{-# OPTIONS_GHC -cpp -fffi -fglasgow-exts #-}
 --
 -- Module      : Data.ByteString.Char8
 -- Copyright   : (c) Don Stewart 2006

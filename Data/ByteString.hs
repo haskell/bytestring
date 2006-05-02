@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -cpp -fffi #-}
+{-# OPTIONS_GHC -cpp -fffi -fglasgow-exts #-}
 --
 -- Module      : ByteString
 -- Copyright   : (c) The University of Glasgow 2001,
