@@ -1,4 +1,0 @@
-
-* remove Posix dependency for mmap.
-* mmap can't go in base libraries. relies on 'unix' for handleToFd.
-    System.Posix.Mmap
