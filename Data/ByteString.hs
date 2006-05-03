@@ -1446,6 +1446,14 @@ sort (PS x s l) = create l $ \p -> withForeignPtr x $ \f -> do
 sort = pack . List.sort . unpack
 -}
 
+-- | The 'sortBy' function is the non-overloaded version of 'sort'.
+--
+-- Try some linear sorts: radix, counting
+-- Or mergesort.
+--
+-- sortBy :: (Word8 -> Word8 -> Ordering) -> ByteString -> ByteString
+-- sortBy f ps = undefined
+
 -- ---------------------------------------------------------------------
 --
 -- Extensions to the basic interface
@@ -1909,8 +1917,9 @@ mallocByteString l = do
 
 -- | A way of creating ForeignPtrs outside the IO monad. The @Int@
 -- argument gives the final size of the ByteString. Unlike 'generate'
--- the ByteString is no reallocated if the final size is less than the
--- estimated size.
+-- the ByteString is not reallocated if the final size is less than the
+-- estimated size. Also, unlike 'generate' ByteString's created this way
+-- are managed on the Haskell heap.
 create :: Int -> (Ptr Word8 -> IO ()) -> ByteString
 create l write_ptr = inlinePerformIO $ do
     fp <- mallocByteString (l+1)

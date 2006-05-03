@@ -625,6 +625,10 @@ findIndices f = B.findIndices (f . w2c)
 -- | count returns the number of times its argument appears in the ByteString
 --
 -- > count = length . elemIndices
+-- 
+-- Also
+--  
+-- > count '\n' == length . lines
 --
 -- But more efficiently than using length on the intermediate list.
 count :: Char -> ByteString -> Int
@@ -802,6 +806,7 @@ lastnonspace ptr n
 
 -- | 'lines' breaks a ByteString up into a list of ByteStrings at
 -- newline Chars. The resulting strings do not contain newlines.
+--
 lines :: ByteString -> [ByteString]
 lines ps
     | null ps = []
