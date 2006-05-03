@@ -1436,11 +1436,45 @@ elems (PS x s l) = (PS x s 1:elems (PS x (s+1) (l-1)))
 -- ---------------------------------------------------------------------
 -- ** Ordered 'ByteString's
 
--- | /O(n log(n))/ Sort a ByteString efficiently, using qsort(3).
+-- | /O(n)/ Sort a ByteString efficiently, using counting sort.
+sort :: ByteString -> ByteString
+sort (PS input s l) = create l $ \p -> allocaArray 256 $ \arr -> do
+
+    memset (castPtr arr) 0 (256 * fromIntegral (sizeOf (undefined :: CSize)))
+    withForeignPtr input (\x -> countEach arr (x `plusPtr` s) l)
+
+    let STRICT2(go)
+        go i ptr = do
+            if i /= 256
+                then do
+                    n <- peekElemOff arr i
+                    if n /= 0
+                        then memset ptr (fromIntegral i) n >> return ()
+                        else return ()
+                    go (i + 1) (ptr `plusPtr` (fromIntegral n))
+                else return ()
+    go 0 p
+
+-- "countEach counts str l" counts the number of occurences of each Word8 in
+-- str, and stores the result in counts.
+countEach :: Ptr CSize -> Ptr Word8 -> Int -> IO ()
+STRICT3(countEach)
+countEach counts str l = go 0
+ where
+    STRICT1(go)
+    go i | i == l    = return ()
+         | otherwise = do
+                        k <- fmap fromIntegral $ peekElemOff str i
+                        x <- peekElemOff counts k
+                        pokeElemOff counts k (x + 1)
+                        go (i + 1)
+
+{-
 sort :: ByteString -> ByteString
 sort (PS x s l) = create l $ \p -> withForeignPtr x $ \f -> do
         memcpy p (f `plusPtr` s) l
         c_qsort p l -- inplace
+-}
 
 {-
 sort = pack . List.sort . unpack
@@ -2026,8 +2060,10 @@ foreign import ccall unsafe "static fpstring.h minimum" c_minimum
 foreign import ccall unsafe "static fpstring.h count" c_count
     :: Ptr Word8 -> Int -> Word8 -> Int
 
+{-
 foreign import ccall unsafe "static fpstring.h my_qsort" c_qsort
     :: Ptr Word8 -> Int -> IO ()
+-}
 
 -- ---------------------------------------------------------------------
 -- MMap
