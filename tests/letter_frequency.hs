@@ -1,3 +1,8 @@
+{-
+Counts the number of times each alphabetic character occurs in a dictionary.
+
+Useful for benchmarking filter, map, sort and group.
+-}
 import Data.Char (isAlpha, toLower)
 import Data.List (sortBy)
 import qualified Data.ByteString.Char8 as P
