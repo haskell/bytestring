@@ -10,7 +10,7 @@ GHC_ = $(GHC) -threaded $(PP_OPTS) -fglasgow-exts --make
 
 SRCS= TestFramework.hs UnitTestsMain.hs Tests.hs Quick.hs
 
-all: qc htest bench wc spellcheck letter_frequency
+all: qc htest bench wc spellcheck letter_frequency linesort
 
 # build executable, linking in all tests
 run-utests: $(SRCS)
@@ -54,6 +54,13 @@ letter_frequency: letter_frequency.o
 letter_frequency.o: letter_frequency.hs
 	ghc -package fps -O $< -o letter_frequency
 
+.PHONY: linesort
+linesort: linesort.o
+	/usr/bin/time ./linesort < Usr.Dict.Words
+
+linesort.o: linesort.hs
+	ghc -package fps -O $< -o linesort
+
 .PHONY: clean
 clean:
-	rm -f *~ *.o *.hi $(BIN) bench */*.o */*.hi */*~ wc letter_frequency spellcheck
+	rm -f *~ *.o *.hi $(BIN) bench */*.o */*.hi */*~ wc letter_frequency spellcheck linesort

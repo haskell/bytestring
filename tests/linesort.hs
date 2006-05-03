@@ -11,6 +11,6 @@ import qualified Data.ByteString.Char8 as P
 main =
     print
     . sum
-    . map (P.length . P2.sort)
+    . map (P.length . P.sort)
     . P.lines
     =<< P.getContents
