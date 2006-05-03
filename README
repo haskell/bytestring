@@ -44,7 +44,7 @@ from various string libraries.
 Size of test data: 21256k, Linux 3.2Ghz P4
 
                           FPS6       SPS     PS      [a]    
-++                        0.032      !       !       1.288   
+++                        0.028      !       !       1.288   
 length                    0.000      0.000   0.000   0.131   
 pack                      0.303      0.502   0.337   -       
 unpack                    3.319*     1.630   7.445   -       
@@ -76,7 +76,7 @@ tails                     0.460      -       -       1.136
 intersperse               0.070*     -       -       10.517  
 any                       0.000      -       -       0.000   
 all                       0.000      -       -       0.000   
-sort                     13.985      -       -       !
+sort                      0.168      -       -       !
 maximum                   0.024      -       -       0.183
 minimum                   0.025      -       -       0.185
 replicate                 0.000      -       -       0.053   
