@@ -18,8 +18,8 @@
 -- | A time and space-efficient implementation of byte vectors using
 -- packed Word8 arrays, suitable for high performance use, both in terms
 -- of large data quantities, or high speed requirements. Byte vectors
--- are encoded as Word8 arrays of bytes, held in a ForeignPtr, and can
--- be passed between C and Haskell with little effort.
+-- are encoded as strict Word8 arrays of bytes, held in a ForeignPtr,
+-- and can be passed between C and Haskell with little effort.
 --
 -- This module is intended to be imported @qualified@, to avoid name
 -- clashes with Prelude functions.  eg.

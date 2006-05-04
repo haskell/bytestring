@@ -1,4 +1,8 @@
 GHC=            ghc
+PKG=            -package fps
+
+#GHC=            /usr/obj/build/compiler/stage2/ghc-inplace
+#PKG=            
 
 BIN=            run-utests run-qtests
 
@@ -24,12 +28,12 @@ qc: Quick.hs
 
 bench::
 	@if [ ! -f "bigdata" ] ; then ln -s data bigdata ; fi
-	ghc -package fps --make -O -funbox-strict-fields Bench.hs -o bench -no-recomp
+	${GHC} ${PKG} --make -O -funbox-strict-fields Bench.hs -o bench -no-recomp
 	./bench +RTS -H64m
 
 prof::
 	@if [ ! -f "bigdata" ] ; then ln -s data bigdata ; fi
-	ghc -package fps -prof -auto-all --make -O -funbox-strict-fields Bench.hs -o bench
+	${GHC} ${PKG} -prof -auto-all --make -O -funbox-strict-fields Bench.hs -o bench
 	./bench +RTS -H64m -p
 
 .PHONY: wc
@@ -38,28 +42,28 @@ wc: wc.o
 	/usr/bin/time ./wc < bigdata
     
 wc.o: wc.hs
-	ghc -package fps -O wc.hs -o wc
+	${GHC} ${PKG} -O wc.hs -o wc
 
 .PHONY: spellcheck
 spellcheck: spellcheck.o
 	/usr/bin/time ./spellcheck < spellcheck-input.txt
     
 spellcheck.o: spellcheck.hs
-	ghc -package fps -O $< -o spellcheck
+	${GHC} ${PKG} -O $< -o spellcheck
 
 .PHONY: letter_frequency
 letter_frequency: letter_frequency.o
 	/usr/bin/time ./letter_frequency < Usr.Dict.Words
 
 letter_frequency.o: letter_frequency.hs
-	ghc -package fps -O $< -o letter_frequency
+	${GHC} ${PKG} -O $< -o letter_frequency
 
 .PHONY: linesort
 linesort: linesort.o
 	/usr/bin/time ./linesort < Usr.Dict.Words
 
 linesort.o: linesort.hs
-	ghc -package fps -O $< -o linesort
+	${GHC} ${PKG} -O $< -o linesort
 
 .PHONY: clean
 clean:
