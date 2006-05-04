@@ -83,6 +83,8 @@ module Data.ByteString.Char8 (
         -- * Generating and unfolding ByteStrings
         replicate,              -- :: Int -> Char -> ByteString
         unfoldrN,               -- :: (Char -> Maybe (Char, Char)) -> Char -> ByteString
+        gloop,                  -- :: (acc -> Char -> (Maybe Char, acc)
+                                -- -> acc -> ByteString -> (ByteString, acc)
 
         -- * Substrings
 
@@ -440,6 +442,29 @@ unfoldrN :: Int -> (Char -> Maybe (Char, Char)) -> Char -> ByteString
 unfoldrN n f w = B.unfoldrN n ((k `fmap`) . f . w2c) (c2w w)
     where k (i,j) = (c2w i, c2w j) -- (c2w *** c2w)
 {-# INLINE unfoldrN #-}
+
+-- | gloop, a generic array iteration combinator, in which maps, filters and
+-- folds may be implemented. It may be used to perform manual loop fusion on ByteString
+-- operations, without resorting to Ptr hacking via generate.
+--
+-- From the paper /Functional Array Fusion/ Manuel Chakravarty and Gabriele Keller. ICFP 01,
+-- where it is known as /loopA/
+--
+-- For example:
+--
+-- > map   f   = fst . gloop ((\a e -> ((),Just (f e))) f) ()
+-- > filter p  = fst . gloop ((\a e -> if p e then ((),Just e) else ((),Nothing)) p) ()
+-- > foldl f z = snd . gloop ((\a e -> (f a e, Nothing)) f) z
+--
+gloop :: (acc -> Char -> (acc, Maybe Char))
+      -> acc
+      -> ByteString
+      -> (ByteString, acc)
+gloop f = B.gloop g
+    where
+        g acc w = case f acc (w2c w) of
+                        (acc', Just c) -> (acc', Just (c2w c))
+                        (acc',      _) -> (acc', Nothing)
 
 -- | 'takeWhile', applied to a predicate @p@ and a ByteString @xs@,
 -- returns the longest prefix (possibly empty) of @xs@ of elements that

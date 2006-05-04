@@ -71,7 +71,11 @@ prop_unsafeIndex xs =
 
 prop_mapS f xs = P.map f (P.pack xs) == P.pack (map f xs)
 
+prop_mapfusion f g xs = P.map f (P.map g xs) == P.map (f . g) xs
+
 prop_filter f xs = P.filter f (P.pack xs) == P.pack (filter f xs)
+
+prop_filterfusion f g xs = P.filter f (P.filter g xs) == P.filter (\c -> f c && g c) xs
 
 prop_reverseS xs = P.reverse (P.pack xs) == P.pack (reverse xs)
 
@@ -347,6 +351,18 @@ prop_unfoldr c =
     (P.unfoldrN 100 (\x -> Just (x, chr (ord x + 1))) c) ==
     (pack $ take 100 $ unfoldr (\x -> Just (x, chr (ord x + 1))) c)
 
+prop_gloop_map f xs =
+    fst (P.gloop ((\a e -> ((), Just (f e)))) () xs)     ==
+    P.map f xs
+
+prop_gloop_filter p xs =
+    fst (P.gloop ((\a e -> if p e then ((),Just e) else ((),Nothing))) () xs) ==
+    P.filter p xs
+
+prop_gloop_foldl f z xs =
+    (snd . P.gloop ((\a e -> (f a e, Nothing))) z) xs ==
+    P.foldl f (z::Int) xs
+
 prop_prefix xs ys = isPrefixOf xs ys == (P.pack xs `P.isPrefixOf` P.pack ys)
 prop_suffix xs ys = isSuffixOf xs ys == (P.pack xs `P.isSuffixOf` P.pack ys)
 
@@ -427,6 +443,8 @@ main = do
             ,    ("map",       mytest prop_map)
             ,    ("filter1",       mytest prop_filter1)
             ,    ("filter2",       mytest prop_filter2)
+            ,    ("map fusion",       mytest prop_mapfusion)
+            ,    ("filter fusion",       mytest prop_filterfusion)
             ,    ("foldl1",       mytest prop_foldl1)
             ,    ("foldl2",       mytest prop_foldl2)
             ,    ("foldr1",       mytest prop_foldr1)
@@ -490,6 +508,11 @@ main = do
             ,    ("lines'",       mytest prop_lines')
             ,    ("dropSpaceEnd",       mytest prop_dropSpaceEnd)
             ,    ("unfoldr",       mytest prop_unfoldr)
+
+            ,    ("gloop == map",          mytest prop_gloop_map)
+            ,    ("gloop == filter",       mytest prop_gloop_filter)
+            ,    ("gloop == foldl",        mytest prop_gloop_foldl)
+
             ,    ("prefix",       mytest prop_prefix)
             ,    ("suffix",       mytest prop_suffix)
             ,    ("copy",       mytest prop_copy)

@@ -84,6 +84,8 @@ module Data.ByteString (
         -- * Generating and unfolding ByteStrings
         replicate,              -- :: Int -> Word8 -> ByteString
         unfoldrN,               -- :: (Word8 -> Maybe (Word8, Word8)) -> Word8 -> ByteString
+        gloop,                  -- :: (acc -> Word8 -> (Maybe Word8, acc)
+                                -- -> acc -> ByteString -> (ByteString, acc)
 
         -- * Substrings
 
@@ -570,19 +572,19 @@ STRICT2(map)
 map f (PS fp s len) = inlinePerformIO $ withForeignPtr fp $ \a -> do
     np <- mallocByteString (len+1)
     withForeignPtr np $ \p -> do
-        map_ f len 0 (a `plusPtr` s) p
+        map_ 0 (a `plusPtr` s) p
         return (PS np 0 len)
-{-# INLINE [1] map #-}
+  where
+    map_ :: Int -> Ptr Word8 -> Ptr Word8 -> IO ()
+    STRICT3(map_)
+    map_ n p1 p2
+       | n >= len = return ()
+       | otherwise = do
+            x <- peekByteOff p1 n
+            pokeByteOff p2 n (f x)
+            map_ (n+1) p1 p2
 
-map_ :: (Word8 -> Word8) -> Int -> Int -> Ptr Word8 -> Ptr Word8 -> IO ()
-STRICT5(map_)
-map_ f len n p1 p2
-   | n >= len = return ()
-   | otherwise = do
-        x <- peekByteOff p1 n
-        pokeByteOff p2 n (f x)
-        map_ f len (n+1) p1 p2
-{-# INLINE map_ #-}
+{-# INLINE [1] map #-}
 
 -- optimise composition
 {-# RULES
@@ -830,6 +832,49 @@ unfoldrN i f w = inlinePerformIO $ generate i $ \p -> go p w 0
                                    Just (a,new_c) -> do
                                         poke q a
                                         go (q `plusPtr` 1) new_c (n+1)
+
+--
+-- | gloop, a generic array iteration combinator, in which maps, filters
+-- and folds may be implemented. It may be used to implement new
+-- ByteString operations, perform manual loop fusion on ByteString
+-- operations, without resorting to Ptr hacking via generate.
+--
+-- For example:
+--
+-- > map   f   = fst . gloop ((\a e -> ((),Just (f e)))) ()
+-- > filter p  = fst . gloop ((\a e -> if p e then ((),Just e) else ((),Nothing))) ()
+-- > foldl g z = snd . gloop ((\a e -> (g a e, Nothing))) z
+--
+-- For more details, see the paper /Functional Array Fusion/, Manuel
+-- Chakravarty and Gabriele Keller. ICFP 01.
+--
+gloop :: (acc -> Word8 -> (acc, Maybe Word8))
+      -> acc
+      -> ByteString
+      -> (ByteString, acc)
+
+gloop f start (PS fp s i) = inlinePerformIO $ withForeignPtr fp $ \a -> do
+    p <- mallocArray (i+1)
+    (acc, i') <- go (a `plusPtr` s) p start
+    p' <- reallocArray p (i'+1)
+    poke (p' `plusPtr` i') (0::Word8)
+    fp' <- newForeignFreePtr p'
+    return (PS fp' 0 i', acc)
+  where
+    go p ma = trans 0 0
+        where
+            STRICT3(trans)
+            trans a_off ma_off acc
+                | a_off >= i = return (acc, ma_off)
+                | otherwise  = do
+                    x <- peekByteOff p a_off
+                    let (acc', oe) = f acc x
+                    ma_off' <- case oe of
+                        Nothing -> return ma_off
+                        Just e  -> do pokeByteOff ma ma_off e
+                                      return $ ma_off + 1
+                    trans (a_off+1) ma_off' acc'
+{-# INLINE gloop #-}
 
 -- ---------------------------------------------------------------------
 -- Substrings
@@ -1312,6 +1357,14 @@ filter k ps@(PS x s l)
                       if k w
                         then poke t w >> go (f `plusPtr` 1) (t `plusPtr` 1) (e - 1)
                         else             go (f `plusPtr` 1) t               (e - 1)
+{-# INLINE [1] filter #-}
+
+{-# RULES
+
+  "filter/filter" forall em1 em2 arr.
+    filter em2 (filter em1 arr) = filter (\c -> em2 c && em1 c) arr
+
+  #-}
 
 -- Almost as good: pack $ foldl (\xs c -> if f c then c : xs else xs) [] ps
 
