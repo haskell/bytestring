@@ -332,19 +332,24 @@ instance Arbitrary PackedString where
 
 -- | /O(n)/ Equality on the 'ByteString' type.
 eq :: ByteString -> ByteString -> Bool
-eq a b = (compareBytes a b) == EQ
+eq a@(PS p s l) b@(PS p' s' l')
+    | l /= l'            = False    -- short cut on length
+    | p == p' && s == s' = True     -- short cut for the same string
+    | otherwise          = compareBytes a b == EQ
 {-# INLINE eq #-}
 
 -- | /O(n)/ 'compareBytes' provides an 'Ordering' for 'ByteStrings' supporting slices. 
 compareBytes :: ByteString -> ByteString -> Ordering
-compareBytes (PS _ _ 0) (PS _ _ 0)       = EQ    -- short cut for empty strings
-compareBytes (PS x1 s1 l1) (PS x2 s2 l2) = inlinePerformIO $
-    withForeignPtr x1 $ \p1 ->
-    withForeignPtr x2 $ \p2 -> do
-        i <- memcmp (p1 `plusPtr` s1) (p2 `plusPtr` s2) (min l1 l2)
-        return $ case i `compare` 0 of
-                    EQ  -> l1 `compare` l2
-                    x   -> x
+compareBytes (PS x1 s1 l1) (PS x2 s2 l2)
+    | l1 == 0  && l2 == 0               = EQ  -- short cut for empty strings
+    | x1 == x2 && s1 == s2 && l1 == l2  = EQ  -- short cut for the same string
+    | otherwise                         = inlinePerformIO $
+        withForeignPtr x1 $ \p1 ->
+        withForeignPtr x2 $ \p2 -> do
+            i <- memcmp (p1 `plusPtr` s1) (p2 `plusPtr` s2) (min l1 l2)
+            return $ case i `compare` 0 of
+                        EQ  -> l1 `compare` l2
+                        x   -> x
 {-# INLINE compareBytes #-}
 
 {-
