@@ -566,6 +566,7 @@ append xs@(PS ffp s l) ys@(PS fgp t m)
 -- element of @xs@
 --
 map :: (Word8 -> Word8) -> ByteString -> ByteString
+STRICT2(map)
 map f (PS fp s len) = inlinePerformIO $ withForeignPtr fp $ \a -> do
     np <- mallocByteString (len+1)
     withForeignPtr np $ \p -> do
@@ -583,6 +584,7 @@ map_ f len n p1 p2
         map_ f len (n+1) p1 p2
 {-# INLINE map_ #-}
 
+-- optimise composition
 {-# RULES
 
   "map/map" forall em1 em2 arr.

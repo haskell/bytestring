@@ -67,7 +67,7 @@ linesort.o: linesort.hs
 
 .PHONY: fuse
 fuse: fuse.o
-	/usr/bin/time ./fuse < Usr.Dict.Words > /dev/null
+	/usr/bin/time ./fuse < Usr.Dict.Words
 
 fuse.o: fuse.hs
 	${GHC} ${PKG} -O $< -o fuse -ddump-simpl-stats
