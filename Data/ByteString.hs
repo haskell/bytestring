@@ -1286,7 +1286,7 @@ elem c ps = case elemIndex c ps of Nothing -> False ; _ -> True
 
 -- | /O(n)/ 'notElem' is the inverse of 'elem'
 notElem :: Word8 -> ByteString -> Bool
-notElem c ps = case elemIndex c ps of Nothing -> True ; _ -> False
+notElem c ps = not (elem c ps)
 {-# INLINE notElem #-}
 
 --
