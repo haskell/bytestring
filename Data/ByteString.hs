@@ -566,22 +566,29 @@ append xs@(PS ffp s l) ys@(PS fgp t m)
 -- element of @xs@
 --
 map :: (Word8 -> Word8) -> ByteString -> ByteString
-map f (PS fp start len) = inlinePerformIO $ withForeignPtr fp $ \p -> do
-    new_fp <- mallocByteString len
-    withForeignPtr new_fp $ \new_p -> do
-        map_ f (len-1) (p `plusPtr` start) new_p
-        return (PS new_fp 0 len)
-{-# INLINE map #-}
+map f (PS fp s len) = inlinePerformIO $ withForeignPtr fp $ \a -> do
+    np <- mallocByteString (len+1)
+    withForeignPtr np $ \p -> do
+        map_ f len 0 (a `plusPtr` s) p
+        return (PS np 0 len)
+{-# INLINE [1] map #-}
 
-map_ :: (Word8 -> Word8) -> Int -> Ptr Word8 -> Ptr Word8 -> IO ()
-STRICT4(map_)
-map_ f n p1 p2
-   | n < 0 = return ()
+map_ :: (Word8 -> Word8) -> Int -> Int -> Ptr Word8 -> Ptr Word8 -> IO ()
+STRICT5(map_)
+map_ f len n p1 p2
+   | n >= len = return ()
    | otherwise = do
         x <- peekByteOff p1 n
         pokeByteOff p2 n (f x)
-        map_ f (n-1) p1 p2
+        map_ f len (n+1) p1 p2
 {-# INLINE map_ #-}
+
+{-# RULES
+
+  "map/map" forall em1 em2 arr.
+    map em2 (map em1 arr) = map (em2 . em1) arr
+
+  #-}
 
 -- | /O(n)/ 'reverse' @xs@ efficiently returns the elements of @xs@ in reverse order.
 reverse :: ByteString -> ByteString
@@ -1673,7 +1680,7 @@ unsafeUseAsCStringLen (PS ps s l) ac = withForeignPtr ps $ \p -> ac (castPtr p `
 --
 generate :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
 generate i f = do
-    p <- mallocArray i
+    p <- mallocArray (i+1)
     i' <- f p
     p' <- reallocArray p (i'+1)
     poke (p' `plusPtr` i') (0::Word8)    -- XXX so CStrings work
