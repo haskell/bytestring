@@ -218,10 +218,10 @@ module Data.ByteString.Char8 (
         -- * Utilities (needed for array fusion)
 #if defined(__GLASGOW_HASKELL__)
         unpackList,
+#endif
         noAL, NoAL, loopArr, loopAcc, loopSndAcc,
         loopU, mapEFL, filterEFL,
         filterF, mapF
-#endif
 
     ) where
 
@@ -251,10 +251,10 @@ import Data.ByteString (ByteString(..)
 #if defined(__GLASGOW_HASKELL__)
                        ,getLine, getArgs, hGetLine, hGetNonBlocking
                        ,packAddress, unsafePackAddress
-
-                       , unpackList, noAL, NoAL, loopArr, loopAcc, loopSndAcc,
-                       , loopU, mapEFL, filterEFL, filterF, mapF
+                       ,unpackList
 #endif
+                       ,noAL, NoAL, loopArr, loopAcc, loopSndAcc
+                       ,loopU, mapEFL, filterEFL, filterF, mapF
                        ,useAsCString, unsafeUseAsCString
                        )
 

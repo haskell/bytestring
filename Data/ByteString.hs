@@ -224,11 +224,11 @@ module Data.ByteString (
         -- * Fusion utilities
 #if defined(__GLASGOW_HASKELL__)
         unpackList, -- eek, otherwise it gets thrown away by the simplifier
+#endif
 
         noAL, NoAL, loopArr, loopAcc, loopSndAcc,
         loopU, mapEFL, filterEFL, foldEFL,
         filterF, mapF
-#endif
 
   ) where
 
@@ -2117,8 +2117,6 @@ foreign import ccall unsafe "__hscore_memcpy_src_off"
 --      http://www.cse.unsw.edu.au/~chak/project/dph/
 --
 
-#if defined(__GLASGOW_HASKELL__)
-
 -- |Data type for accumulators which can be ignored. The rewrite rules rely on
 -- the fact that no bottoms of this type are ever constructed; hence, we can
 -- assume @(_ :: NoAL) `seq` x = x@.
@@ -2225,4 +2223,3 @@ loopU f start (PS fp s i) = inlinePerformIO $ withForeignPtr fp $ \a -> do
 
  #-}
 
-#endif
