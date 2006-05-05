@@ -218,7 +218,7 @@ module Data.ByteString.Char8 (
         -- * Utilities (needed for array fusion)
 #if defined(__GLASGOW_HASKELL__)
         unpackList,
-        noAL, loopArr, loopAcc, loopSndAcc, (:*:)(..),
+        noAL, NoAL, loopArr, loopAcc, loopSndAcc,
         loopU, mapEFL, filterEFL,
         filterF, mapF
 #endif
@@ -252,7 +252,7 @@ import Data.ByteString (ByteString(..)
                        ,getLine, getArgs, hGetLine, hGetNonBlocking
                        ,packAddress, unsafePackAddress
 
-                       , unpackList, noAL, loopArr, loopAcc, loopSndAcc, (:*:)(..)
+                       , unpackList, noAL, NoAL, loopArr, loopAcc, loopSndAcc,
                        , loopU, mapEFL, filterEFL, filterF, mapF
 #endif
                        ,useAsCString, unsafeUseAsCString

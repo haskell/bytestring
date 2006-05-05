@@ -21,3 +21,5 @@ main = do ps <- B.getContents
           print $ B.length $ (B.filter (/=7) . B.map (+8)) ps -- should fuse
 
           print $ B.length $ B.map (+7) ps -- shouldn't fuse
+
+          print $ B.foldl (\a _ -> a+1::Int) 0 $ B.map (+7) ps -- shouldn't fuse

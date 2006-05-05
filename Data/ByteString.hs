@@ -225,8 +225,8 @@ module Data.ByteString (
 #if defined(__GLASGOW_HASKELL__)
         unpackList, -- eek, otherwise it gets thrown away by the simplifier
 
-        noAL, loopArr, loopAcc, loopSndAcc, (:*:)(..),
-        loopU, mapEFL, filterEFL,
+        noAL, NoAL, loopArr, loopAcc, loopSndAcc,
+        loopU, mapEFL, filterEFL, foldEFL,
         filterF, mapF
 #endif
 
@@ -515,12 +515,16 @@ cons c (PS x s l) = create (l+1) $ \p -> withForeignPtr x $ \f -> do
         poke p c
 {-# INLINE cons #-}
 
+-- todo fuse
+
 -- | /O(n)/ Append a byte to the end of a 'ByteString'
 snoc :: ByteString -> Word8 -> ByteString
 snoc (PS x s l) c = create (l+1) $ \p -> withForeignPtr x $ \f -> do
         memcpy p (f `plusPtr` s) l
         poke (p `plusPtr` l) c
 {-# INLINE snoc #-}
+
+-- todo fuse
 
 -- | /O(1)/ Extract the first element of a ByteString, which must be non-empty.
 head :: ByteString -> Word8
@@ -636,7 +640,16 @@ transpose ps = P.map pack (List.transpose (P.map unpack ps))
 -- | 'foldl', applied to a binary operator, a starting value (typically
 -- the left-identity of the operator), and a ByteString, reduces the
 -- ByteString using the binary operator, from left to right.
+-- This function is subject to array fusion.
 foldl :: (a -> Word8 -> a) -> a -> ByteString -> a
+foldl f z = loopAcc . loopU (foldEFL f) z
+{-# INLINE foldl #-}
+
+{-
+--
+-- About twice as fast with 6.4.1, but not fuseable
+-- A simple fold . map is enough to make it worth while.
+--
 foldl f v (PS x s l) = inlinePerformIO $ withForeignPtr x $ \ptr ->
         lgo v (ptr `plusPtr` s) (ptr `plusPtr` (s+l))
     where
@@ -644,6 +657,7 @@ foldl f v (PS x s l) = inlinePerformIO $ withForeignPtr x $ \ptr ->
         lgo z p q | p == q    = return z
                   | otherwise = do c <- peek p
                                    lgo (f z c) (p `plusPtr` 1) q
+-}
 
 -- | 'foldr', applied to a binary operator, a starting value
 -- (typically the right-identity of the operator), and a ByteString,
@@ -660,6 +674,7 @@ foldr k z (PS x s l) = inlinePerformIO $ withForeignPtr x $ \ptr ->
 
 -- | 'foldl1' is a variant of 'foldl' that has no starting value
 -- argument, and thus must be applied to non-empty 'ByteStrings'.
+-- This function is subject to array fusion.
 foldl1 :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldl1 f ps
     | null ps   = errorEmptyList "foldl1"
@@ -717,6 +732,8 @@ any f (PS x s l) = inlinePerformIO $ withForeignPtr x $ \ptr ->
                                 if f c then return True
                                        else go (p `plusPtr` 1) q
 
+-- todo fuse
+
 -- | /O(n)/ Applied to a predicate and a 'ByteString', 'all' determines
 -- if all elements of the 'ByteString' satisfy the predicate.
 all :: (Word8 -> Bool) -> ByteString -> Bool
@@ -730,6 +747,7 @@ all f (PS x s l) = inlinePerformIO $ withForeignPtr x $ \ptr ->
                                  if f c
                                     then go (p `plusPtr` 1) q
                                     else return False
+-- todo fuse
 
 -- | /O(n)/ 'maximum' returns the maximum value from a 'ByteString'
 maximum :: ByteString -> Word8
@@ -746,6 +764,8 @@ minimum xs@(PS x s l)
     | otherwise = inlinePerformIO $ withForeignPtr x $ \p ->
                     return $ c_minimum (p `plusPtr` s) l
 {-# INLINE minimum #-}
+
+-- fusion is too slow here (10x)
 
 {-
 maximum xs@(PS x s l)
@@ -2094,13 +2114,10 @@ foreign import ccall unsafe "__hscore_memcpy_src_off"
 -- Functional array fusion for ByteStrings. 
 --
 -- From the Data Parallel Haskell project, 
---  http://www.cse.unsw.edu.au/~chak/project/dph/
+--      http://www.cse.unsw.edu.au/~chak/project/dph/
 --
 
-infixl 2 :*:
-
--- |Strict pair
-data (:*:) a b = !a :*: !b deriving (Eq,Show)
+#if defined(__GLASGOW_HASKELL__)
 
 -- |Data type for accumulators which can be ignored. The rewrite rules rely on
 -- the fact that no bottoms of this type are ever constructed; hence, we can
@@ -2122,14 +2139,19 @@ data NoAL = NoAL
 -- 
 
 -- | Element function expressing a mapping only
-mapEFL :: (Word8 -> Word8) -> (NoAL -> Word8 -> (NoAL :*: Maybe Word8))
-mapEFL f = \_ e -> (noAL :*: (Just $ f e))
+mapEFL :: (Word8 -> Word8) -> (NoAL -> Word8 -> (NoAL, Maybe Word8))
+mapEFL f = \_ e -> (noAL, (Just $ f e))
 {-# INLINE [1] mapEFL #-}
 
 -- | Element function implementing a filter function only
-filterEFL :: (Word8 -> Bool) -> (NoAL -> Word8 -> (NoAL :*: Maybe Word8))
-filterEFL p = \_ e -> if p e then (noAL :*: Just e) else (noAL :*: Nothing)
+filterEFL :: (Word8 -> Bool) -> (NoAL -> Word8 -> (NoAL, Maybe Word8))
+filterEFL p = \_ e -> if p e then (noAL, Just e) else (noAL, Nothing)
 {-# INLINE [1] filterEFL #-}
+
+-- |Element function expressing a reduction only
+foldEFL :: (acc -> Word8 -> acc) -> (acc -> Word8 -> (acc, Maybe Word8))
+foldEFL f = \a e -> (f a e, Nothing)
+{-# INLINE [1] foldEFL #-}
 
 -- | No accumulator
 noAL :: NoAL
@@ -2138,46 +2160,46 @@ noAL = NoAL
 
 -- | Projection functions that are fusion friendly (as in, we determine when
 -- they are inlined)
-loopArr :: (ByteString :*: acc) -> ByteString
-loopArr (arr :*: _) = arr
+loopArr :: (ByteString, acc) -> ByteString
+loopArr (arr, _) = arr
 {-# INLINE [1] loopArr #-}
 
-loopAcc :: (ByteString :*: acc) -> acc
-loopAcc (_ :*: acc) = acc
+loopAcc :: (ByteString, acc) -> acc
+loopAcc (_, acc) = acc
 {-# INLINE [1] loopAcc #-}
 
-loopSndAcc :: (ByteString :*: (acc1 :*: acc2)) -> (ByteString :*: acc2)
-loopSndAcc (arr :*: (_ :*: acc)) = (arr :*: acc)
+loopSndAcc :: (ByteString, (acc1, acc2)) -> (ByteString, acc2)
+loopSndAcc (arr, (_, acc)) = (arr, acc)
 {-# INLINE [1] loopSndAcc #-}
 
 ------------------------------------------------------------------------
 
 -- | Iteration over over ByteStrings
-loopU :: (acc -> Word8 -> (acc :*: Maybe Word8))  -- ^ mapping & folding, once per elem
-      -> acc                                      -- ^ initial acc value
-      -> ByteString                               -- ^ input ByteString
-      -> (ByteString :*: acc)
+loopU :: (acc -> Word8 -> (acc, Maybe Word8))  -- ^ mapping & folding, once per elem
+      -> acc                                   -- ^ initial acc value
+      -> ByteString                            -- ^ input ByteString
+      -> (ByteString, acc)
 
 loopU f start (PS fp s i) = inlinePerformIO $ withForeignPtr fp $ \a -> do
     p <- mallocArray (i+1)
-    (acc :*: i') <- go (a `plusPtr` s) p start
+    (acc, i') <- go (a `plusPtr` s) p start
     p' <- if i == i' then return p else reallocArray p (i'+1) -- avoid realloc for maps
     poke (p' `plusPtr` i') (0::Word8)
     fp' <- newForeignFreePtr p'
-    return (PS fp' 0 i' :*: acc)
+    return (PS fp' 0 i', acc)
   where
     go p ma = trans 0 0
         where
             STRICT3(trans)
             trans a_off ma_off acc
-                | a_off >= i = return (acc :*: ma_off)
+                | a_off >= i = return (acc, ma_off)
                 | otherwise  = do
                     x <- peekByteOff p a_off
-                    let (acc' :*: oe) = f acc x
+                    let (acc', oe) = f acc x
                     ma_off' <- case oe of
-                        Nothing -> return ma_off
-                        Just e  -> do pokeByteOff ma ma_off e
-                                      return $ ma_off + 1
+                        Nothing  -> return ma_off
+                        Just e   -> do pokeByteOff ma ma_off e
+                                       return $ ma_off + 1
                     trans (a_off+1) ma_off' acc'
 
 {-# INLINE [1] loopU #-}
@@ -2186,15 +2208,21 @@ loopU f start (PS fp s i) = inlinePerformIO $ withForeignPtr fp $ \a -> do
 
 "array fusion!" forall em1 em2 start1 start2 arr.
   loopU em2 start2 (loopArr (loopU em1 start1 arr)) =
-    let em (acc1 :*: acc2) e =
+    let em (acc1, acc2) e =
             case em1 acc1 e of
-                (acc1' :*: Nothing) -> ((acc1' :*: acc2) :*: Nothing)
-                (acc1' :*: Just e') ->
+                (acc1', Nothing) -> ((acc1', acc2), Nothing)
+                (acc1', Just e') ->
                     case em2 acc2 e' of
-                        (acc2' :*: res) -> ((acc1' :*: acc2') :*: res)
-    in loopSndAcc (loopU em (start1 :*: start2) arr)
+                        (acc2', res) -> ((acc1', acc2'), res)
+    in loopSndAcc (loopU em (start1, start2) arr)
 
 "loopArr/loopSndAcc" forall x.
   loopArr (loopSndAcc x) = loopArr x
 
+-- orphan?
+-- "seq/NoAL" forall (u::NoAL) e.
+--   u `seq` e = e
+
  #-}
+
+#endif

@@ -65,7 +65,9 @@ tests  :: [(String,[F])]
 
 tests =
     [
-      ("++",    [F ({-# SCC "append" #-}P.append fps fps')])
+      ("foldl", [F ({-# SCC "fold" #-} P.foldl (\a w -> a+1::Int) 0 fps)])
+
+    , ("++",    [F ({-# SCC "append" #-}P.append fps fps')])
 --              ,F () -- SPS.append sps sps)
 --              ,F () -- PS.appendPS ps ps)
 --              ,F (list ++ list)])
