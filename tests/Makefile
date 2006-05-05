@@ -56,7 +56,7 @@ letter_frequency: letter_frequency.o
 	/usr/bin/time ./letter_frequency < Usr.Dict.Words
 
 letter_frequency.o: letter_frequency.hs
-	${GHC} ${PKG} -O $< -o letter_frequency
+	${GHC} ${PKG} -O $< -o letter_frequency -ddump-simpl-stats
 
 .PHONY: linesort
 linesort: linesort.o
