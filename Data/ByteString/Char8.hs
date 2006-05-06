@@ -1025,6 +1025,7 @@ inlinePerformIO (IO m) = case m realWorld# of (# _, r #) -> r
 inlinePerformIO = unsafePerformIO
 #endif
 
+-- Selects white-space characters in the Latin-1 range
 -- ordered by frequency
 -- Idea from Ketil
 isSpaceWord8 :: Word8 -> Bool
