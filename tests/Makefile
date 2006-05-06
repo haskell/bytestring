@@ -14,7 +14,7 @@ GHC_ = $(GHC) -threaded $(PP_OPTS) -fglasgow-exts --make
 
 SRCS= TestFramework.hs UnitTestsMain.hs Tests.hs Quick.hs
 
-all: qc htest bench wc spellcheck letter_frequency linesort fuse
+all: qc htest bench sbench wc spellcheck letter_frequency linesort fuse
 
 # build executable, linking in all tests
 run-utests: $(SRCS)
@@ -23,8 +23,14 @@ run-utests: $(SRCS)
 htest:: run-utests
 	./run-utests
 
-qc: Quick.hs
+# quick testing
+qc:
 	runhaskell Quick.hs
+
+# attempt to benchmark small strings performance
+sbench: 
+	${GHC} ${PKG} -O -funbox-strict-fields -ddump-simpl-stats Quick.hs -o qc -no-recomp -package QuickCheck
+	/usr/bin/time ./qc
 
 bench::
 	@if [ ! -f "bigdata" ] ; then ln -s data bigdata ; fi

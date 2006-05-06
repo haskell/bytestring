@@ -2149,17 +2149,19 @@ loopU :: (acc -> Word8 -> (acc, Maybe Word8))  -- ^ mapping & folding, once per 
       -> ByteString                            -- ^ input ByteString
       -> (ByteString, acc)
 
---
--- use bytestringmalloc, and do a copy to do the realloc
---
+loopU f start (PS z s i) = inlinePerformIO $ withForeignPtr z $ \a -> do
+    fp          <- mallocByteString i
+    (ptr,n,acc) <- withForeignPtr fp $ \p -> do
+        (acc, i') <- go (a `plusPtr` s) p start
+        if i' == i
+            then return (fp,i,acc)                      -- no realloc for map
+            else do fp_ <- mallocByteString (i'+1)      -- realloc
+                    withForeignPtr fp_ $ \p' -> do
+                        memcpy p' p i'
+                        poke (p' `plusPtr` i') (0::Word8)
+                    return (fp_,i',acc)
 
-loopU f start (PS fp s i) = inlinePerformIO $ withForeignPtr fp $ \a -> do
-    p <- mallocArray (i+1)
-    (acc, i') <- go (a `plusPtr` s) p start
-    p' <- if i == i' then return p else reallocArray p (i'+1) -- avoid realloc for maps
-    poke (p' `plusPtr` i') (0::Word8)
-    fp' <- newForeignFreePtr p'
-    return (PS fp' 0 i', acc)
+    return (PS ptr 0 n, acc)
   where
     go p ma = trans 0 0
         where
