@@ -402,7 +402,7 @@ packByte c = unsafePerformIO $ mallocByteString 2 >>= \fp -> do
 
 --
 -- XXX must use unsafePerformIO, not inlinePerformIO here, otherwise ghc
--- 6.5 compiles:
+-- 6.5 compiles
 --
 --  packByte 255 `compare` packByte 127
 --
@@ -415,6 +415,8 @@ packByte c = unsafePerformIO $ mallocByteString 2 >>= \fp -> do
 --           case eqAddr# f f of 
 --                  False -> case compare (GHC.Prim.plusAddr# f 0) 
 --                                        (GHC.Prim.plusAddr# f 0)
+--
+-- A case of unsafe inlinePerformIO. Using NOINLINE also works.
 --
 --
 

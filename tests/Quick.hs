@@ -147,6 +147,8 @@ prop_packunpack' s = (P.pack . P.unpack) s == id s
 -- at first we just check the correspondence to List functions
 
 prop_eq1 xs      = xs            == (unpack . pack $ xs)
+prop_eq2 xs      = xs == xs
+prop_eq3 xs ys   = (xs == ys) == (unpack xs == unpack ys)
 
 prop_compare1 xs  = (pack xs         `compare` pack xs) == EQ
 prop_compare2 xs c = (pack (xs++[c]) `compare` pack xs) == GT
@@ -432,6 +434,8 @@ main = do
             ,    ("pack/unpack",        mytest prop_packunpack)
             ,    ("unpack/pack",        mytest prop_packunpack')
             ,    ("eq1",       mytest prop_eq1)
+            ,    ("eq2",       mytest prop_eq3)
+            ,    ("eq3",       mytest prop_eq3)
             ,    ("compare1",       mytest prop_compare1)
             ,    ("compare2",       mytest prop_compare2)
             ,    ("compare3",       mytest prop_compare3)
