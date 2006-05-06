@@ -189,13 +189,13 @@ prop_filter2 xs c = (filter (==c) xs) == (unpack $ P.filter (==c) (pack xs))
 
 prop_find xs c = find (==c) xs == P.find (==c) (pack xs)
 
-prop_foldl1 xs = ((foldl (\x c -> if c == 'a' then x else c:x) [] xs)) ==
-                (unpack $ P.foldl (\x c -> if c == 'a' then x else c `P.cons` x) P.empty (pack xs))
+prop_foldl1 xs a = ((foldl (\x c -> if c == a then x else c:x) [] xs)) ==
+                   (unpack $ P.foldl (\x c -> if c == a then x else c `P.cons` x) P.empty (pack xs))
 
 prop_foldl2 xs = P.foldl (\xs c -> c `P.cons` xs) P.empty (pack xs) == P.reverse (pack xs)
 
-prop_foldr1 xs = ((foldr (\c x -> if c == 'a' then x else c:x) [] xs)) ==
-                (unpack $ P.foldr (\c x -> if c == 'a' then x else c `P.cons` x)
+prop_foldr1 xs a = ((foldr (\c x -> if c == a then x else c:x) [] xs)) ==
+                (unpack $ P.foldr (\c x -> if c == a then x else c `P.cons` x)
                     P.empty (pack xs))
 
 prop_foldr2 xs = P.foldr (\c xs -> c `P.cons` xs) P.empty (pack xs) == (pack xs)
@@ -226,9 +226,9 @@ prop_foldr1_3 xs =
     (not . P.null) xs ==>
     P.foldr1 const xs == P.head xs
 
-prop_takeWhile xs = (takeWhile (/= 'X') xs) == (unpack . (P.takeWhile (/= 'X')) . pack) xs
+prop_takeWhile xs a = (takeWhile (/= a) xs) == (unpack . (P.takeWhile (/= a)) . pack) xs
 
-prop_dropWhile xs = (dropWhile (/= 'X') xs) == (unpack . (P.dropWhile (/= 'X')) . pack) xs
+prop_dropWhile xs a = (dropWhile (/= a) xs) == (unpack . (P.dropWhile (/= a)) . pack) xs
 
 prop_take xs = (take 10 xs) == (unpack . (P.take 10) . pack) xs
 
@@ -238,15 +238,15 @@ prop_splitAt i xs = collect (i >= 0 && i < length xs) $
     splitAt i xs ==
     let (x,y) = P.splitAt i (pack xs) in (unpack x, unpack y)
 
-prop_span xs = (span (/='X') xs) == (let (x,y) = P.span (/='X') (pack xs)
+prop_span xs a = (span (/=a) xs) == (let (x,y) = P.span (/=a) (pack xs)
                                      in (unpack x, unpack y))
 
-prop_break xs = (break (/='X') xs) == (let (x,y) = P.break (/='X') (pack xs)
+prop_break xs a = (break (/=a) xs) == (let (x,y) = P.break (/=a) (pack xs)
                                        in (unpack x, unpack y))
 
 prop_reverse xs = (reverse xs) == (unpack . P.reverse . pack) xs
 
-prop_elem xs = ('X' `elem` xs) == ('X' `P.elem` (pack xs))
+prop_elem xs a = (a `elem` xs) == (a `P.elem` (pack xs))
 
 prop_notElem c xs = P.notElem c (P.pack xs) == notElem c xs
 
@@ -255,8 +255,8 @@ prop_concat1 xs = (concat [xs,xs]) == (unpack $ P.concat [pack xs, pack xs])
 
 prop_concat2 xs = (concat [xs,[]]) == (unpack $ P.concat [pack xs, pack []])
 
-prop_any xs = (any (== 'X') xs) == (P.any (== 'X') (pack xs))
-prop_all xs = (all (== 'X') xs) == (P.all (== 'X') (pack xs))
+prop_any xs a = (any (== a) xs) == (P.any (== a) (pack xs))
+prop_all xs a = (all (== a) xs) == (P.all (== a) (pack xs))
 
 prop_lines xs = (lines xs) == ((map unpack) . P.lines . pack) xs
 
@@ -274,8 +274,8 @@ prop_group xs   = group xs == (map unpack . P.group . pack) xs
 prop_groupBy xs = groupBy (==) xs == (map unpack . P.groupBy (==) . pack) xs
 prop_groupBy1 xs = groupBy (/=) xs == (map unpack . P.groupBy (/=) . pack) xs
 
-prop_join xs = (concat . (intersperse "XYX") . lines) xs ==
-               (unpack $ P.join (pack "XYX") (P.lines (pack xs)))
+prop_join xs ys = (concat . (intersperse ys) . lines) xs ==
+               (unpack $ P.join (pack ys) (P.lines (pack xs)))
 
 prop_elemIndex1 xs   = (elemIndex 'X' xs) == (P.elemIndex 'X' (pack xs))
 prop_elemIndex2 xs c = (elemIndex c xs) == (P.elemIndex c (pack xs))
@@ -294,7 +294,7 @@ prop_elemIndexLast2 c xs = (P.elemIndexLast c (pack xs)) ==
 
 prop_elemIndices xs c = elemIndices c xs == P.elemIndices c (pack xs)
 
-prop_findIndex xs = (findIndex (=='X') xs) == (P.findIndex (=='X') (pack xs))
+prop_findIndex xs a = (findIndex (==a) xs) == (P.findIndex (==a) (pack xs))
 
 prop_findIndicies xs c = (findIndices (==c) xs) == (P.findIndices (==c) (pack xs))
 
@@ -404,7 +404,7 @@ prop_filterChar3 c xs = P.filterChar c xs == P.replicate (P.count c xs) c
 prop_filterNotChar1 c xs = (filter (/=c) xs) == ((P.unpack . P.filterNotChar c . P.pack) xs)
 prop_filterNotChar2 c xs = (P.filter (/=c) (P.pack xs)) == (P.filterNotChar c (P.pack xs))
 
-prop_joinjoinpath xs ys = P.joinWithChar ' ' xs ys == P.join (P.packChar ' ') [xs,ys]
+prop_joinjoinpath xs ys c = P.joinWithChar c xs ys == P.join (P.packChar c) [xs,ys]
 
 prop_zip  xs ys = zip xs ys == P.zip (pack xs) (pack ys)
 prop_zip1 xs ys = P.zip xs ys == zip (P.unpack xs) (P.unpack ys)
