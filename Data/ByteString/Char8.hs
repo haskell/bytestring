@@ -1035,6 +1035,7 @@ isSpaceWord8 w = case w of
     0x0C -> True -- FF, \f
     0x0D -> True -- CR, \r
     0x0B -> True -- VT, \v
+    0xA0 -> True -- spotted by QC..
     _    -> False
 {-# INLINE isSpaceWord8 #-}
 

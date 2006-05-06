@@ -20,9 +20,11 @@ import Data.ByteString.Char8 (ByteString, pack , unpack)
 import qualified Data.ByteString.Char8 as P
 
 instance Arbitrary Char where
-  arbitrary = oneof $ map return
-                (['a'..'z']++['A'..'Z']++['1'..'9']++['\n','\t','0','~','.',',','-','/'])
+  arbitrary = choose ('\0', '\255') -- since we have to test words, unlines too
   coarbitrary c = variant (ord c `rem` 16)
+
+--  arbitrary = oneof $ map return
+--                (['a'..'z']++['A'..'Z']++['1'..'9']++['\n','\t','0','~','.',',','-','/'])
 
 instance Arbitrary Word8 where
   arbitrary = choose (minBound, maxBound)
@@ -113,7 +115,8 @@ prop_linesS xs = P.lines (P.pack xs) == map P.pack (lines xs)
 
 prop_unlinesS xss = P.unlines (map P.pack xss) == P.pack (unlines xss)
 
-prop_wordsS xs = P.words (P.pack xs) == map P.pack (words xs)
+prop_wordsS xs =
+    P.words (P.pack xs) == map P.pack (words xs)
 
 prop_unwordsS xss = P.unwords (map P.pack xss) == P.pack (unwords xss)
 
@@ -143,11 +146,15 @@ prop_bijection' w = (P.c2w . P.w2c) w == id w
 prop_eq1 xs      = xs            == (unpack . pack $ xs)
 
 prop_compare1 xs  = (pack xs         `compare` pack xs) == EQ
-prop_compare2 xs  = (pack (xs++"X")  `compare` pack xs) == GT
-prop_compare3 xs  = (pack xs  `compare` pack (xs++"X")) == LT
+prop_compare2 xs c = (pack (xs++[c]) `compare` pack xs) == GT
+prop_compare3 xs c = (pack xs `compare` pack (xs++[c])) == LT
+
 prop_compare4 xs  = (not (null xs)) ==> (pack xs  `compare` P.empty) == GT
 prop_compare5 xs  = (not (null xs)) ==> (P.empty `compare` pack xs) == LT
 prop_compare6 xs ys= (not (null ys)) ==> (pack (xs++ys)  `compare` pack xs) == GT
+
+prop_compare7 x  y = x `compare` y == (P.packChar x `compare` P.packChar y)
+prop_compare8 xs ys = xs `compare` ys == (P.pack xs `compare` P.pack ys)
 
 -- prop_nil1 xs = (null xs) ==> pack xs == P.empty
 -- prop_nil2 xs = (null xs) ==> xs == unpack P.empty
@@ -255,10 +262,12 @@ prop_lines xs = (lines xs) == ((map unpack) . P.lines . pack) xs
 
 prop_unlines xs = (unlines.lines) xs == (unpack. P.unlines . P.lines .pack) xs
 
-prop_words xs = (words xs) == ((map unpack) . P.words . pack) xs
+prop_words xs =
+    (words xs) == ((map unpack) . P.words . pack) xs
 prop_wordstokens xs = P.words xs == P.tokens isSpace xs
 
-prop_unwords xs = (pack.unwords.words) xs == (P.unwords . P.words .pack) xs
+prop_unwords xs =
+    (pack.unwords.words) xs == (P.unwords . P.words .pack) xs
 
 prop_group xs   = group xs == (map unpack . P.group . pack) xs
 
@@ -315,8 +324,9 @@ prop_dropSpace xs    = dropWhile isSpace xs == unpack (P.dropSpace (pack xs))
 prop_dropSpaceEnd xs = (P.reverse . (P.dropWhile isSpace) . P.reverse) (pack xs) ==
                        (P.dropSpaceEnd (pack xs))
 
-prop_breakSpace xs = (let (x,y) = P.breakSpace (pack xs)
-                      in (unpack x, unpack y)) == (break isSpace xs)
+prop_breakSpace xs =
+    (let (x,y) = P.breakSpace (pack xs)
+     in (unpack x, unpack y)) == (break isSpace xs)
 
 prop_spanEnd xs =
         (P.spanEnd (not . isSpace) (pack xs)) ==
@@ -343,8 +353,10 @@ prop_breakLast c xs = (let (x,y) = break (==c) (reverse xs)
                                     else Just (pack (reverse $ drop 1 y), pack (reverse x))) ==
                        (P.breakLast c (pack xs))
 
-prop_words' xs = (unpack . P.unwords  . P.words' . pack) xs ==
-                 (map (\c -> if isSpace c then ' ' else c) xs)
+prop_words' xs =
+    (unpack . P.unwords  . P.words' . pack) xs ==
+    (map (\c -> if isSpace c then ' ' else c) xs)
+
 prop_lines' xs = (unpack . P.unlines' . P.lines' . pack) xs == (xs)
 
 prop_unfoldr c =
@@ -417,6 +429,8 @@ main = do
             ,    ("compare4",       mytest prop_compare4)
             ,    ("compare5",       mytest prop_compare5)
             ,    ("compare6",       mytest prop_compare6)
+            ,    ("compare7",       mytest prop_compare7)
+            ,    ("compare8",       mytest prop_compare8)
             ,    ("cons1",       mytest prop_cons1)
             ,    ("cons2",       mytest prop_cons2)
             ,    ("snoc1",       mytest prop_snoc1)
