@@ -331,6 +331,12 @@ instance Show ByteString where
 instance Read ByteString where
     readsPrec p str = [ (packWith c2w x, y) | (x, y) <- readsPrec p str ]
 
+{-
+instance Arbitrary PackedString where
+    arbitrary = P.pack `fmap` arbitrary
+    coarbitrary s = coarbitrary (P.unpack s)
+-}
+
 -- | /O(n)/ Equality on the 'ByteString' type.
 eq :: ByteString -> ByteString -> Bool
 eq a@(PS p s l) b@(PS p' s' l')
@@ -389,10 +395,28 @@ empty = inlinePerformIO $ mallocByteString 1 >>= \fp -> return $ PS fp 0 0
 
 -- | /O(1)/ Convert a 'Word8' into a 'ByteString'
 packByte :: Word8 -> ByteString
-packByte c = inlinePerformIO $ mallocByteString 2 >>= \fp -> do
+packByte c = unsafePerformIO $ mallocByteString 2 >>= \fp -> do
     withForeignPtr fp $ \p -> poke p c
     return $ PS fp 0 1
-{-# NOINLINE packByte #-}
+{-# INLINE packByte #-}
+
+--
+-- XXX must use unsafePerformIO, not inlinePerformIO here, otherwise ghc
+-- 6.5 compiles:
+--
+--  packByte 255 `compare` packByte 127
+--
+-- into
+--
+--  case mallocByteString 2 of 
+--      ForeignPtr f internals -> 
+--           case writeWord8OffAddr# f 0 255 of _ -> 
+--           case writeWord8OffAddr# f 0 127 of _ ->
+--           case eqAddr# f f of 
+--                  False -> case compare (GHC.Prim.plusAddr# f 0) 
+--                                        (GHC.Prim.plusAddr# f 0)
+--
+--
 
 -- | /O(n)/ Convert a '[Word8]' into a 'ByteString'. 
 --
