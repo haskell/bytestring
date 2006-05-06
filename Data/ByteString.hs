@@ -331,12 +331,6 @@ instance Show ByteString where
 instance Read ByteString where
     readsPrec p str = [ (packWith c2w x, y) | (x, y) <- readsPrec p str ]
 
-{-
-instance Arbitrary PackedString where
-    arbitrary = P.pack `fmap` arbitrary
-    coarbitrary s = coarbitrary (P.unpack s)
--}
-
 -- | /O(n)/ Equality on the 'ByteString' type.
 eq :: ByteString -> ByteString -> Bool
 eq a@(PS p s l) b@(PS p' s' l')
