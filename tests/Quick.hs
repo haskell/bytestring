@@ -140,6 +140,9 @@ prop_splitsplitWith c xs = P.split c xs == P.splitWith (== c) xs
 prop_bijection  c = (P.w2c . P.c2w) c == id c
 prop_bijection' w = (P.c2w . P.w2c) w == id w
 
+prop_packunpack  s = (P.unpack . P.pack) s == id s
+prop_packunpack' s = (P.pack . P.unpack) s == id s
+
 ------------------------------------------------------------------------
 -- at first we just check the correspondence to List functions
 
@@ -177,7 +180,11 @@ prop_init xs     =
 
 -- prop_null xs = (null xs) ==> null xs == (nullPS (pack xs))
 
-prop_length xs = length xs == P.length (pack xs)
+prop_length xs = P.length xs == length1 xs
+    where
+        length1 ys
+            | P.null ys = 0
+            | otherwise = 1 + length1 (P.tail ys)
 
 prop_append1 xs = (xs ++ xs) == (unpack $ pack xs `P.append` pack xs)
 prop_append2 xs ys = (xs ++ ys) == (unpack $ pack xs `P.append` pack ys)
@@ -422,6 +429,8 @@ main = do
   where
     tests = [    ("bijection",       mytest prop_bijection)
             ,    ("bijection'",       mytest prop_bijection')
+            ,    ("pack/unpack",        mytest prop_packunpack)
+            ,    ("unpack/pack",        mytest prop_packunpack')
             ,    ("eq1",       mytest prop_eq1)
             ,    ("compare1",       mytest prop_compare1)
             ,    ("compare2",       mytest prop_compare2)
@@ -531,6 +540,7 @@ main = do
             ,    ("nil1",       mytest prop_nil1)
             ,    ("nil2",       mytest prop_nil2)
             ,    ("cons",       mytest prop_cons)
+            ,    ("length",     mytest prop_length)
             ,    ("headS",       mytest prop_headS)
             ,    ("lengthS",       mytest prop_lengthS)
             ,    ("tailS",       mytest prop_tailS)

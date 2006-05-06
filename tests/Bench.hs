@@ -68,6 +68,8 @@ tests =
       ("foldl", [F ({-# SCC "fold" #-} P.foldl (\a w -> a+1::Int) 0 fps)])
 
     , ("++",    [F ({-# SCC "append" #-}P.append fps fps')])
+
+    , ("concat",[F ({-# SCC "concat"    #-}P.concat [fps,fps'])])
 --              ,F () -- SPS.append sps sps)
 --              ,F () -- PS.appendPS ps ps)
 --              ,F (list ++ list)])
@@ -193,7 +195,6 @@ tests =
 --                 ,F (PS.reversePS ps)
 --                 ,F (reverse list)])
 
-    , ("concat",[F ({-# SCC "concat"    #-}P.concat [fps,fps'])])
 --                 ,F (SPS.concat [sps,sps'])
 --                 ,F (PS.concatPS [ps,ps'])
 --                 ,F (concat [list,list'])])

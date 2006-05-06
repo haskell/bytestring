@@ -561,22 +561,6 @@ append xs ys | null xs   = ys
              | otherwise = concat [xs,ys]
 {-# INLINE append #-}
 
-{-
---
--- About 30% faster, but allocating in a big chunk isn't good for memory use
---
-append :: ByteString -> ByteString -> ByteString
-append xs@(PS ffp s l) ys@(PS fgp t m)
-    | null xs   = ys
-    | null ys   = xs
-    | otherwise = create len $ \ptr ->
-        withForeignPtr ffp $ \fp ->
-        withForeignPtr fgp $ \gp -> do
-            memcpy ptr               (fp `plusPtr` s) l
-            memcpy (ptr `plusPtr` l) (gp `plusPtr` t) m
-        where len = length xs + length ys
--}
-
 -- ---------------------------------------------------------------------
 -- Transformations
 
@@ -694,26 +678,13 @@ foldr1 f ps
 concat :: [ByteString] -> ByteString
 concat []     = empty
 concat [ps]   = ps
-concat xs     = inlinePerformIO $ do
-    let start_size = 1024
-    p <- mallocArray start_size
-    f p 0 1024 xs
-
-    where f ptr len _ [] = do
-                ptr' <- reallocArray ptr (len+1)
-                poke (ptr' `plusPtr` len) (0::Word8)    -- XXX so CStrings work
-                fp   <- newForeignFreePtr ptr'
-                return $ PS fp 0 len
-
-          f ptr len to_go pss@(PS p s l:pss')
-           | l <= to_go = do withForeignPtr p $ \pf ->
-                                 memcpy (ptr `plusPtr` len)
-                                          (pf `plusPtr` s) l
-                             f ptr (len + l) (to_go - l) pss'
-
-           | otherwise = do let new_total = ((len + to_go) * 2) `max` (len + l)
-                            ptr' <- reallocArray ptr new_total
-                            f ptr' len (new_total - len) pss
+concat xs     = create len $ \ptr -> go xs ptr
+  where len = P.sum . P.map length $ xs
+        STRICT2(go)
+        go []            _   = return ()
+        go (PS p s l:ps) ptr = do
+                withForeignPtr p $ \fp -> memcpy ptr (fp `plusPtr` s) l
+                go ps (ptr `plusPtr` l)
 
 -- | Map a function over a 'ByteString' and concatenate the results
 concatMap :: (Word8 -> ByteString) -> ByteString -> ByteString
@@ -2177,6 +2148,10 @@ loopU :: (acc -> Word8 -> (acc, Maybe Word8))  -- ^ mapping & folding, once per 
       -> acc                                   -- ^ initial acc value
       -> ByteString                            -- ^ input ByteString
       -> (ByteString, acc)
+
+--
+-- use bytestringmalloc, and do a copy to do the realloc
+--
 
 loopU f start (PS fp s i) = inlinePerformIO $ withForeignPtr fp $ \a -> do
     p <- mallocArray (i+1)
