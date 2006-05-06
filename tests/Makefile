@@ -14,7 +14,7 @@ GHC_ = $(GHC) -threaded $(PP_OPTS) -fglasgow-exts --make
 
 SRCS= TestFramework.hs UnitTestsMain.hs Tests.hs Quick.hs
 
-all: qc htest bench sbench wc spellcheck letter_frequency linesort fuse
+all: qc htest bench sbench wc spellcheck letter_frequency linesort fuse inline
 
 # build executable, linking in all tests
 run-utests: $(SRCS)
@@ -75,10 +75,15 @@ linesort.o: linesort.hs
 .PHONY: fuse
 fuse: fuse.o
 	/usr/bin/time ./fuse < Usr.Dict.Words
-
 fuse.o: fuse.hs
 	${GHC} ${PKG} -O $< -o fuse -ddump-simpl-stats
 
+.PHONY: inline
+inline: inline.o
+	/usr/bin/time ./inline
+inline.o: inline.hs
+	${GHC} ${PKG} -O $< -o inline
+
 .PHONY: clean
 clean:
-	rm -f *~ *.o *.hi $(BIN) bench */*.o */*.hi */*~ wc letter_frequency spellcheck linesort fuse
+	rm -f *~ *.o *.hi $(BIN) bench */*.o */*.hi */*~ wc letter_frequency spellcheck linesort fuse inline
