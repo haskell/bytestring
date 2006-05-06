@@ -827,6 +827,13 @@ lines ps
     where search = elemIndex '\n'
 {-# INLINE lines #-}
 
+{-# RULES
+
+"length.lines/count" 
+    P.length . lines = count '\n'
+
+  #-}
+
 {-
 -- Just as fast, but more complex. Should be much faster, I thought.
 lines :: ByteString -> [ByteString]
