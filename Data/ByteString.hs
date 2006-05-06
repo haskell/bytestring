@@ -2194,9 +2194,8 @@ loopU f start (PS z s i) = inlinePerformIO $ withForeignPtr z $ \a -> do
 "loopArr/loopSndAcc" forall x.
   loopArr (loopSndAcc x) = loopArr x
 
--- orphan?
--- "seq/NoAL" forall (u::NoAL) e.
---   u `seq` e = e
+"seq/NoAL" forall (u::NoAL) e.
+  u `seq` e = e
 
  #-}
 

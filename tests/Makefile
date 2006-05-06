@@ -48,7 +48,7 @@ wc: wc.o
 	/usr/bin/time ./wc < bigdata
     
 wc.o: wc.hs
-	${GHC} ${PKG} -O wc.hs -o wc
+	${GHC} ${PKG} -O -ddump-simpl-stats wc.hs -o wc
 
 .PHONY: spellcheck
 spellcheck: spellcheck.o
