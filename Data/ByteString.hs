@@ -9,7 +9,7 @@
 --
 -- Array fusion code:
 --               (c) 2001,2002 Manuel M T Chakravarty & Gabriele Keller
---		         (c) 2006      Manuel M T Chakravarty & Roman Leshchinskiy
+--               (c) 2006      Manuel M T Chakravarty & Roman Leshchinskiy
 --
 -- License     : BSD-style
 --
