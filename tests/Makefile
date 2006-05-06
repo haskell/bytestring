@@ -24,7 +24,8 @@ htest:: run-utests
 	./run-utests
 
 # quick testing
-qc:
+.PHONY: qc
+qc::
 	runhaskell Quick.hs
 
 # attempt to benchmark small strings performance
