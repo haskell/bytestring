@@ -66,14 +66,7 @@ tests  :: [(String,[F])]
 tests =
     [
 
-      ("findIndex",[F ({-# SCC "findIndex" #-}P.findIndex (=='~') fps)])
-
-   ,  ("find",[F ({-# SCC "find"      #-}P.find (=='~') fps)])
-
---            ,F (find (=='z') list)])
-    , ("foldl", [F ({-# SCC "fold" #-} P.foldl (\a w -> a+1::Int) 0 fps)])
-
-    , ("++",    [F ({-# SCC "append" #-}P.append fps fps')])
+      ("++",    [F ({-# SCC "append" #-}P.append fps fps')])
 
     , ("concat",[F ({-# SCC "concat"    #-}P.concat [fps,fps'])])
 --              ,F () -- SPS.append sps sps)
@@ -116,17 +109,21 @@ tests =
 --            ,F (PS.mapPS toUpper ps)
 --            ,F (map toUpper list)])
 
-    , ("filter", [F ({-# SCC "filter"    #-}P.filter (=='f') fps)
-                 ,F (B.filter (==102) fps)])
---               ,F (SPS.filter (=='f') sps)
---               ,F (PS.filterPS (=='f') ps)
---               ,F (filter (=='f') list)])
-
-    , ("filterChar", [F ({-# SCC "filterChar"    #-}P.filterChar 'f' fps)
-                 ,F (B.filterByte 103 fps)])
+    , ("filter /= 'f'", [F ({-# SCC "filter"    #-}P.filter (/='f') fps)
+                 ,F (B.filter (/=102) fps)])
 
     , ("filterNotChar", [F ({-# SCC "filterNotChar"    #-}P.filterNotChar 'f' fps)
                  ,F (B.filterNotByte 103 fps)])
+
+    , ("findIndex",[F ({-# SCC "findIndex" #-}P.findIndex (=='~') fps)])
+
+   ,  ("find",[F ({-# SCC "find"      #-}P.find (=='~') fps)])
+
+--            ,F (find (=='z') list)])
+    , ("foldl", [F ({-# SCC "fold" #-} P.foldl (\a w -> a+1::Int) 0 fps)])
+
+    , ("filterChar", [F ({-# SCC "filterChar"    #-}P.filterChar 'f' fps)
+                 ,F (B.filterByte 103 fps)])
 
     , ("take",[F ({-# SCC "take"      #-}P.take 100000 fps)])
 
