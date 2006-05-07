@@ -194,9 +194,14 @@ prop_append2 xs ys = (xs ++ ys) == (unpack $ pack xs `P.append` pack ys)
 prop_map   xs = map toLower xs == (unpack . (P.map toLower) .  pack) xs
 
 prop_filter1 xs   = (filter (=='X') xs) == (unpack $ P.filter (=='X') (pack xs))
-prop_filter2 xs c = (filter (==c) xs) == (unpack $ P.filter (==c) (pack xs))
+prop_filter2 p xs = (filter p xs) == (unpack $ P.filter p (pack xs))
 
-prop_find xs c = find (==c) xs == P.find (==c) (pack xs)
+prop_find p xs = find p xs == P.find p (pack xs)
+
+prop_find_findIndex p xs =
+    P.find p xs == case P.findIndex p xs of
+                                Just n -> Just (xs `P.unsafeIndex` n)
+                                _      -> Nothing
 
 prop_foldl1 xs a = ((foldl (\x c -> if c == a then x else c:x) [] xs)) ==
                    (unpack $ P.foldl (\x c -> if c == a then x else c `P.cons` x) P.empty (pack xs))
@@ -501,6 +506,7 @@ main = do
             ,    ("findIndicies",       mytest prop_findIndicies)
             ,    ("elemIndices",       mytest prop_elemIndices)
             ,    ("find",       mytest prop_find)
+            ,    ("find/findIndex",       mytest prop_find_findIndex)
             ,    ("sort1",       mytest prop_sort1)
             ,    ("sort2",       mytest prop_sort2)
             ,    ("sort3",       mytest prop_sort3)

@@ -65,7 +65,13 @@ tests  :: [(String,[F])]
 
 tests =
     [
-      ("foldl", [F ({-# SCC "fold" #-} P.foldl (\a w -> a+1::Int) 0 fps)])
+
+      ("findIndex",[F ({-# SCC "findIndex" #-}P.findIndex (=='~') fps)])
+
+   ,  ("find",[F ({-# SCC "find"      #-}P.find (=='~') fps)])
+
+--            ,F (find (=='z') list)])
+    , ("foldl", [F ({-# SCC "fold" #-} P.foldl (\a w -> a+1::Int) 0 fps)])
 
     , ("++",    [F ({-# SCC "append" #-}P.append fps fps')])
 
@@ -277,10 +283,6 @@ tests =
     , ("notElem",[F ({-# SCC "notElem"      #-}P.notElem 'z' fps)
                  ,F (B.notElem 122 fps)])
 
-    , ("find",[F ({-# SCC "find"      #-}P.find (=='z') fps)
-                 ,F (B.find (==122) fps)])
---            ,F (find (=='z') list)])
-
     , ("elemIndex",[F ({-# SCC "elemIndex" #-}P.elemIndex 'z' fps)
                  ,F (B.elemIndex 122 fps)])
 --                 ,F (elemIndex 'z' list)])
@@ -288,15 +290,12 @@ tests =
     , ("elemIndexLast",[F ({-# SCC "elemIndexLast" #-}P.elemIndexLast 'z' fps)
                  ,F (B.elemIndexLast 122 fps)])
 
-    , ("findIndex",[F ({-# SCC "findIndex" #-}P.findIndex (=='z') fps)
-                 ,F (B.findIndex (==122) fps)])
+    , ("findIndices",[F ({-# SCC "findIndicies" #-} P.findIndices (=='z') fps)
+                 ,F (B.findIndices (==122) fps)])
 
     , ("elemIndices",[F ({-# SCC "elemIndicies" #-} P.elemIndices 'z' fps)
                  ,F (B.elemIndices 122 fps)])
 --                    ,F (elemIndices 'z' list)])
-
-    , ("findIndices",[F ({-# SCC "findIndicies" #-} P.findIndices (=='z') fps)
-                 ,F (B.findIndices (==122) fps)])
 
     , ("splitAt",[F ({-# SCC "splitAt" #-} P.splitAt 10000 fps)])
 
