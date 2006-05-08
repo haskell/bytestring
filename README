@@ -43,7 +43,7 @@ from various string libraries.
 
 Size of test data: 21256k, Linux 3.2Ghz P4
 
-                          FPS6       SPS     PS      [a]    
+                          FPS7       SPS     PS      [a]    
 ++                        0.028      !       !       1.288   
 length                    0.000      0.000   0.000   0.131   
 pack                      0.303      0.502   0.337   -       
@@ -51,7 +51,7 @@ unpack                    3.319*     1.630   7.445   -
 compare                   0.000      0.000   0.000   0.000   
 index                     0.000      0.000   0.000   0.000   
 map                       2.762*     2.917   4.813   7.286   
-filter                    0.260      2.805   0.954   0.305   
+filter                    0.312      2.805   0.954   0.305   
 take                      0.000      0.000   0.024   0.005   
 drop                      0.000      0.000   11.768  0.130   
 takeWhile                 0.000      1.498   0.000   0.000   
@@ -59,7 +59,7 @@ dropWhile                 0.000      1.985   8.447   0.130
 span                      0.000      9.289   11.144  0.131   
 break                     0.000      9.383   11.268  0.133   
 lines                     0.052      1.114   1.367   2.790   
-unlines                   0.120      !       !       10.950  
+unlines                   0.088      !       !       10.950  
 words                     1.583      2.128   5.644   4.184   
 unwords                   0.058      !       !       1.305   
 reverse                   0.024      12.997  13.018  1.622   
@@ -80,14 +80,17 @@ sort                      0.168      -       -       !
 maximum                   0.024      -       -       0.183
 minimum                   0.025      -       -       0.185
 replicate                 0.000      -       -       0.053   
-find                      0.259      -       -       0.000   
+findIndex                 0.096
+find                      0.120      -       -       0.000   
 elemIndex                 0.000      -       -       0.000   
-elemIndicies              0.010      -       -       0.314   
+elemIndicies              0.008      -       -       0.314   
+foldl                     0.148
+spanEnd                   0.000
+snoc                      0.016
 filterChar                0.031      
-filterNotChar             0.202      
+filterNotChar             0.128
 join                      0.029      
 split                     0.071      
-snoc                      0.017
 findIndices               0.408      
 splitAt                   0.000      
 lineIndices               0.029      
