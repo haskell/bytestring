@@ -1048,11 +1048,10 @@ split w (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
         loop n = do
             let q = memchr (ptr `plusPtr` n) w (fromIntegral (l-n))
             if q == nullPtr
-                then return [PS x (s+n) (l-n)]
-                else do let i = q `minusPtr` ptr
-                        ls <- loop (i+1)
-                        return $! PS x (s+n) (i-n) : ls
-    loop 0
+                then [PS x (s+n) (l-n)]
+                else let i = q `minusPtr` ptr in PS x (s+n) (i-n) : loop (i+1)
+
+    return (loop 0)
 {-# INLINE split #-}
 
 {-
