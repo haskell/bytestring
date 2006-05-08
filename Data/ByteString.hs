@@ -1188,14 +1188,12 @@ elemIndices w (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
     let ptr = p `plusPtr` s
 
         STRICT1(loop)
-        loop n = do
-                let q = memchr (ptr `plusPtr` n) w (fromIntegral (l - n))
-                if q == nullPtr
-                    then return []
-                    else do let i = q `minusPtr` ptr
-                            ls <- loop (i+1)
-                            return $! i:ls
-    loop 0
+        loop n = let q = memchr (ptr `plusPtr` n) w (fromIntegral (l - n))
+                 in if q == nullPtr
+                        then []
+                        else let i = q `minusPtr` ptr
+                             in i : loop (i+1)
+    return (loop 0)
 
 {-
 -- much slower
