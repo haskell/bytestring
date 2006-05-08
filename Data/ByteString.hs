@@ -990,10 +990,11 @@ splitWith :: (Word8 -> Bool) -> ByteString -> [ByteString]
 
 #if defined(__GLASGOW_HASKELL__)
 splitWith _pred (PS _  _   0) = []
-splitWith pred_ (PS fp off len) = splitWith' pred# off len fp
+splitWith pred_ (PS fp off len) = splitWith0 pred# off len fp
   where pred# c# = pred_ (W8# c#)
 
-        splitWith' pred' off' len' fp' = withPtr fp $ \p ->
+        STRICT4(splitWith0)
+        splitWith0 pred' off' len' fp' = withPtr fp $ \p ->
             splitLoop pred' p 0 off' len' fp'
 
         splitLoop :: (Word# -> Bool)
@@ -1009,7 +1010,7 @@ splitWith pred_ (PS fp off len) = splitWith' pred# off len fp
                 w <- peekElemOff p (off'+idx')
                 if pred' (case w of W8# w# -> w#)
                    then return (PS fp' off' idx' :
-                              splitWith' pred' (off'+idx'+1) (len'-idx'-1) fp')
+                              splitWith0 pred' (off'+idx'+1) (len'-idx'-1) fp')
                    else splitLoop pred' p (idx'+1) off' len' fp'
 {-# INLINE splitWith #-}
 
