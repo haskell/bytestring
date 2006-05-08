@@ -1016,11 +1016,11 @@ splitWith pred_ (PS fp off len) = splitWith0 pred# off len fp
 
 #else
 splitWith _ (PS _ _ 0) = []
-splitWith p ps = splitWith' p ps
+splitWith p ps = loop p ps
     where
-        STRICT2(splitWith')
-        splitWith' q qs = if null rest then [chunk]
-                                       else chunk : splitWith' q (unsafeTail rest)
+        STRICT2(loop)
+        loop q qs = if null rest then [chunk]
+                                 else chunk : loop q (unsafeTail rest)
             where (chunk,rest) = break q qs
 #endif
 
