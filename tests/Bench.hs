@@ -176,7 +176,7 @@ tests =
     , ("split",[F ({-# SCC "split"     #-}P.split '\n' fps)
                  ,F (B.split 0x0a fps)])
 
-    , ("unlines",[F ({-# SCC "unlines"   #-}P.unlines [fps,fps',fps])])
+    , ("unlines",[F ({-# SCC "unlines"   #-}P.unlines [fps,fps'])])
 --                 ,F () {-F (SPS.unlines [sps,sps',sps])-}
 --                 ,F () -- (PS.unlinesPS [ps,ps',ps])
 --                 ,F (unlines [list,list',list])])
@@ -186,7 +186,7 @@ tests =
 --                 ,F (PS.wordsPS ps)
 --                 ,F (words list)])
 
-    , ("unwords",[F ({-# SCC "unwords"   #-}P.unwords [fps,fps',fps])])
+    , ("unwords",[F ({-# SCC "unwords"   #-}P.unwords [fps,fps'])])
 --                 ,F () {-(SPS.unwords [sps,sps',sps])-}
 --                 ,F () -- PS.unwordsPS [ps,ps',ps])
 --                 ,F (unwords [list,list',list])])
