@@ -227,7 +227,7 @@ module Data.ByteString (
 #endif
 
         noAL, NoAL, loopArr, loopAcc, loopSndAcc,
-        loopU, mapEFL, filterEFL, foldEFL,
+        loopU, mapEFL, filterEFL, foldEFL, fuseEFL,
         filterF, mapF
 
   ) where
@@ -2192,7 +2192,7 @@ loopU f start (PS z s i) = inlinePerformIO $ withForeignPtr z $ \a -> do
             then return (fp,i,acc)                      -- no realloc for map
             else do fp_ <- mallocByteString (i'+1)      -- realloc
                     withForeignPtr fp_ $ \p' -> do
-                        memcpy p' p (fromIntegral i')
+                        memcpy p' p (fromIntegral i')   -- can't avoid this,  right?
                         poke (p' `plusPtr` i') (0::Word8)
                     return (fp_,i',acc)
 
@@ -2214,17 +2214,26 @@ loopU f start (PS z s i) = inlinePerformIO $ withForeignPtr z $ \a -> do
 
 {-# INLINE [1] loopU #-}
 
+infixr 9 `fuseEFL`
+
+-- |Fuse to flat loop functions
+fuseEFL :: (a1 -> Word8  -> (a1, Maybe Word8))
+        -> (a2 -> Word8  -> (a2, Maybe Word8))
+        -> (a1, a2)
+        -> Word8
+        -> ((a1, a2), Maybe Word8)
+fuseEFL f g (acc1, acc2) e1 =
+    case f acc1 e1 of
+        (acc1', Nothing) -> ((acc1', acc2), Nothing)
+        (acc1', Just e2) ->
+            case g acc2 e2 of
+                (acc2', res) -> ((acc1', acc2'), res)
+
 {-# RULES
 
-"array fusion!" forall em1 em2 start1 start2 arr.
+"Array fusion!" forall em1 em2 start1 start2 arr.
   loopU em2 start2 (loopArr (loopU em1 start1 arr)) =
-    let em (acc1, acc2) e =
-            case em1 acc1 e of
-                (acc1', Nothing) -> ((acc1', acc2), Nothing)
-                (acc1', Just e') ->
-                    case em2 acc2 e' of
-                        (acc2', res) -> ((acc1', acc2'), res)
-    in loopSndAcc (loopU em (start1, start2) arr)
+    loopSndAcc (loopU (em1 `fuseEFL` em2) (start1, start2) arr)
 
 "loopArr/loopSndAcc" forall x.
   loopArr (loopSndAcc x) = loopArr x
@@ -2232,5 +2241,5 @@ loopU f start (PS z s i) = inlinePerformIO $ withForeignPtr z $ \a -> do
 "seq/NoAL" forall (u::NoAL) e.
   u `seq` e = e
 
- #-}
+  #-}
 

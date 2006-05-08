@@ -86,4 +86,4 @@ inline.o: inline.hs
 
 .PHONY: clean
 clean:
-	rm -f *~ *.o *.hi $(BIN) bench */*.o */*.hi */*~ wc letter_frequency spellcheck linesort fuse inline
+	rm -f *~ *.o *.hi $(BIN) bench */*.o */*.hi */*~ wc letter_frequency spellcheck linesort fuse inline qc
