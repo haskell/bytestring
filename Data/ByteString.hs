@@ -2000,7 +2000,7 @@ withPtr fp io = inlinePerformIO (withForeignPtr fp io)
 -- constant strings created when compiled:
 errorEmptyList :: String -> a
 errorEmptyList fun = error ("Data.ByteString." ++ fun ++ ": empty ByteString")
-{-# INLINE errorEmptyList #-}
+{-# NOINLINE errorEmptyList #-}
 
 -- 'findIndexOrEnd' is a variant of findIndex, that returns the length
 -- of the string if no element is found, rather than Nothing.
