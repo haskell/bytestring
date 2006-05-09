@@ -530,8 +530,9 @@ length (PS _ _ l) = l
 -- complexity, as it requires a memcpy.
 cons :: Word8 -> ByteString -> ByteString
 cons c (PS x s l) = create (l+1) $ \p -> withForeignPtr x $ \f -> do
-        memcpy (p `plusPtr` 1) (f `plusPtr` s) (fromIntegral l)
+        memcpy (p `plusPtr` 1) (f `plusPtr` s) l
         poke p c
+        memcpy (p `plusPtr` 1) (f `plusPtr` s) l
 {-# INLINE cons #-}
 
 -- todo fuse
