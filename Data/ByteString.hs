@@ -1087,6 +1087,7 @@ split (W8# w#) (PS fp off len) = splitWith' off len fp
 --
 tokens :: (Word8 -> Bool) -> ByteString -> [ByteString]
 tokens f = P.filter (not.null) . splitWith f
+{-# INLINE tokens #-}
 
 -- | The 'group' function takes a ByteString and returns a list of
 -- ByteStrings such that the concatenation of the result is equal to the
@@ -1122,6 +1123,7 @@ join filler pss = concat (splice pss)
         splice []  = []
         splice [x] = [x]
         splice (x:y:xs) = x:filler:splice (y:xs)
+{-# INLINE join #-}
 
 --
 -- | /O(n)/ joinWithByte. An efficient way to join to two ByteStrings
@@ -1195,6 +1197,7 @@ elemIndices w (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
                         else let i = q `minusPtr` ptr
                              in i : loop (i+1)
     return (loop 0)
+{-# INLINE elemIndices #-}
 
 {-
 -- much slower
