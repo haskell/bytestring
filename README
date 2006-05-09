@@ -118,81 +118,85 @@ Key: FPS6 = FPS 0.6
 
 ------------------------------------------------------------------------
 
-Question:
-    Can I manipulate 1G strings in Haskell?
+== Stress testing really big strings
 
-Short answer:
-    Yes! Mostly.
-
-Doing some stress testing of FPS, here are some results for 1G strings.
+Doing some stress testing of FPS, here are some results for 0.5G strings.
 
 3.2Ghz box, 2G physical mem.
-Size of input string: 1G
 
-N.B. 2G of physical ram is not enough when trying to benchmark functions
-that copy 1G strings around :)
+Size of test data: 524288k
+Size of test data: 524288k
+                Char8   Word8
 
-    Function        Time in seconds
+Effectively O(1) or O(m) where m < n
+    all             0.000   0.000   
+    any             0.000   0.004   
+    break           0.000   0.000   
+    breakChar       0.000   0.000   
+    breakSpace      0.000   
+    compare         0.000   
+    concat          0.000   
+    drop            0.000   
+    dropSpace       0.000   
+    dropSpaceEnd    0.000   
+    dropWhile       0.000   0.000   
+    elem            0.000   0.000   
+    elemIndex       0.000   0.000   
+    elemIndexLast   0.000   0.000   
+    empty           0.000   
+    head            0.000   0.000   
+    index           0.000   0.000   
+    init            0.000   
+    last            0.000   0.000   
+    length          0.000   
+    notElem         0.000   0.000   
+    span            0.000   0.000   
+    spanChar        0.000   0.000   
+    spanEnd         0.000   0.000   
+    splitAt         0.000   
+    tail            0.000   
+    take            0.000   
+    takeWhile       0.000   0.000   
+    isPrefixOf      0.000   
+    isSuffixOf      0.000   
+    addr1           0.000   
+    addr2           0.000   
 
-All O(1) functions:
-    length          O
-    index           0
-    head            0
-    tail            0
-    last            0
-    init            0
+O(n)
+    ++              0.676   
+    map             6.080   5.868   
+    cons            0.396   0.396   
+    snoc            0.400   0.400   
+    find            3.240   
+    split           1.204   1.200   
+    lines           2.000   
+    foldl           3.804   
+    unwords         0.552   
+    reverse         0.884   
+    findIndex       3.128   
+    filterChar      0.756   0.732   
+    filter/='f'     8.265   7.012   
+    filterNotChar   4.456   3.388   
+    join            0.400   
+    sort            4.344   
+    maximum         0.776   0.764   
+    minimum         0.772   0.776   
+    replicate       0.008   0.000   
+    elemIndices     0.240   0.240   
+    lineIndices     1.092   
+    joinWithChar    0.400   0.400   
+    isSubstringOf   0.052   
+    count           0.748   
 
-O(n) , but answer found early on:
-    compare         0           
-    any             0
-    all             0
-    elem            0
-    elemIndex       0
+slow O(n)
+    words           38.722  
+    group           77.261  
+    groupBy         96.226  
+    inits           32.430  
+    tails           23.225  
+    findIndices     13.841  15.825  
+    splitWith       18.445  19.225  
+    zip             33.926  
+    zipWith         33.562  
 
-O(n) mostly:
-    maximum         3.855    
-    minimum         4.666   
-    filterChar      8.084   
-    elemIndicies    11.504  
-    lines           12.247  
-    find            14.046  
-    tails           27.328
-    inits           33.620  
-    words           100.963
-    map toUpper     143.871
-
-Failed due to memory exhaustion. 
-Almost made it though, just need a tad more ram than I had.
-
-    filter          !     
-    unlines         !
-    unwords         !
-    reverse         !           -- copy
-    cons            !           -- copy
-    snoc            !           -- involves a copy
-    ++              !           -- can't concat two 1G strings on this box
-
-    sort            ? taking too long, but space was ok.
-
-[Char] functions are much more costly.
-    pack            !           -- constructing 1G [Char] is not ok.
-    unpack          !            
-
-Transforming 1 0.5G string into another requires holding both in memory:
-
-Fine:
-    filter          7.264
-    unwords         1.715
-    reverse         1.980
-    cons            0.976
-    snoc            0.689
-    ++              2.845
-
-Still wouldn't work at 0.5G
-    unlines         !
-    concat          !
-
-Lesssons, you can play with 1G strings in Haskell. Having more than 2G
-ram is useful though. Replacing higher order functions with hard coded
-first order equivalents can help.
 
