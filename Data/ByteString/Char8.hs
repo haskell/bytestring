@@ -82,7 +82,7 @@ module Data.ByteString.Char8 (
 
         -- * Generating and unfolding ByteStrings
         replicate,              -- :: Int -> Char -> ByteString
-        unfoldrN,               -- :: (Char -> Maybe (Char, Char)) -> Char -> ByteString
+        unfoldrN,               -- :: (a -> Maybe (Char, a)) -> a -> ByteString
 
         -- * Substrings
 
@@ -447,9 +447,9 @@ replicate w = B.replicate w . c2w
 --
 -- > unfoldrN n == take n $ List.unfoldr
 --
-unfoldrN :: Int -> (Char -> Maybe (Char, Char)) -> Char -> ByteString
-unfoldrN n f w = B.unfoldrN n ((k `fmap`) . f . w2c) (c2w w)
-    where k (i,j) = (c2w i, c2w j) -- (c2w *** c2w)
+unfoldrN :: Int -> (a -> Maybe (Char, a)) -> a -> ByteString
+unfoldrN n f w = B.unfoldrN n ((k `fmap`) . f) w
+    where k (i,j) = (c2w i, j)
 {-# INLINE unfoldrN #-}
 
 -- | 'takeWhile', applied to a predicate @p@ and a ByteString @xs@,

@@ -88,7 +88,7 @@ module Data.ByteString (
 
         -- * Generating and unfolding ByteStrings
         replicate,              -- :: Int -> Word8 -> ByteString
-        unfoldrN,               -- :: (Word8 -> Maybe (Word8, Word8)) -> Word8 -> ByteString
+        unfoldrN,               -- :: (a -> Maybe (Word8, a)) -> a -> ByteString
 
         -- * Substrings
 
@@ -841,7 +841,7 @@ replicate w c = inlinePerformIO $ generate w $ \ptr -> go ptr w
 -- The following equation connects the depth-limited unfoldr to the List unfoldr:
 --
 -- > unfoldrN n == take n $ List.unfoldr
-unfoldrN :: Int -> (Word8 -> Maybe (Word8, Word8)) -> Word8 -> ByteString
+unfoldrN :: Int -> (a -> Maybe (Word8, a)) -> a -> ByteString
 unfoldrN i f w = inlinePerformIO $ generate i $ \p -> go p w 0
     where
         STRICT3(go)
