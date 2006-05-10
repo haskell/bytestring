@@ -70,6 +70,7 @@ module Data.ByteString.Char8 (
         foldr,                  -- :: (Char -> a -> a) -> a -> ByteString -> a
         foldl1,                 -- :: (Char -> Char -> Char) -> ByteString -> Char
         foldr1,                 -- :: (Char -> Char -> Char) -> ByteString -> Char
+        foldl',                 -- :: (a -> Char -> a) -> a -> ByteString -> a
 
         -- ** Special folds
         concat,                 -- :: [ByteString] -> ByteString
@@ -220,7 +221,7 @@ module Data.ByteString.Char8 (
         unpackList,
 #endif
         noAL, NoAL, loopArr, loopAcc, loopSndAcc,
-        loopU, mapEFL, filterEFL, foldEFL, fuseEFL,
+        loopU, mapEFL, filterEFL, foldEFL, foldEFL', fuseEFL,
         filterF, mapF
 
     ) where
@@ -254,7 +255,7 @@ import Data.ByteString (ByteString(..)
                        ,unpackList
 #endif
                        ,noAL, NoAL, loopArr, loopAcc, loopSndAcc
-                       ,loopU, mapEFL, filterEFL, foldEFL, fuseEFL
+                       ,loopU, mapEFL, filterEFL, foldEFL, foldEFL', fuseEFL
                        ,useAsCString, unsafeUseAsCString
                        )
 
@@ -362,6 +363,11 @@ intersperse = B.intersperse . c2w
 foldl :: (a -> Char -> a) -> a -> ByteString -> a
 foldl f = B.foldl (\a c -> f a (w2c c))
 {-# INLINE foldl #-}
+
+-- | 'foldl\'' is like foldl, but strict in the accumulator.
+foldl' :: (a -> Char -> a) -> a -> ByteString -> a
+foldl' f = B.foldl' (\a c -> f a (w2c c))
+{-# INLINE foldl' #-}
 
 -- | 'foldr', applied to a binary operator, a starting value
 -- (typically the right-identity of the operator), and a packed string,
