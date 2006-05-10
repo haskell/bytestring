@@ -238,6 +238,8 @@ import Prelude hiding           (reverse,head,tail,last,init,null
                                 ,zip,zipWith,unzip,notElem)
 
 import Data.Word                (Word8)
+import Foreign.Ptr              (plusPtr)
+import Foreign.Storable         (Storable(..))
 
 #if !defined(__GLASGOW_HASKELL__)
 import System.IO.Unsafe
@@ -270,10 +272,10 @@ import qualified Data.ByteString as P  -- P for packed
 --
 -- Instances of Eq, Ord, Read, Show, Data, Typeable
 --
-data ByteString = LPS [P.ByteString] -- LPS for lazy packed string
+newtype ByteString = LPS [P.ByteString] -- LPS for lazy packed string
 
 #if defined(__GLASGOW_HASKELL__)
-    deriving (Data, Typeable)
+    deriving (Data, Typeable, Show)
 #endif
 
 -- The data type invariant:
@@ -412,7 +414,7 @@ snoc (LPS ss) c = LPS (ss ++ [P.packByte c])
 -- | /O(1)/ Extract the first element of a ByteString, which must be non-empty.
 head :: ByteString -> Word8
 head (LPS [])    = errorEmptyList "head"
-head (LPS (x:_)) = P.head x
+head (LPS (x:_)) = P.unsafeHead x
 {-# INLINE head #-}
 
 -- | /O(1)/ Extract the elements after the head of a ByteString, which must be non-empty.
@@ -420,7 +422,7 @@ tail :: ByteString -> ByteString
 tail (LPS [])     = errorEmptyList "tail"
 tail (LPS (x:xs))
   | P.length x == 1 = LPS xs
-  | otherwise       = LPS (P.tail x : xs)
+  | otherwise       = LPS (P.unsafeTail x : xs)
 {-# INLINE tail #-}
 
 -- | /O(n\/c)/ Extract the last element of a ByteString, which must be finite and non-empty.
@@ -462,12 +464,18 @@ reverse (LPS xs) = LPS (L.map P.reverse xs)
 -- the 'ByteString'.  It is analogous to the intersperse function on
 -- Lists.
 intersperse :: Word8 -> ByteString -> ByteString
-intersperse c ls = error "FIXME: not yet implemented"
-
+intersperse = error "FIXME: not yet implemented"
+{-intersperse c (LPS [])     = LPS []
+intersperse c (LPS (x:xs)) = LPS (P.intersperse c x : L.map intersperse')
+  where intersperse' c ps@(PS x s l) =
+          P.create (2*l) $ \p -> withForeignPtr x $ \f ->
+                poke p c
+                c_intersperse (p `plusPtr` 1) (f `plusPtr` s) l c
+-}
 -- | The 'transpose' function transposes the rows and columns of its
 -- 'ByteString' argument.
 transpose :: [ByteString] -> [ByteString]
-transpose s = error "FIXME: not yet implemented"
+transpose s = L.map (\ss -> LPS [P.pack ss]) (L.transpose (L.map unpack s))
 
 -- ---------------------------------------------------------------------
 -- Reducing 'ByteString's
@@ -475,27 +483,34 @@ transpose s = error "FIXME: not yet implemented"
 -- | 'foldl', applied to a binary operator, a starting value (typically
 -- the left-identity of the operator), and a ByteString, reduces the
 -- ByteString using the binary operator, from left to right.
--- This function is subject to array fusion.
+-- TODO: Is this function is subject to list and array fusion?
 foldl :: (a -> Word8 -> a) -> a -> ByteString -> a
-foldl f z = error "FIXME: not yet implemented"
+foldl f z (LPS xs) = L.foldl (P.foldl f) z xs
 {-# INLINE foldl #-}
 
 -- | 'foldr', applied to a binary operator, a starting value
 -- (typically the right-identity of the operator), and a ByteString,
 -- reduces the ByteString using the binary operator, from right to left.
 foldr :: (Word8 -> a -> a) -> a -> ByteString -> a
-foldr k z lps = error "FIXME: not yet implemented"
+foldr k z (LPS xs) = L.foldr (flip (P.foldr k)) z xs
+{-# INLINE foldr #-}
 
 -- | 'foldl1' is a variant of 'foldl' that has no starting value
 -- argument, and thus must be applied to non-empty 'ByteStrings'.
 -- This function is subject to array fusion.
 foldl1 :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
-foldl1 f lps = error "FIXME: not yet implemented"
+foldl1 f (LPS []) = errorEmptyList "foldl1"
+foldl1 f (LPS (x:xs))
+  | P.length x == 1 = foldl f (P.unsafeHead x) (LPS xs)
+  | otherwise       = foldl f (P.unsafeHead x) (LPS (P.unsafeTail x : xs))
 
 -- | 'foldr1' is a variant of 'foldr' that has no starting value argument,
 -- and thus must be applied to non-empty 'ByteString's
 foldr1 :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
-foldr1 f lps = error "FIXME: not yet implemented"
+foldr1 f (LPS []) = errorEmptyList "foldr1"
+foldr1 f (LPS (x:xs))
+  | P.length x == 1 = foldr f (P.unsafeHead x) (LPS xs)
+  | otherwise       = foldr f (P.unsafeHead x) (LPS (P.unsafeTail x : xs))
 
 -- ---------------------------------------------------------------------
 -- Special folds
@@ -535,7 +550,11 @@ minimum (LPS xs) = L.minimum (L.map P.minimum xs)
 
 -- | /O(n)/ map Word8 functions, provided with the index at each position
 mapIndexed :: (Int -> Word8 -> Word8) -> ByteString -> ByteString
-mapIndexed k (LPS xs) = error "FIXME: not yet implemented"
+mapIndexed k (LPS xs) = LPS (snd (L.mapAccumL mapIndexedChunk 0 xs))
+  where mapIndexedChunk :: Int -> P.ByteString -> (Int, P.ByteString)
+        mapIndexedChunk i x = (i + P.length x, P.mapIndexed (\i' -> k (i+i')) x)
+        --TODO: the data flow is a bit nasty, we're passing in a differnt
+        -- function each time to mapIndexed
 
 -- ---------------------------------------------------------------------
 -- Unfolds and replicates
@@ -556,24 +575,223 @@ replicate w c = LPS [P.replicate w c]
 -- prepending to the ByteString and @b@ is used as the next element in a
 -- recursive call.
 --
--- To preven unfoldrN having /O(n^2)/ complexity (as prepending a
--- character to a ByteString is /O(n)/, this unfoldr requires a maximum
--- final size of the ByteString as an argument. 'cons' can then be
--- implemented in /O(1)/ (i.e.  a 'poke'), and the unfoldr itself has
--- linear complexity. The depth of the recursion is limited to this
--- size, but may be less. For lazy, infinite unfoldr, use
--- 'Data.List.unfoldr' (from 'Data.List').
+-- The int parameter gives a chunk size.
 --
--- Examples:
---
--- > unfoldrN 10 (\x -> Just (x, chr (ord x + 1))) '0' == "0123456789"
---
--- The following equation connects the depth-limited unfoldr to the List unfoldr:
---
--- > unfoldrN n == take n $ List.unfoldr
-unfoldrN :: Int -> (Word8 -> Maybe (Word8, Word8)) -> Word8 -> ByteString
-unfoldrN i f w = error "FIXME: not yet implemented"
+unfoldrN :: Int -> (a -> Maybe (Word8, a)) -> a -> ByteString
+unfoldrN = error "FIXME: not yet implemented"
+{-unfoldrN c f = LPS . unfoldr
+  where unfoldr s = case unfoldrN' c f s of
+                      (ps, Just s')
+                        | P.null ps ->      unfoldr s'
+                        | otherwise -> ps : unfoldr s'
+                      (ps, Nothing)
+                        | P.null ps ->      []
+                        | otherwise -> ps : []
 
+        unfoldrN' :: Int -> (a -> Maybe (Word8, a)) -> a -> (P.ByteString, Maybe a)
+        unfoldrN' i f w = P.create' i $ \p -> go p w 0
+            where
+                STRICT3(go)
+                go q c n | n == i    = return (n,Just c)      -- stop if we reach `i'
+                         | otherwise = case f c of
+                                           Nothing        -> return (n, Nothing)
+                                           Just (a,new_c) -> do
+                                                poke q a
+                                                go (q `plusPtr` 1) new_c (n+1)
+-}
+
+-- ---------------------------------------------------------------------
+-- Substrings
+
+-- | /O(n\/c)/ 'take' @n@, applied to a ByteString @xs@, returns the prefix
+-- of @xs@ of length @n@, or @xs@ itself if @n > 'length' xs@.
+take :: Int -> ByteString -> ByteString
+take n (LPS xs) = LPS (take' n xs)
+  where take' n []     = []
+        take' 0 _      = []
+        take' n (x:xs) =
+          if n < P.length x
+            then P.take n x : []
+            else x : take' (n - P.length x) xs
+
+-- | /O(n\/c)/ 'drop' @n xs@ returns the suffix of @xs@ after the first @n@
+-- elements, or @[]@ if @n > 'length' xs@.
+drop  :: Int -> ByteString -> ByteString
+drop n (LPS xs) = LPS (drop' n xs)
+  where drop' n []     = []
+        drop' 0 xs     = xs
+        drop' n (x:xs) =
+          if n < P.length x
+            then P.drop n x : xs
+            else drop' (n - P.length x) xs
+
+-- | /O(1)/ 'splitAt' @n xs@ is equivalent to @('take' n xs, 'drop' n xs)@.
+splitAt :: Int -> ByteString -> (ByteString, ByteString)
+splitAt  n (LPS ps) = case splitAt' n ps of (a,b) -> (LPS a, LPS b)
+  where splitAt' n []     = ([], [])
+        splitAt' 0 xs     = ([], xs)
+        splitAt' n (x:xs) =
+          if n < P.length x
+            then (P.take n x : [], P.drop n x : xs)
+            else let (xs', xs'') = splitAt' (n - P.length x) xs
+                   in (x:xs', xs'')
+
+
+-- | 'takeWhile', applied to a predicate @p@ and a ByteString @xs@,
+-- returns the longest prefix (possibly empty) of @xs@ of elements that
+-- satisfy @p@.
+takeWhile :: (Word8 -> Bool) -> ByteString -> ByteString
+takeWhile f (LPS xs) = LPS (takeWhile' xs)
+  where takeWhile' []     = []
+        takeWhile' (x:xs) =
+          case P.findIndexOrEnd (not . f) x of
+            0                  -> []
+            n | n < P.length x -> P.take n x : []
+              | otherwise      -> x : takeWhile' xs
+
+-- | 'dropWhile' @p xs@ returns the suffix remaining after 'takeWhile' @p xs@.
+dropWhile :: (Word8 -> Bool) -> ByteString -> ByteString
+dropWhile f (LPS xs) = LPS (dropWhile' xs)
+  where dropWhile' []     = []
+        dropWhile' (x:xs) =
+          case P.findIndexOrEnd (not . f) x of
+            n | n < P.length x -> P.drop n x : xs
+              | otherwise      -> dropWhile' xs
+
+-- | 'break' @p@ is equivalent to @'span' ('not' . p)@.
+break :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
+break f (LPS xs) = case (break' xs) of (a,b) -> (LPS a, LPS b)
+  where break' []     = ([], [])
+        break' (x:xs) =
+          case P.findIndexOrEnd f x of
+            0                  -> ([], x : xs)
+            n | n < P.length x -> (P.take n x : [], P.drop n x : xs)
+              | otherwise      -> let (xs', xs'') = break' xs
+                                   in (x : xs', xs'')
+
+-- | 'breakByte' breaks its ByteString argument at the first occurence
+-- of the specified byte. It is more efficient than 'break' as it is
+-- implemented with @memchr(3)@. I.e.
+-- 
+-- > break (=='c') "abcd" == breakByte 'c' "abcd"
+--
+breakByte :: Word8 -> ByteString -> (ByteString, ByteString)
+breakByte c (LPS xs) = case (breakByte' xs) of (a,b) -> (LPS a, LPS b)
+  where breakByte' []     = ([], [])
+        breakByte' (x:xs) =
+          case P.elemIndex c x of
+            Just 0  -> ([], x : xs)
+            Just n  -> (P.take n x : [], P.drop n x : xs)
+            Nothing -> let (xs', xs'') = breakByte' xs
+                        in (x : xs', xs'')
+
+-- | 'spanByte' breaks its ByteString argument at the first
+-- occurence of a byte other than its argument. It is more efficient
+-- than 'span (==)'
+--
+-- > span  (=='c') "abcd" == spanByte 'c' "abcd"
+--
+spanByte :: Word8 -> ByteString -> (ByteString, ByteString)
+spanByte c (LPS xs) = case (spanByte' xs) of (a,b) -> (LPS a, LPS b)
+  where spanByte' []     = ([], [])
+        spanByte' (x:xs) =
+          case P.spanByte c x of
+            (x', x'') | P.null x'  -> ([], x : xs)
+                      | P.null x'' -> let (xs', xs'') = spanByte' xs
+                                       in (x : xs', xs'')
+                      | otherwise  -> (x' : [], x'' : xs)
+
+
+-- | /O(n)/ 'breakFirst' breaks the given ByteString on the first
+-- occurence of @w@. It behaves like 'break', except the delimiter is
+-- not returned, and @Nothing@ is returned if the delimiter is not in
+-- the ByteString. I.e.
+--
+-- > breakFirst 'b' "aabbcc" == Just ("aa","bcc")
+--
+-- > breakFirst c xs ==
+-- > let (x,y) = break (== c) xs 
+-- > in if null y then Nothing else Just (x, drop 1 y))
+--
+breakFirst :: Word8 -> ByteString -> Maybe (ByteString,ByteString)
+--breakFirst c p = case P.elemIndex c p of
+--   Nothing -> Nothing
+--   Just n -> Just (take n p, drop (n+1) p)
+
+breakFirst c (LPS xs) = breakByte' [] xs
+  where breakByte' acc []     = Nothing
+        breakByte' acc (x:xs) =
+          case P.elemIndex c x of
+            Just n -> let acc' | n == 0    = acc
+                               | otherwise = P.take n x : acc
+                          
+                          xs'  | n+1 >= P.length x = xs
+                               | otherwise         = P.drop (n+1) x : xs
+                       in Just (LPS (L.reverse acc'), LPS xs')
+            Nothing -> breakByte' (x:acc) xs
+
+
+-- | /O(n)/ 'breakLast' behaves like breakFirst, but from the end of the
+-- ByteString.
+--
+-- > breakLast ('b') (pack "aabbcc") == Just ("aab","cc")
+--
+-- and the following are equivalent:
+--
+-- > breakLast 'c' "abcdef"
+-- > let (x,y) = break (=='c') (reverse "abcdef") 
+-- > in if null x then Nothing else Just (reverse (drop 1 y), reverse x)
+--
+breakLast :: Word8 -> ByteString -> Maybe (ByteString,ByteString)
+breakLast c p = error "not implemented"
+
+-- | 'span' @p xs@ breaks the ByteString into two segments. It is
+-- equivalent to @('takeWhile' p xs, 'dropWhile' p xs)@
+span :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
+span p ps = break (not . p) ps
+
+
+-- | /O(n)/ Splits a 'ByteString' into components delimited by
+-- separators, where the predicate returns True for a separator element.
+-- The resulting components do not contain the separators.  Two adjacent
+-- separators result in an empty component in the output.  eg.
+--
+-- > splitWith (=='a') "aabbaca" == ["","","bb","c",""]
+-- > splitWith (=='a') []        == []
+--
+splitWith :: (Word8 -> Bool) -> ByteString -> [ByteString]
+splitWith f (LPS xs) =
+    L.map (\x -> if P.null x then LPS [] else LPS [x])
+  $ L.concatMap (P.splitWith f) xs
+
+-- | /O(n)/ Break a 'ByteString' into pieces separated by the byte
+-- argument, consuming the delimiter. I.e.
+--
+-- > split '\n' "a\nb\nd\ne" == ["a","b","d","e"]
+-- > split 'a'  "aXaXaXa"    == ["","X","X","X"]
+-- > split 'x'  "x"          == ["",""]
+-- 
+-- and
+--
+-- > join [c] . split c == id
+-- > split == splitWith . (==)
+-- 
+-- As for all splitting functions in this library, this function does
+-- not copy the substrings, it just constructs new 'ByteStrings' that
+-- are slices of the original.
+--
+split :: Word8 -> ByteString -> [ByteString]
+split c (LPS xs) =
+    L.map (\x -> if P.null x then LPS [] else LPS [x])
+  $ L.concatMap (P.split c) xs
+
+-- | Like 'splitWith', except that sequences of adjacent separators are
+-- treated as a single separator. eg.
+-- 
+-- > tokens (=='a') "aabbaca" == ["bb","c"]
+--
+tokens :: (Word8 -> Bool) -> ByteString -> [ByteString]
+tokens f = L.filter (not.null) . splitWith f
 
 
 -- TODO defrag func that concatenates block together that are below a threshold
