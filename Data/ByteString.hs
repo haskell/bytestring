@@ -532,7 +532,7 @@ length (PS _ _ l) = l
 
 {-# RULES
 
-  "length/loop fusion" forall f acc s .
+  "length/loop" forall f acc s .
   length (loopArr (loopU f acc s)) = foldl' (const . (+1)) (0::Int) (loopArr (loopU f acc s))
 
   #-}
@@ -2275,7 +2275,7 @@ fuseEFL f g (acc1, acc2) e1 =
 
 {-# RULES
 
-"Array fusion!" forall em1 em2 start1 start2 arr.
+"loop/loop fusion!" forall em1 em2 start1 start2 arr.
   loopU em2 start2 (loopArr (loopU em1 start1 arr)) =
     loopSndAcc (loopU (em1 `fuseEFL` em2) (start1, start2) arr)
 
