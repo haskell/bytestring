@@ -1165,9 +1165,9 @@ joinWithByte c f@(PS ffp s l) g@(PS fgp t m) = create len $ \ptr ->
 -- | /O(1)/ 'ByteString' index (subscript) operator, starting from 0.
 index :: ByteString -> Int -> Word8
 index ps n
-    | n < 0          = error $ "ByteString.indexWord8: negative index: " ++ show n
-    | n >= length ps = error $ "ByteString.indexWord8: index too large: " ++ show n
-                                ++ ", length = " ++ show (length ps)
+    | n < 0          = moduleError "index" ("negative index: " ++ show n)
+    | n >= length ps = moduleError "index" ("index too large: " ++ show n
+                                         ++ ", length = " ++ show (length ps))
     | otherwise      = ps `unsafeIndex` n
 {-# INLINE index #-}
 
@@ -2017,8 +2017,12 @@ withPtr fp io = inlinePerformIO (withForeignPtr fp io)
 -- Common up near identical calls to `error' to reduce the number
 -- constant strings created when compiled:
 errorEmptyList :: String -> a
-errorEmptyList fun = error ("Data.ByteString." ++ fun ++ ": empty ByteString")
+errorEmptyList fun = moduleError fun "empty ByteString"
 {-# NOINLINE errorEmptyList #-}
+
+moduleError :: String -> String -> a
+moduleError fun msg = error ("Data.ByteString." ++ fun ++ ':':' ':msg)
+{-# NOINLINE moduleError #-}
 
 -- 'findIndexOrEnd' is a variant of findIndex, that returns the length
 -- of the string if no element is found, rather than Nothing.
