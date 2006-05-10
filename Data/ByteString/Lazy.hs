@@ -517,7 +517,7 @@ foldr1 f (LPS (x:xs))
 
 -- | /O(n)/ Concatenate a list of ByteStrings.
 concat :: [ByteString] -> ByteString
-concat lpss = LPS (L.concat [ lps | (LPS lps@(_:_)) <- lpss ])
+concat lpss = LPS (L.concatMap (\(LPS xs) -> xs) lpss)
 
 -- | Map a function over a 'ByteString' and concatenate the results
 concatMap :: (Word8 -> ByteString) -> ByteString -> ByteString
@@ -793,6 +793,140 @@ split c (LPS xs) =
 tokens :: (Word8 -> Bool) -> ByteString -> [ByteString]
 tokens f = L.filter (not.null) . splitWith f
 
+-- | The 'group' function takes a ByteString and returns a list of
+-- ByteStrings such that the concatenation of the result is equal to the
+-- argument.  Moreover, each sublist in the result contains only equal
+-- elements.  For example,
+--
+-- > group "Mississippi" = ["M","i","ss","i","ss","i","pp","i"]
+--
+-- It is a special case of 'groupBy', which allows the programmer to
+-- supply their own equality test. It is about 40% faster than 
+-- /groupBy (==)/
+group :: ByteString -> [ByteString]
+group (LPS xs) = group' [] xs
+  where group' :: [P.ByteString] -> [P.ByteString] -> [ByteString]
+        group' []     []     = []
+        group' []     (x:xs) = group' (P.group x) xs
+        group' (s:[]) (x:xs) =
+          case P.group x of
+           (s':ss')
+             | P.unsafeHead s' 
+            == P.unsafeHead s -> LPS [s,s']         : group' ss' xs
+             | otherwise      -> LPS [s] : LPS [s'] : group' ss' xs
+        group' (s:ss) xs = LPS [s] : group' ss xs
+
+
+-- | The 'groupBy' function is the non-overloaded version of 'group'.
+groupBy :: (Word8 -> Word8 -> Bool) -> ByteString -> [ByteString]
+groupBy k (LPS xs) = group' [] xs
+  where group' :: [P.ByteString] -> [P.ByteString] -> [ByteString]
+        group' []     []     = []
+        group' []     (x:xs) = group' (P.groupBy k x) xs
+        group' (s:[]) (x:xs) =
+          case P.group x of
+           (s':ss')
+             | k (P.unsafeHead s')
+                 (P.unsafeHead s) -> LPS [s,s']         : group' ss' xs
+                    | otherwise   -> LPS [s] : LPS [s'] : group' ss' xs
+        group' (s:ss) xs = LPS [s] : group' ss xs
+
+-- | /O(n)/ The 'join' function takes a 'ByteString' and a list of
+-- 'ByteString's and concatenates the list after interspersing the first
+-- argument between each element of the list.
+join :: ByteString -> [ByteString] -> ByteString
+join filler pss = concat (splice pss)
+  where splice []  = []
+        splice [x] = [x]
+        splice (x:y:xs) = x:filler:splice (y:xs)
+
+-- | /O(n)/ joinWithByte. An efficient way to join to two ByteStrings
+-- with a char.
+--
+joinWithByte :: Word8 -> ByteString -> ByteString -> ByteString
+joinWithByte c x y = append x (cons c y)
+
+
+-- ---------------------------------------------------------------------
+-- Indexing ByteStrings
+
+-- | /O(c)/ 'ByteString' index (subscript) operator, starting from 0.
+index :: ByteString -> Int -> Word8
+index _        n | n < 0 = moduleError "index" ("negative index: " ++ show n)
+index (LPS xs) n         = index' xs n
+  where index' []     n' = moduleError "index" ("index too large: " ++ show n)
+        index' (x:xs) n'
+          | n' >= P.length x = index' xs (n' - P.length x)
+          | otherwise        = P.unsafeIndex x n'
+
+-- | /O(n)/ The 'elemIndex' function returns the index of the first
+-- element in the given 'ByteString' which is equal to the query
+-- element, or 'Nothing' if there is no such element. 
+-- This implementation uses memchr(3).
+elemIndex :: Word8 -> ByteString -> Maybe Int
+elemIndex c (LPS xs) = elemIndex' 0 xs
+  where elemIndex' n []     = Nothing
+        elemIndex' n (x:xs) =
+          case P.elemIndex c x of
+            Nothing -> elemIndex' (n + P.length x) xs
+            Just i  -> Just (n+i)
+
+{-
+-- | /O(n)/ The 'elemIndexLast' function returns the last index of the
+-- element in the given 'ByteString' which is equal to the query
+-- element, or 'Nothing' if there is no such element. The following
+-- holds:
+--
+-- > elemIndexLast c xs == 
+-- > (-) (length xs - 1) `fmap` elemIndex c (reverse xs)
+--
+elemIndexLast :: Word8 -> ByteString -> Maybe Int
+elemIndexLast ch (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p ->
+    go (p `plusPtr` s) (l-1)
+  where
+    STRICT2(go)
+    go p i | i < 0     = return Nothing
+           | otherwise = do ch' <- peekByteOff p i
+                            if ch == ch'
+                                then return $ Just i
+                                else go p (i-1)
+-}
+-- | /O(n)/ The 'elemIndices' function extends 'elemIndex', by returning
+-- the indices of all elements equal to the query element, in ascending order.
+-- This implementation uses memchr(3).
+elemIndices :: Word8 -> ByteString -> [Int]
+elemIndices c (LPS xs) = elemIndices' 0 xs
+  where elemIndices' n []     = []
+        elemIndices' n (x:xs) = L.map (+n) (P.elemIndices c x)
+                             ++ elemIndices' (n + P.length x) xs
+
+-- | count returns the number of times its argument appears in the ByteString
+--
+-- > count = length . elemIndices
+--
+-- But more efficiently than using length on the intermediate list.
+count :: Word8 -> ByteString -> Int
+count w (LPS xs) = L.sum (L.map (P.count w) xs)
+
+
+-- | The 'findIndex' function takes a predicate and a 'ByteString' and
+-- returns the index of the first element in the ByteString
+-- satisfying the predicate.
+findIndex :: (Word8 -> Bool) -> ByteString -> Maybe Int
+findIndex k (LPS xs) = findIndex' 0 xs
+  where findIndex' n []     = Nothing
+        findIndex' n (x:xs) =
+          case P.findIndex k x of
+            Nothing -> findIndex' (n + P.length x) xs
+            Just i  -> Just (n+i)
+
+-- | The 'findIndices' function extends 'findIndex', by returning the
+-- indices of all elements satisfying the predicate, in ascending order.
+findIndices :: (Word8 -> Bool) -> ByteString -> [Int]
+findIndices k (LPS xs) = findIndices' 0 xs
+  where findIndices' n []     = []
+        findIndices' n (x:xs) = L.map (+n) (P.findIndices k x)
+                             ++ findIndices' (n + P.length x) xs
 
 -- TODO defrag func that concatenates block together that are below a threshold
 -- defrag :: Int -> ByteString -> ByteString
@@ -803,4 +937,7 @@ tokens f = L.filter (not.null) . splitWith f
 -- Common up near identical calls to `error' to reduce the number
 -- constant strings created when compiled:
 errorEmptyList :: String -> a
-errorEmptyList fun = error ("Data.ByteString.Lazy." ++ fun ++ ": empty ByteString")
+errorEmptyList fun = moduleError fun "empty ByteString"
+
+moduleError :: String -> String -> a
+moduleError fun msg = error ("Data.ByteString.Lazy." ++ fun ++ ':':' ':msg)
