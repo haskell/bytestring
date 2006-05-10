@@ -533,7 +533,7 @@ length (PS _ _ l) = l
 {-# RULES
 
   "length/loop fusion" forall f acc s .
-  length (loopArr (loopU f acc s)) = foldl' (const . (+1)) 0 (loopArr (loopU f acc s))
+  length (loopArr (loopU f acc s)) = foldl' (const . (+1)) (0::Int) (loopArr (loopU f acc s))
 
   #-}
 
@@ -2231,7 +2231,7 @@ loopU f start (PS z s i) = inlinePerformIO $ withForeignPtr z $ \a -> do
     (ptr,n,acc) <- withForeignPtr fp $ \p -> do
         (acc, i') <- go (a `plusPtr` s) p start
         if i' == i
-            then return (fp,i',acc)                      -- no realloc for map
+            then return (fp,i',acc)                     -- no realloc for map
             else do fp_ <- mallocByteString (i'+1)      -- realloc
                     withForeignPtr fp_ $ \p' -> do
                         memcpy p' p (fromIntegral i')   -- can't avoid this,  right?
