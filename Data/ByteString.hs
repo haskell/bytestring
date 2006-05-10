@@ -530,7 +530,10 @@ length (PS _ _ l) = l
 {-# INLINE [1] length #-}
 #endif
 
-{-# RULES
+{-# 
+
+-- Translate length into a loop. 
+-- Performace ok, but allocates too much, so disable for now.
 
   "length/loop" forall f acc s .
   length (loopArr (loopU f acc s)) = foldl' (const . (+1)) (0::Int) (loopArr (loopU f acc s))
