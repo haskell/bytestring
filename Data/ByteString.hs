@@ -530,7 +530,7 @@ length (PS _ _ l) = l
 {-# INLINE [1] length #-}
 #endif
 
-{-#
+{-# RULES
 
   "length/loop fusion" forall f acc s .
   length (loopArr (loopU f acc s)) = foldl' (const . (+1)) 0 (loopArr (loopU f acc s))
