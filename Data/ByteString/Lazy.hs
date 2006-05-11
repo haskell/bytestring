@@ -276,10 +276,19 @@ import qualified Data.ByteString as P  -- P for packed
 -- Instances of Eq, Ord, Read, Show, Data, Typeable
 --
 newtype ByteString = LPS [P.ByteString] -- LPS for lazy packed string
-
+    deriving (Show,Read
 #if defined(__GLASGOW_HASKELL__)
-    deriving (Data, Typeable, Show)
+                        ,Data, Typeable
 #endif
+             )
+
+instance Eq  ByteString
+    where (==)    = eq
+
+instance Ord ByteString
+    where compare = compareBytes
+
+------------------------------------------------------------------------
 
 -- The data type invariant:
 -- the list is either empty or consists of non-null ByteStrings
@@ -300,19 +309,7 @@ abstr (LPS xs) = P.concat xs
 defaultChunkSize :: Int
 defaultChunkSize = 4096
 
--- -----------------------------------------------------------------------------
-
-instance Eq  ByteString
-    where (==)    = eq
-
-instance Ord ByteString
-    where compare = compareBytes
-
---instance Show ByteString where
---    showsPrec p ps r = showsPrec p (unpackWith w2c ps) r
-
---instance Read ByteString where
---    readsPrec p str = [ (packWith c2w x, y) | (x, y) <- readsPrec p str ]
+------------------------------------------------------------------------
 
 eq :: ByteString -> ByteString -> Bool
 eq (LPS xs) (LPS ys) = eq' xs ys

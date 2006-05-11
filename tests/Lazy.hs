@@ -230,7 +230,7 @@ prop_empty2 = L.unpack L.empty == []
 
 prop_packunpack s = (L.unpack . L.pack) s == id s
 prop_unpackpack s = (L.pack . L.unpack) s == id s
- 
+
 ------------------------------------------------------------------------
 
 prop_null xs = null (L.unpack xs) == L.null xs
