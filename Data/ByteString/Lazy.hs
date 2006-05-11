@@ -505,7 +505,6 @@ foldr k z (LPS xs) = L.foldr (flip (P.foldr k)) z xs
 foldl1 :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldl1 _ (LPS []) = errorEmptyList "foldl1"
 foldl1 f (LPS (x:xs))
-  | P.null   x = foldl f (P.unsafeHead x) (LPS xs) -- can't be true can it?
   | otherwise  = foldl f (P.unsafeHead x) (LPS (P.unsafeTail x : xs))
 
 -- | 'foldr1' is a variant of 'foldr' that has no starting value argument,
@@ -513,7 +512,6 @@ foldl1 f (LPS (x:xs))
 foldr1 :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldr1 _ (LPS []) = errorEmptyList "foldr1"
 foldr1 f (LPS (x:xs))
-  | P.null   x = foldr f (P.unsafeHead x) (LPS xs) -- TODO, not needed due to invariant?
   | otherwise  = foldr f (P.last x) (LPS (P.init x : xs))
 
 -- ---------------------------------------------------------------------
