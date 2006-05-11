@@ -311,7 +311,6 @@ instance Ord ByteString
 --instance Read ByteString where
 --    readsPrec p str = [ (packWith c2w x, y) | (x, y) <- readsPrec p str ]
 
-
 eq :: ByteString -> ByteString -> Bool
 eq (LPS xs) (LPS ys) = eq' xs ys
   where eq' [] [] = True
@@ -322,7 +321,6 @@ eq (LPS xs) (LPS ys) = eq' xs ys
             LT -> a == (P.take (P.length a) b) && eq' as (P.drop (P.length a) b : bs)
             EQ -> a == b                       && eq' as bs
             GT -> (P.take (P.length b) a) == b && eq' (P.drop (P.length b) a : as) bs
-
 
 compareBytes :: ByteString -> ByteString -> Ordering
 compareBytes (LPS xs) (LPS ys) = cmp xs ys
@@ -361,6 +359,7 @@ packByte c = LPS [P.packByte c]
 pack :: [Word8] -> ByteString
 pack str = LPS $ L.map P.pack (chunk defaultChunkSize str)
 
+-- ?
 chunk :: Int -> [a] -> [[a]]
 chunk _    [] = []
 chunk size xs = case L.splitAt size xs of (xs', xs'') -> xs' : chunk size xs''
@@ -403,8 +402,6 @@ length (LPS ss) = L.sum (L.map P.length ss)
 cons :: Word8 -> ByteString -> ByteString
 cons c (LPS ss) = LPS (P.packByte c : ss)   -- TODO: coalesing and O(1) amortised time
 {-# INLINE cons #-}
-
--- todo fuse
 
 -- | /O(n/c)/ Append a byte to the end of a 'ByteString'
 snoc :: ByteString -> Word8 -> ByteString
@@ -501,16 +498,16 @@ foldr k z (LPS xs) = L.foldr (flip (P.foldr k)) z xs
 foldl1 :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldl1 _ (LPS []) = errorEmptyList "foldl1"
 foldl1 f (LPS (x:xs))
-  | P.length x == 1 = foldl f (P.unsafeHead x) (LPS xs)
-  | otherwise       = foldl f (P.unsafeHead x) (LPS (P.unsafeTail x : xs))
+  | P.null   x = foldl f (P.unsafeHead x) (LPS xs) -- can't be true can it?
+  | otherwise  = foldl f (P.unsafeHead x) (LPS (P.unsafeTail x : xs))
 
 -- | 'foldr1' is a variant of 'foldr' that has no starting value argument,
 -- and thus must be applied to non-empty 'ByteString's
 foldr1 :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldr1 _ (LPS []) = errorEmptyList "foldr1"
 foldr1 f (LPS (x:xs))
-  | P.length x == 1 = foldr f (P.unsafeHead x) (LPS xs)
-  | otherwise       = foldr f (P.unsafeHead x) (LPS (P.unsafeTail x : xs))
+  | P.null   x = foldr f (P.unsafeHead x) (LPS xs) -- TODO, not needed due to invariant?
+  | otherwise  = foldr f (P.last x) (LPS (P.init x : xs))
 
 -- ---------------------------------------------------------------------
 -- Special folds
