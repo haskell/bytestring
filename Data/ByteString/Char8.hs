@@ -257,6 +257,7 @@ import Data.ByteString (ByteString(..)
                        ,noAL, NoAL, loopArr, loopAcc, loopSndAcc
                        ,loopU, mapEFL, filterEFL, foldEFL, foldEFL', fuseEFL
                        ,useAsCString, unsafeUseAsCString
+                       ,inlinePerformIO
                        )
 
 import Data.Char
@@ -270,7 +271,7 @@ import Foreign.Marshal.Utils    (with)
 #if defined(__GLASGOW_HASKELL__)
 import GHC.Base                 (Char(..),unsafeChr,unpackCString#,unsafeCoerce#)
 import GHC.IOBase               (IO(..),stToIO)
-import GHC.Prim                 (Addr#,writeWord8OffAddr#,realWorld#,plusAddr#)
+import GHC.Prim                 (Addr#,writeWord8OffAddr#,plusAddr#)
 import GHC.Ptr                  (Ptr(..))
 import GHC.ST                   (ST(..))
 #endif
@@ -1029,17 +1030,6 @@ readInt = go 0
 
 -- ---------------------------------------------------------------------
 -- Internals
-
--- Just like inlinePerformIO, but we inline it. Big performance gains as
--- it exposes lots of things to further inlining
---
-{-# INLINE inlinePerformIO #-}
-inlinePerformIO :: IO a -> a
-#if defined(__GLASGOW_HASKELL__)
-inlinePerformIO (IO m) = case m realWorld# of (# _, r #) -> r
-#else
-inlinePerformIO = unsafePerformIO
-#endif
 
 -- Selects white-space characters in the Latin-1 range
 -- ordered by frequency

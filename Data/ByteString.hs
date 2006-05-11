@@ -128,6 +128,7 @@ module Data.ByteString (
         findIndex,              -- :: (Word8 -> Bool) -> ByteString -> Maybe Int
         findIndices,            -- :: (Word8 -> Bool) -> ByteString -> [Int]
         count,                  -- :: Word8 -> ByteString -> Int
+        findIndexOrEnd,         -- :: (Word8 -> Bool) -> ByteString -> Int
 
         -- * Ordered ByteStrings
         sort,                   -- :: ByteString -> ByteString
@@ -229,7 +230,11 @@ module Data.ByteString (
 
         noAL, NoAL, loopArr, loopAcc, loopSndAcc,
         loopU, mapEFL, filterEFL, foldEFL, foldEFL', fuseEFL,
-        filterF, mapF
+        filterF, mapF,
+
+        -- * Utilities
+        -- | Utilities need for siblings of ByteString
+        inlinePerformIO
 
   ) where
 
@@ -1281,6 +1286,16 @@ findIndices p ps = loop 0 ps
                | p (unsafeHead qs) = n : loop (n+1) (unsafeTail qs)
                | otherwise         =     loop (n+1) (unsafeTail qs)
 
+-- | 'findIndexOrEnd' is a variant of findIndex, that returns the length
+-- of the string if no element is found, rather than Nothing.
+findIndexOrEnd :: (Word8 -> Bool) -> ByteString -> Int
+STRICT2(findIndexOrEnd)
+findIndexOrEnd f ps
+    | null ps           = 0
+    | f (unsafeHead ps) = 0
+    | otherwise         = 1 + findIndexOrEnd f (unsafeTail ps)
+{-# INLINE findIndexOrEnd #-}
+
 -- ---------------------------------------------------------------------
 -- Searching ByteStrings
 
@@ -2023,16 +2038,6 @@ errorEmptyList fun = moduleError fun "empty ByteString"
 moduleError :: String -> String -> a
 moduleError fun msg = error ("Data.ByteString." ++ fun ++ ':':' ':msg)
 {-# NOINLINE moduleError #-}
-
--- 'findIndexOrEnd' is a variant of findIndex, that returns the length
--- of the string if no element is found, rather than Nothing.
-findIndexOrEnd :: (Word8 -> Bool) -> ByteString -> Int
-STRICT2(findIndexOrEnd)
-findIndexOrEnd f ps
-    | null ps           = 0
-    | f (unsafeHead ps) = 0
-    | otherwise         = 1 + findIndexOrEnd f (unsafeTail ps)
-{-# INLINE findIndexOrEnd #-}
 
 -- Find from the end of the string using predicate
 findFromEndUntil :: (Word8 -> Bool) -> ByteString -> Int

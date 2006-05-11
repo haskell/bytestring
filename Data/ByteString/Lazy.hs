@@ -724,7 +724,7 @@ breakFirst c (LPS xs) = breakByte' [] xs
           case P.elemIndex c x of
             Just n -> let acc' | n == 0    = acc
                                | otherwise = P.take n x : acc
-                          
+
                           xs'  | n+1 >= P.length x = xs
                                | otherwise         = P.drop (n+1) x : xs
                        in Just (LPS (L.reverse acc'), LPS xs')
