@@ -37,13 +37,23 @@ instance Random Word8 where
   random g        = randomR (minBound,maxBound) g
 
 instance Arbitrary ByteString where
-  arbitrary = L.pack `fmap` arbitrary
-  coarbitrary s = coarbitrary (L.unpack s)
+    arbitrary     = arbitrary >>= return . LPS . filter (not. P.null) -- maintain the invariant.
+    coarbitrary s = coarbitrary (L.unpack s)
+
+instance Arbitrary P.ByteString where
+    arbitrary = P.pack `fmap` arbitrary
+    coarbitrary s = coarbitrary (P.unpack s)
+
+-- i.e. [[a,b,c], [c,d]]
 
 ------------------------------------------------------------------------
 
+debug = False
+
 mytest :: Testable a => a -> Int -> IO ()
-mytest a n = mycheck defaultConfig{configMaxTest=n} a
+mytest a n = mycheck defaultConfig
+    { configMaxTest=n
+    , configEvery= \n args -> if debug then show n ++ ":\n" ++ unlines args else [] } a
 
 mycheck :: Testable a => Config -> a -> IO ()
 mycheck config a =
