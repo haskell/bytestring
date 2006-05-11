@@ -14,7 +14,7 @@ GHC_ = $(GHC) -threaded $(PP_OPTS) -fglasgow-exts --make
 
 SRCS= TestFramework.hs UnitTestsMain.hs Tests.hs Quick.hs
 
-all: qc htest bench sbench wc spellcheck letter_frequency linesort fuse inline
+all: qc lazy htest bench sbench wc spellcheck letter_frequency linesort fuse inline
 
 # build executable, linking in all tests
 run-utests: $(SRCS)
@@ -27,6 +27,11 @@ htest:: run-utests
 .PHONY: qc
 qc::
 	runhaskell Quick.hs
+
+# lazy testing
+.PHONY: lazy
+lazy::
+	runhaskell Lazy.hs
 
 # attempt to benchmark small strings performance
 sbench: 

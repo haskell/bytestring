@@ -86,7 +86,6 @@ prop_concat xss = P.concat (map P.pack xss) == P.pack (concat xss)
 prop_elemS x xs = P.elem x (P.pack xs) == elem x xs
 
 prop_takeS i xs = P.take i (P.pack xs) == P.pack (take i xs)
-
 prop_dropS i xs = P.drop i (P.pack xs) == P.pack (drop i xs)
 
 prop_splitAtS i xs = collect (i >= 0 && i < length xs) $
@@ -100,7 +99,6 @@ prop_foldr f c xs = P.foldl f c (P.pack xs) == foldl f c xs
   where types = c :: Char
 
 prop_takeWhileS f xs = P.takeWhile f (P.pack xs) == P.pack (takeWhile f xs)
-
 prop_dropWhileS f xs = P.dropWhile f (P.pack xs) == P.pack (dropWhile f xs)
 
 prop_spanS f xs = P.span f (P.pack xs) ==
@@ -161,9 +159,6 @@ prop_compare6 xs ys= (not (null ys)) ==> (pack (xs++ys)  `compare` pack xs) == G
 prop_compare7 x  y = x `compare` y == (P.packChar x `compare` P.packChar y)
 prop_compare8 xs ys = xs `compare` ys == (P.pack xs `compare` P.pack ys)
 
--- prop_nil1 xs = (null xs) ==> pack xs == P.empty
--- prop_nil2 xs = (null xs) ==> xs == unpack P.empty
-
 prop_cons1 xs = 'X' : xs == unpack ('X' `P.cons` (pack xs))
 
 prop_cons2 xs c = c : xs == unpack (c `P.cons` (pack xs))
@@ -175,6 +170,8 @@ prop_head1 xs    = (not (null xs)) ==> head xs == (P.unsafeHead . pack) xs
 
 prop_tail xs     = (not (null xs)) ==> tail xs    == (unpack . P.tail . pack) xs
 prop_tail1 xs    = (not (null xs)) ==> tail xs    == (unpack . P.unsafeTail. pack) xs
+
+prop_last xs     = (not (null xs)) ==> last xs    == (P.last . pack) xs
 
 prop_init xs     =
     (not (null xs)) ==>
@@ -266,7 +263,6 @@ prop_notElem c xs = P.notElem c (P.pack xs) == notElem c xs
 
 -- should try to stress it
 prop_concat1 xs = (concat [xs,xs]) == (unpack $ P.concat [pack xs, pack xs])
-
 prop_concat2 xs = (concat [xs,[]]) == (unpack $ P.concat [pack xs, pack []])
 
 prop_any xs a = (any (== a) xs) == (P.any (== a) (pack xs))
@@ -456,6 +452,7 @@ main = do
             ,    ("head1",       mytest prop_head1)
             ,    ("tail",       mytest prop_tail)
             ,    ("tail1",       mytest prop_tail1)
+            ,    ("last",        mytest prop_last )
             ,    ("init",       mytest prop_init)
             ,    ("length",       mytest prop_length)
             ,    ("append1",       mytest prop_append1)
