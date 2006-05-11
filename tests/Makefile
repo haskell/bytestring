@@ -14,7 +14,7 @@ GHC_ = $(GHC) -threaded $(PP_OPTS) -fglasgow-exts --make
 
 SRCS= TestFramework.hs UnitTestsMain.hs Tests.hs Quick.hs
 
-all: qc lazy htest bench sbench wc spellcheck letter_frequency linesort fuse inline
+all: qc lazy htest bench sbench sbench2 wc spellcheck letter_frequency linesort fuse inline
 
 # build executable, linking in all tests
 run-utests: $(SRCS)
@@ -37,6 +37,11 @@ lazy::
 sbench: 
 	${GHC} ${PKG} -O -funbox-strict-fields -ddump-simpl-stats Quick.hs -o qc -no-recomp -package QuickCheck
 	/usr/bin/time ./qc
+
+# attempt to benchmark lazy strings performance
+sbench2: 
+	${GHC} ${PKG} -O -funbox-strict-fields -ddump-simpl-stats Lazy.hs -o lqc -no-recomp -package QuickCheck
+	/usr/bin/time ./lqc
 
 bench::
 	@if [ ! -f "bigdata" ] ; then ln -s data bigdata ; fi
@@ -91,4 +96,4 @@ inline.o: inline.hs
 
 .PHONY: clean
 clean:
-	rm -f *~ *.o *.hi $(BIN) bench */*.o */*.hi */*~ wc letter_frequency spellcheck linesort fuse inline qc
+	rm -f *~ *.o *.hi $(BIN) bench */*.o */*.hi */*~ wc letter_frequency spellcheck linesort fuse inline lqc qc
