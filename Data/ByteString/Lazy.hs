@@ -128,9 +128,8 @@ module Data.ByteString.Lazy (
         findIndices,            -- :: (Word8 -> Bool) -> ByteString -> [Int]
         count,                  -- :: Word8 -> ByteString -> Int
 
-{-
         -- * Ordered ByteStrings
-        sort,                   -- :: ByteString -> ByteString
+--        sort,                   -- :: ByteString -> ByteString
 
         -- * Searching ByteStrings
 
@@ -141,14 +140,11 @@ module Data.ByteString.Lazy (
         notElem,                -- :: Word8 -> ByteString -> Bool
         filterByte,             -- :: Word8 -> ByteString -> ByteString
         filterNotByte,          -- :: Word8 -> ByteString -> ByteString
--}
 
         -- ** Searching with a predicate
         filter,                 -- :: (Word8 -> Bool) -> ByteString -> ByteString
-
-{-
         find,                   -- :: (Word8 -> Bool) -> ByteString -> Maybe Word8
-
+{-
         -- ** Prefixes and suffixes
         -- | These functions use memcmp(3) to efficiently compare substrings
         isPrefixOf,             -- :: ByteString -> ByteString -> Bool
@@ -452,13 +448,6 @@ map :: (Word8 -> Word8) -> ByteString -> ByteString
 map f (LPS xs) = LPS (L.map (P.map f) xs)
 {-# INLINE map #-}
 
--- | /O(n)/ 'filter', applied to a predicate and a ByteString,
--- returns a ByteString containing those characters that satisfy the
--- predicate.
-filter :: (Word8 -> Bool) -> ByteString -> ByteString
-filter f (LPS xs) = LPS (L.filter (not.P.null) $ L.map (P.filter f) xs)
-{-# INLINE filter #-}
-
 -- | /O(n)/ 'reverse' @xs@ efficiently returns the elements of @xs@ in reverse order.
 reverse :: ByteString -> ByteString
 reverse (LPS xs) = LPS (L.reverse $ L.map P.reverse xs)
@@ -504,15 +493,15 @@ foldr k z (LPS xs) = L.foldr (flip (P.foldr k)) z xs
 -- This function is subject to array fusion.
 foldl1 :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldl1 _ (LPS []) = errorEmptyList "foldl1"
-foldl1 f (LPS (x:xs))
-  | otherwise  = foldl f (P.unsafeHead x) (LPS (P.unsafeTail x : xs))
+foldl1 f (LPS (x:xs)) = foldl f (P.unsafeHead x) (LPS (P.unsafeTail x : xs))
 
 -- | 'foldr1' is a variant of 'foldr' that has no starting value argument,
 -- and thus must be applied to non-empty 'ByteString's
 foldr1 :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldr1 _ (LPS []) = errorEmptyList "foldr1"
-foldr1 f (LPS (x:xs))
-  | otherwise  = foldr f (P.last x) (LPS (P.init x : xs))
+foldr1 f (LPS xs) = foldr1' xs
+  where foldr1' (x:[]) = P.foldr1 f x
+        foldr1' (x:xs) = P.foldr  f (foldr1' xs) x
 
 -- ---------------------------------------------------------------------
 -- Special folds
@@ -783,10 +772,22 @@ splitWith f (LPS xs) =
 -- are slices of the original.
 --
 split :: Word8 -> ByteString -> [ByteString]
-split c (LPS xs) =
-    L.map (\x -> if P.null x then LPS [] else LPS [x])
-  $ L.concatMap (P.split c) xs
-
+split c (LPS [])     = []
+split c (LPS (x:xs)) = comb' [] (P.split c x) xs
+  where comb' :: [P.ByteString] -> [P.ByteString] -> [P.ByteString] -> [ByteString]
+        comb' acc (s:[]) []      
+                    | P.null s  = LPS (L.reverse    acc ) : []
+                    | otherwise = LPS (L.reverse (s:acc)) : []
+        comb' acc (s:[]) (x:xs)
+                    | P.null s  = comb'    acc  (P.split c x) xs
+                    | otherwise = comb' (s:acc) (P.split c x) xs
+        comb' []  (s:ss) xs     
+                    | P.null s  = LPS []  : comb' [] ss xs
+                    | otherwise = LPS [s] : comb' [] ss xs
+        comb' acc (s:ss) xs
+                    | P.null s  = LPS (L.reverse    acc ) : comb' [] ss xs
+                    | otherwise = LPS (L.reverse (s:acc)) : comb' [] ss xs
+        
 -- | Like 'splitWith', except that sequences of adjacent separators are
 -- treated as a single separator. eg.
 -- 
@@ -926,6 +927,101 @@ findIndices k (LPS ps) = findIndices' 0 ps
   where findIndices' _ []     = []
         findIndices' n (x:xs) = L.map (+n) (P.findIndices k x)
                              ++ findIndices' (n + P.length x) xs
+
+-- ---------------------------------------------------------------------
+-- Searching ByteStrings
+
+-- | /O(n)/ 'elem' is the 'ByteString' membership predicate.
+elem :: Word8 -> ByteString -> Bool
+elem c ps = case elemIndex c ps of Nothing -> False ; _ -> True
+
+-- | /O(n)/ 'notElem' is the inverse of 'elem'
+notElem :: Word8 -> ByteString -> Bool
+notElem c ps = not (elem c ps)
+
+-- | /O(n)/ 'filter', applied to a predicate and a ByteString,
+-- returns a ByteString containing those characters that satisfy the
+-- predicate.
+filter :: (Word8 -> Bool) -> ByteString -> ByteString
+filter f (LPS xs) = LPS (L.filter (not . P.null) $ L.map (P.filter f) xs)
+
+-- | /O(n)/ A first order equivalent of /filter . (==)/, for the common
+-- case of filtering a single byte. It is more efficient to use
+-- /filterByte/ in this case.
+--
+-- > filterByte == filter . (==)
+--
+-- filterByte is around 10x faster, and uses much less space, than its
+-- filter equivalent
+filterByte :: Word8 -> ByteString -> ByteString
+filterByte w (LPS xs) = LPS (L.filter (not . P.null) $ L.map (P.filterByte w) xs)
+
+-- | /O(n)/ A first order equivalent of /filter . (\/=)/, for the common
+-- case of filtering a single byte out of a list. It is more efficient
+-- to use /filterNotByte/ in this case.
+--
+-- > filterNotByte == filter . (/=)
+--
+-- filterNotByte is around 2x faster than its filter equivalent.
+filterNotByte :: Word8 -> ByteString -> ByteString
+filterNotByte w (LPS xs) = LPS (L.filter (not . P.null) $ L.map (P.filterNotByte w) xs)
+
+-- | /O(n)/ The 'find' function takes a predicate and a ByteString,
+-- and returns the first element in matching the predicate, or 'Nothing'
+-- if there is no such element.
+--
+-- > find f p = case findIndex f p of Just n -> Just (p ! n) ; _ -> Nothing
+--
+find :: (Word8 -> Bool) -> ByteString -> Maybe Word8
+find f (LPS xs) = find' xs
+  where find' []     = Nothing
+        find' (x:xs) =
+          case P.find f x of
+            Nothing -> find' xs
+            Just w  -> Just w
+
+-- ---------------------------------------------------------------------
+-- Searching for substrings
+
+-- | /O(n)/ The 'isPrefixOf' function takes two ByteStrings and returns 'True'
+-- iff the first is a prefix of the second.
+isPrefixOf :: ByteString -> ByteString -> Bool
+isPrefixOf = error "not yet implemented"
+
+-- | /O(n)/ The 'isSuffixOf' function takes two ByteStrings and returns 'True'
+-- iff the first is a suffix of the second.
+-- 
+-- The following holds:
+--
+-- > isSuffixOf x y == reverse x `isPrefixOf` reverse y
+--
+-- However, the real implemenation uses memcmp to compare the end of the
+-- string only, with no reverse required..
+isSuffixOf :: ByteString -> ByteString -> Bool
+isSuffixOf = error "not yet implemented"
+
+-- | Check whether one string is a substring of another. @isSubstringOf
+-- p s@ is equivalent to @not (null (findSubstrings p s))@.
+isSubstringOf :: ByteString -- ^ String to search for.
+              -> ByteString -- ^ String to search in.
+              -> Bool
+isSubstringOf p s = error "not yet implemented"
+
+-- | Get the first index of a substring in another string,
+--   or 'Nothing' if the string is not found.
+--   @findSubstring p s@ is equivalent to @listToMaybe (findSubstrings p s)@.
+findSubstring :: ByteString -- ^ String to search for.
+              -> ByteString -- ^ String to seach in.
+              -> Maybe Int
+findSubstring = error "not yet implemented"
+
+-- | Find the indexes of all (possibly overlapping) occurances of a
+-- substring in a string.  This function uses the Knuth-Morris-Pratt
+-- string matching algorithm.
+findSubstrings :: ByteString -- ^ String to search for.
+               -> ByteString -- ^ String to seach in.
+               -> [Int]
+findSubstrings = error "not yet implemented"
 
 -- TODO defrag func that concatenates block together that are below a threshold
 -- defrag :: Int -> ByteString -> ByteString
