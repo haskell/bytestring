@@ -613,8 +613,8 @@ unfoldrN = error "FIXME: not yet implemented"
 -- | /O(n\/c)/ 'take' @n@, applied to a ByteString @xs@, returns the prefix
 -- of @xs@ of length @n@, or @xs@ itself if @n > 'length' xs@.
 take :: Int -> ByteString -> ByteString
-take n ps       | n < 0 = empty     -- FOR NOW.
-take i (LPS ps) = LPS (take' i ps)
+take n _ | n < 0 = empty     -- FOR NOW.
+take i (LPS ps)  = LPS (take' i ps)
   where take' _ []     = []
         take' 0 _      = []
         take' n (x:xs) =
