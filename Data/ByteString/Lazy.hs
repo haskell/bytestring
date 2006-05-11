@@ -86,8 +86,6 @@ module Data.ByteString.Lazy (
         -- * Generating and unfolding ByteStrings
         replicate,              -- :: Int -> Word8 -> ByteString
         unfoldrN,               -- :: (Word8 -> Maybe (Word8, Word8)) -> Word8 -> ByteString
-{-        gloop,                  -- :: (acc -> Word8 -> (Maybe Word8, acc)
-                                -- -> acc -> ByteString -> (ByteString, acc)
 
         -- * Substrings
 
@@ -99,7 +97,7 @@ module Data.ByteString.Lazy (
         dropWhile,              -- :: (Word8 -> Bool) -> ByteString -> ByteString
         break,                  -- :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
         span,                   -- :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
-        spanEnd,                -- :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
+--      spanEnd,                -- :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
 
         -- ** Breaking and dropping on specific bytes
         breakByte,              -- :: Word8 -> ByteString -> (ByteString, ByteString)
@@ -122,11 +120,12 @@ module Data.ByteString.Lazy (
         index,                  -- :: ByteString -> Int -> Word8
         elemIndex,              -- :: Word8 -> ByteString -> Maybe Int
         elemIndices,            -- :: Word8 -> ByteString -> [Int]
-        elemIndexLast,          -- :: Word8 -> ByteString -> Maybe Int
+--      elemIndexLast,          -- :: Word8 -> ByteString -> Maybe Int
         findIndex,              -- :: (Word8 -> Bool) -> ByteString -> Maybe Int
         findIndices,            -- :: (Word8 -> Bool) -> ByteString -> [Int]
         count,                  -- :: Word8 -> ByteString -> Int
 
+{-
         -- * Ordered ByteStrings
         sort,                   -- :: ByteString -> ByteString
 
@@ -238,8 +237,6 @@ import Prelude hiding           (reverse,head,tail,last,init,null
                                 ,zip,zipWith,unzip,notElem)
 
 import Data.Word                (Word8)
-import Foreign.Ptr              (plusPtr)
-import Foreign.Storable         (Storable(..))
 
 #if !defined(__GLASGOW_HASKELL__)
 import System.IO.Unsafe
@@ -313,7 +310,7 @@ instance Ord ByteString
 
 
 eq :: ByteString -> ByteString -> Bool
-eq (LPS as) (LPS bs) = eq' as bs
+eq (LPS xs) (LPS ys) = eq' xs ys
   where eq' [] [] = True
         eq' [] _  = False
         eq' _  [] = False
@@ -325,13 +322,13 @@ eq (LPS as) (LPS bs) = eq' as bs
 
 
 compareBytes :: ByteString -> ByteString -> Ordering
-compareBytes (LPS as) (LPS bs) = cmp as bs
+compareBytes (LPS xs) (LPS ys) = cmp xs ys
   where cmp [] [] = EQ
         cmp [] _  = LT
         cmp _  [] = GT
         cmp (a:as) (b:bs) =
           case compare (P.length a) (P.length b) of
-            LT -> case compare a (P.take (P.length a) b) of 
+            LT -> case compare a (P.take (P.length a) b) of
                     EQ     -> cmp as (P.drop (P.length a) b : bs)
                     result -> result
             EQ -> case compare a b of
@@ -434,7 +431,7 @@ last (LPS xs) = P.last (L.last xs)
 -- | /O(1)/ Return all the elements of a 'ByteString' except the last one.
 init :: ByteString -> ByteString
 init (LPS []) = errorEmptyList "init"
-init (LPS xs) = LPS (init' xs)
+init (LPS as) = LPS (init' as)
   where init' (x:[]) = P.init x : []
         init' (x:xs) = x : init' xs
 {-# INLINE init #-}
@@ -499,7 +496,7 @@ foldr k z (LPS xs) = L.foldr (flip (P.foldr k)) z xs
 -- argument, and thus must be applied to non-empty 'ByteStrings'.
 -- This function is subject to array fusion.
 foldl1 :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
-foldl1 f (LPS []) = errorEmptyList "foldl1"
+foldl1 _ (LPS []) = errorEmptyList "foldl1"
 foldl1 f (LPS (x:xs))
   | P.length x == 1 = foldl f (P.unsafeHead x) (LPS xs)
   | otherwise       = foldl f (P.unsafeHead x) (LPS (P.unsafeTail x : xs))
@@ -507,7 +504,7 @@ foldl1 f (LPS (x:xs))
 -- | 'foldr1' is a variant of 'foldr' that has no starting value argument,
 -- and thus must be applied to non-empty 'ByteString's
 foldr1 :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
-foldr1 f (LPS []) = errorEmptyList "foldr1"
+foldr1 _ (LPS []) = errorEmptyList "foldr1"
 foldr1 f (LPS (x:xs))
   | P.length x == 1 = foldr f (P.unsafeHead x) (LPS xs)
   | otherwise       = foldr f (P.unsafeHead x) (LPS (P.unsafeTail x : xs))
@@ -606,8 +603,8 @@ unfoldrN = error "FIXME: not yet implemented"
 -- | /O(n\/c)/ 'take' @n@, applied to a ByteString @xs@, returns the prefix
 -- of @xs@ of length @n@, or @xs@ itself if @n > 'length' xs@.
 take :: Int -> ByteString -> ByteString
-take n (LPS xs) = LPS (take' n xs)
-  where take' n []     = []
+take i (LPS ps) = LPS (take' i ps)
+  where take' _ []     = []
         take' 0 _      = []
         take' n (x:xs) =
           if n < P.length x
@@ -617,8 +614,8 @@ take n (LPS xs) = LPS (take' n xs)
 -- | /O(n\/c)/ 'drop' @n xs@ returns the suffix of @xs@ after the first @n@
 -- elements, or @[]@ if @n > 'length' xs@.
 drop  :: Int -> ByteString -> ByteString
-drop n (LPS xs) = LPS (drop' n xs)
-  where drop' n []     = []
+drop i (LPS ps) = LPS (drop' i ps)
+  where drop' _ []     = []
         drop' 0 xs     = xs
         drop' n (x:xs) =
           if n < P.length x
@@ -627,8 +624,8 @@ drop n (LPS xs) = LPS (drop' n xs)
 
 -- | /O(1)/ 'splitAt' @n xs@ is equivalent to @('take' n xs, 'drop' n xs)@.
 splitAt :: Int -> ByteString -> (ByteString, ByteString)
-splitAt  n (LPS ps) = case splitAt' n ps of (a,b) -> (LPS a, LPS b)
-  where splitAt' n []     = ([], [])
+splitAt  i (LPS ps) = case splitAt' i ps of (a,b) -> (LPS a, LPS b)
+  where splitAt' _ []     = ([], [])
         splitAt' 0 xs     = ([], xs)
         splitAt' n (x:xs) =
           if n < P.length x
@@ -641,7 +638,7 @@ splitAt  n (LPS ps) = case splitAt' n ps of (a,b) -> (LPS a, LPS b)
 -- returns the longest prefix (possibly empty) of @xs@ of elements that
 -- satisfy @p@.
 takeWhile :: (Word8 -> Bool) -> ByteString -> ByteString
-takeWhile f (LPS xs) = LPS (takeWhile' xs)
+takeWhile f (LPS ps) = LPS (takeWhile' ps)
   where takeWhile' []     = []
         takeWhile' (x:xs) =
           case P.findIndexOrEnd (not . f) x of
@@ -651,7 +648,7 @@ takeWhile f (LPS xs) = LPS (takeWhile' xs)
 
 -- | 'dropWhile' @p xs@ returns the suffix remaining after 'takeWhile' @p xs@.
 dropWhile :: (Word8 -> Bool) -> ByteString -> ByteString
-dropWhile f (LPS xs) = LPS (dropWhile' xs)
+dropWhile f (LPS ps) = LPS (dropWhile' ps)
   where dropWhile' []     = []
         dropWhile' (x:xs) =
           case P.findIndexOrEnd (not . f) x of
@@ -660,7 +657,7 @@ dropWhile f (LPS xs) = LPS (dropWhile' xs)
 
 -- | 'break' @p@ is equivalent to @'span' ('not' . p)@.
 break :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
-break f (LPS xs) = case (break' xs) of (a,b) -> (LPS a, LPS b)
+break f (LPS ps) = case (break' ps) of (a,b) -> (LPS a, LPS b)
   where break' []     = ([], [])
         break' (x:xs) =
           case P.findIndexOrEnd f x of
@@ -676,7 +673,7 @@ break f (LPS xs) = case (break' xs) of (a,b) -> (LPS a, LPS b)
 -- > break (=='c') "abcd" == breakByte 'c' "abcd"
 --
 breakByte :: Word8 -> ByteString -> (ByteString, ByteString)
-breakByte c (LPS xs) = case (breakByte' xs) of (a,b) -> (LPS a, LPS b)
+breakByte c (LPS ps) = case (breakByte' ps) of (a,b) -> (LPS a, LPS b)
   where breakByte' []     = ([], [])
         breakByte' (x:xs) =
           case P.elemIndex c x of
@@ -692,7 +689,7 @@ breakByte c (LPS xs) = case (breakByte' xs) of (a,b) -> (LPS a, LPS b)
 -- > span  (=='c') "abcd" == spanByte 'c' "abcd"
 --
 spanByte :: Word8 -> ByteString -> (ByteString, ByteString)
-spanByte c (LPS xs) = case (spanByte' xs) of (a,b) -> (LPS a, LPS b)
+spanByte c (LPS ps) = case (spanByte' ps) of (a,b) -> (LPS a, LPS b)
   where spanByte' []     = ([], [])
         spanByte' (x:xs) =
           case P.spanByte c x of
@@ -718,8 +715,8 @@ breakFirst :: Word8 -> ByteString -> Maybe (ByteString,ByteString)
 --   Nothing -> Nothing
 --   Just n -> Just (take n p, drop (n+1) p)
 
-breakFirst c (LPS xs) = breakByte' [] xs
-  where breakByte' acc []     = Nothing
+breakFirst c (LPS ps) = breakByte' [] ps
+  where breakByte' _   []     = Nothing
         breakByte' acc (x:xs) =
           case P.elemIndex c x of
             Just n -> let acc' | n == 0    = acc
@@ -743,13 +740,12 @@ breakFirst c (LPS xs) = breakByte' [] xs
 -- > in if null x then Nothing else Just (reverse (drop 1 y), reverse x)
 --
 breakLast :: Word8 -> ByteString -> Maybe (ByteString,ByteString)
-breakLast c p = error "not implemented"
+breakLast _c _p = error "not implemented"
 
 -- | 'span' @p xs@ breaks the ByteString into two segments. It is
 -- equivalent to @('takeWhile' p xs, 'dropWhile' p xs)@
 span :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
-span p ps = break (not . p) ps
-
+span p = break (not . p)
 
 -- | /O(n)/ Splits a 'ByteString' into components delimited by
 -- separators, where the predicate returns True for a separator element.
@@ -804,31 +800,29 @@ tokens f = L.filter (not.null) . splitWith f
 -- supply their own equality test. It is about 40% faster than 
 -- /groupBy (==)/
 group :: ByteString -> [ByteString]
-group (LPS xs) = group' [] xs
+group (LPS ps) = group' [] ps
   where group' :: [P.ByteString] -> [P.ByteString] -> [ByteString]
         group' []     []     = []
         group' []     (x:xs) = group' (P.group x) xs
         group' (s:[]) (x:xs) =
           case P.group x of
            (s':ss')
-             | P.unsafeHead s' 
+             | P.unsafeHead s'
             == P.unsafeHead s -> LPS [s,s']         : group' ss' xs
              | otherwise      -> LPS [s] : LPS [s'] : group' ss' xs
         group' (s:ss) xs = LPS [s] : group' ss xs
 
-
 -- | The 'groupBy' function is the non-overloaded version of 'group'.
 groupBy :: (Word8 -> Word8 -> Bool) -> ByteString -> [ByteString]
-groupBy k (LPS xs) = group' [] xs
+groupBy k (LPS ps) = group' [] ps
   where group' :: [P.ByteString] -> [P.ByteString] -> [ByteString]
         group' []     []     = []
         group' []     (x:xs) = group' (P.groupBy k x) xs
         group' (s:[]) (x:xs) =
           case P.group x of
            (s':ss')
-             | k (P.unsafeHead s')
-                 (P.unsafeHead s) -> LPS [s,s']         : group' ss' xs
-                    | otherwise   -> LPS [s] : LPS [s'] : group' ss' xs
+             | k (P.unsafeHead s') (P.unsafeHead s ) -> LPS [s,s']         : group' ss' xs
+             | otherwise                             -> LPS [s] : LPS [s'] : group' ss' xs
         group' (s:ss) xs = LPS [s] : group' ss xs
 
 -- | /O(n)/ The 'join' function takes a 'ByteString' and a list of
@@ -852,20 +846,20 @@ joinWithByte c x y = append x (cons c y)
 
 -- | /O(c)/ 'ByteString' index (subscript) operator, starting from 0.
 index :: ByteString -> Int -> Word8
-index _        n | n < 0 = moduleError "index" ("negative index: " ++ show n)
-index (LPS xs) n         = index' xs n
-  where index' []     n' = moduleError "index" ("index too large: " ++ show n)
-        index' (x:xs) n'
-          | n' >= P.length x = index' xs (n' - P.length x)
-          | otherwise        = P.unsafeIndex x n'
+index _        i | i < 0 = moduleError "index" ("negative index: " ++ show i)
+index (LPS ps) i         = index' ps i
+  where index' []     n = moduleError "index" ("index too large: " ++ show n)
+        index' (x:xs) n
+          | n >= P.length x = index' xs (n - P.length x)
+          | otherwise       = P.unsafeIndex x n
 
 -- | /O(n)/ The 'elemIndex' function returns the index of the first
 -- element in the given 'ByteString' which is equal to the query
 -- element, or 'Nothing' if there is no such element. 
 -- This implementation uses memchr(3).
 elemIndex :: Word8 -> ByteString -> Maybe Int
-elemIndex c (LPS xs) = elemIndex' 0 xs
-  where elemIndex' n []     = Nothing
+elemIndex c (LPS ps) = elemIndex' 0 ps
+  where elemIndex' _ []     = Nothing
         elemIndex' n (x:xs) =
           case P.elemIndex c x of
             Nothing -> elemIndex' (n + P.length x) xs
@@ -895,8 +889,8 @@ elemIndexLast ch (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p ->
 -- the indices of all elements equal to the query element, in ascending order.
 -- This implementation uses memchr(3).
 elemIndices :: Word8 -> ByteString -> [Int]
-elemIndices c (LPS xs) = elemIndices' 0 xs
-  where elemIndices' n []     = []
+elemIndices c (LPS ps) = elemIndices' 0 ps
+  where elemIndices' _ []     = []
         elemIndices' n (x:xs) = L.map (+n) (P.elemIndices c x)
                              ++ elemIndices' (n + P.length x) xs
 
@@ -908,13 +902,12 @@ elemIndices c (LPS xs) = elemIndices' 0 xs
 count :: Word8 -> ByteString -> Int
 count w (LPS xs) = L.sum (L.map (P.count w) xs)
 
-
 -- | The 'findIndex' function takes a predicate and a 'ByteString' and
 -- returns the index of the first element in the ByteString
 -- satisfying the predicate.
 findIndex :: (Word8 -> Bool) -> ByteString -> Maybe Int
-findIndex k (LPS xs) = findIndex' 0 xs
-  where findIndex' n []     = Nothing
+findIndex k (LPS ps) = findIndex' 0 ps
+  where findIndex' _ []     = Nothing
         findIndex' n (x:xs) =
           case P.findIndex k x of
             Nothing -> findIndex' (n + P.length x) xs
@@ -923,8 +916,8 @@ findIndex k (LPS xs) = findIndex' 0 xs
 -- | The 'findIndices' function extends 'findIndex', by returning the
 -- indices of all elements satisfying the predicate, in ascending order.
 findIndices :: (Word8 -> Bool) -> ByteString -> [Int]
-findIndices k (LPS xs) = findIndices' 0 xs
-  where findIndices' n []     = []
+findIndices k (LPS ps) = findIndices' 0 ps
+  where findIndices' _ []     = []
         findIndices' n (x:xs) = L.map (+n) (P.findIndices k x)
                              ++ findIndices' (n + P.length x) xs
 
