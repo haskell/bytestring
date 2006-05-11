@@ -1240,7 +1240,7 @@ elemIndices c ps = loop 0 ps
 -- But more efficiently than using length on the intermediate list.
 count :: Word8 -> ByteString -> Int
 count w (PS x s m) = inlinePerformIO $ withForeignPtr x $ \p ->
-    return $ c_count (p `plusPtr` s) (fromIntegral m) w
+    return $ fromIntegral $ c_count (p `plusPtr` s) (fromIntegral m) w
 {-# INLINE count #-}
 
 {-
@@ -2092,7 +2092,7 @@ foreign import ccall unsafe "string.h memchr" memchr
     :: Ptr Word8 -> Word8 -> CSize -> Ptr Word8
 
 foreign import ccall unsafe "string.h memcmp" memcmp
-    :: Ptr Word8 -> Ptr Word8 -> CSize -> IO Int
+    :: Ptr Word8 -> Ptr Word8 -> CSize -> IO CInt
 
 foreign import ccall unsafe "string.h memcpy" memcpy
     :: Ptr Word8 -> Ptr Word8 -> CSize -> IO ()
@@ -2115,7 +2115,7 @@ foreign import ccall unsafe "static fpstring.h minimum" c_minimum
     :: Ptr Word8 -> CInt -> Word8
 
 foreign import ccall unsafe "static fpstring.h count" c_count
-    :: Ptr Word8 -> CInt -> Word8 -> Int
+    :: Ptr Word8 -> CInt -> Word8 -> CInt
 
 -- ---------------------------------------------------------------------
 -- MMap
