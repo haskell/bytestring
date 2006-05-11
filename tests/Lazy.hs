@@ -155,6 +155,7 @@ tests =
     ,("filter 2",           mytest prop_filter2)
     ,("reverse",            mytest prop_reverse)
     ,("reverse1",           mytest prop_reverse1)
+    ,("reverse2",           mytest prop_reverse2)
     ,("transpose",          mytest prop_transpose)
     ,("foldl",              mytest prop_foldl)
     ,("foldl/reverse",      mytest prop_foldl_1)
@@ -298,6 +299,7 @@ prop_filter2 p xs = (filter p xs) == (unpack $ L.filter p (pack xs))
 
 prop_reverse  xs = reverse xs          == (unpack . L.reverse . pack) xs
 prop_reverse1 xs = L.reverse (pack xs) == pack (reverse xs)
+prop_reverse2 xs = reverse (unpack xs) == (unpack . L.reverse) xs
 
 prop_transpose xs = (transpose xs) == ((map unpack) . L.transpose . (map pack)) xs
 

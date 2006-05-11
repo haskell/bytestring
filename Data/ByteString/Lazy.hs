@@ -461,7 +461,7 @@ filter f (LPS xs) = LPS (L.filter (not.P.null) $ L.map (P.filter f) xs)
 
 -- | /O(n)/ 'reverse' @xs@ efficiently returns the elements of @xs@ in reverse order.
 reverse :: ByteString -> ByteString
-reverse (LPS xs) = LPS (L.map P.reverse xs)
+reverse (LPS xs) = LPS (L.reverse $ L.map P.reverse xs)
 
 -- | /O(n)/ The 'intersperse' function takes a 'Word8' and a
 -- 'ByteString' and \`intersperses\' that byte between the elements of
