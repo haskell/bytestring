@@ -141,9 +141,12 @@ module Data.ByteString.Lazy (
         notElem,                -- :: Word8 -> ByteString -> Bool
         filterByte,             -- :: Word8 -> ByteString -> ByteString
         filterNotByte,          -- :: Word8 -> ByteString -> ByteString
+-}
 
         -- ** Searching with a predicate
         filter,                 -- :: (Word8 -> Bool) -> ByteString -> ByteString
+
+{-
         find,                   -- :: (Word8 -> Bool) -> ByteString -> Maybe Word8
 
         -- ** Prefixes and suffixes
@@ -451,6 +454,13 @@ append (LPS xs) (LPS ys) = LPS (xs ++ ys)
 map :: (Word8 -> Word8) -> ByteString -> ByteString
 map f (LPS xs) = LPS (L.map (P.map f) xs)
 {-# INLINE map #-}
+
+-- | /O(n)/ 'filter', applied to a predicate and a ByteString,
+-- returns a ByteString containing those characters that satisfy the
+-- predicate.
+filter :: (Word8 -> Bool) -> ByteString -> ByteString
+filter f (LPS xs) = LPS (L.filter (not.P.null) $ L.map (P.filter f) xs)
+{-# INLINE filter #-}
 
 -- | /O(n)/ 'reverse' @xs@ efficiently returns the elements of @xs@ in reverse order.
 reverse :: ByteString -> ByteString
