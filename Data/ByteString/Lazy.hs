@@ -993,6 +993,71 @@ findSubstrings :: ByteString -- ^ String to search for.
 findSubstrings = error "not yet implemented"
 
 -- ---------------------------------------------------------------------
+-- Zipping
+
+-- | /O(n)/ 'zip' takes two ByteStrings and returns a list of
+-- corresponding pairs of bytes. If one input ByteString is short,
+-- excess elements of the longer ByteString are discarded. This is
+-- equivalent to a pair of 'unpack' operations.
+zip :: ByteString -> ByteString -> [(Word8,Word8)]
+zip (LPS [])     (LPS _)  = []
+zip (LPS _)      (LPS []) = []
+zip (LPS (x:xs)) (LPS (y:ys)) = zip' x xs y ys
+  where zip' x xs y ys =
+          ((P.unsafeHead x, P.unsafeHead y) : zip'' (P.unsafeTail x) xs (P.unsafeTail y) ys)
+
+        zip'' x []      _ _       | P.null x       = []
+        zip'' _ _       y []      | P.null y       = []
+        zip'' x xs      y ys      | not (P.null x)
+                                 && not (P.null y) = zip' x  xs y  ys
+        zip'' x xs      y (y':ys) | not (P.null x) = zip' x  xs y' ys
+        zip'' x (x':xs) y ys      | not (P.null y) = zip' x' xs y  ys
+        zip'' x (x':xs) y (y':ys)                  = zip' x' xs y' ys
+
+-- | 'zipWith' generalises 'zip' by zipping with the function given as
+-- the first argument, instead of a tupling function.  For example,
+-- @'zipWith' (+)@ is applied to two ByteStrings to produce the list of
+-- corresponding sums.
+zipWith :: (Word8 -> Word8 -> a) -> ByteString -> ByteString -> [a]
+zipWith _ (LPS [])     (LPS _)  = []
+zipWith _ (LPS _)      (LPS []) = []
+zipWith f (LPS (x:xs)) (LPS (y:ys)) = zipWith' x xs y ys
+  where zipWith' x xs y ys =
+          (f (P.unsafeHead x) (P.unsafeHead y) : zipWith'' (P.unsafeTail x) xs (P.unsafeTail y) ys)
+
+        zipWith'' x []      _ _       | P.null x       = []
+        zipWith'' _ _       y []      | P.null y       = []
+        zipWith'' x xs      y ys      | not (P.null x)
+                                     && not (P.null y) = zipWith' x  xs y  ys
+        zipWith'' x xs      y (y':ys) | not (P.null x) = zipWith' x  xs y' ys
+        zipWith'' x (x':xs) y ys      | not (P.null y) = zipWith' x' xs y  ys
+        zipWith'' x (x':xs) y (y':ys)                  = zipWith' x' xs y' ys
+
+-- | /O(n)/ 'unzip' transforms a list of pairs of bytes into a pair of
+-- ByteStrings. Note that this performs two 'pack' operations.
+unzip :: [(Word8,Word8)] -> (ByteString,ByteString)
+unzip ls = error "not yet implemented"
+{-# INLINE unzip #-}
+
+-- ---------------------------------------------------------------------
+-- Special lists
+
+-- | /O(n)/ Return all initial segments of the given 'ByteString', shortest first.
+inits :: ByteString -> [ByteString]
+inits = error "not yet implemented"
+
+-- | /O(n)/ Return all final segments of the given 'ByteString', longest first.
+tails :: ByteString -> [ByteString]
+tails p = error "not yet implemented"
+
+-- less efficent spacewise: tails (PS x s l) = [PS x (s+n) (l-n) | n <- [0..l]]
+
+-- | /O(n)/ breaks a ByteString to a list of ByteStrings, one byte each.
+elems :: ByteString -> [ByteString]
+elems (LPS xs) = L.map (\x -> LPS [x]) . L.concatMap P.elems $ xs
+{-# INLINE elems #-}
+
+-- ---------------------------------------------------------------------
 
 -- TODO defrag func that concatenates block together that are below a threshold
 -- defrag :: Int -> ByteString -> ByteString
