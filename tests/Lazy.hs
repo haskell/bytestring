@@ -22,12 +22,18 @@ import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString      as P
 
 instance Arbitrary Char where
-  arbitrary = choose ('\0', '\255') -- since we have to test words, unlines too
-  coarbitrary c = variant (ord c `rem` 16)
+    arbitrary     = choose ('a', 'i') -- since we have to test words, unlines too
+    coarbitrary c = variant (ord c `rem` 4)
+
+--  arbitrary     = choose (minBound, maxBound) -- since we have to test words, unlines too
+--  coarbitrary c = variant (ord c `rem` 16)
 
 instance Arbitrary Word8 where
-  arbitrary = choose (minBound, maxBound)
-  coarbitrary c = variant (fromIntegral ((fromIntegral c) `rem` 16))
+    arbitrary = choose (97, 105)
+    coarbitrary c = variant (fromIntegral ((fromIntegral c) `rem` 4))
+
+--  arbitrary = choose (minBound, maxBound)
+--  coarbitrary c = variant (fromIntegral ((fromIntegral c) `rem` 16))
 
 instance Random Word8 where
   randomR (a,b) g = case randomR (fromIntegral a :: Integer
