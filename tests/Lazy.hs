@@ -195,7 +195,8 @@ tests =
     ,("span/spanByte",      mytest prop_spanByte)
     ,("breakFirst/break",   mytest prop_breakFirst)
     ,("breakLast/break",    mytest prop_breakFirst)
---  ,("splitWith",          mytest prop_splitWith)
+    ,("split",              mytest prop_split)
+    ,("splitWith",          mytest prop_splitWith)
     ,("join.split/id",      mytest prop_joinsplit)
     ,("join/joinByte",      mytest prop_joinjoinByte)
     ,("group",              mytest prop_group)
@@ -227,7 +228,16 @@ tests =
 
 ------------------------------------------------------------------------
 
-prop_invariant (LPS xs) = (not . null $ xs) ==> all (not . P.null) xs
+invariant :: L.ByteString -> Bool
+invariant (LPS []) = True
+invariant (LPS xs) = all (not . P.null) xs
+
+-- In a form more useful for QC testing
+checkInvariant :: L.ByteString -> L.ByteString
+checkInvariant lps | invariant lps = lps
+                   | otherwise     = error ("invariant violation: " ++ show lps)
+
+prop_invariant = invariant
 
 ------------------------------------------------------------------------
 
@@ -415,6 +425,9 @@ prop_breakLast c xs = (let (x,y) = break (==c) (reverse xs)
                        (L.breakLast c (pack xs))
 
 ------------------------------------------------------------------------
+
+prop_split c xs = (map L.unpack . map checkInvariant . L.split c $ xs)
+               == (map P.unpack . P.split c . P.pack . L.unpack $ xs)
 
 prop_splitWith f xs = (l1 == l2 || l1 == l2+1) &&
         sum (map L.length splits) == L.length xs - l2

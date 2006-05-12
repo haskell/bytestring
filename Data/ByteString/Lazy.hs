@@ -249,6 +249,12 @@ invariant :: ByteString -> Bool
 invariant (LPS []) = True
 invariant (LPS xs) = L.all (not . P.null) xs
 
+-- In a form useful for QC testing
+checkInvariant :: ByteString -> ByteString
+checkInvariant lps | invariant lps = lps
+                   | otherwise     =
+  moduleError "invariant" ("violation: " ++ show lps)
+
 -- The Data abstraction function
 --
 abstr :: ByteString -> P.ByteString
