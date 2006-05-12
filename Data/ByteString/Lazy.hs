@@ -751,9 +751,24 @@ span p = break (not . p)
 -- > splitWith (=='a') []        == []
 --
 splitWith :: (Word8 -> Bool) -> ByteString -> [ByteString]
+splitWith = error "Not implemented"
+{-
+--
+-- Wrong. Problem is that we dont' coalesce chunks that we should, so:
+--
+--   List.concatMap (Data.ByteString.splitWith (==97)) xs 
+--   ["","e","ehg","",""]
+--
+--   Data.ByteString.splitWith (==97)) t 
+--   ["","eehg",""]
+--
+--  So we have to combine chunks that start with the same delimiter? Or
+--  is it more complex..
+--
 splitWith f (LPS xs) =
     L.map (\x -> if P.null x then LPS [] else LPS [x])
   $ L.concatMap (P.splitWith f) xs
+-}
 
 -- | /O(n)/ Break a 'ByteString' into pieces separated by the byte
 -- argument, consuming the delimiter. I.e.
