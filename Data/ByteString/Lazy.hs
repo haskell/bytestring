@@ -51,7 +51,7 @@ module Data.ByteString.Lazy (
 
         -- * Basic interface
         cons,                   -- :: Word8 -> ByteString -> ByteString
-        snoc,                   -- :: Word8 -> ByteString -> ByteString
+        snoc,                   -- :: ByteString -> Word8 -> ByteString
         null,                   -- :: ByteString -> Bool
         length,                 -- :: ByteString -> Int
         head,                   -- :: ByteString -> Word8
