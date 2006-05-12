@@ -61,9 +61,9 @@ module Data.ByteString.Lazy (
         append,                 -- :: ByteString -> ByteString -> ByteString
 
         -- * Special ByteStrings
---        inits,                  -- :: ByteString -> [ByteString]
---        tails,                  -- :: ByteString -> [ByteString]
---        elems,                  -- :: ByteString -> [ByteString]
+--      inits,                  -- :: ByteString -> [ByteString]
+--      tails,                  -- :: ByteString -> [ByteString]
+--      elems,                  -- :: ByteString -> [ByteString]
 
         -- * Transformating ByteStrings
         map,                    -- :: (Word8 -> Word8) -> ByteString -> ByteString
@@ -146,7 +146,6 @@ module Data.ByteString.Lazy (
         find,                   -- :: (Word8 -> Bool) -> ByteString -> Maybe Word8
 {-
         -- ** Prefixes and suffixes
-        -- | These functions use memcmp(3) to efficiently compare substrings
         isPrefixOf,             -- :: ByteString -> ByteString -> Bool
         isSuffixOf,             -- :: ByteString -> ByteString -> Bool
 
@@ -164,44 +163,12 @@ module Data.ByteString.Lazy (
         unsafeHead,             -- :: ByteString -> Word8
         unsafeTail,             -- :: ByteString -> ByteString
         unsafeIndex,            -- :: ByteString -> Int -> Word8
-
-        -- * Low level introduction and elimination
-        generate,               -- :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
-        create,                 -- :: Int -> (Ptr Word8 -> IO ()) -> ByteString
-        fromForeignPtr,         -- :: ForeignPtr Word8 -> Int -> ByteString
-        toForeignPtr,           -- :: ByteString -> (ForeignPtr Word8, Int, Int)
-        skipIndex,              -- :: ByteString -> Int
-
-        -- ** Packing CStrings and pointers
-        packCString,            -- :: CString -> ByteString
-        packCStringLen,         -- :: CString -> ByteString
-        packMallocCString,      -- :: CString -> ByteString
-
-#if defined(__GLASGOW_HASKELL__)
-        packCStringFinalizer,   -- :: Ptr Word8 -> Int -> IO () -> IO ByteString
-        packAddress,            -- :: Addr# -> ByteString
-        unsafePackAddress,      -- :: Int -> Addr# -> ByteString
-        unsafeFinalize,         -- :: ByteString -> IO ()
-#endif
-
-        -- ** Using ByteStrings as CStrings
-        useAsCString,           -- :: ByteString -> (CString -> IO a) -> IO a
-        unsafeUseAsCString,     -- :: ByteString -> (CString -> IO a) -> IO a
-        unsafeUseAsCStringLen,  -- :: ByteString -> (CStringLen -> IO a) -> IO a
-
-        -- ** Copying ByteStrings
-        -- | These functions perform memcpy(3) operations
-        copy,                   -- :: ByteString -> ByteString
-        copyCString,            -- :: CString -> ByteString
-        copyCStringLen,         -- :: CStringLen -> ByteString
+-}
 
         -- * I\/O with @ByteString@s
 
         -- ** Standard input and output
 
-#if defined(__GLASGOW_HASKELL__)
-        getLine,                -- :: IO ByteString
-#endif
         getContents,            -- :: IO ByteString
         putStr,                 -- :: ByteString -> IO ()
         putStrLn,               -- :: ByteString -> IO ()
@@ -209,23 +176,12 @@ module Data.ByteString.Lazy (
         -- ** Files
         readFile,               -- :: FilePath -> IO ByteString
         writeFile,              -- :: FilePath -> ByteString -> IO ()
---      mmapFile,               -- :: FilePath -> IO ByteString
 
         -- ** I\/O with Handles
-#if defined(__GLASGOW_HASKELL__)
-        getArgs,                -- :: IO [ByteString]
-        hGetLine,               -- :: Handle -> IO ByteString
-        hGetNonBlocking,        -- :: Handle -> Int -> IO ByteString
-#endif
         hGetContents,           -- :: Handle -> IO ByteString
         hGet,                   -- :: Handle -> Int -> IO ByteString
         hPut,                   -- :: Handle -> ByteString -> IO ()
 
-#if defined(__GLASGOW_HASKELL__)
-        -- * Miscellaneous
-        unpackList, -- eek, otherwise it gets thrown away by the simplifier
-#endif
--}
   ) where
 
 import qualified Prelude
@@ -238,20 +194,19 @@ import Prelude hiding           (reverse,head,tail,last,init,null
                                 ,getContents,getLine,putStr,putStrLn
                                 ,zip,zipWith,unzip,notElem)
 
-import Data.Word                (Word8)
-
-#if !defined(__GLASGOW_HASKELL__)
-import System.IO.Unsafe
-#endif
-
-#if defined(__GLASGOW_HASKELL__)
-
-import Data.Generics            (Data(..), Typeable(..))
-
-#endif
 
 import qualified Data.List as L        -- L for list/lazy
 import qualified Data.ByteString as P  -- P for packed
+
+import Data.Word                (Word8)
+import Data.Int                 (Int64)
+import System.IO (Handle,stdin,stdout,openBinaryFile,IOMode(..),hClose)
+import System.IO.Unsafe
+import Control.Exception        (bracket)
+
+#if defined(__GLASGOW_HASKELL__)
+import Data.Generics            (Data(..), Typeable(..))
+#endif
 
 -- -----------------------------------------------------------------------------
 --
@@ -389,9 +344,13 @@ null (LPS []) = True
 null (_)      = False  -- TODO: guarantee this invariant is maintained
 {-# INLINE null #-}
 
--- | /O(n/c)/ 'length' returns the length of a ByteString as an 'Int'.
-length :: ByteString -> Int
-length (LPS ss) = L.sum (L.map P.length ss)
+-- | /O(n/c)/ 'length' returns the length of a ByteString as an 'Int64'
+length :: ByteString -> Int64
+length (LPS ss) = L.sum (L.map (fromIntegral.P.length) ss)
+
+-- avoid the intermediate list?
+-- length (LPS ss) = L.foldl lengthF 0 ss
+--     where lengthF n s = let m = n + fromIntegral (P.length s) in m `seq` m
 {-# INLINE length #-}
 
 -- | /O(1)/ 'cons' is analogous to (:) for lists
@@ -1041,6 +1000,62 @@ findSubstrings = error "not yet implemented"
 
 -- TODO defrag func that concatenates block together that are below a threshold
 -- defrag :: Int -> ByteString -> ByteString
+
+-- ---------------------------------------------------------------------
+-- Lazy ByteString IO
+
+-- | Read entire handle contents /lazily/ into a 'ByteString'. Chunks
+-- are read on demand.
+hGetContents :: Handle -> IO ByteString
+hGetContents h = lazyRead >>= return . LPS
+  where
+    lazyRead = unsafeInterleaveIO $ do
+        ps <- P.hGet h sz
+        case P.length ps of
+            0          -> return []
+            n | n < sz -> return [ps]
+            _          -> do pss <- lazyRead
+                             return (ps : pss)
+    sz = defaultChunkSize
+
+-- | Read @n@ bytes /lazily/ into a 'ByteString', directly from the specified 'Handle'.
+hGet :: Handle -> Int -> IO ByteString
+hGet _ 0 = return empty
+hGet h n = lazyRead n >>= return . LPS
+  where
+    lazyRead i = unsafeInterleaveIO $ do
+        ps <- P.hGet h (min defaultChunkSize i)
+        case P.length ps of
+            0          -> return []
+            m | m == n -> return [ps]
+            m          -> do pss <- lazyRead (i - m)
+                             return (ps : pss)
+
+-- | Read an entire file /lazily/ into a 'ByteString'.
+readFile :: FilePath -> IO ByteString
+readFile f = openBinaryFile f ReadMode >>= hGetContents
+
+-- | The computation 'writeFile' @file str@ function writes the string @str@,
+-- to the file @file@.
+writeFile :: FilePath -> ByteString -> IO ()
+writeFile f txt = bracket (openBinaryFile f WriteMode) hClose
+    (\hdl -> hPut hdl txt)
+
+-- | getContents. Equivalent to hGetContents stdin. Will read /lazily/
+getContents :: IO ByteString
+getContents = hGetContents stdin
+
+-- | Outputs a 'ByteString' to the specified 'Handle'.
+hPut :: Handle -> ByteString -> IO ()
+hPut h (LPS xs) = mapM_ (P.hPut h) xs
+
+-- | Write a ByteString to stdout
+putStr :: ByteString -> IO ()
+putStr = hPut stdout
+
+-- | Write a ByteString to stdout, appending a newline byte
+putStrLn :: ByteString -> IO ()
+putStrLn ps = hPut stdout ps >> hPut stdout (packByte 0x0a)
 
 -- ---------------------------------------------------------------------
 -- Internal utilities

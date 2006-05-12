@@ -1897,7 +1897,7 @@ hGetContents h = do
 getContents :: IO ByteString
 getContents = hGetContents stdin
 
--- | Read an entire file directly into a 'ByteString'.  This is far more
+-- | Read an entire file strictly into a 'ByteString'.  This is far more
 -- efficient than reading the characters into a 'String' and then using
 -- 'pack'.  It also may be more efficient than opening the file and
 -- reading it using hGet.
@@ -1911,10 +1911,8 @@ readFile f = do
 
 -- | Write a 'ByteString' to a file.
 writeFile :: FilePath -> ByteString -> IO ()
-writeFile f ps = do
-    h <- openBinaryFile f WriteMode
-    hPut h ps
-    hClose h
+writeFile f ps = bracket (openBinaryFile f WriteMode) hClose
+    (\h -> hPut h ps)
 
 {-
 --
