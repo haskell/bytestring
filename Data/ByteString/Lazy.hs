@@ -990,8 +990,7 @@ filterNotByte w (LPS xs) = LPS (L.filter (not . P.null) $ L.map (P.filterNotByte
 find :: (Word8 -> Bool) -> ByteString -> Maybe Word8
 find f (LPS xs) = find' xs
   where find' []     = Nothing
-        find' (x:xs) =
-          case P.find f x of
+        find' (x:xs) = case P.find f x of
             Nothing -> find' xs
             Just w  -> Just w
 
@@ -1037,6 +1036,8 @@ findSubstrings :: ByteString -- ^ String to search for.
                -> ByteString -- ^ String to seach in.
                -> [Int]
 findSubstrings = error "not yet implemented"
+
+-- ---------------------------------------------------------------------
 
 -- TODO defrag func that concatenates block together that are below a threshold
 -- defrag :: Int -> ByteString -> ByteString

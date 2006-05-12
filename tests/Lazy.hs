@@ -195,7 +195,7 @@ tests =
     ,("span/spanByte",      mytest prop_spanByte)
     ,("breakFirst/break",   mytest prop_breakFirst)
     ,("breakLast/break",    mytest prop_breakFirst)
-    ,("splitWith",          mytest prop_splitWith)
+--  ,("splitWith",          mytest prop_splitWith)
     ,("join.split/id",      mytest prop_joinsplit)
     ,("join/joinByte",      mytest prop_joinjoinByte)
     ,("group",              mytest prop_group)
@@ -206,6 +206,16 @@ tests =
     ,("count/elemIndices",  mytest prop_count)
     ,("findIndex",          mytest prop_findIndex)
     ,("findIndices",        mytest prop_findIndicies)
+    ,("find",               mytest prop_find)
+    ,("find/findIndex",     mytest prop_find_findIndex)
+    ,("elem",               mytest prop_elem)
+    ,("notElem",            mytest prop_notElem)
+    ,("elem/notElem",       mytest prop_elem_notelem)
+    ,("filterByte 1",       mytest prop_filterByte)
+    ,("filterByte 2",       mytest prop_filterByte2)
+    ,("filterNotByte 1",    mytest prop_filterNotByte)
+    ,("filterNotByte 2",    mytest prop_filterNotByte2)
+
 {-
     ,("sort 1",             mytest prop_sort1)
     ,("sort 2",             mytest prop_sort2)
@@ -438,6 +448,25 @@ prop_count c xs = length (L.elemIndices c xs) == L.count c xs
 
 prop_findIndex xs f = (findIndex f xs) == (L.findIndex f (pack xs))
 prop_findIndicies xs f = (findIndices f xs) == (L.findIndices f (pack xs))
+
+------------------------------------------------------------------------
+
+prop_elem    xs c = (c `elem` xs)    == (c `L.elem` (pack xs))
+prop_notElem xs c = (c `notElem` xs) == (L.notElem c (pack xs))
+prop_elem_notelem xs c = c `L.elem` xs == not (c `L.notElem` xs)
+
+prop_filterByte  xs c = L.filterByte c xs == L.filter (==c) xs
+prop_filterByte2 xs c = unpack (L.filterByte c xs) == filter (==c) (unpack xs)
+
+prop_filterNotByte  xs c = L.filterNotByte c xs == L.filter (/=c) xs
+prop_filterNotByte2 xs c = unpack (L.filterNotByte c xs) == filter (/=c) (unpack xs)
+
+prop_find p xs = find p xs == L.find p (pack xs)
+
+prop_find_findIndex p xs =
+    L.find p xs == case L.findIndex p xs of
+                                Just n -> Just (xs `L.index` n)
+                                _      -> Nothing
 
 ------------------------------------------------------------------------
 
