@@ -264,7 +264,7 @@ prop_null xs = null (L.unpack xs) == L.null xs
 
 ------------------------------------------------------------------------
 
-prop_length1 xs = length xs == L.length (L.pack xs)
+prop_length1 xs = fromIntegral (length xs) == L.length (L.pack xs)
 
 prop_length2 xs = L.length xs == length1 xs
   where length1 ys
@@ -419,7 +419,7 @@ prop_breakLast c xs = (let (x,y) = break (==c) (reverse xs)
 prop_splitWith f xs = (l1 == l2 || l1 == l2+1) &&
         sum (map L.length splits) == L.length xs - l2
   where splits = L.splitWith f xs
-        l1 = length splits
+        l1 = fromIntegral (length splits)
         l2 = L.length (L.filter f xs)
 
 prop_joinsplit c xs = L.join (pack [c]) (L.split c xs) == id xs
