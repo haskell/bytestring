@@ -345,7 +345,7 @@ null (LPS []) = True
 null (_)      = False  -- TODO: guarantee this invariant is maintained
 {-# INLINE null #-}
 
--- | /O(n/c)/ 'length' returns the length of a ByteString as an 'Int64'
+-- | /O(n\/c)/ 'length' returns the length of a ByteString as an 'Int64'
 length :: ByteString -> Int64
 length (LPS ss) = L.sum (L.map (fromIntegral.P.length) ss)
 
@@ -359,7 +359,7 @@ cons :: Word8 -> ByteString -> ByteString
 cons c (LPS ss) = LPS (P.packByte c : ss)   -- TODO: coalesing and O(1) amortised time
 {-# INLINE cons #-}
 
--- | /O(n/c)/ Append a byte to the end of a 'ByteString'
+-- | /O(n\/c)/ Append a byte to the end of a 'ByteString'
 snoc :: ByteString -> Word8 -> ByteString
 snoc (LPS ss) c = LPS (ss ++ [P.packByte c])
 {-# INLINE snoc #-}
