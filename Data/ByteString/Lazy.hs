@@ -167,8 +167,14 @@ module Data.ByteString.Lazy (
 
         -- * I\/O with @ByteString@s
 
-        -- ** Standard input and output
+        -- ** I\/O with Handles
+        hGetContentsN,          -- :: Int -> Handle -> IO ByteString
+        hGetN,                  -- :: Int -> Handle -> Int -> IO ByteString
+        hGetContents,           -- :: Handle -> IO ByteString
+        hGet,                   -- :: Handle -> Int -> IO ByteString
+        hPut,                   -- :: Handle -> ByteString -> IO ()
 
+        -- ** Standard input and output
         getContents,            -- :: IO ByteString
         putStr,                 -- :: ByteString -> IO ()
         putStrLn,               -- :: ByteString -> IO ()
@@ -176,11 +182,6 @@ module Data.ByteString.Lazy (
         -- ** Files
         readFile,               -- :: FilePath -> IO ByteString
         writeFile,              -- :: FilePath -> ByteString -> IO ()
-
-        -- ** I\/O with Handles
-        hGetContents,           -- :: Handle -> IO ByteString
-        hGet,                   -- :: Handle -> Int -> IO ByteString
-        hPut,                   -- :: Handle -> ByteString -> IO ()
 
   ) where
 
@@ -1005,31 +1006,40 @@ findSubstrings = error "not yet implemented"
 -- Lazy ByteString IO
 
 -- | Read entire handle contents /lazily/ into a 'ByteString'. Chunks
--- are read on demand.
-hGetContents :: Handle -> IO ByteString
-hGetContents h = lazyRead >>= return . LPS
+-- are read on demand, in @k@-sized chunks.
+hGetContentsN :: Int -> Handle -> IO ByteString
+hGetContentsN k h = lazyRead >>= return . LPS
   where
     lazyRead = unsafeInterleaveIO $ do
-        ps <- P.hGet h sz
+        ps <- P.hGet h k
         case P.length ps of
-            0          -> return []
-            n | n < sz -> return [ps]
-            _          -> do pss <- lazyRead
-                             return (ps : pss)
-    sz = defaultChunkSize
+            0         -> return []
+            n | n < k -> return [ps]
+            _         -> do pss <- lazyRead
+                            return (ps : pss)
 
--- | Read @n@ bytes /lazily/ into a 'ByteString', directly from the specified 'Handle'.
-hGet :: Handle -> Int -> IO ByteString
-hGet _ 0 = return empty
-hGet h n = lazyRead n >>= return . LPS
+-- | Read @n@ bytes /lazily/ into a 'ByteString', directly from the
+-- specified 'Handle', in chunks of size @k@.
+hGetN :: Int -> Handle -> Int -> IO ByteString
+hGetN _ _ 0 = return empty
+hGetN k h n = lazyRead n >>= return . LPS
   where
     lazyRead i = unsafeInterleaveIO $ do
-        ps <- P.hGet h (min defaultChunkSize i)
+        ps <- P.hGet h (min k i)
         case P.length ps of
             0          -> return []
             m | m == n -> return [ps]
             m          -> do pss <- lazyRead (i - m)
                              return (ps : pss)
+
+-- | Read entire handle contents /lazily/ into a 'ByteString'. Chunks
+-- are read on demand, using the default chunk size.
+hGetContents :: Handle -> IO ByteString
+hGetContents = hGetContentsN defaultChunkSize
+
+-- | Read @n@ bytes /lazily/ into a 'ByteString', directly from the specified 'Handle'.
+hGet :: Handle -> Int -> IO ByteString
+hGet = hGetN defaultChunkSize
 
 -- | Read an entire file /lazily/ into a 'ByteString'.
 readFile :: FilePath -> IO ByteString
