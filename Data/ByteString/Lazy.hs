@@ -711,24 +711,17 @@ span p = break (not . p)
 -- > splitWith (=='a') []        == []
 --
 splitWith :: (Word8 -> Bool) -> ByteString -> [ByteString]
-splitWith = error "Not implemented"
-{-
---
--- Wrong. Problem is that we dont' coalesce chunks that we should, so:
---
---   List.concatMap (Data.ByteString.splitWith (==97)) xs 
---   ["","e","ehg","",""]
---
---   Data.ByteString.splitWith (==97)) t 
---   ["","eehg",""]
---
---  So we have to combine chunks that start with the same delimiter? Or
---  is it more complex..
---
-splitWith f (LPS xs) =
-    L.map (\x -> if P.null x then LPS [] else LPS [x])
-  $ L.concatMap (P.splitWith f) xs
--}
+splitWith p (LPS [])     = []
+splitWith p (LPS (x:xs)) = comb [] (P.splitWith p x) xs
+
+  where comb :: [P.ByteString] -> [P.ByteString] -> [P.ByteString] -> [ByteString]
+        comb acc (s:[]) []     = LPS (L.reverse (cons s acc)) : []
+        comb acc (s:[]) (x:xs) = comb (cons s acc) (P.splitWith p x) xs
+        comb []  (s:ss) xs     = LPS (cons s []) : comb [] ss xs
+        comb acc (s:ss) xs     = LPS (L.reverse (cons s acc)) : comb [] ss xs
+
+        cons x xs | P.null x  = xs
+                  | otherwise = x:xs
 
 -- | /O(n)/ Break a 'ByteString' into pieces separated by the byte
 -- argument, consuming the delimiter. I.e.
@@ -748,20 +741,16 @@ splitWith f (LPS xs) =
 --
 split :: Word8 -> ByteString -> [ByteString]
 split c (LPS [])     = []
-split c (LPS (x:xs)) = comb' [] (P.split c x) xs
-  where comb' :: [P.ByteString] -> [P.ByteString] -> [P.ByteString] -> [ByteString]
-        comb' acc (s:[]) []      
-                    | P.null s  = LPS (L.reverse    acc ) : []
-                    | otherwise = LPS (L.reverse (s:acc)) : []
-        comb' acc (s:[]) (x:xs)
-                    | P.null s  = comb'    acc  (P.split c x) xs
-                    | otherwise = comb' (s:acc) (P.split c x) xs
-        comb' []  (s:ss) xs     
-                    | P.null s  = LPS []  : comb' [] ss xs
-                    | otherwise = LPS [s] : comb' [] ss xs
-        comb' acc (s:ss) xs
-                    | P.null s  = LPS (L.reverse    acc ) : comb' [] ss xs
-                    | otherwise = LPS (L.reverse (s:acc)) : comb' [] ss xs
+split c (LPS (x:xs)) = comb [] (P.split c x) xs
+
+  where comb :: [P.ByteString] -> [P.ByteString] -> [P.ByteString] -> [ByteString]
+        comb acc (s:[]) []     = LPS (L.reverse (cons s acc)) : []
+        comb acc (s:[]) (x:xs) = comb (cons s acc) (P.split c x) xs
+        comb []  (s:ss) xs     = LPS (cons s []) : comb [] ss xs
+        comb acc (s:ss) xs     = LPS (L.reverse (cons s acc)) : comb [] ss xs
+
+        cons x xs | P.null x  = xs
+                  | otherwise = x:xs
         
 -- | Like 'splitWith', except that sequences of adjacent separators are
 -- treated as a single separator. eg.
