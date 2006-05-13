@@ -218,6 +218,7 @@ tests =
     ,("filterByte 2",       mytest prop_filterByte2)
     ,("filterNotByte 1",    mytest prop_filterNotByte)
     ,("filterNotByte 2",    mytest prop_filterNotByte2)
+    ,("isPrefixOf",         mytest prop_isPrefixOf)
 
 {-
     ,("sort 1",             mytest prop_sort1)
@@ -522,6 +523,10 @@ prop_find_findIndex p xs =
     L.find p xs == case L.findIndex p xs of
                                 Just n -> Just (xs `L.index` n)
                                 _      -> Nothing
+
+------------------------------------------------------------------------
+
+prop_isPrefixOf xs ys = isPrefixOf xs ys == (pack xs `L.isPrefixOf` pack ys)
 
 ------------------------------------------------------------------------
 

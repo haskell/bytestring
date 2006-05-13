@@ -144,11 +144,11 @@ module Data.ByteString.Lazy (
         -- ** Searching with a predicate
         filter,                 -- :: (Word8 -> Bool) -> ByteString -> ByteString
         find,                   -- :: (Word8 -> Bool) -> ByteString -> Maybe Word8
-{-
+
         -- ** Prefixes and suffixes
         isPrefixOf,             -- :: ByteString -> ByteString -> Bool
-        isSuffixOf,             -- :: ByteString -> ByteString -> Bool
-
+--      isSuffixOf,             -- :: ByteString -> ByteString -> Bool
+{-
         -- ** Search for arbitrary substrings
         isSubstringOf,          -- :: ByteString -> ByteString -> Bool
         findSubstring,          -- :: ByteString -> ByteString -> Maybe Int
@@ -967,7 +967,14 @@ find f (LPS xs) = find' xs
 -- | /O(n)/ The 'isPrefixOf' function takes two ByteStrings and returns 'True'
 -- iff the first is a prefix of the second.
 isPrefixOf :: ByteString -> ByteString -> Bool
-isPrefixOf = error "not yet implemented"
+isPrefixOf (LPS xs) (LPS ys) = isPrefixL xs ys
+  where isPrefixL [] _  = True
+        isPrefixL _ []  = False
+        isPrefixL (x:xs) (y:ys) | P.length x == P.length y = x == y  && isPrefixL xs ys
+                                | P.length x <  P.length y = x == yh && isPrefixL xs (yt:ys)
+                                | otherwise                = xh == y && isPrefixL (xt:xs) ys
+          where (xh,xt) = P.splitAt (P.length y) x
+                (yh,yt) = P.splitAt (P.length x) y
 
 -- | /O(n)/ The 'isSuffixOf' function takes two ByteStrings and returns 'True'
 -- iff the first is a suffix of the second.
