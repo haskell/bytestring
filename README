@@ -6,6 +6,10 @@ This library provides the Data.ByteString library: byte arrays
 manipulable as strings, providing very time and space efficient string
 and IO operations.
 
+For very large data requirements, or constraints on heap size,
+Data.ByteString.Lazy is provided, a lazy list of bytestring chunks.
+Efficient processing of multi-gigabyte data can be achieved this way.
+
 Requirements:
         > Cabal
         > GHC 6.4 or greater, or hugs Mar-2005
@@ -51,7 +55,7 @@ unpack                    3.319*     1.630   7.445   -
 compare                   0.000      0.000   0.000   0.000   
 index                     0.000      0.000   0.000   0.000   
 map                       2.762*     2.917   4.813   7.286   
-filter                    0.312      2.805   0.954   0.305   
+filter                    0.304      2.805   0.954   0.305   
 take                      0.000      0.000   0.024   0.005   
 drop                      0.000      0.000   11.768  0.130   
 takeWhile                 0.000      1.498   0.000   0.000   
@@ -59,9 +63,9 @@ dropWhile                 0.000      1.985   8.447   0.130
 span                      0.000      9.289   11.144  0.131   
 break                     0.000      9.383   11.268  0.133   
 lines                     0.052      1.114   1.367   2.790   
-unlines                   0.088      !       !       10.950  
-words                     1.583      2.128   5.644   4.184   
-unwords                   0.058      !       !       1.305   
+unlines                   0.048      !       !       10.950  
+words                     1.344      2.128   5.644   4.184   
+unwords                   0.016      !       !       1.305   
 reverse                   0.024      12.997  13.018  1.622   
 concat                    0.000      12.701  11.459  1.163   
 cons                      0.016      2.064   8.358   0.131   
@@ -73,7 +77,7 @@ last                      0.000      -       -       0.143
 init                      0.000      -       -       1.147   
 inits                     0.414      -       -       !       
 tails                     0.460      -       -       1.136   
-intersperse               0.070*     -       -       10.517  
+intersperse               0.040      -       -       10.517  
 any                       0.000      -       -       0.000   
 all                       0.000      -       -       0.000   
 sort                      0.168      -       -       !
@@ -88,9 +92,9 @@ foldl                     0.148
 spanEnd                   0.000
 snoc                      0.016
 filterChar                0.031      
-filterNotChar             0.128
-join                      0.029      
-split                     0.071      
+filterNotChar             0.124
+join                      0.016      
+split                     0.032      
 findIndices               0.408      
 splitAt                   0.000      
 lineIndices               0.029      
@@ -100,7 +104,7 @@ splitWith                 0.329
 dropSpace                 0.000 
 dropSpaceEnd              0.000 
 joinWithChar              0.017
-join /                    0.030 
+join /                    0.016 
 zip                       0.960 
 zipWith                   0.892 
 isSubstringOf             0.039 
