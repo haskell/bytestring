@@ -226,6 +226,44 @@ tests =
     ,("sort 4",             mytest prop_sort4)
     ,("sort 5",             mytest prop_sort5)
 -}
+
+------------------------------------------------------------------------
+    ,("cons",        mytest prop_cons')
+    ,("snoc",        mytest prop_snoc')
+    ,("null",        mytest prop_null')
+    ,("length",      mytest prop_length')
+    ,("head",        mytest prop_head')
+    ,("tail",        mytest prop_tail')
+    ,("last",        mytest prop_last')
+    ,("init",        mytest prop_init')
+    ,("append",      mytest prop_append')
+    ,("map",         mytest prop_map')
+    ,("reverse",     mytest prop_reverse')
+--  ,("intersperse", mytest prop_intersperse')
+    ,("transpose",   mytest prop_transpose')
+    ,("foldl",       mytest prop_foldl')
+    ,("foldr",       mytest prop_foldr')
+    ,("foldl1",      mytest prop_foldl1')
+    ,("foldr1",      mytest prop_foldr1')
+    ,("concat",      mytest prop_concat')
+    ,("concatMap",   mytest prop_concatMap')
+    ,("any",         mytest prop_any')
+    ,("all",         mytest prop_all')
+    ,("maximum",     mytest prop_maximum')
+    ,("minimum",     mytest prop_minimum')
+
+------------------------------------------------------------------------
+
+    ,("cons",        mytest prop_cons'')
+    ,("snoc",        mytest prop_snoc'')
+    ,("null",        mytest prop_null'')
+    ,("length",      mytest prop_length'')
+    ,("head",        mytest prop_head'')
+    ,("tail",        mytest prop_tail'')
+    ,("last",        mytest prop_last'')
+    ,("init",        mytest prop_init'')
+    ,("append",      mytest prop_append'')
+
     ]
 
 ------------------------------------------------------------------------
@@ -527,39 +565,50 @@ compare1 f f' a     = abs (f a)     == f' (abs a)
 compare2 f f' a b   = abs (f a b)   == f' (abs a) (abs b)
 compare3 f f' a b c = abs (f a b c) == f' (abs a) (abs b) (abs c)
 
+notNull1 f = \x   -> (not . L.null $ x) ==> f x
+notNull2 f = \x y -> (not . L.null $ y) ==> f x y
+
 -- fix polymorphic args so we can QC them.
 type Any = Int
 
 ------------------------------------------------------------------------
 
+
 prop_cons'   = compare2 L.cons   ((:) :: Word8 -> [Word8] -> [Word8])
 prop_snoc'   = compare2 L.snoc   ((\xs x -> xs ++ [x]) :: [Word8] -> Word8 -> [Word8])
 prop_null'   = compare1 L.null   (null :: [Word8] -> Bool)
 prop_length' = compare1 L.length (fromIntegral . length :: [Word8] -> Int64)
-prop_head'   = compare1 L.head   (head :: [Word8] -> Word8)
-prop_tail'   = compare1 L.tail   (tail :: [Word8] -> [Word8])
-prop_last'   = compare1 L.last   (last :: [Word8] -> Word8)
-prop_init'   = compare1 L.init   (init :: [Word8] -> [Word8])
+
+prop_head'   = notNull1 $ compare1 L.head   (head :: [Word8] -> Word8)
+prop_tail'   = notNull1 $ compare1 L.tail  (tail :: [Word8] -> [Word8])
+prop_last'   = notNull1 $ compare1 L.last   (last :: [Word8] -> Word8)
+prop_init'   = notNull1 $ compare1 L.init   (init :: [Word8] -> [Word8])
+
 prop_append' = compare2 L.append ((++) :: [Word8] -> [Word8] -> [Word8])
 
 prop_map'         = compare2 L.map         (map         :: (Word8 -> Word8) -> [Word8] -> [Word8])
 prop_reverse'     = compare1 L.reverse     (reverse     :: [Word8] -> [Word8])
-prop_intersperse' = compare2 L.intersperse (intersperse :: Word8 -> [Word8] -> [Word8])
+-- prop_intersperse' = compare2 L.intersperse (intersperse :: Word8 -> [Word8] -> [Word8])
 prop_transpose'   = compare1 L.transpose   (transpose   :: [[Word8]] -> [[Word8]])
 
 prop_foldl'  = compare3 (L.foldl :: (Any -> Word8 -> Any) -> Any -> L.ByteString -> Any)
                         (  foldl :: (Any -> Word8 -> Any) -> Any -> [Word8]      -> Any)
 prop_foldr'  = compare3 (L.foldr :: (Word8 -> Any -> Any) -> Any -> L.ByteString -> Any)
                         (  foldr :: (Word8 -> Any -> Any) -> Any -> [Word8]      -> Any)
-prop_foldl1' = compare2 L.foldl1 (foldl1 :: (Word8 -> Word8 -> Word8) -> [Word8] -> Word8)
-prop_foldr1' = compare2 L.foldr1 (foldr1 :: (Word8 -> Word8 -> Word8) -> [Word8] -> Word8)
+
+prop_foldl1' = notNull2 $ compare2
+    L.foldl1 (foldl1 :: (Word8 -> Word8 -> Word8) -> [Word8] -> Word8)
+
+prop_foldr1' = notNull2 $ compare2
+    L.foldr1 (foldr1 :: (Word8 -> Word8 -> Word8) -> [Word8] -> Word8)
 
 prop_concat'     = compare1 L.concat    (concat    :: [[Word8]] -> [Word8])
 prop_concatMap'  = compare2 L.concatMap (concatMap :: (Word8 -> [Word8]) -> [Word8] -> [Word8])
 prop_any'        = compare2 L.any       (any       :: (Word8 -> Bool) -> [Word8] -> Bool)
 prop_all'        = compare2 L.all       (all       :: (Word8 -> Bool) -> [Word8] -> Bool)
-prop_maximum'    = compare1 L.maximum   (maximum   :: [Word8] -> Word8)
-prop_minimum'    = compare1 L.minimum   (minimum   :: [Word8] -> Word8)
+prop_maximum'    = notNull1 $ compare1 L.maximum   (maximum   :: [Word8] -> Word8)
+prop_minimum'    = notNull1 $ compare1 L.minimum   (minimum   :: [Word8] -> Word8)
+
 --prop_mapIndexed = compare2 L.mapIndexed mapIndexed
 
 ------------------------------------------------------------------------
@@ -576,8 +625,8 @@ prop_cons''   = compare2 L.cons   P.cons
 prop_snoc''   = compare2 L.snoc   P.snoc
 prop_null''   = compare1 L.null   P.null
 prop_length'' = compare1 L.length (fromIntegral . P.length :: P.ByteString -> Int64)
-prop_head''   = compare1 L.head   P.head
-prop_tail''   = compare1 L.tail   P.tail
-prop_last''   = compare1 L.last   P.last
-prop_init''   = compare1 L.init   P.init
+prop_head''   = notNull1 $ compare1 L.head   P.head
+prop_tail''   = notNull1 $ compare1 L.tail   P.tail
+prop_last''   = notNull1 $ compare1 L.last   P.last
+prop_init''   = notNull1 $ compare1 L.init   P.init
 prop_append'' = compare2 L.append P.append
