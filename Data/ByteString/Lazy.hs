@@ -400,9 +400,10 @@ last (LPS xs) = P.last (L.last xs)
 -- | /O(1)/ Return all the elements of a 'ByteString' except the last one.
 init :: ByteString -> ByteString
 init (LPS []) = errorEmptyList "init"
-init (LPS as) = LPS (init' as)
-  where init' (x:[]) = P.init x : []
-        init' (x:xs) = x : init' xs
+init (LPS xs)
+    | P.length y == 1 = LPS ys
+    | otherwise       = LPS (ys ++ [P.init y])
+    where (y,ys) = (L.last xs, L.init xs)
 {-# INLINE init #-}
 
 -- | /O(n)/ Append two ByteStrings
@@ -485,8 +486,12 @@ concat lpss = LPS (L.concatMap (\(LPS xs) -> xs) lpss)
 
 -- | Map a function over a 'ByteString' and concatenate the results
 concatMap :: (Word8 -> ByteString) -> ByteString -> ByteString
-concatMap f (LPS lps) = LPS (L.map (P.concatMap (\w -> case f w of LPS xs -> P.concat xs)) lps)
+concatMap f (LPS lps) = LPS (L.filter (not . P.null) $
+                             L.map (P.concatMap (\w -> case f w of LPS xs -> P.concat xs)) lps)
+
 -- TODO: above seems overly complex and I'm not sure of the chunking behaviour
+-- worse, it doesn't maintain the invariant without the filter. rethink!
+-- and now its slow too.
 
 -- | /O(n)/ Applied to a predicate and a ByteString, 'any' determines if
 -- any element of the 'ByteString' satisfies the predicate.
