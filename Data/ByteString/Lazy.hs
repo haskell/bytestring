@@ -264,8 +264,15 @@ abstr (LPS xs) = P.concat xs
 -- The representation uses lists of packed chunks. When we have to convert from
 -- a lazy list to the chunked representation, then by default we'll use this
 -- chunk size. Some functions give you more control over the chunk size.
+--
+-- Measurements here:
+--  http://www.cse.unsw.edu.au/~dons/tmp/chunksize_v_cache.png
+--
+-- indicate that a value around 0.5 to 1 x your L2 cache is best.
+-- The following value assumes people have something greater than 128k.
+--
 defaultChunkSize :: Int
-defaultChunkSize = 4096
+defaultChunkSize = 128 * 1024   -- 128k
 
 ------------------------------------------------------------------------
 
