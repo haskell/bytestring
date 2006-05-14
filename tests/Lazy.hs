@@ -265,6 +265,7 @@ tests =
     ,("last",        mytest prop_last'')
     ,("init",        mytest prop_init'')
     ,("append",      mytest prop_append'')
+    ,("isPrefixOf",  mytest prop_isPrefixOf'')
 
     ]
 
@@ -637,3 +638,4 @@ prop_tail''   = notNull1 $ compare1 L.tail   P.tail
 prop_last''   = notNull1 $ compare1 L.last   P.last
 prop_init''   = notNull1 $ compare1 L.init   P.init
 prop_append'' = compare2 L.append P.append
+prop_isPrefixOf'' = compare2 L.isPrefixOf P.isPrefixOf
