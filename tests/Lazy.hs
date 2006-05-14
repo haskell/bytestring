@@ -252,6 +252,7 @@ tests =
     ,("all",         mytest prop_all')
     ,("maximum",     mytest prop_maximum')
     ,("minimum",     mytest prop_minimum')
+    ,("isPrefixOf",  mytest prop_isPrefixOf')
 
 ------------------------------------------------------------------------
 
@@ -613,6 +614,7 @@ prop_any'        = compare2 L.any       (any       :: (Word8 -> Bool) -> [Word8]
 prop_all'        = compare2 L.all       (all       :: (Word8 -> Bool) -> [Word8] -> Bool)
 prop_maximum'    = notNull1 $ compare1 L.maximum   (maximum   :: [Word8] -> Word8)
 prop_minimum'    = notNull1 $ compare1 L.minimum   (minimum   :: [Word8] -> Word8)
+prop_isPrefixOf' = compare2 L.isPrefixOf (isPrefixOf :: [Word8] -> [Word8] -> Bool)
 
 --prop_mapIndexed = compare2 L.mapIndexed mapIndexed
 
