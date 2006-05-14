@@ -266,6 +266,8 @@ tests =
     ,("init",        mytest prop_init'')
     ,("append",      mytest prop_append'')
     ,("isPrefixOf",  mytest prop_isPrefixOf'')
+    ,("any",         mytest prop_any'')
+    ,("all",         mytest prop_all'')
 
     ]
 
@@ -629,13 +631,15 @@ abstr :: ByteString -> P.ByteString
 abstr (LPS []) = P.empty
 abstr (LPS xs) = P.concat xs
 
-prop_cons''   = compare2 L.cons   P.cons
-prop_snoc''   = compare2 L.snoc   P.snoc
-prop_null''   = compare1 L.null   P.null
-prop_length'' = compare1 L.length (fromIntegral . P.length :: P.ByteString -> Int64)
-prop_head''   = notNull1 $ compare1 L.head   P.head
-prop_tail''   = notNull1 $ compare1 L.tail   P.tail
-prop_last''   = notNull1 $ compare1 L.last   P.last
-prop_init''   = notNull1 $ compare1 L.init   P.init
-prop_append'' = compare2 L.append P.append
-prop_isPrefixOf'' = compare2 L.isPrefixOf P.isPrefixOf
+prop_cons''         = compare2 L.cons               P.cons
+prop_snoc''         = compare2 L.snoc               P.snoc
+prop_null''         = compare1 L.null               P.null
+prop_length''       = compare1 L.length (fromIntegral . P.length :: P.ByteString -> Int64)
+prop_head''         = notNull1 $ compare1 L.head    P.head
+prop_tail''         = notNull1 $ compare1 L.tail    P.tail
+prop_last''         = notNull1 $ compare1 L.last    P.last
+prop_init''         = notNull1 $ compare1 L.init    P.init
+prop_append''       = compare2 L.append             P.append
+prop_isPrefixOf''   = compare2 L.isPrefixOf         P.isPrefixOf
+prop_any''          = compare2 L.any                P.any
+prop_all''          = compare2 L.all                P.all
