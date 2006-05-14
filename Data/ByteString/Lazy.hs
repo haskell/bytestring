@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -cpp -fffi -fglasgow-exts #-}
+{-# OPTIONS_GHC -cpp -fffi -fglasgow-exts -fno-warn-incomplete-patterns #-}
 --
 -- Module      : ByteString
 -- Copyright   : (c) The University of Glasgow 2001,
@@ -24,6 +24,16 @@
 -- and Haskell with little effort. They provide a means to manipulate
 -- large byte vectors without requiring the entire vector be resident in
 -- memory.
+--
+-- Some operations, such as concat, append, reverse and cons, have
+-- better complexity than their Data.ByteString equivalents, as due to
+-- optimisations resulting from the list spine structure.  However, in
+-- general, if you can fit the data in memory, raw Data.ByteString will
+-- outperform Data.ByteString.Lazy. For data larger than the available
+-- memory, or if you have tight memory constraints, this module will be
+-- the only option. The default chunk size is 128k, which should be good
+-- in most circumstances. For people with large L2 caches, you may want
+-- to increase this to fit your cache.
 --
 -- This module is intended to be imported @qualified@, to avoid name
 -- clashes with Prelude functions.  eg.
@@ -61,9 +71,9 @@ module Data.ByteString.Lazy (
         append,                 -- :: ByteString -> ByteString -> ByteString
 
         -- * Special ByteStrings
---      inits,                  -- :: ByteString -> [ByteString]
---      tails,                  -- :: ByteString -> [ByteString]
---      elems,                  -- :: ByteString -> [ByteString]
+        inits,                  -- :: ByteString -> [ByteString]
+        tails,                  -- :: ByteString -> [ByteString]
+        elems,                  -- :: ByteString -> [ByteString]
 
         -- * Transformating ByteStrings
         map,                    -- :: (Word8 -> Word8) -> ByteString -> ByteString
@@ -100,7 +110,6 @@ module Data.ByteString.Lazy (
         dropWhile,              -- :: (Word8 -> Bool) -> ByteString -> ByteString
         break,                  -- :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
         span,                   -- :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
---      spanEnd,                -- :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
 
         -- ** Breaking and dropping on specific bytes
         breakByte,              -- :: Word8 -> ByteString -> (ByteString, ByteString)
@@ -123,7 +132,6 @@ module Data.ByteString.Lazy (
         index,                  -- :: ByteString -> Int -> Word8
         elemIndex,              -- :: Word8 -> ByteString -> Maybe Int
         elemIndices,            -- :: Word8 -> ByteString -> [Int]
---      elemIndexLast,          -- :: Word8 -> ByteString -> Maybe Int
         findIndex,              -- :: (Word8 -> Bool) -> ByteString -> Maybe Int
         findIndices,            -- :: (Word8 -> Bool) -> ByteString -> [Int]
         count,                  -- :: Word8 -> ByteString -> Int
@@ -134,8 +142,6 @@ module Data.ByteString.Lazy (
         -- * Searching ByteStrings
 
         -- ** Searching by equality
-        -- | These functions use memchr(3) to efficiently search the ByteString
-
         elem,                   -- :: Word8 -> ByteString -> Bool
         notElem,                -- :: Word8 -> ByteString -> Bool
         filterByte,             -- :: Word8 -> ByteString -> ByteString
@@ -147,8 +153,8 @@ module Data.ByteString.Lazy (
 
         -- ** Prefixes and suffixes
         isPrefixOf,             -- :: ByteString -> ByteString -> Bool
---      isSuffixOf,             -- :: ByteString -> ByteString -> Bool
-{-
+        isSuffixOf,             -- :: ByteString -> ByteString -> Bool
+
         -- ** Search for arbitrary substrings
         isSubstringOf,          -- :: ByteString -> ByteString -> Bool
         findSubstring,          -- :: ByteString -> ByteString -> Maybe Int
@@ -158,12 +164,6 @@ module Data.ByteString.Lazy (
         zip,                    -- :: ByteString -> ByteString -> [(Word8,Word8)]
         zipWith,                -- :: (Word8 -> Word8 -> c) -> ByteString -> ByteString -> [c]
         unzip,                  -- :: [(Word8,Word8)] -> (ByteString,ByteString)
-
-        -- * Unchecked access
-        unsafeHead,             -- :: ByteString -> Word8
-        unsafeTail,             -- :: ByteString -> ByteString
-        unsafeIndex,            -- :: ByteString -> Int -> Word8
--}
 
         -- * I\/O with @ByteString@s
 
@@ -245,21 +245,21 @@ instance Ord ByteString
 -- The data type invariant:
 -- the list is either empty or consists of non-null ByteStrings
 --
-invariant :: ByteString -> Bool
-invariant (LPS []) = True
-invariant (LPS xs) = L.all (not . P.null) xs
+_invariant :: ByteString -> Bool
+_invariant (LPS []) = True
+_invariant (LPS xs) = L.all (not . P.null) xs
 
 -- In a form useful for QC testing
-checkInvariant :: ByteString -> ByteString
-checkInvariant lps | invariant lps = lps
-                   | otherwise     =
-  moduleError "invariant" ("violation: " ++ show lps)
+_checkInvariant :: ByteString -> ByteString
+_checkInvariant lps
+    | _invariant lps = lps
+    | otherwise      = moduleError "invariant" ("violation: " ++ show lps)
 
 -- The Data abstraction function
 --
-abstr :: ByteString -> P.ByteString
-abstr (LPS []) = P.empty
-abstr (LPS xs) = P.concat xs
+_abstr :: ByteString -> P.ByteString
+_abstr (LPS []) = P.empty
+_abstr (LPS xs) = P.concat xs
 
 -- The representation uses lists of packed chunks. When we have to convert from
 -- a lazy list to the chunked representation, then by default we'll use this
@@ -424,7 +424,7 @@ map f (LPS xs) = LPS (L.map (P.map f) xs)
 
 -- | /O(n)/ 'reverse' @xs@ efficiently returns the elements of @xs@ in reverse order.
 reverse :: ByteString -> ByteString
-reverse (LPS xs) = LPS (L.reverse $ L.map P.reverse xs)
+reverse (LPS xs) = LPS (L.reverse . L.map P.reverse $ xs)
 
 -- | /O(n)/ The 'intersperse' function takes a 'Word8' and a
 -- 'ByteString' and \`intersperses\' that byte between the elements of
@@ -473,7 +473,7 @@ foldl1 f (LPS (x:xs)) = foldl f (P.unsafeHead x) (LPS (P.unsafeTail x : xs))
 -- and thus must be applied to non-empty 'ByteString's
 foldr1 :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldr1 _ (LPS []) = errorEmptyList "foldr1"
-foldr1 f (LPS xs) = foldr1' xs
+foldr1 f (LPS ps) = foldr1' ps
   where foldr1' (x:[]) = P.foldr1 f x
         foldr1' (x:xs) = P.foldr  f (foldr1' xs) x
 
@@ -486,12 +486,9 @@ concat lpss = LPS (L.concatMap (\(LPS xs) -> xs) lpss)
 
 -- | Map a function over a 'ByteString' and concatenate the results
 concatMap :: (Word8 -> ByteString) -> ByteString -> ByteString
-concatMap f (LPS lps) = LPS (L.filter (not . P.null) $
-                             L.map (P.concatMap (\w -> case f w of LPS xs -> P.concat xs)) lps)
-
--- TODO: above seems overly complex and I'm not sure of the chunking behaviour
--- worse, it doesn't maintain the invariant without the filter. rethink!
--- and now its slow too.
+concatMap f (LPS lps) = LPS (filterMap (P.concatMap k) lps)
+    where
+      k w = case f w of LPS xs -> P.concat xs
 
 -- | /O(n)/ Applied to a predicate and a ByteString, 'any' determines if
 -- any element of the 'ByteString' satisfies the predicate.
@@ -729,17 +726,17 @@ span p = break (not . p)
 -- > splitWith (=='a') []        == []
 --
 splitWith :: (Word8 -> Bool) -> ByteString -> [ByteString]
-splitWith p (LPS [])     = []
-splitWith p (LPS (x:xs)) = comb [] (P.splitWith p x) xs
+splitWith _ (LPS [])     = []
+splitWith p (LPS (a:as)) = comb [] (P.splitWith p a) as
 
   where comb :: [P.ByteString] -> [P.ByteString] -> [P.ByteString] -> [ByteString]
-        comb acc (s:[]) []     = LPS (L.reverse (cons s acc)) : []
-        comb acc (s:[]) (x:xs) = comb (cons s acc) (P.splitWith p x) xs
-        comb []  (s:ss) xs     = LPS (cons s []) : comb [] ss xs
-        comb acc (s:ss) xs     = LPS (L.reverse (cons s acc)) : comb [] ss xs
+        comb acc (s:[]) []     = LPS (L.reverse (cons' s acc)) : []
+        comb acc (s:[]) (x:xs) = comb (cons' s acc) (P.splitWith p x) xs
+        comb []  (s:ss) xs     = LPS (cons' s []) : comb [] ss xs
+        comb acc (s:ss) xs     = LPS (L.reverse (cons' s acc)) : comb [] ss xs
 
-        cons x xs | P.null x  = xs
-                  | otherwise = x:xs
+        cons' x xs | P.null x  = xs
+                   | otherwise = x:xs
 
 -- | /O(n)/ Break a 'ByteString' into pieces separated by the byte
 -- argument, consuming the delimiter. I.e.
@@ -758,18 +755,18 @@ splitWith p (LPS (x:xs)) = comb [] (P.splitWith p x) xs
 -- are slices of the original.
 --
 split :: Word8 -> ByteString -> [ByteString]
-split c (LPS [])     = []
-split c (LPS (x:xs)) = comb [] (P.split c x) xs
+split _ (LPS [])     = []
+split c (LPS (a:as)) = comb [] (P.split c a) as
 
   where comb :: [P.ByteString] -> [P.ByteString] -> [P.ByteString] -> [ByteString]
-        comb acc (s:[]) []     = LPS (L.reverse (cons s acc)) : []
-        comb acc (s:[]) (x:xs) = comb (cons s acc) (P.split c x) xs
-        comb []  (s:ss) xs     = LPS (cons s []) : comb [] ss xs
-        comb acc (s:ss) xs     = LPS (L.reverse (cons s acc)) : comb [] ss xs
+        comb acc (s:[]) []     = LPS (L.reverse (cons' s acc)) : []
+        comb acc (s:[]) (x:xs) = comb (cons' s acc) (P.split c x) xs
+        comb []  (s:ss) xs     = LPS (cons' s []) : comb [] ss xs
+        comb acc (s:ss) xs     = LPS (L.reverse (cons' s acc)) : comb [] ss xs
 
-        cons x xs | P.null x  = xs
-                  | otherwise = x:xs
-        
+        cons' x xs | P.null x  = xs
+                   | otherwise = x:xs
+
 -- | Like 'splitWith', except that sequences of adjacent separators are
 -- treated as a single separator. eg.
 -- 
@@ -902,6 +899,8 @@ findIndex k (LPS ps) = findIndex' 0 ps
             Nothing -> findIndex' (n + P.length x) xs
             Just i  -> Just (n+i)
 
+-- TODO, currently aroudn 10x slower than Data.ByteString
+
 -- | The 'findIndices' function extends 'findIndex', by returning the
 -- indices of all elements satisfying the predicate, in ascending order.
 findIndices :: (Word8 -> Bool) -> ByteString -> [Int]
@@ -925,7 +924,8 @@ notElem c ps = not (elem c ps)
 -- returns a ByteString containing those characters that satisfy the
 -- predicate.
 filter :: (Word8 -> Bool) -> ByteString -> ByteString
-filter f (LPS xs) = LPS (L.filter (not . P.null) $ L.map (P.filter f) xs)
+filter f (LPS xs) = LPS (filterMap (P.filter f) xs)
+   where
 
 -- | /O(n)/ A first order equivalent of /filter . (==)/, for the common
 -- case of filtering a single byte. It is more efficient to use
@@ -936,7 +936,7 @@ filter f (LPS xs) = LPS (L.filter (not . P.null) $ L.map (P.filter f) xs)
 -- filterByte is around 10x faster, and uses much less space, than its
 -- filter equivalent
 filterByte :: Word8 -> ByteString -> ByteString
-filterByte w (LPS xs) = LPS (L.filter (not . P.null) $ L.map (P.filterByte w) xs)
+filterByte w (LPS xs) = LPS (filterMap (P.filterByte w) xs)
 
 -- | /O(n)/ A first order equivalent of /filter . (\/=)/, for the common
 -- case of filtering a single byte out of a list. It is more efficient
@@ -946,7 +946,7 @@ filterByte w (LPS xs) = LPS (L.filter (not . P.null) $ L.map (P.filterByte w) xs
 --
 -- filterNotByte is around 2x faster than its filter equivalent.
 filterNotByte :: Word8 -> ByteString -> ByteString
-filterNotByte w (LPS xs) = LPS (L.filter (not . P.null) $ L.map (P.filterNotByte w) xs)
+filterNotByte w (LPS xs) = LPS (filterMap (P.filterNotByte w) xs)
 
 -- | /O(n)/ The 'find' function takes a predicate and a ByteString,
 -- and returns the first element in matching the predicate, or 'Nothing'
@@ -955,11 +955,13 @@ filterNotByte w (LPS xs) = LPS (L.filter (not . P.null) $ L.map (P.filterNotByte
 -- > find f p = case findIndex f p of Just n -> Just (p ! n) ; _ -> Nothing
 --
 find :: (Word8 -> Bool) -> ByteString -> Maybe Word8
-find f (LPS xs) = find' xs
+find f (LPS ps) = find' ps
   where find' []     = Nothing
         find' (x:xs) = case P.find f x of
             Nothing -> find' xs
             Just w  -> Just w
+
+-- TODO, currently aroudn 10x slower than Data.ByteString
 
 -- ---------------------------------------------------------------------
 -- Searching for substrings
@@ -967,7 +969,7 @@ find f (LPS xs) = find' xs
 -- | /O(n)/ The 'isPrefixOf' function takes two ByteStrings and returns 'True'
 -- iff the first is a prefix of the second.
 isPrefixOf :: ByteString -> ByteString -> Bool
-isPrefixOf (LPS xs) (LPS ys) = isPrefixL xs ys
+isPrefixOf (LPS as) (LPS bs) = isPrefixL as bs
   where isPrefixL [] _  = True
         isPrefixL _ []  = False
         isPrefixL (x:xs) (y:ys) | P.length x == P.length y = x == y  && isPrefixL xs ys
@@ -993,7 +995,7 @@ isSuffixOf = error "not yet implemented"
 isSubstringOf :: ByteString -- ^ String to search for.
               -> ByteString -- ^ String to search in.
               -> Bool
-isSubstringOf p s = error "not yet implemented"
+isSubstringOf _p _s = error "not yet implemented"
 
 -- | Get the first index of a substring in another string,
 --   or 'Nothing' if the string is not found.
@@ -1019,9 +1021,12 @@ findSubstrings = error "not yet implemented"
 -- excess elements of the longer ByteString are discarded. This is
 -- equivalent to a pair of 'unpack' operations.
 zip :: ByteString -> ByteString -> [(Word8,Word8)]
+zip = zipWith (,)
+
+{-
 zip (LPS [])     (LPS _)  = []
 zip (LPS _)      (LPS []) = []
-zip (LPS (x:xs)) (LPS (y:ys)) = zip' x xs y ys
+zip (LPS (a:as)) (LPS (b:bs)) = zip' a as b bs
   where zip' x xs y ys =
           ((P.unsafeHead x, P.unsafeHead y) : zip'' (P.unsafeTail x) xs (P.unsafeTail y) ys)
 
@@ -1029,9 +1034,10 @@ zip (LPS (x:xs)) (LPS (y:ys)) = zip' x xs y ys
         zip'' _ _       y []      | P.null y       = []
         zip'' x xs      y ys      | not (P.null x)
                                  && not (P.null y) = zip' x  xs y  ys
-        zip'' x xs      y (y':ys) | not (P.null x) = zip' x  xs y' ys
-        zip'' x (x':xs) y ys      | not (P.null y) = zip' x' xs y  ys
-        zip'' x (x':xs) y (y':ys)                  = zip' x' xs y' ys
+        zip'' x xs      _ (y':ys) | not (P.null x) = zip' x  xs y' ys
+        zip'' _ (x':xs) y ys      | not (P.null y) = zip' x' xs y  ys
+        zip'' _ (x':xs) _ (y':ys)                  = zip' x' xs y' ys
+-}
 
 -- | 'zipWith' generalises 'zip' by zipping with the function given as
 -- the first argument, instead of a tupling function.  For example,
@@ -1040,7 +1046,7 @@ zip (LPS (x:xs)) (LPS (y:ys)) = zip' x xs y ys
 zipWith :: (Word8 -> Word8 -> a) -> ByteString -> ByteString -> [a]
 zipWith _ (LPS [])     (LPS _)  = []
 zipWith _ (LPS _)      (LPS []) = []
-zipWith f (LPS (x:xs)) (LPS (y:ys)) = zipWith' x xs y ys
+zipWith f (LPS (a:as)) (LPS (b:bs)) = zipWith' a as b bs
   where zipWith' x xs y ys =
           (f (P.unsafeHead x) (P.unsafeHead y) : zipWith'' (P.unsafeTail x) xs (P.unsafeTail y) ys)
 
@@ -1048,14 +1054,14 @@ zipWith f (LPS (x:xs)) (LPS (y:ys)) = zipWith' x xs y ys
         zipWith'' _ _       y []      | P.null y       = []
         zipWith'' x xs      y ys      | not (P.null x)
                                      && not (P.null y) = zipWith' x  xs y  ys
-        zipWith'' x xs      y (y':ys) | not (P.null x) = zipWith' x  xs y' ys
-        zipWith'' x (x':xs) y ys      | not (P.null y) = zipWith' x' xs y  ys
-        zipWith'' x (x':xs) y (y':ys)                  = zipWith' x' xs y' ys
+        zipWith'' x xs      _ (y':ys) | not (P.null x) = zipWith' x  xs y' ys
+        zipWith'' _ (x':xs) y ys      | not (P.null y) = zipWith' x' xs y  ys
+        zipWith'' _ (x':xs) _ (y':ys)                  = zipWith' x' xs y' ys
 
 -- | /O(n)/ 'unzip' transforms a list of pairs of bytes into a pair of
 -- ByteStrings. Note that this performs two 'pack' operations.
 unzip :: [(Word8,Word8)] -> (ByteString,ByteString)
-unzip ls = error "not yet implemented"
+unzip _ls = error "not yet implemented"
 {-# INLINE unzip #-}
 
 -- ---------------------------------------------------------------------
@@ -1067,7 +1073,7 @@ inits = error "not yet implemented"
 
 -- | /O(n)/ Return all final segments of the given 'ByteString', longest first.
 tails :: ByteString -> [ByteString]
-tails p = error "not yet implemented"
+tails _p = error "not yet implemented"
 
 -- less efficent spacewise: tails (PS x s l) = [PS x (s+n) (l-n) | n <- [0..l]]
 
@@ -1156,3 +1162,13 @@ errorEmptyList fun = moduleError fun "empty ByteString"
 
 moduleError :: String -> String -> a
 moduleError fun msg = error ("Data.ByteString.Lazy." ++ fun ++ ':':' ':msg)
+
+-- A manually fused version of "filter (not.null) . map f", since they
+-- don't seem to fuse themselves. Really helps out filter*, concatMap.
+--
+filterMap :: (P.ByteString -> P.ByteString) -> [P.ByteString] -> [P.ByteString]
+filterMap _ []     = []
+filterMap f (x:xs) = case f x of
+                    y | P.null y  ->     filterMap f xs      -- manually fuse the invariant filter
+                      | otherwise -> y : filterMap f xs
+
