@@ -8,6 +8,7 @@ import Data.List
 import System.Random
 import System.IO
 
+-- Enable this to get verbose test output. Including the actual tests.
 debug = False
 
 mytest :: Testable a => a -> Int -> IO ()
