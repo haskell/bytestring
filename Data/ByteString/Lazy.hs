@@ -734,7 +734,6 @@ splitWith p (LPS (a:as)) = comb [] (P.splitWith p a) as
   where comb :: [P.ByteString] -> [P.ByteString] -> [P.ByteString] -> [ByteString]
         comb acc (s:[]) []     = LPS (L.reverse (cons' s acc)) : []
         comb acc (s:[]) (x:xs) = comb (cons' s acc) (P.splitWith p x) xs
-        comb []  (s:ss) xs     = LPS (cons' s []) : comb [] ss xs
         comb acc (s:ss) xs     = LPS (L.reverse (cons' s acc)) : comb [] ss xs
 
         cons' x xs | P.null x  = xs
@@ -763,7 +762,6 @@ split c (LPS (a:as)) = comb [] (P.split c a) as
   where comb :: [P.ByteString] -> [P.ByteString] -> [P.ByteString] -> [ByteString]
         comb acc (s:[]) []     = LPS (L.reverse (cons' s acc)) : []
         comb acc (s:[]) (x:xs) = comb (cons' s acc) (P.split c x) xs
-        comb []  (s:ss) xs     = LPS (cons' s []) : comb [] ss xs
         comb acc (s:ss) xs     = LPS (L.reverse (cons' s acc)) : comb [] ss xs
 
         cons' x xs | P.null x  = xs
