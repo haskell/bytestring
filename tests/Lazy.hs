@@ -23,6 +23,8 @@ import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString      as P
 import Prelude hiding (abs)
 
+import QuickCheckUtils
+
 instance Arbitrary Char where
     arbitrary     = choose ('a', 'i') -- since we have to test words, unlines too
     coarbitrary c = variant (ord c `rem` 4)
@@ -56,7 +58,6 @@ instance Arbitrary P.ByteString where
 
 ------------------------------------------------------------------------
 
--- turn on this to see the actual tests generated
 debug = False
 
 mytest :: Testable a => a -> Int -> IO ()
