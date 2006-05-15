@@ -1024,22 +1024,6 @@ findSubstrings = error "not yet implemented"
 zip :: ByteString -> ByteString -> [(Word8,Word8)]
 zip = zipWith (,)
 
-{-
-zip (LPS [])     (LPS _)  = []
-zip (LPS _)      (LPS []) = []
-zip (LPS (a:as)) (LPS (b:bs)) = zip' a as b bs
-  where zip' x xs y ys =
-          ((P.unsafeHead x, P.unsafeHead y) : zip'' (P.unsafeTail x) xs (P.unsafeTail y) ys)
-
-        zip'' x []      _ _       | P.null x       = []
-        zip'' _ _       y []      | P.null y       = []
-        zip'' x xs      y ys      | not (P.null x)
-                                 && not (P.null y) = zip' x  xs y  ys
-        zip'' x xs      _ (y':ys) | not (P.null x) = zip' x  xs y' ys
-        zip'' _ (x':xs) y ys      | not (P.null y) = zip' x' xs y  ys
-        zip'' _ (x':xs) _ (y':ys)                  = zip' x' xs y' ys
--}
-
 -- | 'zipWith' generalises 'zip' by zipping with the function given as
 -- the first argument, instead of a tupling function.  For example,
 -- @'zipWith' (+)@ is applied to two ByteStrings to produce the list of
