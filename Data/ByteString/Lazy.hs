@@ -273,7 +273,8 @@ _abstr (LPS xs) = P.concat xs
 -- and need to share the cache with other programs.
 --
 defaultChunkSize :: Int
-defaultChunkSize = 64 * 1024   -- 64k
+defaultChunkSize = 64 * k
+  where k = 1024
 
 ------------------------------------------------------------------------
 
