@@ -121,8 +121,8 @@ module Data.ByteString.Lazy (
         split,                  -- :: Word8 -> ByteString -> [ByteString]
         splitWith,              -- :: (Word8 -> Bool) -> ByteString -> [ByteString]
         tokens,                 -- :: (Word8 -> Bool) -> ByteString -> [ByteString]
-        group,                  -- :: ByteString -> [ByteString]
-        groupBy,                -- :: (Word8 -> Word8 -> Bool) -> ByteString -> [ByteString]
+--      group,                  -- :: ByteString -> [ByteString]
+--      groupBy,                -- :: (Word8 -> Word8 -> Bool) -> ByteString -> [ByteString]
 
         -- ** Joining strings
         join,                   -- :: ByteString -> [ByteString] -> ByteString
@@ -784,22 +784,23 @@ tokens f = L.filter (not.null) . splitWith f
 -- > group "Mississippi" = ["M","i","ss","i","ss","i","pp","i"]
 --
 -- It is a special case of 'groupBy', which allows the programmer to
--- supply their own equality test. It is about 40% faster than 
--- /groupBy (==)/
+-- supply their own equality test.
+{-
 group :: ByteString -> [ByteString]
-group (LPS ps) = group' [] ps
-  where group' :: [P.ByteString] -> [P.ByteString] -> [ByteString]
-        group' []     []     = []
-        group' []     (x:xs) = group' (P.group x) xs
-        group' (s:[]) (x:xs) =
-          case P.group x of
-           (s':ss')
-             | P.unsafeHead s'
-            == P.unsafeHead s -> LPS [s,s']         : group' ss' xs
-             | otherwise      -> LPS [s] : LPS [s'] : group' ss' xs
-        group' (s:ss) xs = LPS [s] : group' ss xs
+group = groupBy (==)
 
 -- | The 'groupBy' function is the non-overloaded version of 'group'.
+
+--
+-- TODO bug: when chunk size is very small (i.e. 1 byte):
+--  
+--  group               : Falsifiable after 15 tests:
+--      [99,105,98,100,100,98]
+--  groupBy             : Falsifiable after 7 tests:
+--      <function>
+--      [104,101,100,98]
+--
+
 groupBy :: (Word8 -> Word8 -> Bool) -> ByteString -> [ByteString]
 groupBy k (LPS ps) = group' [] ps
   where group' :: [P.ByteString] -> [P.ByteString] -> [ByteString]
@@ -811,6 +812,7 @@ groupBy k (LPS ps) = group' [] ps
              | k (P.unsafeHead s') (P.unsafeHead s ) -> LPS [s,s']         : group' ss' xs
              | otherwise                             -> LPS [s] : LPS [s'] : group' ss' xs
         group' (s:ss) xs = LPS [s] : group' ss xs
+-}
 
 -- | /O(n)/ The 'join' function takes a 'ByteString' and a list of
 -- 'ByteString's and concatenates the list after interspersing the first
