@@ -14,7 +14,7 @@ GHC_ = $(GHC) -threaded $(PP_OPTS) -fglasgow-exts --make
 
 SRCS= TestFramework.hs UnitTestsMain.hs Tests.hs Quick.hs
 
-all: qc lazy htest bench sbench sbench2 wc spellcheck letter_frequency linesort fuse inline
+all: qc lazy htest runbench sbench sbench2 wc spellcheck letter_frequency linesort fuse inline
 
 # build executable, linking in all tests
 run-utests: $(SRCS)
@@ -43,10 +43,13 @@ sbench2:
 	${GHC} ${PKG} -O -funbox-strict-fields -ddump-simpl-stats Lazy.hs -o lqc -no-recomp -package QuickCheck
 	/usr/bin/time ./lqc
 
-bench::
+.PHONY: runbench
+runbench: bench
+	./bench +RTS -H64m
+
+bench: Bench.hs
 	@if [ ! -f "bigdata" ] ; then ln -s data bigdata ; fi
 	${GHC} ${PKG} --make -O -funbox-strict-fields Bench.hs -o bench -no-recomp
-	./bench +RTS -H64m
 
 prof::
 	@if [ ! -f "bigdata" ] ; then ln -s data bigdata ; fi
@@ -93,6 +96,18 @@ inline: inline.o
 	/usr/bin/time ./inline
 inline.o: inline.hs
 	${GHC} ${PKG} -O $< -o inline
+
+results: bench
+	./bench +RTS -H64m > results
+
+.PHONY: plot
+plot:: results
+	echo -e 'set terminal png          \n \
+             set output "results.png"  \n \
+             set yrange [0:1]          \n \
+             plot "results" using ($$2) with linespoints, "" using ($$3) with linespoint' |\
+             gnuplot ;
+	xv results.png    
 
 .PHONY: clean
 clean:

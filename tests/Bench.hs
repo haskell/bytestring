@@ -6,16 +6,15 @@
 -- space and time.
 --
 
-import qualified Data.ByteString.Char8 as P
 import Data.ByteString (ByteString)
-
 import qualified Data.ByteString as B
+import qualified Data.ByteString.Char8 as C
+import qualified Data.ByteString.Lazy as L
 
--- import qualified Data.PackedString     as PS
--- import qualified SimonPackedString     as SPS
 import Data.List
 import Data.Char
 import Data.Word
+import Data.Int
 
 import System.Mem
 import Control.Concurrent
@@ -30,23 +29,24 @@ import Text.Printf
 main :: IO ()
 main = do
     -- initialise
-    printf "Initialising test data...\n"
-    force (fps,fps') -- >> force (list)
+    force (fps,fps') >> force (lps,lps')
 
-    printf "Size of test data: %dk\n" ((floor $ (fromIntegral (B.length fps)) / 1024) :: Int)
-    printf "                Char\tByte\n"
+    printf "# Size of test data: %dk\n" ((floor $ (fromIntegral (B.length fps)) / 1024) :: Int)
+    printf "#Byte\t Lazy\n"
 
     -- now get to it
-    sequence_ . map doit $ tests
+    sequence_ . map doit $ zip [(1::Int)..] tests
 
-doit (s,ls) = do
-    printf "%-16s" s
-    mapM_ (\s -> time s >> performGC >> threadDelay 100) ls
-
---  (\s -> time s >> performGC) (head ls) -- only test fps now, 
-                                          -- we don't care about beating the other code.
-    putChar '\n'
+doit (n,(s,ls)) = do
+    printf "%d " n
+    fn ls
+    printf "\t# %-16s\n" (show s)
     hFlush stdout
+  where fn xs = case xs of
+                    [x,y]   -> run x >> run y
+                    [x]     -> run x >> printf "\t"
+                    _       -> return ()
+        run s = time s >> performGC >> threadDelay 100
 
 time :: F -> IO ()
 time (F a) = do
@@ -66,272 +66,204 @@ tests  :: [(String,[F])]
 tests =
     [
 
-      ("++",    [F ({-# SCC "append" #-}P.append fps fps')])
+      ("++",    [F ({-# SCC  "append" #-}B.append fps fps')
+                ,F ({-# SCC "lappend" #-}L.append lps lps')])
 
-    , ("concat",[F ({-# SCC "concat"    #-}P.concat [fps,fps'])])
---              ,F () -- SPS.append sps sps)
---              ,F () -- PS.appendPS ps ps)
---              ,F (list ++ list)])
+    , ("concat",[F ({-# SCC "concat"  #-}B.concat [fps,fps'])
+                ,F ({-# SCC "lconcat" #-}L.concat [lps,lps'])])
 
-    , ("length",[F ({-# SCC "length"    #-}P.length fps)])
-
---              ,F (SPS.length sps)
---              ,F (PS.lengthPS ps)
---              ,F (length list)])
+    , ("length",[F ({-# SCC "length"  #-}B.length fps)
+                ,F ({-# SCC "llength" #-}L.length lps)])
 
 {-
-    , ("pack",  [F ({-# SCC "pack"      #-}P.pack list)])
+    , ("pack",  [F ({-# SCC "pack"      #-}B.pack list)])
 --              ,F (SPS.pack list)
 --              ,F (PS.packString list)
 --              ,F ()])
 
-    , ("unpack",[F ({-# SCC "unpack"    #-}P.unpack fps)])
+    , ("unpack",[F ({-# SCC "unpack"    #-}B.unpack fps)])
 --              ,F (SPS.unpack sps)
 --              ,F (PS.unpackPS ps) ,F ()])
 -}
 
-    , ("compare",[F ({-# SCC "compare"   #-}compare fps fps')])
+    , ("compare",[F ({-# SCC "compare"  #-}compare fps fps')
+                 ,F ({-# SCC "lcompare" #-}compare lps lps')])
 
---               ,F (compare sps sps')
---               ,F (compare ps ps')
---               ,F (compare list list')])
+    , ("index", [F ({-# SCC "index" #-}B.index fps 10000000)
+                 ,F ({-# SCC "lindex" #-}L.index lps 10000000)])
 
-    , ("index", [F ({-# SCC "index" #-}P.index fps 10000)
-                ,F (B.index fps 10000)])
+    , ("map", [F ({-# SCC "map" #-}B.map (+1) fps)
+              ,F (L.map (+1) lps)])
 
---              ,F (SPS.index sps 10000)
---              ,F (PS.indexPS ps 10000)
---              ,F (list !! 10000)])
+    , ("filter", [F ({-# SCC "filter" #-}B.filter (/=101) fps)
+                 ,F (L.filter (/=101) lps)])
 
-    , ("map", [F ({-# SCC "map"       #-}P.map id fps)
-                ,F (B.map id fps)])
---            ,F (SPS.map toUpper sps)
---            ,F (PS.mapPS toUpper ps)
---            ,F (map toUpper list)])
+    , ("filterNotByte", [F ({-# SCC "filterNotChar" #-}B.filterNotByte 101 fps)
+                 ,F (L.filterNotByte 101 lps)])
 
-    , ("filter /= 'f'", [F ({-# SCC "filter"    #-}P.filter (/='f') fps)
-                 ,F (B.filter (/=102) fps)])
+    , ("filterByte", [F ({-# SCC "filterChar"    #-}B.filterByte 103 fps)
+                 ,F (L.filterByte 103 lps)])
 
-    , ("filterNotChar", [F ({-# SCC "filterNotChar"    #-}P.filterNotChar 'f' fps)
-                 ,F (B.filterNotByte 103 fps)])
+    , ("findIndex",[F ({-# SCC "findIndex" #-}B.findIndex (==126) fps)
+                   ,F (L.findIndex (==126) lps)])
 
-    , ("findIndex",[F ({-# SCC "findIndex" #-}P.findIndex (=='~') fps)])
+   ,  ("find",     [F ({-# SCC "find"      #-}B.find (==126) fps)
+                   ,F (L.find (==126) lps)])
 
-   ,  ("find",[F ({-# SCC "find"      #-}P.find (=='~') fps)])
+    , ("foldl", [F ({-# SCC "fold" #-} B.foldl (\a w -> a+1::Int) 0 fps)
+                ,F ({-# SCC "lfold" #-} L.foldl (\a w -> a+1::Int) 0 lps)])
 
---            ,F (find (=='z') list)])
-    , ("foldl", [F ({-# SCC "fold" #-} P.foldl (\a w -> a+1::Int) 0 fps)])
 
-    , ("filterChar", [F ({-# SCC "filterChar"    #-}P.filterChar 'f' fps)
-                 ,F (B.filterByte 103 fps)])
+    , ("take",[F ({-# SCC "take"      #-}B.take 100000 fps)
+                ,F ({-# SCC "ltake" #-} L.take 100000 lps)])
 
-    , ("take",[F ({-# SCC "take"      #-}P.take 100000 fps)])
+    , ("drop",[F ({-# SCC "drop"      #-}B.drop 100000 fps)
+                ,F ({-# SCC "ldrop" #-} L.drop 100000 lps)])
 
---           ,F (SPS.take 100000 sps)
---           ,F (PS.takePS 100000 ps)
---           ,F (take 100000 list)])
 
-    , ("drop",[F ({-# SCC "drop"      #-}P.drop 100000 fps)])
+    , ("takeWhile",[F ({-# SCC "takeWhile" #-}B.takeWhile (/=122) fps)
+                   ,F (L.takeWhile (==122) lps)])
 
---           ,F (SPS.drop 100000 sps)
---           ,F (PS.dropPS 100000 ps)
---           ,F (drop 100000 list)])
+    , ("dropWhile",[F ({-# SCC "dropWhile" #-}B.dropWhile (/=122) fps)
+                 ,F (L.dropWhile (/=122) lps)])
 
-    , ("takeWhile",[F ({-# SCC "takeWhile" #-}P.takeWhile (/='z') fps)
-                 ,F (B.takeWhile (==122) fps)])
 
---                 ,F (SPS.takeWhile (/='z') sps)
---                 ,F (PS.takeWhilePS (/='z') ps)
---                 ,F (takeWhile (/='z') list)])
+    , ("span",[F ({-# SCC "span"      #-}B.span (/=122) fps)
+                 ,F (L.span (/=122) lps)])
 
-    , ("dropWhile",[F ({-# SCC "dropWhile" #-}P.dropWhile (/='z') fps)
-                 ,F (B.dropWhile (==122) fps)])
+    , ("break",[F ({-# SCC "break"     #-}B.break (==122) fps)
+               ,F (L.break (==122) lps)])
 
---                 ,F (SPS.dropWhile (/='z') sps)
---                 ,F (PS.dropWhilePS (/='z') ps)
---                 ,F (dropWhile (/='z') list)])
+    , ("split",[F ({-# SCC "split"     #-}B.split 0x0a fps)
+               ,F (L.split 0x0a lps)])
 
-    , ("span",[F ({-# SCC "span"      #-}P.span (/='z') fps)
-                 ,F (B.span (/=122) fps)])
+    , ("breakByte",[F ({-# SCC "breakChar" #-} B.breakByte 122 fps)
+               ,F (L.breakByte 122 lps)])
 
-    , ("spanEnd",[F ({-# SCC "spanEnd"      #-}P.spanEnd (/='z') fps)
-                 ,F (B.span (/=122) fps)])
+    , ("spanByte",[F ({-# SCC "spanChar" #-} B.spanByte 122 fps)
+               ,F (L.spanByte 122 lps)])
 
---                 ,F (SPS.span (/='z') sps)
---                 ,F (PS.spanPS (/='z') ps)
---                 ,F (span (/='z') list)])
+--  , ("group",[F ({-# SCC "group"   #-}B.group fps)])
+--            ,F (L.group lps)])
 
-    , ("break",[F ({-# SCC "break"     #-}P.break (=='z') fps)
-                 ,F (B.break (==122) fps)])
+--  , ("groupBy",[F ({-# SCC "groupBy"   #-}B.groupBy (==) fps)])
+--            ,F (L.groupBy (==) lps)])
 
---             ,F (SPS.break (=='z') sps)
---             ,F (PS.breakPS (=='z') ps)
---             ,F (break (=='z') list)])
+    , ("reverse",[F ({-# SCC "reverse"   #-}B.reverse fps)
+              ,F (L.reverse lps)])
 
-    , ("lines",[F ({-# SCC "lines"     #-}P.lines fps)])
+    , ("cons",[F ({-# SCC "cons"      #-}B.cons 120 fps)
+              ,F (L.cons 120 lps)])
 
---             ,F (SPS.lines sps)
---             ,F (PS.linesPS ps)
---             ,F (lines list)])
-    , ("split",[F ({-# SCC "split"     #-}P.split '\n' fps)
-                 ,F (B.split 0x0a fps)])
+    , ("snoc",[F ({-# SCC "snoc"      #-}B.snoc fps 120)
+              ,F (L.snoc lps 120)])
 
-    , ("unlines",[F ({-# SCC "unlines"   #-}P.unlines [fps,fps'])])
---                 ,F () {-F (SPS.unlines [sps,sps',sps])-}
---                 ,F () -- (PS.unlinesPS [ps,ps',ps])
---                 ,F (unlines [list,list',list])])
+    , ("empty",[F ({-# SCC "empty"     #-}B.empty)
+              ,F (L.empty)])
 
-    , ("words",[F ({-# SCC "words"     #-}P.words fps)])
---                 ,F (SPS.words sps)
---                 ,F (PS.wordsPS ps)
---                 ,F (words list)])
+    , ("head",[F ({-# SCC "head"      #-}B.head fps)
+              ,F (L.head lps)])
 
-    , ("unwords",[F ({-# SCC "unwords"   #-}P.unwords [fps,fps'])])
---                 ,F () {-(SPS.unwords [sps,sps',sps])-}
---                 ,F () -- PS.unwordsPS [ps,ps',ps])
---                 ,F (unwords [list,list',list])])
-    , ("group",[F ({-# SCC "group"   #-}P.group fps)])
-    , ("groupBy",[F ({-# SCC "groupBy"   #-}P.groupBy (==) fps)])
 
-    , ("reverse",[F ({-# SCC "reverse"   #-}P.reverse fps)])
---                 ,F (SPS.reverse sps)
---                 ,F (PS.reversePS ps)
---                 ,F (reverse list)])
+    , ("tail",[F ({-# SCC "tail"      #-}B.tail fps)
+              ,F (L.tail lps)])
 
---                 ,F (SPS.concat [sps,sps'])
---                 ,F (PS.concatPS [ps,ps'])
---                 ,F (concat [list,list'])])
 
-    , ("cons",[F ({-# SCC "cons"      #-}P.cons 'x' fps)
-                 ,F (B.cons 120 fps)])
---            ,F (SPS.cons 'x' sps)
---            ,F (PS.consPS 'x' ps)
---            ,F ('x' : list)])
+    , ("last",[F ({-# SCC "last"      #-}B.last fps)
+              ,F (L.last lps)])
 
-    , ("snoc",[F ({-# SCC "snoc"      #-}P.snoc fps 'x')
-                 ,F (B.snoc fps 120)])
+    , ("init",[F ({-# SCC "init"      #-}B.init fps)
+              ,F (L.init lps)])
 
-    , ("empty",[F ({-# SCC "empty"     #-}P.empty)])
---            ,F (SPS.nil)
---            ,F (PS.nilPS)
---            ,F []])
+    , ("count",  [F ({-# SCC "count" #-} B.count 10 fps)
+              ,F (L.count 10 lps)])
 
-    , ("head",[F ({-# SCC "head"      #-}P.head fps)
-                 ,F (B.head fps)])
---            ,F (SPS.head sps)
---            ,F (PS.headPS ps)
---            ,F (head list)])
+    , ("isPrefixOf",  [F ({-# SCC "isPrefixOf" #-}
+                            B.isPrefixOf (C.pack "The Project Gutenberg eBook") fps)
+                      ,F (L.isPrefixOf (L.pack [84,104,101,32,80,114,111,106,101
+                                               ,99,116,32,71,117,116,101,110,98
+                                               ,101,114,103,32,101,66,111,111,107]) lps)])
 
-    , ("tail",[F ({-# SCC "tail"      #-}P.tail fps)])
---            ,F (SPS.tail sps)
---            ,F (PS.tailPS ps)
---            ,F (tail list)])
+--  , ("inits",[F ({-# SCC "inits"     #-}B.inits fps)])
 
-    , ("last",[F ({-# SCC "last"      #-}P.last fps)
-                 ,F (B.last fps)])
---            ,F (last list)])
+--  , ("tails",[F ({-# SCC "tails"     #-}B.tails fps)])
 
-    , ("init",[F ({-# SCC "init"      #-}P.init fps)])
---            ,F (init list)])
+--  , ("transpose",[F ({-# SCC "transpose" #-}B.transpose [fps,fps'])])
 
-    , ("inits",[F ({-# SCC "inits"     #-}P.inits fps)])
+    , ("join",[F ({-# SCC "join" #-}B.join (B.pack [1,2,3]) [fps,fps'])
+              ,F (L.join (L.pack [1,2,3]) [lps,lps'])])
 
-    , ("tails",[F ({-# SCC "tails"     #-}P.tails fps)])
---            ,F (tails list)])
+    , ("any",[F ({-# SCC "any"       #-}B.any (==120) fps)
+                 ,F (L.any (==120) lps)])
 
-    , ("intersperse",[F ({-# SCC "intersperse" #-}P.intersperse 'x' fps)
-                 ,F (B.intersperse 120 fps)])
---            ,F (intersperse 'x' list)])
+    , ("all",[F ({-# SCC "all"       #-}B.all (==120) fps)
+                 ,F (L.all (==120) lps)])
 
---  , ("transpose",[F ({-# SCC "transpose" #-}P.transpose [fps,fps'])])
+    , ("maximum",[F ({-# SCC "maximum"   #-}B.maximum fps)
+                 ,F (L.maximum lps)])
 
-    , ("join",[F ({-# SCC "join" #-}P.join (P.pack "xxx") [fps,fps'])])
+    , ("minimum",[F ({-# SCC "minimum"   #-}B.minimum fps)
+                 ,F (L.minimum lps)])
 
-    , ("concatMap",[{-# SCC "concatMap" #-}F ()])
---                ,F (concatMap (\c -> [c]) list)])
+    , ("elem",[F ({-# SCC "elem"      #-}B.elem 122 fps)
+                 ,F (L.elem 122 lps)])
 
-    , ("any",[F ({-# SCC "any"       #-}P.any (=='z') fps)
-                 ,F (B.any (==120) fps)])
---            ,F (any (=='z') list)])
+    , ("notElem",[F ({-# SCC "notElem"      #-}B.notElem 122 fps)
+                 ,F (L.notElem 122 lps)])
 
-    , ("all",[F ({-# SCC "all"       #-}P.all (=='z') fps)
-                 ,F (B.all (==120) fps)])
---            ,F (all (=='z') list)])
+    , ("elemIndex",[F ({-# SCC "elemIndex" #-}B.elemIndex 122 fps)
+                 ,F (L.elemIndex 122 lps)])
 
-    , ("sort",[F ({-# SCC "sort"      #-}P.sort fps)])
+    , ("findIndices",[F ({-# SCC "findIndicies" #-} B.findIndices (==122) fps)
+                 ,F (L.findIndices (==122) lps)])
 
-    , ("maximum",[F ({-# SCC "maximum"   #-}P.maximum fps)
-                 ,F (B.maximum fps)])
---            ,F (maximum list)])
+    , ("elemIndices",[F ({-# SCC "elemIndicies" #-} B.elemIndices 122 fps)
+                 ,F (L.elemIndices 122 lps)])
 
-    , ("minimum",[F ({-# SCC "minimum"   #-}P.minimum fps)
-                 ,F (B.minimum fps)])
---            ,F (minimum list)])
+    , ("splitAt",[F ({-# SCC "splitAt" #-} B.splitAt 10000 fps)
+                 ,F (L.splitAt 10000 lps)])
 
-    , ("replicate",[F ({-# SCC "replicate" #-}P.replicate 10000000 'x')
-                 ,F (B.replicate 10000000 120)])
---            ,F (replicate 1000000 'x')])
-
-    , ("elem",[F ({-# SCC "elem"      #-}P.elem 'z' fps)
-                 ,F (B.elem 122 fps)])
---            ,F (SPS.elem 'z' sps)
---            ,F (PS.elemPS 'z' ps)
- --           ,F (elem 'z' list)])
-    , ("notElem",[F ({-# SCC "notElem"      #-}P.notElem 'z' fps)
-                 ,F (B.notElem 122 fps)])
-
-    , ("elemIndex",[F ({-# SCC "elemIndex" #-}P.elemIndex 'z' fps)
-                 ,F (B.elemIndex 122 fps)])
---                 ,F (elemIndex 'z' list)])
-
-    , ("elemIndexLast",[F ({-# SCC "elemIndexLast" #-}P.elemIndexLast 'z' fps)
-                 ,F (B.elemIndexLast 122 fps)])
-
-    , ("findIndices",[F ({-# SCC "findIndicies" #-} P.findIndices (=='z') fps)
-                 ,F (B.findIndices (==122) fps)])
-
-    , ("elemIndices",[F ({-# SCC "elemIndicies" #-} P.elemIndices 'z' fps)
-                 ,F (B.elemIndices 122 fps)])
---                    ,F (elemIndices 'z' list)])
-
-    , ("splitAt",[F ({-# SCC "splitAt" #-} P.splitAt 10000 fps)])
+    , ("splitWith",[F ({-# SCC "splitWith" #-} B.splitWith (==122) fps)
+                 ,F (L.splitWith (==122) lps)])
 
 ------------------------------------------------------------------------
+--
+-- Char8 or ByteString only
 
-    , ("lineIndices",[F ({-# SCC "lineIndicies" #-} P.lineIndices fps)])
+    , ("intersperse",[F ({-# SCC "intersperse" #-}B.intersperse 120 fps)])
 
-    , ("breakChar",[F ({-# SCC "breakChar" #-} P.breakChar 'z' fps)
-                 ,F (B.breakByte 122 fps)])
+    , ("replicate",[F ({-# SCC "replicate" #-}B.replicate 10000000 120)])
 
-    , ("spanChar",[F ({-# SCC "spanChar" #-} P.spanChar 'z' fps)
-                 ,F (B.spanByte 122 fps)])
+    , ("sort",[F ({-# SCC "sort"      #-}B.sort fps)])
 
-    , ("breakSpace",[F ({-# SCC "breakSpace" #-} P.breakSpace fps)])
+    , ("lineIndices",[F ({-# SCC "lineIndicies" #-} C.lineIndices fps)])
 
-    , ("splitWith",[F ({-# SCC "splitWith" #-} P.splitWith (=='z') fps)
-                 ,F (B.splitWith (==122) fps)])
+    , ("elemIndexLast",[F ({-# SCC "elemIndexLast" #-}B.elemIndexLast 122 fps)])
 
-    , ("dropSpace",[F ({-# SCC "dropSpace" #-} P.dropSpace fps)])
-    , ("dropSpaceEnd",[F ({-# SCC "dropSpaceEnd" #-} P.dropSpaceEnd fps)])
+    , ("breakSpace",[F ({-# SCC "breakSpace" #-} C.breakSpace fps)])
 
-    , ("joinWithChar",[F ({-# SCC "joinWithChar" #-} P.joinWithChar ' ' fps fps')
-                 ,F (B.joinWithByte 32 fps fps')])
+    , ("dropSpace",[F ({-# SCC "dropSpace" #-} C.dropSpace fps)])
+    , ("dropSpaceEnd",[F ({-# SCC "dropSpaceEnd" #-} C.dropSpaceEnd fps)])
 
-    , ("join",[F ({-# SCC "join" #-} P.join (P.packChar ' ') [fps,fps'])
-                 ,F (B.join (B.packByte 120) [fps,fps'])])
+    , ("joinWithByte",[F ({-# SCC "joinWithByte" #-} B.joinWithByte 32 fps fps')])
 
-    , ("zip",[F ({-# SCC "zip" #-} P.zip fps fps)])
-    , ("zipWith",[F ({-# SCC "zipWith" #-} P.zipWith ((. ord) . (+) . ord) fps fps)])
+--  , ("zip",[F ({-# SCC "zip" #-} B.zip fps fps)])
+--  , ("zipWith",[F ({-# SCC "zipWith" #-} B.zipWith (+) fps fps)])
 
-    , ("isSubstringOf",  [F ({-# SCC "isSubstringOf" #-} P.isSubstringOf (P.pack "email news") fps)])
+    , ("isSubstringOf",  [F ({-# SCC "isSubstringOf" #-} B.isSubstringOf (C.pack "email news") fps)])
 
-    , ("isPrefixOf",  [F ({-# SCC "isPrefixOf" #-} P.isPrefixOf (P.pack "The Project Gutenberg eBook") fps)])
-    , ("isSuffixOf",  [F ({-# SCC "isSuffixOf" #-} P.isSuffixOf (P.pack "new eBooks") fps)])
+    , ("isSuffixOf",  [F ({-# SCC "isSuffixOf" #-}
+                            B.isSuffixOf (C.pack "new eBooks") fps)])
+  --                  ,F (L.isSuffixOf (L.pack [110,101,119,32,101,66,111,111,107,115]) lps )])
 
-    , ("count",  [F ({-# SCC "count" #-} P.count '\n' fps)])
+    , ("spanEnd",[F ({-# SCC "spanEnd"      #-}B.spanEnd (/=122) fps)])
+    , ("lines",[F ({-# SCC "lines"     #-}C.lines fps)])
+    , ("unlines",[F ({-# SCC "unlines"   #-}C.unlines [fps,fps'])])
+    , ("words",[F ({-# SCC "words"     #-}C.words fps)])
+    , ("unwords",[F ({-# SCC "unwords"   #-}C.unwords [fps,fps'])])
 
-    , ("addr1",  [F (let s = "my\nstring\nhaskell"# in P.length (P.packAddress s) == 17)])
-    , ("addr2",  [F (let s = "my\nstring\nhaskell"# in P.unsafePackAddress 17 s == P.packAddress s)])
+    , ("addr1",  [F (let s = "my\nstring\nhaskell"# in B.length (C.packAddress s) == 17)])
+    , ("addr2",  [F (let s = "my\nstring\nhaskell"# in C.unsafePackAddress 17 s == C.packAddress s)])
 
     ]
 
@@ -350,8 +282,11 @@ class Forceable a where
     force :: a -> IO Result
     force v = v `seq` return T
 
-instance Forceable P.ByteString where
-    force v = P.length v `seq` return T
+instance Forceable B.ByteString where
+    force v = B.length v `seq` return T
+
+instance Forceable L.ByteString where
+    force v = L.length v `seq` return T
 
 -- instance Forceable SPS.PackedString where
 --     force v = SPS.length v `seq` return T
@@ -370,6 +305,7 @@ instance (Forceable a, Forceable b) => Forceable (a,b) where
     force (a,b) = force a >> force b
 
 instance Forceable Int
+instance Forceable Int64
 instance Forceable Bool
 instance Forceable Char
 instance Forceable Word8
@@ -383,13 +319,21 @@ instance Forceable () where force () = return B
 -- some large strings to play with
 --
 
-fps :: P.ByteString
-fps = unsafePerformIO $ P.readFile dict
+fps :: B.ByteString
+fps = unsafePerformIO $ B.readFile dict
 {-# NOINLINE fps #-}
 
-fps' :: P.ByteString
-fps' = unsafePerformIO $ P.readFile dict'
+fps' :: B.ByteString
+fps' = unsafePerformIO $ B.readFile dict'
 {-# NOINLINE fps' #-}
+
+lps :: L.ByteString
+lps = unsafePerformIO $ L.readFile dict
+{-# NOINLINE lps #-}
+
+lps' :: L.ByteString
+lps' = unsafePerformIO $ L.readFile dict'
+{-# NOINLINE lps' #-}
 
 {-
 sps :: SPS.PackedString
