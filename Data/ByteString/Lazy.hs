@@ -121,8 +121,8 @@ module Data.ByteString.Lazy (
         split,                  -- :: Word8 -> ByteString -> [ByteString]
         splitWith,              -- :: (Word8 -> Bool) -> ByteString -> [ByteString]
         tokens,                 -- :: (Word8 -> Bool) -> ByteString -> [ByteString]
---      group,                  -- :: ByteString -> [ByteString]
---      groupBy,                -- :: (Word8 -> Word8 -> Bool) -> ByteString -> [ByteString]
+        group,                  -- :: ByteString -> [ByteString]
+        groupBy,                -- :: (Word8 -> Word8 -> Bool) -> ByteString -> [ByteString]
 
         -- ** Joining strings
         join,                   -- :: ByteString -> [ByteString] -> ByteString
@@ -785,33 +785,49 @@ tokens f = L.filter (not.null) . splitWith f
 --
 -- It is a special case of 'groupBy', which allows the programmer to
 -- supply their own equality test.
-{-
 group :: ByteString -> [ByteString]
-group = groupBy (==)
+group (LPS [])     = []
+group   (LPS (x:xs)) = group' [] (P.group x) xs
+  where group' :: [P.ByteString] -> [P.ByteString] -> [P.ByteString] -> [ByteString]
+        group' acc@(s':_) ss@(s:_) xs
+          | P.unsafeHead s
+         /= P.unsafeHead s'      = LPS (L.reverse acc) : group' [] ss xs
+        group' acc (s:[]) []     = LPS (L.reverse (s : acc)) : []
+        group' acc (s:[]) (x:xs) = group' (s:acc) (P.group x) xs
+        group' acc (s:ss) xs     = LPS (L.reverse (s : acc)) : group' [] ss xs
+
+{-
+TODO: check if something like this might be faster
+
+group :: ByteString -> [ByteString]
+group xs
+    | null xs   = []
+    | otherwise = ys : group zs
+    where
+        (ys, zs) = spanByte (unsafeHead xs) xs
+-}
 
 -- | The 'groupBy' function is the non-overloaded version of 'group'.
+groupBy :: (Word8 -> Word8 -> Bool) -> ByteString -> [ByteString]
+groupBy k (LPS [])     = []
+groupBy k (LPS (x:xs)) = groupBy' [] (P.groupBy k x) xs
+  where groupBy' :: [P.ByteString] -> [P.ByteString] -> [P.ByteString] -> [ByteString]
+        groupBy' acc@(s':_) ss@(s:_) xs
+          | P.unsafeHead s
+         /= P.unsafeHead s'        = LPS (L.reverse acc) : groupBy' [] ss xs
+        groupBy' acc (s:[]) []     = LPS (L.reverse (s : acc)) : []       
+        groupBy' acc (s:[]) (x:xs) = groupBy' (s:acc) (P.groupBy k x) xs
+        groupBy' acc (s:ss) xs     = LPS (L.reverse (s : acc)) : groupBy' [] ss xs
 
---
--- TODO bug: when chunk size is very small (i.e. 1 byte):
---  
---  group               : Falsifiable after 15 tests:
---      [99,105,98,100,100,98]
---  groupBy             : Falsifiable after 7 tests:
---      <function>
---      [104,101,100,98]
---
+{-
+TODO: check if something like this might be faster
 
 groupBy :: (Word8 -> Word8 -> Bool) -> ByteString -> [ByteString]
-groupBy k (LPS ps) = group' [] ps
-  where group' :: [P.ByteString] -> [P.ByteString] -> [ByteString]
-        group' []     []     = []
-        group' []     (x:xs) = group' (P.groupBy k x) xs
-        group' (s:[]) (x:xs) =
-          case P.group x of
-           (s':ss')
-             | k (P.unsafeHead s') (P.unsafeHead s ) -> LPS [s,s']         : group' ss' xs
-             | otherwise                             -> LPS [s] : LPS [s'] : group' ss' xs
-        group' (s:ss) xs = LPS [s] : group' ss xs
+groupBy k xs
+    | null xs   = []
+    | otherwise = take n xs : groupBy k (drop n xs)
+    where
+        n = 1 + findIndexOrEnd (not . k (head xs)) (tail xs)
 -}
 
 -- | /O(n)/ The 'join' function takes a 'ByteString' and a list of
