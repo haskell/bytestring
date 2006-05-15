@@ -224,7 +224,13 @@ tests =
                  ,F (L.splitAt 10000 lps)])
 
     , ("splitWith",[F ({-# SCC "splitWith" #-} B.splitWith (==122) fps)
-                 ,F (L.splitWith (==122) lps)])
+                   ,F (L.splitWith (==122) lps)])
+
+    , ("group",[F ({-# SCC "group" #-} B.group fps)
+               ,F (L.group lps)])
+
+    , ("groupBy",[F ({-# SCC "groupBy" #-} B.groupBy (==) fps)
+                 ,F (L.groupBy (==) lps)])
 
 ------------------------------------------------------------------------
 --
