@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -cpp -fffi -fglasgow-exts #-}
+{-# OPTIONS_GHC -cpp -fffi -fglasgow-exts -fno-warn-orphans #-}
 --
 -- Module      : ByteString
 -- Copyright   : (c) The University of Glasgow 2001,
