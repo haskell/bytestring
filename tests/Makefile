@@ -14,7 +14,8 @@ GHC_ = $(GHC) -threaded $(PP_OPTS) -fglasgow-exts --make
 
 SRCS= TestFramework.hs UnitTestsMain.hs Tests.hs Quick.hs
 
-all: qc lazy htest runbench sbench sbench2 wc spellcheck letter_frequency linesort fuse inline
+all: qc lazy sbench sbench2 runbench htest wc spellcheck letter_frequency linesort fuse inline
+fast: qc lazy sbench sbench2 
 
 # build executable, linking in all tests
 run-utests: $(SRCS)
