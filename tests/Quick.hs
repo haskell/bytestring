@@ -71,8 +71,6 @@ prop_unsafeIndex xs =
     forAll indices $ \i -> (xs !! i) == P.pack xs `P.unsafeIndex` i
   where indices = choose (0, length xs -1)
 
-prop_mapS f xs = P.map f (P.pack xs) == P.pack (map f xs)
-
 prop_mapfusion f g xs = P.map f (P.map g xs) == P.map (f . g) xs
 
 prop_filter f xs = P.filter f (P.pack xs) == P.pack (filter f xs)
@@ -186,6 +184,7 @@ prop_append3 xs ys = P.append xs ys == pack (unpack xs ++ unpack ys)
 prop_map1 f xs   = P.map f (pack xs)    == pack (map f xs)
 prop_map2 f g xs = P.map f (P.map g xs) == P.map (f . g) xs
 prop_map3 f xs   = map f xs == (unpack . P.map f .  pack) xs
+prop_map' f xs   = P.map' f (P.pack xs) == P.pack (map f xs)
 
 prop_filter1 xs   = (filter (=='X') xs) == (unpack $ P.filter (=='X') (pack xs))
 prop_filter2 p xs = (filter p xs) == (unpack $ P.filter p (pack xs))
@@ -559,7 +558,7 @@ main = do
             ,    ("tail",           mytest prop_tailS)
             ,    ("index",          mytest prop_index)
             ,    ("unsafeIndex",    mytest prop_unsafeIndex)
-            ,    ("map",            mytest prop_mapS)
+            ,    ("map'",           mytest prop_map')
             ,    ("filter",         mytest prop_filter)
             ,    ("elem",           mytest prop_elemS)
             ,    ("take",           mytest prop_takeS)

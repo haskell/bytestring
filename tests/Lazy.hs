@@ -207,6 +207,8 @@ tests =
     ,("init",        mytest prop_init'')
     ,("append",      mytest prop_append'')
     ,("isPrefixOf",  mytest prop_isPrefixOf'')
+    ,("minimum"   ,  mytest prop_minimum'')
+    ,("maximum   ",  mytest prop_maximum'')
     ,("any",         mytest prop_any'')
     ,("all",         mytest prop_all'')
 
@@ -582,5 +584,7 @@ prop_last''         = notNull1 $ compare1 L.last    P.last
 prop_init''         = notNull1 $ compare1 L.init    P.init
 prop_append''       = compare2 L.append             P.append
 prop_isPrefixOf''   = compare2 L.isPrefixOf         P.isPrefixOf
+prop_maximum''      = notNull1 $ compare1 L.maximum P.maximum
+prop_minimum''      = notNull1 $ compare1 L.minimum P.minimum
 prop_any''          = compare2 L.any                P.any
 prop_all''          = compare2 L.all                P.all
