@@ -849,7 +849,8 @@ mapIndexed k (PS ps s l) = create l $ \p -> withForeignPtr ps $ \f ->
 --
 -- This implemenation uses @memset(3)@
 replicate :: Int -> Word8 -> ByteString
-replicate w c = create w $ \ptr -> memset ptr c (fromIntegral w) >> return ()
+replicate w c | w <= 0    = empty
+              | otherwise = create w $ \ptr -> memset ptr c (fromIntegral w) >> return ()
 
 {-
 -- About 5x slower
@@ -883,7 +884,9 @@ replicate w c = inlinePerformIO $ generate w $ \ptr -> go ptr w
 --
 -- > unfoldrN n == take n $ List.unfoldr
 unfoldrN :: Int -> (a -> Maybe (Word8, a)) -> a -> ByteString
-unfoldrN i f w = inlinePerformIO $ generate i $ \p -> go p w 0
+unfoldrN i f w
+    | i <= 0    = empty
+    | otherwise = inlinePerformIO $ generate i $ \p -> go p w 0
     where
         STRICT3(go)
         go q c n | n == i    = return n      -- stop if we reach `i'
