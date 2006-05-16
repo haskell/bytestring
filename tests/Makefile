@@ -35,12 +35,12 @@ lazy::
 
 # attempt to benchmark small strings performance
 sbench: 
-	${GHC} ${PKG} -O -funbox-strict-fields -ddump-simpl-stats Quick.hs -o qc -no-recomp -package QuickCheck
+	${GHC} ${PKG} --make -O -funbox-strict-fields -ddump-simpl-stats Quick.hs -o qc -no-recomp -package QuickCheck
 	/usr/bin/time ./qc
 
 # attempt to benchmark lazy strings performance
 sbench2: 
-	${GHC} ${PKG} -O -funbox-strict-fields -ddump-simpl-stats Lazy.hs -o lqc -no-recomp -package QuickCheck
+	${GHC} ${PKG} --make -O -funbox-strict-fields -ddump-simpl-stats Lazy.hs -o lqc -no-recomp -package QuickCheck
 	/usr/bin/time ./lqc
 
 .PHONY: runbench
