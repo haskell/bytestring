@@ -633,7 +633,7 @@ map' f (PS fp s len) = inlinePerformIO $ withForeignPtr fp $ \a -> do
 -- slower still (idea was to read Word32 chunks, and shift off the
 -- bytes. looks like gcc does the job better.
 
-    w <- peekElemOff (castPtr p1) n :: IO Word32
+    w <- peekByteOff (castPtr p1) n :: IO Word32
     let w1 = f $ fromIntegral (w `shiftR` 24)
         w2 = f $ fromIntegral ((w `shiftR` 16) .&. 0xff)
         w3 = f $ fromIntegral ((w `shiftR` 8)  .&. 0xff)
