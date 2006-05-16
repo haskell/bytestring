@@ -629,6 +629,23 @@ map' f (PS fp s len) = inlinePerformIO $ withForeignPtr fp $ \a -> do
             map_ (n+1) p1 p2
 {-# INLINE map' #-}
 
+{-
+-- slower still (idea was to read Word32 chunks, and shift off the
+-- bytes. looks like gcc does the job better.
+
+    w <- peekElemOff (castPtr p1) n :: IO Word32
+    let w1 = f $ fromIntegral (w `shiftR` 24)
+        w2 = f $ fromIntegral ((w `shiftR` 16) .&. 0xff)
+        w3 = f $ fromIntegral ((w `shiftR` 8)  .&. 0xff)
+        w4 = f $ fromIntegral (w .&. 0xff)
+    pokeByteOff (castPtr p2) n $!  (
+                        ((fromIntegral w1 `shiftL` 24) .|. 
+                         (fromIntegral w2 `shiftL` 16) .|. 
+                         (fromIntegral w3 `shiftL`  8) .|. 
+                         (fromIntegral w4)) :: Word32)
+    map_ (n+4) p1 p2
+-}
+
 -- | /O(n)/ 'reverse' @xs@ efficiently returns the elements of @xs@ in reverse order.
 reverse :: ByteString -> ByteString
 reverse (PS x s l) = create l $ \p -> withForeignPtr x $ \f ->
