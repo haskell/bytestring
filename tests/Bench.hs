@@ -38,7 +38,7 @@ main = do
     sequence_ . map doit $ zip [(1::Int)..] tests
 
 doit (n,(s,ls)) = do
-    printf "%d " n
+    printf "%2d " n
     fn ls
     printf "\t# %-16s\n" (show s)
     hFlush stdout
