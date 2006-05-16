@@ -575,7 +575,7 @@ unfoldrN = error "FIXME: not yet implemented"
 -- | /O(n\/c)/ 'take' @n@, applied to a ByteString @xs@, returns the prefix
 -- of @xs@ of length @n@, or @xs@ itself if @n > 'length' xs@.
 take :: Int -> ByteString -> ByteString
-take n _ | n < 0 = empty     -- FOR NOW.
+take n _ | n < 0 = empty
 take i (LPS ps)  = LPS (take' i ps)
   where take' _ []     = []
         take' 0 _      = []
@@ -587,6 +587,7 @@ take i (LPS ps)  = LPS (take' i ps)
 -- | /O(n\/c)/ 'drop' @n xs@ returns the suffix of @xs@ after the first @n@
 -- elements, or @[]@ if @n > 'length' xs@.
 drop  :: Int -> ByteString -> ByteString
+drop i p | i <= 0 = p
 drop i (LPS ps) = LPS (drop' i ps)
   where drop' _ []     = []
         drop' 0 xs     = xs
@@ -595,9 +596,10 @@ drop i (LPS ps) = LPS (drop' i ps)
             then P.drop n x : xs
             else drop' (n - P.length x) xs
 
--- | /O(1)/ 'splitAt' @n xs@ is equivalent to @('take' n xs, 'drop' n xs)@.
+-- | /O(n\/c)/ 'splitAt' @n xs@ is equivalent to @('take' n xs, 'drop' n xs)@.
 splitAt :: Int -> ByteString -> (ByteString, ByteString)
-splitAt  i (LPS ps) = case splitAt' i ps of (a,b) -> (LPS a, LPS b)
+splitAt i p        | i <= 0 = (empty, p)
+splitAt i (LPS ps) = case splitAt' i ps of (a,b) -> (LPS a, LPS b)
   where splitAt' _ []     = ([], [])
         splitAt' 0 xs     = ([], xs)
         splitAt' n (x:xs) =

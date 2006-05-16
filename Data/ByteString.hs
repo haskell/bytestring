@@ -919,7 +919,7 @@ drop n ps@(PS x s l)
 
 -- | /O(1)/ 'splitAt' @n xs@ is equivalent to @('take' n xs, 'drop' n xs)@.
 splitAt :: Int -> ByteString -> (ByteString, ByteString)
-splitAt  n ps  = (take n ps, drop n ps)
+splitAt n ps  = (take n ps, drop n ps)
 {-# INLINE splitAt #-}
 
 -- | 'takeWhile', applied to a predicate @p@ and a ByteString @xs@,
