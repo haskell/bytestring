@@ -143,12 +143,6 @@ tests =
     , ("spanByte",[F ({-# SCC "spanChar" #-} B.spanByte 122 fps)
                ,F (L.spanByte 122 lps)])
 
---  , ("group",[F ({-# SCC "group"   #-}B.group fps)])
---            ,F (L.group lps)])
-
---  , ("groupBy",[F ({-# SCC "groupBy"   #-}B.groupBy (==) fps)])
---            ,F (L.groupBy (==) lps)])
-
     , ("reverse",[F ({-# SCC "reverse"   #-}B.reverse fps)
               ,F (L.reverse lps)])
 
@@ -183,12 +177,6 @@ tests =
                       ,F (L.isPrefixOf (L.pack [84,104,101,32,80,114,111,106,101
                                                ,99,116,32,71,117,116,101,110,98
                                                ,101,114,103,32,101,66,111,111,107]) lps)])
-
---  , ("inits",[F ({-# SCC "inits"     #-}B.inits fps)])
-
---  , ("tails",[F ({-# SCC "tails"     #-}B.tails fps)])
-
---  , ("transpose",[F ({-# SCC "transpose" #-}B.transpose [fps,fps'])])
 
     , ("join",[F ({-# SCC "join" #-}B.join (B.pack [1,2,3]) [fps,fps'])
               ,F (L.join (L.pack [1,2,3]) [lps,lps'])])
@@ -229,8 +217,14 @@ tests =
     , ("group",[F ({-# SCC "group" #-} B.group fps)
                ,F (L.group lps)])
 
-    , ("groupBy",[F ({-# SCC "groupBy" #-} B.groupBy (==) fps)
-                 ,F (L.groupBy (==) lps)])
+--  , ("groupBy",[F ({-# SCC "groupBy"   #-}B.groupBy (==) fps)])
+--            ,F (L.groupBy (==) lps)])
+
+--  , ("inits",[F ({-# SCC "inits"     #-}B.inits fps)])
+
+--  , ("tails",[F ({-# SCC "tails"     #-}B.tails fps)])
+
+--  , ("transpose",[F ({-# SCC "transpose" #-}B.transpose [fps,fps'])])
 
 ------------------------------------------------------------------------
 --
