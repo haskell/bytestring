@@ -83,7 +83,7 @@ prop_elemS x xs = P.elem x (P.pack xs) == elem x xs
 prop_takeS i xs = P.take i (P.pack xs) == P.pack (take i xs)
 prop_dropS i xs = P.drop i (P.pack xs) == P.pack (drop i xs)
 
-prop_splitAtS i xs = collect (i >= 0 && i < length xs) $
+prop_splitAtS i xs = -- collect (i >= 0 && i < length xs) $
     P.splitAt i (P.pack xs) ==
     let (a,b) = splitAt i xs in (P.pack a, P.pack b)
 
@@ -241,7 +241,7 @@ prop_take xs = (take 10 xs) == (unpack . (P.take 10) . pack) xs
 
 prop_drop xs = (drop 10 xs) == (unpack . (P.drop 10) . pack) xs
 
-prop_splitAt i xs = collect (i >= 0 && i < length xs) $
+prop_splitAt i xs = -- collect (i >= 0 && i < length xs) $
     splitAt i xs ==
     let (x,y) = P.splitAt i (pack xs) in (unpack x, unpack y)
 
@@ -392,13 +392,8 @@ prop_findSubstrings s x l
     naive_findSubstrings :: String -> String -> [Int]
     naive_findSubstrings p s = [x | x <- [0..length s], p `isPrefixOf` drop x s]
 
-prop_replicate1 n c =
-    (n >= 0) ==>
-    unpack (P.replicate n c) == replicate n c
-
-prop_replicate2 n c =
-    (n >= 0) ==>
-    P.replicate n c == P.unfoldrN n (\u -> Just (u,u)) c
+prop_replicate1 n c = unpack (P.replicate n c) == replicate n c
+prop_replicate2 n c = P.replicate n c == P.unfoldrN n (\u -> Just (u,u)) c
 
 prop_replicate3 c = unpack (P.replicate 0 c) == replicate 0 c
 

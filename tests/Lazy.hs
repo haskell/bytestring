@@ -170,47 +170,80 @@ tests =
 -}
 
 ------------------------------------------------------------------------
-    ,("cons",        mytest prop_cons')
-    ,("snoc",        mytest prop_snoc')
-    ,("null",        mytest prop_null')
-    ,("length",      mytest prop_length')
-    ,("head",        mytest prop_head')
-    ,("tail",        mytest prop_tail')
-    ,("last",        mytest prop_last')
-    ,("init",        mytest prop_init')
+
+    ,("all",         mytest prop_all')
+    ,("any",         mytest prop_any')
     ,("append",      mytest prop_append')
-    ,("map",         mytest prop_map')
-    ,("reverse",     mytest prop_reverse')
---  ,("intersperse", mytest prop_intersperse')
-    ,("transpose",   mytest prop_transpose')
-    ,("foldl",       mytest prop_foldl')
-    ,("foldr",       mytest prop_foldr')
-    ,("foldl1",      mytest prop_foldl1')
-    ,("foldr1",      mytest prop_foldr1')
+    ,("compare",     mytest prop_compare')
     ,("concat",      mytest prop_concat')
     ,("concatMap",   mytest prop_concatMap')
-    ,("any",         mytest prop_any')
-    ,("all",         mytest prop_all')
+    ,("cons",        mytest prop_cons')
+    ,("eq",          mytest prop_eq')
+    ,("filter",      mytest prop_filter')
+    ,("foldl",       mytest prop_foldl')
+    ,("foldl1",      mytest prop_foldl1')
+    ,("foldr",       mytest prop_foldr')
+    ,("foldr1",      mytest prop_foldr1')
+    ,("head",        mytest prop_head')
+    ,("init",        mytest prop_init')
+    ,("isPrefixOf",  mytest prop_isPrefixOf')
+    ,("last",        mytest prop_last')
+    ,("length",      mytest prop_length')
+    ,("map",         mytest prop_map')
     ,("maximum",     mytest prop_maximum')
     ,("minimum",     mytest prop_minimum')
-    ,("isPrefixOf",  mytest prop_isPrefixOf')
+    ,("null",        mytest prop_null')
+    ,("reverse",     mytest prop_reverse')
+    ,("snoc",        mytest prop_snoc')
+    ,("tail",        mytest prop_tail')
+    ,("transpose",   mytest prop_transpose')
+    ,("replicate",   mytest prop_replicate')
+    ,("take",        mytest prop_take')
+    ,("drop",        mytest prop_drop')
+    ,("splitAt",     mytest prop_splitAt')
+    ,("takeWhile",   mytest prop_takeWhile')
+    ,("dropWhile",   mytest prop_dropWhile')
+    ,("break",       mytest prop_break')
+    ,("span",        mytest prop_span')
 
 ------------------------------------------------------------------------
 
-    ,("cons",        mytest prop_cons'')
-    ,("snoc",        mytest prop_snoc'')
-    ,("null",        mytest prop_null'')
-    ,("length",      mytest prop_length'')
-    ,("head",        mytest prop_head'')
-    ,("tail",        mytest prop_tail'')
-    ,("last",        mytest prop_last'')
-    ,("init",        mytest prop_init'')
-    ,("append",      mytest prop_append'')
-    ,("isPrefixOf",  mytest prop_isPrefixOf'')
-    ,("minimum"   ,  mytest prop_minimum'')
-    ,("maximum   ",  mytest prop_maximum'')
-    ,("any",         mytest prop_any'')
     ,("all",         mytest prop_all'')
+    ,("any",         mytest prop_any'')
+    ,("append",      mytest prop_append'')
+    ,("compare",     mytest prop_compare'')
+    ,("concat",      mytest prop_concat'')
+    ,("concatMap",   mytest prop_concatMap'')
+    ,("cons",        mytest prop_cons'')
+    ,("eq",          mytest prop_eq'')
+    ,("filter",      mytest prop_filter'')
+    ,("foldl",       mytest prop_foldl'')
+    ,("foldl1",      mytest prop_foldl1'')
+    ,("foldr",       mytest prop_foldr'')
+    ,("foldr1",      mytest prop_foldr1'')
+    ,("head",        mytest prop_head'')
+    ,("init",        mytest prop_init'')
+    ,("isPrefixOf",  mytest prop_isPrefixOf'')
+    ,("last",        mytest prop_last'')
+    ,("length",      mytest prop_length'')
+    ,("map",         mytest prop_map'')
+    ,("maximum   ",  mytest prop_maximum'')
+    ,("minimum"   ,  mytest prop_minimum'')
+    ,("null",        mytest prop_null'')
+    ,("reverse",     mytest prop_reverse'')
+    ,("snoc",        mytest prop_snoc'')
+    ,("tail",        mytest prop_tail'')
+    ,("transpose",   mytest prop_transpose'')
+    ,("replicate",   mytest prop_replicate'')
+    ,("take",        mytest prop_take'')
+    ,("drop",        mytest prop_drop'')
+    ,("splitAt",     mytest prop_splitAt'')
+    ,("takeWhile",   mytest prop_takeWhile'')
+    ,("dropWhile",   mytest prop_dropWhile'')
+    ,("break",       mytest prop_break'')
+    ,("span",        mytest prop_span'')
+    ,("split",       mytest prop_split'')
+    ,("count",       mytest prop_count'')
 
     ]
 
@@ -495,6 +528,7 @@ prop_elems xs = L.elems == map pack (elems (unpack xs))
 -}
 
 ------------------------------------------------------------------------
+-- check the correspondence between Lists and Lazy.
 
 class ModeledBy a b where
   abs :: a -> b  -- get the abstract vale from a concrete value
@@ -505,6 +539,9 @@ instance ModeledBy ByteString [Word8] where
 instance ModeledBy a b => ModeledBy [a] [b] where
   abs = map abs
 
+instance ModeledBy a b => ModeledBy (a,a) (b,b) where
+  abs = \(a,b) -> (abs a, abs b) -- yeah?
+
 instance ModeledBy a b => ModeledBy (c -> a) (c -> b) where
   abs = (abs.)
 
@@ -512,6 +549,7 @@ instance ModeledBy Bool  Bool  where abs = id
 instance ModeledBy Int   Int   where abs = id
 instance ModeledBy Int64 Int64 where abs = id
 instance ModeledBy Word8 Word8 where abs = id
+instance ModeledBy Ordering Ordering  where abs = id
 
 compare1 f f' a     = abs (f a)     == f' (abs a)
 compare2 f f' a b   = abs (f a b)   == f' (abs a) (abs b)
@@ -521,51 +559,55 @@ notNull1 f = \x   -> (not . L.null $ x) ==> f x
 notNull2 f = \x y -> (not . L.null $ y) ==> f x y
 
 -- fix polymorphic args so we can QC them.
-type Any = Int
+type X = Int
+type W = Word8
 
 ------------------------------------------------------------------------
 
+prop_eq'         = compare2 ((==) :: ByteString -> ByteString -> Bool)
+                            ((==) :: [W]    -> [W]    -> Bool)
+prop_compare'    = compare2 ((compare) :: ByteString -> ByteString -> Ordering)
+                            ((compare) :: [W]    -> [W]    -> Ordering)
+prop_foldl'      = compare3 (L.foldl :: (X -> W -> X) -> X -> L.ByteString -> X)
+                            (  foldl :: (X -> W -> X) -> X -> [W]      -> X)
+prop_foldr'      = compare3 (L.foldr :: (W -> X -> X) -> X -> L.ByteString -> X)
+                            (  foldr :: (W -> X -> X) -> X -> [W]      -> X)
 
-prop_cons'   = compare2 L.cons   ((:) :: Word8 -> [Word8] -> [Word8])
-prop_snoc'   = compare2 L.snoc   ((\xs x -> xs ++ [x]) :: [Word8] -> Word8 -> [Word8])
-prop_null'   = compare1 L.null   (null :: [Word8] -> Bool)
-prop_length' = compare1 L.length (fromIntegral . length :: [Word8] -> Int64)
+prop_all'        = compare2 L.all               (all       :: (W -> Bool) -> [W] -> Bool)
+prop_any'        = compare2 L.any               (any       :: (W -> Bool) -> [W] -> Bool)
+prop_append'     = compare2 L.append            ((++)      :: [W] -> [W] -> [W])
+prop_break'      = compare2 L.break             (break     :: (W -> Bool) -> [W] -> ([W],[W]))
+prop_concat'     = compare1 L.concat            (concat    :: [[W]] -> [W])
+prop_concatMap'  = compare2 L.concatMap         (concatMap :: (W -> [W]) -> [W] -> [W])
+prop_cons'       = compare2 L.cons              ((:)       :: W -> [W] -> [W])
+prop_drop'       = compare2 L.drop              (drop      :: Int -> [W] -> [W])
+prop_dropWhile'  = compare2 L.dropWhile         (dropWhile :: (W -> Bool) -> [W] -> [W])
+prop_filter'     = compare2 L.filter            (filter    :: (W -> Bool ) -> [W] -> [W])
+prop_isPrefixOf' = compare2 L.isPrefixOf        (isPrefixOf:: [W] -> [W] -> Bool)
+prop_length'     = compare1 L.length            (fromIntegral . length :: [W] -> Int64)
+prop_map'        = compare2 L.map               (map       :: (W -> W) -> [W] -> [W])
+prop_null'       = compare1 L.null              (null      :: [W] -> Bool)
+prop_replicate'  = compare2 L.replicate         (replicate :: Int -> W -> [W])
+prop_reverse'    = compare1 L.reverse           (reverse   :: [W] -> [W])
+prop_snoc'       = compare2 L.snoc              ((\xs x -> xs ++ [x]) :: [W] -> W -> [W])
+prop_span'       = compare2 L.span              (span      :: (W -> Bool) -> [W] -> ([W],[W]))
+prop_splitAt'    = compare2 L.splitAt           (splitAt   :: Int -> [W] -> ([W],[W]))
+prop_take'       = compare2 L.take              (take      :: Int -> [W] -> [W])
+prop_takeWhile'  = compare2 L.takeWhile         (takeWhile :: (W -> Bool) -> [W] -> [W])
+prop_transpose'  = compare1 L.transpose         (transpose :: [[W]] -> [[W]])
+prop_foldl1'     = notNull2 $ compare2 L.foldl1 (foldl1    :: (W -> W -> W) -> [W] -> W)
+prop_foldr1'     = notNull2 $ compare2 L.foldr1 (foldr1    :: (W -> W -> W) -> [W] -> W)
+prop_head'       = notNull1 $ compare1 L.head   (head      :: [W] -> W)
+prop_init'       = notNull1 $ compare1 L.init   (init      :: [W] -> [W])
+prop_last'       = notNull1 $ compare1 L.last   (last      :: [W] -> W)
+prop_maximum'    = notNull1 $ compare1 L.maximum(maximum   :: [W] -> W)
+prop_minimum'    = notNull1 $ compare1 L.minimum(minimum   :: [W] -> W)
+prop_tail'       = notNull1 $ compare1 L.tail   (tail      :: [W] -> [W])
 
-prop_head'   = notNull1 $ compare1 L.head   (head :: [Word8] -> Word8)
-prop_tail'   = notNull1 $ compare1 L.tail  (tail :: [Word8] -> [Word8])
-prop_last'   = notNull1 $ compare1 L.last   (last :: [Word8] -> Word8)
-prop_init'   = notNull1 $ compare1 L.init   (init :: [Word8] -> [Word8])
-
-prop_append' = compare2 L.append ((++) :: [Word8] -> [Word8] -> [Word8])
-
-prop_map'         = compare2 L.map         (map         :: (Word8 -> Word8) -> [Word8] -> [Word8])
-prop_reverse'     = compare1 L.reverse     (reverse     :: [Word8] -> [Word8])
--- prop_intersperse' = compare2 L.intersperse (intersperse :: Word8 -> [Word8] -> [Word8])
-prop_transpose'   = compare1 L.transpose   (transpose   :: [[Word8]] -> [[Word8]])
-
-prop_foldl'  = compare3 (L.foldl :: (Any -> Word8 -> Any) -> Any -> L.ByteString -> Any)
-                        (  foldl :: (Any -> Word8 -> Any) -> Any -> [Word8]      -> Any)
-prop_foldr'  = compare3 (L.foldr :: (Word8 -> Any -> Any) -> Any -> L.ByteString -> Any)
-                        (  foldr :: (Word8 -> Any -> Any) -> Any -> [Word8]      -> Any)
-
-prop_foldl1' = notNull2 $ compare2
-    L.foldl1 (foldl1 :: (Word8 -> Word8 -> Word8) -> [Word8] -> Word8)
-
-prop_foldr1' = notNull2 $ compare2
-    L.foldr1 (foldr1 :: (Word8 -> Word8 -> Word8) -> [Word8] -> Word8)
-
-prop_concat'     = compare1 L.concat    (concat    :: [[Word8]] -> [Word8])
-prop_concatMap'  = compare2 L.concatMap (concatMap :: (Word8 -> [Word8]) -> [Word8] -> [Word8])
-prop_any'        = compare2 L.any       (any       :: (Word8 -> Bool) -> [Word8] -> Bool)
-prop_all'        = compare2 L.all       (all       :: (Word8 -> Bool) -> [Word8] -> Bool)
-prop_maximum'    = notNull1 $ compare1 L.maximum   (maximum   :: [Word8] -> Word8)
-prop_minimum'    = notNull1 $ compare1 L.minimum   (minimum   :: [Word8] -> Word8)
-prop_isPrefixOf' = compare2 L.isPrefixOf (isPrefixOf :: [Word8] -> [Word8] -> Bool)
-
---prop_mapIndexed = compare2 L.mapIndexed mapIndexed
+-- prop_intersperse' = compare2 L.intersperse (intersperse :: W -> [W] -> [W])
 
 ------------------------------------------------------------------------
--- TODO now check correspondance to Data.ByteString, using 'abstr'
+-- now check correspondance to Data.ByteString, using 'abstr'
 
 instance ModeledBy ByteString P.ByteString  where
   abs = abstr . checkInvariant
@@ -574,17 +616,45 @@ abstr :: ByteString -> P.ByteString
 abstr (LPS []) = P.empty
 abstr (LPS xs) = P.concat xs
 
-prop_cons''         = compare2 L.cons               P.cons
-prop_snoc''         = compare2 L.snoc               P.snoc
-prop_null''         = compare1 L.null               P.null
-prop_length''       = compare1 L.length (fromIntegral . P.length :: P.ByteString -> Int64)
+prop_eq''           = compare2 ((==) :: ByteString   -> ByteString   -> Bool)
+                               ((==) :: P.ByteString -> P.ByteString -> Bool)
+prop_compare''      = compare2 ((compare) :: ByteString -> ByteString -> Ordering)
+                               ((compare) :: P.ByteString -> P.ByteString -> Ordering)
+prop_foldl''        = compare3 (L.foldl :: (X -> W -> X) -> X -> L.ByteString -> X)
+                               (P.foldl :: (X -> W -> X) -> X -> P.ByteString -> X)
+prop_foldr''        = compare3 (L.foldr :: (W -> X -> X) -> X -> L.ByteString -> X)
+                               (P.foldr :: (W -> X -> X) -> X -> P.ByteString -> X)
+
+prop_all''          = compare2 L.all        P.all
+prop_any''          = compare2 L.any        P.any
+prop_append''       = compare2 L.append     P.append
+prop_break''        = compare2 L.break      P.break
+prop_concat''       = compare1 L.concat     P.concat
+prop_concatMap''    = compare2 L.concatMap  P.concatMap
+prop_cons''         = compare2 L.cons       P.cons
+prop_count''        = compare2 L.count      P.count
+prop_drop''         = compare2 L.drop       P.drop
+prop_dropWhile''    = compare2 L.dropWhile  P.dropWhile
+prop_filter''       = compare2 L.filter     P.filter
+prop_isPrefixOf''   = compare2 L.isPrefixOf P.isPrefixOf
+prop_length''       = compare1 L.length     (fromIntegral . P.length :: P.ByteString -> Int64)
+prop_map''          = compare2 L.map        P.map
+prop_null''         = compare1 L.null       P.null
+prop_replicate''    = compare2 L.replicate  P.replicate
+prop_reverse''      = compare1 L.reverse    P.reverse
+prop_snoc''         = compare2 L.snoc       P.snoc
+prop_span''         = compare2 L.span       P.span
+prop_split''        = compare2 L.split      P.split
+prop_splitAt''      = compare2 L.splitAt    P.splitAt
+prop_take''         = compare2 L.take       P.take
+prop_takeWhile''    = compare2 L.takeWhile  P.takeWhile
+prop_transpose''    = compare1 L.transpose  P.transpose
+
+prop_foldl1''       = notNull2 $ compare2 L.foldl1 P.foldl1
+prop_foldr1''       = notNull2 $ compare2 L.foldr1 P.foldr1
 prop_head''         = notNull1 $ compare1 L.head    P.head
-prop_tail''         = notNull1 $ compare1 L.tail    P.tail
-prop_last''         = notNull1 $ compare1 L.last    P.last
 prop_init''         = notNull1 $ compare1 L.init    P.init
-prop_append''       = compare2 L.append             P.append
-prop_isPrefixOf''   = compare2 L.isPrefixOf         P.isPrefixOf
+prop_last''         = notNull1 $ compare1 L.last    P.last
 prop_maximum''      = notNull1 $ compare1 L.maximum P.maximum
 prop_minimum''      = notNull1 $ compare1 L.minimum P.minimum
-prop_any''          = compare2 L.any                P.any
-prop_all''          = compare2 L.all                P.all
+prop_tail''         = notNull1 $ compare1 L.tail    P.tail
