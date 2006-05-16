@@ -786,7 +786,7 @@ tokens f = L.filter (not.null) . splitWith f
 -- supply their own equality test.
 group :: ByteString -> [ByteString]
 group (LPS [])     = []
-group   (LPS (x:xs)) = group' [] (P.group x) xs
+group (LPS (a:as)) = group' [] (P.group a) as
   where group' :: [P.ByteString] -> [P.ByteString] -> [P.ByteString] -> [ByteString]
         group' acc@(s':_) ss@(s:_) xs
           | P.unsafeHead s
