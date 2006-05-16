@@ -809,8 +809,8 @@ group xs
 -- | The 'groupBy' function is the non-overloaded version of 'group'.
 --
 groupBy :: (Word8 -> Word8 -> Bool) -> ByteString -> [ByteString]
-groupBy k (LPS [])     = []
-groupBy k (LPS (x:xs)) = groupBy' [] (P.groupBy k x) xs
+groupBy _ (LPS [])     = []
+groupBy k (LPS (a:as)) = groupBy' [] (P.groupBy k a) as
   where groupBy' :: [P.ByteString] -> [P.ByteString] -> [P.ByteString] -> [ByteString]
         groupBy' acc@(s':_) ss@(s:_) xs
           | not (P.unsafeHead s

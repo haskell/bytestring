@@ -217,8 +217,8 @@ tests =
     , ("group",[F ({-# SCC "group" #-} B.group fps)
                ,F (L.group lps)])
 
---  , ("groupBy",[F ({-# SCC "groupBy"   #-}B.groupBy (==) fps)])
---            ,F (L.groupBy (==) lps)])
+    , ("groupBy",[F ({-# SCC "groupBy" #-} B.groupBy (==) fps)
+                 ,F (L.groupBy (==) lps)])
 
 --  , ("inits",[F ({-# SCC "inits"     #-}B.inits fps)])
 
