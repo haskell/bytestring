@@ -122,7 +122,7 @@ module Data.ByteString.Lazy (
         splitWith,              -- :: (Word8 -> Bool) -> ByteString -> [ByteString]
         tokens,                 -- :: (Word8 -> Bool) -> ByteString -> [ByteString]
         group,                  -- :: ByteString -> [ByteString]
---      groupBy,                -- :: (Word8 -> Word8 -> Bool) -> ByteString -> [ByteString]
+        groupBy,                -- :: (Word8 -> Word8 -> Bool) -> ByteString -> [ByteString]
 
         -- ** Joining strings
         join,                   -- :: ByteString -> [ByteString] -> ByteString
@@ -807,26 +807,17 @@ group xs
 -}
 
 -- | The 'groupBy' function is the non-overloaded version of 'group'.
-{-
 --
---
---      Prelude Data.ByteString.Lazy> groupBy (/=) (pack [104,103])
---      [LPS ["h"],LPS ["g"]]
---      Prelude Data.ByteString.Lazy> List.groupBy (/=) [104,103] 
---      [[104,103]]
---
-
 groupBy :: (Word8 -> Word8 -> Bool) -> ByteString -> [ByteString]
 groupBy k (LPS [])     = []
 groupBy k (LPS (x:xs)) = groupBy' [] (P.groupBy k x) xs
   where groupBy' :: [P.ByteString] -> [P.ByteString] -> [P.ByteString] -> [ByteString]
         groupBy' acc@(s':_) ss@(s:_) xs
-          | P.unsafeHead s
-         /= P.unsafeHead s'        = LPS (L.reverse acc) : groupBy' [] ss xs
+          | not (P.unsafeHead s
+             `k` P.unsafeHead s')  = LPS (L.reverse acc) : groupBy' [] ss xs
         groupBy' acc (s:[]) []     = LPS (L.reverse (s : acc)) : []       
         groupBy' acc (s:[]) (x:xs) = groupBy' (s:acc) (P.groupBy k x) xs
         groupBy' acc (s:ss) xs     = LPS (L.reverse (s : acc)) : groupBy' [] ss xs
--}
 
 {-
 TODO: check if something like this might be faster

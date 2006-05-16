@@ -143,7 +143,7 @@ tests =
     ,("join.split/id",      mytest prop_joinsplit)
     ,("join/joinByte",      mytest prop_joinjoinByte)
     ,("group",              mytest prop_group)
---  ,("groupBy",            mytest prop_groupBy)
+    ,("groupBy",            mytest prop_groupBy)
     ,("index",              mytest prop_index)
     ,("elemIndex",          mytest prop_elemIndex)
     ,("elemIndices",        mytest prop_elemIndices)
@@ -428,7 +428,7 @@ prop_joinsplit c xs = L.join (pack [c]) (L.split c xs) == id xs
 ------------------------------------------------------------------------
 
 prop_group xs       = group xs == (map unpack . L.group . pack) xs
--- prop_groupBy  f xs  = groupBy f xs == (map unpack . L.groupBy f . pack) xs
+prop_groupBy  f xs  = groupBy f xs == (map unpack . L.groupBy f . pack) xs
 
 ------------------------------------------------------------------------
 
