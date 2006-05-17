@@ -349,15 +349,15 @@ type W = Word8
 -- ByteString.Lazy <=> List
 
 prop_eqBL         = compare2 ((==) :: ByteString -> ByteString -> Bool)
-                            ((==) :: [W]    -> [W]    -> Bool)
+                             ((==) :: [W]    -> [W]    -> Bool)
 prop_compareBL    = compare2 ((compare) :: ByteString -> ByteString -> Ordering)
-                            ((compare) :: [W]    -> [W]    -> Ordering)
-prop_foldlBL      = compare3 (L.foldl :: (X -> W -> X) -> X -> L.ByteString -> X)
-                            (  foldl :: (X -> W -> X) -> X -> [W]      -> X)
+                             ((compare) :: [W]    -> [W]    -> Ordering)
+prop_foldlBL      = compare3 (L.foldl  :: (X -> W -> X) -> X -> L.ByteString -> X)
+                             (  foldl  :: (X -> W -> X) -> X -> [W]          -> X)
 prop_foldlBL'     = compare3 (L.foldl' :: (X -> W -> X) -> X -> L.ByteString -> X)
-                            (   foldl' :: (X -> W -> X) -> X -> [W]      -> X)
-prop_foldrBL      = compare3 (L.foldr :: (W -> X -> X) -> X -> L.ByteString -> X)
-                            (  foldr :: (W -> X -> X) -> X -> [W]      -> X)
+                             (  foldl' :: (X -> W -> X) -> X -> [W]          -> X)
+prop_foldrBL      = compare3 (L.foldr  :: (W -> X -> X) -> X -> L.ByteString -> X)
+                             (  foldr  :: (W -> X -> X) -> X -> [W]          -> X)
 prop_allBL        = compare2 L.all               (all       :: (W -> Bool) -> [W] -> Bool)
 prop_anyBL        = compare2 L.any               (any       :: (W -> Bool) -> [W] -> Bool)
 prop_appendBL     = compare2 L.append            ((++)      :: [W] -> [W] -> [W])
@@ -411,12 +411,12 @@ prop_eqBP           = compare2 ((==) :: ByteString   -> ByteString   -> Bool)
                                ((==) :: P.ByteString -> P.ByteString -> Bool)
 prop_compareBP      = compare2 ((compare) :: ByteString -> ByteString -> Ordering)
                                ((compare) :: P.ByteString -> P.ByteString -> Ordering)
-prop_foldlBP        = compare3 (L.foldl :: (X -> W -> X) -> X -> L.ByteString -> X)
-                               (P.foldl :: (X -> W -> X) -> X -> P.ByteString -> X)
+prop_foldlBP        = compare3 (L.foldl  :: (X -> W -> X) -> X -> L.ByteString -> X)
+                               (P.foldl  :: (X -> W -> X) -> X -> P.ByteString -> X)
 prop_foldlBP'       = compare3 (L.foldl' :: (X -> W -> X) -> X -> L.ByteString -> X)
                                (P.foldl' :: (X -> W -> X) -> X -> P.ByteString -> X)
-prop_foldrBP        = compare3 (L.foldr :: (W -> X -> X) -> X -> L.ByteString -> X)
-                               (P.foldr :: (W -> X -> X) -> X -> P.ByteString -> X)
+prop_foldrBP        = compare3 (L.foldr  :: (W -> X -> X) -> X -> L.ByteString -> X)
+                               (P.foldr  :: (W -> X -> X) -> X -> P.ByteString -> X)
 
 prop_allBP          = compare2 L.all        P.all
 prop_anyBP          = compare2 L.any        P.any
@@ -473,12 +473,12 @@ prop_eqPL         = compare2 ((==) :: P -> P -> Bool)
                              ((==) :: [W]    -> [W]    -> Bool)
 prop_comparePL    = compare2 ((compare) :: P -> P -> Ordering)
                              ((compare) :: [W]    -> [W]    -> Ordering)
-prop_foldlPL      = compare3 (P.foldl :: (X -> W -> X) -> X -> P -> X)
-                             (  foldl :: (X -> W -> X) -> X -> [W]      -> X)
-prop_foldlPL'     = compare3 (P.foldl' :: (X -> W -> X) -> X -> P -> X)
+prop_foldlPL      = compare3 (P.foldl  :: (X -> W -> X) -> X -> P        -> X)
+                             (  foldl  :: (X -> W -> X) -> X -> [W]      -> X)
+prop_foldlPL'     = compare3 (P.foldl' :: (X -> W -> X) -> X -> P        -> X)
                              (  foldl' :: (X -> W -> X) -> X -> [W]      -> X)
-prop_foldrPL      = compare3 (P.foldr :: (W -> X -> X) -> X -> P -> X)
-                             (  foldr :: (W -> X -> X) -> X -> [W]      -> X)
+prop_foldrPL      = compare3 (P.foldr  :: (W -> X -> X) -> X -> P        -> X)
+                             (  foldr  :: (W -> X -> X) -> X -> [W]      -> X)
 prop_allPL        = compare2 P.all               (all       :: (W -> Bool) -> [W] -> Bool)
 prop_anyPL        = compare2 P.any               (any       :: (W -> Bool) -> [W] -> Bool)
 prop_appendPL     = compare2 P.append            ((++)      :: [W] -> [W] -> [W])
@@ -548,15 +548,15 @@ prop_eq3 xs ys   = (xs == ys) == (unpack xs == unpack ys)
 
 ------------------------------------------------------------------------
 
-prop_compare1 xs  = (pack xs         `compare` pack xs) == EQ
+prop_compare1 xs   = (pack xs        `compare` pack xs) == EQ
 prop_compare2 xs c = (pack (xs++[c]) `compare` pack xs) == GT
 prop_compare3 xs c = (pack xs `compare` pack (xs++[c])) == LT
 
-prop_compare4 xs  = (not (null xs)) ==> (pack xs  `compare` L.empty) == GT
-prop_compare5 xs  = (not (null xs)) ==> (L.empty `compare` pack xs) == LT
-prop_compare6 xs ys= (not (null ys)) ==> (pack (xs++ys)  `compare` pack xs) == GT
+prop_compare4 xs    = (not (null xs)) ==> (pack xs  `compare` L.empty) == GT
+prop_compare5 xs    = (not (null xs)) ==> (L.empty `compare` pack xs) == LT
+prop_compare6 xs ys = (not (null ys)) ==> (pack (xs++ys)  `compare` pack xs) == GT
 
-prop_compare7 x  y = x `compare` y == (L.packByte x `compare` L.packByte y)
+prop_compare7 x  y  = x  `compare` y  == (L.packByte x `compare` L.packByte y)
 prop_compare8 xs ys = xs `compare` ys == (L.pack xs `compare` L.pack ys)
 
 ------------------------------------------------------------------------
@@ -601,11 +601,11 @@ prop_tail1 xs = (not (null xs)) ==> tail xs   == (unpack . L.tail . pack) xs
 
 ------------------------------------------------------------------------
 
-prop_last xs     = (not (null xs)) ==> last xs    == (L.last . pack) xs
+prop_last xs  = (not (null xs)) ==> last xs    == (L.last . pack) xs
 
-prop_init xs     =
+prop_init xs  =
     (not (null xs)) ==>
-    init xs    == (unpack . L.init . pack) xs
+    init xs   == (unpack . L.init . pack) xs
 
 ------------------------------------------------------------------------
 
