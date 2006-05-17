@@ -781,8 +781,8 @@ group (LPS [])     = []
 group (LPS (a:as)) = group' [] (P.group a) as
   where group' :: [P.ByteString] -> [P.ByteString] -> [P.ByteString] -> [ByteString]
         group' acc@(s':_) ss@(s:_) xs
-          | P.unsafeHead s
-         /= P.unsafeHead s'      = LPS (L.reverse acc) : group' [] ss xs
+          | P.unsafeHead s'
+         /= P.unsafeHead s       = LPS (L.reverse acc) : group' [] ss xs
         group' acc (s:[]) []     = LPS (L.reverse (s : acc)) : []
         group' acc (s:[]) (x:xs) = group' (s:acc) (P.group x) xs
         group' acc (s:ss) xs     = LPS (L.reverse (s : acc)) : group' [] ss xs
@@ -800,18 +800,16 @@ group xs
 
 -- | The 'groupBy' function is the non-overloaded version of 'group'.
 --
--- TODO, still wrong when chunksize == 1
---
 groupBy :: (Word8 -> Word8 -> Bool) -> ByteString -> [ByteString]
 groupBy _ (LPS [])     = []
-groupBy k (LPS (a:as)) = groupBy' [] (P.groupBy k a) as
-  where groupBy' :: [P.ByteString] -> [P.ByteString] -> [P.ByteString] -> [ByteString]
-        groupBy' acc@(s':_) ss@(s:_) xs
-          | not (P.unsafeHead s
-             `k` P.unsafeHead s')  = LPS (L.reverse acc) : groupBy' [] ss xs
-        groupBy' acc (s:[]) []     = LPS (L.reverse (s : acc)) : []
-        groupBy' acc (s:[]) (x:xs) = groupBy' (s:acc) (P.groupBy k x) xs
-        groupBy' acc (s:ss) xs     = LPS (L.reverse (s : acc)) : groupBy' [] ss xs
+groupBy k (LPS (a:as)) = groupBy' [] 0 (P.groupBy k a) as
+  where groupBy' :: [P.ByteString] -> Word8 -> [P.ByteString] -> [P.ByteString] -> [ByteString]
+        groupBy' acc@(_:_) c ss@(s:_) xs
+          | not (c `k` P.unsafeHead s) = LPS (L.reverse acc) : groupBy' [] 0 ss xs
+        groupBy' acc _ (s:[]) []       = LPS (L.reverse (s : acc)) : []
+        groupBy' []  _ (s:[]) (x:xs)   = groupBy' (s:[]) (P.unsafeHead s) (P.groupBy k x) xs
+        groupBy' acc c (s:[]) (x:xs)   = groupBy' (s:acc) c (P.groupBy k x) xs
+        groupBy' acc _ (s:ss) xs       = LPS (L.reverse (s : acc)) : groupBy' [] 0 ss xs
 
 {-
 TODO: check if something like this might be faster
