@@ -258,7 +258,7 @@ import Data.Array               (listArray)
 import qualified Data.Array as Array ((!))
 
 -- Control.Exception.bracket not available in yhc or nhc
-import Control.Exception        (bracket)
+import Control.Exception        (bracket, assert)
 import Control.Monad            (when)
 
 import Foreign.C.String         (CString, CStringLen)
@@ -919,24 +919,27 @@ drop n ps@(PS x s l)
 
 -- | /O(1)/ 'splitAt' @n xs@ is equivalent to @('take' n xs, 'drop' n xs)@.
 splitAt :: Int -> ByteString -> (ByteString, ByteString)
-splitAt n ps  = (take n ps, drop n ps)
+splitAt n ps@(PS x s l)
+    | n <= 0    = (ps, empty)
+    | n >  l    = (empty, ps)
+    | otherwise = (PS x s n, PS x (s+n) (l-n))
 {-# INLINE splitAt #-}
 
 -- | 'takeWhile', applied to a predicate @p@ and a ByteString @xs@,
 -- returns the longest prefix (possibly empty) of @xs@ of elements that
 -- satisfy @p@.
 takeWhile :: (Word8 -> Bool) -> ByteString -> ByteString
-takeWhile f ps = take (findIndexOrEnd (not . f) ps) ps
+takeWhile f ps = unsafeTake (findIndexOrEnd (not . f) ps) ps
 {-# INLINE takeWhile #-}
 
 -- | 'dropWhile' @p xs@ returns the suffix remaining after 'takeWhile' @p xs@.
 dropWhile :: (Word8 -> Bool) -> ByteString -> ByteString
-dropWhile f ps = drop (findIndexOrEnd (not . f) ps) ps
+dropWhile f ps = unsafeDrop (findIndexOrEnd (not . f) ps) ps
 {-# INLINE dropWhile #-}
 
 -- | 'break' @p@ is equivalent to @'span' ('not' . p)@.
 break :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
-break p ps = case findIndexOrEnd p ps of n -> (take n ps, drop n ps)
+break p ps = case findIndexOrEnd p ps of n -> (unsafeTake n ps, unsafeDrop n ps)
 {-# INLINE break #-}
 
 -- | 'breakByte' breaks its ByteString argument at the first occurence
@@ -948,7 +951,7 @@ break p ps = case findIndexOrEnd p ps of n -> (take n ps, drop n ps)
 breakByte :: Word8 -> ByteString -> (ByteString, ByteString)
 breakByte c p = case elemIndex c p of
     Nothing -> (p,empty)
-    Just n  -> (take n p, drop n p)
+    Just n  -> (unsafeTake n p, unsafeDrop n p)
 {-# INLINE breakByte #-}
 
 -- | 'spanByte' breaks its ByteString argument at the first
@@ -965,7 +968,7 @@ spanByte c ps@(PS x s l) = inlinePerformIO $ withForeignPtr x $ \p ->
     go p i | i >= l    = return (ps, empty)
            | otherwise = do c' <- peekByteOff p i
                             if c /= c'
-                                then return (take i ps, drop i ps)
+                                then return (unsafeTake i ps, unsafeDrop i ps)
                                 else go p (i+1)
 {-# INLINE spanByte #-}
 
@@ -983,7 +986,7 @@ spanByte c ps@(PS x s l) = inlinePerformIO $ withForeignPtr x $ \p ->
 breakFirst :: Word8 -> ByteString -> Maybe (ByteString,ByteString)
 breakFirst c p = case elemIndex c p of
    Nothing -> Nothing
-   Just n -> Just (take n p, drop (n+1) p)
+   Just n -> Just (unsafeTake n p, unsafeDrop (n+1) p)
 {-# INLINE breakFirst #-}
 
 -- | /O(n)/ 'breakLast' behaves like breakFirst, but from the end of the
@@ -1000,7 +1003,7 @@ breakFirst c p = case elemIndex c p of
 breakLast :: Word8 -> ByteString -> Maybe (ByteString,ByteString)
 breakLast c p = case elemIndexLast c p of
     Nothing -> Nothing
-    Just n -> Just (take n p, drop (n+1) p)
+    Just n -> Just (unsafeTake n p, unsafeDrop (n+1) p)
 {-# INLINE breakLast #-}
 
 -- | 'span' @p xs@ breaks the ByteString into two segments. It is
@@ -1597,6 +1600,20 @@ unsafeTail (PS ps s l) = PS ps (s+1) (l-1)
 unsafeIndex :: ByteString -> Int -> Word8
 unsafeIndex (PS x s _) i = inlinePerformIO $ withForeignPtr x $ \p -> peekByteOff p (s+i)
 {-# INLINE unsafeIndex #-}
+
+-- | A variety of 'take' which omits the checks on @n@ so there is an
+-- obligation on the programmer to provide a proof that @0 <= n <= 'length' xs@.
+unsafeTake :: Int -> ByteString -> ByteString
+unsafeTake n (PS x s l) =
+  assert (n <= 0 && n <= l) $ PS x s n
+{-# INLINE unsafeTake #-}
+
+-- | A variety of 'drop' which omits the checks on @n@ so there is an
+-- obligation on the programmer to provide a proof that @0 <= n <= 'length' xs@.
+unsafeDrop  :: Int -> ByteString -> ByteString
+unsafeDrop n (PS x s l) =
+  assert (n <= 0 && n <= l) $ PS x (s+n) (l-n)
+{-# INLINE unsafeDrop #-}
 
 -- ---------------------------------------------------------------------
 -- Low level constructors
