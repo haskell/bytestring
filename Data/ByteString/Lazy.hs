@@ -421,12 +421,13 @@ append (LPS xs) (LPS ys) = LPS (xs ++ ys)
 -- | /O(n)/ 'map' @f xs@ is the ByteString obtained by applying @f@ to each
 -- element of @xs@.
 map :: (Word8 -> Word8) -> ByteString -> ByteString
-map f (LPS xs) = LPS (L.map (P.map f) xs)
+map f (LPS xs) = LPS (L.map (P.map' f) xs)
 {-# INLINE map #-}
 
 -- | /O(n)/ 'reverse' @xs@ efficiently returns the elements of @xs@ in reverse order.
 reverse :: ByteString -> ByteString
 reverse (LPS xs) = LPS (L.reverse . L.map P.reverse $ xs)
+{-# INLINE reverse #-}
 
 -- | /O(n)/ The 'intersperse' function takes a 'Word8' and a
 -- 'ByteString' and \`intersperses\' that byte between the elements of
@@ -772,6 +773,7 @@ split c (LPS (a:as)) = comb [] (P.split c a) as
         cons' x xs | P.null x  = xs
                    | otherwise = x:xs
         {-# INLINE cons' #-}
+{-# INLINE split #-}
 
 -- | Like 'splitWith', except that sequences of adjacent separators are
 -- treated as a single separator. eg.
@@ -962,7 +964,7 @@ notElem c ps = not (elem c ps)
 -- returns a ByteString containing those characters that satisfy the
 -- predicate.
 filter :: (Word8 -> Bool) -> ByteString -> ByteString
-filter f (LPS xs) = LPS (filterMap (P.filter f) xs)
+filter f (LPS xs) = LPS (filterMap (P.filter' f) xs)
 {-# INLINE filter #-}
 
 -- | /O(n)/ A first order equivalent of /filter . (==)/, for the common

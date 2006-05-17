@@ -189,6 +189,9 @@ tests =
     , ("join",[F ({-# SCC "join" #-}B.join (B.pack [1,2,3]) [fps,fps'])
               ,F (L.join (L.pack [1,2,3]) [lps,lps'])])
 
+    , ("joinWithByte",[F ({-# SCC "joinWithByte" #-} B.joinWithByte 32 fps fps')
+              ,F (L.joinWithByte 32 lps lps')])
+
     , ("any",[F ({-# SCC "any"       #-}B.any (==120) fps)
                  ,F (L.any (==120) lps)])
 
@@ -222,6 +225,9 @@ tests =
     , ("splitWith",[F ({-# SCC "splitWith" #-} B.splitWith (==122) fps)
                    ,F (L.splitWith (==122) lps)])
 
+    , ("replicate",[F ({-# SCC "replicate" #-}B.replicate 10000000 120)
+                ,F (L.replicate 10000000 120)])
+
     , ("group",[F ({-# SCC "group" #-} B.group fps)
                ,F (L.group lps)])
 
@@ -240,7 +246,6 @@ tests =
 
     , ("intersperse",[F ({-# SCC "intersperse" #-}B.intersperse 120 fps)])
 
-    , ("replicate",[F ({-# SCC "replicate" #-}B.replicate 10000000 120)])
 
     , ("sort",[F ({-# SCC "sort"      #-}B.sort fps)])
 
@@ -252,8 +257,6 @@ tests =
 
     , ("dropSpace",[F ({-# SCC "dropSpace" #-} C.dropSpace fps)])
     , ("dropSpaceEnd",[F ({-# SCC "dropSpaceEnd" #-} C.dropSpaceEnd fps)])
-
-    , ("joinWithByte",[F ({-# SCC "joinWithByte" #-} B.joinWithByte 32 fps fps')])
 
 --  , ("zip",[F ({-# SCC "zip" #-} B.zip fps fps)])
 --  , ("zipWith",[F ({-# SCC "zipWith" #-} B.zipWith (+) fps fps)])
