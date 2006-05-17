@@ -271,6 +271,8 @@ defaultChunkSize :: Int
 defaultChunkSize = 64 * k
   where k = 1024
 
+-- defaultChunkSize = 1
+
 ------------------------------------------------------------------------
 
 eq :: ByteString -> ByteString -> Bool
@@ -798,6 +800,8 @@ group xs
 
 -- | The 'groupBy' function is the non-overloaded version of 'group'.
 --
+-- TODO, still wrong when chunksize == 1
+--
 groupBy :: (Word8 -> Word8 -> Bool) -> ByteString -> [ByteString]
 groupBy _ (LPS [])     = []
 groupBy k (LPS (a:as)) = groupBy' [] (P.groupBy k a) as
@@ -805,7 +809,7 @@ groupBy k (LPS (a:as)) = groupBy' [] (P.groupBy k a) as
         groupBy' acc@(s':_) ss@(s:_) xs
           | not (P.unsafeHead s
              `k` P.unsafeHead s')  = LPS (L.reverse acc) : groupBy' [] ss xs
-        groupBy' acc (s:[]) []     = LPS (L.reverse (s : acc)) : []       
+        groupBy' acc (s:[]) []     = LPS (L.reverse (s : acc)) : []
         groupBy' acc (s:[]) (x:xs) = groupBy' (s:acc) (P.groupBy k x) xs
         groupBy' acc (s:ss) xs     = LPS (L.reverse (s : acc)) : groupBy' [] ss xs
 
