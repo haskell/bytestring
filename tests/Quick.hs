@@ -424,7 +424,7 @@ prop_unzip x = let (xs,ys) = unzip x in (pack xs, pack ys) == P.unzip x
 main = do
     x <- getArgs
     let n = if null x then 100 else read . head $ x
-    mapM_ (\(s,a) -> printf "%-15s: " s >> a n) tests
+    mapM_ (\(s,a) -> printf "%-20s: " s >> a n) tests
   where
     tests = [    ("bijection",      mytest prop_bijection)
             ,    ("bijection'",     mytest prop_bijection')

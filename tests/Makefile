@@ -14,8 +14,8 @@ GHC_ = $(GHC) -threaded $(PP_OPTS) -fglasgow-exts --make
 
 SRCS= TestFramework.hs UnitTestsMain.hs Tests.hs Quick.hs
 
-all: qc lazy sbench sbench2 runbench htest wc spellcheck letter_frequency linesort fuse inline
-fast: qc lazy sbench sbench2 
+all: qc prop sbench sbench2 
+everything: qc prop sbench sbench2 runbench htest wc spellcheck letter_frequency linesort fuse inline
 
 # build executable, linking in all tests
 run-utests: $(SRCS)
@@ -29,19 +29,19 @@ htest:: run-utests
 qc::
 	runhaskell Quick.hs
 
-# lazy testing
-.PHONY: lazy
-lazy::
-	runhaskell Lazy.hs
+# more testing
+.PHONY: prop
+prop::
+	runhaskell Properties.hs
 
 # attempt to benchmark small strings performance
 sbench: 
-	${GHC} ${PKG} --make -O -funbox-strict-fields -ddump-simpl-stats Quick.hs -o qc -no-recomp -package QuickCheck
+	${GHC} ${PKG} --make -O2 -optc-O2 -funbox-strict-fields Quick.hs -o qc -no-recomp -package QuickCheck
 	/usr/bin/time ./qc
 
 # attempt to benchmark lazy strings performance
 sbench2: 
-	${GHC} ${PKG} --make -O -funbox-strict-fields -ddump-simpl-stats Lazy.hs -o lqc -no-recomp -package QuickCheck
+	${GHC} ${PKG} --make -O2 -optc-O2 -funbox-strict-fields Properties.hs -o lqc -no-recomp -package QuickCheck
 	/usr/bin/time ./lqc
 
 .PHONY: runbench
