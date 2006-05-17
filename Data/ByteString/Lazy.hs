@@ -27,13 +27,13 @@
 --
 -- Some operations, such as concat, append, reverse and cons, have
 -- better complexity than their Data.ByteString equivalents, as due to
--- optimisations resulting from the list spine structure.  However, in
--- general, if you can fit the data in memory, raw Data.ByteString will
--- outperform Data.ByteString.Lazy. For data larger than the available
--- memory, or if you have tight memory constraints, this module will be
--- the only option. The default chunk size is 64k, which should be good
--- in most circumstances. For people with large L2 caches, you may want
--- to increase this to fit your cache.
+-- optimisations resulting from the list spine structure. And for other
+-- operations Lazy ByteStrings are usually within a few percent of
+-- strict ones, but with better heap usage. For data larger than the
+-- available memory, or if you have tight memory constraints, this
+-- module will be the only option. The default chunk size is 64k, which
+-- should be good in most circumstances. For people with large L2
+-- caches, you may want to increase this to fit your cache.
 --
 -- This module is intended to be imported @qualified@, to avoid name
 -- clashes with Prelude functions.  eg.
