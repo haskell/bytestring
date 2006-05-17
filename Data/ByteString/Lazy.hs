@@ -741,6 +741,8 @@ splitWith p (LPS (a:as)) = comb [] (P.splitWith p a) as
 
         cons' x xs | P.null x  = xs
                    | otherwise = x:xs
+        {-# INLINE cons' #-}
+{-# INLINE splitWith #-}
 
 -- | /O(n)/ Break a 'ByteString' into pieces separated by the byte
 -- argument, consuming the delimiter. I.e.
@@ -769,6 +771,7 @@ split c (LPS (a:as)) = comb [] (P.split c a) as
 
         cons' x xs | P.null x  = xs
                    | otherwise = x:xs
+        {-# INLINE cons' #-}
 
 -- | Like 'splitWith', except that sequences of adjacent separators are
 -- treated as a single separator. eg.
@@ -960,7 +963,7 @@ notElem c ps = not (elem c ps)
 -- predicate.
 filter :: (Word8 -> Bool) -> ByteString -> ByteString
 filter f (LPS xs) = LPS (filterMap (P.filter f) xs)
-   where
+{-# INLINE filter #-}
 
 -- | /O(n)/ A first order equivalent of /filter . (==)/, for the common
 -- case of filtering a single byte. It is more efficient to use
@@ -1175,4 +1178,4 @@ filterMap _ []     = []
 filterMap f (x:xs) = case f x of
                     y | P.null y  ->     filterMap f xs      -- manually fuse the invariant filter
                       | otherwise -> y : filterMap f xs
-
+{-# INLINE filterMap #-}
