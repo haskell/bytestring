@@ -1288,9 +1288,7 @@ count w (PS x s m) = inlinePerformIO $ withForeignPtr x $ \p ->
 -- returns the index of the first element in the ByteString
 -- satisfying the predicate.
 findIndex :: (Word8 -> Bool) -> ByteString -> Maybe Int
-findIndex k ps@(PS x s l)
-    | null ps   = Nothing
-    | otherwise = inlinePerformIO $ withForeignPtr x $ \f -> go (f `plusPtr` s) 0
+findIndex k (PS x s l) = inlinePerformIO $ withForeignPtr x $ \f -> go (f `plusPtr` s) 0
   where
     STRICT2(go)
     go ptr n | n >= l    = return Nothing
