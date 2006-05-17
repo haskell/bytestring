@@ -920,8 +920,21 @@ findIndex k (LPS ps) = findIndex' 0 ps
           case P.findIndex k x of
             Nothing -> findIndex' (n + P.length x) xs
             Just i  -> Just (n+i)
+{-# INLINE findIndex #-}
 
--- TODO, currently aroudn 10x slower than Data.ByteString
+-- | /O(n)/ The 'find' function takes a predicate and a ByteString,
+-- and returns the first element in matching the predicate, or 'Nothing'
+-- if there is no such element.
+--
+-- > find f p = case findIndex f p of Just n -> Just (p ! n) ; _ -> Nothing
+--
+find :: (Word8 -> Bool) -> ByteString -> Maybe Word8
+find f (LPS ps) = find' ps
+  where find' []     = Nothing
+        find' (x:xs) = case P.find f x of
+            Nothing -> find' xs
+            Just w  -> Just w
+{-# INLINE find #-}
 
 -- | The 'findIndices' function extends 'findIndex', by returning the
 -- indices of all elements satisfying the predicate, in ascending order.
@@ -969,21 +982,6 @@ filterByte w (LPS xs) = LPS (filterMap (P.filterByte w) xs)
 -- filterNotByte is around 2x faster than its filter equivalent.
 filterNotByte :: Word8 -> ByteString -> ByteString
 filterNotByte w (LPS xs) = LPS (filterMap (P.filterNotByte w) xs)
-
--- | /O(n)/ The 'find' function takes a predicate and a ByteString,
--- and returns the first element in matching the predicate, or 'Nothing'
--- if there is no such element.
---
--- > find f p = case findIndex f p of Just n -> Just (p ! n) ; _ -> Nothing
---
-find :: (Word8 -> Bool) -> ByteString -> Maybe Word8
-find f (LPS ps) = find' ps
-  where find' []     = Nothing
-        find' (x:xs) = case P.find f x of
-            Nothing -> find' xs
-            Just w  -> Just w
-
--- TODO, currently aroudn 10x slower than Data.ByteString
 
 -- ---------------------------------------------------------------------
 -- Searching for substrings
