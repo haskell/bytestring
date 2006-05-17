@@ -121,6 +121,8 @@ tests =
     , ("foldl", [F ({-# SCC "fold" #-} B.foldl (\a w -> a+1::Int) 0 fps)
                 ,F ({-# SCC "lfold" #-} L.foldl (\a w -> a+1::Int) 0 lps)])
 
+    , ("foldl'", [F ({-# SCC "fold" #-} B.foldl' (\a w -> a+1::Int) 0 fps)
+                ,F ({-# SCC "lfold" #-} L.foldl' (\a w -> a+1::Int) 0 lps)])
 
     , ("take",[F ({-# SCC "take"      #-}B.take 100000 fps)
                 ,F ({-# SCC "ltake" #-} L.take 100000 lps)])
@@ -234,9 +236,9 @@ tests =
     , ("groupBy",[F ({-# SCC "groupBy" #-} B.groupBy (==) fps)
                  ,F (L.groupBy (==) lps)])
 
---  , ("inits",[F ({-# SCC "inits"     #-}B.inits fps)])
+    , ("inits",[F ({-# SCC "inits"     #-}B.inits fps)])
 
---  , ("tails",[F ({-# SCC "tails"     #-}B.tails fps)])
+    , ("tails",[F ({-# SCC "tails"     #-}B.tails fps)])
 
 --  , ("transpose",[F ({-# SCC "transpose" #-}B.transpose [fps,fps'])])
 

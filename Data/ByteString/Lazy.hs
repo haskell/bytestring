@@ -71,9 +71,9 @@ module Data.ByteString.Lazy (
         append,                 -- :: ByteString -> ByteString -> ByteString
 
         -- * Special ByteStrings
-        inits,                  -- :: ByteString -> [ByteString]
-        tails,                  -- :: ByteString -> [ByteString]
-        elems,                  -- :: ByteString -> [ByteString]
+--      inits,                  -- :: ByteString -> [ByteString]
+--      tails,                  -- :: ByteString -> [ByteString]
+--      elems,                  -- :: ByteString -> [ByteString]
 
         -- * Transformating ByteStrings
         map,                    -- :: (Word8 -> Word8) -> ByteString -> ByteString
@@ -86,6 +86,7 @@ module Data.ByteString.Lazy (
         foldr,                  -- :: (Word8 -> a -> a) -> a -> ByteString -> a
         foldl1,                 -- :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
         foldr1,                 -- :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
+        foldl',                 -- :: (a -> Word8 -> a) -> a -> ByteString -> a
 
         -- ** Special folds
         concat,                 -- :: [ByteString] -> ByteString
@@ -453,10 +454,16 @@ transpose s = L.map (\ss -> LPS [P.pack ss]) (L.transpose (L.map unpack s))
 -- | 'foldl', applied to a binary operator, a starting value (typically
 -- the left-identity of the operator), and a ByteString, reduces the
 -- ByteString using the binary operator, from left to right.
--- TODO: Is this function is subject to list and array fusion?
 foldl :: (a -> Word8 -> a) -> a -> ByteString -> a
 foldl f z (LPS xs) = L.foldl (P.foldl f) z xs
 {-# INLINE foldl #-}
+
+-- | 'foldl', applied to a binary operator, a starting value (typically
+-- the left-identity of the operator), and a ByteString, reduces the
+-- ByteString using the binary operator, from left to right.
+foldl' :: (a -> Word8 -> a) -> a -> ByteString -> a
+foldl' f z (LPS xs) = L.foldl' (P.foldl' f) z xs
+{-# INLINE foldl' #-}
 
 -- | 'foldr', applied to a binary operator, a starting value
 -- (typically the right-identity of the operator), and a ByteString,
@@ -1073,23 +1080,10 @@ unzip :: [(Word8,Word8)] -> (ByteString,ByteString)
 unzip _ls = error "not yet implemented"
 {-# INLINE unzip #-}
 
--- ---------------------------------------------------------------------
--- Special lists
-
--- | /O(n)/ Return all initial segments of the given 'ByteString', shortest first.
-inits :: ByteString -> [ByteString]
-inits = error "not yet implemented"
-
--- | /O(n)/ Return all final segments of the given 'ByteString', longest first.
-tails :: ByteString -> [ByteString]
-tails _p = error "not yet implemented"
-
--- less efficent spacewise: tails (PS x s l) = [PS x (s+n) (l-n) | n <- [0..l]]
-
 -- | /O(n)/ breaks a ByteString to a list of ByteStrings, one byte each.
-elems :: ByteString -> [ByteString]
-elems (LPS xs) = L.map (\x -> LPS [x]) . L.concatMap P.elems $ xs
-{-# INLINE elems #-}
+-- elems :: ByteString -> [ByteString]
+-- elems (LPS xs) = L.map (\x -> LPS [x]) . L.concatMap P.elems $ xs
+-- {-# INLINE elems #-}
 
 -- ---------------------------------------------------------------------
 
