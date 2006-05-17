@@ -1311,11 +1311,14 @@ findIndices p ps = loop 0 ps
 -- | 'findIndexOrEnd' is a variant of findIndex, that returns the length
 -- of the string if no element is found, rather than Nothing.
 findIndexOrEnd :: (Word8 -> Bool) -> ByteString -> Int
-STRICT2(findIndexOrEnd)
-findIndexOrEnd f ps
-    | null ps           = 0
-    | f (unsafeHead ps) = 0
-    | otherwise         = 1 + findIndexOrEnd f (unsafeTail ps)
+findIndexOrEnd k (PS x s l) = inlinePerformIO $ withForeignPtr x $ \f -> go (f `plusPtr` s) 0
+  where
+    STRICT2(go)
+    go ptr n | n >= l    = return l
+             | otherwise = do w <- peek ptr
+                              if k w
+                                then return n
+                                else go (ptr `plusPtr` 1) (n+1)
 {-# INLINE findIndexOrEnd #-}
 
 -- ---------------------------------------------------------------------
