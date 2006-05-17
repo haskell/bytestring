@@ -99,7 +99,7 @@ module Data.ByteString.Lazy (
 
         -- * Generating and unfolding ByteStrings
         replicate,              -- :: Int -> Word8 -> ByteString
-        unfoldrN,               -- :: (Word8 -> Maybe (Word8, Word8)) -> Word8 -> ByteString
+--      unfoldrN,               -- :: (Word8 -> Maybe (Word8, Word8)) -> Word8 -> ByteString
 
         -- * Substrings
 
@@ -116,7 +116,6 @@ module Data.ByteString.Lazy (
         breakByte,              -- :: Word8 -> ByteString -> (ByteString, ByteString)
         spanByte,               -- :: Word8 -> ByteString -> (ByteString, ByteString)
         breakFirst,             -- :: Word8 -> ByteString -> Maybe (ByteString,ByteString)
-        breakLast,              -- :: Word8 -> ByteString -> Maybe (ByteString,ByteString)
 
         -- ** Breaking into many substrings
         split,                  -- :: Word8 -> ByteString -> [ByteString]
@@ -156,15 +155,10 @@ module Data.ByteString.Lazy (
         isPrefixOf,             -- :: ByteString -> ByteString -> Bool
         isSuffixOf,             -- :: ByteString -> ByteString -> Bool
 
-        -- ** Search for arbitrary substrings
-        isSubstringOf,          -- :: ByteString -> ByteString -> Bool
-        findSubstring,          -- :: ByteString -> ByteString -> Maybe Int
-        findSubstrings,         -- :: ByteString -> ByteString -> [Int]
-
         -- * Zipping and unzipping ByteStrings
         zip,                    -- :: ByteString -> ByteString -> [(Word8,Word8)]
         zipWith,                -- :: (Word8 -> Word8 -> c) -> ByteString -> ByteString -> [c]
-        unzip,                  -- :: [(Word8,Word8)] -> (ByteString,ByteString)
+--      unzip,                  -- :: [(Word8,Word8)] -> (ByteString,ByteString)
 
         -- * I\/O with @ByteString@s
 
@@ -554,9 +548,9 @@ replicate w c | w <= 0    = empty
 --
 -- The int parameter gives a chunk size.
 --
+{-
 unfoldrN :: Int -> (a -> Maybe (Word8, a)) -> a -> ByteString
-unfoldrN = error "FIXME: not yet implemented"
-{-unfoldrN c f = LPS . unfoldr
+unfoldrN c f = LPS . unfoldr
   where unfoldr s = case unfoldrN' c f s of
                       (ps, Just s')
                         | P.null ps ->      unfoldr s'
@@ -694,10 +688,6 @@ spanByte c (LPS ps) = case (spanByte' ps) of (a,b) -> (LPS a, LPS b)
 -- > in if null y then Nothing else Just (x, drop 1 y))
 --
 breakFirst :: Word8 -> ByteString -> Maybe (ByteString,ByteString)
---breakFirst c p = case P.elemIndex c p of
---   Nothing -> Nothing
---   Just n -> Just (take n p, drop (n+1) p)
-
 breakFirst c (LPS ps) = breakByte' [] ps
   where breakByte' _   []     = Nothing
         breakByte' acc (x:xs) =
@@ -709,21 +699,6 @@ breakFirst c (LPS ps) = breakByte' [] ps
                                | otherwise         = P.drop (n+1) x : xs
                        in Just (LPS (L.reverse acc'), LPS xs')
             Nothing -> breakByte' (x:acc) xs
-
-
--- | /O(n)/ 'breakLast' behaves like breakFirst, but from the end of the
--- ByteString.
---
--- > breakLast ('b') (pack "aabbcc") == Just ("aab","cc")
---
--- and the following are equivalent:
---
--- > breakLast 'c' "abcdef"
--- > let (x,y) = break (=='c') (reverse "abcdef") 
--- > in if null x then Nothing else Just (reverse (drop 1 y), reverse x)
---
-breakLast :: Word8 -> ByteString -> Maybe (ByteString,ByteString)
-breakLast _c _p = error "not implemented"
 
 -- | 'span' @p xs@ breaks the ByteString into two segments. It is
 -- equivalent to @('takeWhile' p xs, 'dropWhile' p xs)@
@@ -1022,29 +997,6 @@ isPrefixOf (LPS as) (LPS bs) = isPrefixL as bs
 isSuffixOf :: ByteString -> ByteString -> Bool
 isSuffixOf = error "not yet implemented"
 
--- | Check whether one string is a substring of another. @isSubstringOf
--- p s@ is equivalent to @not (null (findSubstrings p s))@.
-isSubstringOf :: ByteString -- ^ String to search for.
-              -> ByteString -- ^ String to search in.
-              -> Bool
-isSubstringOf _p _s = error "not yet implemented"
-
--- | Get the first index of a substring in another string,
---   or 'Nothing' if the string is not found.
---   @findSubstring p s@ is equivalent to @listToMaybe (findSubstrings p s)@.
-findSubstring :: ByteString -- ^ String to search for.
-              -> ByteString -- ^ String to seach in.
-              -> Maybe Int
-findSubstring = error "not yet implemented"
-
--- | Find the indexes of all (possibly overlapping) occurances of a
--- substring in a string.  This function uses the Knuth-Morris-Pratt
--- string matching algorithm.
-findSubstrings :: ByteString -- ^ String to search for.
-               -> ByteString -- ^ String to seach in.
-               -> [Int]
-findSubstrings = error "not yet implemented"
-
 -- ---------------------------------------------------------------------
 -- Zipping
 
@@ -1076,9 +1028,11 @@ zipWith f (LPS (a:as)) (LPS (b:bs)) = zipWith' a as b bs
 
 -- | /O(n)/ 'unzip' transforms a list of pairs of bytes into a pair of
 -- ByteStrings. Note that this performs two 'pack' operations.
+{-
 unzip :: [(Word8,Word8)] -> (ByteString,ByteString)
 unzip _ls = error "not yet implemented"
 {-# INLINE unzip #-}
+-}
 
 -- | /O(n)/ breaks a ByteString to a list of ByteStrings, one byte each.
 -- elems :: ByteString -> [ByteString]

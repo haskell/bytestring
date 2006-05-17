@@ -128,7 +128,6 @@ tests =
     ,("break/breakByte",    mytest prop_breakByte)
     ,("span/spanByte",      mytest prop_spanByte)
     ,("breakFirst/break",   mytest prop_breakFirst)
-    ,("breakLast/break",    mytest prop_breakFirst)
     ,("split",              mytest prop_split)
     ,("splitWith",          mytest prop_splitWith)
     ,("join.split/id",      mytest prop_joinsplit)
@@ -721,10 +720,12 @@ prop_breakFirst c xs = (let (x,y) = break (==c) xs
                                      else Just (pack x, pack $ drop 1 y)) ==
                        (L.breakFirst c (pack xs))
 
+{-
 prop_breakLast c xs = (let (x,y) = break (==c) (reverse xs)
                        in if null y then Nothing
                                     else Just (pack (reverse $ drop 1 y), pack (reverse x))) ==
                        (L.breakLast c (pack xs))
+-}
 
 ------------------------------------------------------------------------
 
