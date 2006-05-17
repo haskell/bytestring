@@ -25,9 +25,6 @@ instance Arbitrary Char where
   arbitrary = choose ('\0', '\255') -- since we have to test words, unlines too
   coarbitrary c = variant (ord c `rem` 16)
 
---  arbitrary = oneof $ map return
---                (['a'..'z']++['A'..'Z']++['1'..'9']++['\n','\t','0','~','.',',','-','/'])
-
 instance Arbitrary Word8 where
   arbitrary = choose (minBound, maxBound)
   coarbitrary c = variant (fromIntegral ((fromIntegral c) `rem` 16))
@@ -36,10 +33,9 @@ instance Random Word8 where
   randomR (a,b) g = case randomR (fromIntegral a :: Integer
                                  ,fromIntegral b :: Integer) g of
                             (x,g) -> (fromIntegral x :: Word8, g)
-
   random g        = randomR (minBound,maxBound) g
 
-instance Arbitrary ByteString where
+instance Arbitrary P.ByteString where
   arbitrary = P.pack `fmap` arbitrary
   coarbitrary s = coarbitrary (P.unpack s)
 

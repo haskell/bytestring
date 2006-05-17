@@ -98,6 +98,14 @@ tests =
     , ("filter", [F ({-# SCC "filter" #-}B.filter (/=101) fps)
                  ,F (L.filter (/=101) lps)])
 
+{-
+    , ("map'", [F ({-# SCC "map" #-}B.map (*2) fps)
+              ,F (B.map' (*1) fps)])
+
+    , ("filter'", [F ({-# SCC "filter" #-}B.filter (/=121) fps)
+                 ,F (B.filter' (/=121) fps)])
+-}
+
     , ("filterNotByte", [F ({-# SCC "filterNotChar" #-}B.filterNotByte 101 fps)
                  ,F (L.filterNotByte 101 lps)])
 

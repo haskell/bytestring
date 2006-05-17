@@ -5,8 +5,12 @@ import Test.QuickCheck
 import Text.Show.Functions
 
 import Data.List
+import Data.Word
 import System.Random
 import System.IO
+
+import qualified Data.ByteString      as P
+import qualified Data.ByteString.Lazy as L
 
 -- Enable this to get verbose test output. Including the actual tests.
 debug = False
@@ -66,3 +70,5 @@ done mesg ntest stamps =
                        ++ concat (intersperse ", " xs)
 
   percentage n m        = show ((100 * n) `div` m) ++ "%"
+
+------------------------------------------------------------------------

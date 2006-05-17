@@ -29,32 +29,23 @@ instance Arbitrary Char where
     arbitrary     = choose ('a', 'i') -- since we have to test words, unlines too
     coarbitrary c = variant (ord c `rem` 4)
 
---  arbitrary     = choose (minBound, maxBound) -- since we have to test words, unlines too
---  coarbitrary c = variant (ord c `rem` 16)
-
 instance Arbitrary Word8 where
     arbitrary = choose (97, 105)
     coarbitrary c = variant (fromIntegral ((fromIntegral c) `rem` 4))
-
---  arbitrary = choose (minBound, maxBound)
---  coarbitrary c = variant (fromIntegral ((fromIntegral c) `rem` 16))
 
 instance Random Word8 where
   randomR (a,b) g = case randomR (fromIntegral a :: Integer
                                  ,fromIntegral b :: Integer) g of
                             (x,g) -> (fromIntegral x :: Word8, g)
-
   random g        = randomR (minBound,maxBound) g
 
-instance Arbitrary ByteString where
-    arbitrary     = arbitrary >>= return . LPS . filter (not. P.null) -- maintain the invariant.
+instance Arbitrary L.ByteString where
+    arbitrary     = arbitrary >>= return . L.LPS . filter (not. P.null) -- maintain the invariant.
     coarbitrary s = coarbitrary (L.unpack s)
 
 instance Arbitrary P.ByteString where
-    arbitrary = P.pack `fmap` arbitrary
-    coarbitrary s = coarbitrary (P.unpack s)
-
--- i.e. [[a,b,c], [c,d]]
+  arbitrary = P.pack `fmap` arbitrary
+  coarbitrary s = coarbitrary (P.unpack s)
 
 ------------------------------------------------------------------------
 
