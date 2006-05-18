@@ -1,0 +1,130 @@
+-- Basic ByteString-specific bits
+empty
+packByte
+pack
+unpack
+packWith
+unpackWith
+cons
+snoc
+
+-- Basic functions
+append
+head
+last
+tail
+init
+null
+length
+
+-- List transformations
+map
+map'
+reverse
+intersperse
+transpose
+join
+joinWithByte
+
+-- Reducing lists (folds)
+foldl
+foldl'
+foldl1
+foldr
+foldr1
+
+-- Special folds
+concat
+concatMap
+any
+all
+maximum
+minimum
+
+-- Building lists
+-- Scans
+
+-- Accumulating maps
+mapIndexed
+
+-- Infinite lists
+replicate
+
+-- Unfolding
+unfoldrN
+
+-- Sublists
+-- Extracting sublists
+take
+drop
+splitAt
+takeWhile
+dropWhile
+span
+spanByte
+spanEnd
+break
+breakByte
+breakFirst
+breakLast
+split
+splitWith
+tokens
+group
+inits
+tails
+elems
+
+-- Predicates
+isPrefixOf
+isSuffixOf
+isSubstringOf
+
+-- Searching lists
+-- Searching by equality
+elem
+notElem
+
+-- Searching with a predicate
+find
+filter
+filter'
+filterByte
+filterNotByte
+count
+
+-- Indexing lists
+index
+elemIndex
+elemIndexLast
+elemIndices
+findIndex
+findIndexOrEnd
+findIndices
+findSubstring
+findSubstrings
+
+-- Zipping and unzipping lists
+zip
+zipWith
+unzip
+
+-- Special lists
+-- Functions on strings
+-- "Set" operations
+-- Ordered lists
+sort
+
+-- Generalized functions
+-- User-supplied equality (replacing an Eq context)
+groupBy
+
+-- User-supplied comparison (replacing an Ord context)
+-- The "generic" operations
+
+-- Unsafe Operations 
+unsafeHead
+unsafeTail
+unsafeIndex
+unsafeTake
+unsafeDrop

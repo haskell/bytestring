@@ -1,0 +1,151 @@
+
+-- Basic functions
+(++)
+head
+last
+tail
+init
+null
+length
+
+-- List transformations
+map
+reverse
+intersperse
+transpose
+
+-- Reducing lists (folds)
+foldl
+foldl'
+foldl1
+foldl1'
+foldr
+foldr1
+
+-- Special folds
+concat
+concatMap
+and
+or
+any
+all
+sum
+product
+maximum
+minimum
+
+-- Building lists
+-- Scans
+scanl
+scanl1
+scanr
+scanr1
+
+-- Accumulating maps
+mapAccumL
+mapAccumR
+
+-- Infinite lists
+iterate
+repeat
+replicate
+cycle
+
+-- Unfolding
+unfoldr
+
+-- Sublists
+-- Extracting sublists
+take
+drop
+splitAt
+takeWhile
+dropWhile
+span
+break
+group
+inits
+tails
+
+-- Predicates
+isPrefixOf
+isSuffixOf
+
+-- Searching lists
+-- Searching by equality
+elem
+notElem
+lookup
+
+-- Searching with a predicate
+find
+filter
+partition
+
+-- Indexing lists
+(!!)
+elemIndex
+elemIndices
+findIndex
+findIndices
+
+-- Zipping and unzipping lists
+zip
+zip3
+zip4
+zip5
+zip6
+zip7
+zipWith
+zipWith3
+zipWith4
+zipWith5
+zipWith6
+zipWith7
+unzip
+unzip3
+unzip4
+unzip5
+unzip6
+unzip7
+
+-- Special lists
+-- Functions on strings
+lines
+words
+unlines
+unwords
+
+-- "Set" operations
+nub
+delete
+(\\)
+union
+intersect
+
+-- Ordered lists
+sort
+insert
+
+-- Generalized functions
+-- User-supplied equality (replacing an Eq context)
+nubBy
+deleteBy
+deleteFirstsBy
+unionBy
+intersectBy
+groupBy
+
+-- User-supplied comparison (replacing an Ord context)
+sortBy
+insertBy
+maximumBy
+minimumBy
+
+-- The "generic" operations
+genericLength
+genericTake
+genericDrop
+genericSplitAt
+genericIndex
+genericReplicate
