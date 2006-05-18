@@ -237,8 +237,10 @@ instance Ord ByteString
 
 ------------------------------------------------------------------------
 
+-- XXX
 -- The data type invariant:
--- the list is either empty or consists of non-null ByteStrings
+-- Every ByteString is either empty or consists of non-null ByteStrings.
+-- All functions must preserve this, and the QC properties must check this.
 --
 _invariant :: ByteString -> Bool
 _invariant (LPS []) = True
@@ -269,7 +271,7 @@ _abstr (LPS xs) = P.concat xs
 --
 defaultChunkSize :: Int
 defaultChunkSize = 64 * k
-  where k = 1024
+   where k = 1024
 
 -- defaultChunkSize = 1
 
@@ -538,10 +540,11 @@ mapIndexed k (LPS xs) = LPS (snd (L.mapAccumL mapIndexedChunk 0 xs))
 --
 -- This implemenation uses @memset(3)@
 replicate :: Int -> Word8 -> ByteString
-replicate w c 
- | w <= 0               = empty
- | w < defaultChunkSize = LPS [P.replicate w c]
- | otherwise            = LPS (P.unsafeTake r s : Prelude.replicate q s)
+replicate w c
+    | w <= 0               = empty
+    | w < defaultChunkSize = LPS [P.replicate w c]
+    | r == 0               = LPS (Prelude.replicate q s) -- preserve invariant
+    | otherwise            = LPS (P.unsafeTake r s : Prelude.replicate q s)
  where
     s      = P.replicate defaultChunkSize c
     (q, r) = quotRem w defaultChunkSize
