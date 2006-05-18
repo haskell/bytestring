@@ -903,7 +903,7 @@ unfoldrN i f w
 -- of @xs@ of length @n@, or @xs@ itself if @n > 'length' xs@.
 take :: Int -> ByteString -> ByteString
 take n ps@(PS x s l)
-    | n < 0     = empty
+    | n <= 0    = empty
     | n >= l    = ps
     | otherwise = PS x s n
 {-# INLINE take #-}
@@ -913,15 +913,15 @@ take n ps@(PS x s l)
 drop  :: Int -> ByteString -> ByteString
 drop n ps@(PS x s l)
     | n <= 0    = ps
-    | n >  l    = empty
+    | n >= l    = empty
     | otherwise = PS x (s+n) (l-n)
 {-# INLINE drop #-}
 
 -- | /O(1)/ 'splitAt' @n xs@ is equivalent to @('take' n xs, 'drop' n xs)@.
 splitAt :: Int -> ByteString -> (ByteString, ByteString)
 splitAt n ps@(PS x s l)
-    | n <= 0    = (ps, empty)
-    | n >  l    = (empty, ps)
+    | n <= 0    = (empty, ps)
+    | n >= l    = (ps, empty)
     | otherwise = (PS x s n, PS x (s+n) (l-n))
 {-# INLINE splitAt #-}
 
@@ -1749,12 +1749,12 @@ copy (PS x s l) = create l $ \p -> withForeignPtr x $ \f ->
 
 -- | /O(n)/ Duplicate a CString as a ByteString. Useful if you know the
 -- CString is going to be deallocated from C land.
-copyCString :: CString -> ByteString
+copyCString :: CString -> IO ByteString
 copyCString cstr = copyCStringLen (cstr, (fromIntegral $ c_strlen cstr))
 
 -- | /O(n)/ Same as copyCString, but saves a strlen call when the length is known.
-copyCStringLen :: CStringLen -> ByteString
-copyCStringLen (cstr, len) = inlinePerformIO $ do
+copyCStringLen :: CStringLen -> IO ByteString
+copyCStringLen (cstr, len) = do
     fp <- mallocForeignPtrArray (len+1)
     withForeignPtr fp $ \p -> do
         memcpy p (castPtr cstr) (fromIntegral len)
