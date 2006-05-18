@@ -538,8 +538,13 @@ mapIndexed k (LPS xs) = LPS (snd (L.mapAccumL mapIndexedChunk 0 xs))
 --
 -- This implemenation uses @memset(3)@
 replicate :: Int -> Word8 -> ByteString
-replicate w c | w <= 0    = empty
-              | otherwise = LPS [P.replicate w c]
+replicate w c 
+ | w <= 0               = empty
+ | w < defaultChunkSize = LPS [P.replicate w c]
+ | otherwise            = LPS (P.unsafeTake r s : Prelude.replicate q s)
+ where
+    s      = P.replicate defaultChunkSize c
+    (q, r) = quotRem w defaultChunkSize
 
 -- | /O(n)/ The 'unfoldrN' function is analogous to the List \'unfoldr\'.
 -- 'unfoldrN' builds a ByteString from a seed value.  The function takes
