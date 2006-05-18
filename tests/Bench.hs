@@ -35,9 +35,10 @@ main = do
     printf "#Byte\t Lazy\n"
 
     -- now get to it
-    sequence_ . map doit $ zip [(1::Int)..] tests
+    sequence_ $ zipWith doit [1..] tests
 
-doit (n,(s,ls)) = do
+doit :: Int -> (String, [F]) -> IO ()
+doit n (s,ls) = do
     printf "%2d " n
     fn ls
     printf "\t# %-16s\n" (show s)
@@ -112,10 +113,12 @@ tests =
     , ("filterByte", [F ({-# SCC "filterChar"    #-}B.filterByte 103 fps)
                  ,F (L.filterByte 103 lps)])
 
+    , ("findIndexOrEnd",[F ({-# SCC "findIndexOrEnd" #-}B.findIndexOrEnd (==126) fps)])
+
     , ("findIndex",[F ({-# SCC "findIndex" #-}B.findIndex (==126) fps)
                    ,F (L.findIndex (==126) lps)])
 
-   ,  ("find",     [F ({-# SCC "find"      #-}B.find (==126) fps)
+    , ("find",     [F ({-# SCC "find"      #-}B.find (==126) fps)
                    ,F (L.find (==126) lps)])
 
     , ("foldl", [F ({-# SCC "fold" #-} B.foldl (\a w -> a+1::Int) 0 fps)
