@@ -1922,6 +1922,10 @@ hGetNonBlocking h i = do
 #endif
 
 -- | Read entire handle contents into a 'ByteString'.
+-- This function reads chunks at a time, doubling the chunksize on each
+-- read. The final buffer is then realloced to the appropriate size. For
+-- files > half of available memory, this may lead to memory exhaustion.
+-- Consider using 'readFile' in this case.
 --
 -- As with 'hGet', the string representation in the file is assumed to
 -- be ISO-8859-1.
