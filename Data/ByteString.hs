@@ -221,6 +221,7 @@ module Data.ByteString (
 #if defined(__GLASGOW_HASKELL__)
         getArgs,                -- :: IO [ByteString]
         hGetLine,               -- :: Handle -> IO ByteString
+        hGetLines,              -- :: Handle -> IO [ByteString]
         hGetNonBlocking,        -- :: Handle -> Int -> IO ByteString
 #endif
         hGetContents,           -- :: Handle -> IO ByteString
@@ -1813,6 +1814,18 @@ generate i f = do
 -- | getLine, read a line from stdin.
 getLine :: IO ByteString
 getLine = hGetLine stdin
+
+-- | Lazily construct a list of lines of ByteStrings
+hGetLines :: Handle -> IO [ByteString]
+hGetLines h = go
+    where
+        go = unsafeInterleaveIO $ do
+                ms <- catch (hGetLine h >>= return . Just)
+                            (\_ -> return Nothing)
+                case ms of
+                    Nothing -> return []
+                    Just s  -> do ss <- go
+                                  return (s:ss)
 
 -- | hGetLine. read a ByteString from a handle
 hGetLine :: Handle -> IO ByteString
