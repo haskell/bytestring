@@ -96,7 +96,9 @@ module Data.ByteString (
 
         -- ** Breaking strings
         take,                   -- :: Int -> ByteString -> ByteString
+        unsafeTake,             -- :: Int -> ByteString -> ByteString
         drop,                   -- :: Int -> ByteString -> ByteString
+        unsafeDrop,             -- :: Int -> ByteString -> ByteString
         splitAt,                -- :: Int -> ByteString -> (ByteString, ByteString)
         takeWhile,              -- :: (Word8 -> Bool) -> ByteString -> ByteString
         dropWhile,              -- :: (Word8 -> Bool) -> ByteString -> ByteString
