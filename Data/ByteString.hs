@@ -1606,14 +1606,14 @@ unsafeIndex (PS x s _) i = inlinePerformIO $ withForeignPtr x $ \p -> peekByteOf
 -- obligation on the programmer to provide a proof that @0 <= n <= 'length' xs@.
 unsafeTake :: Int -> ByteString -> ByteString
 unsafeTake n (PS x s l) =
-  assert (n <= 0 && n <= l) $ PS x s n
+  assert (0 <= n && n <= l) $ PS x s n
 {-# INLINE unsafeTake #-}
 
 -- | A variety of 'drop' which omits the checks on @n@ so there is an
 -- obligation on the programmer to provide a proof that @0 <= n <= 'length' xs@.
 unsafeDrop  :: Int -> ByteString -> ByteString
 unsafeDrop n (PS x s l) =
-  assert (n <= 0 && n <= l) $ PS x (s+n) (l-n)
+  assert (0 <= n && n <= l) $ PS x (s+n) (l-n)
 {-# INLINE unsafeDrop #-}
 
 -- ---------------------------------------------------------------------
