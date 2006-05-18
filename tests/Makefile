@@ -57,42 +57,37 @@ prof::
 	${GHC} ${PKG} -prof -auto-all --make -O -funbox-strict-fields Bench.hs -o bench
 	./bench +RTS -H64m -p
 
-.PHONY: wc
 wc: wc.o
 	@if [ ! -f "bigdata" ] ; then ln -s data bigdata ; fi
 	/usr/bin/time ./wc < bigdata
-    
 wc.o: wc.hs
 	${GHC} ${PKG} -O -ddump-simpl-stats wc.hs -o wc
 
-.PHONY: spellcheck
 spellcheck: spellcheck.o
 	/usr/bin/time ./spellcheck < spellcheck-input.txt
-    
 spellcheck.o: spellcheck.hs
 	${GHC} ${PKG} -O $< -o spellcheck
 
-.PHONY: letter_frequency
 letter_frequency: letter_frequency.o
 	/usr/bin/time ./letter_frequency < Usr.Dict.Words
-
 letter_frequency.o: letter_frequency.hs
 	${GHC} ${PKG} -O $< -o letter_frequency -ddump-simpl-stats
 
-.PHONY: linesort
 linesort: linesort.o
 	/usr/bin/time ./linesort < Usr.Dict.Words
-
 linesort.o: linesort.hs
 	${GHC} ${PKG} -O $< -o linesort
 
-.PHONY: fuse
 fuse: fuse.o
 	/usr/bin/time ./fuse < Usr.Dict.Words
 fuse.o: fuse.hs
 	${GHC} ${PKG} -O $< -o fuse -ddump-simpl-stats
 
-.PHONY: inline
+lazylines: lazylines.o
+	/usr/bin/time ./lazylines < bigdata
+lazylines.o: lazylines.hs
+	${GHC} ${PKG} -O $< -o lazylines
+
 inline: inline.o
 	/usr/bin/time ./inline
 inline.o: inline.hs
