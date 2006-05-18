@@ -1815,7 +1815,8 @@ generate i f = do
 getLine :: IO ByteString
 getLine = hGetLine stdin
 
--- | Lazily construct a list of lines of ByteStrings
+-- | Lazily construct a list of lines of ByteStrings. This will be much
+-- better on memory consumption than using lines =<< getContents.
 hGetLines :: Handle -> IO [ByteString]
 hGetLines h = go
     where
