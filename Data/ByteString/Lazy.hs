@@ -990,7 +990,7 @@ filter :: (Word8 -> Bool) -> ByteString -> ByteString
 filter f (LPS xs) = LPS (filterMap (P.filter' f) xs)
 {-# INLINE filter #-}
 
--- | /O(n)/ and /O(n/c) space/ A first order equivalent of /filter .
+-- | /O(n)/ and /O(n\/c) space/ A first order equivalent of /filter .
 -- (==)/, for the common case of filtering a single byte. It is more
 -- efficient to use /filterByte/ in this case.
 --
