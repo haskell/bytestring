@@ -547,7 +547,7 @@ replicate w c
     | otherwise            = LPS (P.unsafeTake r s : Prelude.replicate q s)
  where
     s      = P.replicate defaultChunkSize c
-    (q, r) = quotRem w defaultChunkSize
+    (q, r) = quotRem w defaultChunkSize -- could even just have 1 byte replicated..
 
 -- | /O(n)/ The 'unfoldrN' function is analogous to the List \'unfoldr\'.
 -- 'unfoldrN' builds a ByteString from a seed value.  The function takes
@@ -959,16 +959,17 @@ filter :: (Word8 -> Bool) -> ByteString -> ByteString
 filter f (LPS xs) = LPS (filterMap (P.filter' f) xs)
 {-# INLINE filter #-}
 
--- | /O(n)/ A first order equivalent of /filter . (==)/, for the common
--- case of filtering a single byte. It is more efficient to use
--- /filterByte/ in this case.
+-- | /O(n)/ and /O(n/c) space/ A first order equivalent of /filter .
+-- (==)/, for the common case of filtering a single byte. It is more
+-- efficient to use /filterByte/ in this case.
 --
 -- > filterByte == filter . (==)
 --
 -- filterByte is around 10x faster, and uses much less space, than its
 -- filter equivalent
 filterByte :: Word8 -> ByteString -> ByteString
-filterByte w (LPS xs) = LPS (filterMap (P.filterByte w) xs)
+filterByte w ps = replicate (count w ps) w
+-- filterByte w (LPS xs) = LPS (filterMap (P.filterByte w) xs)
 
 -- | /O(n)/ A first order equivalent of /filter . (\/=)/, for the common
 -- case of filtering a single byte out of a list. It is more efficient
