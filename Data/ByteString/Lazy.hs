@@ -98,7 +98,10 @@ module Data.ByteString.Lazy (
         mapIndexed,             -- :: (Int -> Word8 -> Word8) -> ByteString -> ByteString
 
         -- * Generating and unfolding ByteStrings
+--      iterate,                -- :: (Word8 -> Word8) -> Word8 -> ByteString
+        repeat,                 -- :: Word8 -> ByteString
         replicate,              -- :: Int -> Word8 -> ByteString
+        cycle,                  -- :: ByteString -> ByteString
 --      unfoldrN,               -- :: (Word8 -> Maybe (Word8, Word8)) -> Word8 -> ByteString
 
         -- * Substrings
@@ -271,6 +274,10 @@ _abstr (LPS xs) = P.concat xs
 --
 defaultChunkSize :: Int
 defaultChunkSize = 64 * k
+   where k = 1024
+
+smallChunkSize :: Int
+smallChunkSize = 4 * k
    where k = 1024
 
 -- defaultChunkSize = 1
@@ -533,6 +540,22 @@ mapIndexed k (LPS xs) = LPS (snd (L.mapAccumL mapIndexedChunk 0 xs))
 -- ---------------------------------------------------------------------
 -- Unfolds and replicates
 
+-- | @'iterate' f x@ returns an infinite ByteString of repeated applications
+-- of @f@ to @x@:
+--
+-- > iterate f x == [x, f x, f (f x), ...]
+--
+iterate :: (Word8 -> Word8) -> Word8 -> ByteString
+iterate = error "not yet implemented"
+--iterate f = unfoldrN smallChunkSize (Just . f)
+
+-- | @'repeat' x@ is an infinite ByteString, with @x@ the value of every
+-- element.
+--
+repeat :: Word8 -> ByteString
+repeat c = let block = P.replicate smallChunkSize c
+            in LPS (L.repeat block)
+
 -- | /O(n)/ 'replicate' @n x@ is a ByteString of length @n@ with @x@
 -- the value of every element. The following holds:
 --
@@ -541,13 +564,13 @@ mapIndexed k (LPS xs) = LPS (snd (L.mapAccumL mapIndexedChunk 0 xs))
 -- This implemenation uses @memset(3)@
 replicate :: Int -> Word8 -> ByteString
 replicate w c
-    | w <= 0               = empty
-    | w < defaultChunkSize = LPS [P.replicate w c]
-    | r == 0               = LPS (Prelude.replicate q s) -- preserve invariant
-    | otherwise            = LPS (P.unsafeTake r s : Prelude.replicate q s)
+    | w <= 0             = empty
+    | w < smallChunkSize = LPS [P.replicate w c]
+    | r == 0             = LPS (Prelude.replicate q s) -- preserve invariant
+    | otherwise          = LPS (P.unsafeTake r s : Prelude.replicate q s)
  where
     s      = P.replicate defaultChunkSize c
-    (q, r) = quotRem w defaultChunkSize -- could even just have 1 byte replicated..
+    (q, r) = quotRem w defaultChunkSize
 
 -- | /O(n)/ The 'unfoldrN' function is analogous to the List \'unfoldr\'.
 -- 'unfoldrN' builds a ByteString from a seed value.  The function takes
