@@ -189,6 +189,7 @@ import Prelude hiding           (reverse,head,tail,last,init,null
                                 ,concat,any,take,drop,splitAt,takeWhile
                                 ,dropWhile,span,break,elem,filter,maximum
                                 ,minimum,all,concatMap,foldl1,foldr1
+                                ,repeat, cycle
                                 ,readFile,writeFile,replicate
                                 ,getContents,getLine,putStr,putStrLn
                                 ,zip,zipWith,unzip,notElem)
@@ -545,16 +546,16 @@ mapIndexed k (LPS xs) = LPS (snd (L.mapAccumL mapIndexedChunk 0 xs))
 --
 -- > iterate f x == [x, f x, f (f x), ...]
 --
-iterate :: (Word8 -> Word8) -> Word8 -> ByteString
-iterate = error "not yet implemented"
+-- iterate :: (Word8 -> Word8) -> Word8 -> ByteString
+-- iterate = error "not yet implemented"
 --iterate f = unfoldrN smallChunkSize (Just . f)
 
 -- | @'repeat' x@ is an infinite ByteString, with @x@ the value of every
 -- element.
 --
 repeat :: Word8 -> ByteString
-repeat c = let block = P.replicate smallChunkSize c
-            in LPS (L.repeat block)
+repeat c = LPS (L.repeat block)
+    where block =  P.replicate smallChunkSize c
 
 -- | /O(n)/ 'replicate' @n x@ is a ByteString of length @n@ with @x@
 -- the value of every element. The following holds:
@@ -577,7 +578,7 @@ replicate w c
 --
 cycle :: ByteString -> ByteString
 cycle (LPS []) = errorEmptyList "cycle"
-cycle (LPS xs) = LPS (L.repeat xs)
+cycle (LPS xs) = LPS xs' where xs' = xs ++ xs'
 
 -- | /O(n)/ The 'unfoldrN' function is analogous to the List \'unfoldr\'.
 -- 'unfoldrN' builds a ByteString from a seed value.  The function takes
