@@ -20,18 +20,29 @@ import System.Random
 import Data.ByteString.Lazy (ByteString(..), pack , unpack)
 import qualified Data.ByteString.Lazy as L
 
-import qualified Data.ByteString      as P
+import qualified Data.ByteString       as P
+import qualified Data.ByteString.Char8 as C
 import Prelude hiding (abs)
 
 import QuickCheckUtils
 
 instance Arbitrary Char where
-    arbitrary     = choose ('a', 'i') -- since we have to test words, unlines too
+    arbitrary     = choose ('a', 'i')
     coarbitrary c = variant (ord c `rem` 4)
 
 instance Arbitrary Word8 where
     arbitrary = choose (97, 105)
     coarbitrary c = variant (fromIntegral ((fromIntegral c) `rem` 4))
+
+{-
+instance Arbitrary Char where
+  arbitrary = choose ('\0', '\255') -- since we have to test words, unlines too
+  coarbitrary c = variant (ord c `rem` 16)
+
+instance Arbitrary Word8 where
+  arbitrary = choose (minBound, maxBound)
+  coarbitrary c = variant (fromIntegral ((fromIntegral c) `rem` 16))
+-}
 
 instance Random Word8 where
   randomR (a,b) g = case randomR (fromIntegral a :: Integer
@@ -56,100 +67,6 @@ main = do
 
 tests =
     [("invariant",          mytest prop_invariant)
-    ,("eq 1",               mytest prop_eq1)
-    ,("eq 2",               mytest prop_eq2)
-    ,("eq 3",               mytest prop_eq3)
-    ,("compare 1",          mytest prop_compare1)
-    ,("compare 2",          mytest prop_compare2)
-    ,("compare 3",          mytest prop_compare3)
-    ,("compare 4",          mytest prop_compare4)
-    ,("compare 5",          mytest prop_compare5)
-    ,("compare 6",          mytest prop_compare6)
-    ,("compare 7",          mytest prop_compare7)
-    ,("compare 8",          mytest prop_compare8)
-    ,("empty 1",            mytest prop_empty1)
-    ,("empty 2",            mytest prop_empty2)
-    ,("pack/unpack",        mytest prop_packunpack)
-    ,("unpack/pack",        mytest prop_unpackpack)
-    ,("null",               mytest prop_null)
-    ,("length 1",           mytest prop_length1)
-    ,("length 2",           mytest prop_length2)
-    ,("cons 1"    ,         mytest prop_cons1)
-    ,("cons 2"    ,         mytest prop_cons2)
-    ,("cons 3"    ,         mytest prop_cons3)
-    ,("cons 4"    ,         mytest prop_cons4)
-    ,("snoc"    ,           mytest prop_snoc1)
-    ,("head/pack",          mytest prop_head)
-    ,("head/unpack",        mytest prop_head1)
-    ,("tail/pack",          mytest prop_tail)
-    ,("tail/unpack",        mytest prop_tail1)
-    ,("last",               mytest prop_last)
-    ,("init",               mytest prop_init)
-    ,("append 1",           mytest prop_append1)
-    ,("append 2",           mytest prop_append2)
-    ,("append 3",           mytest prop_append3)
-    ,("map 1",              mytest prop_map1)
-    ,("map 2",              mytest prop_map2)
-    ,("map 3",              mytest prop_map3)
-    ,("filter 1",           mytest prop_filter1)
-    ,("filter 2",           mytest prop_filter2)
-    ,("reverse",            mytest prop_reverse)
-    ,("reverse1",           mytest prop_reverse1)
-    ,("reverse2",           mytest prop_reverse2)
-    ,("transpose",          mytest prop_transpose)
-    ,("foldl",              mytest prop_foldl)
-    ,("foldl/reverse",      mytest prop_foldl_1)
-    ,("foldr",              mytest prop_foldr)
-    ,("foldr/id",           mytest prop_foldr_1)
-    ,("foldl1/foldl",       mytest prop_foldl1_1)
-    ,("foldl1/head",        mytest prop_foldl1_2)
-    ,("foldl1/tail",        mytest prop_foldl1_3)
-    ,("foldr1/foldr",       mytest prop_foldr1_1)
-    ,("foldr1/last",        mytest prop_foldr1_2)
-    ,("foldr1/head",        mytest prop_foldr1_3)
-    ,("concat 1",           mytest prop_concat1)
-    ,("concat 2",           mytest prop_concat2)
-    ,("concat/pack",        mytest prop_concat3)
-    ,("concatMap",          mytest prop_concatMap)
-    ,("any",                mytest prop_any)
-    ,("all",                mytest prop_all)
-    ,("maximum",            mytest prop_maximum)
-    ,("minimum",            mytest prop_minimum)
-    ,("replicate 1",        mytest prop_replicate1)
-    ,("replicate 2",        mytest prop_replicate2)
-    ,("take",               mytest prop_take1)
-    ,("drop",               mytest prop_drop1)
-    ,("splitAt",            mytest prop_drop1)
-    ,("takeWhile",          mytest prop_takeWhile)
-    ,("dropWhile",          mytest prop_dropWhile)
-    ,("break",              mytest prop_break)
-    ,("span",               mytest prop_span)
-    ,("break/span",         mytest prop_breakspan)
-    ,("break/breakByte",    mytest prop_breakByte)
-    ,("span/spanByte",      mytest prop_spanByte)
-    ,("breakFirst/break",   mytest prop_breakFirst)
-    ,("split",              mytest prop_split)
-    ,("splitWith",          mytest prop_splitWith)
-    ,("join.split/id",      mytest prop_joinsplit)
-    ,("join/joinByte",      mytest prop_joinjoinByte)
-    ,("group",              mytest prop_group)
-    ,("groupBy",            mytest prop_groupBy)
-    ,("index",              mytest prop_index)
-    ,("elemIndex",          mytest prop_elemIndex)
-    ,("elemIndices",        mytest prop_elemIndices)
-    ,("count/elemIndices",  mytest prop_count)
-    ,("findIndex",          mytest prop_findIndex)
-    ,("findIndices",        mytest prop_findIndicies)
-    ,("find",               mytest prop_find)
-    ,("find/findIndex",     mytest prop_find_findIndex)
-    ,("elem",               mytest prop_elem)
-    ,("notElem",            mytest prop_notElem)
-    ,("elem/notElem",       mytest prop_elem_notelem)
-    ,("filterByte 1",       mytest prop_filterByte)
-    ,("filterByte 2",       mytest prop_filterByte2)
-    ,("filterNotByte 1",    mytest prop_filterNotByte)
-    ,("filterNotByte 2",    mytest prop_filterNotByte2)
-    ,("isPrefixOf",         mytest prop_isPrefixOf)
 
 ------------------------------------------------------------------------
 -- ByteString.Lazy <=> List
@@ -297,6 +214,264 @@ tests =
     ,("elemIndex",   mytest prop_elemIndexPL)
     ,("elemIndices", mytest prop_elemIndicesPL)
 
+------------------------------------------------------------------------
+-- extra ByteString properties
+
+    ,    ("bijection",      mytest prop_bijectionBB)
+    ,    ("bijection'",     mytest prop_bijectionBB')
+    ,    ("pack/unpack",    mytest prop_packunpackBB)
+    ,    ("unpack/pack",    mytest prop_packunpackBB')
+    ,    ("eq 1",           mytest prop_eq1BB)
+    ,    ("eq 2",           mytest prop_eq3BB)
+    ,    ("eq 3",           mytest prop_eq3BB)
+    ,    ("compare 1",      mytest prop_compare1BB)
+    ,    ("compare 2",      mytest prop_compare2BB)
+    ,    ("compare 3",      mytest prop_compare3BB)
+    ,    ("compare 4",      mytest prop_compare4BB)
+    ,    ("compare 5",      mytest prop_compare5BB)
+    ,    ("compare 6",      mytest prop_compare6BB)
+    ,    ("compare 7",      mytest prop_compare7BB)
+    ,    ("compare 8",      mytest prop_compare8BB)
+    ,    ("empty 1",        mytest prop_nil1BB)
+    ,    ("empty 2",        mytest prop_nil2BB)
+    ,    ("null",           mytest prop_nullBB)
+    ,    ("length 1",       mytest prop_lengthBB)
+    ,    ("length 2",       mytest prop_lengthSBB)
+    ,    ("cons 1",         mytest prop_consBB)
+    ,    ("cons 2",         mytest prop_cons1BB)
+    ,    ("cons 3",         mytest prop_cons2BB)
+    ,    ("cons 4",         mytest prop_cons3BB)
+    ,    ("cons 5",         mytest prop_cons4BB)
+    ,    ("snoc",           mytest prop_snoc1BB)
+    ,    ("head 1",         mytest prop_head1BB)
+    ,    ("head 2",         mytest prop_head2BB)
+    ,    ("head 3",         mytest prop_head3BB)
+    ,    ("tail",           mytest prop_tailBB)
+    ,    ("tail 1",         mytest prop_tail1BB)
+    ,    ("last",           mytest prop_lastBB)
+    ,    ("init",           mytest prop_initBB)
+    ,    ("append 1",       mytest prop_append1BB)
+    ,    ("append 2",       mytest prop_append2BB)
+    ,    ("append 3",       mytest prop_append3BB)
+    ,    ("map 1",          mytest prop_map1BB)
+    ,    ("map 2",          mytest prop_map2BB)
+    ,    ("map 3",          mytest prop_map3BB)
+    ,    ("filter1",        mytest prop_filter1BB)
+    ,    ("filter2",        mytest prop_filter2BB)
+    ,    ("map fusion",     mytest prop_mapfusionBB)
+    ,    ("filter fusion",  mytest prop_filterfusionBB)
+    ,    ("reverse 1",      mytest prop_reverse1BB)
+    ,    ("reverse 2",      mytest prop_reverse2BB)
+    ,    ("reverse 3",      mytest prop_reverse3BB)
+    ,    ("foldl 1",        mytest prop_foldl1BB)
+    ,    ("foldl 2",        mytest prop_foldl2BB)
+    ,    ("foldr 1",        mytest prop_foldr1BB)
+    ,    ("foldr 2",        mytest prop_foldr2BB)
+    ,    ("foldl1 1",       mytest prop_foldl1_1BB)
+    ,    ("foldl1 2",       mytest prop_foldl1_2BB)
+    ,    ("foldl1 3",       mytest prop_foldl1_3BB)
+    ,    ("foldr1 1",       mytest prop_foldr1_1BB)
+    ,    ("foldr1 2",       mytest prop_foldr1_2BB)
+    ,    ("foldr1 3",       mytest prop_foldr1_3BB)
+    ,    ("scanl/foldl",    mytest prop_scanlfoldlBB)
+    ,    ("all",            mytest prop_allBB)
+    ,    ("any",            mytest prop_anyBB)
+    ,    ("take",           mytest prop_takeBB)
+    ,    ("drop",           mytest prop_dropBB)
+    ,    ("takeWhile",      mytest prop_takeWhileBB)
+    ,    ("dropWhile",      mytest prop_dropWhileBB)
+    ,    ("splitAt",        mytest prop_splitAtBB)
+    ,    ("span",           mytest prop_spanBB)
+    ,    ("break",          mytest prop_breakBB)
+    ,    ("elem",           mytest prop_elemBB)
+    ,    ("notElem",        mytest prop_notElemBB)
+    ,    ("concat 1",       mytest prop_concat1BB)
+    ,    ("concat 2",       mytest prop_concat2BB)
+    ,    ("concat 3",       mytest prop_concatBB)
+    ,    ("concatMap",      mytest prop_concatMapBB)
+    ,    ("lines",          mytest prop_linesBB)
+    ,    ("unlines",        mytest prop_unlinesBB)
+    ,    ("words",          mytest prop_wordsBB)
+    ,    ("unwords",        mytest prop_unwordsBB)
+    ,    ("group",          mytest prop_groupBB)
+    ,    ("groupBy",        mytest prop_groupByBB)
+    ,    ("groupBy 1",      mytest prop_groupBy1BB)
+    ,    ("join",           mytest prop_joinBB)
+    ,    ("elemIndex 1",    mytest prop_elemIndex1BB)
+    ,    ("elemIndex 2",    mytest prop_elemIndex2BB)
+    ,    ("findIndex",      mytest prop_findIndexBB)
+    ,    ("findIndicies",   mytest prop_findIndiciesBB)
+    ,    ("elemIndices",    mytest prop_elemIndicesBB)
+    ,    ("find",           mytest prop_findBB)
+    ,    ("find/findIndex", mytest prop_find_findIndexBB)
+    ,    ("sort 1",         mytest prop_sort1BB)
+    ,    ("sort 2",         mytest prop_sort2BB)
+    ,    ("sort 3",         mytest prop_sort3BB)
+    ,    ("sort 4",         mytest prop_sort4BB)
+    ,    ("sort 5",         mytest prop_sort5BB)
+    ,    ("intersperse",    mytest prop_intersperseBB)
+    ,    ("maximum",        mytest prop_maximumBB)
+    ,    ("minimum",        mytest prop_minimumBB)
+    ,    ("breakChar",      mytest prop_breakCharBB)
+    ,    ("spanChar 1",     mytest prop_spanCharBB)
+    ,    ("spanChar 2",     mytest prop_spanChar_1BB)
+    ,    ("breakSpace",     mytest prop_breakSpaceBB)
+    ,    ("dropSpace",      mytest prop_dropSpaceBB)
+    ,    ("spanEnd",        mytest prop_spanEndBB)
+    ,    ("breakFirst",     mytest prop_breakFirstBB)
+    ,    ("breakLast",      mytest prop_breakLastBB)
+    ,    ("elemIndexLast 1",mytest prop_elemIndexLast1BB)
+    ,    ("elemIndexLast 2",mytest prop_elemIndexLast2BB)
+    ,    ("words'",         mytest prop_wordsBB')
+    ,    ("lines'",         mytest prop_linesBB')
+    ,    ("dropSpaceEnd",   mytest prop_dropSpaceEndBB)
+    ,    ("unfoldr",        mytest prop_unfoldrBB)
+    ,    ("prefix",         mytest prop_prefixBB)
+    ,    ("suffix",         mytest prop_suffixBB)
+    ,    ("copy",           mytest prop_copyBB)
+    ,    ("inits",          mytest prop_initsBB)
+    ,    ("tails",          mytest prop_tailsBB)
+    ,    ("findSubstrings ",mytest prop_findSubstringsBB)
+    ,    ("replicate1",     mytest prop_replicate1BB)
+    ,    ("replicate2",     mytest prop_replicate2BB)
+    ,    ("replicate3",     mytest prop_replicate3BB)
+    ,    ("readint",        mytest prop_readintBB)
+    ,    ("readint2",       mytest prop_readint2BB)
+    ,    ("filterChar1",    mytest prop_filterChar1BB)
+    ,    ("filterChar2",    mytest prop_filterChar2BB)
+    ,    ("filterChar3",    mytest prop_filterChar3BB)
+    ,    ("filterNotChar1", mytest prop_filterNotChar1BB)
+    ,    ("filterNotChar2", mytest prop_filterNotChar2BB)
+    ,    ("tail",           mytest prop_tailSBB)
+    ,    ("index",          mytest prop_indexBB)
+    ,    ("unsafeIndex",    mytest prop_unsafeIndexBB)
+    ,    ("map'",           mytest prop_mapBB')
+    ,    ("filter",         mytest prop_filterBB)
+    ,    ("elem",           mytest prop_elemSBB)
+    ,    ("take",           mytest prop_takeSBB)
+    ,    ("drop",           mytest prop_dropSBB)
+    ,    ("splitAt",        mytest prop_splitAtSBB)
+    ,    ("foldl",          mytest prop_foldlBB)
+    ,    ("foldr",          mytest prop_foldrBB)
+    ,    ("takeWhile ",     mytest prop_takeWhileSBB)
+    ,    ("dropWhile ",     mytest prop_dropWhileSBB)
+    ,    ("span ",          mytest prop_spanSBB)
+    ,    ("break ",         mytest prop_breakSBB)
+    ,    ("breakspan",      mytest prop_breakspan_1BB)
+    ,    ("lines ",         mytest prop_linesSBB)
+    ,    ("unlines ",       mytest prop_unlinesSBB)
+    ,    ("words ",         mytest prop_wordsSBB)
+    ,    ("unwords ",       mytest prop_unwordsSBB)
+    ,    ("wordstokens",    mytest prop_wordstokensBB)
+    ,    ("splitWith",      mytest prop_splitWithBB)
+    ,    ("joinsplit",      mytest prop_joinsplitBB)
+    ,    ("lineIndices",    mytest prop_lineIndices1BB)
+    ,    ("count",          mytest prop_countBB)
+    ,    ("linessplit",     mytest prop_linessplitBB)
+    ,    ("splitsplitWith", mytest prop_splitsplitWithBB)
+    ,    ("joinjoinpath",   mytest prop_joinjoinpathBB)
+    ,    ("zip",            mytest prop_zipBB)
+    ,    ("zip1",           mytest prop_zip1BB)
+    ,    ("zipWith",        mytest prop_zipWithBB)
+    ,    ("unzip",          mytest prop_unzipBB)
+
+------------------------------------------------------------------------
+-- Extra lazy properties
+
+    ,("eq 1",               mytest prop_eq1)
+    ,("eq 2",               mytest prop_eq2)
+    ,("eq 3",               mytest prop_eq3)
+    ,("compare 1",          mytest prop_compare1)
+    ,("compare 2",          mytest prop_compare2)
+    ,("compare 3",          mytest prop_compare3)
+    ,("compare 4",          mytest prop_compare4)
+    ,("compare 5",          mytest prop_compare5)
+    ,("compare 6",          mytest prop_compare6)
+    ,("compare 7",          mytest prop_compare7)
+    ,("compare 8",          mytest prop_compare8)
+    ,("empty 1",            mytest prop_empty1)
+    ,("empty 2",            mytest prop_empty2)
+    ,("pack/unpack",        mytest prop_packunpack)
+    ,("unpack/pack",        mytest prop_unpackpack)
+    ,("null",               mytest prop_null)
+    ,("length 1",           mytest prop_length1)
+    ,("length 2",           mytest prop_length2)
+    ,("cons 1"    ,         mytest prop_cons1)
+    ,("cons 2"    ,         mytest prop_cons2)
+    ,("cons 3"    ,         mytest prop_cons3)
+    ,("cons 4"    ,         mytest prop_cons4)
+    ,("snoc"    ,           mytest prop_snoc1)
+    ,("head/pack",          mytest prop_head)
+    ,("head/unpack",        mytest prop_head1)
+    ,("tail/pack",          mytest prop_tail)
+    ,("tail/unpack",        mytest prop_tail1)
+    ,("last",               mytest prop_last)
+    ,("init",               mytest prop_init)
+    ,("append 1",           mytest prop_append1)
+    ,("append 2",           mytest prop_append2)
+    ,("append 3",           mytest prop_append3)
+    ,("map 1",              mytest prop_map1)
+    ,("map 2",              mytest prop_map2)
+    ,("map 3",              mytest prop_map3)
+    ,("filter 1",           mytest prop_filter1)
+    ,("filter 2",           mytest prop_filter2)
+    ,("reverse",            mytest prop_reverse)
+    ,("reverse1",           mytest prop_reverse1)
+    ,("reverse2",           mytest prop_reverse2)
+    ,("transpose",          mytest prop_transpose)
+    ,("foldl",              mytest prop_foldl)
+    ,("foldl/reverse",      mytest prop_foldl_1)
+    ,("foldr",              mytest prop_foldr)
+    ,("foldr/id",           mytest prop_foldr_1)
+    ,("foldl1/foldl",       mytest prop_foldl1_1)
+    ,("foldl1/head",        mytest prop_foldl1_2)
+    ,("foldl1/tail",        mytest prop_foldl1_3)
+    ,("foldr1/foldr",       mytest prop_foldr1_1)
+    ,("foldr1/last",        mytest prop_foldr1_2)
+    ,("foldr1/head",        mytest prop_foldr1_3)
+    ,("concat 1",           mytest prop_concat1)
+    ,("concat 2",           mytest prop_concat2)
+    ,("concat/pack",        mytest prop_concat3)
+    ,("concatMap",          mytest prop_concatMap)
+    ,("any",                mytest prop_any)
+    ,("all",                mytest prop_all)
+    ,("maximum",            mytest prop_maximum)
+    ,("minimum",            mytest prop_minimum)
+    ,("replicate 1",        mytest prop_replicate1)
+    ,("replicate 2",        mytest prop_replicate2)
+    ,("take",               mytest prop_take1)
+    ,("drop",               mytest prop_drop1)
+    ,("splitAt",            mytest prop_drop1)
+    ,("takeWhile",          mytest prop_takeWhile)
+    ,("dropWhile",          mytest prop_dropWhile)
+    ,("break",              mytest prop_break)
+    ,("span",               mytest prop_span)
+    ,("break/span",         mytest prop_breakspan)
+    ,("break/breakByte",    mytest prop_breakByte)
+    ,("span/spanByte",      mytest prop_spanByte)
+    ,("breakFirst/break",   mytest prop_breakFirst)
+    ,("split",              mytest prop_split)
+    ,("splitWith",          mytest prop_splitWith)
+    ,("join.split/id",      mytest prop_joinsplit)
+    ,("join/joinByte",      mytest prop_joinjoinByte)
+    ,("group",              mytest prop_group)
+    ,("groupBy",            mytest prop_groupBy)
+    ,("index",              mytest prop_index)
+    ,("elemIndex",          mytest prop_elemIndex)
+    ,("elemIndices",        mytest prop_elemIndices)
+    ,("count/elemIndices",  mytest prop_count)
+    ,("findIndex",          mytest prop_findIndex)
+    ,("findIndices",        mytest prop_findIndicies)
+    ,("find",               mytest prop_find)
+    ,("find/findIndex",     mytest prop_find_findIndex)
+    ,("elem",               mytest prop_elem)
+    ,("notElem",            mytest prop_notElem)
+    ,("elem/notElem",       mytest prop_elem_notelem)
+    ,("filterByte 1",       mytest prop_filterByte)
+    ,("filterByte 2",       mytest prop_filterByte2)
+    ,("filterNotByte 1",    mytest prop_filterNotByte)
+    ,("filterNotByte 2",    mytest prop_filterNotByte2)
+    ,("isPrefixOf",         mytest prop_isPrefixOf)
     ]
 
 ------------------------------------------------------------------------
@@ -836,3 +1011,381 @@ prop_sort5 xs ys =
 
 prop_elems xs = L.elems == map pack (elems (unpack xs))
 -}
+
+------------------------------------------------------------------------
+------------------------------------------------------------------------
+-- Misc ByteString properties
+
+prop_nil1BB = P.length P.empty == 0
+prop_nil2BB = P.unpack P.empty == []
+
+prop_tailSBB xs = not (P.null xs) ==> P.tail xs == P.pack (tail (P.unpack xs))
+
+prop_nullBB xs = null (P.unpack xs) == P.null xs
+
+prop_lengthBB xs = P.length xs == length1 xs
+    where
+        length1 ys
+            | P.null ys = 0
+            | otherwise = 1 + length1 (P.tail ys)
+
+prop_lengthSBB xs = length xs == P.length (P.pack xs)
+
+prop_indexBB xs =
+  not (null xs) ==>
+    forAll indices $ \i -> (xs !! i) == P.pack xs `P.index` i
+  where indices = choose (0, length xs -1)
+
+prop_unsafeIndexBB xs =
+  not (null xs) ==>
+    forAll indices $ \i -> (xs !! i) == P.pack xs `P.unsafeIndex` i
+  where indices = choose (0, length xs -1)
+
+prop_mapfusionBB f g xs = P.map f (P.map g xs) == P.map (f . g) xs
+
+prop_filterBB f xs = P.filter f (P.pack xs) == P.pack (filter f xs)
+
+prop_filterfusionBB f g xs = P.filter f (P.filter g xs) == P.filter (\c -> f c && g c) xs
+
+prop_elemSBB x xs = P.elem x (P.pack xs) == elem x xs
+
+prop_takeSBB i xs = P.take i (P.pack xs) == P.pack (take i xs)
+prop_dropSBB i xs = P.drop i (P.pack xs) == P.pack (drop i xs)
+
+prop_splitAtSBB i xs = -- collect (i >= 0 && i < length xs) $
+    P.splitAt i (P.pack xs) ==
+    let (a,b) = splitAt i xs in (P.pack a, P.pack b)
+
+prop_foldlBB f c xs = P.foldl f c (P.pack xs) == foldl f c xs
+  where types = c :: Char
+
+prop_scanlfoldlBB f z xs = not (P.null xs) ==> P.last (P.scanl f z xs) == P.foldl f z xs
+
+prop_foldrBB f c xs = P.foldl f c (P.pack xs) == foldl f c xs
+  where types = c :: Char
+
+prop_takeWhileSBB f xs = P.takeWhile f (P.pack xs) == P.pack (takeWhile f xs)
+prop_dropWhileSBB f xs = P.dropWhile f (P.pack xs) == P.pack (dropWhile f xs)
+
+prop_spanSBB f xs = P.span f (P.pack xs) ==
+    let (a,b) = span f xs in (P.pack a, P.pack b)
+
+prop_breakSBB f xs = P.break f (P.pack xs) ==
+    let (a,b) = break f xs in (P.pack a, P.pack b)
+
+prop_breakspan_1BB xs c = P.break (== c) xs == P.span (/= c) xs
+
+prop_linesSBB xs = C.lines (C.pack xs) == map C.pack (lines xs)
+
+prop_unlinesSBB xss = C.unlines (map C.pack xss) == C.pack (unlines xss)
+
+prop_wordsSBB xs =
+    C.words (C.pack xs) == map C.pack (words xs)
+
+prop_unwordsSBB xss = C.unwords (map C.pack xss) == C.pack (unwords xss)
+
+prop_splitWithBB f xs = (l1 == l2 || l1 == l2+1) &&
+        sum (map P.length splits) == P.length xs - l2
+  where splits = P.splitWith f xs
+        l1 = length splits
+        l2 = P.length (P.filter f xs)
+
+prop_joinsplitBB c xs = P.join (P.pack [c]) (P.split c xs) == xs
+
+prop_linessplitBB xs =
+    (not . C.null) xs ==>
+    C.lines' xs == C.split '\n' xs
+
+prop_linessplit2BB xs =
+    C.lines xs == C.split '\n' xs ++ (if C.last xs == '\n' then [C.empty] else [])
+
+prop_splitsplitWithBB c xs = P.split c xs == P.splitWith (== c) xs
+
+prop_bijectionBB  c = (C.w2c . C.c2w) c == id c
+prop_bijectionBB' w = (C.c2w . C.w2c) w == id w
+
+prop_packunpackBB  s = (P.unpack . P.pack) s == id s
+prop_packunpackBB' s = (P.pack . P.unpack) s == id s
+
+prop_eq1BB xs      = xs            == (P.unpack . P.pack $ xs)
+prop_eq2BB xs      = xs == xs
+prop_eq3BB xs ys   = (xs == ys) == (P.unpack xs == P.unpack ys)
+
+prop_compare1BB xs  = (P.pack xs         `compare` P.pack xs) == EQ
+prop_compare2BB xs c = (P.pack (xs++[c]) `compare` P.pack xs) == GT
+prop_compare3BB xs c = (P.pack xs `compare` P.pack (xs++[c])) == LT
+
+prop_compare4BB xs  = (not (null xs)) ==> (P.pack xs  `compare` P.empty) == GT
+prop_compare5BB xs  = (not (null xs)) ==> (P.empty `compare` P.pack xs) == LT
+prop_compare6BB xs ys= (not (null ys)) ==> (P.pack (xs++ys)  `compare` P.pack xs) == GT
+
+prop_compare7BB x  y = x `compare` y == (C.packChar x `compare` C.packChar y)
+prop_compare8BB xs ys = xs `compare` ys == (P.pack xs `compare` P.pack ys)
+
+prop_consBB  c xs = P.unpack (P.cons c (P.pack xs)) == (c:xs)
+prop_cons1BB xs   = 'X' : xs == C.unpack ('X' `C.cons` (C.pack xs))
+prop_cons2BB xs c = c : xs == P.unpack (c `P.cons` (P.pack xs))
+prop_cons3BB c    = C.unpack (C.packChar c) == (c:[])
+prop_cons4BB c    = (c `P.cons` P.empty)  == P.pack (c:[])
+
+prop_snoc1BB xs c = xs ++ [c] == P.unpack ((P.pack xs) `P.snoc` c)
+
+prop_head1BB xs     = (not (null xs)) ==> head  xs  == (P.head . P.pack) xs
+prop_head2BB xs    = (not (null xs)) ==> head xs   == (P.unsafeHead . P.pack) xs
+prop_head3BB xs    = not (P.null xs) ==> P.head xs == head (P.unpack xs)
+
+prop_tailBB xs     = (not (null xs)) ==> tail xs    == (P.unpack . P.tail . P.pack) xs
+prop_tail1BB xs    = (not (null xs)) ==> tail xs    == (P.unpack . P.unsafeTail. P.pack) xs
+
+prop_lastBB xs     = (not (null xs)) ==> last xs    == (P.last . P.pack) xs
+
+prop_initBB xs     =
+    (not (null xs)) ==>
+    init xs    == (P.unpack . P.init . P.pack) xs
+
+-- prop_null xs = (null xs) ==> null xs == (nullPS (pack xs))
+
+prop_append1BB xs    = (xs ++ xs) == (P.unpack $ P.pack xs `P.append` P.pack xs)
+prop_append2BB xs ys = (xs ++ ys) == (P.unpack $ P.pack xs `P.append` P.pack ys)
+prop_append3BB xs ys = P.append xs ys == P.pack (P.unpack xs ++ P.unpack ys)
+
+prop_map1BB f xs   = P.map f (P.pack xs)    == P.pack (map f xs)
+prop_map2BB f g xs = P.map f (P.map g xs) == P.map (f . g) xs
+prop_map3BB f xs   = map f xs == (P.unpack . P.map f .  P.pack) xs
+prop_mapBB' f xs   = P.map' f (P.pack xs) == P.pack (map f xs)
+
+prop_filter1BB xs   = (filter (=='X') xs) == (C.unpack $ C.filter (=='X') (C.pack xs))
+prop_filter2BB p xs = (filter p xs) == (P.unpack $ P.filter p (P.pack xs))
+
+prop_findBB p xs = find p xs == P.find p (P.pack xs)
+
+prop_find_findIndexBB p xs =
+    P.find p xs == case P.findIndex p xs of
+                                Just n -> Just (xs `P.unsafeIndex` n)
+                                _      -> Nothing
+
+prop_foldl1BB xs a = ((foldl (\x c -> if c == a then x else c:x) [] xs)) ==
+                   (P.unpack $ P.foldl (\x c -> if c == a then x else c `P.cons` x) P.empty (P.pack xs)) 
+prop_foldl2BB xs = P.foldl (\xs c -> c `P.cons` xs) P.empty (P.pack xs) == P.reverse (P.pack xs)
+
+prop_foldr1BB xs a = ((foldr (\c x -> if c == a then x else c:x) [] xs)) ==
+                (P.unpack $ P.foldr (\c x -> if c == a then x else c `P.cons` x)
+                    P.empty (P.pack xs))
+
+prop_foldr2BB xs = P.foldr (\c xs -> c `P.cons` xs) P.empty (P.pack xs) == (P.pack xs)
+
+prop_foldl1_1BB xs =
+    (not . P.null) xs ==>
+    P.foldl1 (\x c -> if c > x then c else x)   xs ==
+    P.foldl  (\x c -> if c > x then c else x) 0 xs
+
+prop_foldl1_2BB xs =
+    (not . P.null) xs ==>
+    P.foldl1 const xs == P.head xs
+
+prop_foldl1_3BB xs =
+    (not . P.null) xs ==>
+    P.foldl1 (flip const) xs == P.last xs
+
+prop_foldr1_1BB xs =
+    (not . P.null) xs ==>
+    P.foldr1 (\c x -> if c > x then c else x)   xs ==
+    P.foldr  (\c x -> if c > x then c else x) 0 xs
+
+prop_foldr1_2BB xs =
+    (not . P.null) xs ==>
+    P.foldr1 (flip const) xs == P.last xs
+
+prop_foldr1_3BB xs =
+    (not . P.null) xs ==>
+    P.foldr1 const xs == P.head xs
+
+prop_takeWhileBB xs a = (takeWhile (/= a) xs) == (P.unpack . (P.takeWhile (/= a)) . P.pack) xs
+
+prop_dropWhileBB xs a = (dropWhile (/= a) xs) == (P.unpack . (P.dropWhile (/= a)) . P.pack) xs
+
+prop_takeBB xs = (take 10 xs) == (P.unpack . (P.take 10) . P.pack) xs
+
+prop_dropBB xs = (drop 10 xs) == (P.unpack . (P.drop 10) . P.pack) xs
+
+prop_splitAtBB i xs = -- collect (i >= 0 && i < length xs) $
+    splitAt i xs ==
+    let (x,y) = P.splitAt i (P.pack xs) in (P.unpack x, P.unpack y)
+
+prop_spanBB xs a = (span (/=a) xs) == (let (x,y) = P.span (/=a) (P.pack xs)
+                                     in (P.unpack x, P.unpack y))
+
+prop_breakBB xs a = (break (/=a) xs) == (let (x,y) = P.break (/=a) (P.pack xs)
+                                       in (P.unpack x, P.unpack y))
+
+prop_reverse1BB xs = (reverse xs) == (P.unpack . P.reverse . P.pack) xs
+prop_reverse2BB xs = P.reverse (P.pack xs) == P.pack (reverse xs)
+prop_reverse3BB xs = reverse (P.unpack xs) == (P.unpack . P.reverse) xs
+
+prop_elemBB xs a = (a `elem` xs) == (a `P.elem` (P.pack xs))
+
+prop_notElemBB c xs = P.notElem c (P.pack xs) == notElem c xs
+
+-- should try to stress it
+prop_concat1BB xs = (concat [xs,xs]) == (P.unpack $ P.concat [P.pack xs, P.pack xs])
+prop_concat2BB xs = (concat [xs,[]]) == (P.unpack $ P.concat [P.pack xs, P.pack []])
+prop_concatBB xss = P.concat (map P.pack xss) == P.pack (concat xss)
+
+prop_concatMapBB xs = C.concatMap C.packChar xs == (C.pack . concatMap (:[]) . C.unpack) xs
+
+prop_anyBB xs a = (any (== a) xs) == (P.any (== a) (P.pack xs))
+prop_allBB xs a = (all (== a) xs) == (P.all (== a) (P.pack xs))
+
+prop_linesBB xs = (lines xs) == ((map C.unpack) . C.lines . C.pack) xs
+
+prop_unlinesBB xs = (unlines.lines) xs == (C.unpack. C.unlines . C.lines .C.pack) xs
+
+prop_wordsBB xs =
+    (words xs) == ((map C.unpack) . C.words . C.pack) xs
+prop_wordstokensBB xs = C.words xs == C.tokens isSpace xs
+
+prop_unwordsBB xs =
+    (C.pack.unwords.words) xs == (C.unwords . C.words .C.pack) xs
+
+prop_groupBB xs   = group xs == (map P.unpack . P.group . P.pack) xs
+
+prop_groupByBB  xs = groupBy (==) xs == (map P.unpack . P.groupBy (==) . P.pack) xs
+prop_groupBy1BB xs = groupBy (/=) xs == (map P.unpack . P.groupBy (/=) . P.pack) xs
+
+prop_joinBB xs ys = (concat . (intersperse ys) . lines) xs ==
+               (C.unpack $ C.join (C.pack ys) (C.lines (C.pack xs)))
+
+prop_elemIndex1BB xs   = (elemIndex 'X' xs) == (C.elemIndex 'X' (C.pack xs))
+prop_elemIndex2BB xs c = (elemIndex c xs) == (C.elemIndex c (C.pack xs))
+
+prop_lineIndices1BB xs = C.elemIndices '\n' xs == C.lineIndices xs
+
+prop_countBB c xs = length (P.elemIndices c xs) == P.count c xs
+
+prop_elemIndexLast1BB c xs = (P.elemIndexLast c (P.pack xs)) ==
+                           (case P.elemIndex c (P.pack (reverse xs)) of
+                                Nothing -> Nothing
+                                Just i  -> Just (length xs -1 -i))
+
+prop_elemIndexLast2BB c xs = (P.elemIndexLast c (P.pack xs)) ==
+                           ((-) (length xs - 1) `fmap` P.elemIndex c (P.pack $ reverse xs))
+
+prop_elemIndicesBB xs c = elemIndices c xs == P.elemIndices c (P.pack xs)
+
+prop_findIndexBB xs a = (findIndex (==a) xs) == (P.findIndex (==a) (P.pack xs))
+
+prop_findIndiciesBB xs c = (findIndices (==c) xs) == (P.findIndices (==c) (P.pack xs))
+
+-- example properties from QuickCheck.Batch
+prop_sort1BB xs = sort xs == (P.unpack . P.sort . P.pack) xs
+prop_sort2BB xs = (not (null xs)) ==> (P.head . P.sort . P.pack $ xs) == minimum xs
+prop_sort3BB xs = (not (null xs)) ==> (P.last . P.sort . P.pack $ xs) == maximum xs
+prop_sort4BB xs ys =
+        (not (null xs)) ==>
+        (not (null ys)) ==>
+        (P.head . P.sort) (P.append (P.pack xs) (P.pack ys)) == min (minimum xs) (minimum ys)
+prop_sort5BB xs ys =
+        (not (null xs)) ==>
+        (not (null ys)) ==>
+        (P.last . P.sort) (P.append (P.pack xs) (P.pack ys)) == max (maximum xs) (maximum ys)
+
+prop_intersperseBB c xs = (intersperse c xs) == (P.unpack $ P.intersperse c (P.pack xs))
+
+prop_transposeBB xs = (transpose xs) == ((map P.unpack) . P.transpose .  (map P.pack)) xs
+
+prop_maximumBB xs = (not (null xs)) ==> (maximum xs) == (P.maximum ( P.pack xs ))
+prop_minimumBB xs = (not (null xs)) ==> (minimum xs) == (P.minimum ( P.pack xs ))
+
+------------------------------------------------------------------------
+
+prop_dropSpaceBB xs    = dropWhile isSpace xs == C.unpack (C.dropSpace (C.pack xs))
+prop_dropSpaceEndBB xs = (C.reverse . (C.dropWhile isSpace) . C.reverse) (C.pack xs) ==
+                       (C.dropSpaceEnd (C.pack xs))
+
+prop_breakSpaceBB xs =
+    (let (x,y) = C.breakSpace (C.pack xs)
+     in (C.unpack x, C.unpack y)) == (break isSpace xs)
+
+prop_spanEndBB xs =
+        (C.spanEnd (not . isSpace) (C.pack xs)) ==
+        (let (x,y) = C.span (not.isSpace) (C.reverse (C.pack xs)) in (C.reverse y,C.reverse x))
+
+prop_breakCharBB c xs =
+        (break (==c) xs) ==
+        (let (x,y) = C.breakChar c (C.pack xs) in (C.unpack x, C.unpack y))
+
+prop_spanCharBB c xs =
+        (break (/=c) xs) ==
+        (let (x,y) = C.spanChar c (C.pack xs) in (C.unpack x, C.unpack y))
+
+prop_spanChar_1BB c xs =
+        (C.span (==c) xs) == C.spanChar c xs
+
+prop_breakFirstBB c xs = (let (x,y) = break (==c) xs
+                        in if null y then Nothing
+                                     else Just (P.pack x, P.pack $ drop 1 y)) ==
+                       (P.breakFirst c (P.pack xs))
+
+prop_breakLastBB c xs = (let (x,y) = break (==c) (reverse xs)
+                       in if null y then Nothing
+                                    else Just (C.pack (reverse $ drop 1 y), C.pack (reverse x))) ==
+                       (C.breakLast c (C.pack xs))
+
+prop_wordsBB' xs =
+    (C.unpack . C.unwords  . C.words' . C.pack) xs ==
+    (map (\c -> if isSpace c then ' ' else c) xs)
+
+prop_linesBB' xs = (C.unpack . C.unlines' . C.lines' . C.pack) xs == (xs)
+
+prop_unfoldrBB c =
+    (C.unfoldrN 100 (\x -> Just (x, chr (ord x + 1))) c) ==
+    (C.pack $ take 100 $ unfoldr (\x -> Just (x, chr (ord x + 1))) c)
+
+prop_prefixBB xs ys = isPrefixOf xs ys == (P.pack xs `P.isPrefixOf` P.pack ys)
+prop_suffixBB xs ys = isSuffixOf xs ys == (P.pack xs `P.isSuffixOf` P.pack ys)
+
+prop_copyBB xs = let p = P.pack xs in P.copy p == p
+
+prop_initsBB xs = inits xs == map P.unpack (P.inits (P.pack xs))
+
+prop_tailsBB xs = tails xs == map P.unpack (P.tails (P.pack xs))
+
+prop_findSubstringsBB s x l
+    = C.findSubstrings (C.pack p) (C.pack s) == naive_findSubstrings p s
+  where
+    _ = l :: Int
+    _ = x :: Int
+
+    -- we look for some random substring of the test string
+    p = take (abs l) $ drop (abs x) s
+
+    -- naive reference implementation
+    naive_findSubstrings :: String -> String -> [Int]
+    naive_findSubstrings p s = [x | x <- [0..length s], p `isPrefixOf` drop x s]
+
+prop_replicate1BB n c = P.unpack (P.replicate n c) == replicate n c
+prop_replicate2BB n c = P.replicate n c == P.unfoldrN n (\u -> Just (u,u)) c
+
+prop_replicate3BB c = P.unpack (P.replicate 0 c) == replicate 0 c
+
+prop_readintBB n = (fst . fromJust . C.readInt . C.pack . show) n == (n :: Int)
+
+prop_readint2BB s =
+    let s' = filter (\c -> c `notElem` ['0'..'9']) s
+    in C.readInt (C.pack s') == Nothing
+
+prop_filterChar1BB c xs = (filter (==c) xs) == ((C.unpack . C.filterChar c . C.pack) xs)
+prop_filterChar2BB c xs = (C.filter (==c) (C.pack xs)) == (C.filterChar c (C.pack xs))
+prop_filterChar3BB c xs = C.filterChar c xs == C.replicate (C.count c xs) c
+
+prop_filterNotChar1BB c xs = (filter (/=c) xs) == ((C.unpack . C.filterNotChar c . C.pack) xs)
+prop_filterNotChar2BB c xs = (C.filter (/=c) (C.pack xs)) == (C.filterNotChar c (C.pack xs))
+
+prop_joinjoinpathBB xs ys c = C.joinWithChar c xs ys == C.join (C.packChar c) [xs,ys]
+
+prop_zipBB  xs ys = zip xs ys == P.zip (P.pack xs) (P.pack ys)
+prop_zip1BB xs ys = P.zip xs ys == zip (P.unpack xs) (P.unpack ys)
+
+prop_zipWithBB xs ys = P.zipWith (,) xs ys == P.zip xs ys
+
+prop_unzipBB x = let (xs,ys) = unzip x in (P.pack xs, P.pack ys) == P.unzip x
