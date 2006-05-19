@@ -30,6 +30,7 @@ joinWithByte
 foldl
 foldl'
 foldl1
+foldl1'
 foldr
 foldr1
 

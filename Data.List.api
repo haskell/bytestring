@@ -1,3 +1,6 @@
+-- Basic List-specific bits
+[]
+(:)
 
 -- Basic functions
 (++)
@@ -25,14 +28,14 @@ foldr1
 -- Special folds
 concat
 concatMap
-and
-or
 any
 all
-sum
-product
 maximum
 minimum
+and
+or
+sum
+product
 
 -- Building lists
 -- Scans
@@ -46,10 +49,10 @@ mapAccumL
 mapAccumR
 
 -- Infinite lists
-iterate
 repeat
 replicate
 cycle
+iterate
 
 -- Unfolding
 unfoldr
