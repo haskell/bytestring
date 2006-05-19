@@ -22,13 +22,13 @@ Building:
 
 After installation, you can run the testsuite as follows:
     
-        > cd tests ; runghc Quick.hs
+        > cd tests ; runhaskell Properties.hs
     or
-        > cd tests ; runhugs Quick.hs
+        > cd tests ; runhugs -98 Properties.hs
 
 For the full test and benchmark suite, you need GHC:
 
-        > cd tests ; chmod +x logpp ; make ; make run
+        > cd tests ; chmod +x logpp ; make ; make everything
 
 You may need to edit the Makefile if your version of the m4 preprocessor isn't 'gm4'
 
