@@ -569,8 +569,15 @@ replicate w c
     | r == 0             = LPS (Prelude.replicate q s) -- preserve invariant
     | otherwise          = LPS (P.unsafeTake r s : Prelude.replicate q s)
  where
-    s      = P.replicate defaultChunkSize c
-    (q, r) = quotRem w defaultChunkSize
+    s      = P.replicate smallChunkSize c
+    (q, r) = quotRem w smallChunkSize
+
+-- | 'cycle' ties a finite ByteString into a circular one, or equivalently,
+-- the infinite repetition of the original ByteString.
+--
+cycle :: ByteString -> ByteString
+cycle (LPS []) = errorEmptyList "cycle"
+cycle (LPS xs) = LPS (L.repeat xs)
 
 -- | /O(n)/ The 'unfoldrN' function is analogous to the List \'unfoldr\'.
 -- 'unfoldrN' builds a ByteString from a seed value.  The function takes
