@@ -759,6 +759,7 @@ concat xs     = create len $ \ptr -> go xs ptr
 -- | Map a function over a 'ByteString' and concatenate the results
 concatMap :: (Word8 -> ByteString) -> ByteString -> ByteString
 concatMap f = foldr (append . f) empty
+-- A silly function for ByteStrings anyway.
 
 -- | /O(n)/ Applied to a predicate and a ByteString, 'any' determines if
 -- any element of the 'ByteString' satisfies the predicate.
