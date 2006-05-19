@@ -88,7 +88,7 @@ filter
 partition
 
 -- Indexing lists
-(!!)
+index/(!!)
 elemIndex
 elemIndices
 findIndex
@@ -96,18 +96,18 @@ findIndices
 
 -- Zipping and unzipping lists
 zip
+zipWith
+unzip
 zip3
 zip4
 zip5
 zip6
 zip7
-zipWith
 zipWith3
 zipWith4
 zipWith5
 zipWith6
 zipWith7
-unzip
 unzip3
 unzip4
 unzip5

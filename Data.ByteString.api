@@ -1,5 +1,5 @@
 -- vimdiff *.api
--- Basic ByteString-specific bits
+-- Basic bits
 empty/[]
 cons/(:)
 packByte/(:[])
@@ -45,6 +45,8 @@ minimum
 
 -- Building lists
 -- Scans
+scanl
+scanl1
 
 -- Accumulating maps
 mapIndexed
@@ -98,7 +100,7 @@ filterNotByte
 count
 
 -- Indexing lists
-index
+index/(!!)
 elemIndex
 elemIndices
 findIndex
@@ -115,6 +117,11 @@ unzip
 
 -- Special lists
 -- Functions on strings
+lines
+words
+unlines
+unwords
+
 -- "Set" operations
 -- Ordered lists
 sort
