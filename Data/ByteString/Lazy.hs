@@ -579,7 +579,7 @@ replicate w c
 --
 cycle :: ByteString -> ByteString
 cycle (LPS []) = errorEmptyList "cycle"
-cycle (LPS xs) = LPS xs' where xs' = xs ++ xs'
+cycle (LPS xs) = LPS (L.cycle xs)
 
 -- | /O(n)/ The 'unfoldrN' function is analogous to the List \'unfoldr\'.
 -- 'unfoldrN' builds a ByteString from a seed value.  The function takes
