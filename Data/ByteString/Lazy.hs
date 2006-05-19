@@ -176,6 +176,7 @@ module Data.ByteString.Lazy (
         getContents,            -- :: IO ByteString
         putStr,                 -- :: ByteString -> IO ()
         putStrLn,               -- :: ByteString -> IO ()
+        interact,               -- :: (ByteString -> ByteString) -> IO ()
 
         -- ** Files
         readFile,               -- :: FilePath -> IO ByteString
@@ -1150,6 +1151,13 @@ putStr = hPut stdout
 -- | Write a ByteString to stdout, appending a newline byte
 putStrLn :: ByteString -> IO ()
 putStrLn ps = hPut stdout ps >> hPut stdout (packByte 0x0a)
+
+-- | The interact function takes a function of type @ByteString -> ByteString@
+-- as its argument. The entire input from the standard input device is passed
+-- to this function as its argument, and the resulting string is output on the
+-- standard output device. It's great for writing one line programs!
+interact :: (ByteString -> ByteString) -> IO ()
+interact transformer = putStr . transformer =<< getContents
 
 -- ---------------------------------------------------------------------
 -- Internal utilities
