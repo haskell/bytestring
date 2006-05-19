@@ -268,6 +268,8 @@ tests =
     ,("foldl1'",     mytest prop_foldl1PL')
     ,("foldr1",      mytest prop_foldr1PL)
     ,("foldr",       mytest prop_foldrPL)
+    ,("scanl",       mytest prop_scanlPL)
+    ,("scanl1",      mytest prop_scanl1PL)
     ,("head",        mytest prop_headPL)
     ,("init",        mytest prop_initPL)
     ,("last",        mytest prop_lastPL)
@@ -356,9 +358,13 @@ notLNull2 :: (Testable a) =>
              (t -> ByteString -> a) -> t -> ByteString -> Property
 notLNull2 f = \x y -> (not . L.null $ y) ==> f x y
 
-notPNull2 :: (Testable a) =>
-             (t -> P -> a) -> t -> P -> Property
+notPNull2 :: (Testable a)
+          => (t -> P -> a) -> t -> P -> Property
 notPNull2 f = \x y -> (not . P.null $ y) ==> f x y
+
+notPNull3 :: (Testable a)
+          => (t -> t1 -> P -> a) -> t -> t1 -> P -> Property
+notPNull3 f = \x y z -> (not . P.null $ z) ==> f x y z
 
 -- fix polymorphic args so we can QC them.
 type X = Int
@@ -532,6 +538,10 @@ prop_elemIndicesPL= compare2 P.elemIndices       (elemIndices:: W -> [W] -> [Int
 prop_foldl1PL     = notPNull2 $ compare2 P.foldl1 (foldl1   :: (W -> W -> W) -> [W] -> W)
 prop_foldl1PL'    = notPNull2 $ compare2 P.foldl1' (foldl1' :: (W -> W -> W) -> [W] -> W)
 prop_foldr1PL     = notPNull2 $ compare2 P.foldr1  (foldr1 :: (W -> W -> W) -> [W] -> W)
+
+prop_scanlPL      = notPNull3 $ compare3 P.scanl  (scanl  :: (W -> W -> W) -> W -> [W] -> [W])
+prop_scanl1PL     = notPNull2 $ compare2 P.scanl1 (scanl1 :: (W -> W -> W) -> [W] -> [W])
+
 prop_headPL       = notPNull1 $ compare1 P.head   (head      :: [W] -> W)
 prop_initPL       = notPNull1 $ compare1 P.init   (init      :: [W] -> [W])
 prop_lastPL       = notPNull1 $ compare1 P.last   (last      :: [W] -> W)

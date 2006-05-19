@@ -1,16 +1,16 @@
 -- vimdiff *.api
 -- Basic ByteString-specific bits
-empty
-packByte
+empty/[]
+cons/(:)
+packByte/(:[])
 pack
 unpack
 packWith
 unpackWith
-cons
 snoc
 
 -- Basic functions
-append
+append/(++)
 head
 last
 tail

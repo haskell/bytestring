@@ -86,6 +86,8 @@ prop_splitAtS i xs = -- collect (i >= 0 && i < length xs) $
 prop_foldl f c xs = P.foldl f c (P.pack xs) == foldl f c xs
   where types = c :: Char
 
+prop_scanlfoldl f z xs = not (P.null xs) ==> P.last (P.scanl f z xs) == P.foldl f z xs
+
 prop_foldr f c xs = P.foldl f c (P.pack xs) == foldl f c xs
   where types = c :: Char
 
@@ -478,6 +480,7 @@ main = do
             ,    ("foldr1 1",       mytest prop_foldr1_1)
             ,    ("foldr1 2",       mytest prop_foldr1_2)
             ,    ("foldr1 3",       mytest prop_foldr1_3)
+            ,    ("scanl/foldl",    mytest prop_scanlfoldl)
             ,    ("all",            mytest prop_all)
             ,    ("any",            mytest prop_any)
             ,    ("take",           mytest prop_take)

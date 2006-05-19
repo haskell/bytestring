@@ -89,6 +89,10 @@ module Data.ByteString (
         minimum,                -- :: ByteString -> Word8
         mapIndexed,             -- :: (Int -> Word8 -> Word8) -> ByteString -> ByteString
 
+        -- * Building ByteStrings
+        scanl,                  -- :: (Word8 -> Word8 -> Word8) -> Word8 -> ByteString -> ByteString
+        scanl1,                 -- :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString
+
         -- * Generating and unfolding ByteStrings
         replicate,              -- :: Int -> Word8 -> ByteString
         unfoldrN,               -- :: (a -> Maybe (Word8, a)) -> a -> ByteString
@@ -235,7 +239,7 @@ module Data.ByteString (
 #endif
 
         noAL, NoAL, loopArr, loopAcc, loopSndAcc,
-        loopU, mapEFL, filterEFL, foldEFL, foldEFL', fuseEFL,
+        loopU, mapEFL, filterEFL, foldEFL, foldEFL', fuseEFL, scanEFL,
 
   ) where
 
@@ -245,7 +249,7 @@ import Prelude hiding           (reverse,head,tail,last,init,null
                                 ,concat,any,take,drop,splitAt,takeWhile
                                 ,dropWhile,span,break,elem,filter,maximum
                                 ,minimum,all,concatMap,foldl1,foldr1
-                                ,readFile,writeFile,replicate
+                                ,scanl,scanl1,readFile,writeFile,replicate
                                 ,getContents,getLine,putStr,putStrLn
                                 ,zip,zipWith,unzip,notElem)
 
@@ -843,6 +847,31 @@ mapIndexed k (PS ps s l) = create l $ \p -> withForeignPtr ps $ \f ->
                | otherwise = do w <- peek f
                                 ((poke t) . k n) w
                                 go (n+1) (f `plusPtr` 1) (t `plusPtr` 1) p
+
+-- ---------------------------------------------------------------------
+-- Building ByteStrings
+
+-- | 'scanl' is similar to 'foldl', but returns a list of successive
+-- reduced values from the left. This function will fuse.
+--
+-- > scanl f z [x1, x2, ...] == [z, z `f` x1, (z `f` x1) `f` x2, ...]
+--
+-- Note that
+--
+-- > last (scanl f z xs) == foldl f z xs.
+scanl :: (Word8 -> Word8 -> Word8) -> Word8 -> ByteString -> ByteString
+scanl f z ps = loopArr . loopU (scanEFL f) z $ (ps `snoc` 0) -- extra space
+{-# INLINE scanl #-}
+
+-- | 'scanl1' is a variant of 'scanl' that has no starting value argument.
+-- This function will fuse.
+--
+-- > scanl1 f [x1, x2, ...] == [x1, x1 `f` x2, ...]
+scanl1 :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString
+scanl1 f ps
+    | null ps   = empty
+    | otherwise = scanl f (unsafeHead ps) (unsafeTail ps)
+{-# INLINE scanl1 #-}
 
 -- ---------------------------------------------------------------------
 -- Unfolds and replicates
@@ -2170,6 +2199,14 @@ foldEFL' :: (acc -> Word8 -> acc) -> (acc -> Word8 -> (acc, Maybe Word8))
 foldEFL' f = \a e -> let a' = f a e in a' `seq` (a', Nothing)
 #if defined(__GLASGOW_HASKELL__)
 {-# INLINE [1] foldEFL' #-}
+#endif
+
+-- | Element function expressing a prefix reduction only
+--
+scanEFL :: (Word8 -> Word8 -> Word8) -> Word8 -> Word8 -> (Word8, Maybe Word8)
+scanEFL f = \a e -> (f a e, Just a)
+#if defined(__GLASGOW_HASKELL__)
+{-# INLINE [1] scanEFL #-}
 #endif
 
 -- | No accumulator

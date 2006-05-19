@@ -82,6 +82,10 @@ module Data.ByteString.Char8 (
         minimum,                -- :: ByteString -> Char
         mapIndexed,             -- :: (Int -> Char -> Char) -> ByteString -> ByteString
 
+        -- * Building ByteStrings
+        scanl,
+        scanl1,
+
         -- * Generating and unfolding ByteStrings
         replicate,              -- :: Int -> Char -> ByteString
         unfoldrN,               -- :: (a -> Maybe (Char, a)) -> a -> ByteString
@@ -232,7 +236,7 @@ import Prelude hiding           (reverse,head,tail,last,init,null
                                 ,length,map,lines,foldl,foldr,unlines
                                 ,concat,any,take,drop,splitAt,takeWhile
                                 ,dropWhile,span,break,elem,filter,unwords
-                                ,words,maximum,minimum,all,concatMap
+                                ,words,maximum,minimum,all,concatMap,scanl,scanl1
                                 ,foldl1,foldr1,readFile,writeFile,replicate
                                 ,getContents,getLine,putStr,putStrLn
                                 ,zip,zipWith,unzip,notElem)
@@ -427,6 +431,23 @@ minimum = w2c . B.minimum
 mapIndexed :: (Int -> Char -> Char) -> ByteString -> ByteString
 mapIndexed f = B.mapIndexed (\i c -> c2w (f i (w2c c)))
 {-# INLINE mapIndexed #-}
+
+-- | 'scanl' is similar to 'foldl', but returns a list of successive
+-- reduced values from the left:
+--
+-- > scanl f z [x1, x2, ...] == [z, z `f` x1, (z `f` x1) `f` x2, ...]
+--
+-- Note that
+--
+-- > last (scanl f z xs) == foldl f z xs.
+scanl :: (Char -> Char -> Char) -> Char -> ByteString -> ByteString
+scanl f z = B.scanl (\a b -> c2w (f (w2c a) (w2c b))) (c2w z)
+
+-- | 'scanl1' is a variant of 'scanl' that has no starting value argument:
+--
+-- > scanl1 f [x1, x2, ...] == [x1, x1 `f` x2, ...]
+scanl1 :: (Char -> Char -> Char) -> ByteString -> ByteString
+scanl1 f = B.scanl1 (\a b -> c2w (f (w2c a) (w2c b)))
 
 -- | /O(n)/ 'replicate' @n x@ is a ByteString of length @n@ with @x@
 -- the value of every element. The following holds:

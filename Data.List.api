@@ -1,10 +1,11 @@
 -- vimdiff *.api
--- Basic List-specific bits
-[]
-(:)
+-- Basic bits
+empty/[]
+cons/(:)
+packByte/(:[])
 
 -- Basic functions
-(++)
+append/(++)
 head
 last
 tail
