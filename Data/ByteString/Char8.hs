@@ -69,6 +69,7 @@ module Data.ByteString.Char8 (
         foldl,                  -- :: (a -> Char -> a) -> a -> ByteString -> a
         foldr,                  -- :: (Char -> a -> a) -> a -> ByteString -> a
         foldl1,                 -- :: (Char -> Char -> Char) -> ByteString -> Char
+        foldl1',                -- :: (Char -> Char -> Char) -> ByteString -> Char
         foldr1,                 -- :: (Char -> Char -> Char) -> ByteString -> Char
         foldl',                 -- :: (a -> Char -> a) -> a -> ByteString -> a
 
@@ -382,6 +383,11 @@ foldr f = B.foldr (\c a -> f (w2c c) a)
 foldl1 :: (Char -> Char -> Char) -> ByteString -> Char
 foldl1 f ps = w2c (B.foldl1 (\x y -> c2w (f (w2c x) (w2c y))) ps)
 {-# INLINE foldl1 #-}
+
+-- | A strict version of 'foldl1'
+foldl1' :: (Char -> Char -> Char) -> ByteString -> Char
+foldl1' f ps = w2c (B.foldl1' (\x y -> c2w (f (w2c x) (w2c y))) ps)
+{-# INLINE foldl1' #-}
 
 -- | 'foldr1' is a variant of 'foldr' that has no starting value argument,
 -- and thus must be applied to non-empty 'ByteString's

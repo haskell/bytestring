@@ -76,6 +76,7 @@ module Data.ByteString (
         foldl,                  -- :: (a -> Word8 -> a) -> a -> ByteString -> a
         foldr,                  -- :: (Word8 -> a -> a) -> a -> ByteString -> a
         foldl1,                 -- :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
+        foldl1',                -- :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
         foldr1,                 -- :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
         foldl',                 -- :: (a -> Word8 -> a) -> a -> ByteString -> a
 
@@ -727,6 +728,12 @@ foldl1 :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldl1 f ps
     | null ps   = errorEmptyList "foldl1"
     | otherwise = foldl f (unsafeHead ps) (unsafeTail ps)
+
+-- | A strict version of 'foldl1'
+foldl1' :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
+foldl1' f ps
+    | null ps   = errorEmptyList "foldl1'"
+    | otherwise = foldl' f (unsafeHead ps) (unsafeTail ps)
 
 -- | 'foldr1' is a variant of 'foldr' that has no starting value argument,
 -- and thus must be applied to non-empty 'ByteString's
