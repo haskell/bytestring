@@ -258,8 +258,9 @@ import Data.ByteString (ByteString(..)
                        ,noAL, NoAL, loopArr, loopAcc, loopSndAcc
                        ,loopU, mapEFL, filterEFL, foldEFL, foldEFL', fuseEFL
                        ,useAsCString, unsafeUseAsCString
-                       ,inlinePerformIO
                        )
+
+import Data.ByteString.Internal
 
 import Data.Char
 

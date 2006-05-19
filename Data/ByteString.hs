@@ -237,10 +237,6 @@ module Data.ByteString (
         noAL, NoAL, loopArr, loopAcc, loopSndAcc,
         loopU, mapEFL, filterEFL, foldEFL, foldEFL', fuseEFL,
 
-        -- * Utilities
-        -- | Utilities need for siblings of ByteString
-        inlinePerformIO
-
   ) where
 
 import qualified Prelude as P
@@ -252,6 +248,8 @@ import Prelude hiding           (reverse,head,tail,last,init,null
                                 ,readFile,writeFile,replicate
                                 ,getContents,getLine,putStr,putStrLn
                                 ,zip,zipWith,unzip,notElem)
+
+import Data.ByteString.Internal
 
 import qualified Data.List as List
 
@@ -266,7 +264,7 @@ import Control.Exception        (bracket, assert)
 import Control.Monad            (when)
 
 import Foreign.C.String         (CString, CStringLen)
-import Foreign.C.Types          (CSize, CInt)
+import Foreign.C.Types          (CSize)
 import Foreign.ForeignPtr
 import Foreign.Marshal.Array
 import Foreign.Ptr
@@ -292,7 +290,7 @@ import Foreign.Marshal          (alloca)
 import qualified Foreign.Concurrent as FC (newForeignPtr)
 
 import GHC.Handle
-import GHC.Prim                 (realWorld#, Addr#, Word#, (+#), writeWord8OffAddr#)
+import GHC.Prim                 (Addr#, Word#, (+#), writeWord8OffAddr#)
 import GHC.Base                 (build, unsafeChr)
 import GHC.Word hiding (Word8)
 import GHC.Ptr                  (Ptr(..))
@@ -300,9 +298,6 @@ import GHC.ST                   (ST(..))
 import GHC.IOBase
 
 #endif
-
--- CFILES stuff is Hugs only
-{-# CFILES cbits/fpstring.c #-}
 
 -- -----------------------------------------------------------------------------
 --
@@ -1544,7 +1539,7 @@ sort :: ByteString -> ByteString
 sort (PS input s l) = create l $ \p -> allocaArray 256 $ \arr -> do
 
     memset (castPtr arr) 0 (256 * fromIntegral (sizeOf (undefined :: CSize)))
-    withForeignPtr input (\x -> countEach arr (x `plusPtr` s) l)
+    withForeignPtr input (\x -> countOccurrences arr (x `plusPtr` s) l)
 
     let STRICT2(go)
         go 256 _   = return ()
@@ -1552,19 +1547,6 @@ sort (PS input s l) = create l $ \p -> allocaArray 256 $ \arr -> do
                         when (n /= 0) $ memset ptr (fromIntegral i) n >> return ()
                         go (i + 1) (ptr `plusPtr` (fromIntegral n))
     go 0 p
-
--- "countEach counts str l" counts the number of occurences of each Word8 in
--- str, and stores the result in counts.
-countEach :: Ptr CSize -> Ptr Word8 -> Int -> IO ()
-STRICT3(countEach)
-countEach counts str l = go 0
- where
-    STRICT1(go)
-    go i | i == l    = return ()
-         | otherwise = do k <- fromIntegral `fmap` peekElemOff str i
-                          x <- peekElemOff counts k
-                          pokeElemOff counts k (x + 1)
-                          go (i + 1)
 
 {-
 sort :: ByteString -> ByteString
@@ -2127,101 +2109,12 @@ findFromEndUntil f ps@(PS x s l) =
     else if f (last ps) then l
          else findFromEndUntil f (PS x s (l-1))
 
--- Just like inlinePerformIO, but we inline it. Big performance gains as
--- it exposes lots of things to further inlining
---
-{-# INLINE inlinePerformIO #-}
-inlinePerformIO :: IO a -> a
-#if defined(__GLASGOW_HASKELL__)
-inlinePerformIO (IO m) = case m realWorld# of (# _, r #) -> r
-#else
-inlinePerformIO = unsafePerformIO
-#endif
-
 {-# INLINE newForeignFreePtr #-}
 newForeignFreePtr :: Ptr Word8 -> IO (ForeignPtr Word8)
 #if defined(__GLASGOW_HASKELL__)
 newForeignFreePtr p = FC.newForeignPtr p (c_free p)
 #else
 newForeignFreePtr p = newForeignPtr c_free_finalizer p
-#endif
-
--- ---------------------------------------------------------------------
--- 
--- Standard C functions
---
-
-foreign import ccall unsafe "string.h strlen" c_strlen
-    :: CString -> CInt
-
-foreign import ccall unsafe "stdlib.h malloc" c_malloc
-    :: CInt -> IO (Ptr Word8)
-
-foreign import ccall unsafe "static stdlib.h free" c_free
-    :: Ptr Word8 -> IO ()
-
-#if !defined(__GLASGOW_HASKELL__)
-foreign import ccall unsafe "static stdlib.h &free" c_free_finalizer
-    :: FunPtr (Ptr Word8 -> IO ())
-#endif
-
-foreign import ccall unsafe "string.h memset" memset
-    :: Ptr Word8 -> Word8 -> CSize -> IO (Ptr Word8)
-
-foreign import ccall unsafe "string.h memchr" memchr
-    :: Ptr Word8 -> Word8 -> CSize -> Ptr Word8
-
-foreign import ccall unsafe "string.h memcmp" memcmp
-    :: Ptr Word8 -> Ptr Word8 -> CSize -> IO CInt
-
-foreign import ccall unsafe "string.h memcpy" memcpy
-    :: Ptr Word8 -> Ptr Word8 -> CSize -> IO ()
-
--- ---------------------------------------------------------------------
---
--- Uses our C code
---
-
-foreign import ccall unsafe "static fpstring.h reverse" c_reverse
-    :: Ptr Word8 -> Ptr Word8 -> CInt -> IO ()
-
-foreign import ccall unsafe "static fpstring.h intersperse" c_intersperse
-    :: Ptr Word8 -> Ptr Word8 -> CInt -> Word8 -> IO ()
-
-foreign import ccall unsafe "static fpstring.h maximum" c_maximum
-    :: Ptr Word8 -> CInt -> Word8
-
-foreign import ccall unsafe "static fpstring.h minimum" c_minimum
-    :: Ptr Word8 -> CInt -> Word8
-
-foreign import ccall unsafe "static fpstring.h count" c_count
-    :: Ptr Word8 -> CInt -> Word8 -> CInt
-
--- ---------------------------------------------------------------------
--- MMap
-
-{-
-foreign import ccall unsafe "static fpstring.h my_mmap" my_mmap
-    :: Int -> Int -> IO (Ptr Word8)
-
-foreign import ccall unsafe "static unistd.h close" c_close
-    :: Int -> IO Int
-
-#  if !defined(__OpenBSD__)
-foreign import ccall unsafe "static sys/mman.h munmap" c_munmap
-    :: Ptr Word8 -> Int -> IO Int
-#  endif
--}
-
--- ---------------------------------------------------------------------
--- Internal GHC Haskell magic
-
-#if defined(__GLASGOW_HASKELL__)
-foreign import ccall unsafe "RtsAPI.h getProgArgv"
-    getProgArgv :: Ptr CInt -> Ptr (Ptr CString) -> IO ()
-
-foreign import ccall unsafe "__hscore_memcpy_src_off"
-   memcpy_ptr_baoff :: Ptr a -> RawBuffer -> CInt -> CSize -> IO (Ptr ())
 #endif
 
 -- ---------------------------------------------------------------------
