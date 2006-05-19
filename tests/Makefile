@@ -38,7 +38,7 @@ prop::
 .PHONY: prop-fast
 prop-fast::
 	chmod +x Properties.hs
-	./Properties 10
+	./Properties.hs 30
 
 # compiled
 prop-compiled: 

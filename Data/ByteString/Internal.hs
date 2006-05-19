@@ -24,6 +24,7 @@ module Data.ByteString.Internal (
 #if !defined(__GLASGOW_HASKELL__)
     c_free_finalizer,           -- :: FunPtr (Ptr Word8 -> IO ())
 #endif
+
     memchr,                     -- :: Ptr Word8 -> Word8 -> CSize -> Ptr Word8
     memcmp,                     -- :: Ptr Word8 -> Ptr Word8 -> CSize -> IO CInt
     memcpy,                     -- :: Ptr Word8 -> Ptr Word8 -> CSize -> IO ()
@@ -44,13 +45,18 @@ module Data.ByteString.Internal (
 #endif
   ) where
 
-import GHC.Base                 (realWorld#)
-import GHC.IOBase
 import Data.Word (Word8)
 import Foreign.C.Types
 import Foreign.C.String         (CString)
 import Foreign.Ptr
 import Foreign.Storable         (Storable(..))
+
+#if defined(__GLASGOW_HASKELL__)
+import GHC.Base                 (realWorld#)
+import GHC.IOBase
+#else
+import System.IO.Unsafe         (unsafePerformIO)
+#endif
 
 -- CFILES stuff is Hugs only
 {-# CFILES cbits/fpstring.c #-}
