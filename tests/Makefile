@@ -12,10 +12,12 @@ PP_OPTS=        -pgmF "$(PP)" -F
 
 GHC_ = $(GHC) -threaded $(PP_OPTS) -fglasgow-exts --make
 
-SRCS= TestFramework.hs UnitTestsMain.hs Tests.hs Quick.hs
+SRCS= TestFramework.hs UnitTestsMain.hs Tests.hs
 
-all: qc prop sbench sbench2 
-everything: qc prop sbench sbench2 runbench htest wc spellcheck letter_frequency linesort fuse inline
+all:  prop
+fast: prop-fast
+
+everything: prop prop-compiled runbench htest wc spellcheck letter_frequency linesort fuse inline
 
 # build executable, linking in all tests
 run-utests: $(SRCS)
@@ -24,25 +26,27 @@ run-utests: $(SRCS)
 htest:: run-utests
 	./run-utests
 
-# quick testing
-.PHONY: qc
-qc::
-	runhaskell Quick.hs
+# ---------------------------------------------
+# QuickCheck
 
-# more testing
+# interpreted
 .PHONY: prop
 prop::
 	runhaskell Properties.hs
 
-# attempt to benchmark small strings performance
-sbench: 
-	${GHC} ${PKG} --make -O2 -optc-O2 -funbox-strict-fields Quick.hs -o qc -no-recomp -package QuickCheck
-	/usr/bin/time ./qc
+# interpreted fast. Just a quick check.
+.PHONY: prop-fast
+prop-fast::
+	chmod +x Properties.hs
+	./Properties 10
 
-# attempt to benchmark lazy strings performance
-sbench2: 
-	${GHC} ${PKG} --make -O2 -optc-O2 -funbox-strict-fields Properties.hs -o lqc -no-recomp -package QuickCheck
-	/usr/bin/time ./lqc
+# compiled
+prop-compiled: 
+	${GHC} ${PKG} --make -O2 -optc-O2 -funbox-strict-fields Properties.hs -o p -no-recomp -package QuickCheck
+	/usr/bin/time ./p
+
+# ---------------------------------------------------------
+# Benchmarking
 
 .PHONY: runbench
 runbench: bench
@@ -52,10 +56,17 @@ bench: Bench.hs
 	@if [ ! -f "bigdata" ] ; then ln -s data bigdata ; fi
 	${GHC} ${PKG} --make -O -funbox-strict-fields Bench.hs -o bench -no-recomp
 
+# ---------------------------------------------------------
+# Profiling
+.PHONY: prof
+
 prof::
 	@if [ ! -f "bigdata" ] ; then ln -s data bigdata ; fi
 	${GHC} ${PKG} -prof -auto-all --make -O -funbox-strict-fields Bench.hs -o bench
 	./bench +RTS -H64m -p
+
+# ---------------------------------------------------------
+# Small programs
 
 wc: wc.o
 	@if [ ! -f "bigdata" ] ; then ln -s data bigdata ; fi
@@ -93,6 +104,9 @@ inline: inline.o
 inline.o: inline.hs
 	${GHC} ${PKG} -O $< -o inline
 
+# ---------------------------------------------------
+# Plotting graphs
+
 results: bench
 	./bench +RTS -H64m > results
 
@@ -105,6 +119,10 @@ plot:: results
              gnuplot ;
 	xv results.png    
 
+# ---------------------------------------------------
+# Cleaning
+
 .PHONY: clean
 clean:
-	rm -f *~ *.o *.hi $(BIN) bench */*.o */*.hi */*~ wc letter_frequency spellcheck linesort fuse inline lqc qc
+	rm -f *~ *.o *.hi $(BIN) bench */*.o */*.hi */*~ 
+	rm -f wc letter_frequency spellcheck linesort fuse inline p lazylines
