@@ -496,6 +496,8 @@ unpackFoldr (PS fp off len) f ch = withPtr fp $ \p -> do
     loop (p `plusPtr` off) (len-1) ch
 {-# INLINE [0] unpackFoldr #-}
 
+-- TODO just use normal foldr here.
+
 #endif
 
 ------------------------------------------------------------------------
@@ -1193,7 +1195,7 @@ group xs
 groupBy :: (Word8 -> Word8 -> Bool) -> ByteString -> [ByteString]
 groupBy k xs
     | null xs   = []
-    | otherwise = take n xs : groupBy k (drop n xs)
+    | otherwise = unsafeTake n xs : groupBy k (unsafeDrop n xs)
     where
         n = 1 + findIndexOrEnd (not . k (unsafeHead xs)) (unsafeTail xs)
 
