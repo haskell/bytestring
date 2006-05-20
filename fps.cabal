@@ -1,15 +1,15 @@
 Name:                fps
 Version:             0.7
-Description:         Fast, packed byte arrays with string-like operations
+Description:         Fast, packed, strict and lazy byte arrays with a list interface
 License:             BSD3
 License-file:        LICENSE
 Author:              Don Stewart
 Maintainer:          dons@cse.unsw.edu.au
--- Tested-with:         hugs March2005, ghc 6.4.1, ghc 6.5.20060420
 Build-Depends:       base
 Exposed-modules:     Data.ByteString,
                      Data.ByteString.Char8
                      Data.ByteString.Lazy
+                     Data.ByteString.Lazy.Char8
 Other-modules:       Data.ByteString.Internal
 extensions:          CPP, ForeignFunctionInterface
 ghc-options:         -Wall -fglasgow-exts -O -optc-O2 -funbox-strict-fields

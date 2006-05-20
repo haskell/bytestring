@@ -328,9 +328,6 @@ packByte c = LPS [P.packByte c]
 {-# NOINLINE packByte #-}
 
 -- | /O(n)/ Convert a '[Word8]' into a 'ByteString'. 
---
--- For applications with large numbers of string literals, pack can be a
--- bottleneck. In such cases, consider using packAddress (GHC only).
 pack :: [Word8] -> ByteString
 pack str = LPS $ L.map P.pack (chunk defaultChunkSize str)
 

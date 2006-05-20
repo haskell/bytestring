@@ -266,8 +266,6 @@ import Data.ByteString (ByteString(..)
 
 import Data.ByteString.Internal
 
-import Data.Char
-
 import qualified Data.List as List (intersperse)
 
 import Foreign
