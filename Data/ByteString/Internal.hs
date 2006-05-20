@@ -15,7 +15,9 @@ module Data.ByteString.Internal (
 
     -- * Utilities
     inlinePerformIO,            -- :: IO a -> a
+
     countOccurrences,           -- :: (Storable a, Num a) => Ptr a -> Ptr Word8 -> Int -> IO ()
+
     -- * Standard C Functions
     c_strlen,                   -- :: CString -> CInt
     c_malloc,                   -- :: CInt -> IO (Ptr Word8)
@@ -69,10 +71,7 @@ import System.IO.Unsafe         (unsafePerformIO)
 {-# CFILES cbits/fpstring.c #-}
 
 #define STRICT1(f) f a | a `seq` False = undefined
-#define STRICT2(f) f a b | a `seq` b `seq` False = undefined
 #define STRICT3(f) f a b c | a `seq` b `seq` c `seq` False = undefined
-#define STRICT4(f) f a b c d | a `seq` b `seq` c `seq` d `seq` False = undefined
-#define STRICT5(f) f a b c d e | a `seq` b `seq` c `seq` d `seq` e `seq` False = undefined
 
 -- | Conversion between 'Word8' and 'Char'. Should compile to a no-op.
 w2c :: Word8 -> Char
