@@ -1040,24 +1040,6 @@ readInt = go 0
         {-# INLINE parse #-}
 -}
 
--- ---------------------------------------------------------------------
--- Internals
-
--- Selects white-space characters in the Latin-1 range
--- ordered by frequency
--- Idea from Ketil
-isSpaceWord8 :: Word8 -> Bool
-isSpaceWord8 w = case w of
-    0x20 -> True -- SPACE
-    0x0A -> True -- LF, \n
-    0x09 -> True -- HT, \t
-    0x0C -> True -- FF, \f
-    0x0D -> True -- CR, \r
-    0x0B -> True -- VT, \v
-    0xA0 -> True -- spotted by QC..
-    _    -> False
-{-# INLINE isSpaceWord8 #-}
-
 -- | /O(n)/ Like 'map', but not fuseable. The benefit is that it is
 -- slightly faster for one-shot cases.
 map' :: (Char -> Char) -> ByteString -> ByteString
