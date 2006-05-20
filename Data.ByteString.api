@@ -51,10 +51,11 @@ scanl1
 -- Accumulating maps
 mapIndexed
 
--- Infinite lists
+-- Infinite lists (Lazy) 
 repeat
 replicate
 cycle
+iterate
 
 -- Unfolding
 unfoldrN
