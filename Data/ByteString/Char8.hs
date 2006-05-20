@@ -275,7 +275,7 @@ import Foreign.C.Types          (CLong)
 import Foreign.Marshal.Utils    (with)
 
 #if defined(__GLASGOW_HASKELL__)
-import GHC.Base                 (Char(..),unsafeChr,unpackCString#,unsafeCoerce#)
+import GHC.Base                 (Char(..),unpackCString#,unsafeCoerce#)
 import GHC.IOBase               (IO(..),stToIO)
 import GHC.Prim                 (Addr#,writeWord8OffAddr#,plusAddr#)
 import GHC.Ptr                  (Ptr(..))
@@ -769,22 +769,6 @@ unsafeHead  = w2c . B.unsafeHead
 unsafeIndex :: ByteString -> Int -> Char
 unsafeIndex = (w2c .) . B.unsafeIndex
 {-# INLINE unsafeIndex #-}
-
--- | Conversion between 'Word8' and 'Char'. Should compile to a no-op.
-w2c :: Word8 -> Char
-#if !defined(__GLASGOW_HASKELL__)
-w2c = chr . fromIntegral
-#else
-w2c = unsafeChr . fromIntegral
-#endif
-{-# INLINE w2c #-}
-
--- | Unsafe conversion between 'Char' and 'Word8'. This is a no-op and
--- silently truncates to 8 bits Chars > '\255'. It is provided as
--- convenience for ByteString construction.
-c2w :: Char -> Word8
-c2w = fromIntegral . ord
-{-# INLINE c2w #-}
 
 -- ---------------------------------------------------------------------
 -- Things that depend on the encoding

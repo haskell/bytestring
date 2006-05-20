@@ -549,7 +549,7 @@ mapIndexed k (LPS xs) = LPS (snd (L.mapAccumL mapIndexedChunk 0 xs))
 --
 -- iterate :: (Word8 -> Word8) -> Word8 -> ByteString
 -- iterate = error "not yet implemented"
---iterate f = unfoldrN smallChunkSize (Just . f)
+-- iterate f = unfoldrN smallChunkSize (Just . f)
 
 -- | @'repeat' x@ is an infinite ByteString, with @x@ the value of every
 -- element.

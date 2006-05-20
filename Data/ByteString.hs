@@ -257,7 +257,6 @@ import Data.ByteString.Internal
 
 import qualified Data.List as List
 
-import Data.Char
 import Data.Word                (Word8)
 import Data.Maybe               (listToMaybe)
 import Data.Array               (listArray)
@@ -295,7 +294,7 @@ import qualified Foreign.Concurrent as FC (newForeignPtr)
 
 import GHC.Handle
 import GHC.Prim                 (Addr#, Word#, (+#), writeWord8OffAddr#)
-import GHC.Base                 (build, unsafeChr)
+import GHC.Base                 (build)
 import GHC.Word hiding (Word8)
 import GHC.Ptr                  (Ptr(..))
 import GHC.ST                   (ST(..))
@@ -633,23 +632,6 @@ map' f (PS fp s len) = inlinePerformIO $ withForeignPtr fp $ \a -> do
             pokeByteOff p2 n (f x)
             map_ (n+1) p1 p2
 {-# INLINE map' #-}
-
-{-
--- slower still (idea was to read Word32 chunks, and shift off the
--- bytes. looks like gcc does the job better.
-
-    w <- peekByteOff (castPtr p1) n :: IO Word32
-    let w1 = f $ fromIntegral (w `shiftR` 24)
-        w2 = f $ fromIntegral ((w `shiftR` 16) .&. 0xff)
-        w3 = f $ fromIntegral ((w `shiftR` 8)  .&. 0xff)
-        w4 = f $ fromIntegral (w .&. 0xff)
-    pokeByteOff (castPtr p2) n $!  (
-                        ((fromIntegral w1 `shiftL` 24) .|. 
-                         (fromIntegral w2 `shiftL` 16) .|. 
-                         (fromIntegral w3 `shiftL`  8) .|. 
-                         (fromIntegral w4)) :: Word32)
-    map_ (n+4) p1 p2
--}
 
 -- | /O(n)/ 'reverse' @xs@ efficiently returns the elements of @xs@ in reverse order.
 reverse :: ByteString -> ByteString
@@ -2082,21 +2064,6 @@ getArgs =
 
 -- ---------------------------------------------------------------------
 -- Internal utilities
-
--- Unsafe conversion between 'Word8' and 'Char'. These are nops, and
--- silently truncate to 8 bits Chars > '\255'. They are provided as
--- convenience for ByteString construction.
-w2c :: Word8 -> Char
-#if !defined(__GLASGOW_HASKELL__)
-w2c = chr . fromIntegral
-#else
-w2c = unsafeChr . fromIntegral
-#endif
-{-# INLINE w2c #-}
-
-c2w :: Char -> Word8
-c2w = fromIntegral . ord
-{-# INLINE c2w #-}
 
 -- Wrapper of mallocForeignPtrArray. Any ByteString allocated this way
 -- is padded with a null byte.

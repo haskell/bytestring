@@ -41,20 +41,26 @@ module Data.ByteString.Internal (
     -- * Internal GHC magic
 #if defined(__GLASGOW_HASKELL__)
     getProgArgv,                -- :: Ptr CInt -> Ptr (Ptr CString) -> IO ()
-    memcpy_ptr_baoff            -- :: Ptr a -> RawBuffer -> CInt -> CSize -> IO (Ptr ())
+    memcpy_ptr_baoff,           -- :: Ptr a -> RawBuffer -> CInt -> CSize -> IO (Ptr ())
 #endif
+
+    -- * Chars
+    w2c, c2w
+
   ) where
 
-import Data.Word (Word8)
+import Data.Char                (ord)
+import Data.Word                (Word8)
 import Foreign.C.Types
 import Foreign.C.String         (CString)
 import Foreign.Ptr
 import Foreign.Storable         (Storable(..))
 
 #if defined(__GLASGOW_HASKELL__)
-import GHC.Base                 (realWorld#)
+import GHC.Base                 (realWorld#,unsafeChr)
 import GHC.IOBase
 #else
+import Data.Char                (chr)
 import System.IO.Unsafe         (unsafePerformIO)
 #endif
 
@@ -66,6 +72,22 @@ import System.IO.Unsafe         (unsafePerformIO)
 #define STRICT3(f) f a b c | a `seq` b `seq` c `seq` False = undefined
 #define STRICT4(f) f a b c d | a `seq` b `seq` c `seq` d `seq` False = undefined
 #define STRICT5(f) f a b c d e | a `seq` b `seq` c `seq` d `seq` e `seq` False = undefined
+
+-- | Conversion between 'Word8' and 'Char'. Should compile to a no-op.
+w2c :: Word8 -> Char
+#if !defined(__GLASGOW_HASKELL__)
+w2c = chr . fromIntegral
+#else
+w2c = unsafeChr . fromIntegral
+#endif
+{-# INLINE w2c #-}
+
+-- | Unsafe conversion between 'Char' and 'Word8'. This is a no-op and
+-- silently truncates to 8 bits Chars > '\255'. It is provided as
+-- convenience for ByteString construction.
+c2w :: Char -> Word8
+c2w = fromIntegral . ord
+{-# INLINE c2w #-}
 
 -- | Just like unsafePerformIO, but we inline it. Big performance gains as
 -- it exposes lots of things to further inlining
