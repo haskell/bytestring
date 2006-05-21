@@ -115,7 +115,7 @@ plot:: results
 	echo -e 'set terminal png          \n \
              set output "results.png"  \n \
              set yrange [0:2]          \n \
-             plot "results" using ($$2) with linespoints, "" using ($$3) with linespoint' |\
+             plot "results" using ($$1):($$2) with boxes, "" using ($$1):($$3) with boxes' |\
              gnuplot ;
 	xv results.png    
 
