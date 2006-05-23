@@ -886,7 +886,7 @@ replicate w c = inlinePerformIO $ generate w $ \ptr -> go ptr w
 -- prepending to the ByteString and @b@ is used as the next element in a
 -- recursive call.
 --
--- To preven unfoldrN having /O(n^2)/ complexity (as prepending a
+-- To prevent unfoldrN having /O(n^2)/ complexity (as prepending a
 -- character to a ByteString is /O(n)/, this unfoldr requires a maximum
 -- final size of the ByteString as an argument. 'cons' can then be
 -- implemented in /O(1)/ (i.e.  a 'poke'), and the unfoldr itself has
