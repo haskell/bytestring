@@ -95,8 +95,7 @@ module Data.ByteString (
 
         -- ** Unfolding ByteStrings
         replicate,              -- :: Int -> Word8 -> ByteString
---      unfoldr,                -- :: (a -> Maybe (Word8, a)) -> a -> ByteString
-        unfoldrN,               -- :: Int -> (a -> Maybe (Word8, a)) -> a -> ByteString
+        unfoldrN,               -- :: (a -> Maybe (Word8, a)) -> a -> ByteString
 
         -- * Substrings
 
