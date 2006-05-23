@@ -17,16 +17,14 @@
 
 --
 -- | A time and space-efficient implementation of lazy byte vectors
--- using lists of packed Word8 arrays, suitable for high performance
+-- using lists of packed 'Word8' arrays, suitable for high performance
 -- use, both in terms of large data quantities, or high speed
--- requirements. Byte vectors are encoded as lazy lists of strict Word8
--- arrays of bytes, held in a ForeignPtr, and can be passed between C
--- and Haskell with little effort. They provide a means to manipulate
--- large byte vectors without requiring the entire vector be resident in
--- memory.
+-- requirements. Byte vectors are encoded as lazy lists of strict 'Word8'
+-- arrays of bytes. They provide a means to manipulate large byte vectors
+-- without requiring the entire vector be resident in memory.
 --
 -- Some operations, such as concat, append, reverse and cons, have
--- better complexity than their Data.ByteString equivalents, as due to
+-- better complexity than their "Data.ByteString" equivalents, as due to
 -- optimisations resulting from the list spine structure. And for other
 -- operations Lazy ByteStrings are usually within a few percent of
 -- strict ones, but with better heap usage. For data larger than the
@@ -36,14 +34,14 @@
 -- caches, you may want to increase this to fit your cache.
 --
 -- This module is intended to be imported @qualified@, to avoid name
--- clashes with Prelude functions.  eg.
+-- clashes with "Prelude" functions.  eg.
 --
 -- > import qualified Data.ByteString.Lazy as B
 --
 -- Original GHC implementation by Bryan O\'Sullivan. Rewritten to use
 -- UArray by Simon Marlow. Rewritten to support slices and use
 -- ForeignPtr by David Roundy. Polished and extended by Don Stewart.
--- Lazy variant by Duncan Coutts.
+-- Lazy variant by Duncan Coutts and Don Stewart.
 --
 
 module Data.ByteString.Lazy (

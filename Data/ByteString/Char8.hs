@@ -10,9 +10,9 @@
 -- 
 
 --
--- | Manipulate ByteStrings using Char operations. All Chars will be
+-- | Manipulate 'ByteString's using 'Char' operations. All Chars will be
 -- truncated to 8 bits. It can be expected that these functions will run
--- at identical speeds to their Word8 equivalents in @Data.ByteString@.
+-- at identical speeds to their 'Word8' equivalents in "Data.ByteString".
 --
 -- More specifically these byte strings are taken to be in the
 -- subset of Unicode covered by code points 0-255. This covers
@@ -27,7 +27,7 @@
 --  * <http://www.unicode.org/charts/PDF/U0080.pdf>
 --
 -- This module is intended to be imported @qualified@, to avoid name
--- clashes with Prelude functions.  eg.
+-- clashes with "Prelude" functions.  eg.
 --
 -- > import qualified Data.ByteString.Char8 as B
 --
@@ -216,7 +216,7 @@ module Data.ByteString.Char8 (
 
 #if defined(__GLASGOW_HASKELL__)
         -- * Low level construction
-        -- | For constructors from foreign language types see /Data.ByteString/
+        -- | For constructors from foreign language types see "Data.ByteString"
         packAddress,            -- :: Addr# -> ByteString
         unsafePackAddress,      -- :: Int -> Addr# -> ByteString
 #endif

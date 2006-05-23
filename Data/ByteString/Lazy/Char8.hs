@@ -10,13 +10,13 @@
 -- 
 
 --
--- | Manipulate /lazy/ ByteStrings using Char operations. All Chars will
+-- | Manipulate /lazy/ 'ByteString's using 'Char' operations. All Chars will
 -- be truncated to 8 bits. It can be expected that these functions will
 -- run at identical speeds to their Word8 equivalents in
--- @Data.ByteString@. 
+-- "Data.ByteString.Lazy".
 --
 -- This module is intended to be imported @qualified@, to avoid name
--- clashes with Prelude functions.  eg.
+-- clashes with "Prelude" functions.  eg.
 --
 -- > import qualified Data.ByteString.Lazy.Char8 as C
 --
