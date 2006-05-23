@@ -9,7 +9,8 @@
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as C
-import qualified Data.ByteString.Lazy as L
+-- import qualified Data.ByteString.Lazy as L
+import qualified Data.ByteString as L
 
 import Data.List
 import Data.Char

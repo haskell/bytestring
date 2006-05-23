@@ -1185,11 +1185,7 @@ groupBy k xs
 -- 'ByteString's and concatenates the list after interspersing the first
 -- argument between each element of the list.
 join :: ByteString -> [ByteString] -> ByteString
-join filler pss = concat (splice pss)
-    where
-        splice []  = []
-        splice [x] = [x]
-        splice (x:y:xs) = x:filler:splice (y:xs)
+join s = concat . (List.intersperse s)
 {-# INLINE join #-}
 
 --
