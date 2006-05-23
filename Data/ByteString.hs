@@ -63,7 +63,6 @@ module Data.ByteString (
         -- * Special ByteStrings
         inits,                  -- :: ByteString -> [ByteString]
         tails,                  -- :: ByteString -> [ByteString]
-        elems,                  -- :: ByteString -> [ByteString]
 
         -- * Transformating ByteStrings
         map,                    -- :: (Word8 -> Word8) -> ByteString -> ByteString
@@ -1534,12 +1533,6 @@ tails p | null p    = [empty]
         | otherwise = p : tails (unsafeTail p)
 
 -- less efficent spacewise: tails (PS x s l) = [PS x (s+n) (l-n) | n <- [0..l]]
-
--- | /O(n)/ breaks a ByteString to a list of ByteStrings, one byte each.
-elems :: ByteString -> [ByteString]
-elems (PS _ _ 0) = []
-elems (PS x s l) = (PS x s 1:elems (PS x (s+1) (l-1)))
-{-# INLINE elems #-}
 
 -- ---------------------------------------------------------------------
 -- ** Ordered 'ByteString's

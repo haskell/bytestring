@@ -71,7 +71,6 @@ module Data.ByteString.Lazy (
         -- * Special ByteStrings
 --      inits,                  -- :: ByteString -> [ByteString]
 --      tails,                  -- :: ByteString -> [ByteString]
---      elems,                  -- :: ByteString -> [ByteString]
 
         -- * Transformating ByteStrings
         map,                    -- :: (Word8 -> Word8) -> ByteString -> ByteString
@@ -1067,11 +1066,6 @@ unzip :: [(Word8,Word8)] -> (ByteString,ByteString)
 unzip _ls = error "not yet implemented"
 {-# INLINE unzip #-}
 -}
-
--- | /O(n)/ breaks a ByteString to a list of ByteStrings, one byte each.
--- elems :: ByteString -> [ByteString]
--- elems (LPS xs) = L.map (\x -> LPS [x]) . L.concatMap P.elems $ xs
--- {-# INLINE elems #-}
 
 -- ---------------------------------------------------------------------
 

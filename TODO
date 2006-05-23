@@ -1,7 +1,6 @@
 Todo items
 ----------
 
-* do we need elems?
 * state more clearly the null-termination property of strict ByteStrings
 * would it make sense to move the IO bits into a different module too?
         - System.IO.ByteString

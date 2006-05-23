@@ -1009,7 +1009,6 @@ prop_sort5 xs ys =
         (not (null ys)) ==>
         (L.last . L.sort) (L.append (pack xs) (pack ys)) == max (maximum xs) (maximum ys)
 
-prop_elems xs = L.elems == map pack (elems (unpack xs))
 -}
 
 ------------------------------------------------------------------------

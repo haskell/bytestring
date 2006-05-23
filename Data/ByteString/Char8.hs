@@ -57,7 +57,6 @@ module Data.ByteString.Char8 (
         -- * Special ByteStrings
         inits,                  -- :: ByteString -> [ByteString]
         tails,                  -- :: ByteString -> [ByteString]
-        elems,                  -- :: ByteString -> [ByteString]
 
         -- * Transformating ByteStrings
         map,                    -- :: (Char -> Char) -> ByteString -> ByteString
@@ -246,7 +245,7 @@ import qualified Data.ByteString as B
 -- Listy functions transparently exported
 import Data.ByteString (ByteString(..)
                        ,empty,null,length,tail,init,append
-                       ,inits,tails,elems,reverse,transpose
+                       ,inits,tails,reverse,transpose
                        ,concat,take,drop,splitAt,join
                        ,sort,isPrefixOf,isSuffixOf,isSubstringOf,findSubstring
                        ,findSubstrings,unsafeTail,copy,group
