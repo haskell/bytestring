@@ -52,32 +52,28 @@ module Data.ByteString (
         -- * Basic interface
         cons,                   -- :: Word8 -> ByteString -> ByteString
         snoc,                   -- :: ByteString -> Word8 -> ByteString
+        append,                 -- :: ByteString -> ByteString -> ByteString
+        head,                   -- :: ByteString -> Word8
+        last,                   -- :: ByteString -> Word8
+        tail,                   -- :: ByteString -> ByteString
+        init,                   -- :: ByteString -> ByteString
         null,                   -- :: ByteString -> Bool
         length,                 -- :: ByteString -> Int
-        head,                   -- :: ByteString -> Word8
-        tail,                   -- :: ByteString -> ByteString
-        last,                   -- :: ByteString -> Word8
-        init,                   -- :: ByteString -> ByteString
-        append,                 -- :: ByteString -> ByteString -> ByteString
-
-        -- * Special ByteStrings
-        inits,                  -- :: ByteString -> [ByteString]
-        tails,                  -- :: ByteString -> [ByteString]
 
         -- * Transformating ByteStrings
         map,                    -- :: (Word8 -> Word8) -> ByteString -> ByteString
+        map',                   -- :: (Word8 -> Word8) -> ByteString -> ByteString
         reverse,                -- :: ByteString -> ByteString
         intersperse,            -- :: Word8 -> ByteString -> ByteString
         transpose,              -- :: [ByteString] -> [ByteString]
-        map',                   -- :: (Word8 -> Word8) -> ByteString -> ByteString
 
-        -- * Reducing 'ByteString's
+        -- * Reducing 'ByteString's (folds)
         foldl,                  -- :: (a -> Word8 -> a) -> a -> ByteString -> a
-        foldr,                  -- :: (Word8 -> a -> a) -> a -> ByteString -> a
+        foldl',                 -- :: (a -> Word8 -> a) -> a -> ByteString -> a
         foldl1,                 -- :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
         foldl1',                -- :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
+        foldr,                  -- :: (Word8 -> a -> a) -> a -> ByteString -> a
         foldr1,                 -- :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
-        foldl',                 -- :: (a -> Word8 -> a) -> a -> ByteString -> a
 
         -- ** Special folds
         concat,                 -- :: [ByteString] -> ByteString
@@ -86,29 +82,37 @@ module Data.ByteString (
         all,                    -- :: (Word8 -> Bool) -> ByteString -> Bool
         maximum,                -- :: ByteString -> Word8
         minimum,                -- :: ByteString -> Word8
-        mapIndexed,             -- :: (Int -> Word8 -> Word8) -> ByteString -> ByteString
 
         -- * Building ByteStrings
+        -- ** Scans
         scanl,                  -- :: (Word8 -> Word8 -> Word8) -> Word8 -> ByteString -> ByteString
         scanl1,                 -- :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString
 
-        -- * Generating and unfolding ByteStrings
+        -- ** Accumulating maps
+--      mapAccumL,              -- :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
+--      mapAccumR,              -- :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
+        mapIndexed,             -- :: (Int -> Word8 -> Word8) -> ByteString -> ByteString
+
+        -- ** Unfolding ByteStrings
         replicate,              -- :: Int -> Word8 -> ByteString
-        unfoldrN,               -- :: (a -> Maybe (Word8, a)) -> a -> ByteString
+--      unfoldr,                -- :: (a -> Maybe (Word8, a)) -> a -> ByteString
+        unfoldrN,               -- :: Int -> (a -> Maybe (Word8, a)) -> a -> ByteString
 
         -- * Substrings
 
         -- ** Breaking strings
         take,                   -- :: Int -> ByteString -> ByteString
-        unsafeTake,             -- :: Int -> ByteString -> ByteString
         drop,                   -- :: Int -> ByteString -> ByteString
-        unsafeDrop,             -- :: Int -> ByteString -> ByteString
         splitAt,                -- :: Int -> ByteString -> (ByteString, ByteString)
         takeWhile,              -- :: (Word8 -> Bool) -> ByteString -> ByteString
         dropWhile,              -- :: (Word8 -> Bool) -> ByteString -> ByteString
-        break,                  -- :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
         span,                   -- :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
         spanEnd,                -- :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
+        break,                  -- :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
+        group,                  -- :: ByteString -> [ByteString]
+        groupBy,                -- :: (Word8 -> Word8 -> Bool) -> ByteString -> [ByteString]
+        inits,                  -- :: ByteString -> [ByteString]
+        tails,                  -- :: ByteString -> [ByteString]
 
         -- ** Breaking and dropping on specific bytes
         breakByte,              -- :: Word8 -> ByteString -> (ByteString, ByteString)
@@ -118,12 +122,33 @@ module Data.ByteString (
         split,                  -- :: Word8 -> ByteString -> [ByteString]
         splitWith,              -- :: (Word8 -> Bool) -> ByteString -> [ByteString]
         tokens,                 -- :: (Word8 -> Bool) -> ByteString -> [ByteString]
-        group,                  -- :: ByteString -> [ByteString]
-        groupBy,                -- :: (Word8 -> Word8 -> Bool) -> ByteString -> [ByteString]
 
         -- ** Joining strings
         join,                   -- :: ByteString -> [ByteString] -> ByteString
         joinWithByte,           -- :: Word8 -> ByteString -> ByteString -> ByteString
+
+        -- * Predicates
+        isPrefixOf,             -- :: ByteString -> ByteString -> Bool
+        isSuffixOf,             -- :: ByteString -> ByteString -> Bool
+
+        -- ** Search for arbitrary substrings
+        isSubstringOf,          -- :: ByteString -> ByteString -> Bool
+        findSubstring,          -- :: ByteString -> ByteString -> Maybe Int
+        findSubstrings,         -- :: ByteString -> ByteString -> [Int]
+
+        -- * Searching ByteStrings
+
+        -- ** Searching by equality
+        -- | These functions use memchr(3) to efficiently search the ByteString
+        elem,                   -- :: Word8 -> ByteString -> Bool
+        notElem,                -- :: Word8 -> ByteString -> Bool
+        filterByte,             -- :: Word8 -> ByteString -> ByteString
+        filterNotByte,          -- :: Word8 -> ByteString -> ByteString
+
+        -- ** Searching with a predicate
+        find,                   -- :: (Word8 -> Bool) -> ByteString -> Maybe Word8
+        filter,                 -- :: (Word8 -> Bool) -> ByteString -> ByteString
+        filter',                -- :: (Word8 -> Bool) -> ByteString -> ByteString
 
         -- * Indexing ByteStrings
         index,                  -- :: ByteString -> Int -> Word8
@@ -135,43 +160,20 @@ module Data.ByteString (
         count,                  -- :: Word8 -> ByteString -> Int
         findIndexOrEnd,         -- :: (Word8 -> Bool) -> ByteString -> Int
 
-        -- * Ordered ByteStrings
-        sort,                   -- :: ByteString -> ByteString
-
-        -- * Searching ByteStrings
-
-        -- ** Searching by equality
-        -- | These functions use memchr(3) to efficiently search the ByteString
-
-        elem,                   -- :: Word8 -> ByteString -> Bool
-        notElem,                -- :: Word8 -> ByteString -> Bool
-        filterByte,             -- :: Word8 -> ByteString -> ByteString
-        filterNotByte,          -- :: Word8 -> ByteString -> ByteString
-
-        -- ** Searching with a predicate
-        filter,                 -- :: (Word8 -> Bool) -> ByteString -> ByteString
-        find,                   -- :: (Word8 -> Bool) -> ByteString -> Maybe Word8
-        filter',                -- :: (Word8 -> Bool) -> ByteString -> ByteString
-
-        -- ** Prefixes and suffixes
-        -- | These functions use memcmp(3) to efficiently compare substrings
-        isPrefixOf,             -- :: ByteString -> ByteString -> Bool
-        isSuffixOf,             -- :: ByteString -> ByteString -> Bool
-
-        -- ** Search for arbitrary substrings
-        isSubstringOf,          -- :: ByteString -> ByteString -> Bool
-        findSubstring,          -- :: ByteString -> ByteString -> Maybe Int
-        findSubstrings,         -- :: ByteString -> ByteString -> [Int]
-
         -- * Zipping and unzipping ByteStrings
         zip,                    -- :: ByteString -> ByteString -> [(Word8,Word8)]
         zipWith,                -- :: (Word8 -> Word8 -> c) -> ByteString -> ByteString -> [c]
         unzip,                  -- :: [(Word8,Word8)] -> (ByteString,ByteString)
 
+        -- * Ordered ByteStrings
+        sort,                   -- :: ByteString -> ByteString
+
         -- * Unchecked access
         unsafeHead,             -- :: ByteString -> Word8
         unsafeTail,             -- :: ByteString -> ByteString
         unsafeIndex,            -- :: ByteString -> Int -> Word8
+        unsafeTake,             -- :: Int -> ByteString -> ByteString
+        unsafeDrop,             -- :: Int -> ByteString -> ByteString
 
         -- * Low level introduction and elimination
         generate,               -- :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
@@ -203,7 +205,7 @@ module Data.ByteString (
         copyCString,            -- :: CString -> ByteString
         copyCStringLen,         -- :: CStringLen -> ByteString
 
-        -- * I\/O with @ByteString@s
+        -- * I\/O with 'ByteString's
 
         -- ** Standard input and output
 
