@@ -13,6 +13,6 @@ Todo items
 * unfoldr is needed.
 
 * think about Data.ByteString.hGetLines. is it needed in the presence of
-* cheap lines =<< Data.ByteString.Lazy.getContents?
+    the cheap "lines =<< Data.ByteString.Lazy.getContents" ?
 * unchunk, Data.ByteString.Lazy -> [Data.ByteString]
     -  and that'd work for any Lazy.ByteString, not just hGetContents >>= lines
