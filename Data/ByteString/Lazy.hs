@@ -867,16 +867,16 @@ elemIndex c (LPS ps) = elemIndex' 0 ps
             Just i  -> Just (n+i)
 
 {-
--- | /O(n)/ The 'elemIndexLast' function returns the last index of the
+-- | /O(n)/ The 'elemIndexEnd' function returns the last index of the
 -- element in the given 'ByteString' which is equal to the query
 -- element, or 'Nothing' if there is no such element. The following
 -- holds:
 --
--- > elemIndexLast c xs == 
+-- > elemIndexEnd c xs == 
 -- > (-) (length xs - 1) `fmap` elemIndex c (reverse xs)
 --
-elemIndexLast :: Word8 -> ByteString -> Maybe Int
-elemIndexLast ch (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p ->
+elemIndexEnd :: Word8 -> ByteString -> Maybe Int
+elemIndexEnd ch (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p ->
     go (p `plusPtr` s) (l-1)
   where
     STRICT2(go)

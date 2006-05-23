@@ -138,7 +138,7 @@ module Data.ByteString.Char8 (
         -- * Indexing ByteStrings
         index,                  -- :: ByteString -> Int -> Char
         elemIndex,              -- :: Char -> ByteString -> Maybe Int
-        elemIndexLast,          -- :: Char -> ByteString -> Maybe Int
+        elemIndexEnd,          -- :: Char -> ByteString -> Maybe Int
         elemIndices,            -- :: Char -> ByteString -> [Int]
         findIndex,              -- :: (Char -> Bool) -> ByteString -> Maybe Int
         findIndices,            -- :: (Char -> Bool) -> ByteString -> [Int]
@@ -604,17 +604,17 @@ elemIndex :: Char -> ByteString -> Maybe Int
 elemIndex = B.elemIndex . c2w
 {-# INLINE elemIndex #-}
 
--- | /O(n)/ The 'elemIndexLast' function returns the last index of the
+-- | /O(n)/ The 'elemIndexEnd' function returns the last index of the
 -- element in the given 'ByteString' which is equal to the query
 -- element, or 'Nothing' if there is no such element. The following
 -- holds:
 --
--- > elemIndexLast c xs == 
+-- > elemIndexEnd c xs == 
 -- > (-) (length xs - 1) `fmap` elemIndex c (reverse xs)
 --
-elemIndexLast :: Char -> ByteString -> Maybe Int
-elemIndexLast = B.elemIndexLast . c2w
-{-# INLINE elemIndexLast #-}
+elemIndexEnd :: Char -> ByteString -> Maybe Int
+elemIndexEnd = B.elemIndexEnd . c2w
+{-# INLINE elemIndexEnd #-}
 
 -- | /O(n)/ The 'elemIndices' function extends 'elemIndex', by returning
 -- the indices of all elements equal to the query element, in ascending order.

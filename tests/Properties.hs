@@ -318,8 +318,8 @@ tests =
     ,    ("breakSpace",     mytest prop_breakSpaceBB)
     ,    ("dropSpace",      mytest prop_dropSpaceBB)
     ,    ("spanEnd",        mytest prop_spanEndBB)
-    ,    ("elemIndexLast 1",mytest prop_elemIndexLast1BB)
-    ,    ("elemIndexLast 2",mytest prop_elemIndexLast2BB)
+    ,    ("elemIndexEnd 1",mytest prop_elemIndexEnd1BB)
+    ,    ("elemIndexEnd 2",mytest prop_elemIndexEnd2BB)
     ,    ("words'",         mytest prop_wordsBB')
     ,    ("lines'",         mytest prop_linesBB')
     ,    ("dropSpaceEnd",   mytest prop_dropSpaceEndBB)
@@ -1246,12 +1246,12 @@ prop_lineIndices1BB xs = C.elemIndices '\n' xs == C.lineIndices xs
 
 prop_countBB c xs = length (P.elemIndices c xs) == P.count c xs
 
-prop_elemIndexLast1BB c xs = (P.elemIndexLast c (P.pack xs)) ==
+prop_elemIndexEnd1BB c xs = (P.elemIndexEnd c (P.pack xs)) ==
                            (case P.elemIndex c (P.pack (reverse xs)) of
                                 Nothing -> Nothing
                                 Just i  -> Just (length xs -1 -i))
 
-prop_elemIndexLast2BB c xs = (P.elemIndexLast c (P.pack xs)) ==
+prop_elemIndexEnd2BB c xs = (P.elemIndexEnd c (P.pack xs)) ==
                            ((-) (length xs - 1) `fmap` P.elemIndex c (P.pack $ reverse xs))
 
 prop_elemIndicesBB xs c = elemIndices c xs == P.elemIndices c (P.pack xs)

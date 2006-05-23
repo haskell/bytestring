@@ -129,7 +129,7 @@ module Data.ByteString (
         index,                  -- :: ByteString -> Int -> Word8
         elemIndex,              -- :: Word8 -> ByteString -> Maybe Int
         elemIndices,            -- :: Word8 -> ByteString -> [Int]
-        elemIndexLast,          -- :: Word8 -> ByteString -> Maybe Int
+        elemIndexEnd,          -- :: Word8 -> ByteString -> Maybe Int
         findIndex,              -- :: (Word8 -> Bool) -> ByteString -> Maybe Int
         findIndices,            -- :: (Word8 -> Bool) -> ByteString -> [Int]
         count,                  -- :: Word8 -> ByteString -> Int
@@ -1189,16 +1189,16 @@ elemIndex c (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
     return $ if q == nullPtr then Nothing else Just $! q `minusPtr` p'
 {-# INLINE elemIndex #-}
 
--- | /O(n)/ The 'elemIndexLast' function returns the last index of the
+-- | /O(n)/ The 'elemIndexEnd' function returns the last index of the
 -- element in the given 'ByteString' which is equal to the query
 -- element, or 'Nothing' if there is no such element. The following
 -- holds:
 --
--- > elemIndexLast c xs == 
+-- > elemIndexEnd c xs == 
 -- > (-) (length xs - 1) `fmap` elemIndex c (reverse xs)
 --
-elemIndexLast :: Word8 -> ByteString -> Maybe Int
-elemIndexLast ch (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p ->
+elemIndexEnd :: Word8 -> ByteString -> Maybe Int
+elemIndexEnd ch (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p ->
     go (p `plusPtr` s) (l-1)
   where
     STRICT2(go)
@@ -1207,7 +1207,7 @@ elemIndexLast ch (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p ->
                             if ch == ch'
                                 then return $ Just i
                                 else go p (i-1)
-{-# INLINE elemIndexLast #-}
+{-# INLINE elemIndexEnd #-}
 
 -- | /O(n)/ The 'elemIndices' function extends 'elemIndex', by returning
 -- the indices of all elements equal to the query element, in ascending order.
