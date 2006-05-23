@@ -28,7 +28,7 @@ module Data.ByteString.Lazy.Char8 (
 
         -- * Introducing and eliminating 'ByteString's
         empty,                  -- :: ByteString
-        packChar,               -- :: Char   -> ByteString
+        singleton,               -- :: Char   -> ByteString
         pack,                   -- :: String -> ByteString
         unpack,                 -- :: ByteString -> String
 
@@ -175,9 +175,9 @@ import Prelude hiding
 ------------------------------------------------------------------------
 
 -- | /O(1)/ Convert a 'Char' into a 'ByteString'
-packChar :: Char -> ByteString
-packChar = L.packByte . c2w
-{-# INLINE packChar #-}
+singleton :: Char -> ByteString
+singleton = L.singleton . c2w
+{-# INLINE singleton #-}
 
 -- | /O(n)/ Convert a 'String' into a 'ByteString'. 
 pack :: [Char] -> ByteString
@@ -515,7 +515,7 @@ lines ps
 unlines :: [ByteString] -> ByteString
 unlines [] = empty
 unlines ss = (concat $ List.intersperse nl ss) `append` nl -- half as much space
-    where nl = packChar '\n'
+    where nl = singleton '\n'
 
 -- | 'words' breaks a ByteString up into a list of words, which
 -- were delimited by Chars representing white space. And
@@ -528,6 +528,6 @@ words = L.tokens isSpaceWord8
 
 -- | The 'unwords' function is analogous to the 'unlines' function, on words.
 unwords :: [ByteString] -> ByteString
-unwords = join (packChar ' ')
+unwords = join (singleton ' ')
 {-# INLINE unwords #-}
 

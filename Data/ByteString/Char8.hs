@@ -39,7 +39,7 @@ module Data.ByteString.Char8 (
 
         -- * Introducing and eliminating 'ByteString's
         empty,                  -- :: ByteString
-        packChar,               -- :: Char   -> ByteString
+        singleton,               -- :: Char   -> ByteString
         pack,                   -- :: String -> ByteString
         unpack,                 -- :: ByteString -> String
 
@@ -284,9 +284,9 @@ import GHC.ST                   (ST(..))
 ------------------------------------------------------------------------
 
 -- | /O(1)/ Convert a 'Char' into a 'ByteString'
-packChar :: Char -> ByteString
-packChar = B.packByte . c2w
-{-# INLINE packChar #-}
+singleton :: Char -> ByteString
+singleton = B.singleton . c2w
+{-# INLINE singleton #-}
 
 -- | /O(n)/ Convert a 'String' into a 'ByteString'
 --
@@ -841,7 +841,7 @@ lines (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
 unlines :: [ByteString] -> ByteString
 unlines [] = empty
 unlines ss = (concat $ List.intersperse nl ss) `append` nl -- half as much space
-    where nl = packChar '\n'
+    where nl = singleton '\n'
 
 -- | 'words' breaks a ByteString up into a list of words, which
 -- were delimited by Chars representing white space. And
@@ -854,7 +854,7 @@ words = B.tokens isSpaceWord8
 
 -- | The 'unwords' function is analogous to the 'unlines' function, on words.
 unwords :: [ByteString] -> ByteString
-unwords = join (packChar ' ')
+unwords = join (singleton ' ')
 {-# INLINE unwords #-}
 
 -- | /O(n)/ Indicies of newlines. Shorthand for 
@@ -899,7 +899,7 @@ unlines' :: [ByteString] -> ByteString
 unlines' ss = concat $ intersperse_newlines ss
     where intersperse_newlines (a:b:s) = a:newline: intersperse_newlines (b:s)
           intersperse_newlines s = s
-          newline = packChar '\n'
+          newline = singleton '\n'
 
 -- | 'unlines\'' behaves like 'unlines', except that it also correctly
 -- retores lines that do not have terminating newlines (see the

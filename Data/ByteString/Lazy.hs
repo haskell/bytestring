@@ -51,7 +51,7 @@ module Data.ByteString.Lazy (
 
         -- * Introducing and eliminating 'ByteString's
         empty,                  -- :: ByteString
-        packByte,               -- :: Word8   -> ByteString
+        singleton,               -- :: Word8   -> ByteString
         pack,                   -- :: [Word8] -> ByteString
         unpack,                 -- :: ByteString -> [Word8]
         packWith,               -- :: (a -> Word8) -> [a] -> ByteString
@@ -319,9 +319,9 @@ empty = LPS []
 {-# NOINLINE empty #-}
 
 -- | /O(1)/ Convert a 'Word8' into a 'ByteString'
-packByte :: Word8 -> ByteString
-packByte c = LPS [P.packByte c]
-{-# NOINLINE packByte #-}
+singleton :: Word8 -> ByteString
+singleton c = LPS [P.singleton c]
+{-# NOINLINE singleton #-}
 
 -- | /O(n)/ Convert a '[Word8]' into a 'ByteString'. 
 pack :: [Word8] -> ByteString
@@ -372,12 +372,12 @@ length (LPS ss) = L.sum (L.map (fromIntegral.P.length) ss)
 
 -- | /O(1)/ 'cons' is analogous to (:) for lists
 cons :: Word8 -> ByteString -> ByteString
-cons c (LPS ss) = LPS (P.packByte c : ss)   -- TODO: coalesing and O(1) amortised time
+cons c (LPS ss) = LPS (P.singleton c : ss)   -- TODO: coalesing and O(1) amortised time
 {-# INLINE cons #-}
 
 -- | /O(n\/c)/ Append a byte to the end of a 'ByteString'
 snoc :: ByteString -> Word8 -> ByteString
-snoc (LPS ss) c = LPS (ss ++ [P.packByte c])
+snoc (LPS ss) c = LPS (ss ++ [P.singleton c])
 {-# INLINE snoc #-}
 
 -- | /O(1)/ Extract the first element of a ByteString, which must be non-empty.
@@ -1109,7 +1109,7 @@ putStr = hPut stdout
 
 -- | Write a ByteString to stdout, appending a newline byte
 putStrLn :: ByteString -> IO ()
-putStrLn ps = hPut stdout ps >> hPut stdout (packByte 0x0a)
+putStrLn ps = hPut stdout ps >> hPut stdout (singleton 0x0a)
 
 -- | The interact function takes a function of type @ByteString -> ByteString@
 -- as its argument. The entire input from the standard input device is passed

@@ -757,7 +757,7 @@ prop_compare4 xs    = (not (null xs)) ==> (pack xs  `compare` L.empty) == GT
 prop_compare5 xs    = (not (null xs)) ==> (L.empty `compare` pack xs) == LT
 prop_compare6 xs ys = (not (null ys)) ==> (pack (xs++ys)  `compare` pack xs) == GT
 
-prop_compare7 x  y  = x  `compare` y  == (L.packByte x `compare` L.packByte y)
+prop_compare7 x  y  = x  `compare` y  == (L.singleton x `compare` L.singleton y)
 prop_compare8 xs ys = xs `compare` ys == (L.pack xs `compare` L.pack ys)
 
 ------------------------------------------------------------------------
@@ -786,8 +786,8 @@ prop_length2 xs = L.length xs == length1 xs
 ------------------------------------------------------------------------
 
 prop_cons1 c xs = unpack (L.cons c (pack xs)) == (c:xs)
-prop_cons2 c    = L.packByte c == (c `L.cons` L.empty)
-prop_cons3 c    = unpack (L.packByte c) == (c:[])
+prop_cons2 c    = L.singleton c == (c `L.cons` L.empty)
+prop_cons3 c    = unpack (L.singleton c) == (c:[])
 prop_cons4 c    = (c `L.cons` L.empty)  == pack (c:[])
 
 prop_snoc1 xs c = xs ++ [c] == unpack ((pack xs) `L.snoc` c)
@@ -877,7 +877,7 @@ prop_concat1 xs = (concat [xs,xs]) == (unpack $ L.concat [pack xs, pack xs])
 prop_concat2 xs = (concat [xs,[]]) == (unpack $ L.concat [pack xs, pack []])
 prop_concat3 xss = L.concat (map pack xss) == pack (concat xss)
 
-prop_concatMap xs = L.concatMap L.packByte xs == (pack . concatMap (:[]) . unpack) xs
+prop_concatMap xs = L.concatMap L.singleton xs == (pack . concatMap (:[]) . unpack) xs
 
 ------------------------------------------------------------------------
 
@@ -936,7 +936,7 @@ prop_groupBy  f xs  = groupBy f xs == (map unpack . L.groupBy f . pack) xs
 
 ------------------------------------------------------------------------
 
-prop_joinjoinByte xs ys c = L.joinWithByte c xs ys == L.join (L.packByte c) [xs,ys]
+prop_joinjoinByte xs ys c = L.joinWithByte c xs ys == L.join (L.singleton c) [xs,ys]
 
 ------------------------------------------------------------------------
 
@@ -1103,13 +1103,13 @@ prop_compare4BB xs  = (not (null xs)) ==> (P.pack xs  `compare` P.empty) == GT
 prop_compare5BB xs  = (not (null xs)) ==> (P.empty `compare` P.pack xs) == LT
 prop_compare6BB xs ys= (not (null ys)) ==> (P.pack (xs++ys)  `compare` P.pack xs) == GT
 
-prop_compare7BB x  y = x `compare` y == (C.packChar x `compare` C.packChar y)
+prop_compare7BB x  y = x `compare` y == (C.singleton x `compare` C.singleton y)
 prop_compare8BB xs ys = xs `compare` ys == (P.pack xs `compare` P.pack ys)
 
 prop_consBB  c xs = P.unpack (P.cons c (P.pack xs)) == (c:xs)
 prop_cons1BB xs   = 'X' : xs == C.unpack ('X' `C.cons` (C.pack xs))
 prop_cons2BB xs c = c : xs == P.unpack (c `P.cons` (P.pack xs))
-prop_cons3BB c    = C.unpack (C.packChar c) == (c:[])
+prop_cons3BB c    = C.unpack (C.singleton c) == (c:[])
 prop_cons4BB c    = (c `P.cons` P.empty)  == P.pack (c:[])
 
 prop_snoc1BB xs c = xs ++ [c] == P.unpack ((P.pack xs) `P.snoc` c)
@@ -1215,7 +1215,7 @@ prop_concat1BB xs = (concat [xs,xs]) == (P.unpack $ P.concat [P.pack xs, P.pack 
 prop_concat2BB xs = (concat [xs,[]]) == (P.unpack $ P.concat [P.pack xs, P.pack []])
 prop_concatBB xss = P.concat (map P.pack xss) == P.pack (concat xss)
 
-prop_concatMapBB xs = C.concatMap C.packChar xs == (C.pack . concatMap (:[]) . C.unpack) xs
+prop_concatMapBB xs = C.concatMap C.singleton xs == (C.pack . concatMap (:[]) . C.unpack) xs
 
 prop_anyBB xs a = (any (== a) xs) == (P.any (== a) (P.pack xs))
 prop_allBB xs a = (all (== a) xs) == (P.all (== a) (P.pack xs))
@@ -1355,7 +1355,7 @@ prop_filterChar3BB c xs = C.filterChar c xs == C.replicate (C.count c xs) c
 prop_filterNotChar1BB c xs = (filter (/=c) xs) == ((C.unpack . C.filterNotChar c . C.pack) xs)
 prop_filterNotChar2BB c xs = (C.filter (/=c) (C.pack xs)) == (C.filterNotChar c (C.pack xs))
 
-prop_joinjoinpathBB xs ys c = C.joinWithChar c xs ys == C.join (C.packChar c) [xs,ys]
+prop_joinjoinpathBB xs ys c = C.joinWithChar c xs ys == C.join (C.singleton c) [xs,ys]
 
 prop_zipBB  xs ys = zip xs ys == P.zip (P.pack xs) (P.pack ys)
 prop_zip1BB xs ys = P.zip xs ys == zip (P.unpack xs) (P.unpack ys)

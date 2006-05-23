@@ -43,7 +43,7 @@ module Data.ByteString (
 
         -- * Introducing and eliminating 'ByteString's
         empty,                  -- :: ByteString
-        packByte,               -- :: Word8   -> ByteString
+        singleton,               -- :: Word8   -> ByteString
         pack,                   -- :: [Word8] -> ByteString
         unpack,                 -- :: ByteString -> [Word8]
         packWith,               -- :: (a -> Word8) -> [a] -> ByteString
@@ -400,18 +400,18 @@ empty = inlinePerformIO $ mallocByteString 1 >>= \fp -> return $ PS fp 0 0
 {-# NOINLINE empty #-}
 
 -- | /O(1)/ Convert a 'Word8' into a 'ByteString'
-packByte :: Word8 -> ByteString
-packByte c = unsafePerformIO $ mallocByteString 2 >>= \fp -> do
+singleton :: Word8 -> ByteString
+singleton c = unsafePerformIO $ mallocByteString 2 >>= \fp -> do
     withForeignPtr fp $ \p -> poke p c
     return $ PS fp 0 1
-{-# INLINE packByte #-}
+{-# INLINE singleton #-}
 
 --
 -- XXX The unsafePerformIO is critical!
 --
 -- Otherwise:
 --
---  packByte 255 `compare` packByte 127
+--  singleton 255 `compare` singleton 127
 --
 -- is compiled to:
 --
@@ -1870,7 +1870,7 @@ putStr = hPut stdout
 -- | Write a ByteString to stdout, appending a newline byte
 putStrLn :: ByteString -> IO ()
 putStrLn ps = hPut stdout ps >> hPut stdout nl
-    where nl = packByte 0x0a
+    where nl = singleton 0x0a
 
 -- | Read a 'ByteString' directly from the specified 'Handle'.  This
 -- is far more efficient than reading the characters into a 'String'
