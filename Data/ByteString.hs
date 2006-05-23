@@ -878,40 +878,65 @@ replicate w c = inlinePerformIO $ generate w $ \ptr -> go ptr w
         go ptr n = poke ptr c >> go (ptr `plusPtr` 1) (n-1)
 -}
 
--- | /O(n)/ The 'unfoldrN' function is analogous to the List \'unfoldr\'.
--- 'unfoldrN' builds a ByteString from a seed value.  The function takes
--- the element and returns 'Nothing' if it is done producing the
--- ByteString or returns 'Just' @(a,b)@, in which case, @a@ is a
--- prepending to the ByteString and @b@ is used as the next element in a
--- recursive call.
---
--- To prevent unfoldrN having /O(n^2)/ complexity (as prepending a
--- character to a ByteString is /O(n)/, this unfoldr requires a maximum
--- final size of the ByteString as an argument. 'cons' can then be
--- implemented in /O(1)/ (i.e.  a 'poke'), and the unfoldr itself has
--- linear complexity. The depth of the recursion is limited to this
--- size, but may be less. For lazy, infinite unfoldr, use
--- 'Data.List.unfoldr' (from 'Data.List').
+-- | /O(n)/, where /n/ is the length of the result.  The 'unfoldr' 
+-- function is analogous to the List \'unfoldr\'.  'unfoldr' builds a 
+-- ByteString from a seed value.  The function takes the element and 
+-- returns 'Nothing' if it is done producing the ByteString or returns 
+-- 'Just' @(a,b)@, in which case, @a@ is the next byte in the string, 
+-- and @b@ is the seed value for further production.
 --
 -- Examples:
 --
--- > unfoldrN 10 (\x -> Just (x, chr (ord x + 1))) '0' == "0123456789"
---
--- The following equation connects the depth-limited unfoldr to the List unfoldr:
---
--- > unfoldrN n == take n $ List.unfoldr
-unfoldrN :: Int -> (a -> Maybe (Word8, a)) -> a -> ByteString
-unfoldrN i f w
-    | i <= 0    = empty
-    | otherwise = inlinePerformIO $ generate i $ \p -> go p w 0
+-- > unfoldr (\x -> if x <= 5 then Just (x, x + 1) else Nothing) 0 == pack [0, 1, 2, 3, 4, 5]
+unfoldr :: (a -> Maybe (Word8, a)) -> a -> ByteString
+unfoldr f x0 = inlinePerformIO $ do
+    let start_size = 128
+    p       <- mallocArray start_size
+    (p', l) <- unfolding p start_size 0 x0
+    p''     <- reallocArray p' l
+    fp      <- newForeignFreePtr p''
+    return (PS fp 0 l)
+
     where
-        STRICT3(go)
-        go q c n | n == i    = return n      -- stop if we reach `i'
-                 | otherwise = case f c of
-                                   Nothing        -> return n
-                                   Just (a,new_c) -> do
-                                        poke q a
-                                        go (q `plusPtr` 1) new_c (n+1)
+        unfolding p l i x = do
+            e <- unfoldN f p l i x
+            case e of
+                Left x'  -> do
+                                let l' = 2 * l
+                                p' <- reallocArray p l'
+                                unfolding p' l' l x'
+                Right i' -> return (p, i')
+
+-- | /O(n)/ Like 'unfoldr', 'unfoldrN' builds a ByteString from a seed
+-- value.  However, the length of the result is limited by the first
+-- argument to 'unfoldrN'.  This function is more efficient than 'unfoldr'
+-- when the maximum length of the result is known.
+--
+-- The following equation relates 'unfoldrN' and 'unfoldr':
+--
+-- > unfoldrN n f s == take n (unfoldr f s)
+unfoldrN :: Int -> (a -> Maybe (Word8, a)) -> a -> (ByteString, Maybe a)
+unfoldrN i f x0
+    | i <= 0    = (empty, Just x0)
+    | otherwise = inlinePerformIO $ do
+                        fp <- mallocByteString i
+                        e <- withForeignPtr fp (\p -> unfoldN f p i 0 x0)
+                        return $ case e of
+                                    Left x   -> (PS fp 0 i, Just x)
+                                    Right i' -> let s = copy (PS fp 0 i')
+                                                in s `seq` (s, Nothing)
+                                                -- seq so the old string is GC'ed
+
+-- Helper function for unfoldr/unfoldrN.  Unfold n elements into the Ptr.
+{-# INLINE unfoldN #-}
+unfoldN :: (a -> Maybe (Word8, a)) -> Ptr Word8 -> Int -> Int -> a -> IO (Either a Int)
+unfoldN f p l i x 
+ = case f x of
+    _ | i == l   -> return (Left x)
+    Nothing      -> return (Right i)
+    Just (w, x') -> do
+                        pokeElemOff p i w 
+                        unfoldN f p l (i + 1) x'
 
 -- ---------------------------------------------------------------------
 -- Substrings

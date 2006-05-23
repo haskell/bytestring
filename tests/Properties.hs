@@ -1312,7 +1312,7 @@ prop_wordsBB' xs =
 prop_linesBB' xs = (C.unpack . C.unlines' . C.lines' . C.pack) xs == (xs)
 
 prop_unfoldrBB c =
-    (C.unfoldrN 100 (\x -> Just (x, chr (ord x + 1))) c) ==
+    (fst $ C.unfoldrN 100 (\x -> Just (x, chr (ord x + 1))) c) ==
     (C.pack $ take 100 $ unfoldr (\x -> Just (x, chr (ord x + 1))) c)
 
 prop_prefixBB xs ys = isPrefixOf xs ys == (P.pack xs `P.isPrefixOf` P.pack ys)
@@ -1338,7 +1338,7 @@ prop_findSubstringsBB s x l
     naive_findSubstrings p s = [x | x <- [0..length s], p `isPrefixOf` drop x s]
 
 prop_replicate1BB n c = P.unpack (P.replicate n c) == replicate n c
-prop_replicate2BB n c = P.replicate n c == P.unfoldrN n (\u -> Just (u,u)) c
+prop_replicate2BB n c = P.replicate n c == fst (P.unfoldrN n (\u -> Just (u,u)) c)
 
 prop_replicate3BB c = P.unpack (P.replicate 0 c) == replicate 0 c
 

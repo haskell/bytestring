@@ -87,7 +87,8 @@ module Data.ByteString.Char8 (
 
         -- * Generating and unfolding ByteStrings
         replicate,              -- :: Int -> Char -> ByteString
-        unfoldrN,               -- :: (a -> Maybe (Char, a)) -> a -> ByteString
+        unfoldr,                -- :: (a -> Maybe (Char, a)) -> a -> ByteString
+        unfoldrN,               -- :: Int -> (a -> Maybe (Char, a)) -> a -> (ByteString, Maybe a)
 
         -- * Substrings
 
@@ -454,30 +455,29 @@ replicate :: Int -> Char -> ByteString
 replicate w = B.replicate w . c2w
 {-# INLINE replicate #-}
 
--- | /O(n)/ The 'unfoldrN' function is analogous to the List \'unfoldr\'.
--- 'unfoldrN' builds a ByteString from a seed value.  The function takes
--- the element and returns 'Nothing' if it is done producing the
--- ByteString or returns 'Just' @(a,b)@, in which case, @a@ is a
--- prepending to the ByteString and @b@ is used as the next element in a
--- recursive call.
---
--- To preven unfoldrN having /O(n^2)/ complexity (as prepending a
--- character to a ByteString is /O(n)/, this unfoldr requires a maximum
--- final size of the ByteString as an argument. 'cons' can then be
--- implemented in /O(1)/ (i.e.  a 'poke'), and the unfoldr itself has
--- linear complexity. The depth of the recursion is limited to this
--- size, but may be less. For lazy, infinite unfoldr, use
--- 'Data.List.unfoldr' (from 'Data.List').
+-- | /O(n)/, where /n/ is the length of the result.  The 'unfoldr' 
+-- function is analogous to the List \'unfoldr\'.  'unfoldr' builds a 
+-- ByteString from a seed value.  The function takes the element and 
+-- returns 'Nothing' if it is done producing the ByteString or returns 
+-- 'Just' @(a,b)@, in which case, @a@ is the next character in the string, 
+-- and @b@ is the seed value for further production.
 --
 -- Examples:
 --
--- > unfoldrN 10 (\x -> Just (x, chr (ord x + 1))) '0' == "0123456789"
+-- > unfoldr (\x -> if x <= '9' then Just (x, succ x) else Nothing) '0' == "0123456789"
+unfoldr :: (a -> Maybe (Char, a)) -> a -> ByteString
+unfoldr f x0 = B.unfoldr (fmap k . f) x0
+    where k (i, j) = (c2w i, j)
+
+-- | /O(n)/ Like 'unfoldr', 'unfoldrN' builds a ByteString from a seed
+-- value.  However, the length of the result is limited by the first
+-- argument to 'unfoldrN'.  This function is more efficient than 'unfoldr'
+-- when the maximum length of the result is known.
 --
--- The following equation connects the depth-limited unfoldr to the List unfoldr:
+-- The following equation relates 'unfoldrN' and 'unfoldr':
 --
--- > unfoldrN n == take n $ List.unfoldr
---
-unfoldrN :: Int -> (a -> Maybe (Char, a)) -> a -> ByteString
+-- > unfoldrN n f s == take n (unfoldr f s)
+unfoldrN :: Int -> (a -> Maybe (Char, a)) -> a -> (ByteString, Maybe a)
 unfoldrN n f w = B.unfoldrN n ((k `fmap`) . f) w
     where k (i,j) = (c2w i, j)
 {-# INLINE unfoldrN #-}
