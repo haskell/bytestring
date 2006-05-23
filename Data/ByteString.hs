@@ -113,8 +113,6 @@ module Data.ByteString (
         -- ** Breaking and dropping on specific bytes
         breakByte,              -- :: Word8 -> ByteString -> (ByteString, ByteString)
         spanByte,               -- :: Word8 -> ByteString -> (ByteString, ByteString)
-        breakFirst,             -- :: Word8 -> ByteString -> Maybe (ByteString,ByteString)
-        breakLast,              -- :: Word8 -> ByteString -> Maybe (ByteString,ByteString)
 
         -- ** Breaking into many substrings
         split,                  -- :: Word8 -> ByteString -> [ByteString]
@@ -989,40 +987,6 @@ spanByte c ps@(PS x s l) = inlinePerformIO $ withForeignPtr x $ \p ->
                                 then return (unsafeTake i ps, unsafeDrop i ps)
                                 else go p (i+1)
 {-# INLINE spanByte #-}
-
--- | /O(n)/ 'breakFirst' breaks the given ByteString on the first
--- occurence of @w@. It behaves like 'break', except the delimiter is
--- not returned, and @Nothing@ is returned if the delimiter is not in
--- the ByteString. I.e.
---
--- > breakFirst 'b' "aabbcc" == Just ("aa","bcc")
---
--- > breakFirst c xs ==
--- > let (x,y) = break (== c) xs 
--- > in if null y then Nothing else Just (x, drop 1 y))
---
-breakFirst :: Word8 -> ByteString -> Maybe (ByteString,ByteString)
-breakFirst c p = case elemIndex c p of
-   Nothing -> Nothing
-   Just n -> Just (unsafeTake n p, unsafeDrop (n+1) p)
-{-# INLINE breakFirst #-}
-
--- | /O(n)/ 'breakLast' behaves like breakFirst, but from the end of the
--- ByteString.
---
--- > breakLast ('b') (pack "aabbcc") == Just ("aab","cc")
---
--- and the following are equivalent:
---
--- > breakLast 'c' "abcdef"
--- > let (x,y) = break (=='c') (reverse "abcdef") 
--- > in if null x then Nothing else Just (reverse (drop 1 y), reverse x)
---
-breakLast :: Word8 -> ByteString -> Maybe (ByteString,ByteString)
-breakLast c p = case elemIndexLast c p of
-    Nothing -> Nothing
-    Just n -> Just (unsafeTake n p, unsafeDrop (n+1) p)
-{-# INLINE breakLast #-}
 
 -- | 'span' @p xs@ breaks the ByteString into two segments. It is
 -- equivalent to @('takeWhile' p xs, 'dropWhile' p xs)@

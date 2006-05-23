@@ -104,8 +104,6 @@ module Data.ByteString.Char8 (
         -- ** Breaking and dropping on specific Chars
         breakChar,              -- :: Char -> ByteString -> (ByteString, ByteString)
         spanChar,           -- :: Char -> ByteString -> (ByteString, ByteString)
-        breakFirst,             -- :: Char -> ByteString -> Maybe (ByteString,ByteString)
-        breakLast,              -- :: Char -> ByteString -> Maybe (ByteString,ByteString)
         breakSpace,             -- :: ByteString -> Maybe (ByteString,ByteString)
         dropSpace,              -- :: ByteString -> ByteString
         dropSpaceEnd,           -- :: ByteString -> ByteString
@@ -541,36 +539,6 @@ breakChar = B.breakByte . c2w
 spanChar :: Char -> ByteString -> (ByteString, ByteString)
 spanChar = B.spanByte . c2w
 {-# INLINE spanChar #-}
-
--- | /O(n)/ 'breakFirst' breaks the given ByteString on the first
--- occurence of @w@. It behaves like 'break', except the delimiter is
--- not returned, and @Nothing@ is returned if the delimiter is not in
--- the ByteString. I.e.
---
--- > breakFirst 'b' "aabbcc" == Just ("aa","bcc")
---
--- > breakFirst c xs ==
--- > let (x,y) = break (== c) xs 
--- > in if null y then Nothing else Just (x, drop 1 y))
---
-breakFirst :: Char -> ByteString -> Maybe (ByteString,ByteString)
-breakFirst = B.breakFirst . c2w
-{-# INLINE breakFirst #-}
-
--- | /O(n)/ 'breakLast' behaves like breakFirst, but from the end of the
--- ByteString.
---
--- > breakLast ('b') (pack "aabbcc") == Just ("aab","cc")
---
--- and the following are equivalent:
---
--- > breakLast 'c' "abcdef"
--- > let (x,y) = break (=='c') (reverse "abcdef") 
--- > in if null x then Nothing else Just (reverse (drop 1 y), reverse x)
---
-breakLast :: Char -> ByteString -> Maybe (ByteString,ByteString)
-breakLast = B.breakLast . c2w
-{-# INLINE breakLast #-}
 
 -- | /O(n)/ Break a 'ByteString' into pieces separated by the byte
 -- argument, consuming the delimiter. I.e.

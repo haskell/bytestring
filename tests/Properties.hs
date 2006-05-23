@@ -318,8 +318,6 @@ tests =
     ,    ("breakSpace",     mytest prop_breakSpaceBB)
     ,    ("dropSpace",      mytest prop_dropSpaceBB)
     ,    ("spanEnd",        mytest prop_spanEndBB)
-    ,    ("breakFirst",     mytest prop_breakFirstBB)
-    ,    ("breakLast",      mytest prop_breakLastBB)
     ,    ("elemIndexLast 1",mytest prop_elemIndexLast1BB)
     ,    ("elemIndexLast 2",mytest prop_elemIndexLast2BB)
     ,    ("words'",         mytest prop_wordsBB')
@@ -449,7 +447,6 @@ tests =
     ,("break/span",         mytest prop_breakspan)
     ,("break/breakByte",    mytest prop_breakByte)
     ,("span/spanByte",      mytest prop_spanByte)
-    ,("breakFirst/break",   mytest prop_breakFirst)
     ,("split",              mytest prop_split)
     ,("splitWith",          mytest prop_splitWith)
     ,("join.split/id",      mytest prop_joinsplit)
@@ -919,18 +916,6 @@ prop_breakByte xs c = L.break (== c) xs == L.breakByte c xs
 
 prop_spanByte c xs = (L.span (==c) xs) == L.spanByte c xs
 
-prop_breakFirst c xs = (let (x,y) = break (==c) xs
-                        in if null y then Nothing
-                                     else Just (pack x, pack $ drop 1 y)) ==
-                       (L.breakFirst c (pack xs))
-
-{-
-prop_breakLast c xs = (let (x,y) = break (==c) (reverse xs)
-                       in if null y then Nothing
-                                    else Just (pack (reverse $ drop 1 y), pack (reverse x))) ==
-                       (L.breakLast c (pack xs))
--}
-
 ------------------------------------------------------------------------
 
 prop_split c xs = (map L.unpack . map checkInvariant . L.split c $ xs)
@@ -1319,16 +1304,6 @@ prop_spanCharBB c xs =
 
 prop_spanChar_1BB c xs =
         (C.span (==c) xs) == C.spanChar c xs
-
-prop_breakFirstBB c xs = (let (x,y) = break (==c) xs
-                        in if null y then Nothing
-                                     else Just (P.pack x, P.pack $ drop 1 y)) ==
-                       (P.breakFirst c (P.pack xs))
-
-prop_breakLastBB c xs = (let (x,y) = break (==c) (reverse xs)
-                       in if null y then Nothing
-                                    else Just (C.pack (reverse $ drop 1 y), C.pack (reverse x))) ==
-                       (C.breakLast c (C.pack xs))
 
 prop_wordsBB' xs =
     (C.unpack . C.unwords  . C.words' . C.pack) xs ==

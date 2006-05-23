@@ -115,7 +115,6 @@ module Data.ByteString.Lazy (
         -- ** Breaking and dropping on specific bytes
         breakByte,              -- :: Word8 -> ByteString -> (ByteString, ByteString)
         spanByte,               -- :: Word8 -> ByteString -> (ByteString, ByteString)
-        breakFirst,             -- :: Word8 -> ByteString -> Maybe (ByteString,ByteString)
 
         -- ** Breaking into many substrings
         split,                  -- :: Word8 -> ByteString -> [ByteString]
@@ -710,31 +709,6 @@ spanByte c (LPS ps) = case (spanByte' ps) of (a,b) -> (LPS a, LPS b)
                       | P.null x'' -> let (xs', xs'') = spanByte' xs
                                        in (x : xs', xs'')
                       | otherwise  -> (x' : [], x'' : xs)
-
-
--- | /O(n)/ 'breakFirst' breaks the given ByteString on the first
--- occurence of @w@. It behaves like 'break', except the delimiter is
--- not returned, and @Nothing@ is returned if the delimiter is not in
--- the ByteString. I.e.
---
--- > breakFirst 'b' "aabbcc" == Just ("aa","bcc")
---
--- > breakFirst c xs ==
--- > let (x,y) = break (== c) xs 
--- > in if null y then Nothing else Just (x, drop 1 y))
---
-breakFirst :: Word8 -> ByteString -> Maybe (ByteString,ByteString)
-breakFirst c (LPS ps) = breakByte' [] ps
-  where breakByte' _   []     = Nothing
-        breakByte' acc (x:xs) =
-          case P.elemIndex c x of
-            Just n -> let acc' | n == 0    = acc
-                               | otherwise = P.take n x : acc
-
-                          xs'  | n+1 >= P.length x = xs
-                               | otherwise         = P.drop (n+1) x : xs
-                       in Just (LPS (L.reverse acc'), LPS xs')
-            Nothing -> breakByte' (x:acc) xs
 
 -- | 'span' @p xs@ breaks the ByteString into two segments. It is
 -- equivalent to @('takeWhile' p xs, 'dropWhile' p xs)@
