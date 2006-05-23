@@ -8,11 +8,17 @@ Todo items
 * would it make sense to move the IO bits into a different module too?
         - System.IO.ByteString
         - Data.ByteString.IO
+
 * pack/unpack -> fromList/toList ?
-* can we avoid joinWithByte? Hard. Can't do it easily with a rule.
+        - Don sez: i don't like it. pack/unpack is culturally significant :)
+
+* can we avoid joinWithByte? 
+        - Hard. Can't do it easily with a rule.
+
 * unfoldr is needed.
 
 * think about Data.ByteString.hGetLines. is it needed in the presence of
     the cheap "lines =<< Data.ByteString.Lazy.getContents" ?
+
 * unchunk, Data.ByteString.Lazy -> [Data.ByteString]
     -  and that'd work for any Lazy.ByteString, not just hGetContents >>= lines
