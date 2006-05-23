@@ -2,14 +2,14 @@ Todo items
 ----------
 
 * state more clearly the null-termination property of strict ByteStrings
+    - strings created via mallocByteString, generate or create will be
+      null terminated. Strings created with slices, won't be.
+
 * would it make sense to move the IO bits into a different module too?
         - System.IO.ByteString
         - Data.ByteString.IO
-* packByte / singleton 
 * pack/unpack -> fromList/toList ?
-* breakFirst, breakLast gone?
-* sanitise uses of the *End suffix.
-* can we avoid joinWithByte?
+* can we avoid joinWithByte? Hard. Can't do it easily with a rule.
 * unfoldr is needed.
 
 * think about Data.ByteString.hGetLines. is it needed in the presence of
