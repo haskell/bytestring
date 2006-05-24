@@ -240,6 +240,7 @@ module Data.ByteString (
 
         noAL, NoAL, loopArr, loopAcc, loopSndAcc,
         loopU, mapEFL, filterEFL, foldEFL, foldEFL', fuseEFL, scanEFL,
+        mapAccumEFL, mapIndexEFL,
 
   ) where
 
