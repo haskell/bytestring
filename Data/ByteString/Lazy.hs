@@ -1144,3 +1144,33 @@ filterMap f (x:xs) = case f x of
                     y | P.null y  ->     filterMap f xs      -- manually fuse the invariant filter
                       | otherwise -> y : filterMap f xs
 {-# INLINE filterMap #-}
+
+
+-- ---------------------------------------------------------------------
+--
+-- Functional list/array fusion for lazy ByteStrings.
+--
+
+loopU :: (acc -> Word8 -> (acc, Maybe Word8))  -- ^ mapping & folding, once per elem
+      -> acc                                   -- ^ initial acc value
+      -> [P.ByteString]                        -- ^ input ByteString
+      -> (acc, [P.ByteString])
+loopU f = loop
+  where loop s []     = (s, [])
+        loop s (x:xs)
+          | P.null y  = (s'',   ys)
+          | otherwise = (s'', y:ys)
+          where (s',  y)  = P.loopU f s x
+                (s'', ys) = loop s' xs
+
+#if defined(__GLASGOW_HASKELL__)
+{-# INLINE [1] loopU #-}
+#endif
+
+{-# RULES
+
+"lazy loop/loop fusion!" forall em1 em2 start1 start2 arr.
+  loopU em2 start2 (P.loopArr (loopU em1 start1 arr)) =
+    P.loopSndAcc (loopU (em1 `P.fuseEFL` em2) (start1, start2) arr)
+
+  #-}
