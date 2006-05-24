@@ -888,25 +888,15 @@ replicate w c = inlinePerformIO $ generate w $ \ptr -> go ptr w
 --
 -- Examples:
 --
--- > unfoldr (\x -> if x <= 5 then Just (x, x + 1) else Nothing) 0 == pack [0, 1, 2, 3, 4, 5]
-unfoldr :: (a -> Maybe (Word8, a)) -> a -> ByteString
-unfoldr f x0 = inlinePerformIO $ do
-    let start_size = 128
-    p       <- mallocArray start_size
-    (p', l) <- unfolding p start_size 0 x0
-    p''     <- reallocArray p' l
-    fp      <- newForeignFreePtr p''
-    return (PS fp 0 l)
-
-    where
-        unfolding p l i x = do
-            e <- unfoldN f p l i x
-            case e of
-                Left x'  -> do
-                                let l' = 2 * l
-                                p' <- reallocArray p l'
-                                unfolding p' l' l x'
-                Right i' -> return (p, i')
+-- >    unfoldr (\x -> if x <= 5 then Just (x, x + 1) else Nothing) 0
+-- > == pack [0, 1, 2, 3, 4, 5]
+--
+unfoldr :: (a -> Maybe (Word8, a)) -> a -> [ByteString]
+unfoldr f = concat . unfoldChunk 32 64
+  where unfoldChunk n n' x =
+          case unfoldrN n f x of
+            (s, Nothing) -> s : []
+            (s, Just x') -> s : unfoldChunk n' (n+n') x'
 
 -- | /O(n)/ Like 'unfoldr', 'unfoldrN' builds a ByteString from a seed
 -- value.  However, the length of the result is limited by the first
@@ -916,28 +906,22 @@ unfoldr f x0 = inlinePerformIO $ do
 -- The following equation relates 'unfoldrN' and 'unfoldr':
 --
 -- > unfoldrN n f s == take n (unfoldr f s)
+--
 unfoldrN :: Int -> (a -> Maybe (Word8, a)) -> a -> (ByteString, Maybe a)
 unfoldrN i f x0
-    | i <= 0    = (empty, Just x0)
+    | i < 0     = (empty, Just x0)
     | otherwise = inlinePerformIO $ do
-                        fp <- mallocByteString i
-                        e <- withForeignPtr fp (\p -> unfoldN f p i 0 x0)
-                        return $ case e of
-                                    Left x   -> (PS fp 0 i, Just x)
-                                    Right i' -> let s = copy (PS fp 0 i')
-                                                in s `seq` (s, Nothing)
-                                                -- seq so the old string is GC'ed
-
--- Helper function for unfoldr/unfoldrN.  Unfold n elements into the Ptr.
-{-# INLINE unfoldN #-}
-unfoldN :: (a -> Maybe (Word8, a)) -> Ptr Word8 -> Int -> Int -> a -> IO (Either a Int)
-unfoldN f p l i x 
- = case f x of
-    _ | i == l   -> return (Left x)
-    Nothing      -> return (Right i)
-    Just (w, x') -> do
-                        pokeElemOff p i w 
-                        unfoldN f p l (i + 1) x'
+                    fp <- mallocByteString i
+                    withForeignPtr fp (\p -> go fp p x0 0)
+  where STRICT4(go)
+        go fp p x n =
+          case f x of
+            Nothing      -> let s = copy (PS fp 0 n)
+                             in s `seq` return (s, Nothing)
+            Just (w,x')
+             | n == i    -> return (PS fp 0 i, Just x)
+             | otherwise -> do poke p w
+                               go fp (p `plusPtr` 1) x' (n+1)
 
 -- ---------------------------------------------------------------------
 -- Substrings

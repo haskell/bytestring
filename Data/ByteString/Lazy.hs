@@ -107,7 +107,7 @@ module Data.ByteString.Lazy (
         cycle,                  -- :: ByteString -> ByteString
 
         -- ** Unfolding
---      unfoldr,                -- :: (a -> Maybe (Word8, a)) -> a -> ByteString
+        unfoldr,                -- :: (a -> Maybe (Word8, a)) -> a -> ByteString
 
         -- * Substrings
 
@@ -197,7 +197,7 @@ import Prelude hiding           (reverse,head,tail,last,init,null
                                 ,concat,any,take,drop,splitAt,takeWhile
                                 ,dropWhile,span,break,elem,filter,maximum
                                 ,minimum,all,concatMap,foldl1,foldr1
-                                ,repeat, cycle, interact
+                                ,repeat, cycle, interact, iterate,
                                 ,readFile,writeFile,replicate
                                 ,getContents,getLine,putStr,putStrLn
                                 ,zip,zipWith,unzip,notElem)
@@ -551,9 +551,8 @@ mapIndexed k (LPS xs) = LPS (snd (L.mapAccumL mapIndexedChunk 0 xs))
 --
 -- > iterate f x == [x, f x, f (f x), ...]
 --
--- iterate :: (Word8 -> Word8) -> Word8 -> ByteString
--- iterate = error "not yet implemented"
--- iterate f = unfoldrN smallChunkSize (Just . f)
+iterate :: (Word8 -> Word8) -> Word8 -> ByteString
+iterate f = unfoldr (\x -> case f x of x' -> x' `seq` Just (x', x'))
 
 -- | @'repeat' x@ is an infinite ByteString, with @x@ the value of every
 -- element.
@@ -585,37 +584,21 @@ cycle :: ByteString -> ByteString
 cycle (LPS []) = errorEmptyList "cycle"
 cycle (LPS xs) = LPS (L.cycle xs)
 
--- | /O(n)/ The 'unfoldrN' function is analogous to the List \'unfoldr\'.
--- 'unfoldrN' builds a ByteString from a seed value.  The function takes
+-- | /O(n)/ The 'unfoldr' function is analogous to the List \'unfoldr\'.
+-- 'unfoldr' builds a ByteString from a seed value.  The function takes
 -- the element and returns 'Nothing' if it is done producing the
 -- ByteString or returns 'Just' @(a,b)@, in which case, @a@ is a
 -- prepending to the ByteString and @b@ is used as the next element in a
 -- recursive call.
 --
--- The int parameter gives a chunk size.
---
-{-
-unfoldrN :: Int -> (a -> Maybe (Word8, a)) -> a -> ByteString
-unfoldrN c f = LPS . unfoldr
-  where unfoldr s = case unfoldrN' c f s of
-                      (ps, Just s')
-                        | P.null ps ->      unfoldr s'
-                        | otherwise -> ps : unfoldr s'
-                      (ps, Nothing)
-                        | P.null ps ->      []
-                        | otherwise -> ps : []
-
-        unfoldrN' :: Int -> (a -> Maybe (Word8, a)) -> a -> (P.ByteString, Maybe a)
-        unfoldrN' i f w = P.create' i $ \p -> go p w 0
-            where
-                STRICT3(go)
-                go q c n | n == i    = return (n,Just c)      -- stop if we reach `i'
-                         | otherwise = case f c of
-                                           Nothing        -> return (n, Nothing)
-                                           Just (a,new_c) -> do
-                                                poke q a
-                                                go (q `plusPtr` 1) new_c (n+1)
--}
+unfoldr :: (a -> Maybe (Word8, a)) -> a -> ByteString
+unfoldr f = LPS . unfoldChunk 32
+  where unfoldChunk n x =
+          case P.unfoldrN n f x of
+            (s, Nothing)
+              | P.null s  -> []
+              | otherwise -> s : []
+            (s, Just x')  -> s : unfoldChunk ((n*2) `min` smallChunkSize) x'
 
 -- ---------------------------------------------------------------------
 -- Substrings
