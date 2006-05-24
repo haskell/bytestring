@@ -78,7 +78,7 @@ module Data.ByteString.Lazy (
         foldl,                  -- :: (a -> Word8 -> a) -> a -> ByteString -> a
         foldl',                 -- :: (a -> Word8 -> a) -> a -> ByteString -> a
         foldl1,                 -- :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
---      foldl1',                -- :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
+        foldl1',                -- :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
         foldr,                  -- :: (Word8 -> a -> a) -> a -> ByteString -> a
         foldr1,                 -- :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 
@@ -487,9 +487,7 @@ foldl :: (a -> Word8 -> a) -> a -> ByteString -> a
 foldl f z = P.loopAcc . loopU (P.foldEFL f) z . unLPS
 {-# INLINE foldl #-}
 
--- | 'foldl', applied to a binary operator, a starting value (typically
--- the left-identity of the operator), and a ByteString, reduces the
--- ByteString using the binary operator, from left to right.
+-- | 'foldl\'' is like 'foldl', but strict in the accumulator.
 foldl' :: (a -> Word8 -> a) -> a -> ByteString -> a
 --foldl' f z (LPS xs) = L.foldl' (P.foldl' f) z xs
 foldl' f z = P.loopAcc . loopU (P.foldEFL' f) z . unLPS
@@ -508,6 +506,11 @@ foldr k z (LPS xs) = L.foldr (flip (P.foldr k)) z xs
 foldl1 :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldl1 _ (LPS []) = errorEmptyList "foldl1"
 foldl1 f (LPS (x:xs)) = foldl f (P.unsafeHead x) (LPS (P.unsafeTail x : xs))
+
+-- | 'foldl1\'' is like 'foldl1', but strict in the accumulator.
+foldl1' :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
+foldl1' _ (LPS []) = errorEmptyList "foldl1'"
+foldl1' f (LPS (x:xs)) = foldl' f (P.unsafeHead x) (LPS (P.unsafeTail x : xs))
 
 -- | 'foldr1' is a variant of 'foldr' that has no starting value argument,
 -- and thus must be applied to non-empty 'ByteString's

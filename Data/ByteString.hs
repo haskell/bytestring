@@ -694,7 +694,7 @@ foldl f v (PS x s l) = inlinePerformIO $ withForeignPtr x $ \ptr ->
                                    lgo (f z c) (p `plusPtr` 1) q
 -}
 
--- | 'foldl\'' is like foldl, but strict in the accumulator.
+-- | 'foldl\'' is like 'foldl', but strict in the accumulator.
 foldl' :: (a -> Word8 -> a) -> a -> ByteString -> a
 foldl' f z = loopAcc . loopU (foldEFL' f) z
 {-# INLINE foldl' #-}
@@ -720,7 +720,7 @@ foldl1 f ps
     | null ps   = errorEmptyList "foldl1"
     | otherwise = foldl f (unsafeHead ps) (unsafeTail ps)
 
--- | A strict version of 'foldl1'
+-- | 'foldl1\'' is like 'foldl1', but strict in the accumulator.
 foldl1' :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldl1' f ps
     | null ps   = errorEmptyList "foldl1'"
