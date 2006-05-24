@@ -891,7 +891,7 @@ replicate w c = inlinePerformIO $ generate w $ \ptr -> go ptr w
 -- >    unfoldr (\x -> if x <= 5 then Just (x, x + 1) else Nothing) 0
 -- > == pack [0, 1, 2, 3, 4, 5]
 --
-unfoldr :: (a -> Maybe (Word8, a)) -> a -> [ByteString]
+unfoldr :: (a -> Maybe (Word8, a)) -> a -> ByteString
 unfoldr f = concat . unfoldChunk 32 64
   where unfoldChunk n n' x =
           case unfoldrN n f x of
