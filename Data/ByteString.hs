@@ -829,7 +829,7 @@ minimum_ ptr n m c
 -}
 
 mapAccumL :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
-mapAccumL f z = (\(a,b)->(b,a)) . loopU (mapAccumEFL f) z
+mapAccumL f z = loopU (mapAccumEFL f) z
 
 --mapAccumR :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
 
@@ -2173,20 +2173,20 @@ noAL = NoAL
 
 -- | Projection functions that are fusion friendly (as in, we determine when
 -- they are inlined)
-loopArr :: (ByteString, acc) -> ByteString
-loopArr (arr, _) = arr
+loopArr :: (acc, byteString) -> byteString
+loopArr (_, arr) = arr
 #if defined(__GLASGOW_HASKELL__)
 {-# INLINE [1] loopArr #-}
 #endif
 
-loopAcc :: (ByteString, acc) -> acc
-loopAcc (_, acc) = acc
+loopAcc :: (acc, byteString) -> acc
+loopAcc (acc, _) = acc
 #if defined(__GLASGOW_HASKELL__)
 {-# INLINE [1] loopAcc #-}
 #endif
 
-loopSndAcc :: (ByteString, (acc1, acc2)) -> (ByteString, acc2)
-loopSndAcc (arr, (_, acc)) = (arr, acc)
+loopSndAcc :: ((acc1, acc2), byteString) -> (acc2, byteString)
+loopSndAcc ((_, acc), arr) = (acc, arr)
 #if defined(__GLASGOW_HASKELL__)
 {-# INLINE [1] loopSndAcc #-}
 #endif
@@ -2201,7 +2201,7 @@ loopSndAcc (arr, (_, acc)) = (arr, acc)
 loopU :: (acc -> Word8 -> (acc, Maybe Word8))  -- ^ mapping & folding, once per elem
       -> acc                                   -- ^ initial acc value
       -> ByteString                            -- ^ input ByteString
-      -> (ByteString, acc)
+      -> (acc, ByteString)
 
 loopU f start (PS z s i) = inlinePerformIO $ withForeignPtr z $ \a -> do
     fp          <- mallocByteString i
@@ -2213,7 +2213,7 @@ loopU f start (PS z s i) = inlinePerformIO $ withForeignPtr z $ \a -> do
                     withForeignPtr fp_ $ \p' -> memcpy p' p (fromIntegral i')
                     return (fp_,i',acc)
 
-    return (PS ptr 0 n, acc)
+    return (acc, PS ptr 0 n)
   where
     go p ma = trans 0 0
         where
