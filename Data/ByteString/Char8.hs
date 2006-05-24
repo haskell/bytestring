@@ -112,7 +112,7 @@ module Data.ByteString.Char8 (
         -- ** Breaking and dropping on specific Chars
         breakChar,              -- :: Char -> ByteString -> (ByteString, ByteString)
         spanChar,               -- :: Char -> ByteString -> (ByteString, ByteString)
-        breakSpace,             -- :: ByteString -> Maybe (ByteString,ByteString)
+        breakSpace,             -- :: ByteString -> (ByteString,ByteString)
         dropSpace,              -- :: ByteString -> ByteString
         dropSpaceEnd,           -- :: ByteString -> ByteString
 
