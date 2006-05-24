@@ -92,13 +92,13 @@ module Data.ByteString.Lazy (
 
         -- * Building ByteStrings
         -- ** Scans
---      scanl,                  -- :: (Word8 -> Word8 -> Word8) -> Word8 -> ByteString -> ByteString
+        scanl,                  -- :: (Word8 -> Word8 -> Word8) -> Word8 -> ByteString -> ByteString
 --      scanl1,                 -- :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString
 --      scanr,                  -- :: (Word8 -> Word8 -> Word8) -> Word8 -> ByteString -> ByteString
 --      scanr1,                 -- :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString
 
         -- ** Accumulating maps
---      mapAccumL,              -- :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
+        mapAccumL,              -- :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
 --      mapAccumR,              -- :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
         mapIndexed,             -- :: (Int -> Word8 -> Word8) -> ByteString -> ByteString
 
@@ -198,6 +198,7 @@ import Prelude hiding           (reverse,head,tail,last,init,null
                                 ,concat,any,take,drop,splitAt,takeWhile
                                 ,dropWhile,span,break,elem,filter,maximum
                                 ,minimum,all,concatMap,foldl1,foldr1
+                                ,scanl, scanl1, scanr, scanr1
                                 ,repeat, cycle, interact, iterate,
                                 ,readFile,writeFile,replicate
                                 ,getContents,getLine,putStr,putStrLn
@@ -243,6 +244,10 @@ newtype ByteString = LPS [P.ByteString] -- LPS for lazy packed string
                         ,Data, Typeable
 #endif
              )
+
+unLPS :: ByteString -> [P.ByteString]
+unLPS (LPS xs) = xs
+{-# INLINE unLPS #-}
 
 instance Eq  ByteString
     where (==)    = eq
@@ -444,7 +449,8 @@ append (LPS xs) (LPS ys) = LPS (xs ++ ys)
 -- | /O(n)/ 'map' @f xs@ is the ByteString obtained by applying @f@ to each
 -- element of @xs@.
 map :: (Word8 -> Word8) -> ByteString -> ByteString
-map f (LPS xs) = LPS (L.map (P.map' f) xs)
+--map f (LPS xs) = LPS (L.map (P.map' f) xs)
+map f = LPS . P.loopArr . loopU (P.mapEFL f) P.noAL . unLPS
 {-# INLINE map #-}
 
 -- | /O(n)/ 'reverse' @xs@ efficiently returns the elements of @xs@ in reverse order.
@@ -477,14 +483,16 @@ transpose s = L.map (\ss -> LPS [P.pack ss]) (L.transpose (L.map unpack s))
 -- the left-identity of the operator), and a ByteString, reduces the
 -- ByteString using the binary operator, from left to right.
 foldl :: (a -> Word8 -> a) -> a -> ByteString -> a
-foldl f z (LPS xs) = L.foldl (P.foldl f) z xs
+--foldl f z (LPS xs) = L.foldl (P.foldl f) z xs
+foldl f z = P.loopAcc . loopU (P.foldEFL f) z . unLPS
 {-# INLINE foldl #-}
 
 -- | 'foldl', applied to a binary operator, a starting value (typically
 -- the left-identity of the operator), and a ByteString, reduces the
 -- ByteString using the binary operator, from left to right.
 foldl' :: (a -> Word8 -> a) -> a -> ByteString -> a
-foldl' f z (LPS xs) = L.foldl' (P.foldl' f) z xs
+--foldl' f z (LPS xs) = L.foldl' (P.foldl' f) z xs
+foldl' f z = P.loopAcc . loopU (P.foldEFL' f) z . unLPS
 {-# INLINE foldl' #-}
 
 -- | 'foldr', applied to a binary operator, a starting value
@@ -546,13 +554,27 @@ minimum (LPS []) = errorEmptyList "minimum"
 minimum (LPS xs) = L.minimum (L.map P.minimum xs)
 {-# INLINE minimum #-}
 
+mapAccumL :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
+mapAccumL f z = (\(a,ps) -> (a, LPS ps)) . loopU (P.mapAccumEFL f) z . unLPS
+
 -- | /O(n)/ map Word8 functions, provided with the index at each position
 mapIndexed :: (Int -> Word8 -> Word8) -> ByteString -> ByteString
-mapIndexed k (LPS xs) = LPS (snd (L.mapAccumL mapIndexedChunk 0 xs))
-  where mapIndexedChunk :: Int -> P.ByteString -> (Int, P.ByteString)
-        mapIndexedChunk i x = (i + P.length x, P.mapIndexed (\i' -> k (i+i')) x)
-        --TODO: the data flow is a bit nasty, we're passing in a differnt
-        -- function each time to mapIndexed
+mapIndexed f = LPS . P.loopArr . loopU (P.mapIndexEFL f) 0 . unLPS
+
+-- ---------------------------------------------------------------------
+-- Building ByteStrings
+
+-- | 'scanl' is similar to 'foldl', but returns a list of successive
+-- reduced values from the left. This function will fuse.
+--
+-- > scanl f z [x1, x2, ...] == [z, z `f` x1, (z `f` x1) `f` x2, ...]
+--
+-- Note that
+--
+-- > last (scanl f z xs) == foldl f z xs.
+scanl :: (Word8 -> Word8 -> Word8) -> Word8 -> ByteString -> ByteString
+scanl f z = LPS . P.loopArr . loopU (P.scanEFL f) z . unLPS
+{-# INLINE scanl #-}
 
 -- ---------------------------------------------------------------------
 -- Unfolds and replicates
@@ -957,7 +979,8 @@ notElem c ps = not (elem c ps)
 -- returns a ByteString containing those characters that satisfy the
 -- predicate.
 filter :: (Word8 -> Bool) -> ByteString -> ByteString
-filter f (LPS xs) = LPS (filterMap (P.filter' f) xs)
+--filter f (LPS xs) = LPS (filterMap (P.filter' f) xs)
+filter p = LPS . P.loopArr . loopU (P.filterEFL p) P.noAL . unLPS
 {-# INLINE filter #-}
 
 -- | /O(n)/ and /O(n\/c) space/ A first order equivalent of /filter .
