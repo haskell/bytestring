@@ -149,12 +149,13 @@ module Data.ByteString (
         find,                   -- :: (Word8 -> Bool) -> ByteString -> Maybe Word8
         filter,                 -- :: (Word8 -> Bool) -> ByteString -> ByteString
         filter',                -- :: (Word8 -> Bool) -> ByteString -> ByteString
+--      partition               -- :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
 
         -- * Indexing ByteStrings
         index,                  -- :: ByteString -> Int -> Word8
         elemIndex,              -- :: Word8 -> ByteString -> Maybe Int
         elemIndices,            -- :: Word8 -> ByteString -> [Int]
-        elemIndexEnd,          -- :: Word8 -> ByteString -> Maybe Int
+        elemIndexEnd,           -- :: Word8 -> ByteString -> Maybe Int
         findIndex,              -- :: (Word8 -> Bool) -> ByteString -> Maybe Int
         findIndices,            -- :: (Word8 -> Bool) -> ByteString -> [Int]
         count,                  -- :: Word8 -> ByteString -> Int

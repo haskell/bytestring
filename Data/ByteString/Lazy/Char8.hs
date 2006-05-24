@@ -34,39 +34,57 @@ module Data.ByteString.Lazy.Char8 (
 
         -- * Basic interface
         cons,                   -- :: Char -> ByteString -> ByteString
-        snoc,                   -- :: Char -> ByteString -> ByteString
+        snoc,                   -- :: ByteString -> Char -> ByteString
+        append,                 -- :: ByteString -> ByteString -> ByteString
+        head,                   -- :: ByteString -> Char
+        last,                   -- :: ByteString -> Char
+        tail,                   -- :: ByteString -> ByteString
+        init,                   -- :: ByteString -> ByteString
         null,                   -- :: ByteString -> Bool
         length,                 -- :: ByteString -> Int
-        head,                   -- :: ByteString -> Char
-        tail,                   -- :: ByteString -> ByteString
-        last,                   -- :: ByteString -> Char
-        init,                   -- :: ByteString -> ByteString
-        append,                 -- :: ByteString -> ByteString -> ByteString
 
         -- * Transformating ByteStrings
-        map,                    -- :: (Word8 -> Word8) -> ByteString -> ByteString
+        map,                    -- :: (Char -> Char) -> ByteString -> ByteString
         reverse,                -- :: ByteString -> ByteString
+--      intersperse,            -- :: Char -> ByteString -> ByteString
         transpose,              -- :: [ByteString] -> [ByteString]
 
-        -- * Reducing 'ByteString's
-        foldl,                  -- :: (a -> Word8 -> a) -> a -> ByteString -> a
-        foldl',                 -- :: (a -> Word8 -> a) -> a -> ByteString -> a
-        foldr,                  -- :: (Word8 -> a -> a) -> a -> ByteString -> a
-        foldl1,                 -- :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
-        foldr1,                 -- :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
+        -- * Reducing 'ByteString's (folds)
+        foldl,                  -- :: (a -> Char -> a) -> a -> ByteString -> a
+        foldl',                 -- :: (a -> Char -> a) -> a -> ByteString -> a
+        foldl1,                 -- :: (Char -> Char -> Char) -> ByteString -> Char
+--      foldl1',                -- :: (Char -> Char -> Char) -> ByteString -> Char
+        foldr,                  -- :: (Char -> a -> a) -> a -> ByteString -> a
+        foldr1,                 -- :: (Char -> Char -> Char) -> ByteString -> Char
 
         -- ** Special folds
         concat,                 -- :: [ByteString] -> ByteString
-        concatMap,              -- :: (Word8 -> ByteString) -> ByteString -> ByteString
-        any,                    -- :: (Word8 -> Bool) -> ByteString -> Bool
-        all,                    -- :: (Word8 -> Bool) -> ByteString -> Bool
-        maximum,                -- :: ByteString -> Word8
-        minimum,                -- :: ByteString -> Word8
+        concatMap,              -- :: (Char -> ByteString) -> ByteString -> ByteString
+        any,                    -- :: (Char -> Bool) -> ByteString -> Bool
+        all,                    -- :: (Char -> Bool) -> ByteString -> Bool
+        maximum,                -- :: ByteString -> Char
+        minimum,                -- :: ByteString -> Char
 
-        -- * Generating and unfolding ByteStrings
+        -- * Building ByteStrings
+        -- ** Scans
+--      scanl,                  -- :: (Char -> Char -> Char) -> Char -> ByteString -> ByteString
+--      scanl1,                 -- :: (Char -> Char -> Char) -> ByteString -> ByteString
+--      scanr,                  -- :: (Char -> Char -> Char) -> Char -> ByteString -> ByteString
+--      scanr1,                 -- :: (Char -> Char -> Char) -> ByteString -> ByteString
+
+        -- ** Accumulating maps
+--      mapAccumL,              -- :: (acc -> Char -> (acc, Char)) -> acc -> ByteString -> (acc, ByteString)
+--      mapAccumR,              -- :: (acc -> Char -> (acc, Char)) -> acc -> ByteString -> (acc, ByteString)
+--      mapIndexed,             -- :: (Int -> Char -> Char) -> ByteString -> ByteString
+
+        -- ** Infinite ByteStrings
         repeat,                 -- :: Char -> ByteString
         replicate,              -- :: Int -> Char -> ByteString
         cycle,                  -- :: ByteString -> ByteString
+--      iterate,                -- :: (Char -> Char) -> Char -> ByteString
+
+        -- ** Unfolding
+--      unfoldr,                -- :: (a -> Maybe (Char, a)) -> a -> ByteString
 
         -- * Substrings
 
@@ -76,8 +94,12 @@ module Data.ByteString.Lazy.Char8 (
         splitAt,                -- :: Int -> ByteString -> (ByteString, ByteString)
         takeWhile,              -- :: (Char -> Bool) -> ByteString -> ByteString
         dropWhile,              -- :: (Char -> Bool) -> ByteString -> ByteString
-        break,                  -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
         span,                   -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
+        break,                  -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
+        group,                  -- :: ByteString -> [ByteString]
+        groupBy,                -- :: (Char -> Char -> Bool) -> ByteString -> [ByteString]
+--      inits,                  -- :: ByteString -> [ByteString]
+--      tails,                  -- :: ByteString -> [ByteString]
 
         -- ** Breaking and dropping on specific Chars
         breakChar,              -- :: Char -> ByteString -> (ByteString, ByteString)
@@ -87,8 +109,6 @@ module Data.ByteString.Lazy.Char8 (
         split,                  -- :: Char -> ByteString -> [ByteString]
         splitWith,              -- :: (Char -> Bool) -> ByteString -> [ByteString]
         tokens,                 -- :: (Char -> Bool) -> ByteString -> [ByteString]
-        group,                  -- :: ByteString -> [ByteString]
-        groupBy,                -- :: (Char -> Char -> Bool) -> ByteString -> [ByteString]
 
         -- ** Breaking into lines and words
         lines,                  -- :: ByteString -> [ByteString]
@@ -100,13 +120,9 @@ module Data.ByteString.Lazy.Char8 (
         join,                   -- :: ByteString -> [ByteString] -> ByteString
         joinWithChar,           -- :: Char -> ByteString -> ByteString -> ByteString
 
-        -- * Indexing ByteStrings
-        index,                  -- :: ByteString -> Int -> Word8
-        elemIndex,              -- :: Char -> ByteString -> Maybe Int
-        elemIndices,            -- :: Char -> ByteString -> [Int]
-        findIndex,              -- :: (Char -> Bool) -> ByteString -> Maybe Int
-        findIndices,            -- :: (Char -> Bool) -> ByteString -> [Int]
-        count,                  -- :: Char -> ByteString -> Int
+        -- * Predicates
+        isPrefixOf,             -- :: ByteString -> ByteString -> Bool
+--      isSuffixOf,             -- :: ByteString -> ByteString -> Bool
 
         -- * Searching ByteStrings
 
@@ -117,25 +133,27 @@ module Data.ByteString.Lazy.Char8 (
         filterNotChar,          -- :: Char -> ByteString -> ByteString
 
         -- ** Searching with a predicate
-        filter,                 -- :: (Char -> Bool) -> ByteString -> ByteString
         find,                   -- :: (Char -> Bool) -> ByteString -> Maybe Char
+        filter,                 -- :: (Char -> Bool) -> ByteString -> ByteString
+--      partition               -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
 
-        -- ** Prefixes and suffixes
-        isPrefixOf,             -- :: ByteString -> ByteString -> Bool
---      isSuffixOf,             -- :: ByteString -> ByteString -> Bool
+        -- * Indexing ByteStrings
+        index,                  -- :: ByteString -> Int -> Char
+        elemIndex,              -- :: Char -> ByteString -> Maybe Int
+        elemIndices,            -- :: Char -> ByteString -> [Int]
+        findIndex,              -- :: (Char -> Bool) -> ByteString -> Maybe Int
+        findIndices,            -- :: (Char -> Bool) -> ByteString -> [Int]
+        count,                  -- :: Char -> ByteString -> Int
 
         -- * Zipping and unzipping ByteStrings
         zip,                    -- :: ByteString -> ByteString -> [(Char,Char)]
         zipWith,                -- :: (Char -> Char -> c) -> ByteString -> ByteString -> [c]
+--      unzip,                  -- :: [(Char,Char)] -> (ByteString,ByteString)
 
-        -- * I\/O with @ByteString@s
+        -- * Ordered ByteStrings
+--        sort,                   -- :: ByteString -> ByteString
 
-        -- ** I\/O with Handles
-        hGetContentsN,          -- :: Int -> Handle -> IO ByteString
-        hGetN,                  -- :: Int -> Handle -> Int -> IO ByteString
-        hGetContents,           -- :: Handle -> IO ByteString
-        hGet,                   -- :: Handle -> Int -> IO ByteString
-        hPut,                   -- :: Handle -> ByteString -> IO ()
+        -- * I\/O with 'ByteString's
 
         -- ** Standard input and output
         getContents,            -- :: IO ByteString
@@ -147,7 +165,13 @@ module Data.ByteString.Lazy.Char8 (
         readFile,               -- :: FilePath -> IO ByteString
         writeFile,              -- :: FilePath -> ByteString -> IO ()
 
-    ) where
+        -- ** I\/O with Handles
+        hGetContents,           -- :: Handle -> IO ByteString
+        hGetContentsN,          -- :: Int -> Handle -> IO ByteString
+        hGet,                   -- :: Handle -> Int -> IO ByteString
+        hGetN,                  -- :: Int -> Handle -> Int -> IO ByteString
+        hPut,                   -- :: Handle -> ByteString -> IO ()
+  ) where
 
 -- Functions transparently exported
 import Data.ByteString.Lazy 

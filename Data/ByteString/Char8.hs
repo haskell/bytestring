@@ -45,18 +45,14 @@ module Data.ByteString.Char8 (
 
         -- * Basic interface
         cons,                   -- :: Char -> ByteString -> ByteString
-        snoc,                   -- :: Char -> ByteString -> ByteString
+        snoc,                   -- :: ByteString -> Char -> ByteString
+        append,                 -- :: ByteString -> ByteString -> ByteString
+        head,                   -- :: ByteString -> Char
+        last,                   -- :: ByteString -> Char
+        tail,                   -- :: ByteString -> ByteString
+        init,                   -- :: ByteString -> ByteString
         null,                   -- :: ByteString -> Bool
         length,                 -- :: ByteString -> Int
-        head,                   -- :: ByteString -> Char
-        tail,                   -- :: ByteString -> ByteString
-        last,                   -- :: ByteString -> Char
-        init,                   -- :: ByteString -> ByteString
-        append,                 -- :: ByteString -> ByteString -> ByteString
-
-        -- * Special ByteStrings
-        inits,                  -- :: ByteString -> [ByteString]
-        tails,                  -- :: ByteString -> [ByteString]
 
         -- * Transformating ByteStrings
         map,                    -- :: (Char -> Char) -> ByteString -> ByteString
@@ -64,13 +60,13 @@ module Data.ByteString.Char8 (
         intersperse,            -- :: Char -> ByteString -> ByteString
         transpose,              -- :: [ByteString] -> [ByteString]
 
-        -- * Reducing 'ByteString's
+        -- * Reducing 'ByteString's (folds)
         foldl,                  -- :: (a -> Char -> a) -> a -> ByteString -> a
-        foldr,                  -- :: (Char -> a -> a) -> a -> ByteString -> a
+        foldl',                 -- :: (a -> Char -> a) -> a -> ByteString -> a
         foldl1,                 -- :: (Char -> Char -> Char) -> ByteString -> Char
         foldl1',                -- :: (Char -> Char -> Char) -> ByteString -> Char
+        foldr,                  -- :: (Char -> a -> a) -> a -> ByteString -> a
         foldr1,                 -- :: (Char -> Char -> Char) -> ByteString -> Char
-        foldl',                 -- :: (a -> Char -> a) -> a -> ByteString -> a
 
         -- ** Special folds
         concat,                 -- :: [ByteString] -> ByteString
@@ -79,11 +75,18 @@ module Data.ByteString.Char8 (
         all,                    -- :: (Char -> Bool) -> ByteString -> Bool
         maximum,                -- :: ByteString -> Char
         minimum,                -- :: ByteString -> Char
-        mapIndexed,             -- :: (Int -> Char -> Char) -> ByteString -> ByteString
 
         -- * Building ByteStrings
-        scanl,
-        scanl1,
+        -- ** Scans
+        scanl,                  -- :: (Char -> Char -> Char) -> Char -> ByteString -> ByteString
+        scanl1,                 -- :: (Char -> Char -> Char) -> ByteString -> ByteString
+--      scanr,                  -- :: (Char -> Char -> Char) -> Char -> ByteString -> ByteString
+--      scanr1,                 -- :: (Char -> Char -> Char) -> ByteString -> ByteString
+
+        -- ** Accumulating maps
+--      mapAccumL,              -- :: (acc -> Char -> (acc, Char)) -> acc -> ByteString -> (acc, ByteString)
+--      mapAccumR,              -- :: (acc -> Char -> (acc, Char)) -> acc -> ByteString -> (acc, ByteString)
+        mapIndexed,             -- :: (Int -> Char -> Char) -> ByteString -> ByteString
 
         -- * Generating and unfolding ByteStrings
         replicate,              -- :: Int -> Char -> ByteString
@@ -98,13 +101,17 @@ module Data.ByteString.Char8 (
         splitAt,                -- :: Int -> ByteString -> (ByteString, ByteString)
         takeWhile,              -- :: (Char -> Bool) -> ByteString -> ByteString
         dropWhile,              -- :: (Char -> Bool) -> ByteString -> ByteString
-        break,                  -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
         span,                   -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
         spanEnd,                -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
+        break,                  -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
+        group,                  -- :: ByteString -> [ByteString]
+        groupBy,                -- :: (Char -> Char -> Bool) -> ByteString -> [ByteString]
+        inits,                  -- :: ByteString -> [ByteString]
+        tails,                  -- :: ByteString -> [ByteString]
 
         -- ** Breaking and dropping on specific Chars
         breakChar,              -- :: Char -> ByteString -> (ByteString, ByteString)
-        spanChar,           -- :: Char -> ByteString -> (ByteString, ByteString)
+        spanChar,               -- :: Char -> ByteString -> (ByteString, ByteString)
         breakSpace,             -- :: ByteString -> Maybe (ByteString,ByteString)
         dropSpace,              -- :: ByteString -> ByteString
         dropSpaceEnd,           -- :: ByteString -> ByteString
@@ -113,8 +120,6 @@ module Data.ByteString.Char8 (
         split,                  -- :: Char -> ByteString -> [ByteString]
         splitWith,              -- :: (Char -> Bool) -> ByteString -> [ByteString]
         tokens,                 -- :: (Char -> Bool) -> ByteString -> [ByteString]
-        group,                  -- :: ByteString -> [ByteString]
-        groupBy,                -- :: (Word8 -> Word8 -> Bool) -> ByteString -> [ByteString]
 
         -- ** Breaking into lines and words
         lines,                  -- :: ByteString -> [ByteString]
@@ -136,17 +141,13 @@ module Data.ByteString.Char8 (
         join,                   -- :: ByteString -> [ByteString] -> ByteString
         joinWithChar,           -- :: Char -> ByteString -> ByteString -> ByteString
 
-        -- * Indexing ByteStrings
-        index,                  -- :: ByteString -> Int -> Char
-        elemIndex,              -- :: Char -> ByteString -> Maybe Int
-        elemIndexEnd,          -- :: Char -> ByteString -> Maybe Int
-        elemIndices,            -- :: Char -> ByteString -> [Int]
-        findIndex,              -- :: (Char -> Bool) -> ByteString -> Maybe Int
-        findIndices,            -- :: (Char -> Bool) -> ByteString -> [Int]
-        count,                  -- :: Char -> ByteString -> Int
 
-        -- * Ordered ByteStrings
-        sort,                   -- :: ByteString -> ByteString
+        -- ** Searching for substrings
+        isPrefixOf,             -- :: ByteString -> ByteString -> Bool
+        isSuffixOf,             -- :: ByteString -> ByteString -> Bool
+        isSubstringOf,          -- :: ByteString -> ByteString -> Bool
+        findSubstring,          -- :: ByteString -> ByteString -> Maybe Int
+        findSubstrings,         -- :: ByteString -> ByteString -> [Int]
 
         -- * Searching ByteStrings
 
@@ -157,20 +158,26 @@ module Data.ByteString.Char8 (
         filterNotChar,          -- :: Char -> ByteString -> ByteString
 
         -- ** Searching with a predicate
-        filter,                 -- :: (Char -> Bool) -> ByteString -> ByteString
         find,                   -- :: (Char -> Bool) -> ByteString -> Maybe Char
+        filter,                 -- :: (Char -> Bool) -> ByteString -> ByteString
+--      partition               -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
 
-        -- ** Searching for substrings
-        isPrefixOf,             -- :: ByteString -> ByteString -> Bool
-        isSuffixOf,             -- :: ByteString -> ByteString -> Bool
-        isSubstringOf,          -- :: ByteString -> ByteString -> Bool
-        findSubstring,          -- :: ByteString -> ByteString -> Maybe Int
-        findSubstrings,         -- :: ByteString -> ByteString -> [Int]
+        -- * Indexing ByteStrings
+        index,                  -- :: ByteString -> Int -> Char
+        elemIndex,              -- :: Char -> ByteString -> Maybe Int
+        elemIndices,            -- :: Char -> ByteString -> [Int]
+        elemIndexEnd,           -- :: Char -> ByteString -> Maybe Int
+        findIndex,              -- :: (Char -> Bool) -> ByteString -> Maybe Int
+        findIndices,            -- :: (Char -> Bool) -> ByteString -> [Int]
+        count,                  -- :: Char -> ByteString -> Int
 
-        -- * Zipping and unzipping ByteString
+        -- * Zipping and unzipping ByteStrings
         zip,                    -- :: ByteString -> ByteString -> [(Char,Char)]
         zipWith,                -- :: (Char -> Char -> c) -> ByteString -> ByteString -> [c]
         unzip,                  -- :: [(Char,Char)] -> (ByteString,ByteString)
+
+        -- * Ordered ByteStrings
+        sort,                   -- :: ByteString -> ByteString
 
         -- * Unchecked access
         unsafeHead,             -- :: ByteString -> Char
@@ -199,8 +206,8 @@ module Data.ByteString.Char8 (
 
         -- ** Files
         readFile,               -- :: FilePath -> IO ByteString
---      mmapFile,               -- :: FilePath -> IO ByteString
         writeFile,              -- :: FilePath -> ByteString -> IO ()
+--      mmapFile,               -- :: FilePath -> IO ByteString
 
         -- ** I\/O with Handles
 #if defined(__GLASGOW_HASKELL__)

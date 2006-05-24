@@ -92,8 +92,10 @@ module Data.ByteString.Lazy (
 
         -- * Building ByteStrings
         -- ** Scans
---        scanl,                  -- :: (Word8 -> Word8 -> Word8) -> Word8 -> ByteString -> ByteString
---        scanl1,                 -- :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString
+--      scanl,                  -- :: (Word8 -> Word8 -> Word8) -> Word8 -> ByteString -> ByteString
+--      scanl1,                 -- :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString
+--      scanr,                  -- :: (Word8 -> Word8 -> Word8) -> Word8 -> ByteString -> ByteString
+--      scanr1,                 -- :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString
 
         -- ** Accumulating maps
 --      mapAccumL,              -- :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
@@ -101,10 +103,10 @@ module Data.ByteString.Lazy (
         mapIndexed,             -- :: (Int -> Word8 -> Word8) -> ByteString -> ByteString
 
         -- ** Infinite ByteStrings
---      iterate,                -- :: (Word8 -> Word8) -> Word8 -> ByteString
         repeat,                 -- :: Word8 -> ByteString
         replicate,              -- :: Int -> Word8 -> ByteString
         cycle,                  -- :: ByteString -> ByteString
+        iterate,                -- :: (Word8 -> Word8) -> Word8 -> ByteString
 
         -- ** Unfolding
         unfoldr,                -- :: (a -> Maybe (Word8, a)) -> a -> ByteString
@@ -139,8 +141,7 @@ module Data.ByteString.Lazy (
 
         -- * Predicates
         isPrefixOf,             -- :: ByteString -> ByteString -> Bool
-        isSuffixOf,             -- :: ByteString -> ByteString -> Bool
-
+--      isSuffixOf,             -- :: ByteString -> ByteString -> Bool
 
         -- * Searching ByteStrings
 
@@ -153,6 +154,7 @@ module Data.ByteString.Lazy (
         -- ** Searching with a predicate
         find,                   -- :: (Word8 -> Bool) -> ByteString -> Maybe Word8
         filter,                 -- :: (Word8 -> Bool) -> ByteString -> ByteString
+--      partition               -- :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
 
         -- * Indexing ByteStrings
         index,                  -- :: ByteString -> Int -> Word8
@@ -169,7 +171,6 @@ module Data.ByteString.Lazy (
 
         -- * Ordered ByteStrings
 --        sort,                   -- :: ByteString -> ByteString
-
 
         -- * I\/O with 'ByteString's
 
@@ -998,8 +999,9 @@ isPrefixOf (LPS as) (LPS bs) = isPrefixL as bs
 --
 -- However, the real implemenation uses memcmp to compare the end of the
 -- string only, with no reverse required..
-isSuffixOf :: ByteString -> ByteString -> Bool
-isSuffixOf = error "not yet implemented"
+--
+--isSuffixOf :: ByteString -> ByteString -> Bool
+--isSuffixOf = error "not yet implemented"
 
 -- ---------------------------------------------------------------------
 -- Zipping
