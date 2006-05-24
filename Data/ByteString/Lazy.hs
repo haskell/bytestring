@@ -123,8 +123,8 @@ module Data.ByteString.Lazy (
         break,                  -- :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
         group,                  -- :: ByteString -> [ByteString]
         groupBy,                -- :: (Word8 -> Word8 -> Bool) -> ByteString -> [ByteString]
---      inits,                  -- :: ByteString -> [ByteString]
---      tails,                  -- :: ByteString -> [ByteString]
+        inits,                  -- :: ByteString -> [ByteString]
+        tails,                  -- :: ByteString -> [ByteString]
 
         -- ** Breaking and dropping on specific bytes
         breakByte,              -- :: Word8 -> ByteString -> (ByteString, ByteString)
@@ -1069,6 +1069,24 @@ unzip :: [(Word8,Word8)] -> (ByteString,ByteString)
 unzip _ls = error "not yet implemented"
 {-# INLINE unzip #-}
 -}
+
+-- ---------------------------------------------------------------------
+-- Special lists
+
+-- | /O(n)/ Return all initial segments of the given 'ByteString', shortest first.
+inits :: ByteString -> [ByteString]
+inits = (LPS [] :) . inits' . unLPS
+  where inits' []     = []
+        inits' (x:xs) = L.map (\x' -> LPS [x']) (L.tail (P.inits x))
+                     ++ L.map (\(LPS xs') -> LPS (x:xs')) (inits' xs)
+
+-- | /O(n)/ Return all final segments of the given 'ByteString', longest first.
+tails :: ByteString -> [ByteString]
+tails = tails' . unLPS
+  where tails' []           = LPS [] : []
+        tails' xs@(x:xs')
+          | P.length x == 1 = LPS xs : tails' xs'
+          | otherwise       = LPS xs : tails' (P.unsafeTail x : xs')
 
 -- ---------------------------------------------------------------------
 

@@ -110,6 +110,8 @@ tests =
     ,("break",       mytest prop_breakBL)
     ,("span",        mytest prop_spanBL)
     ,("group",       mytest prop_groupBL)
+    ,("inits",       mytest prop_initsBL)
+    ,("tails",       mytest prop_tailsBL)
     ,("elem",        mytest prop_elemBL)
     ,("notElem",     mytest prop_notElemBL)
     ,("elemIndex",   mytest prop_elemIndexBL)
@@ -159,6 +161,8 @@ tests =
     ,("split",       mytest prop_splitBP)
     ,("count",       mytest prop_countBP)
     ,("group",       mytest prop_groupBP)
+    ,("inits",       mytest prop_initsBP)
+    ,("tails",       mytest prop_tailsBP)
     ,("elem",        mytest prop_elemBP)
     ,("notElem",     mytest prop_notElemBP)
     ,("elemIndex",   mytest prop_elemIndexBP)
@@ -209,6 +213,8 @@ tests =
     ,("break",       mytest prop_breakPL)
     ,("span",        mytest prop_spanPL)
     ,("group",       mytest prop_groupPL)
+    ,("inits",       mytest prop_initsPL)
+    ,("tails",       mytest prop_tailsPL)
     ,("elem",        mytest prop_elemPL)
     ,("notElem",     mytest prop_notElemPL)
     ,("elemIndex",   mytest prop_elemIndexPL)
@@ -581,6 +587,8 @@ prop_takeBL       = compare2 L.take              (take      :: Int -> [W] -> [W]
 prop_takeWhileBL  = compare2 L.takeWhile         (takeWhile :: (W -> Bool) -> [W] -> [W])
 prop_transposeBL  = compare1 L.transpose         (transpose :: [[W]] -> [[W]])
 prop_groupBL      = compare1 L.group             (group     :: [W] -> [[W]])
+prop_initsBL      = compare1 L.inits             (inits     :: [W] -> [[W]])
+prop_tailsBL      = compare1 L.tails             (tails     :: [W] -> [[W]])
 prop_elemBL       = compare2 L.elem              (elem      :: W -> [W] -> Bool)
 prop_notElemBL    = compare2 L.notElem           (notElem   :: W -> [W] -> Bool)
 prop_elemIndexBL  = compare2 L.elemIndex         (elemIndex :: W -> [W] -> Maybe Int)
@@ -643,6 +651,8 @@ prop_takeBP         = compare2 L.take       P.take
 prop_takeWhileBP    = compare2 L.takeWhile  P.takeWhile
 prop_transposeBP    = compare1 L.transpose  P.transpose
 prop_groupBP        = compare1 L.group      P.group
+prop_initsBP        = compare1 L.inits      P.inits
+prop_tailsBP        = compare1 L.tails      P.tails
 prop_elemBP         = compare2 L.elem       P.elem
 prop_notElemBP      = compare2 L.notElem    P.notElem
 prop_elemIndexBP    = compare2 L.elemIndex  P.elemIndex
@@ -703,6 +713,8 @@ prop_takePL       = compare2 P.take              (take      :: Int -> [W] -> [W]
 prop_takeWhilePL  = compare2 P.takeWhile         (takeWhile :: (W -> Bool) -> [W] -> [W])
 prop_transposePL  = compare1 P.transpose         (transpose :: [[W]] -> [[W]])
 prop_groupPL      = compare1 P.group             (group     :: [W] -> [[W]])
+prop_initsPL      = compare1 P.inits             (inits     :: [W] -> [[W]])
+prop_tailsPL      = compare1 P.tails             (tails     :: [W] -> [[W]])
 prop_elemPL       = compare2 P.elem              (elem      :: W -> [W] -> Bool)
 prop_notElemPL    = compare2 P.notElem           (notElem   :: W -> [W] -> Bool)
 prop_elemIndexPL  = compare2 P.elemIndex         (elemIndex :: W -> [W] -> Maybe Int)
