@@ -381,9 +381,12 @@ length (LPS ss) = L.sum (L.map (fromIntegral.P.length) ss)
 --     where lengthF n s = let m = n + fromIntegral (P.length s) in m `seq` m
 {-# INLINE length #-}
 
--- | /O(1)/ 'cons' is analogous to (:) for lists
+-- | /O(1)/ 'cons' is analogous to '(:)' for lists. It is not quite as lazy
+-- as '(:)' because it may coalesce the new byte onto the first \'chunk\'
+-- rather than starting a new \'chunk\'.
 cons :: Word8 -> ByteString -> ByteString
-cons c (LPS ss) = LPS (P.singleton c : ss)   -- TODO: coalesing and O(1) amortised time
+cons c (LPS (s:ss)) | P.length s <= 16 = LPS (P.cons c s : ss)
+cons c (LPS ss)                        = LPS (P.singleton c : ss)
 {-# INLINE cons #-}
 
 -- | /O(n\/c)/ Append a byte to the end of a 'ByteString'
