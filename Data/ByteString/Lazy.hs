@@ -207,6 +207,8 @@ import Prelude hiding           (reverse,head,tail,last,init,null
 import qualified Data.List as L        -- L for list/lazy
 import qualified Data.ByteString as P  -- P for packed
 
+import Data.Monoid              (Monoid, mempty, mappend, mconcat)
+
 import Data.Word                (Word8)
 import Data.Int                 (Int64)
 import System.IO (Handle,stdin,stdout,openBinaryFile,IOMode(..),hClose)
@@ -247,6 +249,11 @@ instance Eq  ByteString
 
 instance Ord ByteString
     where compare = compareBytes
+
+instance Monoid ByteString where
+    mempty  = empty
+    mappend = append
+    mconcat = concat
 
 ------------------------------------------------------------------------
 

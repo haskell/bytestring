@@ -278,6 +278,8 @@ import System.IO                (stdin,stdout,hClose,hFileSize
                                 ,hGetBuf,hPutBuf,openBinaryFile
                                 ,Handle,IOMode(..))
 
+import Data.Monoid              (Monoid, mempty, mappend, mconcat)
+
 #if !defined(__GLASGOW_HASKELL__)
 import System.IO.Unsafe
 #endif
@@ -339,6 +341,11 @@ instance Show ByteString where
 
 instance Read ByteString where
     readsPrec p str = [ (packWith c2w x, y) | (x, y) <- readsPrec p str ]
+
+instance Monoid ByteString where
+    mempty  = empty
+    mappend = append
+    mconcat = concat
 
 {-
 instance Arbitrary PackedString where
