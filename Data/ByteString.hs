@@ -89,7 +89,7 @@ module Data.ByteString (
         scanl1,                 -- :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString
 
         -- ** Accumulating maps
---      mapAccumL,              -- :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
+        mapAccumL,              -- :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
 --      mapAccumR,              -- :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
         mapIndexed,             -- :: (Int -> Word8 -> Word8) -> ByteString -> ByteString
 
@@ -820,17 +820,14 @@ minimum_ ptr n m c
                      minimum_ ptr (n+1) m (if w < c then w else c)
 -}
 
+mapAccumL :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
+mapAccumL f z = (\(a,b)->(b,a)) . loopU (mapAccumEFL f) z
+
+--mapAccumR :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
+
 -- | /O(n)/ map Word8 functions, provided with the index at each position
 mapIndexed :: (Int -> Word8 -> Word8) -> ByteString -> ByteString
-mapIndexed k (PS ps s l) = create l $ \p -> withForeignPtr ps $ \f ->
-    go 0 (f `plusPtr` s) p (f `plusPtr` s `plusPtr` l)
-  where
-    go :: Int -> Ptr Word8 -> Ptr Word8 -> Ptr Word8 -> IO ()
-    STRICT4(go)
-    go n f t p | f == p    = return ()
-               | otherwise = do w <- peek f
-                                ((poke t) . k n) w
-                                go (n+1) (f `plusPtr` 1) (t `plusPtr` 1) p
+mapIndexed f = loopArr . loopU (mapIndexEFL f) 0
 
 -- ---------------------------------------------------------------------
 -- Building ByteStrings
@@ -2141,6 +2138,22 @@ scanEFL :: (Word8 -> Word8 -> Word8) -> Word8 -> Word8 -> (Word8, Maybe Word8)
 scanEFL f = \a e -> (f a e, Just a)
 #if defined(__GLASGOW_HASKELL__)
 {-# INLINE [1] scanEFL #-}
+#endif
+
+-- | Element function implementing a map and fold
+--
+mapAccumEFL :: (acc -> Word8 -> (acc, Word8)) -> acc -> Word8 -> (acc, Maybe Word8)
+mapAccumEFL f = \a e -> case f a e of (a', e') -> (a', Just e')
+#if defined(__GLASGOW_HASKELL__)
+{-# INLINE [1] mapAccumEFL #-}
+#endif
+
+-- | Element function implementing a map with index
+--
+mapIndexEFL :: (Int -> Word8 -> Word8) -> Int -> Word8 -> (Int, Maybe Word8)
+mapIndexEFL f = \i e -> let i' = i+1 in i' `seq` (i', Just $ f i e)
+#if defined(__GLASGOW_HASKELL__)
+{-# INLINE [1] mapIndexEFL #-}
 #endif
 
 -- | No accumulator
