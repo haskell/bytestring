@@ -524,35 +524,39 @@ class Model a b where
 -- Connecting our Lazy and Strict types to their models. We also check
 -- the data invariant on Lazy types.
 --
+-- These instances represent the arrows in the above diagram
+--
 instance Model P [W] where abs = P.unpack
 instance Model B [W] where abs = L.unpack . checkInvariant
 instance Model B P   where abs = abstr . checkInvariant
 
---
 -- Types are trivially modeled by themselves
---
 instance Model Bool  Bool         where abs = id
 instance Model Int   Int          where abs = id
 instance Model Int64 Int64        where abs = id
 instance Model Word8 Word8        where abs = id
 instance Model Ordering Ordering  where abs = id
 
--- 
--- More structured types are modeled recursively
---
-instance Model a b => Model (Maybe a) (Maybe b)      where abs = fmap abs
-instance Model a b => Model [a] [b]                  where abs = fmap abs
-instance Model a b => Model (c -> a) (c -> b)        where abs = fmap abs
-instance (Model a c, Model b d) => Model (a,b) (c,d) where abs (a,b) = (abs a, abs b)
+-- More structured types are modeled recursively, using the NatTrans class from Gofer.
+class (Functor f, Functor g) => NatTrans f g where
+    eta :: f a -> g a
 
-{-
--- Nicer, and ok in GHC only:
+-- The transformation of the same type is identity
+instance NatTrans [] []             where eta = id
+instance NatTrans Maybe Maybe       where eta = id
+instance NatTrans ((->) X) ((->) X) where eta = id
+instance NatTrans ((->) W) ((->) W) where eta = id
 
-instance (Functor m, Model a b) => Model (m a) (m b) where abs = fmap abs
-instance Model a b => Model (a,a) (b,b)  where abs (a,b) = (abs a, abs b)
-
+-- Missing from < ghc 6.5 compilers
 instance Functor ((,) a) where fmap f (x,y) = (x, f y)
--}
+
+-- We have a transformation of pairs, if the pairs are in Model
+instance Model f g => NatTrans ((,) f) ((,) g) where eta (f,a) = (abs f, a)
+
+-- And finally, we can take any (m a) to (n b), if we can Model m n, and a b
+instance (NatTrans m n, Model a b) => Model (m a) (n b) where abs x = fmap abs (eta x)
+
+------------------------------------------------------------------------
 
 -- Some short hand.
 type X = Int
