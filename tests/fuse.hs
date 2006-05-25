@@ -9,7 +9,6 @@ main = do ps <- B.getContents
 
 --        print $ B.length . B.map (+1) $ ps
 
-{-
           let f = B.map (*4) . B.map (+2) . B.map (subtract 3) . B.map (+1) . B.map (*7)
           print $ B.length (f ps)
 
@@ -25,8 +24,5 @@ main = do ps <- B.getContents
           print $ B.length $ (B.filter (/=7) . B.map (+8)) ps -- should fuse
 
           print $ B.length $ B.map (+7) ps -- shouldn't fuse
--}
 
-        -- N.B. This seems to run slower with when fusion comes in.
-        -- Try it with -frules-off
           print $ B.foldl (\a _ -> a+1::Int) 0 $ B.map (+7) ps -- should fuse
