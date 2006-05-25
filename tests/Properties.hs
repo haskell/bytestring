@@ -1,5 +1,5 @@
 #!/usr/bin/env runhaskell
-{-# OPTIONS_GHC -fglasgow-exts -fallow-undecidable-instances #-}
+{-# OPTIONS_GHC -fglasgow-exts -fallow-overlapping-instances #-}
 
 import Test.QuickCheck.Batch
 import Test.QuickCheck
@@ -494,45 +494,63 @@ tests =
     ]
 
 ------------------------------------------------------------------------
--- check the correspondence between Lists and Lazy bytestrings and
--- normal ones.
 --
 --  i.e.    Lazy    ==   Byte
 --              \\      //
 --                 List 
 --
 
-class ModeledBy a b where
+--
+-- The Model class connects a type and its model. 
+--
+--
+class Model a b where
   abs :: a -> b  -- get the abstract vale from a concrete value
 
-instance ModeledBy Bool  Bool         where abs = id
-instance ModeledBy Int   Int          where abs = id
-instance ModeledBy Int64 Int64        where abs = id
-instance ModeledBy Word8 Word8        where abs = id
-instance ModeledBy Ordering Ordering  where abs = id
-instance ModeledBy Int   Int64        where abs = fromIntegral
+--
+-- Connecting our Lazy and Strict types to their models
+--
+instance Model B [W] where abs = L.unpack . checkInvariant
+instance Model P [W] where abs = P.unpack
+instance Model B P   where abs = abstr . checkInvariant
 
-instance ModeledBy ByteString [Word8] where abs = L.unpack . checkInvariant
+--
+-- Types are trivially modeled by themselves
+--
+instance Model Bool  Bool         where abs = id
+instance Model Int   Int          where abs = id
+instance Model Int64 Int64        where abs = id
+instance Model Word8 Word8        where abs = id
+instance Model Ordering Ordering  where abs = id
 
-instance ModeledBy a b => ModeledBy (Maybe a) (Maybe b) where abs = fmap abs
-instance ModeledBy a b => ModeledBy [a] [b]             where abs = fmap abs
-instance ModeledBy a b => ModeledBy (c -> a) (c -> b)   where abs = fmap abs
+-- 
+-- More structured types are modeled recursively
+--
+instance Model a b => Model (Maybe a) (Maybe b)      where abs = fmap abs
+instance Model a b => Model [a] [b]                  where abs = fmap abs
+instance Model a b => Model (c -> a) (c -> b)        where abs = fmap abs
+instance (Model a c, Model b d) => Model (a,b) (c,d) where abs (a,b) = (abs a, abs b)
 
--- Would like to write, but clashes with the tuple instances
--- instance (Functor m, ModeledBy a b) => ModeledBy (m a) (m b)   where abs = fmap abs
+{-
+-- Nicer, and ok in GHC only:
 
-instance (ModeledBy b d, ModeledBy a c) => ModeledBy (a,b) (c,d)
-    where abs (a,b) = (abs a, abs b)
+instance (Functor m, Model a b) => Model (m a) (m b) where abs = fmap abs
+instance Model a b => Model (a,a) (b,b)  where abs (a,b) = (abs a, abs b)
 
-compare1 :: (ModeledBy a1 b1, ModeledBy a b, Eq b)
+instance Functor ((,) a) where fmap f (x,y) = (x, f y)
+-}
+
+------------------------------------------------------------------------
+
+compare1 :: (Model a1 b1, Model a b, Eq b)
          => (a1 -> a) -> (b1 -> b) -> a1 -> Bool
 compare1 f f' a = abs (f a) == f' (abs a)
 
-compare2 :: (ModeledBy a2 b2, ModeledBy a1 b1, ModeledBy a b, Eq b)
+compare2 :: (Model a2 b2, Model a1 b1, Model a b, Eq b)
          => (a1 -> a2 -> a) -> (b1 -> b2 -> b) -> a1 -> a2 -> Bool
 compare2 f f' a b = abs (f a b) == f' (abs a) (abs b)
 
-compare3 :: (ModeledBy a3 b3, ModeledBy a2 b2, ModeledBy a1 b1, ModeledBy a b, Eq b)
+compare3 :: (Model a3 b3, Model a2 b2, Model a1 b1, Model a b, Eq b)
          => (a1 -> a2 -> a3 -> a) -> (b1 -> b2 -> b3 -> b) -> a1 -> a2 -> a3 -> Bool
 compare3 f f' a b c = abs (f a b c) == f' (abs a) (abs b) (abs c)
 
@@ -597,7 +615,7 @@ prop_findBL       = compare2 L.find              (find      :: (W -> Bool) -> [W
 prop_findIndicesBL= compare2 L.findIndices       (findIndices:: (W -> Bool) -> [W] -> [Int])
 prop_findIndexBL  = compare2 L.findIndex         (findIndex :: (W -> Bool) -> [W] -> Maybe Int)
 prop_isPrefixOfBL = compare2 L.isPrefixOf        (isPrefixOf:: [W] -> [W] -> Bool)
-prop_lengthBL     = compare1 L.length            (fromIntegral . length :: [W] -> Int64)
+prop_lengthBL     = compare1 (fromIntegral . L.length :: B -> Int) (length :: [W] -> Int)
 prop_mapBL        = compare2 L.map               (map       :: (W -> W) -> [W] -> [W])
 prop_nullBL       = compare1 L.null              (null      :: [W] -> Bool)
 prop_replicateBL  = compare2 L.replicate         (replicate :: Int -> W -> [W])
@@ -627,9 +645,6 @@ prop_tailBL       = notLNull1 $ compare1 L.tail   (tail      :: [W] -> [W])
 
 ------------------------------------------------------------------------
 -- ByteString.Lazy <=> ByteString
-
-instance ModeledBy ByteString P.ByteString  where
-  abs = abstr . checkInvariant
 
 abstr :: ByteString -> P.ByteString
 abstr (LPS []) = P.empty
@@ -702,9 +717,6 @@ prop_tailBP         = notLNull1 $ compare1 L.tail    P.tail
 ------------------------------------------------------------------------
 -- and finally, check correspondance between Data.ByteString and List
 
-instance ModeledBy P.ByteString [Word8] where
-    abs = P.unpack
-
 type P = P.ByteString
 type B = L.ByteString
 
@@ -741,7 +753,7 @@ prop_findPL       = compare2 P.find              (find      :: (W -> Bool) -> [W
 prop_findIndicesPL= compare2 P.findIndices       (findIndices:: (W -> Bool) -> [W] -> [Int])
 prop_findIndexPL  = compare2 P.findIndex         (findIndex :: (W -> Bool) -> [W] -> Maybe Int)
 prop_isPrefixOfPL = compare2 P.isPrefixOf        (isPrefixOf:: [W] -> [W] -> Bool)
-prop_lengthPL     = compare1 P.length            (fromIntegral . length :: [W] -> Int64)
+prop_lengthPL     = compare1 (fromIntegral.P.length :: P -> Int) (length :: [W] -> Int)
 prop_mapPL        = compare2 P.map               (map       :: (W -> W) -> [W] -> [W])
 prop_nullPL       = compare1 P.null              (null      :: [W] -> Bool)
 prop_replicatePL  = compare2 P.replicate         (replicate :: Int -> W -> [W])
