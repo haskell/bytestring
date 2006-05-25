@@ -15,8 +15,6 @@ Todo items
 * can we avoid joinWithByte? 
         - Hard. Can't do it easily with a rule.
 
-* unfoldr is needed.
-
 * think about Data.ByteString.hGetLines. is it needed in the presence of
     the cheap "lines =<< Data.ByteString.Lazy.getContents" ?
 
