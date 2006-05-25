@@ -34,7 +34,7 @@ module Data.ByteString.Base (
 #endif
 
         -- * Fusion utilities
-        noAL, NoAL, loopArr, loopAcc, loopSndAcc,
+        noAL, NoAL, loopArr, loopAcc, loopSndAcc, StrictPair(StrictPair),
         loopU, mapEFL, filterEFL, foldEFL, foldEFL', fuseEFL, scanEFL,
         mapAccumEFL, mapIndexEFL,
 
@@ -310,8 +310,8 @@ loopAcc (acc, _) = acc
 {-# INLINE [1] loopAcc #-}
 #endif
 
-loopSndAcc :: ((acc1, acc2), byteString) -> (acc2, byteString)
-loopSndAcc ((_, acc), arr) = (acc, arr)
+loopSndAcc :: (StrictPair acc1 acc2, byteString) -> (acc2, byteString)
+loopSndAcc (StrictPair _ acc, arr) = (acc, arr)
 #if defined(__GLASGOW_HASKELL__)
 {-# INLINE [1] loopSndAcc #-}
 #endif
@@ -358,27 +358,28 @@ loopU f start (PS z s i) = inlinePerformIO $ withForeignPtr z $ \a -> do
 {-# INLINE [1] loopU #-}
 #endif
 
+data StrictPair a b = StrictPair !a !b
 
 infixr 9 `fuseEFL`
 
 -- |Fuse to flat loop functions
 fuseEFL :: (a1 -> Word8  -> (a1, Maybe Word8))
         -> (a2 -> Word8  -> (a2, Maybe Word8))
-        -> (a1, a2)
+        -> StrictPair a1 a2
         -> Word8
-        -> ((a1, a2), Maybe Word8)
-fuseEFL f g (acc1, acc2) e1 =
+        -> (StrictPair a1 a2, Maybe Word8)
+fuseEFL f g (StrictPair acc1 acc2) e1 =
     case f acc1 e1 of
-        (acc1', Nothing) -> ((acc1', acc2), Nothing)
+        (acc1', Nothing) -> (StrictPair acc1' acc2, Nothing)
         (acc1', Just e2) ->
             case g acc2 e2 of
-                (acc2', res) -> ((acc1', acc2'), res)
+                (acc2', res) -> (StrictPair acc1' acc2', res)
 
 {-# RULES
 
 "loop/loop fusion!" forall em1 em2 start1 start2 arr.
   loopU em2 start2 (loopArr (loopU em1 start1 arr)) =
-    loopSndAcc (loopU (em1 `fuseEFL` em2) (start1, start2) arr)
+    loopSndAcc (loopU (em1 `fuseEFL` em2) (StrictPair start1 start2) arr)
 
 "loopArr/loopSndAcc" forall x.
   loopArr (loopSndAcc x) = loopArr x

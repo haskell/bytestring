@@ -1225,6 +1225,6 @@ loopU f = loop
 
 "lazy loop/loop fusion!" forall em1 em2 start1 start2 arr.
   loopU em2 start2 (P.loopArr (loopU em1 start1 arr)) =
-    P.loopSndAcc (loopU (em1 `P.fuseEFL` em2) (start1, start2) arr)
+    P.loopSndAcc (loopU (em1 `P.fuseEFL` em2) (P.StrictPair start1 start2) arr)
 
   #-}
