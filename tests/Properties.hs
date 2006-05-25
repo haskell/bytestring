@@ -411,7 +411,6 @@ tests =
 -- Fusion rules
     ,    ("lazy loop/loop fusion", mytest prop_lazylooploop)
     ,    ("loop/loop fusion",      mytest prop_looploop)
-    ,    ("unpackList/Foldr",      mytest prop_unpack_list)
 
 ------------------------------------------------------------------------
 -- Extra lazy properties
@@ -566,6 +565,7 @@ instance Model f g => NatTrans ((,) f) ((,) g) where eta (f,a) = (abs f, a)
 
 -- And finally, we can take any (m a) to (n b), if we can Model m n, and a b
 instance (NatTrans m n, Model a b) => Model (m a) (n b) where abs x = fmap abs (eta x)
+
 
 ------------------------------------------------------------------------
 
@@ -1486,6 +1486,4 @@ prop_looploop em1 em2 start1 start2 arr =
  where
    _ = start1 :: Int
    _ = start2 :: Int
-
-prop_unpack_list p = P.unpackFoldr p (:) [] == P.unpackList p
 
