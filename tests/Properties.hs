@@ -28,6 +28,7 @@ import Data.ByteString.Lazy (ByteString(..), pack , unpack)
 import qualified Data.ByteString.Lazy as L
 
 import qualified Data.ByteString       as P
+import qualified Data.ByteString.Base  as P
 import qualified Data.ByteString.Char8 as C
 import Prelude hiding (abs)
 
@@ -1478,14 +1479,14 @@ prop_unzipBB x = let (xs,ys) = unzip x in (P.pack xs, P.pack ys) == P.unzip x
 
 prop_lazylooploop em1 em2 start1 start2 arr =
     L.loopU em2 start2 (P.loopArr (L.loopU em1 start1 arr))             ==
-    P.loopSndAcc (L.loopU (em1 `P.fuseEFL` em2) (start1, start2) arr)
+    P.loopSndAcc (L.loopU (em1 `P.fuseEFL` em2) (P.StrictPair start1 start2) arr)
  where
    _ = start1 :: Int
    _ = start2 :: Int
 
 prop_looploop em1 em2 start1 start2 arr =
   P.loopU em2 start2 (P.loopArr (P.loopU em1 start1 arr)) ==
-    P.loopSndAcc (P.loopU (em1 `P.fuseEFL` em2) (start1, start2) arr)
+    P.loopSndAcc (P.loopU (em1 `P.fuseEFL` em2) (P.StrictPair start1 start2) arr)
  where
    _ = start1 :: Int
    _ = start2 :: Int
