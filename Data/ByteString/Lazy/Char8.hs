@@ -527,13 +527,6 @@ lines ps
     where search = elemIndex '\n'
 {-# INLINE lines #-}
 
-{-# RULES
-
-"lazy length.lines/count"
-    P.length . lines = count '\n'
-
-  #-}
-
 -- | 'unlines' is an inverse operation to 'lines'.  It joins lines,
 -- after appending a terminating newline to each.
 unlines :: [ByteString] -> ByteString

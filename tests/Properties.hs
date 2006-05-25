@@ -79,7 +79,7 @@ instance Arbitrary P.ByteString where
 main = do
     x <- getArgs
     let n = if null x then 100 else read . head $ x
-    mapM_ (\(s,a) -> printf "%-20s: " s >> a n) tests
+    mapM_ (\(s,a) -> printf "%-25s: " s >> a n) tests
 
 --
 -- And now a list of all the properties to test.
@@ -409,7 +409,6 @@ tests =
 
 ------------------------------------------------------------------------
 -- Fusion rules
-    ,    ("lines/count fusion",    mytest prop_linescount)
     ,    ("lazy loop/loop fusion", mytest prop_lazylooploop)
     ,    ("loop/loop fusion",      mytest prop_looploop)
     ,    ("unpackList/Foldr",      mytest prop_unpack_list)
@@ -1473,8 +1472,6 @@ prop_unzipBB x = let (xs,ys) = unzip x in (P.pack xs, P.pack ys) == P.unzip x
 -- And check fusion RULES. This must be correct, otherwise we rewrite
 -- user's code in nonsensical ways.
 --
-
-prop_linescount x = (length (C.lines x)) == (C.count '\n' x)
 
 prop_lazylooploop em1 em2 start1 start2 arr =
     L.loopU em2 start2 (P.loopArr (L.loopU em1 start1 arr))             ==

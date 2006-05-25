@@ -818,7 +818,7 @@ lines ps
     where search = elemIndex '\n'
 {-# INLINE lines #-}
 
-{-# RULES
+{-# Bogus rule, wrong if there's not \n at end of line
 
 "length.lines/count" 
     P.length . lines = count '\n'
