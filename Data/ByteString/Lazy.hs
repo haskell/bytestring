@@ -210,6 +210,7 @@ import Prelude hiding           (reverse,head,tail,last,init,null
 
 import qualified Data.List as L        -- L for list/lazy
 import qualified Data.ByteString as P  -- P for packed
+import qualified Data.ByteString.Base as P
 
 import Data.Monoid              (Monoid, mempty, mappend, mconcat)
 

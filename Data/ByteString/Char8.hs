@@ -231,8 +231,6 @@ module Data.ByteString.Char8 (
 #if defined(__GLASGOW_HASKELL__)
         unpackList,
 #endif
-        noAL, NoAL, loopArr, loopAcc, loopSndAcc,
-        loopU, mapEFL, filterEFL, foldEFL, foldEFL', fuseEFL, scanEFL,
         filter', map'
 
     ) where
@@ -248,10 +246,10 @@ import Prelude hiding           (reverse,head,tail,last,init,null
                                 ,zip,zipWith,unzip,notElem)
 
 import qualified Data.ByteString as B
+import qualified Data.ByteString.Base as B
 
 -- Listy functions transparently exported
-import Data.ByteString (ByteString(..)
-                       ,empty,null,length,tail,init,append
+import Data.ByteString (empty,null,length,tail,init,append
                        ,inits,tails,reverse,transpose
                        ,concat,take,drop,splitAt,join
                        ,sort,isPrefixOf,isSuffixOf,isSubstringOf,findSubstring
@@ -262,12 +260,17 @@ import Data.ByteString (ByteString(..)
                        ,hGetContents, hGet, hPut
 #if defined(__GLASGOW_HASKELL__)
                        ,getLine, getArgs, hGetLine, hGetNonBlocking
-                       ,packAddress, unsafePackAddress
                        ,unpackList
 #endif
-                       ,noAL, NoAL, loopArr, loopAcc, loopSndAcc
-                       ,loopU, mapEFL, filterEFL, foldEFL, foldEFL', fuseEFL, scanEFL
                        ,useAsCString, unsafeUseAsCString
+                       )
+
+import Data.ByteString.Base (
+                        ByteString(..)
+                       
+#if defined(__GLASGOW_HASKELL__)
+                       ,packAddress, unsafePackAddress
+#endif
                        )
 
 import Data.ByteString.Internal

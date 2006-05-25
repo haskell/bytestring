@@ -7,6 +7,7 @@ Author:              Don Stewart
 Maintainer:          dons@cse.unsw.edu.au
 Build-Depends:       base
 Exposed-modules:     Data.ByteString,
+                     Data.ByteString.Base,
                      Data.ByteString.Char8
                      Data.ByteString.Lazy
                      Data.ByteString.Lazy.Char8
