@@ -391,3 +391,73 @@ fuseEFL f g (StrictPair acc1 acc2) e1 =
   u `seq` e = e
 
   #-}
+
+
+{-
+
+Alternate experimental formulation of loopU which partitions it into
+an allocating wrapper and an imperitive array-mutating loop.
+
+The point in doing this split is that we might be able to fuse multiple
+loops into a single wrapper. This would save reallocating another buffer.
+It should also give better cache locality by reusing the buffer.
+
+The RULE is:
+
+"loop/loop wrapper elimination" forall loop1 loop2 arr.
+  loopWrapper loop2 (loopArr (loopWrapper loop1 arr)) =
+    loopWrapper (combineLoops loop1 loop2) arr
+
+though of course we only want to do this if we can't do ordinary fusion.
+
+loopU :: (acc -> Word8 -> (acc, Maybe Word8))
+      -> acc
+      -> ByteString
+      -> (acc, ByteString)
+loopU f a arr = loopWrapper (doUpLoop f a) arr
+{-# INLINE loopU #-}
+-- we always inline loopU now to expose the loopWrapper for wrapper elimination
+
+type ImperativeLoop acc = Ptr Word8 -> Ptr Word8 -> Int -> IO (acc, Int)
+
+loopWrapper :: ImperativeLoop acc
+            -> ByteString
+            -> (acc, ByteString)
+loopWrapper body (PS z s i) = inlinePerformIO $ withForeignPtr z $ \a -> do
+    fp          <- mallocByteString i
+    (ptr,n,acc) <- withForeignPtr fp $ \p -> do
+        (acc, i') <- body (a `plusPtr` s) p i
+        if i' == i
+            then return (fp,i',acc)                 -- no realloc for map
+            else do fp_ <- mallocByteString i'      -- realloc
+                    withForeignPtr fp_ $ \p' -> memcpy p' p (fromIntegral i')
+                    return (fp_,i',acc)
+
+    return (acc, PS ptr 0 n)
+{-# INLINE [1] loopWrapper #-}
+-- but loopWrapper like our previous loopU must not be inlined too early
+-- or the RULES will never match.
+
+doUpLoop :: (acc -> Word8 -> (acc, Maybe Word8))
+         -> acc
+         -> ImperativeLoop acc
+doUpLoop f start ma p i = trans 0 0 start
+  where STRICT3(trans)
+        trans a_off ma_off acc
+            | a_off >= i = return (acc, ma_off)
+            | otherwise  = do
+                x <- peekByteOff p a_off
+                let (acc', oe) = f acc x
+                ma_off' <- case oe of
+                    Nothing  -> return ma_off
+                    Just e   -> do pokeByteOff ma ma_off e
+                                   return $ ma_off + 1
+                trans (a_off+1) ma_off' acc'
+{-# INLINE [1] doUpLoop #-}
+-- not sure if this phase 1 control is strictly necessary
+
+combineLoops :: ImperativeLoop acc -> ImperativeLoop acc' -> ImperativeLoop acc'
+combineLoops loop1 loop2 p1 p2 i = do
+  (_, i') <- loop1 p1 p2 i
+  loop2 p1 p2 i'
+-}
