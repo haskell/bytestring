@@ -374,6 +374,9 @@ fuseEFL f g (StrictPair acc1 acc2) e1 =
         (acc1', Just e2) ->
             case g acc2 e2 of
                 (acc2', res) -> (StrictPair acc1' acc2', res)
+#if defined(__GLASGOW_HASKELL__)
+{-# INLINE [1] fuseEFL #-}
+#endif
 
 {-# RULES
 
