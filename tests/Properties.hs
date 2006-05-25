@@ -5,6 +5,8 @@ import Test.QuickCheck.Batch
 import Test.QuickCheck
 import Text.Show.Functions
 
+import Control.Monad.Reader ({-instances Functor (-> c)-})
+
 import Data.List
 import Data.Char
 import Data.Word
@@ -503,35 +505,24 @@ tests =
 class ModeledBy a b where
   abs :: a -> b  -- get the abstract vale from a concrete value
 
-instance ModeledBy ByteString [Word8] where
-  abs = L.unpack . checkInvariant
-
-instance ModeledBy a b => ModeledBy [a] [b] where
-  abs = map abs
-
-instance ModeledBy a b => ModeledBy (a,a) (b,b) where
-  abs = \(a,b) -> (abs a, abs b) -- yeah?
-
-instance ModeledBy b c => ModeledBy (X, b) (X, c) where
-  abs (a,b) = (abs a, abs b)
-
-instance ModeledBy b c => ModeledBy (W, b) (W, c) where
-  abs (a,b) = (abs a, abs b)
-
-------------------------------------------------------------------------
-
-instance ModeledBy a b => ModeledBy (Maybe a) (Maybe b) where
-  abs = fmap abs
-
-instance ModeledBy a b => ModeledBy (c -> a) (c -> b) where
-  abs = (abs.)
-
-instance ModeledBy Bool  Bool  where abs = id
-instance ModeledBy Int   Int   where abs = id
-instance ModeledBy Int64 Int64 where abs = id
-instance ModeledBy Int   Int64 where abs = fromIntegral
-instance ModeledBy Word8 Word8 where abs = id
+instance ModeledBy Bool  Bool         where abs = id
+instance ModeledBy Int   Int          where abs = id
+instance ModeledBy Int64 Int64        where abs = id
+instance ModeledBy Word8 Word8        where abs = id
 instance ModeledBy Ordering Ordering  where abs = id
+instance ModeledBy Int   Int64        where abs = fromIntegral
+
+instance ModeledBy ByteString [Word8] where abs = L.unpack . checkInvariant
+
+instance ModeledBy a b => ModeledBy (Maybe a) (Maybe b) where abs = fmap abs
+instance ModeledBy a b => ModeledBy [a] [b]             where abs = fmap abs
+instance ModeledBy a b => ModeledBy (c -> a) (c -> b)   where abs = fmap abs
+
+-- Would like to write, but clashes with the tuple instances
+-- instance (Functor m, ModeledBy a b) => ModeledBy (m a) (m b)   where abs = fmap abs
+
+instance (ModeledBy b d, ModeledBy a c) => ModeledBy (a,b) (c,d)
+    where abs (a,b) = (abs a, abs b)
 
 compare1 :: (ModeledBy a1 b1, ModeledBy a b, Eq b)
          => (a1 -> a) -> (b1 -> b) -> a1 -> Bool
