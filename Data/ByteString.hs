@@ -43,7 +43,7 @@ module Data.ByteString (
 
         -- * Introducing and eliminating 'ByteString's
         empty,                  -- :: ByteString
-        singleton,               -- :: Word8   -> ByteString
+        singleton,              -- :: Word8   -> ByteString
         pack,                   -- :: [Word8] -> ByteString
         unpack,                 -- :: ByteString -> [Word8]
         packWith,               -- :: (a -> Word8) -> [a] -> ByteString

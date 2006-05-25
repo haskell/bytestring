@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -cpp -fffi -fglasgow-exts #-}
 --
--- Module      : ByteString
+-- Module      : ByteString.Internal
 -- License     : BSD-style
 -- Maintainer  : dons@cse.unsw.edu.au
 -- Stability   : experimental
