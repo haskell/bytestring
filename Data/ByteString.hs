@@ -235,7 +235,7 @@ module Data.ByteString (
 
         -- * Fusion utilities
 #if defined(__GLASGOW_HASKELL__)
-        unpackList, -- eek, otherwise it gets thrown away by the simplifier
+        unpackList, unpackFoldr, -- eek, otherwise it gets thrown away by the simplifier
 #endif
 
         noAL, NoAL, loopArr, loopAcc, loopSndAcc,

@@ -190,6 +190,9 @@ module Data.ByteString.Lazy (
         hGet,                   -- :: Handle -> Int -> IO ByteString
         hGetN,                  -- :: Int -> Handle -> Int -> IO ByteString
         hPut,                   -- :: Handle -> ByteString -> IO ()
+
+        -- * Fusion utilities
+        loopU,                  -- so they're not thrown away by the simplifier
   ) where
 
 import qualified Prelude
