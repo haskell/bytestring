@@ -352,6 +352,7 @@ tests =
     ,    ("breakSpace",     mytest prop_breakSpaceBB)
     ,    ("dropSpace",      mytest prop_dropSpaceBB)
     ,    ("spanEnd",        mytest prop_spanEndBB)
+    ,    ("breakEnd",       mytest prop_breakEndBB)
     ,    ("elemIndexEnd 1",mytest prop_elemIndexEnd1BB)
     ,    ("elemIndexEnd 2",mytest prop_elemIndexEnd2BB)
     ,    ("words'",         mytest prop_wordsBB')
@@ -1010,7 +1011,7 @@ prop_dropWhile f xs = L.dropWhile f (pack xs) == pack (dropWhile f xs)
 prop_break f xs = L.break f (pack xs) ==
     let (a,b) = break f xs in (pack a, pack b)
 
-prop_breakspan xs c = L.break (== c) xs == L.span (/= c) xs
+prop_breakspan xs c = L.break (==c) xs == L.span (/=c) xs
 
 prop_span xs a = (span (/=a) xs) == (let (x,y) = L.span (/=a) (pack xs) in (unpack x, unpack y))
 
@@ -1395,6 +1396,8 @@ prop_breakSpaceBB xs =
 prop_spanEndBB xs =
         (C.spanEnd (not . isSpace) (C.pack xs)) ==
         (let (x,y) = C.span (not.isSpace) (C.reverse (C.pack xs)) in (C.reverse y,C.reverse x))
+
+prop_breakEndBB p xs = P.breakEnd (not.p) xs == P.spanEnd p xs
 
 prop_breakCharBB c xs =
         (break (==c) xs) ==

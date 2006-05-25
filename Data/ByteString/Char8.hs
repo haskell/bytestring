@@ -104,6 +104,7 @@ module Data.ByteString.Char8 (
         span,                   -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
         spanEnd,                -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
         break,                  -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
+        breakEnd,               -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
         group,                  -- :: ByteString -> [ByteString]
         groupBy,                -- :: (Char -> Char -> Bool) -> ByteString -> [ByteString]
         inits,                  -- :: ByteString -> [ByteString]
@@ -526,6 +527,13 @@ span f = B.span (f . w2c)
 spanEnd :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
 spanEnd f = B.spanEnd (f . w2c)
 {-# INLINE spanEnd #-}
+
+-- | 'breakEnd' behaves like 'break' but from the end of the 'ByteString'
+-- 
+-- breakEnd p == spanEnd (not.p)
+breakEnd :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
+breakEnd f = B.breakEnd (f . w2c)
+{-# INLINE breakEnd #-}
 
 -- | 'breakChar' breaks its ByteString argument at the first occurence
 -- of the specified Char. It is more efficient than 'break' as it is
