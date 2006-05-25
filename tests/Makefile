@@ -54,7 +54,7 @@ runbench: bench
 
 bench: Bench.hs
 	@if [ ! -f "bigdata" ] ; then ln -s data bigdata ; fi
-	${GHC} ${PKG} --make -O -funbox-strict-fields Bench.hs -o bench -no-recomp
+	${GHC} ${PKG} --make -O -funbox-strict-fields Bench.hs -cpp -o bench -no-recomp
 
 # ---------------------------------------------------------
 # Profiling
