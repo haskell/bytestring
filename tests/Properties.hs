@@ -1,6 +1,11 @@
 #!/usr/bin/env runhaskell
 {-# OPTIONS_GHC -fglasgow-exts -fallow-overlapping-instances #-}
 
+--
+-- Must have rules off, otherwise the fusion rules will replace the rhs
+-- with the lhs, and we only end up testing lhs == lhs
+--
+
 import Test.QuickCheck.Batch
 import Test.QuickCheck
 import Text.Show.Functions
@@ -401,6 +406,13 @@ tests =
     ,    ("zip1",           mytest prop_zip1BB)
     ,    ("zipWith",        mytest prop_zipWithBB)
     ,    ("unzip",          mytest prop_unzipBB)
+
+------------------------------------------------------------------------
+-- Fusion rules
+    ,    ("lines/count fusion",    mytest prop_linescount)
+    ,    ("lazy loop/loop fusion", mytest prop_lazylooploop)
+    ,    ("loop/loop fusion",      mytest prop_looploop)
+    ,    ("unpackList/Foldr",      mytest prop_unpack_list)
 
 ------------------------------------------------------------------------
 -- Extra lazy properties
@@ -1455,3 +1467,28 @@ prop_zip1BB xs ys = P.zip xs ys == zip (P.unpack xs) (P.unpack ys)
 prop_zipWithBB xs ys = P.zipWith (,) xs ys == P.zip xs ys
 
 prop_unzipBB x = let (xs,ys) = unzip x in (P.pack xs, P.pack ys) == P.unzip x
+
+------------------------------------------------------------------------
+--
+-- And check fusion RULES. This must be correct, otherwise we rewrite
+-- user's code in nonsensical ways.
+--
+
+prop_linescount x = (length (C.lines x)) == (C.count '\n' x)
+
+prop_lazylooploop em1 em2 start1 start2 arr =
+    L.loopU em2 start2 (P.loopArr (L.loopU em1 start1 arr))             ==
+    P.loopSndAcc (L.loopU (em1 `P.fuseEFL` em2) (start1, start2) arr)
+ where
+   _ = start1 :: Int
+   _ = start2 :: Int
+
+prop_looploop em1 em2 start1 start2 arr =
+  P.loopU em2 start2 (P.loopArr (P.loopU em1 start1 arr)) ==
+    P.loopSndAcc (P.loopU (em1 `P.fuseEFL` em2) (start1, start2) arr)
+ where
+   _ = start1 :: Int
+   _ = start2 :: Int
+
+prop_unpack_list p = P.unpackFoldr p (:) [] == P.unpackList p
+

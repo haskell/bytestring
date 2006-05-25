@@ -42,7 +42,7 @@ prop-fast::
 
 # compiled
 prop-compiled: 
-	${GHC} ${PKG} --make -O2 -optc-O2 -funbox-strict-fields Properties.hs -o p -no-recomp -package QuickCheck
+	${GHC} ${PKG} --make -O2 -optc-O2 -frules-off -funbox-strict-fields Properties.hs -o p -no-recomp -package QuickCheck
 	/usr/bin/time ./p
 
 # ---------------------------------------------------------
