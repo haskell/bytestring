@@ -34,6 +34,11 @@ instance Arbitrary Word8 where
     arbitrary = choose (97, 105)
     coarbitrary c = variant (fromIntegral ((fromIntegral c) `rem` 4))
 
+instance Arbitrary a => Arbitrary (Maybe a) where
+  arbitrary           = do a <- arbitrary ; elements [Nothing, Just a]
+  coarbitrary Nothing = variant 0
+  coarbitrary _       = variant 1 -- ok?
+
 {-
 instance Arbitrary Char where
   arbitrary = choose ('\0', '\255') -- since we have to test words, unlines too
@@ -84,10 +89,13 @@ tests =
     ,("findIndex",   mytest prop_findIndexBL)
     ,("findIndices", mytest prop_findIndicesBL)
     ,("foldl",       mytest prop_foldlBL)
-    ,("foldl",       mytest prop_foldlBL')
+    ,("foldl'",      mytest prop_foldlBL')
     ,("foldl1",      mytest prop_foldl1BL)
+    ,("foldl1'",     mytest prop_foldl1BL')
     ,("foldr",       mytest prop_foldrBL)
     ,("foldr1",      mytest prop_foldr1BL)
+    ,("mapAccumL",   mytest prop_mapAccumLBL)
+    ,("unfoldr",     mytest prop_unfoldrBL)
     ,("head",        mytest prop_headBL)
     ,("init",        mytest prop_initBL)
     ,("isPrefixOf",  mytest prop_isPrefixOfBL)
@@ -133,10 +141,13 @@ tests =
     ,("findIndex",   mytest prop_findIndexBP)
     ,("findIndices", mytest prop_findIndicesBP)
     ,("foldl",       mytest prop_foldlBP)
-    ,("foldl",       mytest prop_foldlBP')
+    ,("foldl'",      mytest prop_foldlBP')
     ,("foldl1",      mytest prop_foldl1BP)
+    ,("foldl1'",     mytest prop_foldl1BP')
     ,("foldr",       mytest prop_foldrBP)
     ,("foldr1",      mytest prop_foldr1BP)
+    ,("mapAccumL",   mytest prop_mapAccumLBP)
+    ,("unfoldr",     mytest prop_unfoldrBP)
     ,("head",        mytest prop_headBP)
     ,("init",        mytest prop_initBP)
     ,("isPrefixOf",  mytest prop_isPrefixOfBP)
@@ -189,6 +200,8 @@ tests =
     ,("foldl1'",     mytest prop_foldl1PL')
     ,("foldr1",      mytest prop_foldr1PL)
     ,("foldr",       mytest prop_foldrPL)
+    ,("mapAccumL",   mytest prop_mapAccumLPL)
+    ,("unfoldr",     mytest prop_unfoldrPL)
     ,("scanl",       mytest prop_scanlPL)
     ,("scanl1",      mytest prop_scanl1PL)
     ,("head",        mytest prop_headPL)
@@ -499,6 +512,14 @@ instance ModeledBy a b => ModeledBy [a] [b] where
 instance ModeledBy a b => ModeledBy (a,a) (b,b) where
   abs = \(a,b) -> (abs a, abs b) -- yeah?
 
+instance ModeledBy b c => ModeledBy (X, b) (X, c) where
+  abs (a,b) = (abs a, abs b)
+
+instance ModeledBy b c => ModeledBy (W, b) (W, c) where
+  abs (a,b) = (abs a, abs b)
+
+------------------------------------------------------------------------
+
 instance ModeledBy a b => ModeledBy (Maybe a) (Maybe b) where
   abs = fmap abs
 
@@ -552,16 +573,25 @@ type W = Word8
 ------------------------------------------------------------------------
 -- ByteString.Lazy <=> List
 
-prop_eqBL         = compare2 ((==) :: ByteString -> ByteString -> Bool)
-                             ((==) :: [W]    -> [W]    -> Bool)
-prop_compareBL    = compare2 ((compare) :: ByteString -> ByteString -> Ordering)
-                             ((compare) :: [W]    -> [W]    -> Ordering)
-prop_foldlBL      = compare3 (L.foldl  :: (X -> W -> X) -> X -> L.ByteString -> X)
+prop_eqBL         = compare2 ((==) :: B   -> B   -> Bool)
+                             ((==) :: [W] -> [W] -> Bool)
+prop_compareBL    = compare2 ((compare) :: B   -> B   -> Ordering)
+                             ((compare) :: [W] -> [W] -> Ordering)
+prop_foldlBL      = compare3 (L.foldl  :: (X -> W -> X) -> X -> B -> X)
                              (  foldl  :: (X -> W -> X) -> X -> [W]          -> X)
-prop_foldlBL'     = compare3 (L.foldl' :: (X -> W -> X) -> X -> L.ByteString -> X)
+prop_foldlBL'     = compare3 (L.foldl' :: (X -> W -> X) -> X -> B -> X)
                              (  foldl' :: (X -> W -> X) -> X -> [W]          -> X)
-prop_foldrBL      = compare3 (L.foldr  :: (W -> X -> X) -> X -> L.ByteString -> X)
+prop_foldrBL      = compare3 (L.foldr  :: (W -> X -> X) -> X -> B -> X)
                              (  foldr  :: (W -> X -> X) -> X -> [W]          -> X)
+
+prop_mapAccumLBL  = compare3 (L.mapAccumL :: (X -> W -> (X,W)) -> X -> B   -> (X, B))
+                             (  mapAccumL :: (X -> W -> (X,W)) -> X -> [W] -> (X, [W]))
+
+prop_unfoldrBL =
+  compare3
+    ((\n f a -> L.take n $ L.unfoldr f a) :: Int -> (X -> Maybe (W,X)) -> X -> B)
+    ((\n f a ->   take n $   unfoldr f a) :: Int -> (X -> Maybe (W,X)) -> X -> [W])
+
 prop_allBL        = compare2 L.all               (all       :: (W -> Bool) -> [W] -> Bool)
 prop_anyBL        = compare2 L.any               (any       :: (W -> Bool) -> [W] -> Bool)
 prop_appendBL     = compare2 L.append            ((++)      :: [W] -> [W] -> [W])
@@ -595,6 +625,7 @@ prop_notElemBL    = compare2 L.notElem           (notElem   :: W -> [W] -> Bool)
 prop_elemIndexBL  = compare2 L.elemIndex         (elemIndex :: W -> [W] -> Maybe Int)
 prop_elemIndicesBL= compare2 L.elemIndices       (elemIndices:: W -> [W] -> [Int])
 prop_foldl1BL     = notLNull2 $ compare2 L.foldl1 (foldl1    :: (W -> W -> W) -> [W] -> W)
+prop_foldl1BL'    = notLNull2 $ compare2 L.foldl1'(foldl1'   :: (W -> W -> W) -> [W] -> W)
 prop_foldr1BL     = notLNull2 $ compare2 L.foldr1 (foldr1    :: (W -> W -> W) -> [W] -> W)
 prop_headBL       = notLNull1 $ compare1 L.head   (head      :: [W] -> W)
 prop_initBL       = notLNull1 $ compare1 L.init   (init      :: [W] -> [W])
@@ -613,16 +644,24 @@ abstr :: ByteString -> P.ByteString
 abstr (LPS []) = P.empty
 abstr (LPS xs) = P.concat xs
 
-prop_eqBP           = compare2 ((==) :: ByteString   -> ByteString   -> Bool)
-                               ((==) :: P.ByteString -> P.ByteString -> Bool)
-prop_compareBP      = compare2 ((compare) :: ByteString -> ByteString -> Ordering)
-                               ((compare) :: P.ByteString -> P.ByteString -> Ordering)
-prop_foldlBP        = compare3 (L.foldl  :: (X -> W -> X) -> X -> L.ByteString -> X)
-                               (P.foldl  :: (X -> W -> X) -> X -> P.ByteString -> X)
-prop_foldlBP'       = compare3 (L.foldl' :: (X -> W -> X) -> X -> L.ByteString -> X)
-                               (P.foldl' :: (X -> W -> X) -> X -> P.ByteString -> X)
-prop_foldrBP        = compare3 (L.foldr  :: (W -> X -> X) -> X -> L.ByteString -> X)
-                               (P.foldr  :: (W -> X -> X) -> X -> P.ByteString -> X)
+prop_eqBP           = compare2 ((==) :: B -> B -> Bool)
+                               ((==) :: P -> P -> Bool)
+prop_compareBP      = compare2 ((compare) :: B -> B -> Ordering)
+                               ((compare) :: P -> P -> Ordering)
+prop_foldlBP        = compare3 (L.foldl  :: (X -> W -> X) -> X -> B -> X)
+                               (P.foldl  :: (X -> W -> X) -> X -> P -> X)
+prop_foldlBP'       = compare3 (L.foldl' :: (X -> W -> X) -> X -> B -> X)
+                               (P.foldl' :: (X -> W -> X) -> X -> P -> X)
+prop_foldrBP        = compare3 (L.foldr  :: (W -> X -> X) -> X -> B -> X)
+                               (P.foldr  :: (W -> X -> X) -> X -> P -> X)
+
+prop_mapAccumLBP    = compare3 (L.mapAccumL :: (X -> W -> (X,W)) -> X -> B -> (X, B))
+                               (P.mapAccumL :: (X -> W -> (X,W)) -> X -> P -> (X, P))
+
+prop_unfoldrBP =
+  compare3
+    ((\n f a -> L.take n $ L.unfoldr    f a) :: Int -> (X -> Maybe (W,X)) -> X -> B)
+    ((\n f a ->      fst $ P.unfoldrN n f a) :: Int -> (X -> Maybe (W,X)) -> X -> P)
 
 prop_allBP          = compare2 L.all        P.all
 prop_anyBP          = compare2 L.any        P.any
@@ -660,6 +699,7 @@ prop_elemIndexBP    = compare2 L.elemIndex  P.elemIndex
 prop_elemIndicesBP  = compare2 L.elemIndices P.elemIndices
 
 prop_foldl1BP       = notLNull2 $ compare2 L.foldl1 P.foldl1
+prop_foldl1BP'      = notLNull2 $ compare2 L.foldl1' P.foldl1'
 prop_foldr1BP       = notLNull2 $ compare2 L.foldr1 P.foldr1
 prop_headBP         = notLNull1 $ compare1 L.head    P.head
 prop_initBP         = notLNull1 $ compare1 L.init    P.init
@@ -687,6 +727,14 @@ prop_foldlPL'     = compare3 (P.foldl' :: (X -> W -> X) -> X -> P        -> X)
                              (  foldl' :: (X -> W -> X) -> X -> [W]      -> X)
 prop_foldrPL      = compare3 (P.foldr  :: (W -> X -> X) -> X -> P        -> X)
                              (  foldr  :: (W -> X -> X) -> X -> [W]      -> X)
+
+prop_mapAccumLPL  = compare3 (P.mapAccumL :: (X -> W -> (X,W)) -> X -> P -> (X, P))
+                             (  mapAccumL :: (X -> W -> (X,W)) -> X -> [W] -> (X, [W]))
+
+prop_unfoldrPL =
+  compare3
+    ((\n f a ->      fst $ P.unfoldrN n f a) :: Int -> (X -> Maybe (W,X)) -> X -> P)
+    ((\n f a ->   take n $   unfoldr    f a) :: Int -> (X -> Maybe (W,X)) -> X -> [W])
 
 prop_allPL        = compare2 P.all               (all       :: (W -> Bool) -> [W] -> Bool)
 prop_anyPL        = compare2 P.any               (any       :: (W -> Bool) -> [W] -> Bool)
@@ -1326,9 +1374,10 @@ prop_wordsBB' xs =
 
 prop_linesBB' xs = (C.unpack . C.unlines' . C.lines' . C.pack) xs == (xs)
 
-prop_unfoldrBB c =
-    (fst $ C.unfoldrN 100 (\x -> Just (x, chr (ord x + 1))) c) ==
-    (C.pack $ take 100 $ unfoldr (\x -> Just (x, chr (ord x + 1))) c)
+prop_unfoldrBB c n =
+    (fst $ C.unfoldrN n fn c) == (C.pack $ take n $ unfoldr fn c)
+    where
+      fn x = Just (x, chr (ord x + 1))
 
 prop_prefixBB xs ys = isPrefixOf xs ys == (P.pack xs `P.isPrefixOf` P.pack ys)
 prop_suffixBB xs ys = isSuffixOf xs ys == (P.pack xs `P.isSuffixOf` P.pack ys)
