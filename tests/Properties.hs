@@ -28,6 +28,9 @@ import Prelude hiding (abs)
 
 import QuickCheckUtils
 
+------------------------------------------------------------------------
+-- First off, some arbitrary data instances, for QuickCheck.
+
 instance Arbitrary Char where
     arbitrary     = choose ('a', 'i')
     coarbitrary c = variant (ord c `rem` 4)
@@ -66,11 +69,16 @@ instance Arbitrary P.ByteString where
   coarbitrary s = coarbitrary (P.unpack s)
 
 ------------------------------------------------------------------------
+-- The entry point
 
 main = do
     x <- getArgs
     let n = if null x then 100 else read . head $ x
     mapM_ (\(s,a) -> printf "%-20s: " s >> a n) tests
+
+--
+-- And now a list of all the properties to test.
+--
 
 tests =
     [("invariant",          mytest prop_invariant)
@@ -495,23 +503,29 @@ tests =
 
 ------------------------------------------------------------------------
 --
+-- We're doing two forms of testing here. Firstly, model based testing.
+-- For our Lazy and strict bytestring types, we have model types:
+--
 --  i.e.    Lazy    ==   Byte
 --              \\      //
 --                 List 
 --
-
+-- That is, the Lazy type can be modeled by functions in both the Byte
+-- and List type. For each of the 3 models, we have a set of tests that
+-- check those types match.
 --
--- The Model class connects a type and its model. 
---
+-- The Model class connects a type and its model type, via a conversion
+-- function. 
 --
 class Model a b where
   abs :: a -> b  -- get the abstract vale from a concrete value
 
 --
--- Connecting our Lazy and Strict types to their models
+-- Connecting our Lazy and Strict types to their models. We also check
+-- the data invariant on Lazy types.
 --
-instance Model B [W] where abs = L.unpack . checkInvariant
 instance Model P [W] where abs = P.unpack
+instance Model B [W] where abs = L.unpack . checkInvariant
 instance Model B P   where abs = abstr . checkInvariant
 
 --
@@ -540,7 +554,16 @@ instance Model a b => Model (a,a) (b,b)  where abs (a,b) = (abs a, abs b)
 instance Functor ((,) a) where fmap f (x,y) = (x, f y)
 -}
 
+-- Some short hand.
+type X = Int
+type W = Word8
+type P = P.ByteString
+type B = L.ByteString
+
 ------------------------------------------------------------------------
+--
+-- These comparison functions handle wrapping and equality.
+--
 
 compare1 :: (Model a1 b1, Model a b, Eq b)
          => (a1 -> a) -> (b1 -> b) -> a1 -> Bool
@@ -554,7 +577,9 @@ compare3 :: (Model a3 b3, Model a2 b2, Model a1 b1, Model a b, Eq b)
          => (a1 -> a2 -> a3 -> a) -> (b1 -> b2 -> b3 -> b) -> a1 -> a2 -> a3 -> Bool
 compare3 f f' a b c = abs (f a b c) == f' (abs a) (abs b) (abs c)
 
--- Lazy not.null
+--
+-- And for functions that take non-null input
+--
 notLNull1 :: (Testable a) =>
              (ByteString -> a) -> ByteString -> Property
 notLNull1 f = \x -> (not . L.null $ x) ==> f x
@@ -575,12 +600,9 @@ notPNull3 :: (Testable a)
           => (t -> t1 -> P -> a) -> t -> t1 -> P -> Property
 notPNull3 f = \x y z -> (not . P.null $ z) ==> f x y z
 
--- fix polymorphic args so we can QC them.
-type X = Int
-type W = Word8
-
 ------------------------------------------------------------------------
--- ByteString.Lazy <=> List
+-- Now, properties comparing ByteString.Lazy <=> List
+--
 
 prop_eqBL         = compare2 ((==) :: B   -> B   -> Bool)
                              ((==) :: [W] -> [W] -> Bool)
@@ -644,7 +666,7 @@ prop_minimumBL    = notLNull1 $ compare1 L.minimum(minimum   :: [W] -> W)
 prop_tailBL       = notLNull1 $ compare1 L.tail   (tail      :: [W] -> [W])
 
 ------------------------------------------------------------------------
--- ByteString.Lazy <=> ByteString
+-- And now ByteString.Lazy <=> ByteString
 
 abstr :: ByteString -> P.ByteString
 abstr (LPS []) = P.empty
@@ -715,10 +737,7 @@ prop_minimumBP      = notLNull1 $ compare1 L.minimum P.minimum
 prop_tailBP         = notLNull1 $ compare1 L.tail    P.tail
 
 ------------------------------------------------------------------------
--- and finally, check correspondance between Data.ByteString and List
-
-type P = P.ByteString
-type B = L.ByteString
+-- And finally, check correspondance between Data.ByteString and List
 
 prop_eqPL         = compare2 ((==) :: P -> P -> Bool)
                              ((==) :: [W]    -> [W]    -> Bool)
@@ -789,7 +808,9 @@ prop_tailPL       = notPNull1 $ compare1 P.tail   (tail      :: [W] -> [W])
 
 ------------------------------------------------------------------------
 --
--- miscellaneous tests
+-- These are miscellaneous tests left over. Or else they test some
+-- property internal to a type (i.e. head . sort == minimum), without
+-- reference to a model type.
 --
 
 invariant :: L.ByteString -> Bool
