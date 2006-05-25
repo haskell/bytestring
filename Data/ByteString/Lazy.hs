@@ -199,7 +199,7 @@ import Prelude hiding           (reverse,head,tail,last,init,null
                                 ,dropWhile,span,break,elem,filter,maximum
                                 ,minimum,all,concatMap,foldl1,foldr1
                                 ,scanl, scanl1, scanr, scanr1
-                                ,repeat, cycle, interact, iterate,
+                                ,repeat, cycle, interact, iterate
                                 ,readFile,writeFile,replicate
                                 ,getContents,getLine,putStr,putStrLn
                                 ,zip,zipWith,unzip,notElem)
