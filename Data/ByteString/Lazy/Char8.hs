@@ -184,7 +184,7 @@ import Data.ByteString.Lazy
 -- Functions we need to wrap.
 import qualified Data.ByteString.Lazy as L
 
-import Data.ByteString.Internal
+import Data.ByteString.Base (w2c, c2w, isSpaceWord8)
 
 import qualified Data.List as List (intersperse)
 

@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -cpp -fglasgow-exts -fno-warn-orphans #-}
+{-# OPTIONS_GHC -cpp -fglasgow-exts #-}
 --
 -- Module      : ByteString.Base
 -- License     : BSD-style
@@ -15,6 +15,7 @@
 -- modules.
 --
 module Data.ByteString.Base (
+
         -- * The @ByteString@ type and representation
         ByteString(..),             -- instances: Eq, Ord, Show, Read, Data, Typeable
 
@@ -33,29 +34,67 @@ module Data.ByteString.Base (
         unsafeFinalize,         -- :: ByteString -> IO ()
 #endif
 
-        -- * Fusion utilities
-        noAL, NoAL, loopArr, loopAcc, loopSndAcc, StrictPair(StrictPair),
-        loopU, mapEFL, filterEFL, foldEFL, foldEFL', fuseEFL, scanEFL,
-        mapAccumEFL, mapIndexEFL,
+        -- * Utilities
+        inlinePerformIO,            -- :: IO a -> a
+
+        countOccurrences,           -- :: (Storable a, Num a) => Ptr a -> Ptr Word8 -> Int -> IO ()
+
+        -- * Standard C Functions
+        c_strlen,                   -- :: CString -> CInt
+        c_malloc,                   -- :: CInt -> IO (Ptr Word8)
+        c_free,                     -- :: Ptr Word8 -> IO ()
+
+#if !defined(__GLASGOW_HASKELL__)
+        c_free_finalizer,           -- :: FunPtr (Ptr Word8 -> IO ())
+#endif
+
+        memchr,                     -- :: Ptr Word8 -> Word8 -> CSize -> Ptr Word8
+        memcmp,                     -- :: Ptr Word8 -> Ptr Word8 -> CSize -> IO CInt
+        memcpy,                     -- :: Ptr Word8 -> Ptr Word8 -> CSize -> IO ()
+        memset,                     -- :: Ptr Word8 -> Word8 -> CSize -> IO (Ptr Word8)
+
+        -- * cbits functions
+        c_reverse,                  -- :: Ptr Word8 -> Ptr Word8 -> CInt -> IO ()
+        c_intersperse,              -- :: Ptr Word8 -> Ptr Word8 -> CInt -> Word8 -> IO ()
+        c_maximum,                  -- :: Ptr Word8 -> CInt -> Word8
+        c_minimum,                  -- :: Ptr Word8 -> CInt -> Word8
+        c_count,                    -- :: Ptr Word8 -> CInt -> Word8 -> CInt
+
+        -- * Internal GHC magic
+#if defined(__GLASGOW_HASKELL__)
+        getProgArgv,                -- :: Ptr CInt -> Ptr (Ptr CString) -> IO ()
+        memcpy_ptr_baoff,           -- :: Ptr a -> RawBuffer -> CInt -> CSize -> IO (Ptr ())
+#endif
+
+        -- * Chars
+        w2c, c2w, isSpaceWord8
 
   ) where
-
-import Data.ByteString.Internal
 
 import Foreign.ForeignPtr
 import Foreign.Ptr
 import Foreign.Storable         (Storable(..))
+import Foreign.C.Types
+import Foreign.C.String         (CString)
 
 import qualified Foreign.Concurrent as FC (newForeignPtr)
 
+import Data.Char                (ord)
 import Data.Word                (Word8)
 
 #if defined(__GLASGOW_HASKELL__)
 import Data.Generics            (Data(..), Typeable(..))
-
 import GHC.Prim                 (Addr#)
 import GHC.Ptr                  (Ptr(..))
+import GHC.Base                 (realWorld#,unsafeChr)
+import GHC.IOBase
+#else
+import Data.Char                (chr)
+import System.IO.Unsafe         (unsafePerformIO)
 #endif
+
+-- CFILES stuff is Hugs only
+{-# CFILES cbits/fpstring.c #-}
 
 -- -----------------------------------------------------------------------------
 --
@@ -210,254 +249,140 @@ unsafeFinalize (PS p _ _) = finalizeForeignPtr p
 
 #endif
 
--- ---------------------------------------------------------------------
---
--- Functional array fusion for ByteStrings. 
---
--- From the Data Parallel Haskell project, 
---      http://www.cse.unsw.edu.au/~chak/project/dph/
---
-
--- |Data type for accumulators which can be ignored. The rewrite rules rely on
--- the fact that no bottoms of this type are ever constructed; hence, we can
--- assume @(_ :: NoAL) `seq` x = x@.
---
-data NoAL = NoAL
-
--- | Special forms of loop arguments
---
--- * These are common special cases for the three function arguments of gen
---   and loop; we give them special names to make it easier to trigger RULES
---   applying in the special cases represented by these arguments.  The
---   "INLINE [1]" makes sure that these functions are only inlined in the last
---   two simplifier phases.
---
--- * In the case where the accumulator is not needed, it is better to always
---   explicitly return a value `()', rather than just copy the input to the
---   output, as the former gives GHC better local information.
--- 
-
--- | Element function expressing a mapping only
-mapEFL :: (Word8 -> Word8) -> (NoAL -> Word8 -> (NoAL, Maybe Word8))
-mapEFL f = \_ e -> (noAL, (Just $ f e))
-#if defined(__GLASGOW_HASKELL__)
-{-# INLINE [1] mapEFL #-}
-#endif
-
--- | Element function implementing a filter function only
-filterEFL :: (Word8 -> Bool) -> (NoAL -> Word8 -> (NoAL, Maybe Word8))
-filterEFL p = \_ e -> if p e then (noAL, Just e) else (noAL, Nothing)
-#if defined(__GLASGOW_HASKELL__)
-{-# INLINE [1] filterEFL #-}
-#endif
-
--- |Element function expressing a reduction only
-foldEFL :: (acc -> Word8 -> acc) -> (acc -> Word8 -> (acc, Maybe Word8))
-foldEFL f = \a e -> (f a e, Nothing)
-#if defined(__GLASGOW_HASKELL__)
-{-# INLINE [1] foldEFL #-}
-#endif
-
--- | A strict foldEFL.
-foldEFL' :: (acc -> Word8 -> acc) -> (acc -> Word8 -> (acc, Maybe Word8))
-foldEFL' f = \a e -> let a' = f a e in a' `seq` (a', Nothing)
-#if defined(__GLASGOW_HASKELL__)
-{-# INLINE [1] foldEFL' #-}
-#endif
-
--- | Element function expressing a prefix reduction only
---
-scanEFL :: (Word8 -> Word8 -> Word8) -> Word8 -> Word8 -> (Word8, Maybe Word8)
-scanEFL f = \a e -> (f a e, Just a)
-#if defined(__GLASGOW_HASKELL__)
-{-# INLINE [1] scanEFL #-}
-#endif
-
--- | Element function implementing a map and fold
---
-mapAccumEFL :: (acc -> Word8 -> (acc, Word8)) -> acc -> Word8 -> (acc, Maybe Word8)
-mapAccumEFL f = \a e -> case f a e of (a', e') -> (a', Just e')
-#if defined(__GLASGOW_HASKELL__)
-{-# INLINE [1] mapAccumEFL #-}
-#endif
-
--- | Element function implementing a map with index
---
-mapIndexEFL :: (Int -> Word8 -> Word8) -> Int -> Word8 -> (Int, Maybe Word8)
-mapIndexEFL f = \i e -> let i' = i+1 in i' `seq` (i', Just $ f i e)
-#if defined(__GLASGOW_HASKELL__)
-{-# INLINE [1] mapIndexEFL #-}
-#endif
-
--- | No accumulator
-noAL :: NoAL
-noAL = NoAL
-#if defined(__GLASGOW_HASKELL__)
-{-# INLINE [1] noAL #-}
-#endif
-
--- | Projection functions that are fusion friendly (as in, we determine when
--- they are inlined)
-loopArr :: (acc, byteString) -> byteString
-loopArr (_, arr) = arr
-#if defined(__GLASGOW_HASKELL__)
-{-# INLINE [1] loopArr #-}
-#endif
-
-loopAcc :: (acc, byteString) -> acc
-loopAcc (acc, _) = acc
-#if defined(__GLASGOW_HASKELL__)
-{-# INLINE [1] loopAcc #-}
-#endif
-
-loopSndAcc :: (StrictPair acc1 acc2, byteString) -> (acc2, byteString)
-loopSndAcc (StrictPair _ acc, arr) = (acc, arr)
-#if defined(__GLASGOW_HASKELL__)
-{-# INLINE [1] loopSndAcc #-}
-#endif
-
 ------------------------------------------------------------------------
 
+-- | Conversion between 'Word8' and 'Char'. Should compile to a no-op.
+w2c :: Word8 -> Char
+#if !defined(__GLASGOW_HASKELL__)
+w2c = chr . fromIntegral
+#else
+w2c = unsafeChr . fromIntegral
+#endif
+{-# INLINE w2c #-}
+
+-- | Unsafe conversion between 'Char' and 'Word8'. This is a no-op and
+-- silently truncates to 8 bits Chars > '\255'. It is provided as
+-- convenience for ByteString construction.
+c2w :: Char -> Word8
+c2w = fromIntegral . ord
+{-# INLINE c2w #-}
+
+-- Selects white-space characters in the Latin-1 range
+-- ordered by frequency
+-- Idea from Ketil
+isSpaceWord8 :: Word8 -> Bool
+isSpaceWord8 w = case w of
+    0x20 -> True -- SPACE
+    0x0A -> True -- LF, \n
+    0x09 -> True -- HT, \t
+    0x0C -> True -- FF, \f
+    0x0D -> True -- CR, \r
+    0x0B -> True -- VT, \v
+    0xA0 -> True -- spotted by QC..
+    _    -> False
+{-# INLINE isSpaceWord8 #-}
+
+------------------------------------------------------------------------
+-- | Just like unsafePerformIO, but we inline it. Big performance gains as
+-- it exposes lots of things to further inlining
 --
--- size, and then percentage.
---
-
--- | Iteration over over ByteStrings
-loopU :: (acc -> Word8 -> (acc, Maybe Word8))  -- ^ mapping & folding, once per elem
-      -> acc                                   -- ^ initial acc value
-      -> ByteString                            -- ^ input ByteString
-      -> (acc, ByteString)
-
-loopU f start (PS z s i) = inlinePerformIO $ withForeignPtr z $ \a -> do
-    fp          <- mallocByteString i
-    (ptr,n,acc) <- withForeignPtr fp $ \p -> do
-        (acc, i') <- go (a `plusPtr` s) p start
-        if i' == i
-            then return (fp,i',acc)                 -- no realloc for map
-            else do fp_ <- mallocByteString i'      -- realloc
-                    withForeignPtr fp_ $ \p' -> memcpy p' p (fromIntegral i')
-                    return (fp_,i',acc)
-
-    return (acc, PS ptr 0 n)
-  where
-    go p ma = trans 0 0
-        where
-            STRICT3(trans)
-            trans a_off ma_off acc
-                | a_off >= i = return (acc, ma_off)
-                | otherwise  = do
-                    x <- peekByteOff p a_off
-                    let (acc', oe) = f acc x
-                    ma_off' <- case oe of
-                        Nothing  -> return ma_off
-                        Just e   -> do pokeByteOff ma ma_off e
-                                       return $ ma_off + 1
-                    trans (a_off+1) ma_off' acc'
-
+{-# INLINE inlinePerformIO #-}
+inlinePerformIO :: IO a -> a
 #if defined(__GLASGOW_HASKELL__)
-{-# INLINE [1] loopU #-}
+inlinePerformIO (IO m) = case m realWorld# of (# _, r #) -> r
+#else
+inlinePerformIO = unsafePerformIO
 #endif
 
-data StrictPair a b = StrictPair !a !b
+-- | Count the number of occurrences of each byte.
+--
+{-# SPECIALIZE countOccurrences :: Ptr CSize -> Ptr Word8 -> Int -> IO () #-}
+countOccurrences :: (Storable a, Num a) => Ptr a -> Ptr Word8 -> Int -> IO ()
+STRICT3(countOccurrences)
+countOccurrences counts str l = go 0
+ where
+    STRICT1(go)
+    go i | i == l    = return ()
+         | otherwise = do k <- fromIntegral `fmap` peekElemOff str i
+                          x <- peekElemOff counts k
+                          pokeElemOff counts k (x + 1)
+                          go (i + 1)
 
-infixr 9 `fuseEFL`
+-- ---------------------------------------------------------------------
+-- 
+-- Standard C functions
+--
 
--- |Fuse to flat loop functions
-fuseEFL :: (a1 -> Word8  -> (a1, Maybe Word8))
-        -> (a2 -> Word8  -> (a2, Maybe Word8))
-        -> StrictPair a1 a2
-        -> Word8
-        -> (StrictPair a1 a2, Maybe Word8)
-fuseEFL f g (StrictPair acc1 acc2) e1 =
-    case f acc1 e1 of
-        (acc1', Nothing) -> (StrictPair acc1' acc2, Nothing)
-        (acc1', Just e2) ->
-            case g acc2 e2 of
-                (acc2', res) -> (StrictPair acc1' acc2', res)
-#if defined(__GLASGOW_HASKELL__)
-{-# INLINE [1] fuseEFL #-}
+foreign import ccall unsafe "string.h strlen" c_strlen
+    :: CString -> CInt
+
+foreign import ccall unsafe "stdlib.h malloc" c_malloc
+    :: CInt -> IO (Ptr Word8)
+
+foreign import ccall unsafe "static stdlib.h free" c_free
+    :: Ptr Word8 -> IO ()
+
+#if !defined(__GLASGOW_HASKELL__)
+foreign import ccall unsafe "static stdlib.h &free" c_free_finalizer
+    :: FunPtr (Ptr Word8 -> IO ())
 #endif
 
-{-# RULES
+foreign import ccall unsafe "string.h memchr" memchr
+    :: Ptr Word8 -> Word8 -> CSize -> Ptr Word8
 
-"loop/loop fusion!" forall em1 em2 start1 start2 arr.
-  loopU em2 start2 (loopArr (loopU em1 start1 arr)) =
-    loopSndAcc (loopU (em1 `fuseEFL` em2) (StrictPair start1 start2) arr)
+foreign import ccall unsafe "string.h memcmp" memcmp
+    :: Ptr Word8 -> Ptr Word8 -> CSize -> IO CInt
 
-"loopArr/loopSndAcc" forall x.
-  loopArr (loopSndAcc x) = loopArr x
+foreign import ccall unsafe "string.h memcpy" memcpy
+    :: Ptr Word8 -> Ptr Word8 -> CSize -> IO ()
 
-"seq/NoAL" forall (u::NoAL) e.
-  u `seq` e = e
+foreign import ccall unsafe "string.h memset" memset
+    :: Ptr Word8 -> Word8 -> CSize -> IO (Ptr Word8)
 
-  #-}
 
+-- ---------------------------------------------------------------------
+--
+-- Uses our C code
+--
+
+foreign import ccall unsafe "static fpstring.h reverse" c_reverse
+    :: Ptr Word8 -> Ptr Word8 -> CInt -> IO ()
+
+foreign import ccall unsafe "static fpstring.h intersperse" c_intersperse
+    :: Ptr Word8 -> Ptr Word8 -> CInt -> Word8 -> IO ()
+
+foreign import ccall unsafe "static fpstring.h maximum" c_maximum
+    :: Ptr Word8 -> CInt -> Word8
+
+foreign import ccall unsafe "static fpstring.h minimum" c_minimum
+    :: Ptr Word8 -> CInt -> Word8
+
+foreign import ccall unsafe "static fpstring.h count" c_count
+    :: Ptr Word8 -> CInt -> Word8 -> CInt
+
+-- ---------------------------------------------------------------------
+-- MMap
 
 {-
+foreign import ccall unsafe "static fpstring.h my_mmap" my_mmap
+    :: Int -> Int -> IO (Ptr Word8)
 
-Alternate experimental formulation of loopU which partitions it into
-an allocating wrapper and an imperitive array-mutating loop.
+foreign import ccall unsafe "static unistd.h close" c_close
+    :: Int -> IO Int
 
-The point in doing this split is that we might be able to fuse multiple
-loops into a single wrapper. This would save reallocating another buffer.
-It should also give better cache locality by reusing the buffer.
-
-The RULE is:
-
-"loop/loop wrapper elimination" forall loop1 loop2 arr.
-  loopWrapper loop2 (loopArr (loopWrapper loop1 arr)) =
-    loopWrapper (combineLoops loop1 loop2) arr
-
-though of course we only want to do this if we can't do ordinary fusion.
-
-loopU :: (acc -> Word8 -> (acc, Maybe Word8))
-      -> acc
-      -> ByteString
-      -> (acc, ByteString)
-loopU f a arr = loopWrapper (doUpLoop f a) arr
-{-# INLINE loopU #-}
--- we always inline loopU now to expose the loopWrapper for wrapper elimination
-
-type ImperativeLoop acc = Ptr Word8 -> Ptr Word8 -> Int -> IO (acc, Int)
-
-loopWrapper :: ImperativeLoop acc
-            -> ByteString
-            -> (acc, ByteString)
-loopWrapper body (PS z s i) = inlinePerformIO $ withForeignPtr z $ \a -> do
-    fp          <- mallocByteString i
-    (ptr,n,acc) <- withForeignPtr fp $ \p -> do
-        (acc, i') <- body (a `plusPtr` s) p i
-        if i' == i
-            then return (fp,i',acc)                 -- no realloc for map
-            else do fp_ <- mallocByteString i'      -- realloc
-                    withForeignPtr fp_ $ \p' -> memcpy p' p (fromIntegral i')
-                    return (fp_,i',acc)
-
-    return (acc, PS ptr 0 n)
-{-# INLINE [1] loopWrapper #-}
--- but loopWrapper like our previous loopU must not be inlined too early
--- or the RULES will never match.
-
-doUpLoop :: (acc -> Word8 -> (acc, Maybe Word8))
-         -> acc
-         -> ImperativeLoop acc
-doUpLoop f start ma p i = trans 0 0 start
-  where STRICT3(trans)
-        trans a_off ma_off acc
-            | a_off >= i = return (acc, ma_off)
-            | otherwise  = do
-                x <- peekByteOff p a_off
-                let (acc', oe) = f acc x
-                ma_off' <- case oe of
-                    Nothing  -> return ma_off
-                    Just e   -> do pokeByteOff ma ma_off e
-                                   return $ ma_off + 1
-                trans (a_off+1) ma_off' acc'
-{-# INLINE [1] doUpLoop #-}
--- not sure if this phase 1 control is strictly necessary
-
-combineLoops :: ImperativeLoop acc -> ImperativeLoop acc' -> ImperativeLoop acc'
-combineLoops loop1 loop2 p1 p2 i = do
-  (_, i') <- loop1 p1 p2 i
-  loop2 p1 p2 i'
+#  if !defined(__OpenBSD__)
+foreign import ccall unsafe "static sys/mman.h munmap" c_munmap
+    :: Ptr Word8 -> Int -> IO Int
+#  endif
 -}
+
+-- ---------------------------------------------------------------------
+-- Internal GHC Haskell magic
+
+#if defined(__GLASGOW_HASKELL__)
+foreign import ccall unsafe "RtsAPI.h getProgArgv"
+    getProgArgv :: Ptr CInt -> Ptr (Ptr CString) -> IO ()
+
+foreign import ccall unsafe "__hscore_memcpy_src_off"
+   memcpy_ptr_baoff :: Ptr a -> RawBuffer -> CInt -> CSize -> IO (Ptr ())
+#endif

@@ -6,12 +6,12 @@ License-file:        LICENSE
 Author:              Don Stewart
 Maintainer:          dons@cse.unsw.edu.au
 Build-Depends:       base
-Exposed-modules:     Data.ByteString,
-                     Data.ByteString.Base,
+Exposed-modules:     Data.ByteString
                      Data.ByteString.Char8
                      Data.ByteString.Lazy
                      Data.ByteString.Lazy.Char8
-Other-modules:       Data.ByteString.Internal
+                     Data.ByteString.Base
+                     Data.ByteString.Fusion
 extensions:          CPP, ForeignFunctionInterface
 ghc-options:         -Wall -fglasgow-exts -O -optc-O2 -funbox-strict-fields
 cc-options:

@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -cpp -fglasgow-exts -fno-warn-orphans #-}
+{-# OPTIONS_GHC -cpp -fglasgow-exts #-}
 --
 -- Module      : Data.ByteString.Char8
 -- Copyright   : (c) Don Stewart 2006
@@ -35,7 +35,7 @@
 module Data.ByteString.Char8 (
 
         -- * The @ByteString@ type
-        ByteString(..),         -- instances: Eq, Ord, Show, Read, Data, Typeable
+        ByteString,         -- instances: Eq, Ord, Show, Read, Data, Typeable, Monoid
 
         -- * Introducing and eliminating 'ByteString's
         empty,                  -- :: ByteString
@@ -263,17 +263,16 @@ import Data.ByteString (empty,null,length,tail,init,append
                        ,unpackList
 #endif
                        ,useAsCString, unsafeUseAsCString
+
                        )
 
 import Data.ByteString.Base (
                         ByteString(..)
-                       
 #if defined(__GLASGOW_HASKELL__)
                        ,packAddress, unsafePackAddress
 #endif
+                       ,c2w, w2c, inlinePerformIO, isSpaceWord8
                        )
-
-import Data.ByteString.Internal
 
 import qualified Data.List as List (intersperse)
 
