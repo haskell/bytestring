@@ -39,7 +39,7 @@
 module Data.ByteString (
 
         -- * The @ByteString@ type
-        ByteString,             -- instances: Eq, Ord, Show, Read, Data, Typeable, Monoid
+        ByteString,             -- abstract, instances: Eq, Ord, Show, Read, Data, Typeable, Monoid
 
         -- * Introducing and eliminating 'ByteString's
         empty,                  -- :: ByteString
