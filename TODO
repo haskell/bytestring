@@ -20,3 +20,13 @@ Todo items
 
 * unchunk, Data.ByteString.Lazy -> [Data.ByteString]
     -  and that'd work for any Lazy.ByteString, not just hGetContents >>= lines
+
+* consider if lazy hGetContents should use non-blocking reads. This should
+    allow messaging style applications (eg communication over pipes, sockets)
+    to use lazy ByteStrings. I think that at the moment since we demand 64k
+    it'd just block. With a messaging style app you've got to be careful not
+    to demand more data than is available, hence using non-blocking read
+    should do the right thing. And in the disk file case it doesn't change
+    anything anyway, you can always get a full chunk.
+
+* think about lazy hGetContents and IO exceptions
