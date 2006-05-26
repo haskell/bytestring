@@ -212,6 +212,7 @@ import qualified Data.List              as L  -- L for list/lazy
 import qualified Data.ByteString        as P  -- P for packed
 import qualified Data.ByteString.Base   as P
 import qualified Data.ByteString.Fusion as P
+import Data.ByteString.Fusion ((:*:)(..))
 
 import Data.Monoid              (Monoid, mempty, mappend, mconcat)
 
@@ -569,7 +570,7 @@ minimum (LPS xs) = L.minimum (L.map P.minimum xs)
 {-# INLINE minimum #-}
 
 mapAccumL :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
-mapAccumL f z = (\(a,ps) -> (a, LPS ps)) . loopU (P.mapAccumEFL f) z . unLPS
+mapAccumL f z = (\(a :*: ps) -> (a, LPS ps)) . loopU (P.mapAccumEFL f) z . unLPS
 
 -- | /O(n)/ map Word8 functions, provided with the index at each position
 mapIndexed :: (Int -> Word8 -> Word8) -> ByteString -> ByteString
@@ -1206,19 +1207,21 @@ filterMap f (x:xs) = case f x of
 -- ---------------------------------------------------------------------
 --
 -- Functional list/array fusion for lazy ByteStrings.
+-- 
+-- TODO, move into Fusion.
 --
 
-loopU :: (acc -> Word8 -> (acc, Maybe Word8))  -- ^ mapping & folding, once per elem
-      -> acc                                   -- ^ initial acc value
-      -> [P.ByteString]                        -- ^ input ByteString
-      -> (acc, [P.ByteString])
+loopU :: (acc -> Word8 -> (acc :*: P.MaybeS Word8))  -- ^ mapping & folding, once per elem
+      -> acc                                         -- ^ initial acc value
+      -> [P.ByteString]                              -- ^ input ByteString
+      -> (acc :*: [P.ByteString])
 loopU f = loop
-  where loop s []     = (s, [])
+  where loop s []     = (s :*: [])
         loop s (x:xs)
-          | P.null y  = (s'',   ys)
-          | otherwise = (s'', y:ys)
-          where (s',  y)  = P.loopU f s x
-                (s'', ys) = loop s' xs
+          | P.null y  = (s'' :*: ys)
+          | otherwise = (s'' :*: y:ys)
+          where (s'  :*: y)  = P.loopU f s x
+                (s'' :*: ys) = loop s' xs
 
 #if defined(__GLASGOW_HASKELL__)
 {-# INLINE [1] loopU #-}
@@ -1228,6 +1231,6 @@ loopU f = loop
 
 "lazy loop/loop fusion!" forall em1 em2 start1 start2 arr.
   loopU em2 start2 (P.loopArr (loopU em1 start1 arr)) =
-    P.loopSndAcc (loopU (em1 `P.fuseEFL` em2) (P.StrictPair start1 start2) arr)
+    P.loopSndAcc (loopU (em1 `P.fuseEFL` em2) (start1 :*: start2) arr)
 
   #-}

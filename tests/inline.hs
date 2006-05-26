@@ -1,10 +1,10 @@
-import Data.ByteString (packByte)
+import Data.ByteString (singleton)
 import qualified Data.ByteString as B
 
 main = do
 {-
-    let x = packByte 2
-        y = packByte 1
+    let x = singleton 2
+        y = singleton 1
 
     print (B.length x)
     print (B.length y)
@@ -18,4 +18,4 @@ main = do
 
 
     print "Expect: GT"
-    print (packByte 255 `compare` packByte 127)
+    print (singleton 255 `compare` singleton 127)

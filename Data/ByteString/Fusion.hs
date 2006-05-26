@@ -17,10 +17,13 @@
 --
 module Data.ByteString.Fusion (
 
-        -- * Fusion utilities
-        noAL, NoAL, loopArr, loopAcc, loopSndAcc, StrictPair(StrictPair),
-        loopU, mapEFL, filterEFL, foldEFL, foldEFL', fuseEFL, scanEFL,
-        mapAccumEFL, mapIndexEFL,
+    -- * Fusion utilities
+    loopU, fuseEFL,
+    noAL, NoAL, loopArr, loopAcc, loopSndAcc, unSP,
+    mapEFL, filterEFL, foldEFL, foldEFL', scanEFL, mapAccumEFL, mapIndexEFL,
+
+    -- * Strict pairs and sums
+    (:*:)(..), MaybeS(..)
 
   ) where
 
@@ -43,11 +46,45 @@ import Data.Word                (Word8)
 #define STRICT4(f) f a b c d | a `seq` b `seq` c `seq` d `seq` False = undefined
 #define STRICT5(f) f a b c d e | a `seq` b `seq` c `seq` d `seq` e `seq` False = undefined
 
+infixl 2 :*:
+
+-- |Strict pair
+data (:*:) a b = !a :*: !b deriving (Eq,Ord,Show)
+
+-- |Strict Maybe
+data MaybeS a = NothingS | JustS !a
+
 -- |Data type for accumulators which can be ignored. The rewrite rules rely on
 -- the fact that no bottoms of this type are ever constructed; hence, we can
 -- assume @(_ :: NoAL) `seq` x = x@.
 --
 data NoAL = NoAL
+
+-- | No accumulator
+noAL :: NoAL
+noAL = NoAL
+#if defined(__GLASGOW_HASKELL__)
+{-# INLINE [1] noAL #-}
+#endif
+
+-- |Type of loop functions
+type EFL acc e1 e2 = (acc -> e1 -> acc :*: MaybeS e2)
+
+type W = Word8
+
+infixr 9 `fuseEFL`
+
+-- |Fuse to flat loop functions
+fuseEFL :: EFL acc1 W W -> EFL acc2 W W -> EFL (acc1 :*: acc2) W W
+fuseEFL f g (acc1 :*: acc2) e1 =
+    case f acc1 e1 of
+        acc1' :*: NothingS -> (acc1' :*: acc2) :*: NothingS
+        acc1' :*: JustS e2 ->
+            case g acc2 e2 of
+                acc2' :*: res -> (acc1' :*: acc2') :*: res
+#if defined(__GLASGOW_HASKELL__)
+{-# INLINE [1] fuseEFL #-}
+#endif
 
 -- | Special forms of loop arguments
 --
@@ -63,119 +100,117 @@ data NoAL = NoAL
 -- 
 
 -- | Element function expressing a mapping only
-mapEFL :: (Word8 -> Word8) -> (NoAL -> Word8 -> (NoAL, Maybe Word8))
-mapEFL f = \_ e -> (noAL, (Just $ f e))
+mapEFL :: (W -> W) -> EFL NoAL W W
+mapEFL f = \_ e -> (noAL :*: (JustS $ f e))
 #if defined(__GLASGOW_HASKELL__)
 {-# INLINE [1] mapEFL #-}
 #endif
 
 -- | Element function implementing a filter function only
-filterEFL :: (Word8 -> Bool) -> (NoAL -> Word8 -> (NoAL, Maybe Word8))
-filterEFL p = \_ e -> if p e then (noAL, Just e) else (noAL, Nothing)
+filterEFL :: (W -> Bool) -> EFL NoAL W W
+filterEFL p = \_ e -> if p e then (noAL :*: JustS e) else (noAL :*: NothingS)
 #if defined(__GLASGOW_HASKELL__)
 {-# INLINE [1] filterEFL #-}
 #endif
 
 -- |Element function expressing a reduction only
-foldEFL :: (acc -> Word8 -> acc) -> (acc -> Word8 -> (acc, Maybe Word8))
-foldEFL f = \a e -> (f a e, Nothing)
+foldEFL :: (acc -> W -> acc) -> EFL acc W W
+foldEFL f = \a e -> (f a e :*: NothingS)
 #if defined(__GLASGOW_HASKELL__)
 {-# INLINE [1] foldEFL #-}
 #endif
 
 -- | A strict foldEFL.
-foldEFL' :: (acc -> Word8 -> acc) -> (acc -> Word8 -> (acc, Maybe Word8))
-foldEFL' f = \a e -> let a' = f a e in a' `seq` (a', Nothing)
+foldEFL' :: (acc -> W -> acc) -> EFL acc W W
+foldEFL' f = \a e -> let a' = f a e in a' `seq` (a' :*: NothingS)
 #if defined(__GLASGOW_HASKELL__)
 {-# INLINE [1] foldEFL' #-}
 #endif
 
 -- | Element function expressing a prefix reduction only
 --
-scanEFL :: (Word8 -> Word8 -> Word8) -> Word8 -> Word8 -> (Word8, Maybe Word8)
-scanEFL f = \a e -> (f a e, Just a)
+scanEFL :: (W -> W -> W) -> EFL W W W
+scanEFL f = \a e -> (f a e :*: JustS a)
 #if defined(__GLASGOW_HASKELL__)
 {-# INLINE [1] scanEFL #-}
 #endif
 
 -- | Element function implementing a map and fold
 --
-mapAccumEFL :: (acc -> Word8 -> (acc, Word8)) -> acc -> Word8 -> (acc, Maybe Word8)
-mapAccumEFL f = \a e -> case f a e of (a', e') -> (a', Just e')
+mapAccumEFL :: (acc -> W -> (acc, W)) -> EFL acc W W
+mapAccumEFL f = \a e -> case f a e of (a', e') -> (a' :*: JustS e')
 #if defined(__GLASGOW_HASKELL__)
 {-# INLINE [1] mapAccumEFL #-}
 #endif
 
 -- | Element function implementing a map with index
 --
-mapIndexEFL :: (Int -> Word8 -> Word8) -> Int -> Word8 -> (Int, Maybe Word8)
-mapIndexEFL f = \i e -> let i' = i+1 in i' `seq` (i', Just $ f i e)
+mapIndexEFL :: (Int -> W -> W) -> EFL Int W W
+mapIndexEFL f = \i e -> let i' = i+1 in i' `seq` (i' :*: JustS (f i e))
 #if defined(__GLASGOW_HASKELL__)
 {-# INLINE [1] mapIndexEFL #-}
 #endif
 
--- | No accumulator
-noAL :: NoAL
-noAL = NoAL
-#if defined(__GLASGOW_HASKELL__)
-{-# INLINE [1] noAL #-}
-#endif
-
 -- | Projection functions that are fusion friendly (as in, we determine when
 -- they are inlined)
-loopArr :: (acc, byteString) -> byteString
-loopArr (_, arr) = arr
+loopArr :: (acc :*: arr) -> arr
+loopArr (_ :*: arr) = arr
 #if defined(__GLASGOW_HASKELL__)
 {-# INLINE [1] loopArr #-}
 #endif
 
-loopAcc :: (acc, byteString) -> acc
-loopAcc (acc, _) = acc
+loopAcc :: (acc :*: arr) -> acc
+loopAcc (acc :*: _) = acc
 #if defined(__GLASGOW_HASKELL__)
 {-# INLINE [1] loopAcc #-}
 #endif
 
-loopSndAcc :: (StrictPair acc1 acc2, byteString) -> (acc2, byteString)
-loopSndAcc (StrictPair _ acc, arr) = (acc, arr)
+loopSndAcc :: ((acc1 :*: acc2) :*: arr) -> (acc2 :*: arr)
+loopSndAcc ((_ :*: acc) :*: arr) = (acc :*: arr)
 #if defined(__GLASGOW_HASKELL__)
 {-# INLINE [1] loopSndAcc #-}
 #endif
 
-------------------------------------------------------------------------
+unSP :: (acc :*: arr) -> (acc, arr)
+unSP (acc :*: arr) = (acc, arr)
+#if defined(__GLASGOW_HASKELL__)
+{-# INLINE [1] unSP #-}
+#endif
 
+------------------------------------------------------------------------
 --
--- size, and then percentage.
---
+-- Loop combinator and fusion rules for flat arrays
+-- |Iteration over over ByteStrings
 
 -- | Iteration over over ByteStrings
-loopU :: (acc -> Word8 -> (acc, Maybe Word8))  -- ^ mapping & folding, once per elem
-      -> acc                                   -- ^ initial acc value
-      -> ByteString                            -- ^ input ByteString
-      -> (acc, ByteString)
+loopU :: EFL acc W W                -- ^ mapping & folding, once per elem
+      -> acc                        -- ^ initial acc value
+      -> ByteString                 -- ^ input ByteString
+      -> (acc :*: ByteString)
 
 loopU f start (PS z s i) = inlinePerformIO $ withForeignPtr z $ \a -> do
     fp          <- mallocByteString i
     (ptr,n,acc) <- withForeignPtr fp $ \p -> do
-        (acc, i') <- go (a `plusPtr` s) p start
+        (acc :*: i') <- go (a `plusPtr` s) p start
         if i' == i
             then return (fp,i',acc)                 -- no realloc for map
             else do fp_ <- mallocByteString i'      -- realloc
                     withForeignPtr fp_ $ \p' -> memcpy p' p (fromIntegral i')
                     return (fp_,i',acc)
 
-    return (acc, PS ptr 0 n)
+    return (acc :*: PS ptr 0 n)
   where
     go p ma = trans 0 0
         where
             STRICT3(trans)
             trans a_off ma_off acc
-                | a_off >= i = return (acc, ma_off)
+                | a_off >= i = return (acc :*: ma_off)
                 | otherwise  = do
                     x <- peekByteOff p a_off
-                    let (acc', oe) = f acc x
+                    let (acc' :*: oe) = f acc x
                     ma_off' <- case oe of
-                        Nothing  -> return ma_off
-                        Just e   -> do pokeByteOff ma ma_off e
+                        NothingS -> return ma_off
+                        JustS e  -> do pokeByteOff ma ma_off e
                                        return $ ma_off + 1
                     trans (a_off+1) ma_off' acc'
 
@@ -183,31 +218,11 @@ loopU f start (PS z s i) = inlinePerformIO $ withForeignPtr z $ \a -> do
 {-# INLINE [1] loopU #-}
 #endif
 
-data StrictPair a b = StrictPair !a !b
-
-infixr 9 `fuseEFL`
-
--- |Fuse to flat loop functions
-fuseEFL :: (a1 -> Word8  -> (a1, Maybe Word8))
-        -> (a2 -> Word8  -> (a2, Maybe Word8))
-        -> StrictPair a1 a2
-        -> Word8
-        -> (StrictPair a1 a2, Maybe Word8)
-fuseEFL f g (StrictPair acc1 acc2) e1 =
-    case f acc1 e1 of
-        (acc1', Nothing) -> (StrictPair acc1' acc2, Nothing)
-        (acc1', Just e2) ->
-            case g acc2 e2 of
-                (acc2', res) -> (StrictPair acc1' acc2', res)
-#if defined(__GLASGOW_HASKELL__)
-{-# INLINE [1] fuseEFL #-}
-#endif
-
 {-# RULES
 
 "loop/loop fusion!" forall em1 em2 start1 start2 arr.
   loopU em2 start2 (loopArr (loopU em1 start1 arr)) =
-    loopSndAcc (loopU (em1 `fuseEFL` em2) (StrictPair start1 start2) arr)
+    loopSndAcc (loopU (em1 `fuseEFL` em2) (start1 :*: start2) arr)
 
 "loopArr/loopSndAcc" forall x.
   loopArr (loopSndAcc x) = loopArr x

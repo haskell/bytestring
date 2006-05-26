@@ -11,6 +11,7 @@ import Test.QuickCheck
 import Text.Show.Functions
 
 import Control.Monad.Reader ({-instances Functor (-> c)-})
+import Control.Monad        ( liftM2 )
 
 import Data.List
 import Data.Char
@@ -31,6 +32,7 @@ import qualified Data.ByteString       as P
 import qualified Data.ByteString.Base  as P
 import qualified Data.ByteString.Char8 as C
 import qualified Data.ByteString.Fusion as F
+import Data.ByteString.Fusion ((:*:)(..), MaybeS(..))
 import Prelude hiding (abs)
 
 import QuickCheckUtils
@@ -42,6 +44,10 @@ instance Arbitrary Char where
     arbitrary     = choose ('a', 'i')
     coarbitrary c = variant (ord c `rem` 4)
 
+instance (Arbitrary a, Arbitrary b) => Arbitrary (a :*: b) where
+  arbitrary             = liftM2 (:*:) arbitrary arbitrary
+  coarbitrary (a :*: b) = coarbitrary a . coarbitrary b
+
 instance Arbitrary Word8 where
     arbitrary = choose (97, 105)
     coarbitrary c = variant (fromIntegral ((fromIntegral c) `rem` 4))
@@ -50,6 +56,11 @@ instance Arbitrary a => Arbitrary (Maybe a) where
   arbitrary           = do a <- arbitrary ; elements [Nothing, Just a]
   coarbitrary Nothing = variant 0
   coarbitrary _       = variant 1 -- ok?
+
+instance Arbitrary a => Arbitrary (MaybeS a) where
+  arbitrary            = do a <- arbitrary ; elements [NothingS, JustS a]
+  coarbitrary NothingS = variant 0
+  coarbitrary _        = variant 1 -- ok?
 
 {-
 instance Arbitrary Char where
@@ -561,7 +572,7 @@ instance NatTrans ((->) X) ((->) X) where eta = id
 instance NatTrans ((->) W) ((->) W) where eta = id
 
 -- Missing from < ghc 6.5 compilers
-instance Functor ((,) a) where fmap f (x,y) = (x, f y)
+instance Functor ((,)   a) where fmap f (x,y) = (x, f y)
 
 -- We have a transformation of pairs, if the pairs are in Model
 instance Model f g => NatTrans ((,) f) ((,) g) where eta (f,a) = (abs f, a)
@@ -1480,14 +1491,14 @@ prop_unzipBB x = let (xs,ys) = unzip x in (P.pack xs, P.pack ys) == P.unzip x
 
 prop_lazylooploop em1 em2 start1 start2 arr =
     L.loopU em2 start2 (F.loopArr (L.loopU em1 start1 arr))             ==
-    F.loopSndAcc (L.loopU (em1 `F.fuseEFL` em2) (F.StrictPair start1 start2) arr)
+    F.loopSndAcc (L.loopU (em1 `F.fuseEFL` em2) (start1 :*: start2) arr)
  where
    _ = start1 :: Int
    _ = start2 :: Int
 
 prop_looploop em1 em2 start1 start2 arr =
   F.loopU em2 start2 (F.loopArr (F.loopU em1 start1 arr)) ==
-    F.loopSndAcc (F.loopU (em1 `F.fuseEFL` em2) (F.StrictPair start1 start2) arr)
+    F.loopSndAcc (F.loopU (em1 `F.fuseEFL` em2) (start1 :*: start2) arr)
  where
    _ = start1 :: Int
    _ = start2 :: Int

@@ -800,7 +800,7 @@ minimum_ ptr n m c
 -}
 
 mapAccumL :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
-mapAccumL f z = loopU (mapAccumEFL f) z
+mapAccumL f z = unSP . loopU (mapAccumEFL f) z
 
 --mapAccumR :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
 
