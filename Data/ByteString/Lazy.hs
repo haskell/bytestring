@@ -472,7 +472,7 @@ append (LPS xs) (LPS ys) = LPS (xs ++ ys)
 -- element of @xs@.
 map :: (Word8 -> Word8) -> ByteString -> ByteString
 --map f (LPS xs) = LPS (L.map (P.map' f) xs)
-map f = LPS . P.loopArr . loopU (P.mapEFL f) P.noAL . unLPS
+map f = LPS . P.loopArr . loopU (P.mapEFL f) P.NoAcc . unLPS
 {-# INLINE map #-}
 
 -- | /O(n)/ 'reverse' @xs@ efficiently returns the elements of @xs@ in reverse order.
@@ -1002,7 +1002,7 @@ notElem c ps = not (elem c ps)
 -- predicate.
 filter :: (Word8 -> Bool) -> ByteString -> ByteString
 --filter f (LPS xs) = LPS (filterMap (P.filter' f) xs)
-filter p = LPS . P.loopArr . loopU (P.filterEFL p) P.noAL . unLPS
+filter p = LPS . P.loopArr . loopU (P.filterEFL p) P.NoAcc . unLPS
 {-# INLINE filter #-}
 
 -- | /O(n)/ and /O(n\/c) space/ A first order equivalent of /filter .
