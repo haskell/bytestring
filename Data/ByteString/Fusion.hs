@@ -22,6 +22,11 @@ module Data.ByteString.Fusion (
     NoAcc(NoAcc), loopArr, loopAcc, loopSndAcc, unSP,
     mapEFL, filterEFL, foldEFL, foldEFL', scanEFL, mapAccumEFL, mapIndexEFL,
 
+    -- ** Alternative Fusion stuff
+    -- | This replaces 'loopU' with 'loopUp'
+    -- and adds several further special cases of loops.
+    loopUp, loopDown, loopNoAcc, loopMap, loopFilter,
+
     -- * Strict pairs and sums
     PairS(..), MaybeS(..)
 
@@ -62,9 +67,9 @@ data NoAcc = NoAcc
 
 -- |Type of loop functions
 type AccEFL acc = acc -> Word8 -> (PairS acc (MaybeS Word8))
---type NoAccEFL   =        Word8 ->             MaybeS Word8
---type MapEFL     =        Word8 ->                    Word8
---type FilterEFL  =        Word8 ->             Bool
+type NoAccEFL   =        Word8 ->             MaybeS Word8
+type MapEFL     =        Word8 ->                    Word8
+type FilterEFL  =        Word8 ->             Bool
 
 infixr 9 `fuseEFL`
 
@@ -367,6 +372,32 @@ sequenceLoops (doUpLoop f1 acc1)
 but this is still an ok form we just need to have the rule matching
 look at the body of the let.
 
+But we're saved! This is exactly the
+problem in the rule matching that Simon Peyton Jones fixed in ghc HEAD
+
+Thu May 25 08:44:47 PDT 2006  simonpj@microsoft.com
+  * Make rule-matching robust to lets
+
+  Consider a RULE like
+        forall arr. splitD (joinD arr) = arr
+
+  Until now, this rule would not match code of form
+        splitD (let { d = ... } in joinD (...d...))
+  because the 'let' got in the way.
+
+  This patch makes the rule-matcher robust to lets.  See comments with
+  the Let case of Rules.match.
+
+  This improvement is highly desirable in the fusion rules for NDP
+  stuff that Roman is working on, where we are doing fusion of *overloaded*
+  functions (which may look lazy).  The let expression that Roman tripped
+  up on was a dictioary binding.
+
+And indeed if we test this example and many more complex ones using ghc HEAD
+with the above patch included then we appear to be getting perfect fusion
+and it's all happening in the appropriate phase of the simlifier. Yay!
+-}
+
 loopUp :: AccEFL acc -> acc -> ByteString -> PairS acc ByteString
 loopUp f a arr = loopWrapper (doUpLoop f a) arr
 
@@ -486,14 +517,32 @@ sequenceLoops loop1 loop2 src dest len = do
 
 #if defined(__GLASGOW_HASKELL__)
 
-{-# NOINLINE  doUpLoop     #-}
-{-# NOINLINE  doDownLoop   #-}
-{-# NOINLINE  doNoAccLoop  #-}
-{-# NOINLINE  doMapLoop    #-}
-{-# NOINLINE  doFilterLoop #-}
+{-# INLINE [1] doUpLoop     #-}
+{-# INLINE [1] doDownLoop   #-}
+{-# INLINE [1] doNoAccLoop  #-}
+{-# INLINE [1] doMapLoop    #-}
+{-# INLINE [1] doFilterLoop #-}
 
-{-# NOINLINE  loopWrapper   #-}
-{-# NOINLINE  sequenceLoops #-}
+{-# INLINE [1] loopWrapper   #-}
+{-# INLINE [1] sequenceLoops #-}
+
+{-# INLINE [1] fuseAccAccEFL #-}
+{-# INLINE [1] fuseAccNoAccEFL #-}
+{-# INLINE [1] fuseNoAccAccEFL #-}
+{-# INLINE [1] fuseNoAccNoAccEFL #-}
+{-# INLINE [1] fuseMapAccEFL #-}
+{-# INLINE [1] fuseAccMapEFL #-}
+{-# INLINE [1] fuseMapNoAccEFL #-}
+{-# INLINE [1] fuseNoAccMapEFL #-}
+{-# INLINE [1] fuseMapMapEFL #-}
+{-# INLINE [1] fuseAccFilterEFL #-}
+{-# INLINE [1] fuseFilterAccEFL #-}
+{-# INLINE [1] fuseNoAccFilterEFL #-}
+{-# INLINE [1] fuseFilterNoAccEFL #-}
+{-# INLINE [1] fuseFilterFilterEFL #-}
+{-# INLINE [1] fuseMapFilterEFL #-}
+{-# INLINE [1] fuseFilterMapEFL #-}
+
 #endif
 
 {-# RULES
@@ -675,7 +724,6 @@ fuseAccAccEFL f g (acc1 :*: acc2) e1 =
     acc1' :*: JustS e2 ->
       case g acc2 e2 of
         acc2' :*: res -> (acc1' :*: acc2') :*: res
-{-# NOINLINE fuseAccAccEFL #-}
 
 
 fuseAccNoAccEFL :: AccEFL acc -> NoAccEFL -> AccEFL (PairS acc noAcc)
@@ -769,4 +817,3 @@ fuseFilterMapEFL f g e1 =
   case f e1 of
     False -> NothingS
     True  -> JustS (g e1)
--}
