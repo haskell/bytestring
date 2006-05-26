@@ -1192,6 +1192,8 @@ moduleError fun msg = error ("Data.ByteString.Lazy." ++ fun ++ ':':' ':msg)
 -- A manually fused version of "filter (not.null) . map f", since they
 -- don't seem to fuse themselves. Really helps out filter*, concatMap.
 --
+-- TODO fuse.
+--
 filterMap :: (P.ByteString -> P.ByteString) -> [P.ByteString] -> [P.ByteString]
 filterMap _ []     = []
 filterMap f (x:xs) = case f x of
