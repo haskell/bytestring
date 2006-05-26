@@ -400,11 +400,21 @@ length (LPS ss) = L.sum (L.map (fromIntegral.P.length) ss)
 --     where lengthF n s = let m = n + fromIntegral (P.length s) in m `seq` m
 {-# INLINE length #-}
 
--- | /O(1)/ 'cons' is analogous to '(:)' for lists. It is not quite as lazy
--- as '(:)' because it may coalesce the new byte onto the first \'chunk\'
--- rather than starting a new \'chunk\'.
+-- | /O(1)/ 'cons' is analogous to '(:)' for lists. Unlike '(:)' however it is
+-- strict in the ByteString that we are consing onto. More precisely, it forces
+-- the head and the first chunk. It does this because for space effeciency it
+-- may coalesce the new byte onto the first \'chunk\' rather than starting a
+-- new \'chunk\'.
+--
+-- So that means you can't use a lazy recursive contruction like this:
+--
+-- > let xs = cons c xs in xs
+--
+-- You can however use 'repeat' and 'cycle' to build infinite lazy ByteStrings.
+--
 cons :: Word8 -> ByteString -> ByteString
-cons c (LPS ss) = LPS (P.singleton c : ss)
+cons c (LPS (s:ss)) | P.length s <= 16 = LPS (P.cons c s : ss)
+cons c (LPS ss)                        = LPS (P.singleton c : ss)
 
 -- 
 -- No good. The strictness leads to divergence. See:
@@ -609,12 +619,9 @@ repeat :: Word8 -> ByteString
 repeat c = LPS (L.repeat block)
     where block =  P.replicate smallChunkSize c
 
--- | /O(n)/ 'replicate' @n x@ is a ByteString of length @n@ with @x@
--- the value of every element. The following holds:
+-- | /O(n)/ @'replicate' n x@ is a ByteString of length @n@ with @x@
+-- the value of every element.
 --
--- > replicate w c = unfoldr w (\u -> Just (u,u)) c
---
--- This implemenation uses @memset(3)@
 replicate :: Int -> Word8 -> ByteString
 replicate w c
     | w <= 0             = empty

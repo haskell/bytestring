@@ -451,7 +451,6 @@ tests =
     ,("cons 2"    ,         mytest prop_cons2)
     ,("cons 3"    ,         mytest prop_cons3)
     ,("cons 4"    ,         mytest prop_cons4)
-    ,("cons/coalesce",      mytest prop_cons_coalesce)
     ,("snoc"    ,           mytest prop_snoc1)
     ,("head/pack",          mytest prop_head)
     ,("head/unpack",        mytest prop_head1)
@@ -905,8 +904,6 @@ prop_cons3 c    = unpack (L.singleton c) == (c:[])
 prop_cons4 c    = (c `L.cons` L.empty)  == pack (c:[])
 
 prop_snoc1 xs c = xs ++ [c] == unpack ((pack xs) `L.snoc` c)
-
-prop_cons_coalesce c n = let xs = L.cons c xs in L.take n xs == L.replicate n c
 
 ------------------------------------------------------------------------
 
