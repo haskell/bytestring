@@ -115,8 +115,8 @@ import System.IO.Unsafe         (unsafePerformIO)
 -- Instances of Eq, Ord, Read, Show, Data, Typeable
 --
 data ByteString = PS {-# UNPACK #-} !(ForeignPtr Word8)
-                     {-# UNPACK #-} !Int
-                     {-# UNPACK #-} !Int
+                     {-# UNPACK #-} !Int                -- offset
+                     {-# UNPACK #-} !Int                -- length
 
 #if defined(__GLASGOW_HASKELL__)
     deriving (Data, Typeable)
