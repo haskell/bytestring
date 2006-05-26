@@ -212,7 +212,7 @@ import qualified Data.List              as L  -- L for list/lazy
 import qualified Data.ByteString        as P  -- P for packed
 import qualified Data.ByteString.Base   as P
 import qualified Data.ByteString.Fusion as P
-import Data.ByteString.Fusion ((:*:)(..))
+import Data.ByteString.Fusion (PairS(..))
 
 import Data.Monoid              (Monoid, mempty, mappend, mconcat)
 
@@ -1211,10 +1211,10 @@ filterMap f (x:xs) = case f x of
 -- TODO, move into Fusion.
 --
 
-loopU :: (acc -> Word8 -> (acc :*: P.MaybeS Word8))  -- ^ mapping & folding, once per elem
-      -> acc                                         -- ^ initial acc value
-      -> [P.ByteString]                              -- ^ input ByteString
-      -> (acc :*: [P.ByteString])
+loopU :: (acc -> Word8 -> (PairS acc (P.MaybeS Word8)))  -- ^ mapping & folding, once per elem
+      -> acc                                             -- ^ initial acc value
+      -> [P.ByteString]                                  -- ^ input ByteString
+      -> PairS acc [P.ByteString]
 loopU f = loop
   where loop s []     = (s :*: [])
         loop s (x:xs)

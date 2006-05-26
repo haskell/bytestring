@@ -23,7 +23,7 @@ module Data.ByteString.Fusion (
     mapEFL, filterEFL, foldEFL, foldEFL', scanEFL, mapAccumEFL, mapIndexEFL,
 
     -- * Strict pairs and sums
-    (:*:)(..), MaybeS(..)
+    PairS(..), MaybeS(..)
 
   ) where
 
@@ -49,7 +49,7 @@ import Data.Word                (Word8)
 infixl 2 :*:
 
 -- |Strict pair
-data (:*:) a b = !a :*: !b deriving (Eq,Ord,Show)
+data PairS a b = !a :*: !b deriving (Eq,Ord,Show)
 
 -- |Strict Maybe
 data MaybeS a = NothingS | JustS !a
@@ -68,14 +68,14 @@ noAL = NoAL
 #endif
 
 -- |Type of loop functions
-type EFL acc e1 e2 = (acc -> e1 -> acc :*: MaybeS e2)
+type EFL acc e1 e2 = acc -> e1 -> (PairS acc (MaybeS e2))
 
 type W = Word8
 
 infixr 9 `fuseEFL`
 
 -- |Fuse to flat loop functions
-fuseEFL :: EFL acc1 W W -> EFL acc2 W W -> EFL (acc1 :*: acc2) W W
+fuseEFL :: EFL acc1 W W -> EFL acc2 W W -> EFL (PairS acc1 acc2) W W
 fuseEFL f g (acc1 :*: acc2) e1 =
     case f acc1 e1 of
         acc1' :*: NothingS -> (acc1' :*: acc2) :*: NothingS
@@ -153,25 +153,25 @@ mapIndexEFL f = \i e -> let i' = i+1 in i' `seq` (i' :*: JustS (f i e))
 
 -- | Projection functions that are fusion friendly (as in, we determine when
 -- they are inlined)
-loopArr :: (acc :*: arr) -> arr
+loopArr :: (PairS acc arr) -> arr
 loopArr (_ :*: arr) = arr
 #if defined(__GLASGOW_HASKELL__)
 {-# INLINE [1] loopArr #-}
 #endif
 
-loopAcc :: (acc :*: arr) -> acc
+loopAcc :: (PairS acc arr) -> acc
 loopAcc (acc :*: _) = acc
 #if defined(__GLASGOW_HASKELL__)
 {-# INLINE [1] loopAcc #-}
 #endif
 
-loopSndAcc :: ((acc1 :*: acc2) :*: arr) -> (acc2 :*: arr)
+loopSndAcc :: (PairS (PairS acc1 acc2) arr) -> (PairS acc2 arr)
 loopSndAcc ((_ :*: acc) :*: arr) = (acc :*: arr)
 #if defined(__GLASGOW_HASKELL__)
 {-# INLINE [1] loopSndAcc #-}
 #endif
 
-unSP :: (acc :*: arr) -> (acc, arr)
+unSP :: (PairS acc arr) -> (acc, arr)
 unSP (acc :*: arr) = (acc, arr)
 #if defined(__GLASGOW_HASKELL__)
 {-# INLINE [1] unSP #-}
@@ -186,7 +186,7 @@ unSP (acc :*: arr) = (acc, arr)
 loopU :: EFL acc W W                -- ^ mapping & folding, once per elem
       -> acc                        -- ^ initial acc value
       -> ByteString                 -- ^ input ByteString
-      -> (acc :*: ByteString)
+      -> (PairS acc ByteString)
 
 loopU f start (PS z s i) = inlinePerformIO $ withForeignPtr z $ \a -> do
     fp          <- mallocByteString i

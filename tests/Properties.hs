@@ -32,7 +32,7 @@ import qualified Data.ByteString       as P
 import qualified Data.ByteString.Base  as P
 import qualified Data.ByteString.Char8 as C
 import qualified Data.ByteString.Fusion as F
-import Data.ByteString.Fusion ((:*:)(..), MaybeS(..))
+import Data.ByteString.Fusion (PairS(..), MaybeS(..))
 import Prelude hiding (abs)
 
 import QuickCheckUtils
@@ -44,7 +44,7 @@ instance Arbitrary Char where
     arbitrary     = choose ('a', 'i')
     coarbitrary c = variant (ord c `rem` 4)
 
-instance (Arbitrary a, Arbitrary b) => Arbitrary (a :*: b) where
+instance (Arbitrary a, Arbitrary b) => Arbitrary (PairS a b) where
   arbitrary             = liftM2 (:*:) arbitrary arbitrary
   coarbitrary (a :*: b) = coarbitrary a . coarbitrary b
 
