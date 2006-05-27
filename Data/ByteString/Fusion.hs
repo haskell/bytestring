@@ -223,12 +223,6 @@ loopU f start (PS z s i) = inlinePerformIO $ withForeignPtr z $ \a -> do
   loopU em2 start2 (loopArr (loopU em1 start1 arr)) =
     loopSndAcc (loopU (em1 `fuseEFL` em2) (start1 :*: start2) arr)
 
-"loopArr/loopSndAcc" forall x.
-  loopArr (loopSndAcc x) = loopArr x
-
-"seq/NoAcc" forall (u::NoAcc) e.
-  u `seq` e = e
-
   #-}
 
 --
