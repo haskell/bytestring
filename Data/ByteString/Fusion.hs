@@ -18,7 +18,7 @@
 module Data.ByteString.Fusion (
 
     -- * Fusion utilities
-    loopU, fuseEFL,
+    loopU, loopL, fuseEFL,
     NoAcc(NoAcc), loopArr, loopAcc, loopSndAcc, unSP,
     mapEFL, filterEFL, foldEFL, foldEFL', scanEFL, mapAccumEFL, mapIndexEFL,
 
@@ -228,6 +228,33 @@ loopU f start (PS z s i) = inlinePerformIO $ withForeignPtr z $ \a -> do
 
 "seq/NoAcc" forall (u::NoAcc) e.
   u `seq` e = e
+
+  #-}
+
+--
+-- Functional list/array fusion for lazy ByteStrings.
+--
+loopL :: (acc -> Word8 -> (PairS acc (MaybeS Word8)))  -- ^ mapping & folding, once per elem
+      -> acc                                           -- ^ initial acc value
+      -> [ByteString]                                  -- ^ input ByteString
+      -> PairS acc [ByteString]
+loopL f = loop
+  where loop s []     = (s :*: [])
+        loop s (x:xs)
+          | l == 0    = (s'' :*: ys)
+          | otherwise = (s'' :*: y:ys)
+          where (s'  :*: y@(PS _ _ l)) = loopU f s x -- avoid circular dep on P.null
+                (s'' :*: ys)           = loop s' xs
+
+#if defined(__GLASGOW_HASKELL__)
+{-# INLINE [1] loopL #-}
+#endif
+
+{-# RULES
+
+"lazy loop/loop fusion!" forall em1 em2 start1 start2 arr.
+  loopL em2 start2 (loopArr (loopL em1 start1 arr)) =
+    loopSndAcc (loopL (em1 `fuseEFL` em2) (start1 :*: start2) arr)
 
   #-}
 
