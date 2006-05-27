@@ -402,7 +402,7 @@ length (LPS ss) = L.sum (L.map (fromIntegral.P.length) ss)
 
 -- | /O(1)/ 'cons' is analogous to '(:)' for lists. Unlike '(:)' however it is
 -- strict in the ByteString that we are consing onto. More precisely, it forces
--- the head and the first chunk. It does this because for space effeciency it
+-- the head and the first chunk. It does this because, for space efficiency, it
 -- may coalesce the new byte onto the first \'chunk\' rather than starting a
 -- new \'chunk\'.
 --
@@ -415,13 +415,6 @@ length (LPS ss) = L.sum (L.map (fromIntegral.P.length) ss)
 cons :: Word8 -> ByteString -> ByteString
 cons c (LPS (s:ss)) | P.length s <= 16 = LPS (P.cons c s : ss)
 cons c (LPS ss)                        = LPS (P.singleton c : ss)
-
--- 
--- No good. The strictness leads to divergence. See:
---   let xs = Data.ByteString.Lazy.cons 0 xs in Data.ByteString.Lazy.take 10 xs
---
--- cons c (LPS (s:ss)) | P.length s <= 16 = LPS (P.cons c s : ss)
--- cons c (LPS ss)                        = LPS (P.singleton c : ss)
 {-# INLINE cons #-}
 
 -- | /O(n\/c)/ Append a byte to the end of a 'ByteString'
