@@ -170,13 +170,6 @@ module Data.ByteString (
         -- * Ordered ByteStrings
         sort,                   -- :: ByteString -> ByteString
 
-        -- * Unchecked access
-        unsafeHead,             -- :: ByteString -> Word8
-        unsafeTail,             -- :: ByteString -> ByteString
-        unsafeIndex,            -- :: ByteString -> Int -> Word8
-        unsafeTake,             -- :: Int -> ByteString -> ByteString
-        unsafeDrop,             -- :: Int -> ByteString -> ByteString
-
         -- * Low level CString conversions
 
         -- ** Packing CStrings and pointers
@@ -249,7 +242,7 @@ import Data.Array               (listArray)
 import qualified Data.Array as Array ((!))
 
 -- Control.Exception.bracket not available in yhc or nhc
-import Control.Exception        (bracket, assert)
+import Control.Exception        (bracket)
 import Control.Monad            (when)
 
 import Foreign.C.String         (CString, CStringLen)
@@ -1526,47 +1519,6 @@ sort = pack . List.sort . unpack
 --
 -- sortBy :: (Word8 -> Word8 -> Ordering) -> ByteString -> ByteString
 -- sortBy f ps = undefined
-
--- ---------------------------------------------------------------------
---
--- Extensions to the basic interface
---
-
--- | A variety of 'head' for non-empty ByteStrings. 'unsafeHead' omits the
--- check for the empty case, so there is an obligation on the programmer
--- to provide a proof that the ByteString is non-empty.
-unsafeHead :: ByteString -> Word8
-unsafeHead (PS x s _) = inlinePerformIO $ withForeignPtr x $ \p -> peekByteOff p s
-{-# INLINE unsafeHead #-}
-
--- | A variety of 'tail' for non-empty ByteStrings. 'unsafeTail' omits the
--- check for the empty case. As with 'unsafeHead', the programmer must
--- provide a separate proof that the ByteString is non-empty.
-unsafeTail :: ByteString -> ByteString
-unsafeTail (PS ps s l) = PS ps (s+1) (l-1)
-{-# INLINE unsafeTail #-}
-
--- | Unsafe 'ByteString' index (subscript) operator, starting from 0, returning a 'Word8'
--- This omits the bounds check, which means there is an accompanying
--- obligation on the programmer to ensure the bounds are checked in some
--- other way.
-unsafeIndex :: ByteString -> Int -> Word8
-unsafeIndex (PS x s _) i = inlinePerformIO $ withForeignPtr x $ \p -> peekByteOff p (s+i)
-{-# INLINE unsafeIndex #-}
-
--- | A variety of 'take' which omits the checks on @n@ so there is an
--- obligation on the programmer to provide a proof that @0 <= n <= 'length' xs@.
-unsafeTake :: Int -> ByteString -> ByteString
-unsafeTake n (PS x s l) =
-  assert (0 <= n && n <= l) $ PS x s n
-{-# INLINE unsafeTake #-}
-
--- | A variety of 'drop' which omits the checks on @n@ so there is an
--- obligation on the programmer to provide a proof that @0 <= n <= 'length' xs@.
-unsafeDrop  :: Int -> ByteString -> ByteString
-unsafeDrop n (PS x s l) =
-  assert (0 <= n && n <= l) $ PS x (s+n) (l-n)
-{-# INLINE unsafeDrop #-}
 
 -- ---------------------------------------------------------------------
 -- Low level constructors

@@ -253,7 +253,7 @@ import Data.ByteString (empty,null,length,tail,init,append
                        ,inits,tails,reverse,transpose
                        ,concat,take,drop,splitAt,join
                        ,sort,isPrefixOf,isSuffixOf,isSubstringOf,findSubstring
-                       ,findSubstrings,unsafeTail,copy,group
+                       ,findSubstrings,copy,group
 
                        ,getContents, putStr, putStrLn
                        ,readFile, {-mmapFile,-} writeFile
@@ -271,7 +271,7 @@ import Data.ByteString.Base (
 #if defined(__GLASGOW_HASKELL__)
                        ,packAddress, unsafePackAddress
 #endif
-                       ,c2w, w2c, inlinePerformIO, isSpaceWord8
+                       ,c2w, w2c, unsafeTail, inlinePerformIO, isSpaceWord8
                        )
 
 import qualified Data.List as List (intersperse)
