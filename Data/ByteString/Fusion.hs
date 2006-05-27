@@ -12,7 +12,7 @@
 -- | Functional array fusion for ByteStrings. 
 --
 -- From the Data Parallel Haskell project, 
--- >    http://www.cse.unsw.edu.au/~chak/project/dph/
+--      <http://www.cse.unsw.edu.au/~chak/project/dph>
 --
 --
 module Data.ByteString.Fusion (
