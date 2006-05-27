@@ -1487,8 +1487,8 @@ prop_unzipBB x = let (xs,ys) = unzip x in (P.pack xs, P.pack ys) == P.unzip x
 --
 
 prop_lazylooploop em1 em2 start1 start2 arr =
-    L.loopU em2 start2 (F.loopArr (L.loopU em1 start1 arr))             ==
-    F.loopSndAcc (L.loopU (em1 `F.fuseEFL` em2) (start1 :*: start2) arr)
+    F.loopL em2 start2 (F.loopArr (F.loopL em1 start1 arr))             ==
+    F.loopSndAcc (F.loopL (em1 `F.fuseEFL` em2) (start1 :*: start2) arr)
  where
    _ = start1 :: Int
    _ = start2 :: Int

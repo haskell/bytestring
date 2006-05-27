@@ -234,9 +234,9 @@ loopU f start (PS z s i) = inlinePerformIO $ withForeignPtr z $ \a -> do
 --
 -- Functional list/array fusion for lazy ByteStrings.
 --
-loopL :: (acc -> Word8 -> (PairS acc (MaybeS Word8)))  -- ^ mapping & folding, once per elem
-      -> acc                                           -- ^ initial acc value
-      -> [ByteString]                                  -- ^ input ByteString
+loopL :: AccEFL acc          -- ^ mapping & folding, once per elem
+      -> acc                 -- ^ initial acc value
+      -> [ByteString]        -- ^ input ByteString
       -> PairS acc [ByteString]
 loopL f = loop
   where loop s []     = (s :*: [])
