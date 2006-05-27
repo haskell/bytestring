@@ -475,8 +475,8 @@ doDownLoop :: AccEFL acc -> acc -> ImperativeLoop acc
 doDownLoop f acc0 src dest len = loop (len-1) (len-1) acc0
   where STRICT3(loop)
         loop src_off dest_off acc
-            | src_off <  0 = return (acc :*: dest_off)
-            | otherwise    = do
+            | src_off < 0 = return (acc :*: (len-1) - dest_off)
+            | otherwise   = do
                 x <- peekByteOff src src_off
                 case f acc x of
                   (acc' :*: NothingS) -> loop (src_off-1) dest_off acc'
