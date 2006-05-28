@@ -11,9 +11,8 @@
 --
 -- | Functional array fusion for ByteStrings. 
 --
--- From the Data Parallel Haskell project, 
+-- Originally based on code from the Data Parallel Haskell project, 
 --      <http://www.cse.unsw.edu.au/~chak/project/dph>
---
 --
 module Data.ByteString.Fusion (
 
@@ -26,6 +25,14 @@ module Data.ByteString.Fusion (
     -- | This replaces 'loopU' with 'loopUp'
     -- and adds several further special cases of loops.
     loopUp, loopDown, loopNoAcc, loopMap, loopFilter,
+    loopWrapper, sequenceLoops,
+    doUpLoop, doDownLoop, doNoAccLoop, doMapLoop, doFilterLoop,
+
+    -- | These are the special fusion cases for combining each loop form perfectly. 
+    fuseAccAccEFL, fuseAccNoAccEFL, fuseNoAccAccEFL, fuseNoAccNoAccEFL,
+    fuseMapAccEFL, fuseAccMapEFL, fuseMapNoAccEFL, fuseNoAccMapEFL,
+    fuseMapMapEFL, fuseAccFilterEFL, fuseFilterAccEFL, fuseNoAccFilterEFL,
+    fuseFilterNoAccEFL, fuseFilterFilterEFL, fuseMapFilterEFL, fuseFilterMapEFL,
 
     -- * Strict pairs and sums
     PairS(..), MaybeS(..)
@@ -57,7 +64,7 @@ infixl 2 :*:
 data PairS a b = !a :*: !b deriving (Eq,Ord,Show)
 
 -- |Strict Maybe
-data MaybeS a = NothingS | JustS !a
+data MaybeS a = NothingS | JustS !a deriving (Eq,Ord,Show)
 
 -- |Data type for accumulators which can be ignored. The rewrite rules rely on
 -- the fact that no bottoms of this type are ever constructed; hence, we can
@@ -636,7 +643,7 @@ fuseNoAccMapEFL f g e1 =
         JustS e2 -> JustS (g e2)
 
 fuseMapMapEFL :: MapEFL -> MapEFL -> MapEFL
-fuseMapMapEFL f g e1 = g (f e1)
+fuseMapMapEFL f g e1 = f (g e1)     -- n.b. perfect fusion
 
 fuseAccFilterEFL :: AccEFL acc -> FilterEFL -> AccEFL (PairS acc noAcc)
 fuseAccFilterEFL f g (acc :*: noAcc) e1 =
