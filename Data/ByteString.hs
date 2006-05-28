@@ -185,8 +185,8 @@ module Data.ByteString (
         -- ** Copying ByteStrings
         -- | These functions perform memcpy(3) operations
         copy,                   -- :: ByteString -> ByteString
-        copyCString,            -- :: CString -> ByteString
-        copyCStringLen,         -- :: CStringLen -> ByteString
+        copyCString,            -- :: CString -> IO ByteString
+        copyCStringLen,         -- :: CStringLen -> IO ByteString
 
         -- * I\/O with 'ByteString's
 
