@@ -20,9 +20,11 @@ import Data.Maybe
 import Data.Int (Int64)
 
 import Text.Printf
+import Debug.Trace
 
 import System.Environment
 import System.IO
+import System.IO.Unsafe
 import System.Random
 
 import Data.ByteString.Lazy (ByteString(..), pack , unpack)
@@ -31,8 +33,7 @@ import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString       as P
 import qualified Data.ByteString.Base  as P
 import qualified Data.ByteString.Char8 as C
-import qualified Data.ByteString.Fusion as F
-import Data.ByteString.Fusion (PairS(..), MaybeS(..))
+import Data.ByteString.Fusion
 import Prelude hiding (abs)
 
 import QuickCheckUtils
@@ -423,8 +424,38 @@ tests =
 
 ------------------------------------------------------------------------
 -- Fusion rules
+
+-- v1 fusion
     ,    ("lazy loop/loop fusion", mytest prop_lazylooploop)
     ,    ("loop/loop fusion",      mytest prop_looploop)
+
+-- v2 fusion
+--  ,   ("loop/loop wrapper elim",  mytest prop_loop_loop_wrapper_elimination)
+
+    ,("up/up         loop fusion",    mytest prop_up_up_loop_fusion)
+    ,("down/down     loop fusion",    mytest prop_down_down_loop_fusion)
+    ,("noAcc/noAcc   loop fusion",    mytest prop_noAcc_noAcc_loop_fusion)
+    ,("noAcc/up      loop fusion",    mytest prop_noAcc_up_loop_fusion)
+    ,("up/noAcc      loop fusion",    mytest prop_up_noAcc_loop_fusion)
+    ,("noAcc/down    loop fusion",    mytest prop_noAcc_down_loop_fusion)
+    ,("down/noAcc    loop fusion",    mytest prop_down_noAcc_loop_fusion)
+    ,("map/map       loop fusion",    mytest prop_map_map_loop_fusion)
+    ,("filter/filter loop fusion",    mytest prop_filter_filter_loop_fusion)
+    ,("map/filter    loop fusion",    mytest prop_map_filter_loop_fusion)
+    ,("filter/map    loop fusion",    mytest prop_filter_map_loop_fusion)
+    ,("map/noAcc     loop fusion",    mytest prop_map_noAcc_loop_fusion)
+    ,("noAcc/map     loop fusion",    mytest prop_noAcc_map_loop_fusion)
+    ,("map/up        loop fusion",    mytest prop_map_up_loop_fusion)
+    ,("up/map        loop fusion",    mytest prop_up_map_loop_fusion)
+    ,("map/down      loop fusion",    mytest prop_map_down_fusion)
+    ,("down/map      loop fusion",    mytest prop_down_map_loop_fusion)
+    ,("filter/noAcc  loop fusion",    mytest prop_filter_noAcc_loop_fusion)
+    ,("noAcc/filter  loop fusion",    mytest prop_noAcc_filter_loop_fusion)
+    ,("filter/up     loop fusion",    mytest prop_filter_up_loop_fusion)
+    ,("up/filter     loop fusion",    mytest prop_up_filter_loop_fusion)
+    ,("filter/down   loop fusion",    mytest prop_filter_down_fusion)
+    ,("down/filter   loop fusion",    mytest prop_down_filter_loop_fusion)
+
 
 ------------------------------------------------------------------------
 -- Extra lazy properties
@@ -1487,16 +1518,168 @@ prop_unzipBB x = let (xs,ys) = unzip x in (P.pack xs, P.pack ys) == P.unzip x
 --
 
 prop_lazylooploop em1 em2 start1 start2 arr =
-    F.loopL em2 start2 (F.loopArr (F.loopL em1 start1 arr))             ==
-    F.loopSndAcc (F.loopL (em1 `F.fuseEFL` em2) (start1 :*: start2) arr)
+    loopL em2 start2 (loopArr (loopL em1 start1 arr))             ==
+    loopSndAcc (loopL (em1 `fuseEFL` em2) (start1 :*: start2) arr)
  where
    _ = start1 :: Int
    _ = start2 :: Int
 
 prop_looploop em1 em2 start1 start2 arr =
-  F.loopU em2 start2 (F.loopArr (F.loopU em1 start1 arr)) ==
-    F.loopSndAcc (F.loopU (em1 `F.fuseEFL` em2) (start1 :*: start2) arr)
+  loopU em2 start2 (loopArr (loopU em1 start1 arr)) ==
+    loopSndAcc (loopU (em1 `fuseEFL` em2) (start1 :*: start2) arr)
  where
    _ = start1 :: Int
    _ = start2 :: Int
+
+-- check associativity of sequence loops
+{-
+prop_sequenceloops_assoc x y z xs =  ((x * y) * z) xs == (x * (y * z)) xs
+    where (*) = unsafePerformIO . sequenceLoops
+          _ = x :: Ptr Word8 -> Ptr Word8 -> Int -> IO (PairS Int Int)
+          _ = y :: Ptr Word8 -> Ptr Word8 -> Int -> IO (PairS Int Int)
+          _ = z :: Ptr Word8 -> Ptr Word8 -> Int -> IO (PairS Int Int)
+-}
+
+{-
+-- can't generate arbitrary loops yet
+prop_loop_loop_wrapper_elimination arr =
+  loopWrapper loop2 (loopArr (loopWrapper loop1 arr)) ==
+    loopSndAcc (loopWrapper (sequenceLoops loop1 loop2) arr)
+  where
+    loop1 = doUpLoop ...
+    loop2 = doDownLoop ..
+-}
+
+------------------------------------------------------------------------
+
+prop_up_up_loop_fusion f1 f2 acc1 acc2 xs =
+  k (sequenceLoops (doUpLoop f1 acc1) (doUpLoop f2 acc2)) ==
+  k (doUpLoop (f1 `fuseAccAccEFL` f2) (acc1 :*: acc2))
+  where
+       _ = acc1 :: Int
+       _ = acc2 :: Int
+       k g = loopWrapper g xs
+
+--
+-- Bug in down/down fusion. the fused form is always off by one, and
+-- seems to get the contents mangled.
+--
+prop_down_down_loop_fusion f1 f2 acc1 acc2 xs =
+    k (sequenceLoops (doDownLoop f1 acc1) (doDownLoop f2 acc2)) ==
+    k (doDownLoop (f1 `fuseAccAccEFL` f2) (acc1 :*: acc2))
+  where _ = acc1 :: Int ; _ = acc2 :: Int ; k g = loopWrapper g xs
+
+prop_noAcc_noAcc_loop_fusion f1 f2 acc1 acc2 xs =
+  k (sequenceLoops (doNoAccLoop f1 acc1) (doNoAccLoop f2 acc2)) ==
+  k (doNoAccLoop (f1 `fuseNoAccNoAccEFL` f2) (acc1 :*: acc2))
+  where _ = acc1 :: Int ; _ = acc2 :: Int ; k g = loopWrapper g xs
+
+prop_noAcc_up_loop_fusion f1 f2 acc1 acc2 xs =
+  k (sequenceLoops (doNoAccLoop f1 acc1) (doUpLoop f2 acc2)) ==
+  k (doUpLoop (f1 `fuseNoAccAccEFL` f2) (acc1 :*: acc2))
+  where
+       _ = acc1 :: Int
+       _ = acc2 :: Int
+       k g = loopWrapper g xs
+
+prop_up_noAcc_loop_fusion f1 f2 acc1 acc2 xs =
+  k (sequenceLoops (doUpLoop f1 acc1) (doNoAccLoop f2 acc2)) ==
+  k (doUpLoop (f1 `fuseAccNoAccEFL` f2) (acc1 :*: acc2))
+  where
+       _ = acc1 :: Int
+       _ = acc2 :: Int
+       k g = loopWrapper g xs
+
+prop_noAcc_down_loop_fusion f1 f2 acc1 acc2 xs =
+  k (sequenceLoops (doNoAccLoop f1 acc1) (doDownLoop f2 acc2)) ==
+    k (doDownLoop (f1 `fuseNoAccAccEFL` f2) (acc1 :*: acc2))
+    where _ = acc1 :: Int;  _ = acc2 :: Int ; k g = loopWrapper g xs
+
+prop_down_noAcc_loop_fusion f1 f2 acc1 acc2 xs =
+  k (sequenceLoops (doDownLoop f1 acc1) (doNoAccLoop f2 acc2)) ==
+  k (doDownLoop (f1 `fuseAccNoAccEFL` f2) (acc1 :*: acc2))
+  where
+       _ = acc1 :: Int
+       _ = acc2 :: Int
+       k g = loopWrapper g xs
+
+prop_map_map_loop_fusion f1 f2 acc1 acc2 xs =
+  k (sequenceLoops (doMapLoop f1 acc1) (doMapLoop f2 acc2)) ==
+    k (doMapLoop (f2 `fuseMapMapEFL` f1) (acc1 :*: acc2))
+    where _ = acc1 :: Int;  _ = acc2 :: Int ; k g = loopWrapper g xs
+
+prop_filter_filter_loop_fusion f1 f2 acc1 acc2 xs =
+  k (sequenceLoops (doFilterLoop f1 acc1) (doFilterLoop f2 acc2)) ==
+    k (doFilterLoop (f1 `fuseFilterFilterEFL` f2) (acc1 :*: acc2))
+    where _ = acc1 :: Int;  _ = acc2 :: Int ; k g = loopWrapper g xs
+
+prop_map_filter_loop_fusion f1 f2 acc1 acc2 xs =
+  k (sequenceLoops (doMapLoop f1 acc1) (doFilterLoop f2 acc2)) ==
+    k (doNoAccLoop (f1 `fuseMapFilterEFL` f2) (acc1 :*: acc2))
+    where _ = acc1 :: Int;  _ = acc2 :: Int ; k g = loopWrapper g xs
+
+prop_filter_map_loop_fusion f1 f2 acc1 acc2 xs =
+  k (sequenceLoops (doFilterLoop f1 acc1) (doMapLoop f2 acc2)) ==
+    k (doNoAccLoop (f1 `fuseFilterMapEFL` f2) (acc1 :*: acc2))
+    where _ = acc1 :: Int;  _ = acc2 :: Int ; k g = loopWrapper g xs
+
+prop_map_noAcc_loop_fusion f1 f2 acc1 acc2 xs =
+  k (sequenceLoops (doMapLoop f1 acc1) (doNoAccLoop f2 acc2)) ==
+    k (doNoAccLoop (f1 `fuseMapNoAccEFL` f2) (acc1 :*: acc2))
+    where _ = acc1 :: Int;  _ = acc2 :: Int ; k g = loopWrapper g xs
+
+prop_noAcc_map_loop_fusion f1 f2 acc1 acc2 xs =
+  k (sequenceLoops (doNoAccLoop f1 acc1) (doMapLoop f2 acc2)) ==
+    k (doNoAccLoop (f1 `fuseNoAccMapEFL` f2) (acc1 :*: acc2))
+    where _ = acc1 :: Int;  _ = acc2 :: Int ; k g = loopWrapper g xs
+
+prop_map_up_loop_fusion f1 f2 acc1 acc2 xs =
+  k (sequenceLoops (doMapLoop f1 acc1) (doUpLoop f2 acc2)) ==
+    k (doUpLoop (f1 `fuseMapAccEFL` f2) (acc1 :*: acc2))
+    where _ = acc1 :: Int;  _ = acc2 :: Int ; k g = loopWrapper g xs
+
+prop_up_map_loop_fusion f1 f2 acc1 acc2 xs =
+  k (sequenceLoops (doUpLoop f1 acc1) (doMapLoop f2 acc2)) ==
+    k (doUpLoop (f1 `fuseAccMapEFL` f2) (acc1 :*: acc2))
+    where _ = acc1 :: Int;  _ = acc2 :: Int ; k g = loopWrapper g xs
+
+prop_map_down_fusion f1 f2 acc1 acc2 xs =
+  k (sequenceLoops (doMapLoop f1 acc1) (doDownLoop f2 acc2)) ==
+    k (doDownLoop (f1 `fuseMapAccEFL` f2) (acc1 :*: acc2))
+    where _ = acc1 :: Int;  _ = acc2 :: Int ; k g = loopWrapper g xs
+
+prop_down_map_loop_fusion f1 f2 acc1 acc2 xs =
+  k (sequenceLoops (doDownLoop f1 acc1) (doMapLoop f2 acc2)) ==
+    k (doDownLoop (f1 `fuseAccMapEFL` f2) (acc1 :*: acc2))
+    where _ = acc1 :: Int;  _ = acc2 :: Int ; k g = loopWrapper g xs
+
+prop_filter_noAcc_loop_fusion f1 f2 acc1 acc2 xs =
+  k (sequenceLoops (doFilterLoop f1 acc1) (doNoAccLoop f2 acc2)) ==
+    k (doNoAccLoop (f1 `fuseFilterNoAccEFL` f2) (acc1 :*: acc2))
+    where _ = acc1 :: Int;  _ = acc2 :: Int ; k g = loopWrapper g xs
+
+prop_noAcc_filter_loop_fusion f1 f2 acc1 acc2 xs =
+  k (sequenceLoops (doNoAccLoop f1 acc1) (doFilterLoop f2 acc2)) ==
+    k (doNoAccLoop (f1 `fuseNoAccFilterEFL` f2) (acc1 :*: acc2))
+    where _ = acc1 :: Int;  _ = acc2 :: Int ; k g = loopWrapper g xs
+
+prop_filter_up_loop_fusion f1 f2 acc1 acc2 xs =
+  k (sequenceLoops (doFilterLoop f1 acc1) (doUpLoop f2 acc2)) ==
+    k (doUpLoop (f1 `fuseFilterAccEFL` f2) (acc1 :*: acc2))
+    where _ = acc1 :: Int;  _ = acc2 :: Int ; k g = loopWrapper g xs
+
+prop_up_filter_loop_fusion f1 f2 acc1 acc2 xs =
+  k (sequenceLoops (doUpLoop f1 acc1) (doFilterLoop f2 acc2)) ==
+    k (doUpLoop (f1 `fuseAccFilterEFL` f2) (acc1 :*: acc2))
+    where _ = acc1 :: Int;  _ = acc2 :: Int ; k g = loopWrapper g xs
+
+prop_filter_down_fusion f1 f2 acc1 acc2 xs =
+  k (sequenceLoops (doFilterLoop f1 acc1) (doDownLoop f2 acc2)) ==
+    k (doDownLoop (f1 `fuseFilterAccEFL` f2) (acc1 :*: acc2))
+    where _ = acc1 :: Int;  _ = acc2 :: Int ; k g = loopWrapper g xs
+
+prop_down_filter_loop_fusion f1 f2 acc1 acc2 xs =
+  k (sequenceLoops (doDownLoop f1 acc1) (doFilterLoop f2 acc2)) ==
+    k (doDownLoop (f1 `fuseAccFilterEFL` f2) (acc1 :*: acc2))
+    where _ = acc1 :: Int;  _ = acc2 :: Int ; k g = loopWrapper g xs
 

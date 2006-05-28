@@ -58,6 +58,7 @@ module Data.ByteString.Base (
         memchr,                     -- :: Ptr Word8 -> Word8 -> CSize -> Ptr Word8
         memcmp,                     -- :: Ptr Word8 -> Ptr Word8 -> CSize -> IO CInt
         memcpy,                     -- :: Ptr Word8 -> Ptr Word8 -> CSize -> IO ()
+        memmove,                    -- :: Ptr Word8 -> Ptr Word8 -> CSize -> IO ()
         memset,                     -- :: Ptr Word8 -> Word8 -> CSize -> IO (Ptr Word8)
 
         -- * cbits functions
@@ -384,6 +385,9 @@ foreign import ccall unsafe "string.h memcmp" memcmp
     :: Ptr Word8 -> Ptr Word8 -> CSize -> IO CInt
 
 foreign import ccall unsafe "string.h memcpy" memcpy
+    :: Ptr Word8 -> Ptr Word8 -> CSize -> IO ()
+
+foreign import ccall unsafe "string.h memmove" memmove
     :: Ptr Word8 -> Ptr Word8 -> CSize -> IO ()
 
 foreign import ccall unsafe "string.h memset" memset

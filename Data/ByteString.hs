@@ -229,7 +229,7 @@ import Prelude hiding           (reverse,head,tail,last,init,null
                                 ,concat,any,take,drop,splitAt,takeWhile
                                 ,dropWhile,span,break,elem,filter,maximum
                                 ,minimum,all,concatMap,foldl1,foldr1
-                                ,scanl,scanl1,scanr,scanr1,
+                                ,scanl,scanl1,scanr,scanr1
                                 ,readFile,writeFile,replicate
                                 ,getContents,getLine,putStr,putStrLn
                                 ,zip,zipWith,unzip,notElem)

@@ -37,7 +37,7 @@ prop::
 # interpreted fast. Just a quick check.
 .PHONY: prop-fast
 prop-fast::
-	chmod +x Properties.hs
+	@chmod +x Properties.hs
 	./Properties.hs 30
 
 # compiled
@@ -93,6 +93,11 @@ fuse: fuse.o
 	/usr/bin/time ./fuse < Usr.Dict.Words
 fuse.o: fuse.hs
 	${GHC} ${PKG} -O $< -o fuse -ddump-simpl-stats
+
+down-fuse: down-fuse.o
+	/usr/bin/time ./down-fuse
+down-fuse.o: down-fuse.hs
+	${GHC} ${PKG} -O $< -o ./down-fuse -ddump-simpl-stats
 
 lazylines: lazylines.o
 	/usr/bin/time ./lazylines < bigdata

@@ -311,7 +311,7 @@ loopWrapper body (PS srcFPtr srcOffset srcLen) =
           then return (acc :*: PS destFPtr 0 destLen)   -- no realloc for map
           else do destFPtr' <- mallocByteString destLen -- realloc
                   withForeignPtr destFPtr' $ \destPtr' ->
-                    memcpy destPtr' destPtr (fromIntegral destLen)
+                        memcpy destPtr' destPtr (fromIntegral destLen)
                   return (acc :*: PS destFPtr' 0 destLen)
 
 doUpLoop :: AccEFL acc -> acc -> ImperativeLoop acc
@@ -330,7 +330,38 @@ doDownLoop :: AccEFL acc -> acc -> ImperativeLoop acc
 doDownLoop f acc0 src dest len = loop (len-1) (len-1) acc0
   where STRICT3(loop)
         loop src_off dest_off acc
-            | src_off < 0 = return (acc :*: (len-1) - dest_off)
+            | src_off < 0 = do
+                           return (acc :*: (len-1) - dest_off)
+
+                        -- XXX ok, good we have the new length.
+                        -- but this is from the end of the string, not
+                        -- the former start. so when loopWrapper
+                        -- reallocs this, it'll copy from the old
+                        -- start, which is garbage now.
+                        -- (I think).
+                        -- 
+                        -- image:
+                        --
+                        --  [123456789] is now
+                        --  [....56789]
+                        --
+                        -- but then we try and realloc this part.
+                        --
+                        --  [....5]
+                        --
+                        -- leading to garbage
+                        --
+                        -- quick fix. memcpy the contents down.
+                        -- todo, find a real solution, involving
+                        -- returning the offset, and length.
+                        --
+
+                    -- doesn't work, since when fused, dest_off is always 0 :/
+                    --  let len' = (len - 1) - dest_off
+                    --  print (len', dest_off, dest, dest `plusPtr` dest_off)
+                    --  memmove dest (dest `plusPtr` dest_off) (fromIntegral len')
+                    --  return (acc :*: len')
+
             | otherwise   = do
                 x <- peekByteOff src src_off
                 case f acc x of
@@ -378,7 +409,8 @@ sequenceLoops :: ImperativeLoop acc -> ImperativeLoop acc' -> ImperativeLoop (Pa
 sequenceLoops loop1 loop2 src dest len = do
   (acc  :*: len')  <- loop1 src  dest len
   (acc' :*: len'') <- loop2 dest dest len'
-  return ((acc  :*: acc') :*: len'')
+  return ((acc :*: acc') :*: len'')
+
   -- note that we are using src == dest for the second loop
   -- yes, we are mutating the dest array in-place!
 
@@ -427,19 +459,13 @@ sequenceLoops loop1 loop2 src dest len = do
   loopWrapper loop2 (loopArr (loopWrapper loop1 arr)) =
     loopSndAcc (loopWrapper (sequenceLoops loop1 loop2) arr)
 
-
 "up/up loop fusion" forall f1 f2 acc1 acc2.
   sequenceLoops (doUpLoop f1 acc1) (doUpLoop f2 acc2) =
     doUpLoop (f1 `fuseAccAccEFL` f2) (acc1 :*: acc2)
 
-"down/down loop fusion" forall f1 f2 acc1 acc2.
-  sequenceLoops (doDownLoop f1 acc1) (doDownLoop f2 acc2) =
-    doDownLoop (f1 `fuseAccAccEFL` f2) (acc1 :*: acc2)
-
 "noAcc/noAcc loop fusion" forall f1 f2 acc1 acc2.
   sequenceLoops (doNoAccLoop f1 acc1) (doNoAccLoop f2 acc2) =
     doNoAccLoop (f1 `fuseNoAccNoAccEFL` f2) (acc1 :*: acc2)
-
 
 "noAcc/up loop fusion" forall f1 f2 acc1 acc2.
   sequenceLoops (doNoAccLoop f1 acc1) (doUpLoop f2 acc2) =
@@ -448,15 +474,6 @@ sequenceLoops loop1 loop2 src dest len = do
 "up/noAcc loop fusion" forall f1 f2 acc1 acc2.
   sequenceLoops (doUpLoop f1 acc1) (doNoAccLoop f2 acc2) =
     doUpLoop (f1 `fuseAccNoAccEFL` f2) (acc1 :*: acc2)
-
-"noAcc/down loop fusion" forall f1 f2 acc1 acc2.
-  sequenceLoops (doNoAccLoop f1 acc1) (doDownLoop f2 acc2) =
-    doDownLoop (f1 `fuseNoAccAccEFL` f2) (acc1 :*: acc2)
-
-"down/noAcc loop fusion" forall f1 f2 acc1 acc2.
-  sequenceLoops (doDownLoop f1 acc1) (doNoAccLoop f2 acc2) =
-    doDownLoop (f1 `fuseAccNoAccEFL` f2) (acc1 :*: acc2)
-
 
 "map/map loop fusion" forall f1 f2 acc1 acc2.
   sequenceLoops (doMapLoop f1 acc1) (doMapLoop f2 acc2) =
@@ -474,7 +491,6 @@ sequenceLoops loop1 loop2 src dest len = do
   sequenceLoops (doFilterLoop f1 acc1) (doMapLoop f2 acc2) =
     doNoAccLoop (f1 `fuseFilterMapEFL` f2) (acc1 :*: acc2)
 
-
 "map/noAcc loop fusion" forall f1 f2 acc1 acc2.
   sequenceLoops (doMapLoop f1 acc1) (doNoAccLoop f2 acc2) =
     doNoAccLoop (f1 `fuseMapNoAccEFL` f2) (acc1 :*: acc2)
@@ -490,15 +506,6 @@ sequenceLoops loop1 loop2 src dest len = do
 "up/map loop fusion" forall f1 f2 acc1 acc2.
   sequenceLoops (doUpLoop f1 acc1) (doMapLoop f2 acc2) =
     doUpLoop (f1 `fuseAccMapEFL` f2) (acc1 :*: acc2)
-
-"map/down fusion" forall f1 f2 acc1 acc2.
-  sequenceLoops (doMapLoop f1 acc1) (doDownLoop f2 acc2) =
-    doDownLoop (f1 `fuseMapAccEFL` f2) (acc1 :*: acc2)
-
-"down/map loop fusion" forall f1 f2 acc1 acc2.
-  sequenceLoops (doDownLoop f1 acc1) (doMapLoop f2 acc2) =
-    doDownLoop (f1 `fuseAccMapEFL` f2) (acc1 :*: acc2)
-
 
 "filter/noAcc loop fusion" forall f1 f2 acc1 acc2.
   sequenceLoops (doFilterLoop f1 acc1) (doNoAccLoop f2 acc2) =
@@ -516,14 +523,37 @@ sequenceLoops loop1 loop2 src dest len = do
   sequenceLoops (doUpLoop f1 acc1) (doFilterLoop f2 acc2) =
     doUpLoop (f1 `fuseAccFilterEFL` f2) (acc1 :*: acc2)
 
-"filter/down fusion" forall f1 f2 acc1 acc2.
-  sequenceLoops (doFilterLoop f1 acc1) (doDownLoop f2 acc2) =
-    doDownLoop (f1 `fuseFilterAccEFL` f2) (acc1 :*: acc2)
+--
+-- Disable down rules for now. Till doDownLoop fusion issue resolved.
+--
 
-"down/filter loop fusion" forall f1 f2 acc1 acc2.
-  sequenceLoops (doDownLoop f1 acc1) (doFilterLoop f2 acc2) =
-    doDownLoop (f1 `fuseAccFilterEFL` f2) (acc1 :*: acc2)
+-- "down/down loop fusion" forall f1 f2 acc1 acc2.
+--   sequenceLoops (doDownLoop f1 acc1) (doDownLoop f2 acc2) =
+--     doDownLoop (f1 `fuseAccAccEFL` f2) (acc1 :*: acc2)
 
+-- "noAcc/down loop fusion" forall f1 f2 acc1 acc2.
+--   sequenceLoops (doNoAccLoop f1 acc1) (doDownLoop f2 acc2) =
+--     doDownLoop (f1 `fuseNoAccAccEFL` f2) (acc1 :*: acc2)
+
+-- "down/noAcc loop fusion" forall f1 f2 acc1 acc2.
+--   sequenceLoops (doDownLoop f1 acc1) (doNoAccLoop f2 acc2) =
+--     doDownLoop (f1 `fuseAccNoAccEFL` f2) (acc1 :*: acc2)
+
+-- "map/down fusion" forall f1 f2 acc1 acc2.
+--  sequenceLoops (doMapLoop f1 acc1) (doDownLoop f2 acc2) =
+--    doDownLoop (f1 `fuseMapAccEFL` f2) (acc1 :*: acc2)
+
+-- "down/map loop fusion" forall f1 f2 acc1 acc2.
+--   sequenceLoops (doDownLoop f1 acc1) (doMapLoop f2 acc2) =
+--     doDownLoop (f1 `fuseAccMapEFL` f2) (acc1 :*: acc2)
+
+--"filter/down fusion" forall f1 f2 acc1 acc2.
+--  sequenceLoops (doFilterLoop f1 acc1) (doDownLoop f2 acc2) =
+--    doDownLoop (f1 `fuseFilterAccEFL` f2) (acc1 :*: acc2)
+
+-- "down/filter loop fusion" forall f1 f2 acc1 acc2.
+--   sequenceLoops (doDownLoop f1 acc1) (doFilterLoop f2 acc2) =
+--     doDownLoop (f1 `fuseAccFilterEFL` f2) (acc1 :*: acc2)
 
 "loopArr/loopSndAcc" forall x.
   loopArr (loopSndAcc x) = loopArr x
@@ -601,7 +631,6 @@ fuseAccAccEFL f g (acc1 :*: acc2) e1 =
       case g acc2 e2 of
         acc2' :*: res -> (acc1' :*: acc2') :*: res
 
-
 fuseAccNoAccEFL :: AccEFL acc -> NoAccEFL -> AccEFL (PairS acc noAcc)
 fuseAccNoAccEFL f g (acc :*: noAcc) e1 =
   case f acc e1 of
@@ -623,7 +652,7 @@ fuseNoAccNoAccEFL f g e1 =
     JustS e2 -> g e2
 
 fuseMapAccEFL :: MapEFL -> AccEFL acc -> AccEFL (PairS noAcc acc)
-fuseMapAccEFL f g (noAcc :*: acc) e1 = 
+fuseMapAccEFL f g (noAcc :*: acc) e1 =
   case g acc (f e1) of
     (acc' :*: res) -> (noAcc :*: acc') :*: res
 
@@ -679,7 +708,6 @@ fuseFilterNoAccEFL f g e1 =
 
 fuseFilterFilterEFL :: FilterEFL -> FilterEFL -> FilterEFL
 fuseFilterFilterEFL f g e1 = f e1 && g e1
-
 
 fuseMapFilterEFL :: MapEFL -> FilterEFL -> NoAccEFL
 fuseMapFilterEFL f g e1 =
