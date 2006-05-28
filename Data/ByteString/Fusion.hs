@@ -299,26 +299,28 @@ type ImperativeLoop acc =
     Ptr Word8          -- pointer to the start of the source byte array
  -> Ptr Word8          -- pointer to ther start of the destination byte array
  -> Int                -- length of the source byte array
- -> IO (PairS acc Int) -- result and length of destination that was filled
+ -> IO (PairS (PairS acc Int) Int) -- result and offset, length of dest that was filled
 
 loopWrapper :: ImperativeLoop acc -> ByteString -> PairS acc ByteString
 loopWrapper body (PS srcFPtr srcOffset srcLen) =
   inlinePerformIO $ withForeignPtr srcFPtr $ \srcPtr -> do
     destFPtr <- mallocByteString srcLen
     withForeignPtr destFPtr $ \destPtr -> do
-      (acc :*: destLen) <- body (srcPtr `plusPtr` srcOffset) destPtr srcLen
+      (acc :*: destOffset :*: destLen) <- body (srcPtr `plusPtr` srcOffset)
+                                                destPtr srcLen
       if destLen == srcLen
           then return (acc :*: PS destFPtr 0 destLen)   -- no realloc for map
           else do destFPtr' <- mallocByteString destLen -- realloc
                   withForeignPtr destFPtr' $ \destPtr' ->
-                        memcpy destPtr' destPtr (fromIntegral destLen)
+                    memcpy destPtr' (destPtr `plusPtr` destOffset)
+                                    (fromIntegral destLen)
                   return (acc :*: PS destFPtr' 0 destLen)
 
 doUpLoop :: AccEFL acc -> acc -> ImperativeLoop acc
 doUpLoop f acc0 src dest len = loop 0 0 acc0
   where STRICT3(loop)
         loop src_off dest_off acc
-            | src_off >= len = return (acc :*: dest_off)
+            | src_off >= len = return (acc :*: 0 :*: dest_off)
             | otherwise      = do
                 x <- peekByteOff src src_off
                 case f acc x of
@@ -330,8 +332,7 @@ doDownLoop :: AccEFL acc -> acc -> ImperativeLoop acc
 doDownLoop f acc0 src dest len = loop (len-1) (len-1) acc0
   where STRICT3(loop)
         loop src_off dest_off acc
-            | src_off < 0 = do
-                           return (acc :*: (len-1) - dest_off)
+            | src_off < 0 = return (acc :*: dest_off + 1 :*: len - (dest_off + 1))
 
                         -- XXX ok, good we have the new length.
                         -- but this is from the end of the string, not
@@ -373,7 +374,7 @@ doNoAccLoop :: NoAccEFL -> noAcc -> ImperativeLoop noAcc
 doNoAccLoop f noAcc src dest len = loop 0 0
   where STRICT2(loop)
         loop src_off dest_off
-            | src_off >= len = return (noAcc :*: dest_off)
+            | src_off >= len = return (noAcc :*: 0 :*: dest_off)
             | otherwise      = do
                 x <- peekByteOff src src_off
                 case f x of
@@ -385,7 +386,7 @@ doMapLoop :: MapEFL -> noAcc -> ImperativeLoop noAcc
 doMapLoop f noAcc src dest len = loop 0 0
   where STRICT2(loop)
         loop src_off dest_off
-            | src_off >= len = return (noAcc :*: len)
+            | src_off >= len = return (noAcc :*: 0 :*: len)
             | otherwise      = do
                 x <- peekByteOff src src_off
                 pokeByteOff dest dest_off (f x)
@@ -395,7 +396,7 @@ doFilterLoop :: FilterEFL -> noAcc -> ImperativeLoop noAcc
 doFilterLoop f noAcc src dest len = loop 0 0
   where STRICT2(loop)
         loop src_off dest_off
-            | src_off >= len = return (noAcc :*: dest_off)
+            | src_off >= len = return (noAcc :*: 0 :*: dest_off)
             | otherwise      = do
                 x <- peekByteOff src src_off
                 if f x
@@ -405,14 +406,18 @@ doFilterLoop f noAcc src dest len = loop 0 0
 
 -- run two loops in sequence,
 -- think of it as: loop1 >> loop2
-sequenceLoops :: ImperativeLoop acc -> ImperativeLoop acc' -> ImperativeLoop (PairS acc acc')
-sequenceLoops loop1 loop2 src dest len = do
-  (acc  :*: len')  <- loop1 src  dest len
-  (acc' :*: len'') <- loop2 dest dest len'
-  return ((acc :*: acc') :*: len'')
-
-  -- note that we are using src == dest for the second loop
-  -- yes, we are mutating the dest array in-place!
+sequenceLoops :: ImperativeLoop acc1
+              -> ImperativeLoop acc2
+              -> ImperativeLoop (PairS acc1 acc2)
+sequenceLoops loop1 loop2 src dest len0 = do
+  (acc1 :*: off1 :*: len1) <- loop1 src dest len0
+  (acc2 :*: off2 :*: len2) <-
+    let src'  = dest `plusPtr` off1
+        dest' = src' -- note that we are using dest == src
+                     -- for the second loop as we are
+                     -- mutating the dest array in-place!
+     in loop2 src' dest' len1
+  return ((acc1  :*: acc2) :*: off1 + off2 :*: len2)
 
   -- TODO: prove that this is associative! (I think it is)
   -- since we can't be sure how the RULES will combine loops.
