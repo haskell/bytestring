@@ -46,6 +46,7 @@ import Foreign.Ptr
 import Foreign.Storable         (Storable(..))
 
 import Data.Word                (Word8)
+import System.IO.Unsafe         (unsafePerformIO)
 
 -- -----------------------------------------------------------------------------
 --
@@ -303,7 +304,7 @@ type ImperativeLoop acc =
 
 loopWrapper :: ImperativeLoop acc -> ByteString -> PairS acc ByteString
 loopWrapper body (PS srcFPtr srcOffset srcLen) =
-  inlinePerformIO $ withForeignPtr srcFPtr $ \srcPtr -> do
+  unsafePerformIO $ withForeignPtr srcFPtr $ \srcPtr -> do
     destFPtr <- mallocByteString srcLen
     withForeignPtr destFPtr $ \destPtr -> do
       (acc :*: destOffset :*: destLen) <- body (srcPtr `plusPtr` srcOffset)
