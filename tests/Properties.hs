@@ -1,12 +1,12 @@
 #!/usr/bin/env runhaskell
 {-# OPTIONS_GHC -fglasgow-exts -fallow-overlapping-instances #-}
-
+module Main where
 --
 -- Must have rules off, otherwise the fusion rules will replace the rhs
 -- with the lhs, and we only end up testing lhs == lhs
 --
 
-import Test.QuickCheck.Batch
+import Test.QuickCheck.Batch hiding (run)
 import Test.QuickCheck
 import Text.Show.Functions
 
@@ -90,7 +90,9 @@ instance Arbitrary P.ByteString where
 ------------------------------------------------------------------------
 -- The entry point
 
-main = do
+main = run tests
+
+run tests = do
     x <- getArgs
     let n = if null x then 100 else read . head $ x
     mapM_ (\(s,a) -> printf "%-25s: " s >> a n) tests
@@ -99,13 +101,22 @@ main = do
 -- And now a list of all the properties to test.
 --
 
-tests =
-    [("invariant",          mytest prop_invariant)
+tests = misc_tests
+     ++ bl_tests
+     ++ bp_tests
+     ++ pl_tests
+     ++ bb_tests
+     ++ ll_tests
+     ++ fusion_tests
+
+misc_tests =
+    [("invariant",          mytest prop_invariant)]
 
 ------------------------------------------------------------------------
 -- ByteString.Lazy <=> List
 
-    ,("all",         mytest prop_allBL)
+bl_tests =
+    [("all",         mytest prop_allBL)
     ,("any",         mytest prop_anyBL)
     ,("append",      mytest prop_appendBL)
     ,("compare",     mytest prop_compareBL)
@@ -153,11 +164,13 @@ tests =
     ,("notElem",     mytest prop_notElemBL)
     ,("elemIndex",   mytest prop_elemIndexBL)
     ,("elemIndices", mytest prop_elemIndicesBL)
+    ]
 
 ------------------------------------------------------------------------
 -- ByteString.Lazy <=> ByteString
 
-    ,("all",         mytest prop_allBP)
+bp_tests =
+    [("all",         mytest prop_allBP)
     ,("any",         mytest prop_anyBP)
     ,("append",      mytest prop_appendBP)
     ,("compare",     mytest prop_compareBP)
@@ -207,11 +220,13 @@ tests =
     ,("notElem",     mytest prop_notElemBP)
     ,("elemIndex",   mytest prop_elemIndexBP)
     ,("elemIndices", mytest prop_elemIndicesBP)
+    ]
 
 ------------------------------------------------------------------------
 -- ByteString <=> List
 
-    ,("all",         mytest prop_allPL)
+pl_tests =
+    [("all",         mytest prop_allPL)
     ,("any",         mytest prop_anyPL)
     ,("append",      mytest prop_appendPL)
     ,("compare",     mytest prop_comparePL)
@@ -261,11 +276,13 @@ tests =
     ,("notElem",     mytest prop_notElemPL)
     ,("elemIndex",   mytest prop_elemIndexPL)
     ,("elemIndices", mytest prop_elemIndicesPL)
+    ]
 
 ------------------------------------------------------------------------
 -- extra ByteString properties
 
-    ,    ("bijection",      mytest prop_bijectionBB)
+bb_tests =
+    [    ("bijection",      mytest prop_bijectionBB)
     ,    ("bijection'",     mytest prop_bijectionBB')
     ,    ("pack/unpack",    mytest prop_packunpackBB)
     ,    ("unpack/pack",    mytest prop_packunpackBB')
@@ -421,12 +438,14 @@ tests =
     ,    ("zip1",           mytest prop_zip1BB)
     ,    ("zipWith",        mytest prop_zipWithBB)
     ,    ("unzip",          mytest prop_unzipBB)
+    ]
 
 ------------------------------------------------------------------------
 -- Fusion rules
 
+fusion_tests =
 -- v1 fusion
-    ,    ("lazy loop/loop fusion", mytest prop_lazylooploop)
+    [    ("lazy loop/loop fusion", mytest prop_lazylooploop)
     ,    ("loop/loop fusion",      mytest prop_looploop)
 
 -- v2 fusion
@@ -455,12 +474,14 @@ tests =
     ,("up/filter     loop fusion",    mytest prop_up_filter_loop_fusion)
     ,("filter/down   loop fusion",    mytest prop_filter_down_fusion)
     ,("down/filter   loop fusion",    mytest prop_down_filter_loop_fusion)
+    ]
 
 
 ------------------------------------------------------------------------
 -- Extra lazy properties
 
-    ,("eq 1",               mytest prop_eq1)
+ll_tests =
+    [("eq 1",               mytest prop_eq1)
     ,("eq 2",               mytest prop_eq2)
     ,("eq 3",               mytest prop_eq3)
     ,("compare 1",          mytest prop_compare1)
