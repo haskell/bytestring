@@ -87,10 +87,12 @@ module Data.ByteString (
         -- ** Scans
         scanl,                  -- :: (Word8 -> Word8 -> Word8) -> Word8 -> ByteString -> ByteString
         scanl1,                 -- :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString
+        scanr,                  -- :: (Word8 -> Word8 -> Word8) -> Word8 -> ByteString -> ByteString
+        scanr1,                 -- :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString
 
         -- ** Accumulating maps
         mapAccumL,              -- :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
---      mapAccumR,              -- :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
+        mapAccumR,              -- :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
         mapIndexed,             -- :: (Int -> Word8 -> Word8) -> ByteString -> ByteString
 
         -- ** Unfolding ByteStrings
@@ -227,7 +229,8 @@ import Prelude hiding           (reverse,head,tail,last,init,null
                                 ,concat,any,take,drop,splitAt,takeWhile
                                 ,dropWhile,span,break,elem,filter,maximum
                                 ,minimum,all,concatMap,foldl1,foldr1
-                                ,scanl,scanl1,readFile,writeFile,replicate
+                                ,scanl,scanl1,scanr,scanr1,
+                                ,readFile,writeFile,replicate
                                 ,getContents,getLine,putStr,putStrLn
                                 ,zip,zipWith,unzip,notElem)
 
@@ -581,7 +584,7 @@ append xs ys | null xs   = ys
 -- | /O(n)/ 'map' @f xs@ is the ByteString obtained by applying @f@ to each
 -- element of @xs@. This function is subject to array fusion.
 map :: (Word8 -> Word8) -> ByteString -> ByteString
-map f = loopArr . loopU (mapEFL f) NoAcc
+map = loopMap
 {-# INLINE map #-}
 
 -- | /O(n)/ Like 'map', but not fuseable. The benefit is that it is
@@ -640,7 +643,7 @@ transpose ps = P.map pack (List.transpose (P.map unpack ps))
 -- ByteString using the binary operator, from left to right.
 -- This function is subject to array fusion.
 foldl :: (a -> Word8 -> a) -> a -> ByteString -> a
-foldl f z = loopAcc . loopU (foldEFL f) z
+foldl f z = loopAcc . loopUp (foldEFL f) z
 {-# INLINE foldl #-}
 
 {-
@@ -658,22 +661,17 @@ foldl f v (PS x s l) = inlinePerformIO $ withForeignPtr x $ \ptr ->
 -}
 
 -- | 'foldl\'' is like 'foldl', but strict in the accumulator.
+-- Though actually foldl is also strict in the accumulator.
 foldl' :: (a -> Word8 -> a) -> a -> ByteString -> a
-foldl' f z = loopAcc . loopU (foldEFL' f) z
+foldl' = foldl
 {-# INLINE foldl' #-}
 
 -- | 'foldr', applied to a binary operator, a starting value
 -- (typically the right-identity of the operator), and a ByteString,
 -- reduces the ByteString using the binary operator, from right to left.
 foldr :: (Word8 -> a -> a) -> a -> ByteString -> a
-foldr k z (PS x s l) = inlinePerformIO $ withForeignPtr x $ \ptr ->
-        go (ptr `plusPtr` s) (ptr `plusPtr` (s+l))
-    where
-        STRICT2(go)
-        go p q | p == q    = return z
-               | otherwise = do c  <- peek p
-                                ws <- go (p `plusPtr` 1) q
-                                return $ c `k` ws
+foldr k z = loopAcc . loopDown (foldEFL (flip k)) z
+{-# INLINE foldr #-}
 
 -- | 'foldl1' is a variant of 'foldl' that has no starting value
 -- argument, and thus must be applied to non-empty 'ByteStrings'.
@@ -682,12 +680,14 @@ foldl1 :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldl1 f ps
     | null ps   = errorEmptyList "foldl1"
     | otherwise = foldl f (unsafeHead ps) (unsafeTail ps)
+{-# INLINE foldl1 #-}
 
 -- | 'foldl1\'' is like 'foldl1', but strict in the accumulator.
 foldl1' :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldl1' f ps
     | null ps   = errorEmptyList "foldl1'"
     | otherwise = foldl' f (unsafeHead ps) (unsafeTail ps)
+{-# INLINE foldl1' #-}
 
 -- | 'foldr1' is a variant of 'foldr' that has no starting value argument,
 -- and thus must be applied to non-empty 'ByteString's
@@ -695,6 +695,7 @@ foldr1 :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldr1 f ps
     | null ps        = errorEmptyList "foldr1"
     | otherwise      = foldr f (last ps) (init ps)
+{-# INLINE foldr1 #-}
 
 -- ---------------------------------------------------------------------
 -- Special folds
@@ -793,13 +794,17 @@ minimum_ ptr n m c
 -}
 
 mapAccumL :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
-mapAccumL f z = unSP . loopU (mapAccumEFL f) z
+mapAccumL f z = unSP . loopUp (mapAccumEFL f) z
+{-# INLINE mapAccumL #-}
 
---mapAccumR :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
+mapAccumR :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
+mapAccumR f z = unSP . loopDown (mapAccumEFL f) z
+{-# INLINE mapAccumR #-}
 
 -- | /O(n)/ map Word8 functions, provided with the index at each position
 mapIndexed :: (Int -> Word8 -> Word8) -> ByteString -> ByteString
-mapIndexed f = loopArr . loopU (mapIndexEFL f) 0
+mapIndexed f = loopArr . loopUp (mapIndexEFL f) 0
+{-# INLINE mapIndexed #-}
 
 -- ---------------------------------------------------------------------
 -- Building ByteStrings
@@ -813,7 +818,7 @@ mapIndexed f = loopArr . loopU (mapIndexEFL f) 0
 --
 -- > last (scanl f z xs) == foldl f z xs.
 scanl :: (Word8 -> Word8 -> Word8) -> Word8 -> ByteString -> ByteString
-scanl f z ps = loopArr . loopU (scanEFL f) z $ (ps `snoc` 0) -- extra space
+scanl f z ps = loopArr . loopUp (scanEFL f) z $ (ps `snoc` 0) -- extra space
 {-# INLINE scanl #-}
 
 -- | 'scanl1' is a variant of 'scanl' that has no starting value argument.
@@ -825,6 +830,18 @@ scanl1 f ps
     | null ps   = empty
     | otherwise = scanl f (unsafeHead ps) (unsafeTail ps)
 {-# INLINE scanl1 #-}
+
+-- | scanr is the right-to-left dual of scanl.
+scanr :: (Word8 -> Word8 -> Word8) -> Word8 -> ByteString -> ByteString
+scanr f z ps = loopArr . loopDown (scanEFL (flip f)) z $ (ps `snoc` 0) -- extra space
+{-# INLINE scanr #-}
+
+-- | 'scanr1' is a variant of 'scanr' that has no starting value argument.
+scanr1 :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString
+scanr1 f ps
+    | null ps   = empty
+    | otherwise = scanl f (unsafeHead ps) (unsafeTail ps)
+{-# INLINE scanr1 #-}
 
 -- ---------------------------------------------------------------------
 -- Unfolds and replicates
@@ -1302,7 +1319,7 @@ notElem c ps = not (elem c ps)
 -- returns a ByteString containing those characters that satisfy the
 -- predicate. This function is subject to array fusion.
 filter :: (Word8 -> Bool) -> ByteString -> ByteString
-filter p  = loopArr . loopU (filterEFL p) NoAcc
+filter = loopFilter
 {-# INLINE filter #-}
 
 -- | /O(n)/ 'filter\'' is a non-fuseable version of filter, that may be
