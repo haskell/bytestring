@@ -584,7 +584,7 @@ append xs ys | null xs   = ys
 -- | /O(n)/ 'map' @f xs@ is the ByteString obtained by applying @f@ to each
 -- element of @xs@. This function is subject to array fusion.
 map :: (Word8 -> Word8) -> ByteString -> ByteString
-map = loopMap
+map f = loopArr . loopMap f
 {-# INLINE map #-}
 
 -- | /O(n)/ Like 'map', but not fuseable. The benefit is that it is
@@ -1319,7 +1319,7 @@ notElem c ps = not (elem c ps)
 -- returns a ByteString containing those characters that satisfy the
 -- predicate. This function is subject to array fusion.
 filter :: (Word8 -> Bool) -> ByteString -> ByteString
-filter = loopFilter
+filter f = loopArr . loopFilter f
 {-# INLINE filter #-}
 
 -- | /O(n)/ 'filter\'' is a non-fuseable version of filter, that may be
