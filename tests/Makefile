@@ -14,10 +14,10 @@ GHC_ = $(GHC) -threaded $(PP_OPTS) -fglasgow-exts --make
 
 SRCS= TestFramework.hs UnitTestsMain.hs Tests.hs
 
-all:  prop prop-compiled-fusion
+all:  prop prop-fusion-compiled
 fast: prop-fast
 
-everything: prop prop-fusion prop-compiled prop-fusion-compiled runbench htest wc spellcheck letter_frequency linesort fuse inline
+everything: prop prop-compiled prop-fusion-compiled runbench htest wc spellcheck letter_frequency linesort fuse inline
 
 # build executable, linking in all tests
 run-utests: $(SRCS)
