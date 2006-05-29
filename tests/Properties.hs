@@ -398,7 +398,8 @@ fusion_tests =
     ,    ("loop/loop fusion",      mytest prop_looploop)
 
 -- v2 fusion
---  ,   ("loop/loop wrapper elim",  mytest prop_loop_loop_wrapper_elimination)
+    ,("loop/loop wrapper elim",       mytest prop_loop_loop_wrapper_elimination)
+    ,("sequence association",         mytest prop_sequenceloops_assoc)
 
     ,("up/up         loop fusion",    mytest prop_up_up_loop_fusion)
     ,("down/down     loop fusion",    mytest prop_down_down_loop_fusion)
@@ -1395,34 +1396,35 @@ prop_looploop em1 em2 start1 start2 arr =
    _ = start1 :: Int
    _ = start2 :: Int
 
--- check associativity of sequence loops
-{-
-prop_sequenceloops_assoc x y z xs =  ((x * y) * z) xs == (x * (y * z)) xs
-    where (*) = unsafePerformIO . sequenceLoops
-          _ = x :: Ptr Word8 -> Ptr Word8 -> Int -> IO (PairS Int Int)
-          _ = y :: Ptr Word8 -> Ptr Word8 -> Int -> IO (PairS Int Int)
-          _ = z :: Ptr Word8 -> Ptr Word8 -> Int -> IO (PairS Int Int)
--}
+------------------------------------------------------------------------
 
-{-
--- can't generate arbitrary loops yet
-prop_loop_loop_wrapper_elimination arr =
-  loopWrapper loop2 (loopArr (loopWrapper loop1 arr)) ==
-    loopSndAcc (loopWrapper (sequenceLoops loop1 loop2) arr)
+-- check associativity of sequence loops
+prop_sequenceloops_assoc x y z a1 a2 a3 xs = k ((f * g) * h) == k (f * (g * h))
+    where
+       (*) = sequenceLoops
+
+       f = doUpLoop x a1
+       g = doUpLoop y a2
+       h = doUpLoop z a3
+
+       _ = a1 :: Int; _ = a2 :: Int; _ = a3 :: Int
+       k g = loopArr (loopWrapper g xs)
+
+-- check wrapper elimination
+prop_loop_loop_wrapper_elimination x y a1 a2 xs =
+  loopWrapper g (loopArr (loopWrapper f xs)) ==
+    loopSndAcc (loopWrapper (sequenceLoops f g) xs)
   where
-    loop1 = doUpLoop ...
-    loop2 = doDownLoop ..
--}
+       f = doUpLoop x a1
+       g = doUpLoop y a2
+       _ = a1 :: Int; _ = a2 :: Int
 
 ------------------------------------------------------------------------
 
 prop_up_up_loop_fusion f1 f2 acc1 acc2 xs =
   k (sequenceLoops (doUpLoop f1 acc1) (doUpLoop f2 acc2)) ==
   k (doUpLoop (f1 `fuseAccAccEFL` f2) (acc1 :*: acc2))
-  where
-       _ = acc1 :: Int
-       _ = acc2 :: Int
-       k g = loopWrapper g xs
+  where _ = acc1 :: Int; _ = acc2 :: Int; k g = loopWrapper g xs
 
 --
 -- Bug in down/down fusion. the fused form is always off by one, and
@@ -1441,18 +1443,12 @@ prop_noAcc_noAcc_loop_fusion f1 f2 acc1 acc2 xs =
 prop_noAcc_up_loop_fusion f1 f2 acc1 acc2 xs =
   k (sequenceLoops (doNoAccLoop f1 acc1) (doUpLoop f2 acc2)) ==
   k (doUpLoop (f1 `fuseNoAccAccEFL` f2) (acc1 :*: acc2))
-  where
-       _ = acc1 :: Int
-       _ = acc2 :: Int
-       k g = loopWrapper g xs
+  where _ = acc1 :: Int; _ = acc2 :: Int; k g = loopWrapper g xs
 
 prop_up_noAcc_loop_fusion f1 f2 acc1 acc2 xs =
   k (sequenceLoops (doUpLoop f1 acc1) (doNoAccLoop f2 acc2)) ==
   k (doUpLoop (f1 `fuseAccNoAccEFL` f2) (acc1 :*: acc2))
-  where
-       _ = acc1 :: Int
-       _ = acc2 :: Int
-       k g = loopWrapper g xs
+  where _ = acc1 :: Int; _ = acc2 :: Int; k g = loopWrapper g xs
 
 prop_noAcc_down_loop_fusion f1 f2 acc1 acc2 xs =
   k (sequenceLoops (doNoAccLoop f1 acc1) (doDownLoop f2 acc2)) ==
@@ -1462,10 +1458,7 @@ prop_noAcc_down_loop_fusion f1 f2 acc1 acc2 xs =
 prop_down_noAcc_loop_fusion f1 f2 acc1 acc2 xs =
   k (sequenceLoops (doDownLoop f1 acc1) (doNoAccLoop f2 acc2)) ==
   k (doDownLoop (f1 `fuseAccNoAccEFL` f2) (acc1 :*: acc2))
-  where
-       _ = acc1 :: Int
-       _ = acc2 :: Int
-       k g = loopWrapper g xs
+  where _ = acc1 :: Int; _ = acc2 :: Int; k g = loopWrapper g xs
 
 prop_map_map_loop_fusion f1 f2 acc1 acc2 xs =
   k (sequenceLoops (doMapLoop f1 acc1) (doMapLoop f2 acc2)) ==
