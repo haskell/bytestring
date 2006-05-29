@@ -277,18 +277,23 @@ really work reliably.
 
 loopUp :: AccEFL acc -> acc -> ByteString -> PairS acc ByteString
 loopUp f a arr = loopWrapper (doUpLoop f a) arr
+{-# INLINE loopUp #-}
 
 loopDown :: AccEFL acc -> acc -> ByteString -> PairS acc ByteString
 loopDown f a arr = loopWrapper (doDownLoop f a) arr
+{-# INLINE loopDown #-}
 
 loopNoAcc :: NoAccEFL -> ByteString -> PairS NoAcc ByteString
 loopNoAcc f arr = loopWrapper (doNoAccLoop f NoAcc) arr
+{-# INLINE loopNoAcc #-}
 
 loopMap :: MapEFL -> ByteString -> PairS NoAcc ByteString
 loopMap f arr = loopWrapper (doMapLoop f NoAcc) arr
+{-# INLINE loopMap #-}
 
 loopFilter :: FilterEFL -> ByteString -> PairS NoAcc ByteString
 loopFilter f arr = loopWrapper (doFilterLoop f NoAcc) arr
+{-# INLINE loopFilter #-}
 
 -- The type of imperitive loops that fill in a destination array by
 -- reading a source array. They may not fill in the whole of the dest
@@ -357,14 +362,14 @@ doNoAccLoop f noAcc src dest len = loop 0 0
                            >> loop (src_off+1) (dest_off+1)
 
 doMapLoop :: MapEFL -> noAcc -> ImperativeLoop noAcc
-doMapLoop f noAcc src dest len = loop 0 0
-  where STRICT2(loop)
-        loop src_off dest_off
-            | src_off >= len = return (noAcc :*: 0 :*: len)
+doMapLoop f noAcc src dest len = loop 0
+  where STRICT1(loop)
+        loop n
+            | n >= len = return (noAcc :*: 0 :*: len)
             | otherwise      = do
-                x <- peekByteOff src src_off
-                pokeByteOff dest dest_off (f x)
-                loop (src_off+1) (dest_off+1)
+                x <- peekByteOff src n
+                pokeByteOff dest n (f x)
+                loop (n+1) -- offset always the same, only pass 1 arg
 
 doFilterLoop :: FilterEFL -> noAcc -> ImperativeLoop noAcc
 doFilterLoop f noAcc src dest len = loop 0 0
@@ -396,39 +401,33 @@ sequenceLoops loop1 loop2 src dest len0 = do
   -- TODO: prove that this is associative! (I think it is)
   -- since we can't be sure how the RULES will combine loops.
 
-{-# INLINE loopUp #-}
-{-# INLINE loopDown #-}
-{-# INLINE loopNoAcc #-}
-{-# INLINE loopMap #-}
-{-# INLINE loopFilter #-}
-
 #if defined(__GLASGOW_HASKELL__)
 
-{-# INLINE [1] doUpLoop     #-}
-{-# INLINE [1] doDownLoop   #-}
-{-# INLINE [1] doNoAccLoop  #-}
-{-# INLINE [1] doMapLoop    #-}
-{-# INLINE [1] doFilterLoop #-}
+{-# INLINE [1] doUpLoop             #-}
+{-# INLINE [1] doDownLoop           #-}
+{-# INLINE [1] doNoAccLoop          #-}
+{-# INLINE [1] doMapLoop            #-}
+{-# INLINE [1] doFilterLoop         #-}
 
-{-# INLINE [1] loopWrapper   #-}
-{-# INLINE [1] sequenceLoops #-}
+{-# INLINE [1] loopWrapper          #-}
+{-# INLINE [1] sequenceLoops        #-}
 
-{-# INLINE [1] fuseAccAccEFL #-}
-{-# INLINE [1] fuseAccNoAccEFL #-}
-{-# INLINE [1] fuseNoAccAccEFL #-}
-{-# INLINE [1] fuseNoAccNoAccEFL #-}
-{-# INLINE [1] fuseMapAccEFL #-}
-{-# INLINE [1] fuseAccMapEFL #-}
-{-# INLINE [1] fuseMapNoAccEFL #-}
-{-# INLINE [1] fuseNoAccMapEFL #-}
-{-# INLINE [1] fuseMapMapEFL #-}
-{-# INLINE [1] fuseAccFilterEFL #-}
-{-# INLINE [1] fuseFilterAccEFL #-}
-{-# INLINE [1] fuseNoAccFilterEFL #-}
-{-# INLINE [1] fuseFilterNoAccEFL #-}
-{-# INLINE [1] fuseFilterFilterEFL #-}
-{-# INLINE [1] fuseMapFilterEFL #-}
-{-# INLINE [1] fuseFilterMapEFL #-}
+{-# INLINE [1] fuseAccAccEFL        #-}
+{-# INLINE [1] fuseAccNoAccEFL      #-}
+{-# INLINE [1] fuseNoAccAccEFL      #-}
+{-# INLINE [1] fuseNoAccNoAccEFL    #-}
+{-# INLINE [1] fuseMapAccEFL        #-}
+{-# INLINE [1] fuseAccMapEFL        #-}
+{-# INLINE [1] fuseMapNoAccEFL      #-}
+{-# INLINE [1] fuseNoAccMapEFL      #-}
+{-# INLINE [1] fuseMapMapEFL        #-}
+{-# INLINE [1] fuseAccFilterEFL     #-}
+{-# INLINE [1] fuseFilterAccEFL     #-}
+{-# INLINE [1] fuseNoAccFilterEFL   #-}
+{-# INLINE [1] fuseFilterNoAccEFL   #-}
+{-# INLINE [1] fuseFilterFilterEFL  #-}
+{-# INLINE [1] fuseMapFilterEFL     #-}
+{-# INLINE [1] fuseFilterMapEFL     #-}
 
 #endif
 
@@ -705,3 +704,4 @@ fuseFilterMapEFL f g e1 =
   case f e1 of
     False -> NothingS
     True  -> JustS (g e1)
+
