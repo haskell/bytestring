@@ -1,5 +1,3 @@
-#!/usr/bin/env runhaskell
-module Main where
 --
 -- Must have rules off, otherwise the fusion rules will replace the rhs
 -- with the lhs, and we only end up testing lhs == lhs

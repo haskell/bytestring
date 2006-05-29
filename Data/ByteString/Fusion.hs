@@ -504,10 +504,6 @@ sequenceLoops loop1 loop2 src dest len0 = do
   sequenceLoops (doDownLoop f1 acc1) (doFilterLoop f2 acc2) =
     doDownLoop (f1 `fuseAccFilterEFL` f2) (acc1 :*: acc2)
 
---
--- now, if we ever write a noAcc loop form:
---
-
 "noAcc/noAcc loop fusion" forall f1 f2 acc1 acc2.
   sequenceLoops (doNoAccLoop f1 acc1) (doNoAccLoop f2 acc2) =
     doNoAccLoop (f1 `fuseNoAccNoAccEFL` f2) (acc1 :*: acc2)

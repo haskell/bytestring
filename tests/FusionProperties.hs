@@ -1,8 +1,6 @@
-#!/usr/bin/env runhaskell
 --
 -- You want to compile with, and with -O2, checking the rules are firing.
 --
-module Main where
 
 import Test.QuickCheck
 import QuickCheckUtils
@@ -49,6 +47,26 @@ tests =                           -- 29/5/06, all tests are fusing:
     ,("up/map        list", mytest prop_upmap_list)             -- checked
     ,("up/up         lazy", mytest prop_upup_lazy)              -- checked
     ,("up/up         list", mytest prop_upup_list)              -- checked
+    ,("noacc/noacc   lazy", mytest prop_noacc_noacc_lazy)       -- checked
+    ,("noacc/noacc   list", mytest prop_noacc_noacc_list)       -- checked
+    ,("noacc/up      lazy", mytest prop_noacc_up_lazy)          -- checked
+    ,("noacc/up      list", mytest prop_noacc_up_list)          -- checked
+    ,("up/noacc      lazy", mytest prop_up_noacc_lazy)          -- checked
+    ,("up/noacc      list", mytest prop_up_noacc_list)          -- checked
+    ,("map/noacc     lazy", mytest prop_map_noacc_lazy)         -- checked
+    ,("map/noacc     list", mytest prop_map_noacc_list)         -- checked
+    ,("noacc/map     lazy", mytest prop_noacc_map_lazy)         -- checked
+    ,("noacc/map     list", mytest prop_noacc_map_list)         -- checked
+    ,("filter/noacc  lazy", mytest prop_filter_noacc_lazy)      -- checked
+    ,("filter/noacc  list", mytest prop_filter_noacc_list)      -- checked
+    ,("noacc/filter  lazy", mytest prop_noacc_filter_lazy)      -- checked
+    ,("noacc/filter  list", mytest prop_noacc_filter_list)      -- checked
+    ,("noacc/down    lazy", mytest prop_noacc_down_lazy)        -- checked
+    ,("noacc/down    list", mytest prop_noacc_down_list)        -- checked
+--  ,("down/noacc    lazy", mytest prop_down_noacc_lazy)        -- checked
+    ,("down/noacc    list", mytest prop_down_noacc_list)        -- checked
+
+
     ,("length/loop   list", mytest prop_lengthloop_list)
 --  ,("length/loop   lazy", mytest prop_lengthloop_lazy)
     ,("maximum/loop  list", mytest prop_maximumloop_list)
@@ -119,7 +137,7 @@ prop_filterup_list = compare3
      ((\f g ->   foldl g (0::W) .   filter f) :: (W -> Bool) -> (W -> W -> W) -> [W] -> W)
 
 prop_filterup_lazy = compare3
-     (\f g -> L.foldl g (0::W) . L.filter f) 
+     (\f g -> L.foldl g (0::W) . L.filter f)
      (\f g -> P.foldl g (0::W) . P.filter f)
 
 prop_upfilter_list = compare3
@@ -177,16 +195,88 @@ prop_downfilter_lazy = compare3
      (\f g -> P.filter f . P.scanr g (0::W))
 -}
 
-------------------------------------------------------------------------
--- no functions written with this yet..
+prop_noacc_noacc_list = compare5
+    (\f g h i -> (P.map f . P.filter g) . (P.map h . P.filter i))
+    ((\f g h i -> (  map f .   filter g) . (  map h .   filter i))
+        :: (W -> W) -> (W -> Bool) -> (W -> W) -> (W -> Bool) -> [W] -> [W])
 
--- noAcc/noAcc
--- noAcc/up
--- up/noAcc
--- filter/noAcc
--- noAcc/filter
--- noAcc/down
--- down/noAcc
+prop_noacc_noacc_lazy = compare5
+     (\f g h i -> (L.map f . L.filter g) . (L.map h . L.filter i))
+     (\f g h i -> (P.map f . P.filter g) . (P.map h . P.filter i))
+
+prop_noacc_up_list = compare4
+    ( \g h i -> P.foldl g (0::W) . (P.map h . P.filter i))
+    ((\g h i ->   foldl g (0::W) . (  map h .   filter i))
+        :: (W -> W -> W) -> (W -> W) -> (W -> Bool) -> [W] -> W)
+
+prop_noacc_up_lazy = compare4
+    (\g h i -> L.foldl g (0::W) . (L.map h . L.filter i))
+    (\g h i -> P.foldl g (0::W) . (P.map h . P.filter i))
+
+prop_up_noacc_list = compare4
+    ( \g h i -> (P.map h . P.filter i) . P.scanl g (0::W))
+    ((\g h i -> (  map h .   filter i) .   scanl g (0::W))
+        :: (W -> W -> W) -> (W -> W) -> (W -> Bool) -> [W] -> [W])
+
+prop_up_noacc_lazy = compare4
+    (\g h i -> (L.map h . L.filter i) . L.scanl g (0::W))
+    (\g h i -> (P.map h . P.filter i) . P.scanl g (0::W))
+
+prop_map_noacc_list = compare4
+    ( \g h i -> (P.map h . P.filter i) . P.map g)
+    ((\g h i -> (  map h .   filter i) .   map g)
+        :: (W -> W) -> (W -> W) -> (W -> Bool) -> [W] -> [W])
+
+prop_map_noacc_lazy = compare4
+    (\g h i -> (L.map h . L.filter i) . L.map g)
+    (\g h i -> (P.map h . P.filter i) . P.map g)
+
+prop_noacc_map_list = compare4
+    ( \g h i -> P.map g . (P.map h . P.filter i))
+    ((\g h i ->   map g . (  map h .   filter i))
+        :: (W -> W) -> (W -> W) -> (W -> Bool) -> [W] -> [W])
+
+prop_noacc_map_lazy = compare4
+    (\g h i -> L.map g . (L.map h . L.filter i))
+    (\g h i -> P.map g . (P.map h . P.filter i))
+
+prop_filter_noacc_list = compare4
+    ( \g h i -> (P.map h . P.filter i) . P.filter g)
+    ((\g h i -> (  map h .   filter i) .   filter g)
+        :: (W -> Bool) -> (W -> W) -> (W -> Bool) -> [W] -> [W])
+
+prop_filter_noacc_lazy = compare4
+    (\g h i -> (L.map h . L.filter i) . L.filter g)
+    (\g h i -> (P.map h . P.filter i) . P.filter g)
+
+prop_noacc_filter_list = compare4
+    ( \g h i -> P.filter g . (P.map h . P.filter i))
+    ((\g h i ->   filter g . (  map h .   filter i))
+        :: (W -> Bool) -> (W -> W) -> (W -> Bool) -> [W] -> [W])
+
+prop_noacc_filter_lazy = compare4
+    (\g h i -> L.filter g . (L.map h . L.filter i))
+    (\g h i -> P.filter g . (P.map h . P.filter i))
+
+prop_noacc_down_list = compare4
+    ( \g h i -> P.foldr g (0::W) . (P.map h . P.filter i))
+    ((\g h i ->   foldr g (0::W) . (  map h .   filter i))
+        :: (W -> W -> W) -> (W -> W) -> (W -> Bool) -> [W] -> W)
+
+prop_noacc_down_lazy = compare4
+    (\g h i -> L.foldr g (0::W) . (L.map h . L.filter i))
+    (\g h i -> P.foldr g (0::W) . (P.map h . P.filter i))
+
+prop_down_noacc_list = compare4
+    ( \g h i -> (P.map h . P.filter i) . P.scanr g (0::W))
+    ((\g h i -> (  map h .   filter i) .   scanr g (0::W))
+        :: (W -> W -> W) -> (W -> W) -> (W -> Bool) -> [W] -> [W])
+
+{-
+prop_down_noacc_lazy = compare4
+    (\g h i -> (L.map h . L.filter i) . L.scanl g (0::W))
+    (\g h i -> (P.map h . P.filter i) . P.scanl g (0::W))
+-}
 
 ------------------------------------------------------------------------
 

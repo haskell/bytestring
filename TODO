@@ -35,3 +35,8 @@ Todo items
   little difference between them (15% rather than 40%) and with the new fusion
   system we may be able to get even closer. Look at the benchmarks for filter'
   to see if we can do the same there.
+
+--
+
+* properties for noAcc loops
+* benchmark v1 versus v2 fusion.

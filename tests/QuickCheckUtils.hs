@@ -172,14 +172,16 @@ instance NatTrans Maybe Maybe       where eta = id
 instance NatTrans ((->) X) ((->) X) where eta = id
 instance NatTrans ((->) W) ((->) W) where eta = id
 
--- Missing from < ghc 6.5 compilers
-instance Functor ((,)   a) where fmap f (x,y) = (x, f y)
-
 -- We have a transformation of pairs, if the pairs are in Model
 instance Model f g => NatTrans ((,) f) ((,) g) where eta (f,a) = (model f, a)
 
 -- And finally, we can take any (m a) to (n b), if we can Model m n, and a b
 instance (NatTrans m n, Model a b) => Model (m a) (n b) where model x = fmap model (eta x)
+
+-- Missing from < ghc 6.5 compilers
+#if __GLASGOW_HASKELL__ < 605
+instance Functor ((,)   a) where fmap f (x,y) = (x, f y)
+#endif
 
 ------------------------------------------------------------------------
 
@@ -216,6 +218,21 @@ compare2 f f' a b = model (f a b) == f' (model a) (model b)
 compare3 :: (Model a3 b3, Model a2 b2, Model a1 b1, Model a b, Eq b)
          => (a1 -> a2 -> a3 -> a) -> (b1 -> b2 -> b3 -> b) -> a1 -> a2 -> a3 -> Bool
 compare3 f f' a b c = model (f a b c) == f' (model a) (model b) (model c)
+
+compare4 :: (Model a4 b4, Model a3 b3, Model a2 b2, Model a1 b1, Model a b, Eq b) 
+         => (a1 -> a2 -> a3 -> a4 -> a)
+         -> (b1 -> b2 -> b3 -> b4 -> b)
+         -> a1 -> a2 -> a3 -> a4 -> Bool
+compare4 f f' a b c d = model (f a b c d) ==
+                          f' (model a) (model b) (model c) (model d)
+
+compare5 :: (Model a5 b5, Model a4 b4, Model a3 b3, Model a2 b2, Model a1 b1, Model a b, Eq b) 
+        => (a1 -> a2 -> a3 -> a4 -> a5 -> a)
+        -> (b1 -> b2 -> b3 -> b4 -> b5 -> b)
+        -> a1 -> a2 -> a3 -> a4 -> a5 -> Bool
+compare5 f f' a b c d e = model (f a b c d e) ==
+                          f' (model a) (model b) (model c) (model d) (model e)
+
 
 --
 -- And for functions that take non-null input
