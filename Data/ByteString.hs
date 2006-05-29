@@ -627,9 +627,7 @@ reverse :: ByteString -> ByteString
 reverse (PS x s l) = create l $ \p -> withForeignPtr x $ \f ->
         c_reverse p (f `plusPtr` s) (fromIntegral l)
 
-{-
-reverse = pack . P.reverse . unpack
--}
+-- todo, fuseable version
 
 -- | /O(n)/ The 'intersperse' function takes a 'Word8' and a
 -- 'ByteString' and \`intersperses\' that byte between the elements of

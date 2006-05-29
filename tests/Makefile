@@ -140,3 +140,4 @@ plot:: results
 clean:
 	rm -f *~ *.o *.hi $(BIN) bench */*.o */*.hi */*~ 
 	rm -f wc letter_frequency spellcheck linesort fuse inline p fp lazylines
+	rm -f down-fuse
