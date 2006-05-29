@@ -17,7 +17,7 @@ SRCS= TestFramework.hs UnitTestsMain.hs Tests.hs
 all:  prop prop-compiled-fusion
 fast: prop-fast
 
-everything: prop prop-fusion prop-compiled prop-compiled-fusion runbench htest wc spellcheck letter_frequency linesort fuse inline
+everything: prop prop-fusion prop-compiled prop-fusion-compiled runbench htest wc spellcheck letter_frequency linesort fuse inline
 
 # build executable, linking in all tests
 run-utests: $(SRCS)
