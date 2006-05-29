@@ -793,8 +793,7 @@ minimumU :: ByteString -> Word8
 minimumU = foldl1' min
 {-# INLINE minimumU #-}
 
-{-# -- still around twice as slow as actually allocating and calling the C functions
-    -- so disable for now
+{-# RULES
 
 "minimum/loop fusion" forall loop s .
   minimum  (loopArr (loopWrapper loop s)) =
