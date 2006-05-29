@@ -1475,7 +1475,7 @@ prop_down_noAcc_loop_fusion f1 f2 acc1 acc2 xs =
 
 prop_map_map_loop_fusion f1 f2 acc1 acc2 xs =
   k (sequenceLoops (doMapLoop f1 acc1) (doMapLoop f2 acc2)) ==
-    k (doMapLoop (f2 `fuseMapMapEFL` f1) (acc1 :*: acc2))
+    k (doMapLoop (f1 `fuseMapMapEFL` f2) (acc1 :*: acc2))
     where _ = acc1 :: Int;  _ = acc2 :: Int ; k g = loopWrapper g xs
 
 prop_filter_filter_loop_fusion f1 f2 acc1 acc2 xs =
