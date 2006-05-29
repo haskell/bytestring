@@ -21,6 +21,8 @@ import System.IO
 import System.IO.Unsafe
 import System.Random
 
+import Foreign.Ptr
+
 import Data.ByteString.Lazy (ByteString(..), pack , unpack)
 import qualified Data.ByteString.Lazy as L
 
@@ -1399,25 +1401,37 @@ prop_looploop em1 em2 start1 start2 arr =
 ------------------------------------------------------------------------
 
 -- check associativity of sequence loops
-prop_sequenceloops_assoc x y z a1 a2 a3 xs = k ((f * g) * h) == k (f * (g * h))
+prop_sequenceloops_assoc n m o x y z a1 a2 a3 xs =
+
+    k ((f * g) * h) == k (f * (g * h))  -- associativity
+
     where
        (*) = sequenceLoops
-
-       f = doUpLoop x a1
-       g = doUpLoop y a2
-       h = doUpLoop z a3
+       f = (sel n)      x a1
+       g = (sel m)      y a2
+       h = (sel o)      z a3
 
        _ = a1 :: Int; _ = a2 :: Int; _ = a3 :: Int
        k g = loopArr (loopWrapper g xs)
 
 -- check wrapper elimination
-prop_loop_loop_wrapper_elimination x y a1 a2 xs =
+prop_loop_loop_wrapper_elimination n m x y a1 a2 xs =
   loopWrapper g (loopArr (loopWrapper f xs)) ==
     loopSndAcc (loopWrapper (sequenceLoops f g) xs)
   where
-       f = doUpLoop x a1
-       g = doUpLoop y a2
+       f = (sel n) x a1
+       g = (sel m) y a2
        _ = a1 :: Int; _ = a2 :: Int
+
+sel :: Bool
+       -> (acc -> Word8 -> PairS acc (MaybeS Word8))
+       -> acc
+       -> Ptr Word8
+       -> Ptr Word8
+       -> Int
+       -> IO (PairS (PairS acc Int) Int)
+sel False = doDownLoop
+sel True  = doUpLoop
 
 ------------------------------------------------------------------------
 
