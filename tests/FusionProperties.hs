@@ -49,6 +49,13 @@ tests =                           -- 29/5/06, all tests are fusing:
     ,("up/map        list", mytest prop_upmap_list)             -- checked
     ,("up/up         lazy", mytest prop_upup_lazy)              -- checked
     ,("up/up         list", mytest prop_upup_list)              -- checked
+    ,("length/loop   list", mytest prop_lengthloop_list)
+--  ,("length/loop   lazy", mytest prop_lengthloop_lazy)
+    ,("maximum/loop  list", mytest prop_maximumloop_list)
+--  ,("maximum/loop  lazy", mytest prop_maximumloop_lazy)
+    ,("minimum/loop  list", mytest prop_minimumloop_list)
+--  ,("minimum/loop  lazy", mytest prop_minimumloop_lazy)
+
     ]
 
 prop_upup_list = compare3
@@ -180,3 +187,36 @@ prop_downfilter_lazy = compare3
 -- noAcc/filter
 -- noAcc/down
 -- down/noAcc
+
+------------------------------------------------------------------------
+
+prop_lengthloop_list = compare2
+     (\f  -> P.length . P.filter f)
+     ((\f ->   length .   filter f) :: (W -> Bool) -> [W] -> X)
+
+{-
+prop_lengthloop_lazy = compare2
+     (\f g -> L.length . L.filter f) -- n.b. scan doesn't fuse here, atm
+     (\f g -> P.length . P.filter f)
+-}
+
+prop_maximumloop_list = notPNull2 $ compare2
+     (\f  -> P.maximum . P.map f)   -- so we don't get null strings
+     ((\f ->   maximum .   map f) :: (W -> W) -> [W] -> W)
+
+{-
+prop_maximumloop_lazy = compare2
+     (\f g -> L.maximum . L.filter f) -- n.b. scan doesn't fuse here, atm
+     (\f g -> P.maximum . P.filter f)
+-}
+
+prop_minimumloop_list = notPNull2 $ compare2
+     (\f  -> P.minimum . P.map f)
+     ((\f ->   minimum .   map f) :: (W -> W) -> [W] -> W)
+
+{-
+prop_minimumloop_lazy = compare2
+     (\f g -> L.minimum . L.filter f) -- n.b. scan doesn't fuse here, atm
+     (\f g -> P.minimum . P.filter f)
+-}
+

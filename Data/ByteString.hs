@@ -221,7 +221,7 @@ module Data.ByteString (
 #if defined(__GLASGOW_HASKELL__)
         unpackList, -- eek, otherwise it gets thrown away by the simplifier
 #endif
-        lengthU
+        lengthU, maximumU, minimumU
   ) where
 
 import qualified Prelude as P
@@ -512,6 +512,12 @@ null (PS _ _ l) = l == 0
 length :: ByteString -> Int
 length (PS _ _ l) = l
 
+--
+-- length/loop fusion. When taking the length of any fuseable loop,
+-- rewrite it as a foldl', and thus avoid allocating the result buffer
+-- worth around 10% in speed testing.
+--
+
 #if defined(__GLASGOW_HASKELL__)
 {-# INLINE [1] length #-}
 #endif
@@ -520,17 +526,7 @@ lengthU :: ByteString -> Int
 lengthU = foldl' (const . (+1)) (0::Int)
 {-# INLINE lengthU #-}
 
---
--- length/loop fusion. When taking the length of any fuseable loop,
--- rewrite it as a foldl', and thus avoid allocating the result buffer
--- worth around 10% in speed testing.
---
 {-# RULES
-
--- v1 fusion
-"length/loop fusion" forall f acc s .
-  length  (loopArr (loopU f acc s)) =
-  lengthU (loopArr (loopU f acc s))
 
 -- v2 fusion
 "length/loop fusion" forall loop s .
@@ -758,53 +754,59 @@ all f (PS x s l) = inlinePerformIO $ withForeignPtr x $ \ptr ->
                                  if f c
                                     then go (p `plusPtr` 1) q
                                     else return False
--- todo fuse
+
+------------------------------------------------------------------------
 
 -- | /O(n)/ 'maximum' returns the maximum value from a 'ByteString'
+-- This function will fuse.
 maximum :: ByteString -> Word8
 maximum xs@(PS x s l)
     | null xs   = errorEmptyList "maximum"
     | otherwise = inlinePerformIO $ withForeignPtr x $ \p ->
                     return $ c_maximum (p `plusPtr` s) (fromIntegral l)
-{-# INLINE maximum #-}
 
 -- | /O(n)/ 'minimum' returns the minimum value from a 'ByteString'
+-- This function will fuse.
 minimum :: ByteString -> Word8
 minimum xs@(PS x s l)
     | null xs   = errorEmptyList "minimum"
     | otherwise = inlinePerformIO $ withForeignPtr x $ \p ->
                     return $ c_minimum (p `plusPtr` s) (fromIntegral l)
-{-# INLINE minimum #-}
 
--- fusion is too slow here (10x)
+--
+-- minimum/maximum/loop fusion. As for length (and other folds), when we
+-- see we're applied after a fuseable op, switch from using the C
+-- version, to the fuseable version. The result should then avoid
+-- allocating a buffer.
+--
 
-{-
-maximum xs@(PS x s l)
-    | null xs   = errorEmptyList "maximum"
-    | otherwise = inlinePerformIO $ withForeignPtr x $ \p -> do
-                        w <- peek p
-                        maximum_ (p `plusPtr` s) 0 l w
+#if defined(__GLASGOW_HASKELL__)
+{-# INLINE [1] minimum #-}
+{-# INLINE [1] maximum #-}
+#endif
 
-maximum_ :: Ptr Word8 -> Int -> Int -> Word8 -> IO Word8
-STRICT4(maximum_)
-maximum_ ptr n m c
-    | n >= m    = return c
-    | otherwise = do w <- peekByteOff ptr n
-                     maximum_ ptr (n+1) m (if w > c then w else c)
+maximumU :: ByteString -> Word8
+maximumU = foldl1' max
+{-# INLINE maximumU #-}
 
-minimum xs@(PS x s l)
-    | null xs   = errorEmptyList "minimum"
-    | otherwise = inlinePerformIO $ withForeignPtr x $ \p -> do
-                        w <- peek p
-                        minimum_ (p `plusPtr` s) 0 l w
+minimumU :: ByteString -> Word8
+minimumU = foldl1' min
+{-# INLINE minimumU #-}
 
-minimum_ :: Ptr Word8 -> Int -> Int -> Word8 -> IO Word8
-STRICT4(minimum_)
-minimum_ ptr n m c
-    | n >= m    = return c
-    | otherwise = do w <- peekByteOff ptr n
-                     minimum_ ptr (n+1) m (if w < c then w else c)
--}
+{-# -- still around twice as slow as actually allocating and calling the C functions
+    -- so disable for now
+
+"minimum/loop fusion" forall loop s .
+  minimum  (loopArr (loopWrapper loop s)) =
+  minimumU (loopArr (loopWrapper loop s))
+
+"maximum/loop fusion" forall loop s .
+  maximum  (loopArr (loopWrapper loop s)) =
+  maximumU (loopArr (loopWrapper loop s))
+
+  #-}
+
+------------------------------------------------------------------------
 
 mapAccumL :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
 mapAccumL f z = unSP . loopUp (mapAccumEFL f) z

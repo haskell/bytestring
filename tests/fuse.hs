@@ -3,7 +3,7 @@
 --
 
 import Char
-import qualified Data.ByteString.Lazy as B
+import qualified Data.ByteString as B
 
 main = do ps <- B.getContents
 
