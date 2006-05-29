@@ -818,7 +818,10 @@ mapIndexed f = loopArr . loopUp (mapIndexEFL f) 0
 --
 -- > last (scanl f z xs) == foldl f z xs.
 scanl :: (Word8 -> Word8 -> Word8) -> Word8 -> ByteString -> ByteString
-scanl f z ps = loopArr . loopUp (scanEFL f) z $ (ps `snoc` 0) -- extra space
+scanl f z ps = loopArr . loopUp (scanEFL f) z $ (ps `snoc` 0)
+    -- n.b. haskell's List scan returns a list one bigger than the
+    -- input, so we need to snoc here to get some extra space, however,
+    -- it breaks map/up fusion (i.e. scanl . map no longer fuses)
 {-# INLINE scanl #-}
 
 -- | 'scanl1' is a variant of 'scanl' that has no starting value argument.
@@ -833,14 +836,14 @@ scanl1 f ps
 
 -- | scanr is the right-to-left dual of scanl.
 scanr :: (Word8 -> Word8 -> Word8) -> Word8 -> ByteString -> ByteString
-scanr f z ps = loopArr . loopDown (scanEFL (flip f)) z $ (ps `snoc` 0) -- extra space
+scanr f z ps = loopArr . loopDown (scanEFL (flip f)) z $ (0 `cons` ps) -- extra space
 {-# INLINE scanr #-}
 
 -- | 'scanr1' is a variant of 'scanr' that has no starting value argument.
 scanr1 :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString
 scanr1 f ps
     | null ps   = empty
-    | otherwise = scanl f (unsafeHead ps) (unsafeTail ps)
+    | otherwise = scanr f (last ps) (init ps) -- todo, unsafe versions
 {-# INLINE scanr1 #-}
 
 -- ---------------------------------------------------------------------
