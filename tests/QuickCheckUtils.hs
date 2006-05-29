@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -fglasgow-exts -fallow-overlapping-instances #-}
+{-# OPTIONS_GHC -cpp -fglasgow-exts -fallow-overlapping-instances #-}
 module QuickCheckUtils where
 
 import Test.QuickCheck.Batch
