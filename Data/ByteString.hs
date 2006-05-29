@@ -590,7 +590,7 @@ map f = loopArr . loopMap f
 -- | /O(n)/ Like 'map', but not fuseable. The benefit is that it is
 -- slightly faster for one-shot cases.
 map' :: (Word8 -> Word8) -> ByteString -> ByteString
-map' f (PS fp s len) = inlinePerformIO $ withForeignPtr fp $ \a -> do
+map' f (PS fp s len) = unsafePerformIO $ withForeignPtr fp $ \a -> do
     np <- mallocByteString (len+1)
     withForeignPtr np $ \p -> do
         map_ 0 (a `plusPtr` s) p
@@ -856,15 +856,6 @@ replicate :: Int -> Word8 -> ByteString
 replicate w c | w <= 0    = empty
               | otherwise = create w $ \ptr -> memset ptr c (fromIntegral w) >> return ()
 
-{-
--- About 5x slower
-replicate w c = inlinePerformIO $ generate w $ \ptr -> go ptr w
-    where
-        STRICT2(go)
-        go _   0 = return w
-        go ptr n = poke ptr c >> go (ptr `plusPtr` 1) (n-1)
--}
-
 -- | /O(n)/, where /n/ is the length of the result.  The 'unfoldr' 
 -- function is analogous to the List \'unfoldr\'.  'unfoldr' builds a 
 -- ByteString from a seed value.  The function takes the element and 
@@ -896,7 +887,7 @@ unfoldr f = concat . unfoldChunk 32 64
 unfoldrN :: Int -> (a -> Maybe (Word8, a)) -> a -> (ByteString, Maybe a)
 unfoldrN i f x0
     | i < 0     = (empty, Just x0)
-    | otherwise = inlinePerformIO $ do
+    | otherwise = unsafePerformIO $ do
                     fp <- mallocByteString i
                     withForeignPtr fp (\p -> go fp p x0 0)
   where STRICT4(go)
@@ -1327,7 +1318,7 @@ filter f = loopArr . loopFilter f
 filter' :: (Word8 -> Bool) -> ByteString -> ByteString
 filter' k ps@(PS x s l)
     | null ps   = ps
-    | otherwise = inlinePerformIO $ generate l $ \p -> withForeignPtr x $ \f -> do
+    | otherwise = unsafePerformIO $ generate l $ \p -> withForeignPtr x $ \f -> do
         t <- go (f `plusPtr` s) p (f `plusPtr` (s + l))
         return (t `minusPtr` p) -- actual length
     where
@@ -1544,7 +1535,7 @@ sort = pack . List.sort . unpack
 -- finalizer associated to it. The ByteString length is calculated using
 -- /strlen(3)/, and thus the complexity is a /O(n)/.
 packCString :: CString -> ByteString
-packCString cstr = inlinePerformIO $ do
+packCString cstr = unsafePerformIO $ do
     fp <- newForeignPtr_ (castPtr cstr)
     return $ PS fp 0 (fromIntegral $ c_strlen cstr)
 
@@ -1553,14 +1544,14 @@ packCString cstr = inlinePerformIO $ do
 -- complexity as we already know the final size, so no /strlen(3)/ is
 -- required.
 packCStringLen :: CStringLen -> ByteString
-packCStringLen (ptr,len) = inlinePerformIO $ do
+packCStringLen (ptr,len) = unsafePerformIO $ do
     fp <- newForeignPtr_ (castPtr ptr)
     return $ PS fp 0 (fromIntegral len)
 
 -- | /O(n)/ Build a @ByteString@ from a malloced @CString@. This value will
 -- have a @free(3)@ finalizer associated to it.
 packMallocCString :: CString -> ByteString
-packMallocCString cstr = inlinePerformIO $ do
+packMallocCString cstr = unsafePerformIO $ do
     fp <- newForeignFreePtr (castPtr cstr)
     return $ PS fp 0 (fromIntegral $ c_strlen cstr)
 
