@@ -529,7 +529,7 @@ lengthU = foldl' (const . (+1)) (0::Int)
 
 -- v1 fusion
 "length/loop fusion" forall f acc s .
-  length  (loopArr (loopU f acc s)) = 
+  length  (loopArr (loopU f acc s)) =
   lengthU (loopArr (loopU f acc s))
 
 -- v2 fusion
