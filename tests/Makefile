@@ -14,7 +14,7 @@ GHC_ = $(GHC) -threaded $(PP_OPTS) -fglasgow-exts --make
 
 SRCS= TestFramework.hs UnitTestsMain.hs Tests.hs
 
-all:  prop
+all:  prop prop-fusion
 fast: prop-fast
 
 everything: prop prop-compiled runbench htest wc spellcheck letter_frequency linesort fuse inline
@@ -30,20 +30,32 @@ htest:: run-utests
 # QuickCheck
 
 # interpreted
-.PHONY: prop
+.PHONY: prop prop-fusion
 prop::
 	runhaskell Properties.hs
+
+prop-fusion::
+	@chmod +x FusionProperties.hs
+	./FusionProperties.hs
 
 # interpreted fast. Just a quick check.
 .PHONY: prop-fast
 prop-fast::
 	@chmod +x Properties.hs
+	@chmod +x FusionProperties.hs
 	./Properties.hs 30
+	./FusionProperties.hs 30
 
 # compiled
+.PHONY: prop-compiled
 prop-compiled: 
 	${GHC} ${PKG} --make -O2 -optc-O2 -frules-off -funbox-strict-fields Properties.hs -o p -no-recomp -package QuickCheck
 	/usr/bin/time ./p
+
+.PHONY: prop-fusion-compiled
+prop-fusion-compiled:
+	${GHC} ${PKG} --make -O2 -optc-O2 -funbox-strict-fields -ddump-simpl-stats FusionProperties.hs -o fp -no-recomp -package QuickCheck
+	/usr/bin/time ./fp
 
 # ---------------------------------------------------------
 # Benchmarking
@@ -130,4 +142,4 @@ plot:: results
 .PHONY: clean
 clean:
 	rm -f *~ *.o *.hi $(BIN) bench */*.o */*.hi */*~ 
-	rm -f wc letter_frequency spellcheck linesort fuse inline p lazylines
+	rm -f wc letter_frequency spellcheck linesort fuse inline p fp lazylines

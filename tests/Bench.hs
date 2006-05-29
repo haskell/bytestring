@@ -100,13 +100,11 @@ tests =
     , ("filter", [F ({-# SCC "filter" #-}B.filter (/=101) fps)
                  ,F ({-# SCC "lazy filter" #-}L.filter (/=101) lps)])
 
-{-
     , ("map'", [F ({-# SCC "map" #-}B.map (*2) fps)
               ,F (B.map' (*1) fps)])
 
     , ("filter'", [F ({-# SCC "filter" #-}B.filter (/=121) fps)
                  ,F ({-# SCC "filter'" #-}B.filter' (/=121) fps)])
--}
 
     , ("filterNotByte", [F ({-# SCC "filterNotByte" #-}B.filterNotByte 101 fps)
                  ,F ({-# SCC "lazy filterNotByte" #-}L.filterNotByte 101 lps)])

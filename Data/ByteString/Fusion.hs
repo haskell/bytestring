@@ -334,36 +334,6 @@ doDownLoop f acc0 src dest len = loop (len-1) (len-1) acc0
   where STRICT3(loop)
         loop src_off dest_off acc
             | src_off < 0 = return (acc :*: dest_off + 1 :*: len - (dest_off + 1))
-
-                        -- XXX ok, good we have the new length.
-                        -- but this is from the end of the string, not
-                        -- the former start. so when loopWrapper
-                        -- reallocs this, it'll copy from the old
-                        -- start, which is garbage now.
-                        -- (I think).
-                        -- 
-                        -- image:
-                        --
-                        --  [123456789] is now
-                        --  [....56789]
-                        --
-                        -- but then we try and realloc this part.
-                        --
-                        --  [....5]
-                        --
-                        -- leading to garbage
-                        --
-                        -- quick fix. memcpy the contents down.
-                        -- todo, find a real solution, involving
-                        -- returning the offset, and length.
-                        --
-
-                    -- doesn't work, since when fused, dest_off is always 0 :/
-                    --  let len' = (len - 1) - dest_off
-                    --  print (len', dest_off, dest, dest `plusPtr` dest_off)
-                    --  memmove dest (dest `plusPtr` dest_off) (fromIntegral len')
-                    --  return (acc :*: len')
-
             | otherwise   = do
                 x <- peekByteOff src src_off
                 case f acc x of
@@ -371,6 +341,9 @@ doDownLoop f acc0 src dest len = loop (len-1) (len-1) acc0
                   (acc' :*: JustS x') -> pokeByteOff dest dest_off x'
                                       >> loop (src_off-1) (dest_off-1) acc'
 
+--
+-- With explicit mapLoop and filterLoop, do we need NoAcc rules anymore?
+--
 doNoAccLoop :: NoAccEFL -> noAcc -> ImperativeLoop noAcc
 doNoAccLoop f noAcc src dest len = loop 0 0
   where STRICT2(loop)
@@ -461,25 +434,24 @@ sequenceLoops loop1 loop2 src dest len0 = do
 
 {-# RULES
 
+"loopArr/loopSndAcc" forall x.
+  loopArr (loopSndAcc x) = loopArr x
+
+"seq/NoAcc" forall (u::NoAcc) e.
+  u `seq` e = e
+
 "loop/loop wrapper elimination" forall loop1 loop2 arr.
   loopWrapper loop2 (loopArr (loopWrapper loop1 arr)) =
     loopSndAcc (loopWrapper (sequenceLoops loop1 loop2) arr)
 
+--
+-- n.b in the following, when reading n/m fusion, recall sequenceLoops
+-- is monadic, so its really n >> m fusion (i.e. m.n), not n . m fusion.
+--
+
 "up/up loop fusion" forall f1 f2 acc1 acc2.
   sequenceLoops (doUpLoop f1 acc1) (doUpLoop f2 acc2) =
     doUpLoop (f1 `fuseAccAccEFL` f2) (acc1 :*: acc2)
-
-"noAcc/noAcc loop fusion" forall f1 f2 acc1 acc2.
-  sequenceLoops (doNoAccLoop f1 acc1) (doNoAccLoop f2 acc2) =
-    doNoAccLoop (f1 `fuseNoAccNoAccEFL` f2) (acc1 :*: acc2)
-
-"noAcc/up loop fusion" forall f1 f2 acc1 acc2.
-  sequenceLoops (doNoAccLoop f1 acc1) (doUpLoop f2 acc2) =
-    doUpLoop (f1 `fuseNoAccAccEFL` f2) (acc1 :*: acc2)
-
-"up/noAcc loop fusion" forall f1 f2 acc1 acc2.
-  sequenceLoops (doUpLoop f1 acc1) (doNoAccLoop f2 acc2) =
-    doUpLoop (f1 `fuseAccNoAccEFL` f2) (acc1 :*: acc2)
 
 "map/map loop fusion" forall f1 f2 acc1 acc2.
   sequenceLoops (doMapLoop f1 acc1) (doMapLoop f2 acc2) =
@@ -497,14 +469,6 @@ sequenceLoops loop1 loop2 src dest len0 = do
   sequenceLoops (doFilterLoop f1 acc1) (doMapLoop f2 acc2) =
     doNoAccLoop (f1 `fuseFilterMapEFL` f2) (acc1 :*: acc2)
 
-"map/noAcc loop fusion" forall f1 f2 acc1 acc2.
-  sequenceLoops (doMapLoop f1 acc1) (doNoAccLoop f2 acc2) =
-    doNoAccLoop (f1 `fuseMapNoAccEFL` f2) (acc1 :*: acc2)
-
-"noAcc/map loop fusion" forall f1 f2 acc1 acc2.
-  sequenceLoops (doNoAccLoop f1 acc1) (doMapLoop f2 acc2) =
-    doNoAccLoop (f1 `fuseNoAccMapEFL` f2) (acc1 :*: acc2)
-
 "map/up loop fusion" forall f1 f2 acc1 acc2.
   sequenceLoops (doMapLoop f1 acc1) (doUpLoop f2 acc2) =
     doUpLoop (f1 `fuseMapAccEFL` f2) (acc1 :*: acc2)
@@ -512,14 +476,6 @@ sequenceLoops loop1 loop2 src dest len0 = do
 "up/map loop fusion" forall f1 f2 acc1 acc2.
   sequenceLoops (doUpLoop f1 acc1) (doMapLoop f2 acc2) =
     doUpLoop (f1 `fuseAccMapEFL` f2) (acc1 :*: acc2)
-
-"filter/noAcc loop fusion" forall f1 f2 acc1 acc2.
-  sequenceLoops (doFilterLoop f1 acc1) (doNoAccLoop f2 acc2) =
-    doNoAccLoop (f1 `fuseFilterNoAccEFL` f2) (acc1 :*: acc2)
-
-"noAcc/filter loop fusion" forall f1 f2 acc1 acc2.
-  sequenceLoops (doNoAccLoop f1 acc1) (doFilterLoop f2 acc2) =
-    doNoAccLoop (f1 `fuseNoAccFilterEFL` f2) (acc1 :*: acc2)
 
 "filter/up loop fusion" forall f1 f2 acc1 acc2.
   sequenceLoops (doFilterLoop f1 acc1) (doUpLoop f2 acc2) =
@@ -529,53 +485,75 @@ sequenceLoops loop1 loop2 src dest len0 = do
   sequenceLoops (doUpLoop f1 acc1) (doFilterLoop f2 acc2) =
     doUpLoop (f1 `fuseAccFilterEFL` f2) (acc1 :*: acc2)
 
+"down/down loop fusion" forall f1 f2 acc1 acc2.
+  sequenceLoops (doDownLoop f1 acc1) (doDownLoop f2 acc2) =
+    doDownLoop (f1 `fuseAccAccEFL` f2) (acc1 :*: acc2)
+
+"map/down fusion" forall f1 f2 acc1 acc2.
+  sequenceLoops (doMapLoop f1 acc1) (doDownLoop f2 acc2) =
+    doDownLoop (f1 `fuseMapAccEFL` f2) (acc1 :*: acc2)
+
+"down/map loop fusion" forall f1 f2 acc1 acc2.
+  sequenceLoops (doDownLoop f1 acc1) (doMapLoop f2 acc2) =
+    doDownLoop (f1 `fuseAccMapEFL` f2) (acc1 :*: acc2)
+
+"filter/down fusion" forall f1 f2 acc1 acc2.
+  sequenceLoops (doFilterLoop f1 acc1) (doDownLoop f2 acc2) =
+    doDownLoop (f1 `fuseFilterAccEFL` f2) (acc1 :*: acc2)
+
+"down/filter loop fusion" forall f1 f2 acc1 acc2.
+  sequenceLoops (doDownLoop f1 acc1) (doFilterLoop f2 acc2) =
+    doDownLoop (f1 `fuseAccFilterEFL` f2) (acc1 :*: acc2)
+
 --
--- Disable down rules for now. Till doDownLoop fusion issue resolved.
+-- now, if we ever write a noAcc loop form:
 --
 
--- "down/down loop fusion" forall f1 f2 acc1 acc2.
---   sequenceLoops (doDownLoop f1 acc1) (doDownLoop f2 acc2) =
---     doDownLoop (f1 `fuseAccAccEFL` f2) (acc1 :*: acc2)
+"noAcc/noAcc loop fusion" forall f1 f2 acc1 acc2.
+  sequenceLoops (doNoAccLoop f1 acc1) (doNoAccLoop f2 acc2) =
+    doNoAccLoop (f1 `fuseNoAccNoAccEFL` f2) (acc1 :*: acc2)
 
--- "noAcc/down loop fusion" forall f1 f2 acc1 acc2.
---   sequenceLoops (doNoAccLoop f1 acc1) (doDownLoop f2 acc2) =
---     doDownLoop (f1 `fuseNoAccAccEFL` f2) (acc1 :*: acc2)
+"noAcc/up loop fusion" forall f1 f2 acc1 acc2.
+  sequenceLoops (doNoAccLoop f1 acc1) (doUpLoop f2 acc2) =
+    doUpLoop (f1 `fuseNoAccAccEFL` f2) (acc1 :*: acc2)
 
--- "down/noAcc loop fusion" forall f1 f2 acc1 acc2.
---   sequenceLoops (doDownLoop f1 acc1) (doNoAccLoop f2 acc2) =
---     doDownLoop (f1 `fuseAccNoAccEFL` f2) (acc1 :*: acc2)
+"up/noAcc loop fusion" forall f1 f2 acc1 acc2.
+  sequenceLoops (doUpLoop f1 acc1) (doNoAccLoop f2 acc2) =
+    doUpLoop (f1 `fuseAccNoAccEFL` f2) (acc1 :*: acc2)
 
--- "map/down fusion" forall f1 f2 acc1 acc2.
---  sequenceLoops (doMapLoop f1 acc1) (doDownLoop f2 acc2) =
---    doDownLoop (f1 `fuseMapAccEFL` f2) (acc1 :*: acc2)
+"map/noAcc loop fusion" forall f1 f2 acc1 acc2.
+  sequenceLoops (doMapLoop f1 acc1) (doNoAccLoop f2 acc2) =
+    doNoAccLoop (f1 `fuseMapNoAccEFL` f2) (acc1 :*: acc2)
 
--- "down/map loop fusion" forall f1 f2 acc1 acc2.
---   sequenceLoops (doDownLoop f1 acc1) (doMapLoop f2 acc2) =
---     doDownLoop (f1 `fuseAccMapEFL` f2) (acc1 :*: acc2)
+"noAcc/map loop fusion" forall f1 f2 acc1 acc2.
+  sequenceLoops (doNoAccLoop f1 acc1) (doMapLoop f2 acc2) =
+    doNoAccLoop (f1 `fuseNoAccMapEFL` f2) (acc1 :*: acc2)
 
---"filter/down fusion" forall f1 f2 acc1 acc2.
---  sequenceLoops (doFilterLoop f1 acc1) (doDownLoop f2 acc2) =
---    doDownLoop (f1 `fuseFilterAccEFL` f2) (acc1 :*: acc2)
+"filter/noAcc loop fusion" forall f1 f2 acc1 acc2.
+  sequenceLoops (doFilterLoop f1 acc1) (doNoAccLoop f2 acc2) =
+    doNoAccLoop (f1 `fuseFilterNoAccEFL` f2) (acc1 :*: acc2)
 
--- "down/filter loop fusion" forall f1 f2 acc1 acc2.
---   sequenceLoops (doDownLoop f1 acc1) (doFilterLoop f2 acc2) =
---     doDownLoop (f1 `fuseAccFilterEFL` f2) (acc1 :*: acc2)
+"noAcc/filter loop fusion" forall f1 f2 acc1 acc2.
+  sequenceLoops (doNoAccLoop f1 acc1) (doFilterLoop f2 acc2) =
+    doNoAccLoop (f1 `fuseNoAccFilterEFL` f2) (acc1 :*: acc2)
 
-"loopArr/loopSndAcc" forall x.
-  loopArr (loopSndAcc x) = loopArr x
+"noAcc/down loop fusion" forall f1 f2 acc1 acc2.
+  sequenceLoops (doNoAccLoop f1 acc1) (doDownLoop f2 acc2) =
+    doDownLoop (f1 `fuseNoAccAccEFL` f2) (acc1 :*: acc2)
 
-"seq/NoAcc" forall (u::NoAcc) e.
-  u `seq` e = e
+"down/noAcc loop fusion" forall f1 f2 acc1 acc2.
+  sequenceLoops (doDownLoop f1 acc1) (doNoAccLoop f2 acc2) =
+    doDownLoop (f1 `fuseAccNoAccEFL` f2) (acc1 :*: acc2)
 
   #-}
 
 {-
 
-up = up loop
-down = down loop
-noAcc = noAcc undirectional loop
-map = map special case
-filter = filter special case
+up      = up loop
+down    = down loop
+map     = map special case
+filter  = filter special case
+noAcc   = noAcc undirectional loop (unused)
 
 heirarchy:
   up     down

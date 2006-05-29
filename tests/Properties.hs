@@ -1,18 +1,11 @@
 #!/usr/bin/env runhaskell
-{-# OPTIONS_GHC -fglasgow-exts -fallow-overlapping-instances #-}
--- ^ multi paramater type classes
 module Main where
 --
 -- Must have rules off, otherwise the fusion rules will replace the rhs
 -- with the lhs, and we only end up testing lhs == lhs
 --
 
-import Test.QuickCheck.Batch hiding (run)
 import Test.QuickCheck
-import Text.Show.Functions
-
-import Control.Monad.Reader ({-instances Functor (-> c)-})
-import Control.Monad        ( liftM2 )
 
 import Data.List
 import Data.Char
@@ -38,55 +31,6 @@ import Data.ByteString.Fusion
 import Prelude hiding (abs)
 
 import QuickCheckUtils
-
-------------------------------------------------------------------------
--- First off, some arbitrary data instances, for QuickCheck.
-
-instance Arbitrary Char where
-    arbitrary     = choose ('a', 'i')
-    coarbitrary c = variant (ord c `rem` 4)
-
-instance (Arbitrary a, Arbitrary b) => Arbitrary (PairS a b) where
-  arbitrary             = liftM2 (:*:) arbitrary arbitrary
-  coarbitrary (a :*: b) = coarbitrary a . coarbitrary b
-
-instance Arbitrary Word8 where
-    arbitrary = choose (97, 105)
-    coarbitrary c = variant (fromIntegral ((fromIntegral c) `rem` 4))
-
-instance Arbitrary a => Arbitrary (Maybe a) where
-  arbitrary           = do a <- arbitrary ; elements [Nothing, Just a]
-  coarbitrary Nothing = variant 0
-  coarbitrary _       = variant 1 -- ok?
-
-instance Arbitrary a => Arbitrary (MaybeS a) where
-  arbitrary            = do a <- arbitrary ; elements [NothingS, JustS a]
-  coarbitrary NothingS = variant 0
-  coarbitrary _        = variant 1 -- ok?
-
-{-
-instance Arbitrary Char where
-  arbitrary = choose ('\0', '\255') -- since we have to test words, unlines too
-  coarbitrary c = variant (ord c `rem` 16)
-
-instance Arbitrary Word8 where
-  arbitrary = choose (minBound, maxBound)
-  coarbitrary c = variant (fromIntegral ((fromIntegral c) `rem` 16))
--}
-
-instance Random Word8 where
-  randomR (a,b) g = case randomR (fromIntegral a :: Integer
-                                 ,fromIntegral b :: Integer) g of
-                            (x,g) -> (fromIntegral x :: Word8, g)
-  random g        = randomR (minBound,maxBound) g
-
-instance Arbitrary L.ByteString where
-    arbitrary     = arbitrary >>= return . L.LPS . filter (not. P.null) -- maintain the invariant.
-    coarbitrary s = coarbitrary (L.unpack s)
-
-instance Arbitrary P.ByteString where
-  arbitrary = P.pack `fmap` arbitrary
-  coarbitrary s = coarbitrary (P.unpack s)
 
 ------------------------------------------------------------------------
 -- The entry point
@@ -204,6 +148,7 @@ bp_tests =
     ,("reverse",     mytest prop_reverseBP)
     ,("snoc",        mytest prop_snocBP)
     ,("tail",        mytest prop_tailBP)
+    ,("scanl",       mytest prop_scanlBP)
     ,("transpose",   mytest prop_transposeBP)
     ,("replicate",   mytest prop_replicateBP)
     ,("take",        mytest prop_takeBP)
@@ -250,6 +195,8 @@ pl_tests =
     ,("unfoldr",     mytest prop_unfoldrPL)
     ,("scanl",       mytest prop_scanlPL)
     ,("scanl1",      mytest prop_scanl1PL)
+    ,("scanr",       mytest prop_scanrPL)
+    ,("scanr1",      mytest prop_scanr1PL)
     ,("head",        mytest prop_headPL)
     ,("init",        mytest prop_initPL)
     ,("last",        mytest prop_lastPL)
@@ -579,110 +526,6 @@ ll_tests =
     ]
 
 ------------------------------------------------------------------------
---
--- We're doing two forms of testing here. Firstly, model based testing.
--- For our Lazy and strict bytestring types, we have model types:
---
---  i.e.    Lazy    ==   Byte
---              \\      //
---                 List 
---
--- That is, the Lazy type can be modeled by functions in both the Byte
--- and List type. For each of the 3 models, we have a set of tests that
--- check those types match.
---
--- The Model class connects a type and its model type, via a conversion
--- function. 
---
-class Model a b where
-  abs :: a -> b  -- get the abstract vale from a concrete value
-
---
--- Connecting our Lazy and Strict types to their models. We also check
--- the data invariant on Lazy types.
---
--- These instances represent the arrows in the above diagram
---
-instance Model P [W] where abs = P.unpack
-instance Model B [W] where abs = L.unpack . checkInvariant
-instance Model B P   where abs = abstr . checkInvariant
-
--- Types are trivially modeled by themselves
-instance Model Bool  Bool         where abs = id
-instance Model Int   Int          where abs = id
-instance Model Int64 Int64        where abs = id
-instance Model Word8 Word8        where abs = id
-instance Model Ordering Ordering  where abs = id
-
--- More structured types are modeled recursively, using the NatTrans class from Gofer.
-class (Functor f, Functor g) => NatTrans f g where
-    eta :: f a -> g a
-
--- The transformation of the same type is identity
-instance NatTrans [] []             where eta = id
-instance NatTrans Maybe Maybe       where eta = id
-instance NatTrans ((->) X) ((->) X) where eta = id
-instance NatTrans ((->) W) ((->) W) where eta = id
-
--- Missing from < ghc 6.5 compilers
-instance Functor ((,)   a) where fmap f (x,y) = (x, f y)
-
--- We have a transformation of pairs, if the pairs are in Model
-instance Model f g => NatTrans ((,) f) ((,) g) where eta (f,a) = (abs f, a)
-
--- And finally, we can take any (m a) to (n b), if we can Model m n, and a b
-instance (NatTrans m n, Model a b) => Model (m a) (n b) where abs x = fmap abs (eta x)
-
-
-------------------------------------------------------------------------
-
--- Some short hand.
-type X = Int
-type W = Word8
-type P = P.ByteString
-type B = L.ByteString
-
-------------------------------------------------------------------------
---
--- These comparison functions handle wrapping and equality.
---
-
-compare1 :: (Model a1 b1, Model a b, Eq b)
-         => (a1 -> a) -> (b1 -> b) -> a1 -> Bool
-compare1 f f' a = abs (f a) == f' (abs a)
-
-compare2 :: (Model a2 b2, Model a1 b1, Model a b, Eq b)
-         => (a1 -> a2 -> a) -> (b1 -> b2 -> b) -> a1 -> a2 -> Bool
-compare2 f f' a b = abs (f a b) == f' (abs a) (abs b)
-
-compare3 :: (Model a3 b3, Model a2 b2, Model a1 b1, Model a b, Eq b)
-         => (a1 -> a2 -> a3 -> a) -> (b1 -> b2 -> b3 -> b) -> a1 -> a2 -> a3 -> Bool
-compare3 f f' a b c = abs (f a b c) == f' (abs a) (abs b) (abs c)
-
---
--- And for functions that take non-null input
---
-notLNull1 :: (Testable a) =>
-             (ByteString -> a) -> ByteString -> Property
-notLNull1 f = \x -> (not . L.null $ x) ==> f x
-
-notPNull1 :: (Testable a) =>
-             (P -> a) -> P -> Property
-notPNull1 f = \x -> (not . P.null $ x) ==> f x
-
-notLNull2 :: (Testable a) =>
-             (t -> ByteString -> a) -> t -> ByteString -> Property
-notLNull2 f = \x y -> (not . L.null $ y) ==> f x y
-
-notPNull2 :: (Testable a)
-          => (t -> P -> a) -> t -> P -> Property
-notPNull2 f = \x y -> (not . P.null $ y) ==> f x y
-
-notPNull3 :: (Testable a)
-          => (t -> t1 -> P -> a) -> t -> t1 -> P -> Property
-notPNull3 f = \x y z -> (not . P.null $ z) ==> f x y z
-
-------------------------------------------------------------------------
 -- Now, properties comparing ByteString.Lazy <=> List
 --
 
@@ -750,10 +593,6 @@ prop_tailBL       = notLNull1 $ compare1 L.tail   (tail      :: [W] -> [W])
 ------------------------------------------------------------------------
 -- And now ByteString.Lazy <=> ByteString
 
-abstr :: ByteString -> P.ByteString
-abstr (LPS []) = P.empty
-abstr (LPS xs) = P.concat xs
-
 prop_eqBP           = compare2 ((==) :: B -> B -> Bool)
                                ((==) :: P -> P -> Bool)
 prop_compareBP      = compare2 ((compare) :: B -> B -> Ordering)
@@ -817,6 +656,7 @@ prop_lastBP         = notLNull1 $ compare1 L.last    P.last
 prop_maximumBP      = notLNull1 $ compare1 L.maximum P.maximum
 prop_minimumBP      = notLNull1 $ compare1 L.minimum P.minimum
 prop_tailBP         = notLNull1 $ compare1 L.tail    P.tail
+prop_scanlBP        = notLNull3 $ compare3 L.scanl   P.scanl
 
 ------------------------------------------------------------------------
 -- And finally, check correspondance between Data.ByteString and List
@@ -879,6 +719,9 @@ prop_foldr1PL     = notPNull2 $ compare2 P.foldr1  (foldr1 :: (W -> W -> W) -> [
 prop_scanlPL      = notPNull3 $ compare3 P.scanl  (scanl  :: (W -> W -> W) -> W -> [W] -> [W])
 prop_scanl1PL     = notPNull2 $ compare2 P.scanl1 (scanl1 :: (W -> W -> W) -> [W] -> [W])
 
+prop_scanrPL      = notPNull3 $ compare3 P.scanr  (scanr  :: (W -> W -> W) -> W -> [W] -> [W])
+prop_scanr1PL     = notPNull2 $ compare2 P.scanr1 (scanr1 :: (W -> W -> W) -> [W] -> [W])
+
 prop_headPL       = notPNull1 $ compare1 P.head   (head      :: [W] -> W)
 prop_initPL       = notPNull1 $ compare1 P.init   (init      :: [W] -> [W])
 prop_lastPL       = notPNull1 $ compare1 P.last   (last      :: [W] -> W)
@@ -898,13 +741,6 @@ prop_tailPL       = notPNull1 $ compare1 P.tail   (tail      :: [W] -> [W])
 invariant :: L.ByteString -> Bool
 invariant (LPS []) = True
 invariant (LPS xs) = all (not . P.null) xs
-
--- In a form more useful for QC testing (and it's lazy)
-checkInvariant :: L.ByteString -> L.ByteString
-checkInvariant (LPS lps) = LPS (check lps)
-  where check []     = []
-        check (x:xs) | P.null x  = error ("invariant violation: " ++ show lps)
-                     | otherwise = x : check xs
 
 prop_invariant = invariant
 
@@ -1501,7 +1337,7 @@ prop_findSubstringsBB s x l
     _ = x :: Int
 
     -- we look for some random substring of the test string
-    p = take (abs l) $ drop (abs x) s
+    p = take (model l) $ drop (model x) s
 
     -- naive reference implementation
     naive_findSubstrings :: String -> String -> [Int]
