@@ -423,6 +423,11 @@ fusion_tests =
     ,("up/filter     loop fusion",    mytest prop_up_filter_loop_fusion)
     ,("filter/down   loop fusion",    mytest prop_filter_down_fusion)
     ,("down/filter   loop fusion",    mytest prop_down_filter_loop_fusion)
+
+    ,("length/loop   fusion",          mytest prop_length_loop_fusion_1)
+    ,("length/loop   fusion",          mytest prop_length_loop_fusion_2)
+    ,("length/loop   fusion",          mytest prop_length_loop_fusion_3)
+    ,("length/loop   fusion",          mytest prop_length_loop_fusion_4)
     ]
 
 
@@ -1542,3 +1547,26 @@ prop_down_filter_loop_fusion f1 f2 acc1 acc2 xs =
     k (doDownLoop (f1 `fuseAccFilterEFL` f2) (acc1 :*: acc2))
     where _ = acc1 :: Int;  _ = acc2 :: Int ; k g = loopWrapper g xs
 
+------------------------------------------------------------------------
+
+prop_length_loop_fusion_1 f1 acc1 xs =
+  P.length  (loopArr (loopWrapper (doUpLoop f1 acc1) xs)) ==
+  P.lengthU (loopArr (loopWrapper (doUpLoop f1 acc1) xs))
+  where _ = acc1 :: Int
+
+prop_length_loop_fusion_2 f1 acc1 xs =
+  P.length  (loopArr (loopWrapper (doDownLoop f1 acc1) xs)) ==
+  P.lengthU (loopArr (loopWrapper (doDownLoop f1 acc1) xs))
+  where _ = acc1 :: Int
+
+prop_length_loop_fusion_3 f1 acc1 xs =
+  P.length  (loopArr (loopWrapper (doMapLoop f1 acc1) xs)) ==
+  P.lengthU (loopArr (loopWrapper (doMapLoop f1 acc1) xs))
+  where _ = acc1 :: Int
+
+prop_length_loop_fusion_4 f1 acc1 xs =
+  P.length  (loopArr (loopWrapper (doFilterLoop f1 acc1) xs)) ==
+  P.lengthU (loopArr (loopWrapper (doFilterLoop f1 acc1) xs))
+  where _ = acc1 :: Int
+
+------------------------------------------------------------------------

@@ -221,6 +221,7 @@ module Data.ByteString (
 #if defined(__GLASGOW_HASKELL__)
         unpackList, -- eek, otherwise it gets thrown away by the simplifier
 #endif
+        lengthU
   ) where
 
 import qualified Prelude as P
@@ -506,6 +507,7 @@ null :: ByteString -> Bool
 null (PS _ _ l) = l == 0
 {-# INLINE null #-}
 
+-- ---------------------------------------------------------------------
 -- | /O(1)/ 'length' returns the length of a ByteString as an 'Int'.
 length :: ByteString -> Int
 length (PS _ _ l) = l
@@ -514,15 +516,30 @@ length (PS _ _ l) = l
 {-# INLINE [1] length #-}
 #endif
 
-{-# 
+lengthU :: ByteString -> Int
+lengthU = foldl' (const . (+1)) (0::Int)
+{-# INLINE lengthU #-}
 
--- Translate length into a loop. 
--- Performace ok, but allocates too much, so disable for now.
+--
+-- length/loop fusion. When taking the length of any fuseable loop,
+-- rewrite it as a foldl', and thus avoid allocating the result buffer
+-- worth around 10% in speed testing.
+--
+{-# RULES
 
-  "length/loop" forall f acc s .
-  length (loopArr (loopU f acc s)) = foldl' (const . (+1)) (0::Int) (loopArr (loopU f acc s))
+-- v1 fusion
+"length/loop fusion" forall f acc s .
+  length  (loopArr (loopU f acc s)) = 
+  lengthU (loopArr (loopU f acc s))
+
+-- v2 fusion
+"length/loop fusion" forall loop s .
+  length  (loopArr (loopWrapper loop s)) =
+  lengthU (loopArr (loopWrapper loop s))
 
   #-}
+
+------------------------------------------------------------------------
 
 -- | /O(n)/ 'cons' is analogous to (:) for lists, but of different
 -- complexity, as it requires a memcpy.
@@ -531,8 +548,6 @@ cons c (PS x s l) = create (l+1) $ \p -> withForeignPtr x $ \f -> do
         poke p c
         memcpy (p `plusPtr` 1) (f `plusPtr` s) (fromIntegral l)
 {-# INLINE cons #-}
-
--- todo fuse
 
 -- | /O(n)/ Append a byte to the end of a 'ByteString'
 snoc :: ByteString -> Word8 -> ByteString
