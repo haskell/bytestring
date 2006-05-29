@@ -454,7 +454,7 @@ sequenceLoops loop1 loop2 src dest len0 = do
 
 "map/map loop fusion" forall f1 f2 acc1 acc2.
   sequenceLoops (doMapLoop f1 acc1) (doMapLoop f2 acc2) =
-    doMapLoop (f2 `fuseMapMapEFL` f1) (acc1 :*: acc2)
+    doMapLoop (f1 `fuseMapMapEFL` f2) (acc1 :*: acc2)
 
 "filter/filter loop fusion" forall f1 f2 acc1 acc2.
   sequenceLoops (doFilterLoop f1 acc1) (doFilterLoop f2 acc2) =
@@ -608,42 +608,45 @@ down/filter   --> down   fuseAccFilterEFL
 
 fuseAccAccEFL :: AccEFL acc1 -> AccEFL acc2 -> AccEFL (PairS acc1 acc2)
 fuseAccAccEFL f g (acc1 :*: acc2) e1 =
-  case f acc1 e1 of
-    acc1' :*: NothingS -> (acc1' :*: acc2) :*: NothingS
-    acc1' :*: JustS e2 ->
-      case g acc2 e2 of
-        acc2' :*: res -> (acc1' :*: acc2') :*: res
+    case f acc1 e1 of
+        acc1' :*: NothingS -> (acc1' :*: acc2) :*: NothingS
+        acc1' :*: JustS e2 ->
+            case g acc2 e2 of
+                acc2' :*: res -> (acc1' :*: acc2') :*: res
 
 fuseAccNoAccEFL :: AccEFL acc -> NoAccEFL -> AccEFL (PairS acc noAcc)
 fuseAccNoAccEFL f g (acc :*: noAcc) e1 =
-  case f acc e1 of
-    acc' :*: NothingS -> (acc' :*: noAcc) :*: NothingS
-    acc' :*: JustS e2 -> (acc' :*: noAcc) :*: g e2
+    case f acc e1 of
+        acc' :*: NothingS -> (acc' :*: noAcc) :*: NothingS
+        acc' :*: JustS e2 -> (acc' :*: noAcc) :*: g e2
 
 fuseNoAccAccEFL :: NoAccEFL -> AccEFL acc -> AccEFL (PairS noAcc acc)
 fuseNoAccAccEFL f g (noAcc :*: acc) e1 =
-  case f e1 of
-    NothingS -> (noAcc :*: acc) :*: NothingS
-    JustS e2 ->
-      case g acc e2 of
-        acc' :*: res -> (noAcc :*: acc') :*: res
+    case f e1 of
+        NothingS -> (noAcc :*: acc) :*: NothingS
+        JustS e2 ->
+            case g acc e2 of
+                acc' :*: res -> (noAcc :*: acc') :*: res
 
 fuseNoAccNoAccEFL :: NoAccEFL -> NoAccEFL -> NoAccEFL
 fuseNoAccNoAccEFL f g e1 =
-  case f e1 of
-    NothingS -> NothingS
-    JustS e2 -> g e2
+    case f e1 of
+        NothingS -> NothingS
+        JustS e2 -> g e2
 
 fuseMapAccEFL :: MapEFL -> AccEFL acc -> AccEFL (PairS noAcc acc)
 fuseMapAccEFL f g (noAcc :*: acc) e1 =
-  case g acc (f e1) of
-    (acc' :*: res) -> (noAcc :*: acc') :*: res
+    case g acc (f e1) of
+        (acc' :*: res) -> (noAcc :*: acc') :*: res
 
 fuseAccMapEFL :: AccEFL acc -> MapEFL -> AccEFL (PairS acc noAcc)
 fuseAccMapEFL f g (acc :*: noAcc) e1 =
     case f acc e1 of
         (acc' :*: NothingS) -> (acc' :*: noAcc) :*: NothingS
         (acc' :*: JustS e2) -> (acc' :*: noAcc) :*: JustS (g e2)
+
+fuseMapMapEFL :: MapEFL -> MapEFL -> MapEFL
+fuseMapMapEFL   f g e1 = g (f e1)     -- n.b. perfect fusion
 
 fuseMapNoAccEFL :: MapEFL -> NoAccEFL -> NoAccEFL
 fuseMapNoAccEFL f g e1 = g (f e1)
@@ -654,54 +657,51 @@ fuseNoAccMapEFL f g e1 =
         NothingS -> NothingS
         JustS e2 -> JustS (g e2)
 
-fuseMapMapEFL :: MapEFL -> MapEFL -> MapEFL
-fuseMapMapEFL f g e1 = f (g e1)     -- n.b. perfect fusion
-
 fuseAccFilterEFL :: AccEFL acc -> FilterEFL -> AccEFL (PairS acc noAcc)
 fuseAccFilterEFL f g (acc :*: noAcc) e1 =
-  case f acc e1 of
-    acc' :*: NothingS -> (acc' :*: noAcc) :*: NothingS
-    acc' :*: JustS e2 ->
-      case g e2 of
-        False -> (acc' :*: noAcc) :*: NothingS
-        True  -> (acc' :*: noAcc) :*: JustS e2
+    case f acc e1 of
+        acc' :*: NothingS -> (acc' :*: noAcc) :*: NothingS
+        acc' :*: JustS e2 ->
+            case g e2 of
+                False -> (acc' :*: noAcc) :*: NothingS
+                True  -> (acc' :*: noAcc) :*: JustS e2
 
 fuseFilterAccEFL :: FilterEFL -> AccEFL acc -> AccEFL (PairS noAcc acc)
 fuseFilterAccEFL f g (noAcc :*: acc) e1 =
-  case f e1 of
-    False -> (noAcc :*: acc) :*: NothingS
-    True  ->
-      case g acc e1 of
-        acc' :*: res -> (noAcc :*: acc') :*: res
+    case f e1 of
+        False -> (noAcc :*: acc) :*: NothingS
+        True  ->
+            case g acc e1 of
+                acc' :*: res -> (noAcc :*: acc') :*: res
 
 fuseNoAccFilterEFL :: NoAccEFL -> FilterEFL -> NoAccEFL
 fuseNoAccFilterEFL f g e1 =
-  case f e1 of
-    NothingS -> NothingS
-    JustS e2 ->
-      case g e2 of
-        False -> NothingS
-        True  -> JustS e2
+    case f e1 of
+        NothingS -> NothingS
+        JustS e2 ->
+            case g e2 of
+                False -> NothingS
+                True  -> JustS e2
 
 fuseFilterNoAccEFL :: FilterEFL -> NoAccEFL -> NoAccEFL
 fuseFilterNoAccEFL f g e1 =
-  case f e1 of
-    False -> NothingS
-    True  -> g e1
+    case f e1 of
+        False -> NothingS
+        True  -> g e1
 
 fuseFilterFilterEFL :: FilterEFL -> FilterEFL -> FilterEFL
 fuseFilterFilterEFL f g e1 = f e1 && g e1
 
 fuseMapFilterEFL :: MapEFL -> FilterEFL -> NoAccEFL
 fuseMapFilterEFL f g e1 =
-  case f e1 of
-    e2 -> case g e2 of
+    case f e1 of
+        e2 -> case g e2 of
             False -> NothingS
             True  -> JustS e2
 
 fuseFilterMapEFL :: FilterEFL -> MapEFL -> NoAccEFL
 fuseFilterMapEFL f g e1 =
-  case f e1 of
-    False -> NothingS
-    True  -> JustS (g e1)
+    case f e1 of
+        False -> NothingS
+        True  -> JustS (g e1)
 
