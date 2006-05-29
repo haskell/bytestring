@@ -589,7 +589,7 @@ mapIndexed f = LPS . P.loopArr . loopL (P.mapIndexEFL f) 0 . unLPS
 --
 -- > last (scanl f z xs) == foldl f z xs.
 scanl :: (Word8 -> Word8 -> Word8) -> Word8 -> ByteString -> ByteString
-scanl f z = LPS . P.loopArr . loopL (P.scanEFL f) z . unLPS
+scanl f z ps = LPS . P.loopArr . loopL (P.scanEFL f) z . unLPS $ (ps `snoc` 0)
 {-# INLINE scanl #-}
 
 -- ---------------------------------------------------------------------
