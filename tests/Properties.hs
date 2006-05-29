@@ -1,5 +1,6 @@
 #!/usr/bin/env runhaskell
 {-# OPTIONS_GHC -fglasgow-exts -fallow-overlapping-instances #-}
+-- ^ multi paramater type classes
 module Main where
 --
 -- Must have rules off, otherwise the fusion rules will replace the rhs
@@ -92,6 +93,7 @@ instance Arbitrary P.ByteString where
 
 main = run tests
 
+run :: [(String, Int -> IO ())] -> IO ()
 run tests = do
     x <- getArgs
     let n = if null x then 100 else read . head $ x
