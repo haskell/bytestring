@@ -189,6 +189,10 @@ module Data.ByteString.Lazy (
         hGetContentsN,          -- :: Int -> Handle -> IO ByteString
         hGet,                   -- :: Handle -> Int -> IO ByteString
         hGetN,                  -- :: Int -> Handle -> Int -> IO ByteString
+#if defined(__GLASGOW_HASKELL__)
+        hGetNonBlocking,        -- :: Handle -> IO ByteString
+        hGetNonBlockingN,       -- :: Int -> Handle -> IO ByteString
+#endif
         hPut,                   -- :: Handle -> ByteString -> IO ()
 
   ) where
@@ -1136,6 +1140,22 @@ hGetN k h n = lazyRead n >>= return . LPS
             m          -> do pss <- lazyRead (i - m)
                              return (ps : pss)
 
+#if defined(__GLASGOW_HASKELL__)
+-- | hGetNonBlockingN is similar to 'hGetN', except that it will never block
+-- waiting for data to become available, instead it returns only whatever data
+-- is available.
+hGetNonBlockingN :: Int -> Handle -> IO ByteString
+hGetNonBlockingN k h = lazyRead >>= return . LPS
+    where
+    lazyRead = unsafeInterleaveIO $
+               do ps <- P.hGetNonBlocking h k
+                  case P.length ps of
+                    0 -> return []
+                    m | m < k -> return [ps]
+                    _         -> do pss <- lazyRead
+                                    return (ps : pss)
+#endif
+
 -- | Read entire handle contents /lazily/ into a 'ByteString'. Chunks
 -- are read on demand, using the default chunk size.
 hGetContents :: Handle -> IO ByteString
@@ -1144,6 +1164,15 @@ hGetContents = hGetContentsN defaultChunkSize
 -- | Read @n@ bytes /lazily/ into a 'ByteString', directly from the specified 'Handle'.
 hGet :: Handle -> Int -> IO ByteString
 hGet = hGetN defaultChunkSize
+
+#if defined(__GLASGOW_HASKELL__)
+-- | hGetNonBlocking is similar to 'hGet', except that it will never block
+-- waiting for data to become available, instead it returns only whatever data
+-- is available.
+hGetNonBlocking :: Handle -> IO ByteString
+hGetNonBlocking = hGetNonBlockingN defaultChunkSize
+#endif
+
 
 -- | Read an entire file /lazily/ into a 'ByteString'.
 readFile :: FilePath -> IO ByteString
