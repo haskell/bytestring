@@ -529,7 +529,7 @@ lengthU = foldl' (const . (+1)) (0::Int)
 {-# RULES
 
 -- v2 fusion
-"length/loop fusion" forall loop s .
+"length/loop" forall loop s .
   length  (loopArr (loopWrapper loop s)) =
   lengthU (loopArr (loopWrapper loop s))
 
@@ -795,11 +795,11 @@ minimumU = foldl1' min
 
 {-# RULES
 
-"minimum/loop fusion" forall loop s .
+"minimum/loop" forall loop s .
   minimum  (loopArr (loopWrapper loop s)) =
   minimumU (loopArr (loopWrapper loop s))
 
-"maximum/loop fusion" forall loop s .
+"maximum/loop" forall loop s .
   maximum  (loopArr (loopWrapper loop s)) =
   maximumU (loopArr (loopWrapper loop s))
 
