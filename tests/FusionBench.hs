@@ -7,6 +7,7 @@ import Text.Printf
 import qualified Data.ByteString      as P
 import qualified Data.ByteString.Lazy as L
 
+-- minimum pipelines to trigger the various fusion forms
 tests =
  [("map/map",         [F  (P.map (*2) . P.map (+4)                                           $ fps)])
  ,("filter/filter",   [F  (P.filter (/=101) . P.filter (/=102)                               $ fps)])
@@ -37,8 +38,18 @@ tests =
 
  ]
 
+-- and some longer ones to see the full effect
+bigtests =
+ [("big map/map",
+    [F  (P.map (subtract 3). P.map (+7) . P.map (*2) . P.map (+4)                          $ fps)])
+ ,("big filter/filter",
+    [F  (P.filter (/=103) . P.filter (/=104) . P.filter (/=101) . P.filter (/=102)         $ fps)])
+ ,("big filter/map",
+    [F  (P.map (*2) . P.filter (/=104) . P.map (+6) . P.filter (/=103) . P.map (+5)        $ fps)])
+ ]
+
 main = do
     force (fps,fps') >> force (lps,lps')
     printf "# Size of test data: %dk\n" ((floor $ (fromIntegral (P.length fps)) / 1024) :: Int)
     printf "#Byte\n"
-    run tests
+    run (tests ++ bigtests)
