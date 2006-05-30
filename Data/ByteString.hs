@@ -595,7 +595,11 @@ append xs ys | null xs   = ys
 -- | /O(n)/ 'map' @f xs@ is the ByteString obtained by applying @f@ to each
 -- element of @xs@. This function is subject to array fusion.
 map :: (Word8 -> Word8) -> ByteString -> ByteString
+#if !defined(LOOPU_FUSION)
 map f = loopArr . loopMap f
+#else
+map f = loopArr . loopU (mapEFL f) NoAcc
+#endif
 {-# INLINE map #-}
 
 -- | /O(n)/ Like 'map', but not fuseable. The benefit is that it is
@@ -652,7 +656,11 @@ transpose ps = P.map pack (List.transpose (P.map unpack ps))
 -- ByteString using the binary operator, from left to right.
 -- This function is subject to array fusion.
 foldl :: (a -> Word8 -> a) -> a -> ByteString -> a
+#if !defined(LOOPU_FUSION)
 foldl f z = loopAcc . loopUp (foldEFL f) z
+#else
+foldl f z = loopAcc . loopU (foldEFL f) z
+#endif
 {-# INLINE foldl #-}
 
 {-
@@ -673,6 +681,7 @@ foldl f v (PS x s l) = inlinePerformIO $ withForeignPtr x $ \ptr ->
 -- Though actually foldl is also strict in the accumulator.
 foldl' :: (a -> Word8 -> a) -> a -> ByteString -> a
 foldl' = foldl
+-- foldl' f z = loopAcc . loopU (foldEFL' f) z
 {-# INLINE foldl' #-}
 
 -- | 'foldr', applied to a binary operator, a starting value
@@ -808,7 +817,11 @@ minimumU = foldl1' min
 ------------------------------------------------------------------------
 
 mapAccumL :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
+#if !defined(LOOPU_FUSION)
 mapAccumL f z = unSP . loopUp (mapAccumEFL f) z
+#else
+mapAccumL f z = unSP . loopU (mapAccumEFL f) z
+#endif
 {-# INLINE mapAccumL #-}
 
 mapAccumR :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
@@ -832,7 +845,12 @@ mapIndexed f = loopArr . loopUp (mapIndexEFL f) 0
 --
 -- > last (scanl f z xs) == foldl f z xs.
 scanl :: (Word8 -> Word8 -> Word8) -> Word8 -> ByteString -> ByteString
+#if !defined(LOOPU_FUSION)
 scanl f z ps = loopArr . loopUp (scanEFL f) z $ (ps `snoc` 0)
+#else
+scanl f z ps = loopArr . loopU (scanEFL f) z $ (ps `snoc` 0)
+#endif
+
     -- n.b. haskell's List scan returns a list one bigger than the
     -- input, so we need to snoc here to get some extra space, however,
     -- it breaks map/up fusion (i.e. scanl . map no longer fuses)
@@ -1327,7 +1345,11 @@ notElem c ps = not (elem c ps)
 -- returns a ByteString containing those characters that satisfy the
 -- predicate. This function is subject to array fusion.
 filter :: (Word8 -> Bool) -> ByteString -> ByteString
+#if !defined(LOOPU_FUSION)
 filter f = loopArr . loopFilter f
+#else
+filter p  = loopArr . loopU (filterEFL p) NoAcc
+#endif
 {-# INLINE filter #-}
 
 -- | /O(n)/ 'filter\'' is a non-fuseable version of filter, that may be
