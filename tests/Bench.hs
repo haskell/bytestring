@@ -1,30 +1,24 @@
 {-# OPTIONS -fglasgow-exts #-}
-
+-- ^ unboxed strings
 --
 -- Benchmark tool.
 -- Compare a function against equivalent code from other libraries for
 -- space and time.
 --
+import BenchUtils
 
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as C
 import qualified Data.ByteString.Lazy as L
--- import qualified Data.ByteString as L
 
 import Data.List
 import Data.Char
 import Data.Word
 import Data.Int
 
-import System.Mem
-import Control.Concurrent
-
 import System.IO
-import System.CPUTime
-import System.IO.Unsafe
 import Control.Monad
-import Control.Exception
 import Text.Printf
 
 main :: IO ()
@@ -37,33 +31,6 @@ main = do
 
     -- now get to it
     sequence_ $ zipWith doit [1..] tests
-
-doit :: Int -> (String, [F]) -> IO ()
-doit n (s,ls) = do
-    printf "%2d " n
-    fn ls
-    printf "\t# %-16s\n" (show s)
-    hFlush stdout
-  where fn xs = case xs of
-                    [x,y]   -> run x >> run y
-                    [x]     -> run x >> printf "\t"
-                    _       -> return ()
-        run s = time s >> performGC >> threadDelay 100
-
-time :: F -> IO ()
-time (F a) = do
-    start <- getCPUTime
-    v     <- force a
-    case v of
-        B -> printf "--\t"
-        _ -> do
-            end   <- getCPUTime
-            let diff = (fromIntegral (end - start)) / (10^12)
-            printf "%0.3f\t" (diff :: Double)
-    hFlush stdout
-
--- compare the 3 implementations
-tests  :: [(String,[F])]
 
 tests =
     [
@@ -282,137 +249,3 @@ tests =
     , ("addr2",  [F ({-# SCC "unsafePackAddress" #-}let s = "my\nstring\nhaskell"# in C.unsafePackAddress 17 s == C.packAddress s)])
 
     ]
-
-------------------------------------------------------------------------
--- 
--- an existential list
---
-data F = forall a . Forceable a => F a
-
-data Result = T | B
-
---
--- a bit deepSeqish
---
-class Forceable a where
-    force :: a -> IO Result
-    force v = v `seq` return T
-
-#if !defined(HEAD)
-instance Forceable B.ByteString where
-    force v = B.length v `seq` return T
-#endif
-
-instance Forceable L.ByteString where
-    force v = L.length v `seq` return T
-
--- instance Forceable SPS.PackedString where
---     force v = SPS.length v `seq` return T
-
--- instance Forceable PS.PackedString where
---     force v = PS.lengthPS v `seq` return T
-
-instance Forceable a => Forceable (Maybe a) where
-    force Nothing  = return T
-    force (Just v) = force v `seq` return T
-
-instance Forceable [a] where
-    force v = length v `seq` return T
-
-instance (Forceable a, Forceable b) => Forceable (a,b) where
-    force (a,b) = force a >> force b
-
-instance Forceable Int
-instance Forceable Int64
-instance Forceable Bool
-instance Forceable Char
-instance Forceable Word8
-instance Forceable Ordering
-
--- used to signal undefinedness
-instance Forceable () where force () = return B
-
-------------------------------------------------------------------------
---
--- some large strings to play with
---
-
-fps :: B.ByteString
-fps = unsafePerformIO $ B.readFile dict
-{-# NOINLINE fps #-}
-
-fps' :: B.ByteString
-fps' = unsafePerformIO $ B.readFile dict'
-{-# NOINLINE fps' #-}
-
-lps :: L.ByteString
-lps = unsafePerformIO $ L.readFile dict
-{-# NOINLINE lps #-}
-
-lps' :: L.ByteString
-lps' = unsafePerformIO $ L.readFile dict'
-{-# NOINLINE lps' #-}
-
-{-
-sps :: SPS.PackedString
-sps = unsafePerformIO $ do
-    h  <- openFile dict ReadMode
-    l  <- hFileSize h
-    ps <- SPS.hGet h (fromIntegral l)
-    hClose h
-    return ps
-{-# NOINLINE sps #-}
-
-sps' :: SPS.PackedString
-sps' = unsafePerformIO $ do
-    h  <- openFile dict' ReadMode
-    l  <- hFileSize h
-    ps <- SPS.hGet h (fromIntegral l)
-    hClose h
-    return ps
-{-# NOINLINE sps' #-}
-
-ps :: PS.PackedString
-ps = unsafePerformIO $ do
-    h  <- openFile dict ReadMode
-    s  <- hGetContents h
-    length s `seq` return ()
-    hClose h
-    return $! PS.packString s
-{-# NOINLINE ps #-}
-
-ps' :: PS.PackedString
-ps' = unsafePerformIO $ do
-    h  <- openFile dict' ReadMode
-    l  <- hFileSize h
-    s  <- hGetContents h
-    length s `seq` return ()
-    hClose h
-    return $! PS.packString s
-{-# NOINLINE ps' #-}
--}
-
-{-
-list :: [Char]
-list = unsafePerformIO $ do
-    h  <- openFile dict ReadMode
-    s  <- hGetContents h
-    length s `seq` return ()
-    hClose h
-    return s
-{-# NOINLINE list #-}
-
-list' :: [Char]
-list' = unsafePerformIO $ do
-    h  <- openFile dict' ReadMode
-    s  <- hGetContents h
-    length s `seq` return ()
-    hClose h
-    return s
-{-# NOINLINE list' #-}
--}
-
-dict = "bigdata"
-dict' = "data"
-
-------------------------------------------------------------------------
