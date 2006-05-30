@@ -1,11 +1,7 @@
 {-# OPTIONS_GHC -cpp -fffi -fglasgow-exts -fno-warn-incomplete-patterns #-}
 --
 -- Module      : ByteString.Lazy
--- Copyright   : (c) The University of Glasgow 2001,
---               (c) David Roundy 2003-2005,
---               (c) Simon Marlow 2005
---               (c) Don Stewart 2005-2006
---               (c) Bjorn Bringert 2006
+-- Copyright   : (c) Don Stewart 2006
 --               (c) Duncan Coutts 2006
 -- License     : BSD-style
 --
