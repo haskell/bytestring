@@ -374,12 +374,12 @@ cmp p1 p2 n len1 len2
 
 -- | /O(1)/ The empty 'ByteString'
 empty :: ByteString
-empty = inlinePerformIO $ mallocByteString 1 >>= \fp -> return $ PS fp 0 0
+empty = inlinePerformIO $ mallocByteString 0 >>= \fp -> return $ PS fp 0 0
 {-# NOINLINE empty #-}
 
 -- | /O(1)/ Convert a 'Word8' into a 'ByteString'
 singleton :: Word8 -> ByteString
-singleton c = unsafePerformIO $ mallocByteString 2 >>= \fp -> do
+singleton c = unsafePerformIO $ mallocByteString 1 >>= \fp -> do
     withForeignPtr fp $ \p -> poke p c
     return $ PS fp 0 1
 {-# INLINE singleton #-}
