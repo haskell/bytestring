@@ -1823,12 +1823,8 @@ getContents = hGetContents stdin
 -- 'pack'.  It also may be more efficient than opening the file and
 -- reading it using hGet.
 readFile :: FilePath -> IO ByteString
-readFile f = do
-    h <- openBinaryFile f ReadMode
-    l <- hFileSize h
-    s <- hGet h $ fromIntegral l
-    hClose h
-    return s
+readFile f = bracket (openBinaryFile f ReadMode) hClose
+    (\h -> hFileSize h >>= hGet h . fromIntegral)
 
 -- | Write a 'ByteString' to a file.
 writeFile :: FilePath -> ByteString -> IO ()
