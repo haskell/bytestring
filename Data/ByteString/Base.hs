@@ -27,8 +27,9 @@ module Data.ByteString.Base (
         unsafeDrop,             -- :: Int -> ByteString -> ByteString
 
         -- * Low level introduction and elimination
-        generate,               -- :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
         create,                 -- :: Int -> (Ptr Word8 -> IO ()) -> ByteString
+        createAndResize,        -- :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
+
         mallocByteString,       -- :: Int -> IO ByteString
         mallocByteStringWith,   -- :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
         fromForeignPtr,         -- :: ForeignPtr Word8 -> Int -> ByteString
@@ -192,26 +193,25 @@ skipIndex :: ByteString -> Int
 skipIndex (PS _ s _) = s
 {-# INLINE skipIndex #-}
 
--- | A way of creating ForeignPtrs outside the IO monad. The @Int@
--- argument gives the final size of the ByteString. Unlike 'generate'
--- the ByteString is not reallocated if the final size is less than the
--- estimated size. Also, unlike 'generate' ByteString's created this way
--- are managed on the Haskell heap.
+-- | A way of creating ByteStrings outside the IO monad. The @Int@
+-- argument gives the final size of the ByteString. Unlike
+-- 'createAndResize' the ByteString is not reallocated if the final size
+-- is less than the estimated size.
 create :: Int -> (Ptr Word8 -> IO ()) -> ByteString
 create l f = unsafePerformIO $ mallocByteStringWith l (\p -> f p >> return l)
 {-# INLINE create #-}
 
 -- | Given the maximum size needed and a function to make the contents
--- of a ByteString, generate makes the 'ByteString'. The generating
+-- of a ByteString, createAndResize makes the 'ByteString'. The generating
 -- function is required to return the actual final size (<= the maximum
 -- size), and the resulting byte array is realloced to this size.  The
 -- string is padded at the end with a null byte.
 --
--- generate is the main mechanism for creating custom, efficient
+-- createAndResize is the main mechanism for creating custom, efficient
 -- ByteString functions, using Haskell or C functions to fill the space.
 --
-generate :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
-generate i f = do
+createAndResize :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
+createAndResize i f = do
     ps@(PS fp _ i') <- mallocByteStringWith i f
     withForeignPtr fp $ \p -> do
         if i' == i
@@ -243,7 +243,7 @@ mallocByteString l = do
 --
 -- On the C malloc heap. Less fun.
 --
-generate i f = do
+createAndResize i f = do
     p <- mallocArray (i+1)
     i' <- f p
     p' <- reallocArray p (i'+1)

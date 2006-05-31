@@ -1361,7 +1361,7 @@ filter p  = loopArr . loopU (filterEFL p) NoAcc
 filter' :: (Word8 -> Bool) -> ByteString -> ByteString
 filter' k ps@(PS x s l)
     | null ps   = ps
-    | otherwise = unsafePerformIO $ generate l $ \p -> withForeignPtr x $ \f -> do
+    | otherwise = unsafePerformIO $ createAndResize l $ \p -> withForeignPtr x $ \f -> do
         t <- go (f `plusPtr` s) p (f `plusPtr` (s + l))
         return (t `minusPtr` p) -- actual length
     where
@@ -1766,7 +1766,7 @@ putStrLn ps = hPut stdout ps >> hPut stdout nl
 -- and then using 'pack'.
 hGet :: Handle -> Int -> IO ByteString
 hGet _ 0 = return empty
-hGet h i = generate i $ \p -> hGetBuf h p i
+hGet h i = createAndResize i $ \p -> hGetBuf h p i
 
 #if defined(__GLASGOW_HASKELL__)
 -- | hGetNonBlocking is identical to 'hGet', except that it will never block
@@ -1774,7 +1774,7 @@ hGet h i = generate i $ \p -> hGetBuf h p i
 -- is available.
 hGetNonBlocking :: Handle -> Int -> IO ByteString
 hGetNonBlocking _ 0 = return empty
-hGetNonBlocking h i = generate i $ \p -> hGetBufNonBlocking h p i
+hGetNonBlocking h i = createAndResize i $ \p -> hGetBufNonBlocking h p i
 #endif
 
 -- | Read entire handle contents into a 'ByteString'.
