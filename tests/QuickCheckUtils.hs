@@ -1,4 +1,5 @@
-{-# OPTIONS_GHC -cpp -fglasgow-exts -fallow-overlapping-instances #-}
+{-# OPTIONS_GHC -fglasgow-exts -fallow-overlapping-instances #-}
+{-# OPTIONS -cpp #-}
 module QuickCheckUtils where
 
 import Test.QuickCheck.Batch
@@ -179,7 +180,7 @@ instance Model f g => NatTrans ((,) f) ((,) g) where eta (f,a) = (model f, a)
 instance (NatTrans m n, Model a b) => Model (m a) (n b) where model x = fmap model (eta x)
 
 -- Missing from < ghc 6.5 compilers
-#if __GLASGOW_HASKELL__ < 605
+#if !defined(__GLASGOW_HASKELL__) || __GLASGOW_HASKELL__ < 605
 instance Functor ((,)   a) where fmap f (x,y) = (x, f y)
 #endif
 
