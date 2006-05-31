@@ -246,7 +246,7 @@ import Data.Array               (listArray)
 import qualified Data.Array as Array ((!))
 
 -- Control.Exception.bracket not available in yhc or nhc
-import Control.Exception        (bracket)
+import Control.Exception        (bracket, assert)
 import Control.Monad            (when)
 
 import Foreign.C.String         (CString, CStringLen)
@@ -508,13 +508,13 @@ unpackWith k (PS ps s l) = inlinePerformIO $ withForeignPtr ps $ \p ->
 
 -- | /O(1)/ Test whether a ByteString is empty.
 null :: ByteString -> Bool
-null (PS _ _ l) = l == 0
+null (PS _ _ l) = assert (l >= 0) $ l <= 0
 {-# INLINE null #-}
 
 -- ---------------------------------------------------------------------
 -- | /O(1)/ 'length' returns the length of a ByteString as an 'Int'.
 length :: ByteString -> Int
-length (PS _ _ l) = l
+length (PS _ _ l) = assert (l >= 0) $ l
 
 --
 -- length/loop fusion. When taking the length of any fuseable loop,
