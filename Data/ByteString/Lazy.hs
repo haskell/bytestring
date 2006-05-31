@@ -1132,7 +1132,7 @@ hGetN k h n = lazyRead n >>= return . LPS
         ps <- P.hGet h (min k i)
         case P.length ps of
             0          -> return []
-            m | m == n -> return [ps]
+            m | m == i -> return [ps]
             m          -> do pss <- lazyRead (i - m)
                              return (ps : pss)
 
