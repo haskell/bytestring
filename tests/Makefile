@@ -82,7 +82,7 @@ prof::
 
 wc: wc.o
 	@if [ ! -f "bigdata" ] ; then ln -s data bigdata ; fi
-	/usr/bin/time ./wc < bigdata
+	/usr/bin/time ./wc bigdata
 wc.o: wc.hs
 	${GHC} ${PKG} -O -ddump-simpl-stats wc.hs -o wc
 
