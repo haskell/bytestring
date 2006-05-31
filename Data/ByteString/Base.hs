@@ -220,22 +220,22 @@ createAndResize i f = do
                     memcpy p' p (fromIntegral i')
                     return i'
 
--- | Wrapper of mallocForeignPtrArray. Any ByteString allocated this way
+-- | Wrapper of mallocForeignPtrBytes. Any ByteString allocated this way
 -- is padded with a null byte. 
 mallocByteStringWith :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
 mallocByteStringWith l f = do
-    fp <- mallocForeignPtrArray (l+1)
+    fp <- mallocForeignPtrBytes (l+1)
     m  <- withForeignPtr fp $ \p -> do
         n <- f p
         poke (p `plusPtr` n) (0::Word8) -- i.e. touch the last cache line last
         return n
     return $ PS fp 0 m
 
--- | Deprecated. Wrapper of mallocForeignPtrArray. Any ByteString
+-- | Deprecated. Wrapper of mallocForeignPtrBytes. Any ByteString
 -- allocated this way is padded with a null byte.
 mallocByteString :: Int -> IO (ForeignPtr Word8)
 mallocByteString l = do
-    fp <- mallocForeignPtrArray (l+1)
+    fp <- mallocForeignPtrBytes (l+1)
     withForeignPtr fp $ \p -> poke (p `plusPtr` l) (0::Word8)
     return fp
 
