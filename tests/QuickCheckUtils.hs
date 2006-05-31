@@ -207,57 +207,25 @@ type B = L.ByteString
 --
 -- These comparison functions handle wrapping and equality.
 --
-
-compare1 :: (Model a1 b1, Model a b, Eq b)
-         => (a1 -> a) -> (b1 -> b) -> a1 -> Bool
-compare1 f f' a = model (f a) == f' (model a)
-
-compare2 :: (Model a2 b2, Model a1 b1, Model a b, Eq b)
-         => (a1 -> a2 -> a) -> (b1 -> b2 -> b) -> a1 -> a2 -> Bool
-compare2 f f' a b = model (f a b) == f' (model a) (model b)
-
-compare3 :: (Model a3 b3, Model a2 b2, Model a1 b1, Model a b, Eq b)
-         => (a1 -> a2 -> a3 -> a) -> (b1 -> b2 -> b3 -> b) -> a1 -> a2 -> a3 -> Bool
-compare3 f f' a b c = model (f a b c) == f' (model a) (model b) (model c)
-
-compare4 :: (Model a4 b4, Model a3 b3, Model a2 b2, Model a1 b1, Model a b, Eq b) 
-         => (a1 -> a2 -> a3 -> a4 -> a)
-         -> (b1 -> b2 -> b3 -> b4 -> b)
-         -> a1 -> a2 -> a3 -> a4 -> Bool
-compare4 f f' a b c d = model (f a b c d) ==
-                          f' (model a) (model b) (model c) (model d)
-
-compare5 :: (Model a5 b5, Model a4 b4, Model a3 b3, Model a2 b2, Model a1 b1, Model a b, Eq b) 
-        => (a1 -> a2 -> a3 -> a4 -> a5 -> a)
-        -> (b1 -> b2 -> b3 -> b4 -> b5 -> b)
-        -> a1 -> a2 -> a3 -> a4 -> a5 -> Bool
-compare5 f f' a b c d e = model (f a b c d e) ==
-                          f' (model a) (model b) (model c) (model d) (model e)
-
+compare1 f g a =
+    model (f a)         == g (model a)
+compare2 f g a b =
+    model (f a b)       == g (model a) (model b)
+compare3 f g a b c =
+    model (f a b c)     == g (model a) (model b) (model c)
+compare4 f g a b c d =
+    model (f a b c d)   == g (model a) (model b) (model c) (model d)
+compare5 f g a b c d e =
+    model (f a b c d e) == g (model a) (model b) (model c) (model d) (model e)
 
 --
 -- And for functions that take non-null input
 --
-notLNull1 :: (Testable a) =>
-             (ByteString -> a) -> ByteString -> Property
-notLNull1 f = \x -> (not . L.null $ x) ==> f x
+notLNull1 f g = \x     -> (not (L.null x)) ==> compare1 f g x
+notLNull2 f g = \x y   -> (not (L.null y)) ==> compare2 f g x y
+notLNull3 f g = \x y z -> (not (L.null z)) ==> compare3 f g x y z
 
-notPNull1 :: (Testable a) =>
-             (P -> a) -> P -> Property
-notPNull1 f = \x -> (not . P.null $ x) ==> f x
+notPNull1 f g = \x     -> (not (P.null x)) ==> compare1 f g x
+notPNull2 f g = \x y   -> (not (P.null y)) ==> compare2 f g x y
+notPNull3 f g = \x y z -> (not (P.null z)) ==> compare3 f g x y z
 
-notLNull2 :: (Testable a) =>
-             (t -> ByteString -> a) -> t -> ByteString -> Property
-notLNull2 f = \x y -> (not . L.null $ y) ==> f x y
-
-notLNull3 :: (Testable a)
-          => (t -> t1 -> ByteString -> a) -> t -> t1 -> ByteString -> Property
-notLNull3 f = \x y z -> (not . L.null $ z) ==> f x y z
-
-notPNull2 :: (Testable a)
-          => (t -> P -> a) -> t -> P -> Property
-notPNull2 f = \x y -> (not . P.null $ y) ==> f x y
-
-notPNull3 :: (Testable a)
-          => (t -> t1 -> P -> a) -> t -> t1 -> P -> Property
-notPNull3 f = \x y z -> (not . P.null $ z) ==> f x y z

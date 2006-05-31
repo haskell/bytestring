@@ -290,7 +290,7 @@ prop_lengthloop_lazy = compare2
      (\f g -> P.length . P.filter f)
 -}
 
-prop_maximumloop_list = notPNull2 $ compare2
+prop_maximumloop_list = notPNull2
      (\f  -> P.maximum . P.map f)   -- so we don't get null strings
      ((\f ->   maximum .   map f) :: (W -> W) -> [W] -> W)
 
@@ -300,7 +300,7 @@ prop_maximumloop_lazy = compare2
      (\f g -> P.maximum . P.filter f)
 -}
 
-prop_minimumloop_list = notPNull2 $ compare2
+prop_minimumloop_list = notPNull2
      (\f  -> P.minimum . P.map f)
      ((\f ->   minimum .   map f) :: (W -> W) -> [W] -> W)
 

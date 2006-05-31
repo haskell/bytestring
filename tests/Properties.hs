@@ -586,15 +586,15 @@ prop_elemBL       = compare2 L.elem              (elem      :: W -> [W] -> Bool)
 prop_notElemBL    = compare2 L.notElem           (notElem   :: W -> [W] -> Bool)
 prop_elemIndexBL  = compare2 L.elemIndex         (elemIndex :: W -> [W] -> Maybe Int)
 prop_elemIndicesBL= compare2 L.elemIndices       (elemIndices:: W -> [W] -> [Int])
-prop_foldl1BL     = notLNull2 $ compare2 L.foldl1 (foldl1    :: (W -> W -> W) -> [W] -> W)
-prop_foldl1BL'    = notLNull2 $ compare2 L.foldl1'(foldl1'   :: (W -> W -> W) -> [W] -> W)
-prop_foldr1BL     = notLNull2 $ compare2 L.foldr1 (foldr1    :: (W -> W -> W) -> [W] -> W)
-prop_headBL       = notLNull1 $ compare1 L.head   (head      :: [W] -> W)
-prop_initBL       = notLNull1 $ compare1 L.init   (init      :: [W] -> [W])
-prop_lastBL       = notLNull1 $ compare1 L.last   (last      :: [W] -> W)
-prop_maximumBL    = notLNull1 $ compare1 L.maximum(maximum   :: [W] -> W)
-prop_minimumBL    = notLNull1 $ compare1 L.minimum(minimum   :: [W] -> W)
-prop_tailBL       = notLNull1 $ compare1 L.tail   (tail      :: [W] -> [W])
+prop_foldl1BL     = notLNull2 L.foldl1 (foldl1    :: (W -> W -> W) -> [W] -> W)
+prop_foldl1BL'    = notLNull2 L.foldl1'(foldl1'   :: (W -> W -> W) -> [W] -> W)
+prop_foldr1BL     = notLNull2 L.foldr1 (foldr1    :: (W -> W -> W) -> [W] -> W)
+prop_headBL       = notLNull1 L.head   (head      :: [W] -> W)
+prop_initBL       = notLNull1 L.init   (init      :: [W] -> [W])
+prop_lastBL       = notLNull1 L.last   (last      :: [W] -> W)
+prop_maximumBL    = notLNull1 L.maximum(maximum   :: [W] -> W)
+prop_minimumBL    = notLNull1 L.minimum(minimum   :: [W] -> W)
+prop_tailBL       = notLNull1 L.tail   (tail      :: [W] -> [W])
 
 ------------------------------------------------------------------------
 -- And now ByteString.Lazy <=> ByteString
@@ -653,16 +653,16 @@ prop_notElemBP      = compare2 L.notElem    P.notElem
 prop_elemIndexBP    = compare2 L.elemIndex  P.elemIndex
 prop_elemIndicesBP  = compare2 L.elemIndices P.elemIndices
 
-prop_foldl1BP       = notLNull2 $ compare2 L.foldl1 P.foldl1
-prop_foldl1BP'      = notLNull2 $ compare2 L.foldl1' P.foldl1'
-prop_foldr1BP       = notLNull2 $ compare2 L.foldr1 P.foldr1
-prop_headBP         = notLNull1 $ compare1 L.head    P.head
-prop_initBP         = notLNull1 $ compare1 L.init    P.init
-prop_lastBP         = notLNull1 $ compare1 L.last    P.last
-prop_maximumBP      = notLNull1 $ compare1 L.maximum P.maximum
-prop_minimumBP      = notLNull1 $ compare1 L.minimum P.minimum
-prop_tailBP         = notLNull1 $ compare1 L.tail    P.tail
-prop_scanlBP        = notLNull3 $ compare3 L.scanl   P.scanl
+prop_foldl1BP       = notLNull2 L.foldl1 P.foldl1
+prop_foldl1BP'      = notLNull2 L.foldl1' P.foldl1'
+prop_foldr1BP       = notLNull2 L.foldr1 P.foldr1
+prop_headBP         = notLNull1 L.head    P.head
+prop_initBP         = notLNull1 L.init    P.init
+prop_lastBP         = notLNull1 L.last    P.last
+prop_maximumBP      = notLNull1 L.maximum P.maximum
+prop_minimumBP      = notLNull1 L.minimum P.minimum
+prop_tailBP         = notLNull1 L.tail    P.tail
+prop_scanlBP        = notLNull3 L.scanl   P.scanl
 
 ------------------------------------------------------------------------
 -- And finally, check correspondance between Data.ByteString and List
@@ -718,22 +718,22 @@ prop_elemPL       = compare2 P.elem              (elem      :: W -> [W] -> Bool)
 prop_notElemPL    = compare2 P.notElem           (notElem   :: W -> [W] -> Bool)
 prop_elemIndexPL  = compare2 P.elemIndex         (elemIndex :: W -> [W] -> Maybe Int)
 prop_elemIndicesPL= compare2 P.elemIndices       (elemIndices:: W -> [W] -> [Int])
-prop_foldl1PL     = notPNull2 $ compare2 P.foldl1 (foldl1   :: (W -> W -> W) -> [W] -> W)
-prop_foldl1PL'    = notPNull2 $ compare2 P.foldl1' (foldl1' :: (W -> W -> W) -> [W] -> W)
-prop_foldr1PL     = notPNull2 $ compare2 P.foldr1  (foldr1 :: (W -> W -> W) -> [W] -> W)
+prop_foldl1PL     = notPNull2 P.foldl1 (foldl1   :: (W -> W -> W) -> [W] -> W)
+prop_foldl1PL'    = notPNull2 P.foldl1' (foldl1' :: (W -> W -> W) -> [W] -> W)
+prop_foldr1PL     = notPNull2 P.foldr1  (foldr1 :: (W -> W -> W) -> [W] -> W)
 
-prop_scanlPL      = notPNull3 $ compare3 P.scanl  (scanl  :: (W -> W -> W) -> W -> [W] -> [W])
-prop_scanl1PL     = notPNull2 $ compare2 P.scanl1 (scanl1 :: (W -> W -> W) -> [W] -> [W])
+prop_scanlPL      = notPNull3 P.scanl  (scanl  :: (W -> W -> W) -> W -> [W] -> [W])
+prop_scanl1PL     = notPNull2 P.scanl1 (scanl1 :: (W -> W -> W) -> [W] -> [W])
 
-prop_scanrPL      = notPNull3 $ compare3 P.scanr  (scanr  :: (W -> W -> W) -> W -> [W] -> [W])
-prop_scanr1PL     = notPNull2 $ compare2 P.scanr1 (scanr1 :: (W -> W -> W) -> [W] -> [W])
+prop_scanrPL      = notPNull3 P.scanr  (scanr  :: (W -> W -> W) -> W -> [W] -> [W])
+prop_scanr1PL     = notPNull2 P.scanr1 (scanr1 :: (W -> W -> W) -> [W] -> [W])
 
-prop_headPL       = notPNull1 $ compare1 P.head   (head      :: [W] -> W)
-prop_initPL       = notPNull1 $ compare1 P.init   (init      :: [W] -> [W])
-prop_lastPL       = notPNull1 $ compare1 P.last   (last      :: [W] -> W)
-prop_maximumPL    = notPNull1 $ compare1 P.maximum(maximum   :: [W] -> W)
-prop_minimumPL    = notPNull1 $ compare1 P.minimum(minimum   :: [W] -> W)
-prop_tailPL       = notPNull1 $ compare1 P.tail   (tail      :: [W] -> [W])
+prop_headPL       = notPNull1 P.head   (head      :: [W] -> W)
+prop_initPL       = notPNull1 P.init   (init      :: [W] -> [W])
+prop_lastPL       = notPNull1 P.last   (last      :: [W] -> W)
+prop_maximumPL    = notPNull1 P.maximum(maximum   :: [W] -> W)
+prop_minimumPL    = notPNull1 P.minimum(minimum   :: [W] -> W)
+prop_tailPL       = notPNull1 P.tail   (tail      :: [W] -> [W])
 
 -- prop_interspersePL = compare2 L.intersperse (intersperse :: W -> [W] -> [W])
 
