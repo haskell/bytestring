@@ -183,8 +183,8 @@ module Data.ByteString.Lazy (
         -- ** I\/O with Handles
         hGetContents,           -- :: Handle -> IO ByteString
         hGetContentsN,          -- :: Int -> Handle -> IO ByteString
-        hGet,                   -- :: Handle -> Int64-> IO ByteString
-        hGetN,                  -- :: Int -> Handle -> Int64 -> IO ByteString
+        hGet,                   -- :: Handle -> Int -> IO ByteString
+        hGetN,                  -- :: Int -> Handle -> Int -> IO ByteString
 #if defined(__GLASGOW_HASKELL__)
         hGetNonBlocking,        -- :: Handle -> IO ByteString
         hGetNonBlockingN,       -- :: Int -> Handle -> IO ByteString
@@ -1126,16 +1126,16 @@ hGetContentsN k h = lazyRead >>= return . LPS
 
 -- | Read @n@ bytes into a 'ByteString', directly from the
 -- specified 'Handle', in chunks of size @k@.
-hGetN :: Int -> Handle -> Int64 -> IO ByteString
+hGetN :: Int -> Handle -> Int -> IO ByteString
 hGetN _ _ 0 = return empty
 hGetN k h n = readChunks n >>= return . LPS
   where
     readChunks i = do
-        ps <- P.hGet h (min k (fromIntegral i))
+        ps <- P.hGet h (min k i)
         case P.length ps of
             0          -> return []
             m | m == i -> return [ps]
-            m          -> do pss <- lazyRead (i - m)
+            m          -> do pss <- readChunks $! i - m
                              return (ps : pss)
 
 #if defined(__GLASGOW_HASKELL__)
@@ -1150,7 +1150,7 @@ hGetNonBlockingN k h n = readChunks n >>= return . LPS
         ps <- P.hGetNonBlocking h (min k i)
         case P.length ps of
             0         -> return []
-            m | m < i -> return [ps]
+            m | fromIntegral m < i -> return [ps]
             m         -> do pss <- readChunks (i - m)
                             return (ps : pss)
 #endif
@@ -1161,7 +1161,7 @@ hGetContents :: Handle -> IO ByteString
 hGetContents = hGetContentsN defaultChunkSize
 
 -- | Read @n@ bytes into a 'ByteString', directly from the specified 'Handle'.
-hGet :: Handle -> Int64 -> IO ByteString
+hGet :: Handle -> Int -> IO ByteString
 hGet = hGetN defaultChunkSize
 
 #if defined(__GLASGOW_HASKELL__)
