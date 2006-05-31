@@ -781,7 +781,7 @@ maximum :: ByteString -> Word8
 maximum xs@(PS x s l)
     | null xs   = errorEmptyList "maximum"
     | otherwise = inlinePerformIO $ withForeignPtr x $ \p ->
-                    return $ c_maximum (p `plusPtr` s) (fromIntegral l)
+                      c_maximum (p `plusPtr` s) (fromIntegral l)
 
 -- | /O(n)/ 'minimum' returns the minimum value from a 'ByteString'
 -- This function will fuse.
@@ -790,7 +790,7 @@ minimum :: ByteString -> Word8
 minimum xs@(PS x s l)
     | null xs   = errorEmptyList "minimum"
     | otherwise = inlinePerformIO $ withForeignPtr x $ \p ->
-                    return $ c_minimum (p `plusPtr` s) (fromIntegral l)
+                      c_minimum (p `plusPtr` s) (fromIntegral l)
 
 --
 -- minimum/maximum/loop fusion. As for length (and other folds), when we
@@ -1115,9 +1115,10 @@ split w (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
     let ptr = p `plusPtr` s
 
         STRICT1(loop)
-        loop n = do
-            let q = memchr (ptr `plusPtr` n) w (fromIntegral (l-n))
-            if q == nullPtr
+        loop n =
+            let q = inlinePerformIO $ memchr (ptr `plusPtr` n)
+                                           w (fromIntegral (l-n))
+            in if q == nullPtr
                 then [PS x (s+n) (l-n)]
                 else let i = q `minusPtr` ptr in PS x (s+n) (i-n) : loop (i+1)
 
@@ -1224,7 +1225,7 @@ index ps n
 elemIndex :: Word8 -> ByteString -> Maybe Int
 elemIndex c (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
     let p' = p `plusPtr` s
-        q  = memchr p' c (fromIntegral l)
+    q <- memchr p' c (fromIntegral l)
     return $ if q == nullPtr then Nothing else Just $! q `minusPtr` p'
 {-# INLINE elemIndex #-}
 
@@ -1256,7 +1257,8 @@ elemIndices w (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
     let ptr = p `plusPtr` s
 
         STRICT1(loop)
-        loop n = let q = memchr (ptr `plusPtr` n) w (fromIntegral (l - n))
+        loop n = let q = inlinePerformIO $ memchr (ptr `plusPtr` n)
+                                                w (fromIntegral (l - n))
                  in if q == nullPtr
                         then []
                         else let i = q `minusPtr` ptr
@@ -1281,7 +1283,7 @@ elemIndices c ps = loop 0 ps
 -- But more efficiently than using length on the intermediate list.
 count :: Word8 -> ByteString -> Int
 count w (PS x s m) = inlinePerformIO $ withForeignPtr x $ \p ->
-    return $ fromIntegral $ c_count (p `plusPtr` s) (fromIntegral m) w
+    fmap fromIntegral $ c_count (p `plusPtr` s) (fromIntegral m) w
 {-# INLINE count #-}
 
 {-
@@ -1294,7 +1296,7 @@ count w (PS x s m) = inlinePerformIO $ withForeignPtr x $ \p ->
         go :: Ptr Word8 -> CSize -> Int -> IO Int
         STRICT3(go)
         go p l i = do
-            let q = memchr p w l
+            q <- memchr p w l
             if q == nullPtr
                 then return i
                 else do let k = fromIntegral $ q `minusPtr` p
@@ -1586,7 +1588,8 @@ sort = pack . List.sort . unpack
 packCString :: CString -> ByteString
 packCString cstr = unsafePerformIO $ do
     fp <- newForeignPtr_ (castPtr cstr)
-    return $ PS fp 0 (fromIntegral $ c_strlen cstr)
+    l <- c_strlen cstr
+    return $ PS fp 0 (fromIntegral l)
 
 -- | /O(1)/ Build a @ByteString@ from a @CStringLen@. This value will
 -- have /no/ finalizer associated with it. This operation has /O(1)/
@@ -1602,7 +1605,8 @@ packCStringLen (ptr,len) = unsafePerformIO $ do
 packMallocCString :: CString -> ByteString
 packMallocCString cstr = unsafePerformIO $ do
     fp <- newForeignFreePtr (castPtr cstr)
-    return $ PS fp 0 (fromIntegral $ c_strlen cstr)
+    len <- c_strlen cstr
+    return $ PS fp 0 (fromIntegral len)
 
 -- | /O(n) construction/ Use a @ByteString@ with a function requiring a null-terminated @CString@.
 --   The @CString@ should not be freed afterwards. This is a memcpy(3).
@@ -1638,7 +1642,9 @@ copy (PS x s l) = create l $ \p -> withForeignPtr x $ \f ->
 -- | /O(n)/ Duplicate a CString as a ByteString. Useful if you know the
 -- CString is going to be deallocated from C land.
 copyCString :: CString -> IO ByteString
-copyCString cstr = copyCStringLen (cstr, (fromIntegral $ c_strlen cstr))
+copyCString cstr = do
+    len <- c_strlen cstr
+    copyCStringLen (cstr, fromIntegral len)
 
 -- | /O(n)/ Same as copyCString, but saves a strlen call when the length is known.
 copyCStringLen :: CStringLen -> IO ByteString

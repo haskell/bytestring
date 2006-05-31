@@ -49,7 +49,7 @@ module Data.ByteString.Base (
         countOccurrences,           -- :: (Storable a, Num a) => Ptr a -> Ptr Word8 -> Int -> IO ()
 
         -- * Standard C Functions
-        c_strlen,                   -- :: CString -> CInt
+        c_strlen,                   -- :: CString -> IO CInt
         c_malloc,                   -- :: CInt -> IO (Ptr Word8)
         c_free,                     -- :: Ptr Word8 -> IO ()
 
@@ -57,7 +57,7 @@ module Data.ByteString.Base (
         c_free_finalizer,           -- :: FunPtr (Ptr Word8 -> IO ())
 #endif
 
-        memchr,                     -- :: Ptr Word8 -> Word8 -> CSize -> Ptr Word8
+        memchr,                     -- :: Ptr Word8 -> Word8 -> CSize -> IO Ptr Word8
         memcmp,                     -- :: Ptr Word8 -> Ptr Word8 -> CSize -> IO CInt
         memcpy,                     -- :: Ptr Word8 -> Ptr Word8 -> CSize -> IO ()
         memmove,                    -- :: Ptr Word8 -> Ptr Word8 -> CSize -> IO ()
@@ -66,9 +66,9 @@ module Data.ByteString.Base (
         -- * cbits functions
         c_reverse,                  -- :: Ptr Word8 -> Ptr Word8 -> CInt -> IO ()
         c_intersperse,              -- :: Ptr Word8 -> Ptr Word8 -> CInt -> Word8 -> IO ()
-        c_maximum,                  -- :: Ptr Word8 -> CInt -> Word8
-        c_minimum,                  -- :: Ptr Word8 -> CInt -> Word8
-        c_count,                    -- :: Ptr Word8 -> CInt -> Word8 -> CInt
+        c_maximum,                  -- :: Ptr Word8 -> CInt -> IO Word8
+        c_minimum,                  -- :: Ptr Word8 -> CInt -> IO Word8
+        c_count,                    -- :: Ptr Word8 -> CInt -> Word8 -> IO CInt
 
         -- * Internal GHC magic
 #if defined(__GLASGOW_HASKELL__)
@@ -273,7 +273,8 @@ createAndResize i f = do
 packAddress :: Addr# -> ByteString
 packAddress addr# = inlinePerformIO $ do
     p <- newForeignPtr_ cstr
-    return $ PS p 0 (fromIntegral $ c_strlen cstr)
+    l <- c_strlen cstr
+    return $ PS p 0 (fromIntegral l)
   where
     cstr = Ptr addr#
 {-# INLINE packAddress #-}
@@ -375,7 +376,7 @@ countOccurrences counts str l = go 0
 --
 
 foreign import ccall unsafe "string.h strlen" c_strlen
-    :: CString -> CInt
+    :: CString -> IO CInt
 
 foreign import ccall unsafe "stdlib.h malloc" c_malloc
     :: CInt -> IO (Ptr Word8)
@@ -389,7 +390,7 @@ foreign import ccall unsafe "static stdlib.h &free" c_free_finalizer
 #endif
 
 foreign import ccall unsafe "string.h memchr" memchr
-    :: Ptr Word8 -> Word8 -> CSize -> Ptr Word8
+    :: Ptr Word8 -> Word8 -> CSize -> IO (Ptr Word8)
 
 foreign import ccall unsafe "string.h memcmp" memcmp
     :: Ptr Word8 -> Ptr Word8 -> CSize -> IO CInt
@@ -416,13 +417,13 @@ foreign import ccall unsafe "static fpstring.h intersperse" c_intersperse
     :: Ptr Word8 -> Ptr Word8 -> CInt -> Word8 -> IO ()
 
 foreign import ccall unsafe "static fpstring.h maximum" c_maximum
-    :: Ptr Word8 -> CInt -> Word8
+    :: Ptr Word8 -> CInt -> IO Word8
 
 foreign import ccall unsafe "static fpstring.h minimum" c_minimum
-    :: Ptr Word8 -> CInt -> Word8
+    :: Ptr Word8 -> CInt -> IO Word8
 
 foreign import ccall unsafe "static fpstring.h count" c_count
-    :: Ptr Word8 -> CInt -> Word8 -> CInt
+    :: Ptr Word8 -> CInt -> Word8 -> IO CInt
 
 -- ---------------------------------------------------------------------
 -- MMap
