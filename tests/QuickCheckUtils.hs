@@ -93,6 +93,10 @@ instance Arbitrary Word8 where
     arbitrary = choose (97, 105)
     coarbitrary c = variant (fromIntegral ((fromIntegral c) `rem` 4))
 
+instance Arbitrary Int64 where
+  arbitrary     = sized $ \n -> choose (-fromIntegral n,fromIntegral n)
+  coarbitrary n = variant (fromIntegral (if n >= 0 then 2*n else 2*(-n) + 1))
+
 instance Arbitrary a => Arbitrary (Maybe a) where
   arbitrary           = do a <- arbitrary ; elements [Nothing, Just a]
   coarbitrary Nothing = variant 0
@@ -114,10 +118,17 @@ instance Arbitrary Word8 where
 -}
 
 instance Random Word8 where
-  randomR (a,b) g = case randomR (fromIntegral a :: Integer
-                                 ,fromIntegral b :: Integer) g of
-                            (x,g) -> (fromIntegral x :: Word8, g)
-  random g        = randomR (minBound,maxBound) g
+  randomR = integralRandomR
+  random = randomR (minBound,maxBound)
+
+instance Random Int64 where
+  randomR = integralRandomR
+  random  = randomR (minBound,maxBound)
+
+integralRandomR :: (Integral a, RandomGen g) => (a,a) -> g -> (a,g)
+integralRandomR  (a,b) g = case randomR (fromIntegral a :: Integer,
+                                         fromIntegral b :: Integer) g of
+                            (x,g) -> (fromIntegral x, g)
 
 instance Arbitrary L.ByteString where
     arbitrary     = arbitrary >>= return . L.LPS . filter (not. P.null) -- maintain the invariant.
@@ -160,6 +171,7 @@ instance Model B P   where model = abstr . checkInvariant
 instance Model Bool  Bool         where model = id
 instance Model Int   Int          where model = id
 instance Model Int64 Int64        where model = id
+instance Model Int64 Int          where model = fromIntegral
 instance Model Word8 Word8        where model = id
 instance Model Ordering Ordering  where model = id
 

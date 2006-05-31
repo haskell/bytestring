@@ -41,7 +41,7 @@ module Data.ByteString.Lazy.Char8 (
         tail,                   -- :: ByteString -> ByteString
         init,                   -- :: ByteString -> ByteString
         null,                   -- :: ByteString -> Bool
-        length,                 -- :: ByteString -> Int
+        length,                 -- :: ByteString -> Int64
 
         -- * Transformating ByteStrings
         map,                    -- :: (Char -> Char) -> ByteString -> ByteString
@@ -75,11 +75,11 @@ module Data.ByteString.Lazy.Char8 (
         -- ** Accumulating maps
 --      mapAccumL,              -- :: (acc -> Char -> (acc, Char)) -> acc -> ByteString -> (acc, ByteString)
 --      mapAccumR,              -- :: (acc -> Char -> (acc, Char)) -> acc -> ByteString -> (acc, ByteString)
---      mapIndexed,             -- :: (Int -> Char -> Char) -> ByteString -> ByteString
+--      mapIndexed,             -- :: (Int64 -> Char -> Char) -> ByteString -> ByteString
 
         -- ** Infinite ByteStrings
         repeat,                 -- :: Char -> ByteString
-        replicate,              -- :: Int -> Char -> ByteString
+        replicate,              -- :: Int64 -> Char -> ByteString
         cycle,                  -- :: ByteString -> ByteString
 --      iterate,                -- :: (Char -> Char) -> Char -> ByteString
 
@@ -89,9 +89,9 @@ module Data.ByteString.Lazy.Char8 (
         -- * Substrings
 
         -- ** Breaking strings
-        take,                   -- :: Int -> ByteString -> ByteString
-        drop,                   -- :: Int -> ByteString -> ByteString
-        splitAt,                -- :: Int -> ByteString -> (ByteString, ByteString)
+        take,                   -- :: Int64 -> ByteString -> ByteString
+        drop,                   -- :: Int64 -> ByteString -> ByteString
+        splitAt,                -- :: Int64 -> ByteString -> (ByteString, ByteString)
         takeWhile,              -- :: (Char -> Bool) -> ByteString -> ByteString
         dropWhile,              -- :: (Char -> Bool) -> ByteString -> ByteString
         span,                   -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
@@ -138,12 +138,12 @@ module Data.ByteString.Lazy.Char8 (
 --      partition               -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
 
         -- * Indexing ByteStrings
-        index,                  -- :: ByteString -> Int -> Char
-        elemIndex,              -- :: Char -> ByteString -> Maybe Int
-        elemIndices,            -- :: Char -> ByteString -> [Int]
-        findIndex,              -- :: (Char -> Bool) -> ByteString -> Maybe Int
-        findIndices,            -- :: (Char -> Bool) -> ByteString -> [Int]
-        count,                  -- :: Char -> ByteString -> Int
+        index,                  -- :: ByteString -> Int64 -> Char
+        elemIndex,              -- :: Char -> ByteString -> Maybe Int64
+        elemIndices,            -- :: Char -> ByteString -> [Int64]
+        findIndex,              -- :: (Char -> Bool) -> ByteString -> Maybe Int64
+        findIndices,            -- :: (Char -> Bool) -> ByteString -> [Int64]
+        count,                  -- :: Char -> ByteString -> Int64
 
         -- * Zipping and unzipping ByteStrings
         zip,                    -- :: ByteString -> ByteString -> [(Char,Char)]
@@ -168,8 +168,8 @@ module Data.ByteString.Lazy.Char8 (
         -- ** I\/O with Handles
         hGetContents,           -- :: Handle -> IO ByteString
         hGetContentsN,          -- :: Int -> Handle -> IO ByteString
-        hGet,                   -- :: Handle -> Int -> IO ByteString
-        hGetN,                  -- :: Int -> Handle -> Int -> IO ByteString
+        hGet,                   -- :: Handle -> Int64 -> IO ByteString
+        hGetN,                  -- :: Int -> Handle -> Int64 -> IO ByteString
         hPut,                   -- :: Handle -> ByteString -> IO ()
   ) where
 
@@ -186,6 +186,7 @@ import qualified Data.ByteString.Lazy as L
 
 import Data.ByteString.Base (w2c, c2w, isSpaceWord8)
 
+import Data.Int (Int64)
 import qualified Data.List as List (intersperse)
 
 import qualified Prelude as P
@@ -312,7 +313,7 @@ repeat = L.repeat . c2w
 -- > replicate w c = unfoldr w (\u -> Just (u,u)) c
 --
 -- This implemenation uses @memset(3)@
-replicate :: Int -> Char -> ByteString
+replicate :: Int64 -> Char -> ByteString
 replicate w c = L.replicate w (c2w c)
 
 -- | 'takeWhile', applied to a predicate @p@ and a ByteString @xs@,
@@ -410,32 +411,32 @@ joinWithChar = L.joinWithByte . c2w
 {-# INLINE joinWithChar #-}
 
 -- | /O(1)/ 'ByteString' index (subscript) operator, starting from 0.
-index :: ByteString -> Int -> Char
+index :: ByteString -> Int64 -> Char
 index = (w2c .) . L.index
 {-# INLINE index #-}
 
 -- | /O(n)/ The 'elemIndex' function returns the index of the first
 -- element in the given 'ByteString' which is equal (by memchr) to the
 -- query element, or 'Nothing' if there is no such element.
-elemIndex :: Char -> ByteString -> Maybe Int
+elemIndex :: Char -> ByteString -> Maybe Int64
 elemIndex = L.elemIndex . c2w
 {-# INLINE elemIndex #-}
 
 -- | /O(n)/ The 'elemIndices' function extends 'elemIndex', by returning
 -- the indices of all elements equal to the query element, in ascending order.
-elemIndices :: Char -> ByteString -> [Int]
+elemIndices :: Char -> ByteString -> [Int64]
 elemIndices = L.elemIndices . c2w
 {-# INLINE elemIndices #-}
 
 -- | The 'findIndex' function takes a predicate and a 'ByteString' and
 -- returns the index of the first element in the ByteString satisfying the predicate.
-findIndex :: (Char -> Bool) -> ByteString -> Maybe Int
+findIndex :: (Char -> Bool) -> ByteString -> Maybe Int64
 findIndex f = L.findIndex (f . w2c)
 {-# INLINE findIndex #-}
 
 -- | The 'findIndices' function extends 'findIndex', by returning the
 -- indices of all elements satisfying the predicate, in ascending order.
-findIndices :: (Char -> Bool) -> ByteString -> [Int]
+findIndices :: (Char -> Bool) -> ByteString -> [Int64]
 findIndices f = L.findIndices (f . w2c)
 
 -- | count returns the number of times its argument appears in the ByteString
@@ -444,7 +445,7 @@ findIndices f = L.findIndices (f . w2c)
 -- > count '\n' == length . lines
 --
 -- But more efficiently than using length on the intermediate list.
-count :: Char -> ByteString -> Int
+count :: Char -> ByteString -> Int64
 count c = L.count (c2w c)
 
 -- | /O(n)/ 'elem' is the 'ByteString' membership predicate. This

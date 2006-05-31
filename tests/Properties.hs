@@ -551,8 +551,8 @@ prop_mapAccumLBL  = compare3 (L.mapAccumL :: (X -> W -> (X,W)) -> X -> B   -> (X
 
 prop_unfoldrBL =
   compare3
-    ((\n f a -> L.take n $ L.unfoldr f a) :: Int -> (X -> Maybe (W,X)) -> X -> B)
-    ((\n f a ->   take n $   unfoldr f a) :: Int -> (X -> Maybe (W,X)) -> X -> [W])
+    ((\n f a -> L.take (fromIntegral n) $ L.unfoldr f a) :: Int -> (X -> Maybe (W,X)) -> X -> B)
+    ((\n f a ->                  take n $   unfoldr f a) :: Int -> (X -> Maybe (W,X)) -> X -> [W])
 
 prop_allBL        = compare2 L.all               (all       :: (W -> Bool) -> [W] -> Bool)
 prop_anyBL        = compare2 L.any               (any       :: (W -> Bool) -> [W] -> Bool)
@@ -568,7 +568,7 @@ prop_findBL       = compare2 L.find              (find      :: (W -> Bool) -> [W
 prop_findIndicesBL= compare2 L.findIndices       (findIndices:: (W -> Bool) -> [W] -> [Int])
 prop_findIndexBL  = compare2 L.findIndex         (findIndex :: (W -> Bool) -> [W] -> Maybe Int)
 prop_isPrefixOfBL = compare2 L.isPrefixOf        (isPrefixOf:: [W] -> [W] -> Bool)
-prop_lengthBL     = compare1 (fromIntegral . L.length :: B -> Int) (length :: [W] -> Int)
+prop_lengthBL     = compare1 L.length            (length :: [W] -> Int)
 prop_mapBL        = compare2 L.map               (map       :: (W -> W) -> [W] -> [W])
 prop_nullBL       = compare1 L.null              (null      :: [W] -> Bool)
 prop_replicateBL  = compare2 L.replicate         (replicate :: Int -> W -> [W])
@@ -615,8 +615,8 @@ prop_mapAccumLBP    = compare3 (L.mapAccumL :: (X -> W -> (X,W)) -> X -> B -> (X
 
 prop_unfoldrBP =
   compare3
-    ((\n f a -> L.take n $ L.unfoldr    f a) :: Int -> (X -> Maybe (W,X)) -> X -> B)
-    ((\n f a ->      fst $ P.unfoldrN n f a) :: Int -> (X -> Maybe (W,X)) -> X -> P)
+    ((\n f a -> L.take (fromIntegral n) $ L.unfoldr    f a) :: Int -> (X -> Maybe (W,X)) -> X -> B)
+    ((\n f a ->                     fst $ P.unfoldrN n f a) :: Int -> (X -> Maybe (W,X)) -> X -> P)
 
 prop_allBP          = compare2 L.all        P.all
 prop_anyBP          = compare2 L.any        P.any
@@ -899,17 +899,17 @@ prop_minimum xs = (not (null xs)) ==> (minimum xs) == (L.minimum ( pack xs ))
 ------------------------------------------------------------------------
 
 prop_replicate1 n c =
-    (n >= 0) ==> unpack (L.replicate n c) == replicate n c
+    (n >= 0) ==> unpack (L.replicate (fromIntegral n) c) == replicate n c
 
 prop_replicate2 c = unpack (L.replicate 0 c) == replicate 0 c
 
 ------------------------------------------------------------------------
 
-prop_take1 i xs = L.take i (pack xs) == pack (take i xs)
-prop_drop1 i xs = L.drop i (pack xs) == pack (drop i xs)
+prop_take1 i xs = L.take (fromIntegral i) (pack xs) == pack (take i xs)
+prop_drop1 i xs = L.drop (fromIntegral i) (pack xs) == pack (drop i xs)
 
 prop_splitAt i xs = collect (i >= 0 && i < length xs) $
-    L.splitAt i (pack xs) == let (a,b) = splitAt i xs in (pack a, pack b)
+    L.splitAt (fromIntegral i) (pack xs) == let (a,b) = splitAt i xs in (pack a, pack b)
 
 prop_takeWhile f xs = L.takeWhile f (pack xs) == pack (takeWhile f xs)
 prop_dropWhile f xs = L.dropWhile f (pack xs) == pack (dropWhile f xs)
@@ -951,17 +951,17 @@ prop_joinjoinByte xs ys c = L.joinWithByte c xs ys == L.join (L.singleton c) [xs
 
 prop_index xs =
   not (null xs) ==>
-    forAll indices $ \i -> (xs !! i) == L.pack xs `L.index` i
+    forAll indices $ \i -> (xs !! i) == L.pack xs `L.index` (fromIntegral i)
   where indices = choose (0, length xs -1)
 
-prop_elemIndex xs c = (elemIndex c xs) == (L.elemIndex c (pack xs))
+prop_elemIndex xs c = (elemIndex c xs) == fmap fromIntegral (L.elemIndex c (pack xs))
 
-prop_elemIndices xs c = elemIndices c xs == L.elemIndices c (pack xs)
+prop_elemIndices xs c = elemIndices c xs == map fromIntegral (L.elemIndices c (pack xs))
 
-prop_count c xs = length (L.elemIndices c xs) == L.count c xs
+prop_count c xs = length (L.elemIndices c xs) == fromIntegral (L.count c xs)
 
-prop_findIndex xs f = (findIndex f xs) == (L.findIndex f (pack xs))
-prop_findIndicies xs f = (findIndices f xs) == (L.findIndices f (pack xs))
+prop_findIndex xs f = (findIndex f xs) == fmap fromIntegral (L.findIndex f (pack xs))
+prop_findIndicies xs f = (findIndices f xs) == map fromIntegral (L.findIndices f (pack xs))
 
 ------------------------------------------------------------------------
 
