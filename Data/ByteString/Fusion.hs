@@ -195,17 +195,12 @@ loopU :: AccEFL acc                 -- ^ mapping & folding, once per elem
       -> ByteString                 -- ^ input ByteString
       -> (PairS acc ByteString)
 
-loopU f start (PS z s i) = inlinePerformIO $ withForeignPtr z $ \a -> do
-    fp          <- mallocByteString i
-    (ptr,n,acc) <- withForeignPtr fp $ \p -> do
-        (acc :*: i') <- go (a `plusPtr` s) p start
-        if i' == i
-            then return (fp,i',acc)                 -- no realloc for map
-            else do fp_ <- mallocByteString i'      -- realloc
-                    withForeignPtr fp_ $ \p' -> memcpy p' p (fromIntegral i')
-                    return (fp_,i',acc)
+loopU f start (PS z s i) = unsafePerformIO $ withForeignPtr z $ \a -> do
+    (ps, acc) <- createAndTrim' i $ \p -> do
+      (acc' :*: i') <- go (a `plusPtr` s) p start
+      return (0, i', acc')
+    return (acc :*: ps)
 
-    return (acc :*: PS ptr 0 n)
   where
     go p ma = trans 0 0
         where
@@ -308,19 +303,13 @@ type ImperativeLoop acc =
  -> IO (PairS (PairS acc Int) Int) -- result and offset, length of dest that was filled
 
 loopWrapper :: ImperativeLoop acc -> ByteString -> PairS acc ByteString
-loopWrapper body (PS srcFPtr srcOffset srcLen) =
-  unsafePerformIO $ withForeignPtr srcFPtr $ \srcPtr -> do
-    destFPtr <- mallocByteString srcLen
-    withForeignPtr destFPtr $ \destPtr -> do
-      (acc :*: destOffset :*: destLen) <- body (srcPtr `plusPtr` srcOffset)
-                                                destPtr srcLen
-      if destLen == srcLen
-          then return (acc :*: PS destFPtr 0 destLen)   -- no realloc for map
-          else do destFPtr' <- mallocByteString destLen -- realloc
-                  withForeignPtr destFPtr' $ \destPtr' ->
-                    memcpy destPtr' (destPtr `plusPtr` destOffset)
-                                    (fromIntegral destLen)
-                  return (acc :*: PS destFPtr' 0 destLen)
+loopWrapper body (PS srcFPtr srcOffset srcLen) = unsafePerformIO $
+    withForeignPtr srcFPtr $ \srcPtr -> do
+    (ps, acc) <- createAndTrim' srcLen $ \destPtr -> do
+        (acc :*: destOffset :*: destLen) <-
+          body (srcPtr `plusPtr` srcOffset) destPtr srcLen
+        return (destOffset, destLen, acc)
+    return (acc :*: ps)
 
 doUpLoop :: AccEFL acc -> acc -> ImperativeLoop acc
 doUpLoop f acc0 src dest len = loop 0 0 acc0

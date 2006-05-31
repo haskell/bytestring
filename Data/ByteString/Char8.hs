@@ -312,7 +312,7 @@ pack str = B.create (P.length str) $ \p -> go p str
 
 #else /* hack away */
 
-pack str = B.create (P.length str) $ \(Ptr p) -> stToIO (go p str)
+pack str = B.unsafeCreate (P.length str) $ \(Ptr p) -> stToIO (go p str)
   where
     go :: Addr# -> [Char] -> ST a ()
     go _ []        = return ()

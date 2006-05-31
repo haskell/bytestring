@@ -374,12 +374,12 @@ cmp p1 p2 n len1 len2
 
 -- | /O(1)/ The empty 'ByteString'
 empty :: ByteString
-empty = create 0 $ const $ return ()
+empty = unsafeCreate 0 $ const $ return ()
 {-# NOINLINE empty #-}
 
 -- | /O(1)/ Convert a 'Word8' into a 'ByteString'
 singleton :: Word8 -> ByteString
-singleton c = create 1 $ \p -> poke p c
+singleton c = unsafeCreate 1 $ \p -> poke p c
 {-# INLINE singleton #-}
 
 --
@@ -409,14 +409,14 @@ pack :: [Word8] -> ByteString
 
 #if !defined(__GLASGOW_HASKELL__)
 
-pack str = create (P.length str) $ \p -> go p str
+pack str = unsafeCreate (P.length str) $ \p -> go p str
     where
         go _ []     = return ()
         go p (x:xs) = poke p x >> go (p `plusPtr` 1) xs -- less space than pokeElemOff
 
 #else /* hack away */
 
-pack str = create (P.length str) $ \(Ptr p) -> stToIO (go p 0# str)
+pack str = unsafeCreate (P.length str) $ \(Ptr p) -> stToIO (go p 0# str)
     where
         go _ _ []        = return ()
         go p i (W8# c:cs) = writeByte p i c >> go p (i +# 1#) cs
@@ -483,7 +483,7 @@ unpackFoldr (PS fp off len) f ch = withPtr fp $ \p -> do
 -- | /O(n)/ Convert a '[a]' into a 'ByteString' using some
 -- conversion function
 packWith :: (a -> Word8) -> [a] -> ByteString
-packWith k str = create (P.length str) $ \p -> go p str
+packWith k str = unsafeCreate (P.length str) $ \p -> go p str
     where
         STRICT2(go)
         go _ []     = return ()
@@ -544,14 +544,14 @@ lengthU = foldl' (const . (+1)) (0::Int)
 -- | /O(n)/ 'cons' is analogous to (:) for lists, but of different
 -- complexity, as it requires a memcpy.
 cons :: Word8 -> ByteString -> ByteString
-cons c (PS x s l) = create (l+1) $ \p -> withForeignPtr x $ \f -> do
+cons c (PS x s l) = unsafeCreate (l+1) $ \p -> withForeignPtr x $ \f -> do
         poke p c
         memcpy (p `plusPtr` 1) (f `plusPtr` s) (fromIntegral l)
 {-# INLINE cons #-}
 
 -- | /O(n)/ Append a byte to the end of a 'ByteString'
 snoc :: ByteString -> Word8 -> ByteString
-snoc (PS x s l) c = create (l+1) $ \p -> withForeignPtr x $ \f -> do
+snoc (PS x s l) c = unsafeCreate (l+1) $ \p -> withForeignPtr x $ \f -> do
         memcpy p (f `plusPtr` s) (fromIntegral l)
         poke (p `plusPtr` l) c
 {-# INLINE snoc #-}
@@ -614,7 +614,7 @@ map f = loopArr . loopU (mapEFL f) NoAcc
 -- slightly faster for one-shot cases.
 map' :: (Word8 -> Word8) -> ByteString -> ByteString
 map' f (PS fp s len) = inlinePerformIO $ withForeignPtr fp $ \a ->
-    return $ create len $ map_ 0 (a `plusPtr` s)
+    create len $ map_ 0 (a `plusPtr` s)
   where
 
     map_ :: Int -> Ptr Word8 -> Ptr Word8 -> IO ()
@@ -629,7 +629,7 @@ map' f (PS fp s len) = inlinePerformIO $ withForeignPtr fp $ \a ->
 
 -- | /O(n)/ 'reverse' @xs@ efficiently returns the elements of @xs@ in reverse order.
 reverse :: ByteString -> ByteString
-reverse (PS x s l) = create l $ \p -> withForeignPtr x $ \f ->
+reverse (PS x s l) = unsafeCreate l $ \p -> withForeignPtr x $ \f ->
         c_reverse p (f `plusPtr` s) (fromIntegral l)
 
 -- todo, fuseable version
@@ -641,7 +641,7 @@ reverse (PS x s l) = create l $ \p -> withForeignPtr x $ \f ->
 intersperse :: Word8 -> ByteString -> ByteString
 intersperse c ps@(PS x s l)
     | length ps < 2  = ps
-    | otherwise      = create (2*l-1) $ \p -> withForeignPtr x $ \f ->
+    | otherwise      = unsafeCreate (2*l-1) $ \p -> withForeignPtr x $ \f ->
         c_intersperse p (f `plusPtr` s) (fromIntegral l) c
 
 {-
@@ -730,7 +730,7 @@ foldr1 f ps
 concat :: [ByteString] -> ByteString
 concat []     = empty
 concat [ps]   = ps
-concat xs     = create len $ \ptr -> go xs ptr
+concat xs     = unsafeCreate len $ \ptr -> go xs ptr
   where len = P.sum . P.map length $ xs
         STRICT2(go)
         go []            _   = return ()
@@ -898,8 +898,10 @@ scanr1 f ps
 --
 -- This implemenation uses @memset(3)@
 replicate :: Int -> Word8 -> ByteString
-replicate w c | w <= 0    = empty
-              | otherwise = create w $ \ptr -> memset ptr c (fromIntegral w) >> return ()
+replicate w c
+    | w <= 0    = empty
+    | otherwise = unsafeCreate w $ \ptr ->
+                      memset ptr c (fromIntegral w) >> return ()
 
 -- | /O(n)/, where /n/ is the length of the result.  The 'unfoldr' 
 -- function is analogous to the List \'unfoldr\'.  'unfoldr' builds a 
@@ -932,18 +934,15 @@ unfoldr f = concat . unfoldChunk 32 64
 unfoldrN :: Int -> (a -> Maybe (Word8, a)) -> a -> (ByteString, Maybe a)
 unfoldrN i f x0
     | i < 0     = (empty, Just x0)
-    | otherwise = unsafePerformIO $ do
-                    fp <- mallocByteString i
-                    withForeignPtr fp (\p -> go fp p x0 0)
-  where STRICT4(go)
-        go fp p x n =
+    | otherwise = unsafePerformIO $ createAndTrim' i $ \p -> go p x0 0
+  where STRICT3(go)
+        go p x n =
           case f x of
-            Nothing      -> let s = copy (PS fp 0 n)
-                             in s `seq` return (s, Nothing)
+            Nothing      -> return (0, n, Nothing)
             Just (w,x')
-             | n == i    -> return (PS fp 0 i, Just x)
+             | n == i    -> return (0, n, Just x)
              | otherwise -> do poke p w
-                               go fp (p `plusPtr` 1) x' (n+1)
+                               go (p `plusPtr` 1) x' (n+1)
 
 -- ---------------------------------------------------------------------
 -- Substrings
@@ -1196,7 +1195,7 @@ join s = concat . (List.intersperse s)
 -- with a char. Around 4 times faster than the generalised join.
 --
 joinWithByte :: Word8 -> ByteString -> ByteString -> ByteString
-joinWithByte c f@(PS ffp s l) g@(PS fgp t m) = create len $ \ptr ->
+joinWithByte c f@(PS ffp s l) g@(PS fgp t m) = unsafeCreate len $ \ptr ->
     withForeignPtr ffp $ \fp ->
     withForeignPtr fgp $ \gp -> do
         memcpy ptr (fp `plusPtr` s) (fromIntegral l)
@@ -1369,7 +1368,7 @@ filter p  = loopArr . loopU (filterEFL p) NoAcc
 filter' :: (Word8 -> Bool) -> ByteString -> ByteString
 filter' k ps@(PS x s l)
     | null ps   = ps
-    | otherwise = unsafePerformIO $ createAndResize l $ \p -> withForeignPtr x $ \f -> do
+    | otherwise = unsafePerformIO $ createAndTrim l $ \p -> withForeignPtr x $ \f -> do
         t <- go (f `plusPtr` s) p (f `plusPtr` (s + l))
         return (t `minusPtr` p) -- actual length
     where
@@ -1548,7 +1547,7 @@ tails p | null p    = [empty]
 
 -- | /O(n)/ Sort a ByteString efficiently, using counting sort.
 sort :: ByteString -> ByteString
-sort (PS input s l) = create l $ \p -> allocaArray 256 $ \arr -> do
+sort (PS input s l) = unsafeCreate l $ \p -> allocaArray 256 $ \arr -> do
 
     memset (castPtr arr) 0 (256 * fromIntegral (sizeOf (undefined :: CSize)))
     withForeignPtr input (\x -> countOccurrences arr (x `plusPtr` s) l)
@@ -1562,7 +1561,7 @@ sort (PS input s l) = create l $ \p -> allocaArray 256 $ \arr -> do
 
 {-
 sort :: ByteString -> ByteString
-sort (PS x s l) = create l $ \p -> withForeignPtr x $ \f -> do
+sort (PS x s l) = unsafeCreate l $ \p -> withForeignPtr x $ \f -> do
         memcpy p (f `plusPtr` s) l
         c_qsort p l -- inplace
 -}
@@ -1636,7 +1635,7 @@ unsafeUseAsCString (PS ps s _) ac = withForeignPtr ps $ \p -> ac (castPtr p `plu
 --   if a large string has been read in, and only a small part of it 
 --   is needed in the rest of the program.
 copy :: ByteString -> ByteString
-copy (PS x s l) = create l $ \p -> withForeignPtr x $ \f ->
+copy (PS x s l) = unsafeCreate l $ \p -> withForeignPtr x $ \f ->
     memcpy p (f `plusPtr` s) (fromIntegral l)
 
 -- | /O(n)/ Duplicate a CString as a ByteString. Useful if you know the
@@ -1648,12 +1647,8 @@ copyCString cstr = do
 
 -- | /O(n)/ Same as copyCString, but saves a strlen call when the length is known.
 copyCStringLen :: CStringLen -> IO ByteString
-copyCStringLen (cstr, len) = do
-    fp <- mallocForeignPtrArray (len+1)
-    withForeignPtr fp $ \p -> do
-        memcpy p (castPtr cstr) (fromIntegral len)
-        poke (p `plusPtr` len) (0 :: Word8)
-    return $! PS fp 0 len
+copyCStringLen (cstr, len) = 
+    create len $ \p -> memcpy p (castPtr cstr) (fromIntegral len)
 
 -- | /O(1) construction/ Use a @ByteString@ with a function requiring a @CStringLen@.
 -- Warning: modifying the @CStringLen@ will affect the @ByteString@.
@@ -1742,12 +1737,11 @@ hGetLine h = wantReadableHandle "Data.ByteString.hGetLine" h $ \ handle_ -> do
 
 -- TODO, rewrite to use normal memcpy
 mkPS :: RawBuffer -> Int -> Int -> IO ByteString
-mkPS buf start end = do
+mkPS buf start end =
     let len = end - start
-    fp <- mallocByteString len
-    withForeignPtr fp $ \p -> do
+     in create len $ \p -> do
         memcpy_ptr_baoff p buf (fromIntegral start) (fromIntegral len)
-        return (PS fp 0 len)
+	return ()
 
 mkBigPS :: Int -> [ByteString] -> IO ByteString
 mkBigPS _ [ps] = return ps
@@ -1777,7 +1771,7 @@ putStrLn ps = hPut stdout ps >> hPut stdout nl
 -- and then using 'pack'.
 hGet :: Handle -> Int -> IO ByteString
 hGet _ 0 = return empty
-hGet h i = createAndResize i $ \p -> hGetBuf h p i
+hGet h i = createAndTrim i $ \p -> hGetBuf h p i
 
 #if defined(__GLASGOW_HASKELL__)
 -- | hGetNonBlocking is identical to 'hGet', except that it will never block
@@ -1785,7 +1779,7 @@ hGet h i = createAndResize i $ \p -> hGetBuf h p i
 -- is available.
 hGetNonBlocking :: Handle -> Int -> IO ByteString
 hGetNonBlocking _ 0 = return empty
-hGetNonBlocking h i = createAndResize i $ \p -> hGetBufNonBlocking h p i
+hGetNonBlocking h i = createAndTrim i $ \p -> hGetBufNonBlocking h p i
 #endif
 
 -- | Read entire handle contents into a 'ByteString'.

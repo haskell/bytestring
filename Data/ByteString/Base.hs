@@ -27,11 +27,12 @@ module Data.ByteString.Base (
         unsafeDrop,             -- :: Int -> ByteString -> ByteString
 
         -- * Low level introduction and elimination
-        create,                 -- :: Int -> (Ptr Word8 -> IO ()) -> ByteString
-        createAndResize,        -- :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
+        create,                 -- :: Int -> (Ptr Word8 -> IO ()) -> IO ByteString
+        createAndTrim,          -- :: Int -> (Ptr Word8 -> IO Int) -> IO  ByteString
+        createAndTrim',         -- :: Int -> (Ptr Word8 -> IO (Int, Int, a)) -> IO (ByteString, a)
 
-        mallocByteString,       -- :: Int -> IO ByteString
-        mallocByteStringWith,   -- :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
+        unsafeCreate,           -- :: Int -> (Ptr Word8 -> IO ()) ->  ByteString
+
         fromForeignPtr,         -- :: ForeignPtr Word8 -> Int -> ByteString
         toForeignPtr,           -- :: ByteString -> (ForeignPtr Word8, Int, Int)
         skipIndex,              -- :: ByteString -> Int
@@ -198,62 +199,53 @@ skipIndex (PS _ s _) = s
 
 -- | A way of creating ByteStrings outside the IO monad. The @Int@
 -- argument gives the final size of the ByteString. Unlike
--- 'createAndResize' the ByteString is not reallocated if the final size
+-- 'createAndTrim' the ByteString is not reallocated if the final size
 -- is less than the estimated size.
-create :: Int -> (Ptr Word8 -> IO ()) -> ByteString
-create l f = unsafePerformIO $ mallocByteStringWith l (\p -> f p >> return l)
-{-# INLINE create #-}
+unsafeCreate :: Int -> (Ptr Word8 -> IO ()) -> ByteString
+unsafeCreate l f = unsafePerformIO (create l f)
+{-# INLINE unsafeCreate #-}
+
+-- | Wrapper of mallocForeignPtrBytes. Any ByteString allocated this way
+-- is padded with a null byte. 
+create :: Int -> (Ptr Word8 -> IO ()) -> IO ByteString
+create l f = do
+    fp <- mallocForeignPtrBytes (l+1)
+    withForeignPtr fp $ \p -> do
+        f p
+        pokeByteOff p l (0::Word8) -- i.e. touch the last cache line last
+        return $! PS fp 0 l
 
 -- | Given the maximum size needed and a function to make the contents
--- of a ByteString, createAndResize makes the 'ByteString'. The generating
+-- of a ByteString, createAndTrim makes the 'ByteString'. The generating
 -- function is required to return the actual final size (<= the maximum
 -- size), and the resulting byte array is realloced to this size.  The
 -- string is padded at the end with a null byte.
 --
--- createAndResize is the main mechanism for creating custom, efficient
+-- createAndTrim is the main mechanism for creating custom, efficient
 -- ByteString functions, using Haskell or C functions to fill the space.
 --
-createAndResize :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
-createAndResize i f = do
-    ps@(PS fp _ i') <- mallocByteStringWith i f
+createAndTrim :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
+createAndTrim len f = do
+    fp <- mallocForeignPtrBytes (len+1)
     withForeignPtr fp $ \p -> do
-        if i' == i
-            then return ps
-            else mallocByteStringWith i' $ \p' -> do -- realloc
-                    memcpy p' p (fromIntegral i')
-                    return i'
+        len' <- f p
+        if assert (len' <= len) $ len' >= len
+            then do poke (p `plusPtr` len) (0::Word8)
+                    return $! PS fp 0 len
+            else create len' $ \p' ->
+                    memcpy p' p (fromIntegral len')
 
--- | Wrapper of mallocForeignPtrBytes. Any ByteString allocated this way
--- is padded with a null byte. 
-mallocByteStringWith :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
-mallocByteStringWith l f = do
-    fp <- mallocForeignPtrBytes (l+1)
-    m  <- withForeignPtr fp $ \p -> do
-        n <- f p
-        poke (p `plusPtr` n) (0::Word8) -- i.e. touch the last cache line last
-        return n
-    return $ PS fp 0 m
-
--- | Deprecated. Wrapper of mallocForeignPtrBytes. Any ByteString
--- allocated this way is padded with a null byte.
-mallocByteString :: Int -> IO (ForeignPtr Word8)
-mallocByteString l = do
-    fp <- mallocForeignPtrBytes (l+1)
-    withForeignPtr fp $ \p -> poke (p `plusPtr` l) (0::Word8)
-    return fp
-
-{-
---
--- On the C malloc heap. Less fun.
---
-createAndResize i f = do
-    p <- mallocArray (i+1)
-    i' <- f p
-    p' <- reallocArray p (i'+1)
-    poke (p' `plusPtr` i') (0::Word8)    -- XXX so CStrings work
-    fp <- newForeignFreePtr p'
-    return $ PS fp 0 i'
--}
+createAndTrim' :: Int -> (Ptr Word8 -> IO (Int, Int, a)) -> IO (ByteString, a)
+createAndTrim' len f = do
+    fp <- mallocForeignPtrBytes (len+1)
+    withForeignPtr fp $ \p -> do
+        (off, len', res) <- f p
+        if assert (len' <= len) $ len' >= len
+            then do poke (p `plusPtr` len) (0::Word8)
+                    return $! (PS fp 0 len, res)
+            else do ps <- create len' $ \p' ->
+                            memcpy p' (p `plusPtr` off) (fromIntegral len')
+                    return $! (ps, res)
 
 #if defined(__GLASGOW_HASKELL__)
 -- | /O(n)/ Pack a null-terminated sequence of bytes, pointed to by an
