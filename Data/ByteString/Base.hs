@@ -143,14 +143,16 @@ data ByteString = PS {-# UNPACK #-} !(ForeignPtr Word8)
 -- check for the empty case, so there is an obligation on the programmer
 -- to provide a proof that the ByteString is non-empty.
 unsafeHead :: ByteString -> Word8
-unsafeHead (PS x s _) = inlinePerformIO $ withForeignPtr x $ \p -> peekByteOff p s
+unsafeHead (PS x s l) = assert (l > 0) $
+    inlinePerformIO $ withForeignPtr x $ \p -> peekByteOff p s
 {-# INLINE unsafeHead #-}
 
 -- | A variety of 'tail' for non-empty ByteStrings. 'unsafeTail' omits the
 -- check for the empty case. As with 'unsafeHead', the programmer must
 -- provide a separate proof that the ByteString is non-empty.
 unsafeTail :: ByteString -> ByteString
-unsafeTail (PS ps s l) = PS ps (s+1) (l-1)
+unsafeTail (PS ps s l) = assert (l > 0) $
+    PS ps (s+1) (l-1)
 {-# INLINE unsafeTail #-}
 
 -- | Unsafe 'ByteString' index (subscript) operator, starting from 0, returning a 'Word8'
@@ -158,7 +160,8 @@ unsafeTail (PS ps s l) = PS ps (s+1) (l-1)
 -- obligation on the programmer to ensure the bounds are checked in some
 -- other way.
 unsafeIndex :: ByteString -> Int -> Word8
-unsafeIndex (PS x s _) i = inlinePerformIO $ withForeignPtr x $ \p -> peekByteOff p (s+i)
+unsafeIndex (PS x s l) i = assert (i >= 0 && i < l) $
+    inlinePerformIO $ withForeignPtr x $ \p -> peekByteOff p (s+i)
 {-# INLINE unsafeIndex #-}
 
 -- | A variety of 'take' which omits the checks on @n@ so there is an
