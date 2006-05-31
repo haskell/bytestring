@@ -374,14 +374,12 @@ cmp p1 p2 n len1 len2
 
 -- | /O(1)/ The empty 'ByteString'
 empty :: ByteString
-empty = inlinePerformIO $ mallocByteString 0 >>= \fp -> return $ PS fp 0 0
+empty = create 0 $ const $ return ()
 {-# NOINLINE empty #-}
 
 -- | /O(1)/ Convert a 'Word8' into a 'ByteString'
 singleton :: Word8 -> ByteString
-singleton c = unsafePerformIO $ mallocByteString 1 >>= \fp -> do
-    withForeignPtr fp $ \p -> poke p c
-    return $ PS fp 0 1
+singleton c = create 1 $ \p -> poke p c
 {-# INLINE singleton #-}
 
 --
@@ -609,11 +607,8 @@ map f = loopArr . loopU (mapEFL f) NoAcc
 -- | /O(n)/ Like 'map', but not fuseable. The benefit is that it is
 -- slightly faster for one-shot cases.
 map' :: (Word8 -> Word8) -> ByteString -> ByteString
-map' f (PS fp s len) = unsafePerformIO $ withForeignPtr fp $ \a -> do
-    np <- mallocByteString (len+1)
-    withForeignPtr np $ \p -> do
-        map_ 0 (a `plusPtr` s) p
-        return (PS np 0 len)
+map' f (PS fp s len) = inlinePerformIO $ withForeignPtr fp $ \a ->
+    return $ create len $ map_ 0 (a `plusPtr` s)
   where
 
     map_ :: Int -> Ptr Word8 -> Ptr Word8 -> IO ()
@@ -1771,9 +1766,7 @@ putStrLn ps = hPut stdout ps >> hPut stdout nl
 -- and then using 'pack'.
 hGet :: Handle -> Int -> IO ByteString
 hGet _ 0 = return empty
-hGet h i = do fp <- mallocByteString i
-              l  <- withForeignPtr fp $ \p-> hGetBuf h p i
-              return $ PS fp 0 l
+hGet h i = generate i $ \p -> hGetBuf h p i
 
 #if defined(__GLASGOW_HASKELL__)
 -- | hGetNonBlocking is identical to 'hGet', except that it will never block
@@ -1781,10 +1774,7 @@ hGet h i = do fp <- mallocByteString i
 -- is available.
 hGetNonBlocking :: Handle -> Int -> IO ByteString
 hGetNonBlocking _ 0 = return empty
-hGetNonBlocking h i = do
-    fp <- mallocByteString i
-    l  <- withForeignPtr fp $ \p -> hGetBufNonBlocking h p i
-    return $ PS fp 0 l
+hGetNonBlocking h i = generate i $ \p -> hGetBufNonBlocking h p i
 #endif
 
 -- | Read entire handle contents into a 'ByteString'.

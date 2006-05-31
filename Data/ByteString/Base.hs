@@ -29,7 +29,8 @@ module Data.ByteString.Base (
         -- * Low level introduction and elimination
         generate,               -- :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
         create,                 -- :: Int -> (Ptr Word8 -> IO ()) -> ByteString
-        mallocByteString,
+        mallocByteString,       -- :: Int -> IO ByteString
+        mallocByteStringWith,   -- :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
         fromForeignPtr,         -- :: ForeignPtr Word8 -> Int -> ByteString
         toForeignPtr,           -- :: ByteString -> (ForeignPtr Word8, Int, Int)
         skipIndex,              -- :: ByteString -> Int
@@ -197,10 +198,7 @@ skipIndex (PS _ s _) = s
 -- estimated size. Also, unlike 'generate' ByteString's created this way
 -- are managed on the Haskell heap.
 create :: Int -> (Ptr Word8 -> IO ()) -> ByteString
-create l write_ptr = inlinePerformIO $ do
-    fp <- mallocByteString (l+1)
-    withForeignPtr fp $ \p -> write_ptr p
-    return $ PS fp 0 l
+create l f = unsafePerformIO $ mallocByteStringWith l (\p -> f p >> return l)
 {-# INLINE create #-}
 
 -- | Given the maximum size needed and a function to make the contents
@@ -214,18 +212,27 @@ create l write_ptr = inlinePerformIO $ do
 --
 generate :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
 generate i f = do
-    fp      <- mallocByteString i
-    (ptr,n) <- withForeignPtr fp $ \p -> do
-        i' <- f p
+    ps@(PS fp _ i') <- mallocByteStringWith i f
+    withForeignPtr fp $ \p -> do
         if i' == i
-            then return (fp,i')
-            else do fp_ <- mallocByteString i'      -- realloc
-                    withForeignPtr fp_ $ \p' -> memcpy p' p (fromIntegral i')
-                    return (fp_,i')
-    return (PS ptr 0 n)
+            then return ps
+            else mallocByteStringWith i' $ \p' -> do -- realloc
+                    memcpy p' p (fromIntegral i')
+                    return i'
 
--- Wrapper of mallocForeignPtrArray. Any ByteString allocated this way
--- is padded with a null byte.
+-- | Wrapper of mallocForeignPtrArray. Any ByteString allocated this way
+-- is padded with a null byte. 
+mallocByteStringWith :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
+mallocByteStringWith l f = do
+    fp <- mallocForeignPtrArray (l+1)
+    m  <- withForeignPtr fp $ \p -> do
+        n <- f p
+        poke (p `plusPtr` n) (0::Word8) -- i.e. touch the last cache line last
+        return n
+    return $ PS fp 0 m
+
+-- | Deprecated. Wrapper of mallocForeignPtrArray. Any ByteString
+-- allocated this way is padded with a null byte.
 mallocByteString :: Int -> IO (ForeignPtr Word8)
 mallocByteString l = do
     fp <- mallocForeignPtrArray (l+1)

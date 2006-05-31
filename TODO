@@ -40,3 +40,5 @@ Todo items
 
 * properties for noAcc loops
 * benchmark v1 versus v2 fusion.
+
+Int64 in .Lazy
