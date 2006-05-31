@@ -555,6 +555,7 @@ snoc (PS x s l) c = create (l+1) $ \p -> withForeignPtr x $ \f -> do
 -- todo fuse
 
 -- | /O(1)/ Extract the first element of a ByteString, which must be non-empty.
+-- An exception will be thrown in the case of an empty ByteString.
 head :: ByteString -> Word8
 head ps@(PS x s _)
     | null ps   = errorEmptyList "head"
@@ -562,6 +563,7 @@ head ps@(PS x s _)
 {-# INLINE head #-}
 
 -- | /O(1)/ Extract the elements after the head of a ByteString, which must be non-empty.
+-- An exception will be thrown in the case of an empty ByteString.
 tail :: ByteString -> ByteString
 tail (PS p s l)
     | l <= 0    = errorEmptyList "tail"
@@ -569,6 +571,7 @@ tail (PS p s l)
 {-# INLINE tail #-}
 
 -- | /O(1)/ Extract the last element of a ByteString, which must be finite and non-empty.
+-- An exception will be thrown in the case of an empty ByteString.
 last :: ByteString -> Word8
 last ps@(PS x s l)
     | null ps   = errorEmptyList "last"
@@ -576,9 +579,10 @@ last ps@(PS x s l)
 {-# INLINE last #-}
 
 -- | /O(1)/ Return all the elements of a 'ByteString' except the last one.
+-- An exception will be thrown in the case of an empty ByteString.
 init :: ByteString -> ByteString
-init (PS p s l)
-    | l <= 0    = errorEmptyList "init"
+init ps@(PS p s l)
+    | null ps   = errorEmptyList "init"
     | otherwise = PS p s (l-1)
 {-# INLINE init #-}
 
@@ -693,7 +697,8 @@ foldr k z = loopAcc . loopDown (foldEFL (flip k)) z
 
 -- | 'foldl1' is a variant of 'foldl' that has no starting value
 -- argument, and thus must be applied to non-empty 'ByteStrings'.
--- This function is subject to array fusion.
+-- This function is subject to array fusion. 
+-- An exception will be thrown in the case of an empty ByteString.
 foldl1 :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldl1 f ps
     | null ps   = errorEmptyList "foldl1"
@@ -701,6 +706,7 @@ foldl1 f ps
 {-# INLINE foldl1 #-}
 
 -- | 'foldl1\'' is like 'foldl1', but strict in the accumulator.
+-- An exception will be thrown in the case of an empty ByteString.
 foldl1' :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldl1' f ps
     | null ps   = errorEmptyList "foldl1'"
@@ -709,6 +715,7 @@ foldl1' f ps
 
 -- | 'foldr1' is a variant of 'foldr' that has no starting value argument,
 -- and thus must be applied to non-empty 'ByteString's
+-- An exception will be thrown in the case of an empty ByteString.
 foldr1 :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldr1 f ps
     | null ps        = errorEmptyList "foldr1"
@@ -768,6 +775,7 @@ all f (PS x s l) = inlinePerformIO $ withForeignPtr x $ \ptr ->
 
 -- | /O(n)/ 'maximum' returns the maximum value from a 'ByteString'
 -- This function will fuse.
+-- An exception will be thrown in the case of an empty ByteString.
 maximum :: ByteString -> Word8
 maximum xs@(PS x s l)
     | null xs   = errorEmptyList "maximum"
@@ -776,6 +784,7 @@ maximum xs@(PS x s l)
 
 -- | /O(n)/ 'minimum' returns the minimum value from a 'ByteString'
 -- This function will fuse.
+-- An exception will be thrown in the case of an empty ByteString.
 minimum :: ByteString -> Word8
 minimum xs@(PS x s l)
     | null xs   = errorEmptyList "minimum"
