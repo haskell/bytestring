@@ -1124,35 +1124,35 @@ hGetContentsN k h = lazyRead >>= return . LPS
             _         -> do pss <- lazyRead
                             return (ps : pss)
 
--- | Read @n@ bytes /lazily/ into a 'ByteString', directly from the
+-- | Read @n@ bytes into a 'ByteString', directly from the
 -- specified 'Handle', in chunks of size @k@.
 hGetN :: Int -> Handle -> Int64 -> IO ByteString
 hGetN _ _ 0 = return empty
-hGetN k h n = lazyRead n >>= return . LPS
+hGetN k h n = readChunks n >>= return . LPS
   where
-    lazyRead i = unsafeInterleaveIO $ do
+    readChunks i = do
         ps <- P.hGet h (min k (fromIntegral i))
         case P.length ps of
             0          -> return []
-            m | fromIntegral m == i 
-                       -> return [ps]
-            m          -> do pss <- lazyRead (i - fromIntegral m)
+            m | m == i -> return [ps]
+            m          -> do pss <- lazyRead (i - m)
                              return (ps : pss)
 
 #if defined(__GLASGOW_HASKELL__)
 -- | hGetNonBlockingN is similar to 'hGetContentsN', except that it will never block
 -- waiting for data to become available, instead it returns only whatever data
 -- is available.
-hGetNonBlockingN :: Int -> Handle -> IO ByteString
-hGetNonBlockingN k h = lazyRead >>= return . LPS
-    where
-    lazyRead = unsafeInterleaveIO $
-               do ps <- P.hGetNonBlocking h k
-                  case P.length ps of
-                    0 -> return []
-                    m | m < k -> return [ps]
-                    _         -> do pss <- lazyRead
-                                    return (ps : pss)
+hGetNonBlockingN :: Int -> Handle -> Int -> IO ByteString
+hGetNonBlockingN _ _ 0 = return empty
+hGetNonBlockingN k h n = readChunks n >>= return . LPS
+  where
+    readChunks i = do
+        ps <- P.hGetNonBlocking h (min k i)
+        case P.length ps of
+            0         -> return []
+            m | m < i -> return [ps]
+            m         -> do pss <- readChunks (i - m)
+                            return (ps : pss)
 #endif
 
 -- | Read entire handle contents /lazily/ into a 'ByteString'. Chunks
@@ -1160,7 +1160,7 @@ hGetNonBlockingN k h = lazyRead >>= return . LPS
 hGetContents :: Handle -> IO ByteString
 hGetContents = hGetContentsN defaultChunkSize
 
--- | Read @n@ bytes /lazily/ into a 'ByteString', directly from the specified 'Handle'.
+-- | Read @n@ bytes into a 'ByteString', directly from the specified 'Handle'.
 hGet :: Handle -> Int64 -> IO ByteString
 hGet = hGetN defaultChunkSize
 
@@ -1168,7 +1168,7 @@ hGet = hGetN defaultChunkSize
 -- | hGetNonBlocking is similar to 'hGet', except that it will never block
 -- waiting for data to become available, instead it returns only whatever data
 -- is available.
-hGetNonBlocking :: Handle -> IO ByteString
+hGetNonBlocking :: Handle -> Int -> IO ByteString
 hGetNonBlocking = hGetNonBlockingN defaultChunkSize
 #endif
 
