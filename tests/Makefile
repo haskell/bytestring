@@ -30,9 +30,12 @@ htest:: run-utests
 # QuickCheck
 
 # interpreted
-.PHONY: prop
+.PHONY: prop hugs
 prop::
 	runhaskell Properties.hs
+
+hugs::
+	runhugs -98 Properties.hs
 
 # interpreted fast. Just a quick check.
 .PHONY: prop-fast
