@@ -31,17 +31,15 @@ Todo items
 
 * think about lazy hGetContents and IO exceptions
 
+* should hGet(NonBlocking) realloc if the read is short?
+  Or perhaps just if the read is 0.
+
 * consider dropping map' as ghc-6.5 optimises map much better so there's now
   little difference between them (15% rather than 40%) and with the new fusion
   system we may be able to get even closer. Look at the benchmarks for filter'
   to see if we can do the same there.
 
-* avoid the extra copy involved in lazy io + handles.
-    - we must initially empty the handle buffer but then after that we
-    - can use the low level bits that read N bytes directly into a supplied buffer
-    - and that also handles the blocking issues so we'll get the right
-      semantics for hGetContents on sockets / pipes
-    -  
+--
 
 * if we can be sure there is very little variance then it might be interesting to look 
  into the cases where we're doing slightly worse eg the map/up, filter/up cases
