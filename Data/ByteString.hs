@@ -469,6 +469,12 @@ unpackFoldr (PS fp off len) f ch = withPtr fp $ \p -> do
 {-# INLINE [0] unpackFoldr #-}
 
 -- TODO just use normal foldr here.
+--
+-- or
+-- unpack xs | null xs = []
+--           | otherwise = unsafeHead xs : unpack (unsafeTail xs)
+--
+-- ?
 
 #endif
 
