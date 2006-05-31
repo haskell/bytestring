@@ -1754,8 +1754,7 @@ mkBigPS _ pss = return $! concat (P.reverse pss)
 
 -- | Outputs a 'ByteString' to the specified 'Handle'.
 hPut :: Handle -> ByteString -> IO ()
-hPut _ (PS _ _ 0)  = return ()
-hPut h (PS ps 0 l) = withForeignPtr ps $ \p-> hPutBuf h p l
+hPut _ (PS _  _ 0) = return ()
 hPut h (PS ps s l) = withForeignPtr ps $ \p-> hPutBuf h (p `plusPtr` s) l
 
 -- | Write a ByteString to stdout
