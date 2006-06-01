@@ -35,7 +35,6 @@ module Data.ByteString.Base (
 
         fromForeignPtr,         -- :: ForeignPtr Word8 -> Int -> ByteString
         toForeignPtr,           -- :: ByteString -> (ForeignPtr Word8, Int, Int)
-        skipIndex,              -- :: ByteString -> Int
 
 #if defined(__GLASGOW_HASKELL__)
         packCStringFinalizer,   -- :: Ptr Word8 -> Int -> IO () -> IO ByteString

@@ -1742,7 +1742,7 @@ mkPS buf start end =
     let len = end - start
      in create len $ \p -> do
         memcpy_ptr_baoff p buf (fromIntegral start) (fromIntegral len)
-	return ()
+        return ()
 
 mkBigPS :: Int -> [ByteString] -> IO ByteString
 mkBigPS _ [ps] = return ps
