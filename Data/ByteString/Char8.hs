@@ -306,7 +306,7 @@ singleton = B.singleton . c2w
 pack :: String -> ByteString
 #if !defined(__GLASGOW_HASKELL__)
 
-pack str = B.create (P.length str) $ \p -> go p str
+pack str = B.unsafeCreate (P.length str) $ \p -> go p str
     where go _ []     = return ()
           go p (x:xs) = poke p (c2w x) >> go (p `plusPtr` 1) xs
 
