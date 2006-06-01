@@ -190,13 +190,6 @@ fromForeignPtr fp l = PS fp 0 l
 toForeignPtr :: ByteString -> (ForeignPtr Word8, Int, Int)
 toForeignPtr (PS ps s l) = (ps, s, l)
 
--- | /O(1)/ 'skipIndex' returns the internal skipped index of the
--- current 'ByteString' from any larger string it was created from, as
--- an 'Int'.
-skipIndex :: ByteString -> Int
-skipIndex (PS _ s _) = s
-{-# INLINE skipIndex #-}
-
 -- | A way of creating ByteStrings outside the IO monad. The @Int@
 -- argument gives the final size of the ByteString. Unlike
 -- 'createAndTrim' the ByteString is not reallocated if the final size
