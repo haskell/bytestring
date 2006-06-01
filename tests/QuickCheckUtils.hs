@@ -218,6 +218,10 @@ type B = L.ByteString
 --
 -- These comparison functions handle wrapping and equality.
 --
+-- A single class for these would be nice, but note that they differe in
+-- the number of arguments, and those argument types, so we'd need HList
+-- tricks. See here: http://okmij.org/ftp/Haskell/vararg-fn.lhs
+--
 
 eq1 f g = \a         ->
     model (f a)         == g (model a)
