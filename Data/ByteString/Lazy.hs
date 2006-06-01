@@ -179,6 +179,7 @@ module Data.ByteString.Lazy (
         -- ** Files
         readFile,               -- :: FilePath -> IO ByteString
         writeFile,              -- :: FilePath -> ByteString -> IO ()
+        appendFile,             -- :: FilePath -> ByteString -> IO ()
 
         -- ** I\/O with Handles
         hGetContents,           -- :: Handle -> IO ByteString
@@ -201,7 +202,7 @@ import Prelude hiding           (reverse,head,tail,last,init,null
                                 ,minimum,all,concatMap,foldl1,foldr1
                                 ,scanl, scanl1, scanr, scanr1
                                 ,repeat, cycle, interact, iterate
-                                ,readFile,writeFile,replicate
+                                ,readFile,writeFile,appendFile,replicate
                                 ,getContents,getLine,putStr,putStrLn
                                 ,zip,zipWith,unzip,notElem)
 
@@ -1177,10 +1178,14 @@ hGetNonBlocking = hGetNonBlockingN defaultChunkSize
 readFile :: FilePath -> IO ByteString
 readFile f = openBinaryFile f ReadMode >>= hGetContents
 
--- | The computation 'writeFile' @file str@ function writes the string @str@,
--- to the file @file@.
+-- | Write a 'ByteString' to a file.
 writeFile :: FilePath -> ByteString -> IO ()
 writeFile f txt = bracket (openBinaryFile f WriteMode) hClose
+    (\hdl -> hPut hdl txt)
+
+-- | Append a 'ByteString' to a file.
+appendFile :: FilePath -> ByteString -> IO ()
+appendFile f txt = bracket (openBinaryFile f AppendMode) hClose
     (\hdl -> hPut hdl txt)
 
 -- | getContents. Equivalent to hGetContents stdin. Will read /lazily/

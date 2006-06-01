@@ -204,6 +204,7 @@ module Data.ByteString (
         -- ** Files
         readFile,               -- :: FilePath -> IO ByteString
         writeFile,              -- :: FilePath -> ByteString -> IO ()
+        appendFile,             -- :: FilePath -> ByteString -> IO ()
 --      mmapFile,               -- :: FilePath -> IO ByteString
 
         -- ** I\/O with Handles
@@ -231,7 +232,7 @@ import Prelude hiding           (reverse,head,tail,last,init,null
                                 ,dropWhile,span,break,elem,filter,maximum
                                 ,minimum,all,concatMap,foldl1,foldr1
                                 ,scanl,scanl1,scanr,scanr1
-                                ,readFile,writeFile,replicate
+                                ,readFile,writeFile,appendFile,replicate
                                 ,getContents,getLine,putStr,putStrLn
                                 ,zip,zipWith,unzip,notElem)
 
@@ -1829,6 +1830,11 @@ readFile f = bracket (openBinaryFile f ReadMode) hClose
 writeFile :: FilePath -> ByteString -> IO ()
 writeFile f ps = bracket (openBinaryFile f WriteMode) hClose
     (\h -> hPut h ps)
+
+-- | Append a 'ByteString' to a file.
+appendFile :: FilePath -> ByteString -> IO ()
+appendFile f txt = bracket (openBinaryFile f AppendMode) hClose
+    (\hdl -> hPut hdl txt)
 
 {-
 --
