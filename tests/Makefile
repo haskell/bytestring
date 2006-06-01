@@ -54,7 +54,7 @@ prop-compiled:
 #
 .PHONY: prop-fusion-compiled
 prop-fusion-compiled:
-	${GHC} ${PKG} --make -cpp -O2 -optc-O2 -funbox-strict-fields -ddump-simpl-stats FusionProperties.hs -o fp -no-recomp -package QuickCheck
+	${GHC} ${PKG} --make -cpp -O2 -optc-O2 -funbox-strict-fields FusionProperties.hs -o fp -no-recomp -package QuickCheck
 	/usr/bin/time ./fp
 
 # ---------------------------------------------------------

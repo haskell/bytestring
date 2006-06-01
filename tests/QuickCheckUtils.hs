@@ -18,7 +18,6 @@ import System.IO
 import Data.ByteString.Fusion
 import qualified Data.ByteString      as P
 import qualified Data.ByteString.Lazy as L
-import Data.ByteString.Lazy (ByteString(..))
 
 -- Enable this to get verbose test output. Including the actual tests.
 debug = False
@@ -200,14 +199,14 @@ instance Functor ((,)   a) where fmap f (x,y) = (x, f y)
 
 -- In a form more useful for QC testing (and it's lazy)
 checkInvariant :: L.ByteString -> L.ByteString
-checkInvariant (LPS lps) = LPS (check lps)
+checkInvariant (L.LPS lps) = L.LPS (check lps)
   where check []     = []
         check (x:xs) | P.null x  = error ("invariant violation: " ++ show lps)
                      | otherwise = x : check xs
 
 abstr :: L.ByteString -> P.ByteString
-abstr (LPS []) = P.empty
-abstr (LPS xs) = P.concat xs
+abstr (L.LPS []) = P.empty
+abstr (L.LPS xs) = P.concat xs
 
 -- Some short hand.
 type X = Int
@@ -219,25 +218,26 @@ type B = L.ByteString
 --
 -- These comparison functions handle wrapping and equality.
 --
-compare1 f g a =
+
+eq1 f g = \a         ->
     model (f a)         == g (model a)
-compare2 f g a b =
+eq2 f g = \a b       ->
     model (f a b)       == g (model a) (model b)
-compare3 f g a b c =
+eq3 f g = \a b c     ->
     model (f a b c)     == g (model a) (model b) (model c)
-compare4 f g a b c d =
+eq4 f g = \a b c d   ->
     model (f a b c d)   == g (model a) (model b) (model c) (model d)
-compare5 f g a b c d e =
+eq5 f g = \a b c d e ->
     model (f a b c d e) == g (model a) (model b) (model c) (model d) (model e)
 
 --
 -- And for functions that take non-null input
 --
-notLNull1 f g = \x     -> (not (L.null x)) ==> compare1 f g x
-notLNull2 f g = \x y   -> (not (L.null y)) ==> compare2 f g x y
-notLNull3 f g = \x y z -> (not (L.null z)) ==> compare3 f g x y z
+eqnotnull1 f g = \x     -> (not (isNull x)) ==> eq1 f g x
+eqnotnull2 f g = \x y   -> (not (isNull y)) ==> eq2 f g x y
+eqnotnull3 f g = \x y z -> (not (isNull z)) ==> eq3 f g x y z
 
-notPNull1 f g = \x     -> (not (P.null x)) ==> compare1 f g x
-notPNull2 f g = \x y   -> (not (P.null y)) ==> compare2 f g x y
-notPNull3 f g = \x y z -> (not (P.null z)) ==> compare3 f g x y z
+class    IsNull t            where isNull :: t -> Bool
+instance IsNull L.ByteString where isNull = L.null
+instance IsNull P.ByteString where isNull = P.null
 
