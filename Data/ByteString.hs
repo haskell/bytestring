@@ -339,7 +339,7 @@ compareBytes (PS x1 s1 l1) (PS x2 s2 l2)
         withForeignPtr x1 $ \p1 ->
         withForeignPtr x2 $ \p2 -> do
             i <- memcmp (p1 `plusPtr` s1) (p2 `plusPtr` s2) (fromIntegral $ min l1 l2)
-            return $ case i `compare` 0 of
+            return $! case i `compare` 0 of
                         EQ  -> l1 `compare` l2
                         x   -> x
 {-# INLINE compareBytes #-}
@@ -1229,7 +1229,7 @@ elemIndex :: Word8 -> ByteString -> Maybe Int
 elemIndex c (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
     let p' = p `plusPtr` s
     q <- memchr p' c (fromIntegral l)
-    return $ if q == nullPtr then Nothing else Just $! q `minusPtr` p'
+    return $! if q == nullPtr then Nothing else Just $! q `minusPtr` p'
 {-# INLINE elemIndex #-}
 
 -- | /O(n)/ The 'elemIndexEnd' function returns the last index of the
@@ -1266,7 +1266,7 @@ elemIndices w (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
                         then []
                         else let i = q `minusPtr` ptr
                              in i : loop (i+1)
-    return (loop 0)
+    return $! loop 0
 {-# INLINE elemIndices #-}
 
 {-
@@ -1378,7 +1378,7 @@ filter' k ps@(PS x s l)
     | null ps   = ps
     | otherwise = unsafePerformIO $ createAndTrim l $ \p -> withForeignPtr x $ \f -> do
         t <- go (f `plusPtr` s) p (f `plusPtr` (s + l))
-        return (t `minusPtr` p) -- actual length
+        return $! t `minusPtr` p -- actual length
     where
         STRICT3(go)
         go f t end | f == end  = return t
@@ -1448,7 +1448,7 @@ isPrefixOf (PS x1 s1 l1) (PS x2 s2 l2)
     | otherwise = inlinePerformIO $ withForeignPtr x1 $ \p1 ->
         withForeignPtr x2 $ \p2 -> do
             i <- memcmp (p1 `plusPtr` s1) (p2 `plusPtr` s2) (fromIntegral l1)
-            return (i == 0)
+            return $! i == 0
 
 -- | /O(n)/ The 'isSuffixOf' function takes two ByteStrings and returns 'True'
 -- iff the first is a suffix of the second.
@@ -1466,7 +1466,7 @@ isSuffixOf (PS x1 s1 l1) (PS x2 s2 l2)
     | otherwise = inlinePerformIO $ withForeignPtr x1 $ \p1 ->
         withForeignPtr x2 $ \p2 -> do
             i <- memcmp (p1 `plusPtr` s1) (p2 `plusPtr` s2 `plusPtr` (l2 - l1)) (fromIntegral l1)
-            return (i == 0)
+            return $! i == 0
 
 -- | Check whether one string is a substring of another. @isSubstringOf
 -- p s@ is equivalent to @not (null (findSubstrings p s))@.
@@ -1596,7 +1596,7 @@ packCString :: CString -> ByteString
 packCString cstr = unsafePerformIO $ do
     fp <- newForeignPtr_ (castPtr cstr)
     l <- c_strlen cstr
-    return $ PS fp 0 (fromIntegral l)
+    return $! PS fp 0 (fromIntegral l)
 
 -- | /O(1)/ Build a @ByteString@ from a @CStringLen@. This value will
 -- have /no/ finalizer associated with it. This operation has /O(1)/
@@ -1605,7 +1605,7 @@ packCString cstr = unsafePerformIO $ do
 packCStringLen :: CStringLen -> ByteString
 packCStringLen (ptr,len) = unsafePerformIO $ do
     fp <- newForeignPtr_ (castPtr ptr)
-    return $ PS fp 0 (fromIntegral len)
+    return $! PS fp 0 (fromIntegral len)
 
 -- | /O(n)/ Build a @ByteString@ from a malloced @CString@. This value will
 -- have a @free(3)@ finalizer associated to it.
@@ -1613,7 +1613,7 @@ packMallocCString :: CString -> ByteString
 packMallocCString cstr = unsafePerformIO $ do
     fp <- newForeignFreePtr (castPtr cstr)
     len <- c_strlen cstr
-    return $ PS fp 0 (fromIntegral len)
+    return $! PS fp 0 (fromIntegral len)
 
 -- | /O(n) construction/ Use a @ByteString@ with a function requiring a null-terminated @CString@.
 --   The @CString@ should not be freed afterwards. This is a memcpy(3).
@@ -1624,7 +1624,7 @@ useAsCString (PS ps s l) = bracket alloc (c_free.castPtr)
                 buf <- c_malloc (fromIntegral l+1)
                 memcpy (castPtr buf) (castPtr p `plusPtr` s) (fromIntegral l)
                 poke (buf `plusPtr` l) (0::Word8)
-                return $ castPtr buf
+                return $! castPtr buf
 
 -- | /O(1) construction/ Use a @ByteString@ with a function requiring a @CString@.
 -- Warning: modifying the @CString@ will affect the @ByteString@.
@@ -1807,7 +1807,7 @@ hGetContents h = do
     if i < start_size
         then do p' <- reallocArray p i
                 fp <- newForeignFreePtr p'
-                return $ PS fp 0 i
+                return $! PS fp 0 i
         else f p start_size
     where
         f p s = do
@@ -1818,7 +1818,7 @@ hGetContents h = do
                 then do let i' = s + i
                         p'' <- reallocArray p' i'
                         fp  <- newForeignFreePtr p''
-                        return $ PS fp 0 i'
+                        return $! PS fp 0 i'
                 else f p' s'
 
 -- | getContents. Equivalent to hGetContents stdin
@@ -1862,7 +1862,7 @@ appendFile f txt = bracket (openBinaryFile f AppendMode) hClose
 -- On systems without mmap, this is the same as a readFile.
 --
 mmapFile :: FilePath -> IO ByteString
-mmapFile f = mmap f >>= \(fp,l) -> return $ PS fp 0 l
+mmapFile f = mmap f >>= \(fp,l) -> return $! PS fp 0 l
 
 mmap :: FilePath -> IO (ForeignPtr Word8, Int)
 mmap f = do
