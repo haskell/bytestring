@@ -604,10 +604,14 @@ append xs ys | null xs   = ys
 -- | /O(n)/ 'map' @f xs@ is the ByteString obtained by applying @f@ to each
 -- element of @xs@. This function is subject to array fusion.
 map :: (Word8 -> Word8) -> ByteString -> ByteString
-#if !defined(LOOPU_FUSION)
-map f = loopArr . loopMap f
-#else
+#if defined(LOOPU_FUSION)
 map f = loopArr . loopU (mapEFL f) NoAcc
+#elif defined(LOOPUP_FUSION)
+map f = loopArr . loopUp (mapEFL f) NoAcc
+#elif defined(LOOPNOACC_FUSION)
+map f = loopArr . loopNoAcc (mapEFL f)
+#else
+map f = loopArr . loopMap f
 #endif
 {-# INLINE map #-}
 
@@ -617,7 +621,6 @@ map' :: (Word8 -> Word8) -> ByteString -> ByteString
 map' f (PS fp s len) = inlinePerformIO $ withForeignPtr fp $ \a ->
     create len $ map_ 0 (a `plusPtr` s)
   where
-
     map_ :: Int -> Ptr Word8 -> Ptr Word8 -> IO ()
     STRICT3(map_)
     map_ n p1 p2
@@ -1357,10 +1360,14 @@ notElem c ps = not (elem c ps)
 -- returns a ByteString containing those characters that satisfy the
 -- predicate. This function is subject to array fusion.
 filter :: (Word8 -> Bool) -> ByteString -> ByteString
-#if !defined(LOOPU_FUSION)
-filter f = loopArr . loopFilter f
-#else
+#if defined(LOOPU_FUSION)
 filter p  = loopArr . loopU (filterEFL p) NoAcc
+#elif defined(LOOPUP_FUSION)
+filter p  = loopArr . loopUp (filterEFL p) NoAcc
+#elif defined(LOOPNOACC_FUSION)
+filter p  = loopArr . loopNoAcc (filterEFL p)
+#else
+filter f = loopArr . loopFilter f
 #endif
 {-# INLINE filter #-}
 

@@ -107,15 +107,26 @@ fuseEFL f g (acc1 :*: acc2) e1 =
 -- 
 
 -- | Element function expressing a mapping only
+#if !defined(LOOPNOACC_FUSION)
 mapEFL :: (Word8 -> Word8) -> AccEFL NoAcc
 mapEFL f = \_ e -> (NoAcc :*: (JustS $ f e))
+#else
+mapEFL :: (Word8 -> Word8) -> NoAccEFL
+mapEFL f = \e -> JustS (f e)
+#endif
 #if defined(__GLASGOW_HASKELL__)
 {-# INLINE [1] mapEFL #-}
 #endif
 
 -- | Element function implementing a filter function only
+#if !defined(LOOPNOACC_FUSION)
 filterEFL :: (Word8 -> Bool) -> AccEFL NoAcc
 filterEFL p = \_ e -> if p e then (NoAcc :*: JustS e) else (NoAcc :*: NothingS)
+#else
+filterEFL :: (Word8 -> Bool) -> NoAccEFL
+filterEFL p = \e -> if p e then JustS e else NothingS
+#endif
+
 #if defined(__GLASGOW_HASKELL__)
 {-# INLINE [1] filterEFL #-}
 #endif
@@ -335,9 +346,6 @@ doDownLoop f acc0 src dest len = loop (len-1) (len-1) acc0
                   (acc' :*: JustS x') -> pokeByteOff dest dest_off x'
                                       >> loop (src_off-1) (dest_off-1) acc'
 
---
--- With explicit mapLoop and filterLoop, do we need NoAcc rules anymore?
---
 doNoAccLoop :: NoAccEFL -> noAcc -> ImperativeLoop noAcc
 doNoAccLoop f noAcc src dest len = loop 0 0
   where STRICT2(loop)
