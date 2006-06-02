@@ -6,13 +6,6 @@
 import BenchUtils
 import Text.Printf
 import qualified Data.ByteString      as P
-import qualified Data.ByteString.Lazy as L
-
---
--- loopU fusoin only supported:
---      map, foldl, mapAccumL, scanl, filter
---
---
 
 -- minimum pipelines to trigger the various fusion forms
 tests =
@@ -56,7 +49,7 @@ bigtests =
  ]
 
 main = do
-    force (fps,fps') >> force (lps,lps')
+    force (fps,fps')
     printf "# Size of test data: %dk\n" ((floor $ (fromIntegral (P.length fps)) / 1024) :: Int)
     printf "#Byte\n"
     run (tests ++ bigtests)

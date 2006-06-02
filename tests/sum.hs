@@ -1,6 +1,5 @@
 {-# OPTIONS -cpp #-}
 
-import System.IO
 import qualified Data.ByteString as B
 import Data.ByteString.Base (ByteString,unsafeTail,unsafeIndex)
 import Data.Char    -- seems to help!

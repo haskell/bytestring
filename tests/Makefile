@@ -64,9 +64,12 @@ prop-fusion-compiled:
 runbench: bench
 	./bench +RTS -H64m
 
-bench: Bench.hs
+bench::
 	@if [ ! -f "bigdata" ] ; then ln -s data bigdata ; fi
 	${GHC} ${PKG} --make -O -funbox-strict-fields Bench.hs -cpp -o bench -no-recomp
+
+fusionbench::
+	${GHC} ${PKG} --make -O -funbox-strict-fields FusionBench.hs -cpp -ddump-simpl-stats -o fusionbench -no-recomp
 
 # ---------------------------------------------------------
 # Profiling
