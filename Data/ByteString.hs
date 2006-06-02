@@ -562,8 +562,8 @@ snoc (PS x s l) c = unsafeCreate (l+1) $ \p -> withForeignPtr x $ \f -> do
 -- | /O(1)/ Extract the first element of a ByteString, which must be non-empty.
 -- An exception will be thrown in the case of an empty ByteString.
 head :: ByteString -> Word8
-head ps@(PS x s _)
-    | null ps   = errorEmptyList "head"
+head (PS x s l)
+    | l <= 0    = errorEmptyList "head"
     | otherwise = inlinePerformIO $ withForeignPtr x $ \p -> peekByteOff p s
 {-# INLINE head #-}
 
