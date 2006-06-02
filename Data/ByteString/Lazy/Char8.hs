@@ -153,6 +153,9 @@ module Data.ByteString.Lazy.Char8 (
         -- * Ordered ByteStrings
 --        sort,                   -- :: ByteString -> ByteString
 
+        -- * Reading from ByteStrings
+        readInt,
+
         -- * I\/O with 'ByteString's
 
         -- ** Standard input and output
@@ -183,7 +186,8 @@ import Data.ByteString.Lazy
 
 -- Functions we need to wrap.
 import qualified Data.ByteString.Lazy as L
-
+import qualified Data.ByteString as B
+import qualified Data.ByteString.Base as B
 import Data.ByteString.Base (w2c, c2w, isSpaceWord8)
 
 import Data.Int (Int64)
@@ -196,6 +200,10 @@ import Prelude hiding
         ,unwords,words,maximum,minimum,all,concatMap,scanl,scanl1,foldl1,foldr1
         ,readFile,writeFile,replicate,getContents,getLine,putStr,putStrLn
         ,zip,zipWith,unzip,notElem,repeat)
+
+#define STRICT1(f) f a | a `seq` False = undefined
+#define STRICT2(f) f a b | a `seq` b `seq` False = undefined
+#define STRICT3(f) f a b c | a `seq` b `seq` c `seq` False = undefined
 
 ------------------------------------------------------------------------
 
@@ -549,3 +557,31 @@ unwords :: [ByteString] -> ByteString
 unwords = join (singleton ' ')
 {-# INLINE unwords #-}
 
+readInt :: ByteString -> Maybe (Int, ByteString)
+readInt (LPS [])     = Nothing
+readInt (LPS (x:xs)) =
+        case w2c (B.unsafeHead x) of
+            '-' -> loop True  0 0 (B.unsafeTail x) xs
+            '+' -> loop False 0 0 (B.unsafeTail x) xs
+            _   -> loop False 0 0 x xs
+
+    where loop :: Bool -> Int -> Int -> B.ByteString -> [B.ByteString] -> Maybe (Int, ByteString)
+          STRICT5(loop)
+          loop neg i n ps pss
+              | B.null ps = case pss of
+                                []         -> end  neg i n ps  pss
+                                (ps':pss') -> loop neg i n ps' pss'
+              | otherwise =
+                  case B.unsafeHead ps of
+                    w | w >= 0x30
+                     && w <= 0x39 -> loop neg (i+1)
+                                          (n * 10 + (fromIntegral w - 0x30))
+                                          (B.unsafeTail ps) pss
+                      | otherwise -> end neg i n ps pss
+
+          end _   0 _ _  _   = Nothing
+          end neg _ n ps pss = let n'  | neg       = negate n
+                                       | otherwise = n
+                                   ps' | B.null ps =    pss
+                                       | otherwise = ps:pss
+                                in n' `seq` ps' `seq` Just $! (n', LPS ps')

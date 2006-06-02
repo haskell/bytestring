@@ -189,7 +189,6 @@ module Data.ByteString.Char8 (
 
         -- * Reading from ByteStrings
         readInt,                -- :: ByteString -> Maybe Int
-        unsafeReadInt,          -- :: ByteString -> Maybe Int
 
         -- * Copying ByteStrings
         copy,                   -- :: ByteString -> ByteString
@@ -292,6 +291,7 @@ import GHC.ST                   (ST(..))
 #define STRICT1(f) f a | a `seq` False = undefined
 #define STRICT2(f) f a b | a `seq` b `seq` False = undefined
 #define STRICT3(f) f a b c | a `seq` b `seq` c `seq` False = undefined
+#define STRICT4(f) f a b c d | a `seq` b `seq` c `seq` d `seq` False = undefined
 
 ------------------------------------------------------------------------
 
@@ -967,33 +967,33 @@ betweenLines start end ps =
 -- ---------------------------------------------------------------------
 -- Reading from ByteStrings
 
--- | readInt skips any whitespace at the beginning of its argument, and
--- reads an Int from the beginning of the ByteString.  If there is no
+-- | readInt reads an Int from the beginning of the ByteString.  If there is no
 -- integer at the beginning of the string, it returns Nothing, otherwise
 -- it just returns the int read, and the rest of the string.
 readInt :: ByteString -> Maybe (Int, ByteString)
-readInt p@(PS x s l) = inlinePerformIO $ useAsCString p $ \cstr ->
-    with (castPtr cstr) $ \endpp -> do
-        val     <- c_strtol (castPtr cstr) endpp 0
-        skipped <- (`minusPtr` cstr) `fmap` peek endpp
-        return $ if skipped == 0
-                 then Nothing
-                 else Just (fromIntegral val, PS x (s+skipped) (l-skipped))
+readInt as
+    | null as   = Nothing
+    | otherwise =
+        case unsafeHead as of
+            '-' -> loop True  0 0 (unsafeTail as)
+            '+' -> loop False 0 0 (unsafeTail as)
+            _   -> loop False 0 0 as
 
--- | unsafeReadInt is like readInt, but requires a null terminated
--- ByteString. It avoids a copy if this is the case. It returns the Int
--- read, if any, and the rest of the string.
-unsafeReadInt :: ByteString -> Maybe (Int, ByteString)
-unsafeReadInt p@(PS x s l) = inlinePerformIO $ unsafeUseAsCString p $ \cstr ->
-    with (castPtr cstr) $ \endpp -> do
-        val     <- c_strtol (castPtr cstr) endpp 0
-        skipped <- (`minusPtr` cstr) `fmap` peek endpp
-        return $ if skipped == 0
-                 then Nothing
-                 else Just (fromIntegral val, PS x (s+skipped) (l-skipped))
+    where loop :: Bool -> Int -> Int -> ByteString -> Maybe (Int, ByteString)
+          STRICT4(loop)
+          loop neg i n ps
+              | null ps   = end neg i n ps
+              | otherwise =
+                  case B.unsafeHead ps of
+                    w | w >= 0x30
+                     && w <= 0x39 -> loop neg (i+1)
+                                          (n * 10 + (fromIntegral w - 0x30))
+                                          (unsafeTail ps)
+                      | otherwise -> end neg i n ps
 
-foreign import ccall unsafe "stdlib.h strtol" c_strtol
-    :: Ptr Word8 -> Ptr (Ptr Word8) -> Int -> IO CLong
+          end _    0 _ _  = Nothing
+          end True _ n ps = Just (negate n, ps)
+          end _    _ n ps = Just (n, ps)
 
 {-
 --
