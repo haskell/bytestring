@@ -208,6 +208,7 @@ module Data.ByteString.Char8 (
         -- ** Files
         readFile,               -- :: FilePath -> IO ByteString
         writeFile,              -- :: FilePath -> ByteString -> IO ()
+        appendFile,             -- :: FilePath -> ByteString -> IO ()
 --      mmapFile,               -- :: FilePath -> IO ByteString
 
         -- ** I\/O with Handles
@@ -241,7 +242,7 @@ import Prelude hiding           (reverse,head,tail,last,init,null
                                 ,concat,any,take,drop,splitAt,takeWhile
                                 ,dropWhile,span,break,elem,filter,unwords
                                 ,words,maximum,minimum,all,concatMap,scanl,scanl1
-                                ,foldl1,foldr1,readFile,writeFile,replicate
+                                ,foldl1,foldr1,readFile,writeFile,appendFile,replicate
                                 ,getContents,getLine,putStr,putStrLn
                                 ,zip,zipWith,unzip,notElem)
 
@@ -256,7 +257,7 @@ import Data.ByteString (empty,null,length,tail,init,append
                        ,findSubstrings,copy,group
 
                        ,getContents, putStr, putStrLn
-                       ,readFile, {-mmapFile,-} writeFile
+                       ,readFile, {-mmapFile,-} writeFile, appendFile
                        ,hGetContents, hGet, hPut
 #if defined(__GLASGOW_HASKELL__)
                        ,getLine, getArgs, hGetLine, hGetNonBlocking
