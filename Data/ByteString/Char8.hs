@@ -764,7 +764,7 @@ unsafeIndex = (w2c .) . B.unsafeIndex
 breakSpace :: ByteString -> (ByteString,ByteString)
 breakSpace (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
     i <- firstspace (p `plusPtr` s) 0 l
-    return $ case () of {_
+    return $! case () of {_
         | i == 0    -> (empty, PS x s l)
         | i == l    -> (PS x s l, empty)
         | otherwise -> (PS x s i, PS x (s+i) (l-i))
@@ -787,7 +787,7 @@ firstspace ptr n m
 dropSpace :: ByteString -> ByteString
 dropSpace (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
     i <- firstnonspace (p `plusPtr` s) 0 l
-    return $ if i == l then empty else PS x (s+i) (l-i)
+    return $! if i == l then empty else PS x (s+i) (l-i)
 {-# INLINE dropSpace #-}
 
 firstnonspace :: Ptr Word8 -> Int -> Int -> IO Int
@@ -807,7 +807,7 @@ firstnonspace ptr n m
 dropSpaceEnd :: ByteString -> ByteString
 dropSpaceEnd (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
     i <- lastnonspace (p `plusPtr` s) (l-1)
-    return $ if i == (-1) then empty else PS x s (i+1)
+    return $! if i == (-1) then empty else PS x s (i+1)
 {-# INLINE dropSpaceEnd #-}
 
 lastnonspace :: Ptr Word8 -> Int -> IO Int
