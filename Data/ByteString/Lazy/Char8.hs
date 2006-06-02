@@ -528,13 +528,55 @@ zipWith f = L.zipWith ((. w2c) . f . w2c)
 -- newline Chars. The resulting strings do not contain newlines.
 --
 lines :: ByteString -> [ByteString]
-lines ps
-    | null ps = []
-    | otherwise = case search ps of
-             Nothing -> [ps]
-             Just n  -> take n ps : lines (drop (n+1) ps)
-    where search = elemIndex '\n'
-{-# INLINE lines #-}
+lines (LPS [])     = []
+lines (LPS (x:xs)) = loop0 x xs
+    where
+    -- this is a really performance sensitive function but the
+    -- chunked representation makes the general case a bit expensive
+    -- however assuming a large chunk size and normalish line lengths
+    -- we will find line endings much more frequently than chunk
+    -- endings so it makes sense to optimise for that common case.
+    -- So we partition into two special cases depending on whether we
+    -- are keeping back a list of chunks that will eventually be output
+    -- once we get to the end of the current line.
+
+    -- the common special case where we have no existing chunks of
+    -- the current line
+    loop0 :: B.ByteString -> [B.ByteString] -> [ByteString]
+    STRICT2(loop0)
+    loop0 ps pss =
+        case B.elemIndex (c2w '\n') ps of
+            Nothing -> case pss of
+                           []  | B.null ps ->            []
+                               | otherwise -> LPS [ps] : []
+                           (ps':pss')
+                               | B.null ps -> loop0 ps'      pss'
+                               | otherwise -> loop  ps' [ps] pss'
+
+            Just n | n /= 0    -> LPS [B.unsafeTake n ps]
+                                : loop0 (B.unsafeDrop (n+1) ps) pss
+                   | otherwise -> loop0 (B.unsafeTail ps) pss
+
+    -- the general case when we are building a list of chunks that are
+    -- part of the same line
+    loop :: B.ByteString -> [B.ByteString] -> [B.ByteString] -> [ByteString]
+    STRICT3(loop)
+    loop ps line pss =
+        case B.elemIndex (c2w '\n') ps of
+            Nothing ->
+                case pss of
+                    [] -> let ps' | B.null ps = P.reverse line
+                                  | otherwise = P.reverse (ps : line)
+                           in ps' `seq` (LPS ps' : [])
+
+                    (ps':pss')
+                        | B.null ps -> loop ps'       line  pss'
+                        | otherwise -> loop ps' (ps : line) pss'
+
+            Just n ->
+                let ps' | n == 0    = P.reverse line
+                        | otherwise = P.reverse (B.unsafeTake n ps : line)
+                 in ps' `seq` (LPS ps' : loop0 (B.unsafeDrop (n+1) ps) pss)
 
 -- | 'unlines' is an inverse operation to 'lines'.  It joins lines,
 -- after appending a terminating newline to each.
