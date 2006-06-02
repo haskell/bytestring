@@ -1131,12 +1131,13 @@ hGetN :: Int -> Handle -> Int -> IO ByteString
 hGetN _ _ 0 = return empty
 hGetN k h n = readChunks n >>= return . LPS
   where
+    STRICT1(readChunks)
     readChunks i = do
         ps <- P.hGet h (min k i)
         case P.length ps of
             0          -> return []
             m | m == i -> return [ps]
-            m          -> do pss <- readChunks $! i - m
+            m          -> do pss <- readChunks (i - m)
                              return (ps : pss)
 
 #if defined(__GLASGOW_HASKELL__)
