@@ -194,46 +194,39 @@ unsafeCreate :: Int -> (Ptr Word8 -> IO ()) -> ByteString
 unsafeCreate l f = unsafePerformIO (create l f)
 {-# INLINE unsafeCreate #-}
 
--- | Wrapper of mallocForeignPtrBytes. Any ByteString allocated this way
--- is padded with a null byte. 
+-- | Wrapper of mallocForeignPtrBytes.
 create :: Int -> (Ptr Word8 -> IO ()) -> IO ByteString
 create l f = do
-    fp <- mallocForeignPtrBytes (l+1)
-    withForeignPtr fp $ \p -> do
-        f p
-        pokeByteOff p l (0::Word8) -- i.e. touch the last cache line last
-        return $! PS fp 0 l
+    fp <- mallocForeignPtrBytes l
+    withForeignPtr fp $ \p -> f p
+    return $! PS fp 0 l
 
 -- | Given the maximum size needed and a function to make the contents
 -- of a ByteString, createAndTrim makes the 'ByteString'. The generating
 -- function is required to return the actual final size (<= the maximum
--- size), and the resulting byte array is realloced to this size.  The
--- string is padded at the end with a null byte.
+-- size), and the resulting byte array is realloced to this size.
 --
 -- createAndTrim is the main mechanism for creating custom, efficient
 -- ByteString functions, using Haskell or C functions to fill the space.
 --
 createAndTrim :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
-createAndTrim len f = do
-    fp <- mallocForeignPtrBytes (len+1)
+createAndTrim l f = do
+    fp <- mallocForeignPtrBytes l
     withForeignPtr fp $ \p -> do
-        len' <- f p
-        if assert (len' <= len) $ len' >= len
-            then do poke (p `plusPtr` len) (0::Word8)
-                    return $! PS fp 0 len
-            else create len' $ \p' ->
-                    memcpy p' p (fromIntegral len')
+        l' <- f p
+        if assert (l' <= l) $ l' >= l
+            then return $! PS fp 0 l
+            else create l' $ \p' -> memcpy p' p (fromIntegral l')
 
 createAndTrim' :: Int -> (Ptr Word8 -> IO (Int, Int, a)) -> IO (ByteString, a)
-createAndTrim' len f = do
-    fp <- mallocForeignPtrBytes (len+1)
+createAndTrim' l f = do
+    fp <- mallocForeignPtrBytes l
     withForeignPtr fp $ \p -> do
-        (off, len', res) <- f p
-        if assert (len' <= len) $ len' >= len
-            then do poke (p `plusPtr` len) (0::Word8)
-                    return $! (PS fp 0 len, res)
-            else do ps <- create len' $ \p' ->
-                            memcpy p' (p `plusPtr` off) (fromIntegral len')
+        (off, l', res) <- f p
+        if assert (l' <= l) $ l' >= l
+            then return $! (PS fp 0 l, res)
+            else do ps <- create l' $ \p' ->
+                            memcpy p' (p `plusPtr` off) (fromIntegral l')
                     return $! (ps, res)
 
 #if defined(__GLASGOW_HASKELL__)

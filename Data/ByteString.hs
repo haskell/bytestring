@@ -1619,7 +1619,7 @@ useAsCString (PS ps s l) = bracket alloc (c_free.castPtr)
       alloc = withForeignPtr ps $ \p -> do
                 buf <- c_malloc (fromIntegral l+1)
                 memcpy (castPtr buf) (castPtr p `plusPtr` s) (fromIntegral l)
-                poke (buf `plusPtr` l) (0::Word8)
+                poke (buf `plusPtr` l) (0::Word8) -- n.b.
                 return $! castPtr buf
 
 -- | /O(1) construction/ Use a @ByteString@ with a function requiring a @CString@.
@@ -1651,14 +1651,12 @@ copyCString cstr = do
 
 -- | /O(n)/ Same as copyCString, but saves a strlen call when the length is known.
 copyCStringLen :: CStringLen -> IO ByteString
-copyCStringLen (cstr, len) = 
-    create len $ \p -> memcpy p (castPtr cstr) (fromIntegral len)
+copyCStringLen (cstr, len) = create len $ \p ->
+    memcpy p (castPtr cstr) (fromIntegral len)
 
 -- | /O(1) construction/ Use a @ByteString@ with a function requiring a @CStringLen@.
 -- Warning: modifying the @CStringLen@ will affect the @ByteString@.
--- This is analogous to unsafeUseAsCString, and comes with the same
--- safety requirements.
---
+-- This is analogous to unsafeUseAsCString, and comes with the same safety requirements.
 unsafeUseAsCStringLen :: ByteString -> (CStringLen -> IO a) -> IO a
 unsafeUseAsCStringLen (PS ps s l) ac = withForeignPtr ps $ \p -> ac (castPtr p `plusPtr` s,l)
 
