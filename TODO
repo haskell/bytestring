@@ -1,16 +1,9 @@
 Todo items
 ----------
 
-* state more clearly the null-termination property of strict ByteStrings
-    - strings created via mallocByteString, generate or create will be
-      null terminated. Strings created with slices, won't be.
-
 * would it make sense to move the IO bits into a different module too?
         - System.IO.ByteString
         - Data.ByteString.IO
-
-* pack/unpack -> fromList/toList ?
-        - Don sez: i don't like it. pack/unpack is culturally significant :)
 
 * can we avoid joinWithByte? 
         - Hard. Can't do it easily with a rule.
@@ -31,17 +24,10 @@ Todo items
 
 * think about lazy hGetContents and IO exceptions
 
-* should hGet(NonBlocking) realloc if the read is short?
-  Or perhaps just if the read is 0.
-
 * consider dropping map' as ghc-6.5 optimises map much better so there's now
   little difference between them (15% rather than 40%) and with the new fusion
   system we may be able to get even closer. Look at the benchmarks for filter'
   to see if we can do the same there.
-
-* Are malloced ByteStrings movable or fixed? Would it make life easier for the
-  GC if they were movable? We could do with just pinning for the duration of
-  a foreign call.
 
 * It might be nice to have a trim MutableByteArray primitive that can release
   the tail of an array back to the GC. This would save copying in cases where
@@ -53,7 +39,6 @@ Todo items
     - can use the low level bits that read N bytes directly into a supplied buffer
     - and that also handles the blocking issues so we'll get the right
       semantics for hGetContents on sockets / pipes
-    -  
 
 * if we can be sure there is very little variance then it might be interesting to look 
  into the cases where we're doing slightly worse eg the map/up, filter/up cases
@@ -63,5 +48,3 @@ Todo items
 
 * then there are the strictness issues eg our current foldl & foldr are
   arguably too strict we could fuse unpack/unpackWith if they wern't so strict
-
-* space usage
