@@ -991,34 +991,6 @@ readInt as
           end True _ n ps = Just (negate n, ps)
           end _    _ n ps = Just (n, ps)
 
-{-
---
--- not quite there yet
---
-readInt :: ByteString -> Maybe (Int, ByteString)
-readInt = go 0
-    where
-        STRICT2(go)
-        go i ps
-            | B.null ps = Nothing
-            | x == '-'  = neg 0 xs
-            | otherwise = pos (parse x) xs
-            where (x, xs) = (ps `unsafeIndex` 0, unsafeTail ps)
-
-        STRICT2(neg)
-        neg n qs | isSpace x   = return $ Just ((i-n),xs)
-                 | otherwise   = neg (parse x + (10 * n)) xs
-                 where (x, xs) = (qs `unsafeIndex` 0, unsafeTail qs)
-
-        STRICT2(pos)
-        pos n qs | isSpace x = go (i+n) xs
-                 | otherwise = pos (parse x + (10 * n)) xs
-                 where (x, xs) = (qs `unsafeIndexWord8` 0, unsafeTail qs)
-
-        parse w = fromIntegral (w - 48) :: Int
-        {-# INLINE parse #-}
--}
-
 -- | /O(n)/ Like 'map', but not fuseable. The benefit is that it is
 -- slightly faster for one-shot cases.
 map' :: (Char -> Char) -> ByteString -> ByteString
