@@ -27,6 +27,7 @@ import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString       as P
 import qualified Data.ByteString.Base  as P
 import qualified Data.ByteString.Char8 as C
+import qualified Data.ByteString.Lazy.Char8 as D
 import Data.ByteString.Fusion
 import Prelude hiding (abs)
 
@@ -70,6 +71,7 @@ prop_notElemBP      = L.notElem     `eq2`  P.notElem
 prop_elemIndexBP    = L.elemIndex   `eq2`  P.elemIndex
 prop_elemIndicesBP  = L.elemIndices `eq2`  P.elemIndices
 prop_lengthBP       = L.length      `eq1`  (fromIntegral . P.length :: P.ByteString -> Int64)
+prop_readIntBP      = D.readInt     `eq1`  C.readInt
 
 prop_headBP         = L.head        `eqnotnull1` P.head
 prop_initBP         = L.init        `eqnotnull1` P.init
@@ -818,6 +820,7 @@ prop_replicate2BB n c = P.replicate n c == fst (P.unfoldrN n (\u -> Just (u,u)) 
 prop_replicate3BB c = P.unpack (P.replicate 0 c) == replicate 0 c
 
 prop_readintBB n = (fst . fromJust . C.readInt . C.pack . show) n == (n :: Int)
+prop_readintLL n = (fst . fromJust . D.readInt . D.pack . show) n == (n :: Int)
 
 prop_readint2BB s =
     let s' = filter (\c -> c `notElem` ['0'..'9']) s
@@ -1143,6 +1146,7 @@ bp_tests =
     ,("isPrefixOf",  mytest prop_isPrefixOfBP)
     ,("last",        mytest prop_lastBP)
     ,("length",      mytest prop_lengthBP)
+    ,("readInt",     mytest prop_readIntBP)
     ,("map",         mytest prop_mapBP)
     ,("maximum   ",  mytest prop_maximumBP)
     ,("minimum"   ,  mytest prop_minimumBP)
@@ -1350,8 +1354,9 @@ bb_tests =
     ,    ("replicate1",     mytest prop_replicate1BB)
     ,    ("replicate2",     mytest prop_replicate2BB)
     ,    ("replicate3",     mytest prop_replicate3BB)
-    ,    ("readint",        mytest prop_readintBB)
-    ,    ("readint2",       mytest prop_readint2BB)
+    ,    ("readInt",        mytest prop_readintBB)
+    ,    ("readInt 2",      mytest prop_readint2BB)
+    ,    ("Lazy.readInt",   mytest prop_readintLL)
     ,    ("filterChar1",    mytest prop_filterChar1BB)
     ,    ("filterChar2",    mytest prop_filterChar2BB)
     ,    ("filterChar3",    mytest prop_filterChar3BB)

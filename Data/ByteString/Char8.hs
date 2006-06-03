@@ -262,8 +262,6 @@ import Data.ByteString (empty,null,length,tail,init,append
                        ,getLine, getArgs, hGetLine, hGetNonBlocking
                        ,unpackList
 #endif
-                       ,useAsCString, unsafeUseAsCString
-
                        )
 
 import Data.ByteString.Base (
@@ -277,8 +275,6 @@ import Data.ByteString.Base (
 import qualified Data.List as List (intersperse)
 
 import Foreign
-import Foreign.C.Types          (CLong)
-import Foreign.Marshal.Utils    (with)
 
 #if defined(__GLASGOW_HASKELL__)
 import GHC.Base                 (Char(..),unpackCString#,unsafeCoerce#)

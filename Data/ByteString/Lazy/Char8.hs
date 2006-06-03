@@ -204,6 +204,8 @@ import Prelude hiding
 #define STRICT1(f) f a | a `seq` False = undefined
 #define STRICT2(f) f a b | a `seq` b `seq` False = undefined
 #define STRICT3(f) f a b c | a `seq` b `seq` c `seq` False = undefined
+#define STRICT4(f) f a b c d | a `seq` b `seq` c `seq` d `seq` False = undefined
+#define STRICT5(f) f a b c d e | a `seq` b `seq` c `seq` d `seq` e `seq` False = undefined
 
 ------------------------------------------------------------------------
 
@@ -599,6 +601,10 @@ unwords :: [ByteString] -> ByteString
 unwords = join (singleton ' ')
 {-# INLINE unwords #-}
 
+-- | readInt reads an Int from the beginning of the ByteString.  If
+-- there is no integer at the beginning of the string, it returns
+-- Nothing, otherwise it just returns the int read, and the rest of the
+-- string.
 readInt :: ByteString -> Maybe (Int, ByteString)
 readInt (LPS [])     = Nothing
 readInt (LPS (x:xs)) =
@@ -627,3 +633,4 @@ readInt (LPS (x:xs)) =
                                    ps' | B.null ps =    pss
                                        | otherwise = ps:pss
                                 in n' `seq` ps' `seq` Just $! (n', LPS ps')
+
