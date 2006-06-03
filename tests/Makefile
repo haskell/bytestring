@@ -80,6 +80,11 @@ prof::
 	${GHC} ${PKG} -prof -auto-all --make -O -funbox-strict-fields Bench.hs -o bench
 	./bench +RTS -H64m -p
 
+fusionprof::
+	@if [ ! -f "bigdata" ] ; then ln -s data bigdata ; fi
+	${GHC} ${PKG} -prof -auto-all --make -O -funbox-strict-fields FusionBench.hs -o bench
+	./bench +RTS -H64m -p
+
 # ---------------------------------------------------------
 # Small programs
 
