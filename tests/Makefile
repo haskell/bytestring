@@ -40,8 +40,7 @@ hugs::
 # interpreted fast. Just a quick check.
 .PHONY: prop-fast
 prop-fast::
-	@chmod +x Properties.hs
-	./Properties.hs 30
+	runhaskell Properties.hs 30
 
 # compiled
 .PHONY: prop-compiled
