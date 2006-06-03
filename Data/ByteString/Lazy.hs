@@ -1,4 +1,6 @@
-{-# OPTIONS_GHC -cpp -fffi -fglasgow-exts -fno-warn-incomplete-patterns #-}
+{-# OPTIONS_GHC -cpp -optc-O1 -fffi -fglasgow-exts -fno-warn-incomplete-patterns #-}
+--
+-- -optc-O2 breaks with 4.0.4 gcc on debian
 --
 -- Module      : ByteString.Lazy
 -- Copyright   : (c) Don Stewart 2006

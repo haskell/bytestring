@@ -117,15 +117,15 @@ fps' = unsafePerformIO $ P.readFile dict'
 {-# NOINLINE fps' #-}
 
 lps :: L.ByteString
-lps = unsafePerformIO $ do -- L.readFile dict
-            h <- openFile dict ReadMode
-            L.hGetContentsN CHUNK h
+lps = unsafePerformIO $ do L.readFile dict
+       --   h <- openFile dict ReadMode
+       --   L.hGetContentsN CHUNK h
 {-# NOINLINE lps #-}
 
 lps' :: L.ByteString
-lps' = unsafePerformIO $ do -- L.readFile dict'
-            h <- openFile dict' ReadMode
-            L.hGetContentsN CHUNK h
+lps' = unsafePerformIO $ do L.readFile dict'
+       --   h <- openFile dict' ReadMode
+       --   L.hGetContentsN CHUNK h
 {-# NOINLINE lps' #-}
 
 dict = "bigdata"
