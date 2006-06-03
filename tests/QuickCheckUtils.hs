@@ -1,12 +1,13 @@
-{-# OPTIONS_GHC -fglasgow-exts -fallow-overlapping-instances #-}
-{-# OPTIONS -cpp #-}
+{-# OPTIONS_GHC -fglasgow-exts #-}
+--
+-- Uses multi-param type classes
+--
 module QuickCheckUtils where
 
 import Test.QuickCheck.Batch
 import Test.QuickCheck
 import Text.Show.Functions
 
-import Control.Monad.Reader ({-instances Functor (-> c)-})
 import Control.Monad        ( liftM2 )
 import Data.Char
 import Data.List
@@ -140,6 +141,16 @@ instance Arbitrary P.ByteString where
   arbitrary = P.pack `fmap` arbitrary
   coarbitrary s = coarbitrary (P.unpack s)
 
+instance Functor ((->) r) where
+    fmap = (.)
+
+instance Monad ((->) r) where
+    return = const
+    f >>= k = \ r -> k (f r) r
+
+instance Functor ((,) a) where
+    fmap f (x,y) = (x, f y)
+
 ------------------------------------------------------------------------
 --
 -- We're doing two forms of testing here. Firstly, model based testing.
@@ -195,11 +206,6 @@ instance Model f g => NatTrans ((,) f) ((,) g) where eta (f,a) = (model f, a)
 
 -- And finally, we can take any (m a) to (n b), if we can Model m n, and a b
 instance (NatTrans m n, Model a b) => Model (m a) (n b) where model x = fmap model (eta x)
-
--- Missing from < ghc 6.5 compilers
-#if !defined(__GLASGOW_HASKELL__) || __GLASGOW_HASKELL__ < 605
-instance Functor ((,)   a) where fmap f (x,y) = (x, f y)
-#endif
 
 ------------------------------------------------------------------------
 
