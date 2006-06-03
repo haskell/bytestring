@@ -2,9 +2,9 @@
                  FPS : Fast, packed strings
 ------------------------------------------------------------------------
 
-This library provides the Data.ByteString library: byte arrays
-manipulable as strings, providing very time and space efficient string
-and IO operations.
+This library provides the Data.ByteString library -- strict and lazy
+byte arrays manipulable as strings -- providing very time and space
+efficient string and IO operations.
 
 For very large data requirements, or constraints on heap size,
 Data.ByteString.Lazy is provided, a lazy list of bytestring chunks.
@@ -12,7 +12,7 @@ Efficient processing of multi-gigabyte data can be achieved this way.
 
 Requirements:
         > Cabal
-        > GHC 6.4 or greater, or hugs Mar-2005
+        > GHC 6.4 or greater, or hugs
 
 Building:
         > chmod +x Setup.hs
@@ -22,9 +22,9 @@ Building:
 
 After installation, you can run the testsuite as follows:
     
-        > cd tests ; runhaskell Properties.hs
+        > cd tests ; make
     or
-        > cd tests ; runhugs -98 Properties.hs
+        > cd tests ; make hugs
 
 For the full test and benchmark suite, you need GHC:
 
@@ -33,10 +33,11 @@ For the full test and benchmark suite, you need GHC:
 You may need to edit the Makefile if your version of the m4 preprocessor isn't 'gm4'
 
 Authors:
-    ByteString is derived from the GHC PackedString library, 
-    originallly written by Bryan O'Sullivan, and then by Simon Marlow.
+    ByteString was derived from the GHC PackedString library,
+    originally written by Bryan O'Sullivan, and then by Simon Marlow.
     It was adapted, and greatly extended for darcs by David Roundy, and
     others. Don Stewart cleaned up and further extended the implementation.
+    Duncan Coutts wrote much of the .Lazy code.
 
 ------------------------------------------------------------------------
 
