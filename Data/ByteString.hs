@@ -1574,10 +1574,6 @@ sort (PS x s l) = unsafeCreate l $ \p -> withForeignPtr x $ \f -> do
         c_qsort p l -- inplace
 -}
 
-{-
-sort = pack . List.sort . unpack
--}
-
 -- | The 'sortBy' function is the non-overloaded version of 'sort'.
 --
 -- Try some linear sorts: radix, counting
@@ -1747,7 +1743,7 @@ hGetLine h = wantReadableHandle "Data.ByteString.hGetLine" h $ \ handle_ -> do
 mkPS :: RawBuffer -> Int -> Int -> IO ByteString
 mkPS buf start end =
     let len = end - start
-     in create len $ \p -> do
+    in create len $ \p -> do
         memcpy_ptr_baoff p buf (fromIntegral start) (fromIntegral len)
         return ()
 

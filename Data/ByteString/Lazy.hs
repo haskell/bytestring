@@ -478,6 +478,7 @@ reverse (LPS xs) = LPS (L.reverse . L.map P.reverse $ xs)
 -- Lists.
 intersperse :: Word8 -> ByteString -> ByteString
 intersperse = error "FIXME: not yet implemented"
+
 {-intersperse c (LPS [])     = LPS []
 intersperse c (LPS (x:xs)) = LPS (P.intersperse c x : L.map intersperse')
   where intersperse' c ps@(PS x s l) =
@@ -485,6 +486,7 @@ intersperse c (LPS (x:xs)) = LPS (P.intersperse c x : L.map intersperse')
                 poke p c
                 c_intersperse (p `plusPtr` 1) (f `plusPtr` s) l c
 -}
+
 -- | The 'transpose' function transposes the rows and columns of its
 -- 'ByteString' argument.
 transpose :: [ByteString] -> [ByteString]

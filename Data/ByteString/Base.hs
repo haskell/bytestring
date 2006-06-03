@@ -151,8 +151,7 @@ unsafeHead (PS x s l) = assert (l > 0) $
 -- check for the empty case. As with 'unsafeHead', the programmer must
 -- provide a separate proof that the ByteString is non-empty.
 unsafeTail :: ByteString -> ByteString
-unsafeTail (PS ps s l) = assert (l > 0) $
-    PS ps (s+1) (l-1)
+unsafeTail (PS ps s l) = assert (l > 0) $ PS ps (s+1) (l-1)
 {-# INLINE unsafeTail #-}
 
 -- | Unsafe 'ByteString' index (subscript) operator, starting from 0, returning a 'Word8'
@@ -167,15 +166,13 @@ unsafeIndex (PS x s l) i = assert (i >= 0 && i < l) $
 -- | A variety of 'take' which omits the checks on @n@ so there is an
 -- obligation on the programmer to provide a proof that @0 <= n <= 'length' xs@.
 unsafeTake :: Int -> ByteString -> ByteString
-unsafeTake n (PS x s l) =
-  assert (0 <= n && n <= l) $ PS x s n
+unsafeTake n (PS x s l) = assert (0 <= n && n <= l) $ PS x s n
 {-# INLINE unsafeTake #-}
 
 -- | A variety of 'drop' which omits the checks on @n@ so there is an
 -- obligation on the programmer to provide a proof that @0 <= n <= 'length' xs@.
 unsafeDrop  :: Int -> ByteString -> ByteString
-unsafeDrop n (PS x s l) =
-  assert (0 <= n && n <= l) $ PS x (s+n) (l-n)
+unsafeDrop n (PS x s l) = assert (0 <= n && n <= l) $ PS x (s+n) (l-n)
 {-# INLINE unsafeDrop #-}
 
 -- ---------------------------------------------------------------------
