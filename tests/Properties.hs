@@ -34,7 +34,7 @@ import Prelude hiding (abs)
 import QuickCheckUtils
 
 --
--- And now ByteString.Lazy <=> ByteString
+-- ByteString.Lazy <=> ByteString
 --
 
 prop_concatBP       = L.concat      `eq1`  P.concat
@@ -72,6 +72,7 @@ prop_elemIndexBP    = L.elemIndex   `eq2`  P.elemIndex
 prop_elemIndicesBP  = L.elemIndices `eq2`  P.elemIndices
 prop_lengthBP       = L.length      `eq1`  (fromIntegral . P.length :: P.ByteString -> Int64)
 prop_readIntBP      = D.readInt     `eq1`  C.readInt
+prop_linesBP        = D.lines       `eq1`  C.lines
 
 prop_headBP         = L.head        `eqnotnull1` P.head
 prop_initBP         = L.init        `eqnotnull1` P.init
@@ -145,6 +146,7 @@ prop_elemBL         = L.elem        `eq2` (elem      :: W -> [W] -> Bool)
 prop_notElemBL      = L.notElem     `eq2` (notElem   :: W -> [W] -> Bool)
 prop_elemIndexBL    = L.elemIndex   `eq2` (elemIndex :: W -> [W] -> Maybe Int)
 prop_elemIndicesBL  = L.elemIndices `eq2` (elemIndices:: W -> [W] -> [Int])
+prop_linesBL        = D.lines       `eq1` (lines     :: String -> [String])
 
 prop_foldl1BL       = L.foldl1  `eqnotnull2` (foldl1    :: (W -> W -> W) -> [W] -> W)
 prop_foldl1BL'      = L.foldl1' `eqnotnull2` (foldl1'   :: (W -> W -> W) -> [W] -> W)
@@ -180,8 +182,9 @@ prop_unfoldrBL = eq3
     ((\n f a ->                  take n $
           unfoldr f a) :: Int -> (X -> Maybe (W,X)) -> X -> [W])
 
-------------------------------------------------------------------------
+--
 -- And finally, check correspondance between Data.ByteString and List
+--
 
 prop_lengthPL     = (fromIntegral.P.length :: P -> Int) `eq1` (length :: [W] -> Int)
 prop_nullPL       = P.null      `eq1` (null      :: [W] -> Bool)
@@ -201,7 +204,6 @@ prop_dropPL       = P.drop      `eq2`    (drop      :: Int -> [W] -> [W])
 prop_dropWhilePL  = P.dropWhile `eq2`    (dropWhile :: (W -> Bool) -> [W] -> [W])
 prop_filterPL     = P.filter    `eq2`    (filter    :: (W -> Bool ) -> [W] -> [W])
 prop_findPL       = P.find      `eq2`    (find      :: (W -> Bool) -> [W] -> Maybe W)
-prop_findIndicesPL= P.findIndices`eq2`   (findIndices:: (W -> Bool) -> [W] -> [Int])
 prop_findIndexPL  = P.findIndex `eq2`    (findIndex :: (W -> Bool) -> [W] -> Maybe Int)
 prop_isPrefixOfPL = P.isPrefixOf`eq2`    (isPrefixOf:: [W] -> [W] -> Bool)
 prop_mapPL        = P.map       `eq2`    (map       :: (W -> W) -> [W] -> [W])
@@ -214,6 +216,8 @@ prop_takeWhilePL  = P.takeWhile `eq2`    (takeWhile :: (W -> Bool) -> [W] -> [W]
 prop_elemPL       = P.elem      `eq2`    (elem      :: W -> [W] -> Bool)
 prop_notElemPL    = P.notElem   `eq2`    (notElem   :: W -> [W] -> Bool)
 prop_elemIndexPL  = P.elemIndex `eq2`    (elemIndex :: W -> [W] -> Maybe Int)
+prop_linesPL      = C.lines     `eq1`    (lines     :: String -> [String])
+prop_findIndicesPL= P.findIndices`eq2`   (findIndices:: (W -> Bool) -> [W] -> [Int])
 prop_elemIndicesPL= P.elemIndices`eq2`   (elemIndices:: W -> [W] -> [Int])
 
 prop_foldl1PL     = P.foldl1    `eqnotnull2` (foldl1   :: (W -> W -> W) -> [W] -> W)
@@ -1113,6 +1117,7 @@ bl_tests =
     ,("tails",       mytest prop_tailsBL)
     ,("elem",        mytest prop_elemBL)
     ,("notElem",     mytest prop_notElemBL)
+    ,("lines",       mytest prop_linesBL)
     ,("elemIndex",   mytest prop_elemIndexBL)
     ,("elemIndices", mytest prop_elemIndicesBL)
     ,("concatMap",   mytest prop_concatMapBL)
@@ -1147,6 +1152,7 @@ bp_tests =
     ,("last",        mytest prop_lastBP)
     ,("length",      mytest prop_lengthBP)
     ,("readInt",     mytest prop_readIntBP)
+    ,("lines",       mytest prop_linesBP)
     ,("map",         mytest prop_mapBP)
     ,("maximum   ",  mytest prop_maximumBP)
     ,("minimum"   ,  mytest prop_minimumBP)
@@ -1229,6 +1235,7 @@ pl_tests =
     ,("tails",       mytest prop_tailsPL)
     ,("elem",        mytest prop_elemPL)
     ,("notElem",     mytest prop_notElemPL)
+    ,("lines",       mytest prop_linesBL)
     ,("elemIndex",   mytest prop_elemIndexPL)
     ,("elemIndices", mytest prop_elemIndicesPL)
     ,("concatMap",   mytest prop_concatMapPL)

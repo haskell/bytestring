@@ -19,6 +19,9 @@ import Data.ByteString.Fusion
 import qualified Data.ByteString      as P
 import qualified Data.ByteString.Lazy as L
 
+import qualified Data.ByteString.Char8      as PC
+import qualified Data.ByteString.Lazy.Char8 as LC
+
 -- Enable this to get verbose test output. Including the actual tests.
 debug = False
 
@@ -153,6 +156,7 @@ instance Arbitrary P.ByteString where
 -- The Model class connects a type and its model type, via a conversion
 -- function. 
 --
+--
 class Model a b where
   model :: a -> b  -- get the abstract vale from a concrete value
 
@@ -162,9 +166,11 @@ class Model a b where
 --
 -- These instances represent the arrows in the above diagram
 --
-instance Model P [W] where model = P.unpack
-instance Model B [W] where model = L.unpack . checkInvariant
-instance Model B P   where model = abstr . checkInvariant
+instance Model B P      where model = abstr . checkInvariant
+instance Model P [W]    where model = P.unpack
+instance Model P [Char] where model = PC.unpack
+instance Model B [W]    where model = L.unpack  . checkInvariant
+instance Model B [Char] where model = LC.unpack . checkInvariant
 
 -- Types are trivially modeled by themselves
 instance Model Bool  Bool         where model = id
