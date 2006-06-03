@@ -24,7 +24,8 @@ import Text.Printf
 main :: IO ()
 main = do
     -- initialise
-    force (fps,fps') >> force (lps,lps')
+    -- force (fps,fps')
+    force (lps,lps')
 
     printf "# Size of test data: %dk\n" ((floor $ (fromIntegral (B.length fps)) / 1024) :: Int)
     printf "#Byte\t Lazy\n"
@@ -34,7 +35,6 @@ main = do
 
 tests =
     [
-
       ("++",    [F ({-# SCC  "append" #-}B.append fps fps')
                 ,F ({-# SCC "lazy append" #-}L.append lps lps')])
 
