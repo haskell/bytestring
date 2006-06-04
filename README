@@ -26,11 +26,9 @@ After installation, you can run the testsuite as follows:
     or
         > cd tests ; make hugs
 
-For the full test and benchmark suite, you need GHC:
+For the full test and benchmark suite, you need GHC and Hugs:
 
         > cd tests ; make everything
-
-You may need to edit the Makefile if your version of the m4 preprocessor isn't 'gm4'
 
 Authors:
     ByteString was derived from the GHC PackedString library,
