@@ -66,7 +66,7 @@ prof::
 
 fusionprof::
 	@if [ ! -f "bigdata" ] ; then ln -s data bigdata ; fi
-	${GHC} ${PKG} -prof -auto-all --make -O -funbox-strict-fields FusionBench.hs -o bench
+	${GHC} ${PKG} -prof -auto-all --make -O -funbox-strict-fields FusionBench.hs -o fusionbench
 	./bench +RTS -H64m -p
 
 # ---------------------------------------------------------
