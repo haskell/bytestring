@@ -35,8 +35,15 @@ Todo items
   might improve fragmentation / space usage for the many small strings case.
 
 * avoid the extra copy involved in lazy io + handles.
+
+    GHC.Handle:
     - we must initially empty the handle buffer but then after that we
+        -- flushReadHandle ? Or something from GHC.IO.hGetBuf
+
     - can use the low level bits that read N bytes directly into a supplied buffer
+        -- readRawBufferPtr  :: String -> FD -> Bool -> Ptr CChar -> Int -> CInt -> IO CInt
+        -- writeRawBufferPtr :: String -> FD -> Bool -> Ptr CChar -> Int -> CInt -> IO CInt
+
     - and that also handles the blocking issues so we'll get the right
       semantics for hGetContents on sockets / pipes
 
