@@ -6,25 +6,10 @@ PKG=            -package fps
 
 BIN=            run-utests run-qtests
 
-GM4=             gm4
-PP=             ./logpp
-PP_OPTS=        -pgmF "$(PP)" -F
-
-GHC_ = $(GHC) -threaded $(PP_OPTS) -fglasgow-exts --make
-
-SRCS= TestFramework.hs UnitTestsMain.hs Tests.hs
-
 all:  prop prop-fusion-compiled
 fast: prop-fast
 
-everything: prop prop-compiled prop-fusion-compiled runbench htest wc spellcheck letter_frequency linesort fuse inline
-
-# build executable, linking in all tests
-run-utests: $(SRCS)
-	GM4=$(GM4) $(GHC_) -o $@ UnitTestsMain.hs
-
-htest:: run-utests
-	./run-utests
+everything: prop prop-compiled prop-fusion-compiled runbench wc spellcheck letter_frequency linesort fuse inline
 
 # ---------------------------------------------
 # QuickCheck
