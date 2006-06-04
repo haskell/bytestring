@@ -48,7 +48,3 @@ Todo items
 
 * then there are the strictness issues eg our current foldl & foldr are
   arguably too strict we could fuse unpack/unpackWith if they wern't so strict
-
-* Ah, finally a test case for the cheap ForeignPtr patch : run Bench.hs
-  with a chunksize of 1. Should be a lot faster with my foreign ptr
-  patch. Todo : investigate this.
