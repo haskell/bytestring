@@ -13,7 +13,8 @@ Exposed-modules:     Data.ByteString
                      Data.ByteString.Lazy
                      Data.ByteString.Lazy.Char8
 extensions:          CPP, ForeignFunctionInterface
-ghc-options:         -Wall -fglasgow-exts -O -optc-O2 -funbox-strict-fields 
+ghc-options:         -Wall -fglasgow-exts -O -optc-O2 -funbox-strict-fields  
+-- -DFAST_FOREIGN_PTR
 -- -DLOOPNOACC_FUSION
 -- -DLOOPUP_FUSION
 -- -DLOOPU_FUSION

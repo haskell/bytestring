@@ -100,6 +100,11 @@ import GHC.Prim                 (Addr#)
 import GHC.Ptr                  (Ptr(..))
 import GHC.Base                 (realWorld#,unsafeChr)
 import GHC.IOBase
+
+#if defined(FAST_FOREIGN_PTR)
+import GHC.ForeignPtr           (mallocPlainForeignPtrBytes)
+#endif
+
 #else
 import Data.Char                (chr)
 import System.IO.Unsafe         (unsafePerformIO)
@@ -197,7 +202,11 @@ unsafeCreate l f = unsafePerformIO (create l f)
 -- | Wrapper of mallocForeignPtrBytes.
 create :: Int -> (Ptr Word8 -> IO ()) -> IO ByteString
 create l f = do
+#if !defined(FAST_FOREIGN_PTR)
     fp <- mallocForeignPtrBytes l
+#else
+    fp <- mallocPlainForeignPtrBytes l
+#endif
     withForeignPtr fp $ \p -> f p
     return $! PS fp 0 l
 
@@ -211,7 +220,11 @@ create l f = do
 --
 createAndTrim :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
 createAndTrim l f = do
+#if !defined(FAST_FOREIGN_PTR)
     fp <- mallocForeignPtrBytes l
+#else
+    fp <- mallocPlainForeignPtrBytes l
+#endif
     withForeignPtr fp $ \p -> do
         l' <- f p
         if assert (l' <= l) $ l' >= l
@@ -220,7 +233,11 @@ createAndTrim l f = do
 
 createAndTrim' :: Int -> (Ptr Word8 -> IO (Int, Int, a)) -> IO (ByteString, a)
 createAndTrim' l f = do
+#if !defined(FAST_FOREIGN_PTR)
     fp <- mallocForeignPtrBytes l
+#else
+    fp <- mallocPlainForeignPtrBytes l
+#endif
     withForeignPtr fp $ \p -> do
         (off, l', res) <- f p
         if assert (l' <= l) $ l' >= l
