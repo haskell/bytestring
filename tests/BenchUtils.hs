@@ -28,37 +28,40 @@ import Control.Monad
 import Control.Exception
 import Text.Printf
 
-run tests = sequence_ $ zipWith doit [1..] tests
+run c x tests = sequence_ $ zipWith (doit c x) [1..] tests
 
-doit :: Int -> (String, [F]) -> IO ()
-doit n (s,ls) = do
+doit :: Int -> a -> Int -> (String, [F a]) -> IO ()
+doit count x n (s,ls) = do
     printf "%2d " n
     fn ls
     printf "\t# %-16s\n" (show s)
     hFlush stdout
   where fn xs = case xs of
-                    [x,y]   -> run x >> run y
-                    [x]     -> run x >> printf "\t"
+                    [f,g]   -> runN count f x >> putStr "\n   "
+                            >> runN count g x >> putStr "\t"
+                    [f]     -> runN count f x >> putStr "\t"
                     _       -> return ()
-        run s = time s >> performGC >> threadDelay 100
+        run f x = time f x >> performGC >> threadDelay 100
+        runN 0 f x = return ()
+        runN c f x = run f x >> runN (c-1) f x
 
-time :: F -> IO ()
-time (F a) = do
+time :: F a -> a -> IO ()
+time (F f) a = do
     start <- getCPUTime
-    v     <- force a
+    v     <- force (f a)
     case v of
         B -> printf "--\t"
         _ -> do
             end   <- getCPUTime
             let diff = (fromIntegral (end - start)) / (10^12)
-            printf "%0.3f\t" (diff :: Double)
+            printf "%0.3f  " (diff :: Double)
     hFlush stdout
 
 ------------------------------------------------------------------------
 -- 
 -- an existential list
 --
-data F = forall a . Forceable a => F a
+data F a = forall b . Forceable b => F (a -> b)
 
 data Result = T | B
 
