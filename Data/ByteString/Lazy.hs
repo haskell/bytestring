@@ -252,6 +252,14 @@ newtype ByteString = LPS [P.ByteString] -- LPS for lazy packed string
 #endif
              )
 
+--
+-- hmm, what about getting the PS constructor unpacked into the cons cell?
+--
+-- data List = Nil | Cons {-# UNPACK #-} !P.ByteString List
+--
+-- Would avoid one indirection per chunk.
+--
+
 unLPS :: ByteString -> [P.ByteString]
 unLPS (LPS xs) = xs
 {-# INLINE unLPS #-}

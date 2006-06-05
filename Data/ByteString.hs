@@ -1880,6 +1880,8 @@ mmap f = do
                      else do
                           -- The munmap leads to crashes on OpenBSD.
                           -- maybe there's a use after unmap in there somewhere?
+                          -- Bulat suggests adding the hClose to the
+                          -- finalizer, excellent idea.
 #if !defined(__OpenBSD__)
                              let unmap = c_munmap p l >> return ()
 #else
