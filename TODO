@@ -55,3 +55,15 @@ Todo items
 
 * then there are the strictness issues eg our current foldl & foldr are
   arguably too strict we could fuse unpack/unpackWith if they wern't so strict
+
+* look at shrinking the chunk size, based on our cache testing.
+
+* think about horizontal fusion (esp. when considering nofib code)
+
+* fuseable reverse.
+
+* 'reverse' is very common in list code, but unnecessary in bytestring
+  code, since it takes a symmertric view.
+    look to eliminate it with rules. loopUp . reverse --> loopDown
+
+* work out how robust the rules are .
