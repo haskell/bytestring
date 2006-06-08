@@ -67,3 +67,7 @@ Todo items
     look to eliminate it with rules. loopUp . reverse --> loopDown
 
 * work out how robust the rules are .
+
+* benchmark against C string library benchmarks
+
+* work out if we can convince ghc to remove NoAccs in map and filter.
