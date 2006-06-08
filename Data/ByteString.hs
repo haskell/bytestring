@@ -217,6 +217,8 @@ module Data.ByteString (
         hGetContents,           -- :: Handle -> IO ByteString
         hGet,                   -- :: Handle -> Int -> IO ByteString
         hPut,                   -- :: Handle -> ByteString -> IO ()
+        hPutStr,                -- :: Handle -> ByteString -> IO ()
+        hPutStrLn,              -- :: Handle -> ByteString -> IO ()
 
         -- * Fusion utilities
 #if defined(__GLASGOW_HASKELL__)
@@ -1759,14 +1761,23 @@ hPut :: Handle -> ByteString -> IO ()
 hPut _ (PS _  _ 0) = return ()
 hPut h (PS ps s l) = withForeignPtr ps $ \p-> hPutBuf h (p `plusPtr` s) l
 
+-- | A synonym for @hPut@, for compatibility 
+hPutStr :: Handle -> ByteString -> IO ()
+hPutStr = hPut
+
+-- | Write a ByteString to a handle, appending a newline byte
+hPutStrLn :: Handle -> ByteString -> IO ()
+hPutStrLn h ps
+    | length ps < 1024 = hPut h (ps `snoc` 0x0a)
+    | otherwise        = hPut h ps >> hPut h (singleton (0x0a)) -- don't copy
+
 -- | Write a ByteString to stdout
 putStr :: ByteString -> IO ()
 putStr = hPut stdout
 
 -- | Write a ByteString to stdout, appending a newline byte
 putStrLn :: ByteString -> IO ()
-putStrLn ps = hPut stdout ps >> hPut stdout nl
-    where nl = singleton 0x0a
+putStrLn = hPutStrLn stdout
 
 -- | Read a 'ByteString' directly from the specified 'Handle'.  This
 -- is far more efficient than reading the characters into a 'String'

@@ -219,6 +219,8 @@ module Data.ByteString.Char8 (
         hGetContents,           -- :: Handle -> IO ByteString
         hGet,                   -- :: Handle -> Int -> IO ByteString
         hPut,                   -- :: Handle -> ByteString -> IO ()
+        hPutStr,                -- :: Handle -> ByteString -> IO ()
+        hPutStrLn,              -- :: Handle -> ByteString -> IO ()
 
 #if defined(__GLASGOW_HASKELL__)
         -- * Low level construction
@@ -257,7 +259,7 @@ import Data.ByteString (empty,null,length,tail,init,append
 
                        ,getContents, putStr, putStrLn
                        ,readFile, {-mmapFile,-} writeFile, appendFile
-                       ,hGetContents, hGet, hPut
+                       ,hGetContents, hGet, hPut, hPutStr, hPutStrLn
 #if defined(__GLASGOW_HASKELL__)
                        ,getLine, getArgs, hGetLine, hGetNonBlocking
                        ,unpackList
