@@ -259,7 +259,7 @@ import Data.ByteString (empty,null,length,tail,init,append
                        ,readFile, {-mmapFile,-} writeFile, appendFile
                        ,hGetContents, hGet, hPut, hPutStr, hPutStrLn
 #if defined(__GLASGOW_HASKELL__)
-                       ,getLine, getArgs, hGetLine, hGetNonBlocking
+                       ,getLine, getArgs, hGetLine, hGetLines, hGetNonBlocking
                        ,unpackList
 #endif
                        )

@@ -13,12 +13,12 @@ Exposed-modules:     Data.ByteString
                      Data.ByteString.Fusion
                      Data.ByteString.Lazy
                      Data.ByteString.Lazy.Char8
-ghc-options:         -Wall -fglasgow-exts -O -optc-O2 -funbox-strict-fields
+ghc-options:         -Wall -fglasgow-exts -O -optc-O2 -funbox-strict-fields -DSLOW_FOREIGN_PTR
 include-dirs:        cbits
 c-sources:           cbits/fpstring.c
 
 -- Used with ghc 6.5 newer than 06/06/06: 
--- -DFAST_FOREIGN_PTR 
+-- 
 
 -- Experiments
 -- -DLOOPU_FUSION
