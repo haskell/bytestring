@@ -211,6 +211,7 @@ module Data.ByteString.Char8 (
 #if defined(__GLASGOW_HASKELL__)
         getArgs,                -- :: IO [ByteString]
         hGetLine,               -- :: Handle -> IO ByteString
+        hGetLines,              -- :: Handle -> IO ByteString
         hGetNonBlocking,        -- :: Handle -> Int -> IO ByteString
 #endif
         hGetContents,           -- :: Handle -> IO ByteString
