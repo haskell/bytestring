@@ -25,7 +25,7 @@ hugs::
 # interpreted fast. Just a quick check.
 .PHONY: prop-fast
 prop-fast::
-	runhaskell Properties.hs 30
+	runhaskell Properties.hs 20
 
 # compiled
 .PHONY: prop-compiled
