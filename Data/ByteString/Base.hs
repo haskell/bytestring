@@ -101,7 +101,7 @@ import GHC.Ptr                  (Ptr(..))
 import GHC.Base                 (realWorld#,unsafeChr)
 import GHC.IOBase
 
-#if !defined(SLOW_FOREIGN_PTR)
+#if defined(__GLASGOW_HASKELL__) && !defined(SLOW_FOREIGN_PTR)
 import GHC.ForeignPtr           (mallocPlainForeignPtrBytes)
 #endif
 
@@ -202,7 +202,7 @@ unsafeCreate l f = unsafePerformIO (create l f)
 -- | Wrapper of mallocForeignPtrBytes.
 create :: Int -> (Ptr Word8 -> IO ()) -> IO ByteString
 create l f = do
-#if defined(SLOW_FOREIGN_PTR)
+#if defined(SLOW_FOREIGN_PTR) || !defined(__GLASGOW_HASKELL__)
     fp <- mallocForeignPtrBytes l
 #else
     fp <- mallocPlainForeignPtrBytes l
@@ -220,7 +220,7 @@ create l f = do
 --
 createAndTrim :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
 createAndTrim l f = do
-#if defined(SLOW_FOREIGN_PTR)
+#if defined(SLOW_FOREIGN_PTR) || !defined(__GLASGOW_HASKELL__)
     fp <- mallocForeignPtrBytes l
 #else
     fp <- mallocPlainForeignPtrBytes l
@@ -233,7 +233,7 @@ createAndTrim l f = do
 
 createAndTrim' :: Int -> (Ptr Word8 -> IO (Int, Int, a)) -> IO (ByteString, a)
 createAndTrim' l f = do
-#if defined(SLOW_FOREIGN_PTR)
+#if defined(SLOW_FOREIGN_PTR) || !defined(__GLASGOW_HASKELL__)
     fp <- mallocForeignPtrBytes l
 #else
     fp <- mallocPlainForeignPtrBytes l
