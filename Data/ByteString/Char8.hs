@@ -181,9 +181,6 @@ module Data.ByteString.Char8 (
         sort,                   -- :: ByteString -> ByteString
 
         -- * Unchecked access
-        unsafeHead,             -- :: ByteString -> Char
-        unsafeTail,             -- :: ByteString -> ByteString
-        unsafeIndex,            -- :: ByteString -> Int -> Char
         w2c,                    -- :: Word8 -> Char
         c2w,                    -- :: Char  -> Word8
 
