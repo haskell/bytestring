@@ -6,18 +6,26 @@ License-file:        LICENSE
 Author:              Don Stewart
 Maintainer:          dons@cse.unsw.edu.au
 Build-Depends:       base
+extensions:          CPP, ForeignFunctionInterface
 Exposed-modules:     Data.ByteString
                      Data.ByteString.Char8
                      Data.ByteString.Base
                      Data.ByteString.Fusion
                      Data.ByteString.Lazy
                      Data.ByteString.Lazy.Char8
-extensions:          CPP, ForeignFunctionInterface
-ghc-options:         -Wall -fglasgow-exts -O -optc-O2 -funbox-strict-fields  
--- -DFAST_FOREIGN_PTR
+ghc-options:         -Wall -fglasgow-exts -O -optc-O2 -funbox-strict-fields
+include-dirs:        cbits
+c-sources:           cbits/fpstring.c
+
+-- Used with ghc 6.5 newer than 06/06/06: 
+-- -DFAST_FOREIGN_PTR 
+
+-- Experiments
+-- -DLOOPU_FUSION
 -- -DLOOPNOACC_FUSION
 -- -DLOOPUP_FUSION
 -- -DLOOPU_FUSION
-cc-options:
-c-sources:           cbits/fpstring.c
-include-dirs:        cbits
+
+-- TODO, there's a bug with the include-dirs setting. if you install the
+-- package from another directory, it won't be able to find the
+-- (relative) path to cbits. Not sure how to work around this.
