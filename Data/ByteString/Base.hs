@@ -401,19 +401,19 @@ foreign import ccall unsafe "string.h memset" memset
 -- Uses our C code
 --
 
-foreign import ccall unsafe "static fpstring.h reverse" c_reverse
+foreign import ccall unsafe "static fpstring.h fps_reverse" c_reverse
     :: Ptr Word8 -> Ptr Word8 -> CInt -> IO ()
 
-foreign import ccall unsafe "static fpstring.h intersperse" c_intersperse
+foreign import ccall unsafe "static fpstring.h fps_intersperse" c_intersperse
     :: Ptr Word8 -> Ptr Word8 -> CInt -> Word8 -> IO ()
 
-foreign import ccall unsafe "static fpstring.h maximum" c_maximum
+foreign import ccall unsafe "static fpstring.h fps_maximum" c_maximum
     :: Ptr Word8 -> CInt -> IO Word8
 
-foreign import ccall unsafe "static fpstring.h minimum" c_minimum
+foreign import ccall unsafe "static fpstring.h fps_minimum" c_minimum
     :: Ptr Word8 -> CInt -> IO Word8
 
-foreign import ccall unsafe "static fpstring.h count" c_count
+foreign import ccall unsafe "static fpstring.h fps_count" c_count
     :: Ptr Word8 -> CInt -> Word8 -> IO CInt
 
 -- ---------------------------------------------------------------------
