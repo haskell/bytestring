@@ -476,14 +476,14 @@ reverse :: ByteString -> ByteString
 reverse (LPS xs) = LPS (L.reverse . L.map P.reverse $ xs)
 {-# INLINE reverse #-}
 
--- /O(n)/ The 'intersperse' function takes a 'Word8' and a
--- 'ByteString' and \`intersperses\' that byte between the elements of
--- the 'ByteString'.  It is analogous to the intersperse function on
--- Lists.
+-- The 'intersperse' function takes a 'Word8' and a 'ByteString' and
+-- \`intersperses\' that byte between the elements of the 'ByteString'.
+-- It is analogous to the intersperse function on Lists.
 -- intersperse :: Word8 -> ByteString -> ByteString
 -- intersperse = error "FIXME: not yet implemented"
 
-{-intersperse c (LPS [])     = LPS []
+{-
+intersperse c (LPS [])     = LPS []
 intersperse c (LPS (x:xs)) = LPS (P.intersperse c x : L.map intersperse')
   where intersperse' c ps@(PS x s l) =
           P.create (2*l) $ \p -> withForeignPtr x $ \f ->
