@@ -21,6 +21,9 @@ import System.IO
 import Control.Monad
 import Text.Printf
 
+--
+-- temporarily broken
+--
 main :: IO ()
 main = do
     -- initialise
@@ -31,7 +34,8 @@ main = do
     printf "#Byte\t Lazy\n"
 
     -- now get to it
-    sequence_ $ zipWith doit [1..] tests
+--  sequence_ $ zipWith doit [1..] tests
+    sequence_ $ zipWith (doit 11 x) [1..] tests
 
 tests =
     [

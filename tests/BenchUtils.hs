@@ -30,6 +30,10 @@ import Text.Printf
 
 run c x tests = sequence_ $ zipWith (doit c x) [1..] tests
 
+--
+-- todo, what if we need to apply some tests to multiple strings, or
+-- lazy and strict strings. then 'x' won't work.
+--
 doit :: Int -> a -> Int -> (String, [F a]) -> IO ()
 doit count x n (s,ls) = do
     printf "%2d " n
