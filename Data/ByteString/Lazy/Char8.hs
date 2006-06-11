@@ -188,7 +188,7 @@ import Data.ByteString.Lazy
         ,empty,null,length,tail,init,append,reverse,transpose
         ,concat,take,drop,splitAt,join,isPrefixOf,group,inits, tails
         ,hGetContentsN, hGetN, hGetContents, hGet, hPut, getContents
-        ,putStr, putStrLn, readFile, writeFile, appendFile
+        ,putStr, putStrLn, readFile, writeFile, appendFile ,cycle, interact
 #if defined(__GLASGOW_HASKELL__)
         , hGetNonBlockingN, hGetNonBlocking
 #endif
@@ -209,7 +209,8 @@ import Prelude hiding
     ,concat,any,take,drop,splitAt,takeWhile,dropWhile,span,break,elem,filter,maximum
     ,minimum,all,concatMap,foldl1,foldr1,scanl, scanl1, scanr, scanr1
     ,repeat, cycle, interact, iterate,readFile,writeFile,appendFile,replicate
-    ,getContents,getLine,putStr,putStrLn ,zip,zipWith,unzip,notElem)
+    ,getContents,getLine,putStr,putStrLn ,zip,zipWith,unzip,notElem
+    ,words, unwords)
 
 #define STRICT1(f) f a | a `seq` False = undefined
 #define STRICT2(f) f a b | a `seq` b `seq` False = undefined
