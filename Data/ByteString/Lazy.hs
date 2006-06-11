@@ -196,17 +196,12 @@ module Data.ByteString.Lazy (
   ) where
 
 import qualified Prelude
-import Prelude hiding           (reverse,head,tail,last,init,null
-                                ,length,map,lines,foldl,foldr,unlines
-                                ,concat,any,take,drop,splitAt,takeWhile
-                                ,dropWhile,span,break,elem,filter,maximum
-                                ,minimum,all,concatMap,foldl1,foldr1
-                                ,scanl, scanl1, scanr, scanr1
-                                ,repeat, cycle, interact, iterate
-                                ,readFile,writeFile,appendFile,replicate
-                                ,getContents,getLine,putStr,putStrLn
-                                ,zip,zipWith,unzip,notElem)
-
+import Prelude hiding
+    (reverse,head,tail,last,init,null,length,map,lines,foldl,foldr,unlines
+    ,concat,any,take,drop,splitAt,takeWhile,dropWhile,span,break,elem,filter,maximum
+    ,minimum,all,concatMap,foldl1,foldr1,scanl, scanl1, scanr, scanr1
+    ,repeat, cycle, interact, iterate,readFile,writeFile,appendFile,replicate
+    ,getContents,getLine,putStr,putStrLn ,zip,zipWith,unzip,notElem)
 
 import qualified Data.List              as L  -- L for list/lazy
 import qualified Data.ByteString        as P  -- P for packed

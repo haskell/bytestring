@@ -188,7 +188,7 @@ import Data.ByteString.Lazy
         ,empty,null,length,tail,init,append,reverse,transpose
         ,concat,take,drop,splitAt,join,isPrefixOf,group,inits, tails
         ,hGetContentsN, hGetN, hGetContents, hGet, hPut, getContents
-        ,putStr, putStrLn, readFile, writeFile
+        ,putStr, putStrLn, readFile, writeFile, appendFile
 #if defined(__GLASGOW_HASKELL__)
         , hGetNonBlockingN, hGetNonBlocking
 #endif
@@ -205,11 +205,11 @@ import qualified Data.List as List (intersperse)
 
 import qualified Prelude as P
 import Prelude hiding           
-        (reverse,head,tail,last,init,null,length,map,lines,foldl,foldr,unlines
-        ,concat,any,take,drop,splitAt,takeWhile,dropWhile,span,break,elem,filter
-        ,unwords,words,maximum,minimum,all,concatMap,scanl,scanl1,foldl1,foldr1
-        ,readFile,writeFile,replicate,getContents,getLine,putStr,putStrLn
-        ,zip,zipWith,unzip,notElem,repeat,iterate)
+    (reverse,head,tail,last,init,null,length,map,lines,foldl,foldr,unlines
+    ,concat,any,take,drop,splitAt,takeWhile,dropWhile,span,break,elem,filter,maximum
+    ,minimum,all,concatMap,foldl1,foldr1,scanl, scanl1, scanr, scanr1
+    ,repeat, cycle, interact, iterate,readFile,writeFile,appendFile,replicate
+    ,getContents,getLine,putStr,putStrLn ,zip,zipWith,unzip,notElem)
 
 #define STRICT1(f) f a | a `seq` False = undefined
 #define STRICT2(f) f a b | a `seq` b `seq` False = undefined
