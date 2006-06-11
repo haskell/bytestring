@@ -55,7 +55,7 @@ module Data.ByteString.Lazy.Char8 (
         foldl,                  -- :: (a -> Char -> a) -> a -> ByteString -> a
         foldl',                 -- :: (a -> Char -> a) -> a -> ByteString -> a
         foldl1,                 -- :: (Char -> Char -> Char) -> ByteString -> Char
---      foldl1',                -- :: (Char -> Char -> Char) -> ByteString -> Char
+        foldl1',                -- :: (Char -> Char -> Char) -> ByteString -> Char
         foldr,                  -- :: (Char -> a -> a) -> a -> ByteString -> a
         foldr1,                 -- :: (Char -> Char -> Char) -> ByteString -> Char
 
@@ -69,24 +69,23 @@ module Data.ByteString.Lazy.Char8 (
 
         -- * Building ByteStrings
         -- ** Scans
---      scanl,                  -- :: (Char -> Char -> Char) -> Char -> ByteString -> ByteString
+        scanl,                  -- :: (Char -> Char -> Char) -> Char -> ByteString -> ByteString
 --      scanl1,                 -- :: (Char -> Char -> Char) -> ByteString -> ByteString
 --      scanr,                  -- :: (Char -> Char -> Char) -> Char -> ByteString -> ByteString
 --      scanr1,                 -- :: (Char -> Char -> Char) -> ByteString -> ByteString
 
         -- ** Accumulating maps
---      mapAccumL,              -- :: (acc -> Char -> (acc, Char)) -> acc -> ByteString -> (acc, ByteString)
---      mapAccumR,              -- :: (acc -> Char -> (acc, Char)) -> acc -> ByteString -> (acc, ByteString)
---      mapIndexed,             -- :: (Int64 -> Char -> Char) -> ByteString -> ByteString
+        mapAccumL,   -- :: (acc -> Char -> (acc, Char)) -> acc -> ByteString -> (acc, ByteString)
+        mapIndexed,  -- :: (Int64 -> Char -> Char) -> ByteString -> ByteString
 
         -- ** Infinite ByteStrings
         repeat,                 -- :: Char -> ByteString
         replicate,              -- :: Int64 -> Char -> ByteString
         cycle,                  -- :: ByteString -> ByteString
---      iterate,                -- :: (Char -> Char) -> Char -> ByteString
+        iterate,                -- :: (Char -> Char) -> Char -> ByteString
 
         -- ** Unfolding
---      unfoldr,                -- :: (a -> Maybe (Char, a)) -> a -> ByteString
+        unfoldr,                -- :: (a -> Maybe (Char, a)) -> a -> ByteString
 
         -- * Substrings
 
@@ -100,8 +99,8 @@ module Data.ByteString.Lazy.Char8 (
         break,                  -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
         group,                  -- :: ByteString -> [ByteString]
         groupBy,                -- :: (Char -> Char -> Bool) -> ByteString -> [ByteString]
---      inits,                  -- :: ByteString -> [ByteString]
---      tails,                  -- :: ByteString -> [ByteString]
+        inits,                  -- :: ByteString -> [ByteString]
+        tails,                  -- :: ByteString -> [ByteString]
 
         -- ** Breaking and dropping on specific Chars
         breakChar,              -- :: Char -> ByteString -> (ByteString, ByteString)
@@ -169,6 +168,7 @@ module Data.ByteString.Lazy.Char8 (
         -- ** Files
         readFile,               -- :: FilePath -> IO ByteString
         writeFile,              -- :: FilePath -> ByteString -> IO ()
+        appendFile,             -- :: FilePath -> ByteString -> IO ()
 
         -- ** I\/O with Handles
         hGetContents,           -- :: Handle -> IO ByteString
@@ -176,15 +176,23 @@ module Data.ByteString.Lazy.Char8 (
         hGet,                   -- :: Handle -> Int64 -> IO ByteString
         hGetN,                  -- :: Int -> Handle -> Int64 -> IO ByteString
         hPut,                   -- :: Handle -> ByteString -> IO ()
+#if defined(__GLASGOW_HASKELL__)
+        hGetNonBlocking,        -- :: Handle -> IO ByteString
+        hGetNonBlockingN,       -- :: Int -> Handle -> IO ByteString
+#endif
   ) where
 
 -- Functions transparently exported
 import Data.ByteString.Lazy 
         (ByteString(..)
         ,empty,null,length,tail,init,append,reverse,transpose
-        ,concat,take,drop,splitAt,join,isPrefixOf,group
+        ,concat,take,drop,splitAt,join,isPrefixOf,group,inits, tails
         ,hGetContentsN, hGetN, hGetContents, hGet, hPut, getContents
-        ,putStr, putStrLn, readFile, writeFile)
+        ,putStr, putStrLn, readFile, writeFile
+#if defined(__GLASGOW_HASKELL__)
+        , hGetNonBlockingN, hGetNonBlocking
+#endif
+        )
 
 -- Functions we need to wrap.
 import qualified Data.ByteString.Lazy as L
@@ -201,7 +209,7 @@ import Prelude hiding
         ,concat,any,take,drop,splitAt,takeWhile,dropWhile,span,break,elem,filter
         ,unwords,words,maximum,minimum,all,concatMap,scanl,scanl1,foldl1,foldr1
         ,readFile,writeFile,replicate,getContents,getLine,putStr,putStrLn
-        ,zip,zipWith,unzip,notElem,repeat)
+        ,zip,zipWith,unzip,notElem,repeat,iterate)
 
 #define STRICT1(f) f a | a `seq` False = undefined
 #define STRICT2(f) f a b | a `seq` b `seq` False = undefined
@@ -277,6 +285,10 @@ foldl1 :: (Char -> Char -> Char) -> ByteString -> Char
 foldl1 f ps = w2c (L.foldl1 (\x y -> c2w (f (w2c x) (w2c y))) ps)
 {-# INLINE foldl1 #-}
 
+-- | 'foldl1\'' is like 'foldl1', but strict in the accumulator.
+foldl1' :: (Char -> Char -> Char) -> ByteString -> Char
+foldl1' f ps = w2c (L.foldl1' (\x y -> c2w (f (w2c x) (w2c y))) ps)
+
 -- | 'foldr1' is a variant of 'foldr' that has no starting value argument,
 -- and thus must be applied to non-empty 'ByteString's
 foldr1 :: (Char -> Char -> Char) -> ByteString -> Char
@@ -310,8 +322,33 @@ minimum :: ByteString -> Char
 minimum = w2c . L.minimum
 {-# INLINE minimum #-}
 
+-- ---------------------------------------------------------------------
+-- Building ByteStrings
+
+scanl :: (Char -> Char -> Char) -> Char -> ByteString -> ByteString
+scanl f z = L.scanl (\a b -> c2w (f (w2c a) (w2c b))) (c2w z)
+
+-- | The 'mapAccumL' function behaves like a combination of 'map' and
+-- 'foldl'; it applies a function to each element of a ByteString,
+-- passing an accumulating parameter from left to right, and returning a
+-- final value of this accumulator together with the new ByteString.
+mapAccumL :: (acc -> Char -> (acc, Char)) -> acc -> ByteString -> (acc, ByteString)
+mapAccumL f = L.mapAccumL (\a w -> case f a (w2c w) of (a',c) -> (a', c2w c))
+
+-- | /O(n)/ map Char functions, provided with the index at each position
+mapIndexed :: (Int -> Char -> Char) -> ByteString -> ByteString
+mapIndexed f = L.mapIndexed (\i w -> c2w (f i (w2c w)))
+
 ------------------------------------------------------------------------
 -- Generating and unfolding ByteStrings
+
+-- | @'iterate' f x@ returns an infinite ByteString of repeated applications
+-- of @f@ to @x@:
+--
+-- > iterate f x == [x, f x, f (f x), ...]
+--
+iterate :: (Char -> Char) -> Char -> ByteString
+iterate f = L.iterate (c2w . f . w2c) . c2w
 
 -- | @'repeat' x@ is an infinite ByteString, with @x@ the value of every
 -- element.
@@ -327,6 +364,19 @@ repeat = L.repeat . c2w
 -- This implemenation uses @memset(3)@
 replicate :: Int64 -> Char -> ByteString
 replicate w c = L.replicate w (c2w c)
+
+-- | /O(n)/ The 'unfoldr' function is analogous to the List \'unfoldr\'.
+-- 'unfoldr' builds a ByteString from a seed value.  The function takes
+-- the element and returns 'Nothing' if it is done producing the
+-- ByteString or returns 'Just' @(a,b)@, in which case, @a@ is a
+-- prepending to the ByteString and @b@ is used as the next element in a
+-- recursive call.
+unfoldr :: (a -> Maybe (Char, a)) -> a -> ByteString
+unfoldr f = L.unfoldr $ \a -> case f a of
+                                    Nothing      -> Nothing
+                                    Just (c, a') -> Just (c2w c, a')
+
+------------------------------------------------------------------------
 
 -- | 'takeWhile', applied to a predicate @p@ and a ByteString @xs@,
 -- returns the longest prefix (possibly empty) of @xs@ of elements that

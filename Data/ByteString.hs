@@ -832,6 +832,10 @@ minimumU = foldl1' min
 
 ------------------------------------------------------------------------
 
+-- | The 'mapAccumL' function behaves like a combination of 'map' and
+-- 'foldl'; it applies a function to each element of a ByteString,
+-- passing an accumulating parameter from left to right, and returning a
+-- final value of this accumulator together with the new list.
 mapAccumL :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
 #if !defined(LOOPU_FUSION)
 mapAccumL f z = unSP . loopUp (mapAccumEFL f) z
@@ -840,6 +844,10 @@ mapAccumL f z = unSP . loopU (mapAccumEFL f) z
 #endif
 {-# INLINE mapAccumL #-}
 
+-- | The 'mapAccumR' function behaves like a combination of 'map' and
+-- 'foldr'; it applies a function to each element of a ByteString,
+-- passing an accumulating parameter from right to left, and returning a
+-- final value of this accumulator together with the new ByteString.
 mapAccumR :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
 mapAccumR f z = unSP . loopDown (mapAccumEFL f) z
 {-# INLINE mapAccumR #-}

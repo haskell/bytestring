@@ -69,7 +69,7 @@ module Data.ByteString.Lazy (
         -- * Transformating ByteStrings
         map,                    -- :: (Word8 -> Word8) -> ByteString -> ByteString
         reverse,                -- :: ByteString -> ByteString
-        intersperse,            -- :: Word8 -> ByteString -> ByteString
+--      intersperse,            -- :: Word8 -> ByteString -> ByteString
         transpose,              -- :: [ByteString] -> [ByteString]
 
         -- * Reducing 'ByteString's (folds)
@@ -96,9 +96,8 @@ module Data.ByteString.Lazy (
 --      scanr1,                 -- :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString
 
         -- ** Accumulating maps
-        mapAccumL,              -- :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
---      mapAccumR,              -- :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
-        mapIndexed,             -- :: (Int64 -> Word8 -> Word8) -> ByteString -> ByteString
+        mapAccumL,  -- :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
+        mapIndexed, -- :: (Int64 -> Word8 -> Word8) -> ByteString -> ByteString
 
         -- ** Infinite ByteStrings
         repeat,                 -- :: Word8 -> ByteString
@@ -188,11 +187,11 @@ module Data.ByteString.Lazy (
         hGetContentsN,          -- :: Int -> Handle -> IO ByteString
         hGet,                   -- :: Handle -> Int -> IO ByteString
         hGetN,                  -- :: Int -> Handle -> Int -> IO ByteString
+        hPut,                   -- :: Handle -> ByteString -> IO ()
 #if defined(__GLASGOW_HASKELL__)
         hGetNonBlocking,        -- :: Handle -> IO ByteString
         hGetNonBlockingN,       -- :: Int -> Handle -> IO ByteString
 #endif
-        hPut,                   -- :: Handle -> ByteString -> IO ()
 
   ) where
 
@@ -486,8 +485,8 @@ reverse (LPS xs) = LPS (L.reverse . L.map P.reverse $ xs)
 -- 'ByteString' and \`intersperses\' that byte between the elements of
 -- the 'ByteString'.  It is analogous to the intersperse function on
 -- Lists.
-intersperse :: Word8 -> ByteString -> ByteString
-intersperse = error "FIXME: not yet implemented"
+-- intersperse :: Word8 -> ByteString -> ByteString
+-- intersperse = error "FIXME: not yet implemented"
 
 {-intersperse c (LPS [])     = LPS []
 intersperse c (LPS (x:xs)) = LPS (P.intersperse c x : L.map intersperse')
@@ -583,6 +582,10 @@ minimum (LPS []) = errorEmptyList "minimum"
 minimum (LPS xs) = L.minimum (L.map P.minimum xs)
 {-# INLINE minimum #-}
 
+-- | The 'mapAccumL' function behaves like a combination of 'map' and
+-- 'foldl'; it applies a function to each element of a ByteString,
+-- passing an accumulating parameter from left to right, and returning a
+-- final value of this accumulator together with the new ByteString.
 mapAccumL :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
 mapAccumL f z = (\(a :*: ps) -> (a, LPS ps)) . loopL (P.mapAccumEFL f) z . unLPS
 
@@ -649,7 +652,6 @@ cycle (LPS xs) = LPS (L.cycle xs)
 -- ByteString or returns 'Just' @(a,b)@, in which case, @a@ is a
 -- prepending to the ByteString and @b@ is used as the next element in a
 -- recursive call.
---
 unfoldr :: (a -> Maybe (Word8, a)) -> a -> ByteString
 unfoldr f = LPS . unfoldChunk 32
   where unfoldChunk n x =
