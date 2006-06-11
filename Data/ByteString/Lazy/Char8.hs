@@ -326,6 +326,14 @@ minimum = w2c . L.minimum
 -- ---------------------------------------------------------------------
 -- Building ByteStrings
 
+-- | 'scanl' is similar to 'foldl', but returns a list of successive
+-- reduced values from the left. This function will fuse.
+--
+-- > scanl f z [x1, x2, ...] == [z, z `f` x1, (z `f` x1) `f` x2, ...]
+--
+-- Note that
+--
+-- > last (scanl f z xs) == foldl f z xs.
 scanl :: (Char -> Char -> Char) -> Char -> ByteString -> ByteString
 scanl f z = L.scanl (\a b -> c2w (f (w2c a) (w2c b))) (c2w z)
 
@@ -357,12 +365,9 @@ iterate f = L.iterate (c2w . f . w2c) . c2w
 repeat :: Char -> ByteString
 repeat = L.repeat . c2w
 
--- | /O(n)/ 'replicate' @n x@ is a ByteString of length @n@ with @x@
--- the value of every element. The following holds:
+-- | /O(n)/ @'replicate' n x@ is a ByteString of length @n@ with @x@
+-- the value of every element.
 --
--- > replicate w c = unfoldr w (\u -> Just (u,u)) c
---
--- This implemenation uses @memset(3)@
 replicate :: Int64 -> Char -> ByteString
 replicate w c = L.replicate w (c2w c)
 

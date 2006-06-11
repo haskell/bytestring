@@ -476,7 +476,7 @@ reverse :: ByteString -> ByteString
 reverse (LPS xs) = LPS (L.reverse . L.map P.reverse $ xs)
 {-# INLINE reverse #-}
 
--- | /O(n)/ The 'intersperse' function takes a 'Word8' and a
+-- /O(n)/ The 'intersperse' function takes a 'Word8' and a
 -- 'ByteString' and \`intersperses\' that byte between the elements of
 -- the 'ByteString'.  It is analogous to the intersperse function on
 -- Lists.
@@ -1152,7 +1152,7 @@ hGetN k h n = readChunks n >>= return . LPS
 #if defined(__GLASGOW_HASKELL__)
 -- | hGetNonBlockingN is similar to 'hGetContentsN', except that it will never block
 -- waiting for data to become available, instead it returns only whatever data
--- is available.
+-- is available. Chunks are read on demand, in @k@-sized chunks.
 hGetNonBlockingN :: Int -> Handle -> Int -> IO ByteString
 hGetNonBlockingN _ _ 0 = return empty
 hGetNonBlockingN k h n = readChunks n >>= return . LPS
