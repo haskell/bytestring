@@ -17,14 +17,15 @@ ghc-options:         -Wall -fglasgow-exts -O -optc-O2 -funbox-strict-fields -DSL
 include-dirs:        cbits
 c-sources:           cbits/fpstring.c
 
--- Used with ghc 6.5 newer than 06/06/06: 
--- 
-
--- Experiments
+-- Experiments only. Enabling these are likely to lead to slower code
 -- -DLOOPU_FUSION
 -- -DLOOPNOACC_FUSION
 -- -DLOOPUP_FUSION
 -- -DLOOPU_FUSION
+
+-- If you have a ghc 6.5 newer than 06/06/06, try unsetting this It will
+-- use a faster foreign pointer implementation. 
+-- -DSLOW_FOREIGN_PTR
 
 -- TODO, there's a bug with the include-dirs setting. if you install the
 -- package from another directory, it won't be able to find the
