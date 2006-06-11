@@ -1,6 +1,7 @@
 {-# OPTIONS_GHC -cpp #-}
 import qualified Data.Set as Set
 import qualified Data.ByteString.Char8 as P
+import qualified Data.ByteString.Base  as P
 import System.IO
 import Control.Monad
 import Data.HashTable as Hash
