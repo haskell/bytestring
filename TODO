@@ -72,7 +72,7 @@ Todo items
 
 * work out if we can convince ghc to remove NoAccs in map and filter.
 
-* Lazy:
+* Implement Lazy:
     scanl1
     partition
     unzip
