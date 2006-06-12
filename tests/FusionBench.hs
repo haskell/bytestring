@@ -38,7 +38,7 @@ tests =
 
 #if !defined(LOOPU_FUSION)
 -- down loops
- ,("down/down",       [F  ({-# SCC "map/map"    #-}     P.foldr (const.(+9))  (0::W) . P.scanr const (0::W)               )])
+ ,("down/down",       [F  ({-# SCC "down/down"  #-}     P.foldr (const.(+9))  (0::W) . P.scanr const (0::W)               )])
  ,("map/down",        [F  ({-# SCC "map/down"   #-}     P.foldr (const.(+10)) (0::W) . P.map (*2)                         )])
  ,("down/map",        [F  ({-# SCC "down/map"   #-}     P.map (*2) . P.scanr const (0::W)                                 )])
  ,("filter/down",     [F  ({-# SCC "filter/down"#-}     P.foldr (const.(+11)) (0::W) . P.filter (/=106)                   )])
