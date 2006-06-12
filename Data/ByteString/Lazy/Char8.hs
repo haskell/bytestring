@@ -168,6 +168,7 @@ module Data.ByteString.Lazy.Char8 (
         -- ** Files
         readFile,               -- :: FilePath -> IO ByteString
         writeFile,              -- :: FilePath -> ByteString -> IO ()
+        appendFile,             -- :: FilePath -> ByteString -> IO ()
 
         -- ** I\/O with Handles
         hGetContents,           -- :: Handle -> IO ByteString
@@ -187,7 +188,8 @@ import Data.ByteString.Lazy
         ,empty,null,length,tail,init,append,reverse,transpose
         ,concat,take,drop,splitAt,join,isPrefixOf,group,inits, tails
         ,hGetContentsN, hGetN, hGetContents, hGet, hPut, getContents
-        ,putStr, putStrLn, readFile, writeFile)
+        ,hGetNonBlocking, hGetNonBlockingN, putStr, putStrLn
+        ,readFile, writeFile, appendFile)
 
 -- Functions we need to wrap.
 import qualified Data.ByteString.Lazy as L
@@ -203,7 +205,7 @@ import Prelude hiding
         (reverse,head,tail,last,init,null,length,map,lines,foldl,foldr,unlines
         ,concat,any,take,drop,splitAt,takeWhile,dropWhile,span,break,elem,filter
         ,unwords,words,maximum,minimum,all,concatMap,scanl,scanl1,foldl1,foldr1
-        ,readFile,writeFile,replicate,getContents,getLine,putStr,putStrLn
+        ,readFile,writeFile,appendFile,replicate,getContents,getLine,putStr,putStrLn
         ,zip,zipWith,unzip,notElem,repeat,iterate)
 
 #define STRICT1(f) f a | a `seq` False = undefined
