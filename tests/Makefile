@@ -6,7 +6,7 @@ PKG=            -package fps
 
 BIN=            run-utests run-qtests
 
-all:  prop prop-fusion-compiled
+all:  prop prop-fusion-compiled prop-compiled prop-opt
 fast: prop-fast
 
 everything: prop hugs prop-compiled prop-fusion-compiled runbench fusionbench wc spellcheck letter_frequency linesort fuse down-fuse inline
@@ -17,6 +17,7 @@ everything: prop hugs prop-compiled prop-fusion-compiled runbench fusionbench wc
 # interpreted
 .PHONY: prop hugs
 prop::
+	@echo "Interpreted"	
 	runhaskell Properties.hs
 
 hugs::
@@ -30,7 +31,15 @@ prop-fast::
 # compiled
 .PHONY: prop-compiled
 prop-compiled: 
+	@echo "Compiled, rules off"	
 	${GHC} ${PKG} --make -cpp -O2 -optc-O2 -frules-off -funbox-strict-fields Properties.hs -o p -no-recomp -package QuickCheck
+	/usr/bin/time ./p
+
+# rules-on
+.PHONY: prop-opt
+prop-opt: 
+	@echo "Compiled, rules on"	
+	${GHC} ${PKG} --make -cpp -O2 -optc-O2 -funbox-strict-fields Properties.hs -o p -no-recomp -package QuickCheck
 	/usr/bin/time ./p
 
 #
