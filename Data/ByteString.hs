@@ -181,8 +181,7 @@ module Data.ByteString (
 
         -- ** Using ByteStrings as CStrings
         useAsCString,           -- :: ByteString -> (CString -> IO a) -> IO a
-        unsafeUseAsCString,     -- :: ByteString -> (CString -> IO a) -> IO a
-        unsafeUseAsCStringLen,  -- :: ByteString -> (CStringLen -> IO a) -> IO a
+        useAsCStringLen,        -- :: ByteString -> (CStringLen -> IO a) -> IO a
 
         -- ** Copying ByteStrings
         -- | These functions perform memcpy(3) operations
@@ -746,8 +745,9 @@ concat xs     = unsafeCreate len $ \ptr -> go xs ptr
 
 -- | Map a function over a 'ByteString' and concatenate the results
 concatMap :: (Word8 -> ByteString) -> ByteString -> ByteString
-concatMap f = foldr (append . f) empty
--- A silly function for ByteStrings anyway.
+concatMap f = concat . foldr ((:) . f) []
+
+-- foldr (append . f) empty
 
 -- | /O(n)/ Applied to a predicate and a ByteString, 'any' determines if
 -- any element of the 'ByteString' satisfies the predicate.
@@ -1539,6 +1539,12 @@ zipWith :: (Word8 -> Word8 -> a) -> ByteString -> ByteString -> [a]
 zipWith f ps qs
     | null ps || null qs = []
     | otherwise = f (unsafeHead ps) (unsafeHead qs) : zipWith f (unsafeTail ps) (unsafeTail qs)
+--
+-- TODO, add specialised version of zipWith for:
+--  (W -> W -> W) -> ByteString -> ByteString -> ByteString
+--
+-- and a rewrite rule to do the specialising
+--
 
 -- | /O(n)/ 'unzip' transforms a list of pairs of bytes into a pair of
 -- ByteStrings. Note that this performs two 'pack' operations.
@@ -1621,27 +1627,23 @@ packMallocCString cstr = unsafePerformIO $ do
     len <- c_strlen cstr
     return $! PS fp 0 (fromIntegral len)
 
--- | /O(n) construction/ Use a @ByteString@ with a function requiring a null-terminated @CString@.
---   The @CString@ should not be freed afterwards. This is a memcpy(3).
+-- | /O(n) construction/ Use a @ByteString@ with a function requiring a
+-- null-terminated @CString@.  The @CString@ will be freed
+-- automatically. This is a memcpy(3).
 useAsCString :: ByteString -> (CString -> IO a) -> IO a
-useAsCString (PS ps s l) = bracket alloc (c_free.castPtr)
+useAsCString ps f = useAsCStringLen ps (\(s,_) -> f s)
+
+-- | /O(n) construction/ Use a @ByteString@ with a function requiring a
+-- @CStringLen@. The @CStringLen@ will be freed automatically. This is a
+-- memcpy(3).
+useAsCStringLen :: ByteString -> (CStringLen -> IO a) -> IO a
+useAsCStringLen (PS ps s l) = bracket alloc (c_free.castPtr.fst)
     where
       alloc = withForeignPtr ps $ \p -> do
                 buf <- c_malloc (fromIntegral l+1)
                 memcpy (castPtr buf) (castPtr p `plusPtr` s) (fromIntegral l)
                 poke (buf `plusPtr` l) (0::Word8) -- n.b.
-                return $! castPtr buf
-
--- | /O(1) construction/ Use a @ByteString@ with a function requiring a @CString@.
--- Warning: modifying the @CString@ will affect the @ByteString@.
--- Why is this function unsafe? It relies on the null byte at the end of
--- the ByteString to be there. This is /not/ the case if your ByteString
--- has been spliced from a larger string (i.e. with take or drop).
--- Unless you can guarantee the null byte, you should use the safe
--- version, which will copy the string first.
---
-unsafeUseAsCString :: ByteString -> (CString -> IO a) -> IO a
-unsafeUseAsCString (PS ps s _) ac = withForeignPtr ps $ \p -> ac (castPtr p `plusPtr` s)
+                return $! (castPtr buf, l)
 
 -- | /O(n)/ Make a copy of the 'ByteString' with its own storage. 
 --   This is mainly useful to allow the rest of the data pointed
@@ -1663,12 +1665,6 @@ copyCString cstr = do
 copyCStringLen :: CStringLen -> IO ByteString
 copyCStringLen (cstr, len) = create len $ \p ->
     memcpy p (castPtr cstr) (fromIntegral len)
-
--- | /O(1) construction/ Use a @ByteString@ with a function requiring a @CStringLen@.
--- Warning: modifying the @CStringLen@ will affect the @ByteString@.
--- This is analogous to unsafeUseAsCString, and comes with the same safety requirements.
-unsafeUseAsCStringLen :: ByteString -> (CStringLen -> IO a) -> IO a
-unsafeUseAsCStringLen (PS ps s l) ac = withForeignPtr ps $ \p -> ac (castPtr p `plusPtr` s,l)
 
 -- ---------------------------------------------------------------------
 -- line IO

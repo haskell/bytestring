@@ -180,15 +180,28 @@ module Data.ByteString.Char8 (
         -- * Ordered ByteStrings
         sort,                   -- :: ByteString -> ByteString
 
-        -- * Unchecked access
+        -- * Conversion
         w2c,                    -- :: Word8 -> Char
         c2w,                    -- :: Char  -> Word8
 
         -- * Reading from ByteStrings
         readInt,                -- :: ByteString -> Maybe Int
 
+        -- * Low level CString conversions
+
+        -- ** Packing CStrings and pointers
+        packCString,            -- :: CString -> ByteString
+        packCStringLen,         -- :: CString -> ByteString
+        packMallocCString,      -- :: CString -> ByteString
+
+        -- ** Using ByteStrings as CStrings
+        useAsCString,           -- :: ByteString -> (CString -> IO a) -> IO a
+        useAsCStringLen,        -- :: ByteString -> (CStringLen -> IO a) -> IO a
+
         -- * Copying ByteStrings
         copy,                   -- :: ByteString -> ByteString
+        copyCString,            -- :: CString -> IO ByteString
+        copyCStringLen,         -- :: CStringLen -> IO ByteString
 
         -- * I\/O with @ByteString@s
 
@@ -258,6 +271,8 @@ import Data.ByteString (empty,null,length,tail,init,append
                        ,getContents, putStr, putStrLn
                        ,readFile, {-mmapFile,-} writeFile, appendFile
                        ,hGetContents, hGet, hPut, hPutStr, hPutStrLn
+                       ,packCString,packCStringLen, packMallocCString
+                       ,useAsCString,useAsCStringLen, copyCString,copyCStringLen
 #if defined(__GLASGOW_HASKELL__)
                        ,getLine, getArgs, hGetLine, hGetLines, hGetNonBlocking
                        ,unpackList

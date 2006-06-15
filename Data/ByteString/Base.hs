@@ -32,6 +32,8 @@ module Data.ByteString.Base (
         createAndTrim',         -- :: Int -> (Ptr Word8 -> IO (Int, Int, a)) -> IO (ByteString, a)
 
         unsafeCreate,           -- :: Int -> (Ptr Word8 -> IO ()) ->  ByteString
+        unsafeUseAsCString,     -- :: ByteString -> (CString -> IO a) -> IO a
+        unsafeUseAsCStringLen,  -- :: ByteString -> (CStringLen -> IO a) -> IO a
 
         fromForeignPtr,         -- :: ForeignPtr Word8 -> Int -> ByteString
         toForeignPtr,           -- :: ByteString -> (ForeignPtr Word8, Int, Int)
@@ -85,7 +87,7 @@ import Foreign.ForeignPtr
 import Foreign.Ptr
 import Foreign.Storable         (Storable(..))
 import Foreign.C.Types
-import Foreign.C.String         (CString)
+import Foreign.C.String         (CString, CStringLen)
 
 import Control.Exception        (assert)
 
@@ -360,6 +362,23 @@ countOccurrences counts str l = go 0
                           x <- peekElemOff counts k
                           pokeElemOff counts k (x + 1)
                           go (i + 1)
+
+-- | /O(1) construction/ Use a @ByteString@ with a function requiring a
+-- @CString@.  Warning: modifying the @CString@ will affect the
+-- @ByteString@.  Why is this function unsafe? It relies on the null
+-- byte at the end of the ByteString to be there. Unless you can
+-- guarantee the null byte, you should use the safe version, which will
+-- copy the string first.
+unsafeUseAsCString :: ByteString -> (CString -> IO a) -> IO a
+unsafeUseAsCString (PS ps s _) ac = withForeignPtr ps $ \p -> ac (castPtr p `plusPtr` s)
+
+-- | /O(1) construction/ Use a @ByteString@ with a function requiring a
+-- @CStringLen@.  Warning: modifying the @CStringLen@ will affect the
+-- @ByteString@.  This is analogous to unsafeUseAsCString, and comes
+-- with the same safety requirements. The user must ensure there is a
+-- null byte at the end of the string.
+unsafeUseAsCStringLen :: ByteString -> (CStringLen -> IO a) -> IO a
+unsafeUseAsCStringLen (PS ps s l) ac = withForeignPtr ps $ \p -> ac (castPtr p `plusPtr` s,l)
 
 -- ---------------------------------------------------------------------
 -- 
