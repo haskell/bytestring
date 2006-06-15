@@ -188,7 +188,10 @@ import Data.ByteString.Lazy
         ,empty,null,length,tail,init,append,reverse,transpose
         ,concat,take,drop,splitAt,join,isPrefixOf,group,inits, tails
         ,hGetContentsN, hGetN, hGetContents, hGet, hPut, getContents
-        ,hGetNonBlocking, hGetNonBlockingN, putStr, putStrLn
+#if defined(__GLASGOW_HASKELL__)
+        ,hGetNonBlocking, hGetNonBlockingN
+#endif
+        ,putStr, putStrLn
         ,readFile, writeFile, appendFile)
 
 -- Functions we need to wrap.
