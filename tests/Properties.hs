@@ -219,6 +219,8 @@ prop_elemIndexPL  = P.elemIndex `eq2`    (elemIndex :: W -> [W] -> Maybe Int)
 prop_linesPL      = C.lines     `eq1`    (lines     :: String -> [String])
 prop_findIndicesPL= P.findIndices`eq2`   (findIndices:: (W -> Bool) -> [W] -> [Int])
 prop_elemIndicesPL= P.elemIndices`eq2`   (elemIndices:: W -> [W] -> [Int])
+prop_zipPL        = P.zip        `eq2`   (zip :: [W] -> [W] -> [(W,W)])
+prop_unzipPL      = P.unzip      `eq1`   (unzip :: [(W,W)] -> ([W],[W]))
 
 prop_foldl1PL     = P.foldl1    `eqnotnull2` (foldl1   :: (W -> W -> W) -> [W] -> W)
 prop_foldl1PL'    = P.foldl1'   `eqnotnull2` (foldl1' :: (W -> W -> W) -> [W] -> W)
@@ -233,6 +235,11 @@ prop_lastPL       = P.last      `eqnotnull1` (last      :: [W] -> W)
 prop_maximumPL    = P.maximum   `eqnotnull1` (maximum   :: [W] -> W)
 prop_minimumPL    = P.minimum   `eqnotnull1` (minimum   :: [W] -> W)
 prop_tailPL       = P.tail      `eqnotnull1` (tail      :: [W] -> [W])
+
+prop_zipWithPL'   = P.zipWith'  `eq3` (zipWith :: (W -> W -> W) -> [W] -> [W] -> [W])
+
+prop_zipWithPL    = (P.zipWith  :: (W -> W -> X) -> P   -> P   -> [X]) `eq3`
+                      (zipWith  :: (W -> W -> X) -> [W] -> [W] -> [X])
 
 prop_eqPL      = eq2
     ((==) :: P   -> P   -> Bool)
@@ -846,6 +853,7 @@ prop_zipBB  xs ys = zip xs ys == P.zip (P.pack xs) (P.pack ys)
 prop_zip1BB xs ys = P.zip xs ys == zip (P.unpack xs) (P.unpack ys)
 
 prop_zipWithBB xs ys = P.zipWith (,) xs ys == P.zip xs ys
+prop_zipWith'BB xs ys = P.pack (P.zipWith (+) xs ys) == P.zipWith' (+) xs ys
 
 prop_unzipBB x = let (xs,ys) = unzip x in (P.pack xs, P.pack ys) == P.unzip x
 
@@ -1045,6 +1053,10 @@ prop_length_loop_fusion_4 f1 acc1 xs =
   P.lengthU (loopArr (loopWrapper (doFilterLoop f1 acc1) xs))
   where _ = acc1 :: Int
 
+prop_zipwith_spec f p q =
+  P.pack (P.zipWith f p q) == P.zipWith' f p q
+  where _ = f :: Word8 -> Word8 -> Word8
+
 ------------------------------------------------------------------------
 -- The entry point
 
@@ -1219,6 +1231,11 @@ pl_tests =
     ,("maximum",     mytest prop_maximumPL)
     ,("minimum",     mytest prop_minimumPL)
     ,("tail",        mytest prop_tailPL)
+    ,("zip",         mytest prop_zipPL)
+    ,("unzip",       mytest prop_unzipPL)
+    ,("zipWith",          mytest prop_zipWithPL)
+    ,("zipWith/zipWith'", mytest prop_zipWithPL')
+
     ,("isPrefixOf",  mytest prop_isPrefixOfPL)
     ,("length",      mytest prop_lengthPL)
     ,("map",         mytest prop_mapPL)
@@ -1404,6 +1421,7 @@ bb_tests =
     ,    ("zip",            mytest prop_zipBB)
     ,    ("zip1",           mytest prop_zip1BB)
     ,    ("zipWith",        mytest prop_zipWithBB)
+    ,    ("zipWith'",       mytest prop_zipWith'BB)
     ,    ("unzip",          mytest prop_unzipBB)
     ,    ("concatMap",      mytest prop_concatMapBB)
     ]
@@ -1448,6 +1466,8 @@ fusion_tests =
     ,("length/loop   fusion",          mytest prop_length_loop_fusion_2)
     ,("length/loop   fusion",          mytest prop_length_loop_fusion_3)
     ,("length/loop   fusion",          mytest prop_length_loop_fusion_4)
+
+    ,("zipwith/spec",                  mytest prop_zipwith_spec)
     ]
 
 

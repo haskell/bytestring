@@ -167,6 +167,7 @@ module Data.ByteString (
         -- * Zipping and unzipping ByteStrings
         zip,                    -- :: ByteString -> ByteString -> [(Word8,Word8)]
         zipWith,                -- :: (Word8 -> Word8 -> c) -> ByteString -> ByteString -> [c]
+        zipWith', 
         unzip,                  -- :: [(Word8,Word8)] -> (ByteString,ByteString)
 
         -- * Ordered ByteStrings
@@ -1539,12 +1540,37 @@ zipWith :: (Word8 -> Word8 -> a) -> ByteString -> ByteString -> [a]
 zipWith f ps qs
     | null ps || null qs = []
     | otherwise = f (unsafeHead ps) (unsafeHead qs) : zipWith f (unsafeTail ps) (unsafeTail qs)
+
 --
--- TODO, add specialised version of zipWith for:
---  (W -> W -> W) -> ByteString -> ByteString -> ByteString
+-- | A specialised version of zipWith for the common case of a
+-- simultaneous map over two bytestrings, to build a 3rd. Rewrite rules
+-- are used to automatically covert zipWith into zipWith' when required,
+-- but we also export it for convenience.
 --
--- and a rewrite rule to do the specialising
---
+zipWith' :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString -> ByteString
+zipWith' f (PS fp s l) (PS fq t m) = inlinePerformIO $
+    withForeignPtr fp $ \a ->
+    withForeignPtr fq $ \b ->
+    create len $ zipWith_ 0 (a `plusPtr` s) (b `plusPtr` t)
+  where
+    zipWith_ :: Int -> Ptr Word8 -> Ptr Word8 -> Ptr Word8 -> IO ()
+    STRICT4(zipWith_)
+    zipWith_ n p1 p2 r
+       | n >= len = return ()
+       | otherwise = do
+            x <- peekByteOff p1 n
+            y <- peekByteOff p2 n
+            pokeByteOff r n (f x y)
+            zipWith_ (n+1) p1 p2 r
+
+    len = min l m
+{-# INLINE zipWith' #-}
+
+{-# RULES
+
+"Specialise zipWith" forall (f :: Word8 -> Word8 -> Word8) p q .
+    pack (zipWith f p q) = zipWith' f p q
+  #-}
 
 -- | /O(n)/ 'unzip' transforms a list of pairs of bytes into a pair of
 -- ByteStrings. Note that this performs two 'pack' operations.
