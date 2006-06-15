@@ -9,7 +9,7 @@ BIN=            run-utests run-qtests
 all:  prop prop-fusion-compiled prop-compiled prop-opt
 fast: prop-fast
 
-everything: prop hugs prop-compiled prop-fusion-compiled runbench fusionbench wc spellcheck letter_frequency linesort fuse down-fuse inline
+everything: prop hugs prop-compiled prop-fusion-compiled runbench fusionbench wc spellcheck letter_frequency linesort fuse down-fuse inline zipwith
 
 # ---------------------------------------------
 # QuickCheck
@@ -122,6 +122,11 @@ inline: inline.o
 inline.o: inline.hs
 	${GHC} ${PKG} -O $< -o inline
 
+zipwith: zipwith.o
+	/usr/bin/time ./zipwith
+zipwith.o: zipwith.hs
+	${GHC} ${PKG} -O -ddump-simpl-stats $< -o zipwith
+
 # ---------------------------------------------------
 # Plotting graphs
 
@@ -144,4 +149,4 @@ plot:: results
 clean:
 	rm -f *~ *.o *.hi $(BIN) bench */*.o */*.hi */*~ 
 	rm -f wc letter_frequency spellcheck linesort fuse inline p fp lazylines
-	rm -f down-fuse
+	rm -f down-fuse zipwith
