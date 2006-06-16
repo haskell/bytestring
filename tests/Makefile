@@ -32,14 +32,14 @@ prop-fast::
 .PHONY: prop-compiled
 prop-compiled: 
 	@echo "Compiled, rules off"	
-	${GHC} ${PKG} --make -cpp -O2 -optc-O2 -frules-off -funbox-strict-fields Properties.hs -o p -no-recomp -package QuickCheck
+	${GHC} ${PKG} --make -cpp -O2 -frules-off -funbox-strict-fields Properties.hs -o p -no-recomp -package QuickCheck
 	/usr/bin/time ./p
 
 # rules-on
 .PHONY: prop-opt
 prop-opt: 
 	@echo "Compiled, rules on"	
-	${GHC} ${PKG} --make -cpp -O2 -optc-O2 -funbox-strict-fields Properties.hs -o p -no-recomp -package QuickCheck
+	${GHC} ${PKG} --make -cpp -O2 -funbox-strict-fields Properties.hs -o p -no-recomp -package QuickCheck
 	/usr/bin/time ./p
 
 #
@@ -47,7 +47,7 @@ prop-opt:
 #
 .PHONY: prop-fusion-compiled
 prop-fusion-compiled:
-	${GHC} ${PKG} --make -cpp -O2 -optc-O2 -funbox-strict-fields FusionProperties.hs -o fp -no-recomp -package QuickCheck
+	${GHC} ${PKG} --make -cpp -O2 -funbox-strict-fields FusionProperties.hs -o fp -no-recomp -package QuickCheck
 	/usr/bin/time ./fp
 
 # ---------------------------------------------------------
