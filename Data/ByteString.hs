@@ -445,17 +445,14 @@ unpack (PS ps s l) = inlinePerformIO $ withForeignPtr ps $ \p ->
 
 #else
 
---
--- Interacting with head/build fusion rule in ghc 6.5. Disable for now
---
-
 unpack ps = build (unpackFoldr ps)
 {-# INLINE unpack #-}
 
 --
 -- critical this isn't strict in the acc
 -- as it will break in the presence of list fusion. this is a known
--- issue with seq and rewrite rules
+-- issue with seq and build/foldr rewrite rules, which rely on lazy
+-- demanding to avoid bottoms in the list.
 --
 unpackFoldr :: ByteString -> (Word8 -> a -> a) -> a -> a
 unpackFoldr (PS fp off len) f ch = withPtr fp $ \p -> do
