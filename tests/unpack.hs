@@ -28,7 +28,7 @@ my_unpack ps = build (unpackFoldr ps)
 unpackFoldr :: ByteString -> (Word8 -> a -> a) -> a -> a
 unpackFoldr (PS fp off len) f ch =
     unsafePerformIO $ withForeignPtr fp $ \p -> do
-        let loop a b c | a `seq` b `seq` c `seq` False = undefined -- needs the strictness
+        let loop a b c | a `seq` b `seq` False = undefined -- needs the strictness
             loop _ (-1) acc = return acc
             loop q n    acc = do
                a <- peekByteOff q n

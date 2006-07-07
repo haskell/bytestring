@@ -33,14 +33,14 @@ prop-fast::
 prop-compiled: 
 	@echo "Compiled, rules off"	
 	${GHC} ${PKG} --make -cpp -O2 -frules-off -funbox-strict-fields Properties.hs -o p -no-recomp -package QuickCheck
-	/usr/bin/time ./p
+	time ./p
 
 # rules-on
 .PHONY: prop-opt
 prop-opt: 
 	@echo "Compiled, rules on"	
 	${GHC} ${PKG} --make -cpp -O2 -funbox-strict-fields Properties.hs -o p -no-recomp -package QuickCheck
-	/usr/bin/time ./p
+	time ./p
 
 #
 # test rewriting is correct and working.
@@ -48,7 +48,7 @@ prop-opt:
 .PHONY: prop-fusion-compiled
 prop-fusion-compiled:
 	${GHC} ${PKG} --make -cpp -O2 -funbox-strict-fields FusionProperties.hs -o fp -no-recomp -package QuickCheck
-	/usr/bin/time ./fp
+	time ./fp
 
 # ---------------------------------------------------------
 # Benchmarking
@@ -83,49 +83,54 @@ fusionprof::
 
 wc: wc.o
 	@if [ ! -f "bigdata" ] ; then ln -s data bigdata ; fi
-	/usr/bin/time ./wc bigdata
+	time ./wc bigdata
 wc.o: wc.hs
 	${GHC} ${PKG} -O -ddump-simpl-stats wc.hs -o wc
 
 spellcheck: spellcheck.o
-	/usr/bin/time ./spellcheck < spellcheck-input.txt
+	time ./spellcheck < spellcheck-input.txt
 spellcheck.o: spellcheck.hs
 	${GHC} ${PKG} -O $< -o spellcheck
 
 letter_frequency: letter_frequency.o
-	/usr/bin/time ./letter_frequency < Usr.Dict.Words
+	time ./letter_frequency < Usr.Dict.Words
 letter_frequency.o: letter_frequency.hs
 	${GHC} ${PKG} -O $< -o letter_frequency -ddump-simpl-stats
 
 linesort: linesort.o
-	/usr/bin/time ./linesort < Usr.Dict.Words
+	time ./linesort < Usr.Dict.Words
 linesort.o: linesort.hs
 	${GHC} ${PKG} -O $< -o linesort
 
 fuse: fuse.o
-	/usr/bin/time ./fuse < Usr.Dict.Words
+	time ./fuse < Usr.Dict.Words
 fuse.o: fuse.hs
 	${GHC} ${PKG} -O $< -o fuse -ddump-simpl-stats
 
 down-fuse: down-fuse.o
-	/usr/bin/time ./down-fuse
+	time ./down-fuse
 down-fuse.o: down-fuse.hs
 	${GHC} ${PKG} -O $< -o ./down-fuse -ddump-simpl-stats
 
 lazylines: lazylines.o
-	/usr/bin/time ./lazylines < bigdata
+	time ./lazylines < bigdata
 lazylines.o: lazylines.hs
 	${GHC} ${PKG} -O $< -o lazylines
 
 inline: inline.o
-	/usr/bin/time ./inline
+	time ./inline
 inline.o: inline.hs
 	${GHC} ${PKG} -O $< -o inline
 
 zipwith: zipwith.o
-	/usr/bin/time ./zipwith
+	time ./zipwith
 zipwith.o: zipwith.hs
 	${GHC} ${PKG} -O -ddump-simpl-stats $< -o zipwith
+
+unpack: unpack.o
+	time ./unpack
+unpack.o: unpack.hs
+	${GHC} ${PKG} -O -ddump-simpl-stats $< -o unpack
 
 # ---------------------------------------------------
 # Plotting graphs
