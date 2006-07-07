@@ -8,9 +8,9 @@
 import BenchUtils
 
 import Data.ByteString (ByteString)
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Char8 as C
-import qualified Data.ByteString.Lazy as L
+import qualified Data.ByteString        as B
+import qualified Data.ByteString.Char8  as C
+import qualified Data.ByteString.Lazy   as L
 
 import Data.List
 import Data.Char
@@ -27,229 +27,310 @@ import Text.Printf
 main :: IO ()
 main = do
     -- initialise
-    -- force (fps,fps')
-    force (lps,lps')
+    force (fps,fps') >> force (lps,lps')
 
     printf "# Size of test data: %dk\n" ((floor $ (fromIntegral (B.length fps)) / 1024) :: Int)
     printf "#Byte\t Lazy\n"
 
-    -- now get to it
---  sequence_ $ zipWith doit [1..] tests
-    sequence_ $ zipWith (doit 11 x) [1..] tests
+    run 11 ((fps,fps'),(lps,lps')) tests
+
+------------------------------------------------------------------------
 
 tests =
-    [
-      ("++",    [F ({-# SCC  "append" #-}B.append fps fps')
-                ,F ({-# SCC "lazy append" #-}L.append lps lps')])
-
-    , ("concat",[F ({-# SCC "concat"  #-}B.concat [fps,fps'])
-                ,F ({-# SCC "lazy concat" #-}L.concat [lps,lps'])])
-
-    , ("length",[F ({-# SCC "length"  #-}B.length fps)
-                ,F ({-# SCC "lazy length" #-}L.length lps)])
-
+    [ ("++",
+        [F ({-# SCC "append"       #-}      app  (uncurry B.append))
+        ,F ({-# SCC "lazy append"  #-}      app  (uncurry L.append))
+    ])
+    , ("concat",
+        [F ({-# SCC "concat"       #-}      app   B.concat)
+        ,F ({-# SCC "lazy concat"  #-}      app   L.concat)
+    ])
+    , ("length",
+        [F ({-# SCC "length"       #-}      app   B.length)
+        ,F ({-# SCC "lazy length"  #-}      app   L.length)
+    ])
+--  , ("pack",   [F (\_ -> {-# SCC "pack"      #-}   B.pack [1..1000000])
+--  ])
+    , ("unpack", [F ({-# SCC "unpack"   #-} app   B.unpack)
+    ])
 {-
-    , ("pack",  [F ({-# SCC "pack"      #-}B.pack list)])
---              ,F (SPS.pack list)
---              ,F (PS.packString list)
---              ,F ()])
-
-    , ("unpack",[F ({-# SCC "unpack"    #-}B.unpack fps)])
---              ,F (SPS.unpack sps)
---              ,F (PS.unpackPS ps) ,F ()])
+    , ("compare",
+        [F ({-# SCC "compare"      #-}      app2 compare) :: needs type annotation
+        ,F ({-# SCC "lazy compare" #-}      app2 compare) ])
 -}
-
-    , ("compare",[F ({-# SCC "compare"  #-}compare fps fps')
-                 ,F ({-# SCC "lazy compare" #-}compare lps lps')])
-
-    , ("index", [F ({-# SCC "index" #-}B.index fps 10000000)
-                 ,F ({-# SCC "lazy index" #-}L.index lps 10000000)])
-
-    , ("map", [F ({-# SCC "map" #-}B.map (+1) fps)
-              ,F ({-# SCC "lazy map" #-}L.map (+1) lps)])
-
-    , ("filter", [F ({-# SCC "filter" #-}B.filter (/=101) fps)
-                 ,F ({-# SCC "lazy filter" #-}L.filter (/=101) lps)])
-
-    , ("map'", [F ({-# SCC "map" #-}B.map (*2) fps)
-              ,F (B.map' (*1) fps)])
-
-    , ("filter'", [F ({-# SCC "filter" #-}B.filter (/=121) fps)
-                 ,F ({-# SCC "filter'" #-}B.filter' (/=121) fps)])
-
-    , ("filterNotByte", [F ({-# SCC "filterNotByte" #-}B.filterNotByte 101 fps)
-                 ,F ({-# SCC "lazy filterNotByte" #-}L.filterNotByte 101 lps)])
-
-    , ("filterByte", [F ({-# SCC "filterByte"    #-}B.filterByte 103 fps)
-                 ,F ({-# SCC "lazy filterByte" #-}L.filterByte 103 lps)])
-
-    , ("findIndexOrEnd",[F ({-# SCC "findIndexOrEnd" #-}B.findIndexOrEnd (==126) fps)])
-
-    , ("findIndex",[F ({-# SCC "findIndex" #-}B.findIndex (==126) fps)
-                   ,F ({-# SCC "lazy findIndex" #-}L.findIndex (==126) lps)])
-
-    , ("find",     [F ({-# SCC "find"      #-}B.find (==126) fps)
-                   ,F ({-# SCC "lazy find" #-}L.find (==126) lps)])
-
-    , ("foldl", [F ({-# SCC "fold" #-} B.foldl (\a w -> a+1::Int) 0 fps)
-                ,F ({-# SCC "lazy fold" #-} L.foldl (\a w -> a+1::Int) 0 lps)])
-
-    , ("foldl'", [F ({-# SCC "fold" #-} B.foldl' (\a w -> a+1::Int) 0 fps)
-                ,F ({-# SCC "lazy fold" #-} L.foldl' (\a w -> a+1::Int) 0 lps)])
-
-    , ("take",[F ({-# SCC "take"      #-}B.take 100000 fps)
-                ,F ({-# SCC "lazy take" #-} L.take 100000 lps)])
-
-    , ("drop",[F ({-# SCC "drop"      #-}B.drop 100000 fps)
-                ,F ({-# SCC "lazy drop" #-} L.drop 100000 lps)])
-
-
-    , ("takeWhile",[F ({-# SCC "takeWhile" #-}B.takeWhile (/=122) fps)
-                   ,F ({-# SCC "lazy takeWhile" #-}L.takeWhile (==122) lps)])
-
-    , ("dropWhile",[F ({-# SCC "dropWhile" #-}B.dropWhile (/=122) fps)
-                 ,F ({-# SCC "lazy dropWhile" #-}L.dropWhile (/=122) lps)])
-
-
-    , ("span",[F ({-# SCC "span"      #-}B.span (/=122) fps)
-                 ,F ({-# SCC "lazy span" #-}L.span (/=122) lps)])
-
-    , ("break",[F ({-# SCC "break"     #-}B.break (==122) fps)
-               ,F ({-# SCC "lazy break" #-}L.break (==122) lps)])
-
-    , ("split",[F ({-# SCC "split"     #-}B.split 0x0a fps)
-               ,F ({-# SCC "lazy split" #-}L.split 0x0a lps)])
-
-    , ("breakByte",[F ({-# SCC "breakChar" #-} B.breakByte 122 fps)
-               ,F ({-# SCC "lazy breakChar" #-}L.breakByte 122 lps)])
-
-    , ("spanByte",[F ({-# SCC "spanChar" #-} B.spanByte 122 fps)
-               ,F ({-# SCC "lazy spanChar" #-}L.spanByte 122 lps)])
-
-    , ("reverse",[F ({-# SCC "reverse"   #-}B.reverse fps)
-              ,F ({-# SCC "lazy reverse" #-}L.reverse lps)])
-
-    , ("cons",[F ({-# SCC "cons"      #-}B.cons 120 fps)
-              ,F ({-# SCC "lazy cons" #-}L.cons 120 lps)])
-
-    , ("snoc",[F ({-# SCC "snoc"      #-}B.snoc fps 120)
-              ,F ({-# SCC "lazy snoc" #-}L.snoc lps 120)])
-
-    , ("empty",[F ({-# SCC "empty"     #-}B.empty)
-              ,F ({-# SCC "lazy empty" #-}L.empty)])
-
-    , ("head",[F ({-# SCC "head"      #-}B.head fps)
-              ,F ({-# SCC "lazy head" #-}L.head lps)])
-
-
-    , ("tail",[F ({-# SCC "tail"      #-}B.tail fps)
-              ,F ({-# SCC "lazy tail" #-}L.tail lps)])
-
-
-    , ("last",[F ({-# SCC "last"      #-}B.last fps)
-              ,F ({-# SCC "lazy last" #-}L.last lps)])
-
-    , ("init",[F ({-# SCC "init"      #-}B.init fps)
-              ,F ({-# SCC "lazy init" #-}L.init lps)])
-
-    , ("count",  [F ({-# SCC "count" #-} B.count 10 fps)
-              ,F ({-# SCC "lazy count" #-}L.count 10 lps)])
-
-    , ("isPrefixOf",  [F ({-# SCC "isPrefixOf" #-}
-                            B.isPrefixOf (C.pack "The Project Gutenberg eBook") fps)
-                      ,F ({-# SCC "lazy isPrefixOf" #-}L.isPrefixOf 
-                                          (L.pack [84,104,101,32,80,114,111,106,101
-                                               ,99,116,32,71,117,116,101,110,98
-                                               ,101,114,103,32,101,66,111,111,107]) lps)])
-
-    , ("join",[F ({-# SCC "join" #-}B.join (B.pack [1,2,3]) [fps,fps'])
-              ,F ({-# SCC "lazy join" #-}L.join (L.pack [1,2,3]) [lps,lps'])])
-
-    , ("joinWithByte",[F ({-# SCC "joinWithByte" #-} B.joinWithByte 32 fps fps')
-              ,F ({-# SCC "lazy joinWithByte" #-}L.joinWithByte 32 lps lps')])
-
-    , ("any",[F ({-# SCC "any"       #-}B.any (==120) fps)
-                 ,F ({-# SCC "lazy any" #-}L.any (==120) lps)])
-
-    , ("all",[F ({-# SCC "all"       #-}B.all (==120) fps)
-                 ,F ({-# SCC "lazy all" #-}L.all (==120) lps)])
-
-    , ("maximum",[F ({-# SCC "maximum"   #-}B.maximum fps)
-                 ,F ({-# SCC "lazy maximum" #-}L.maximum lps)])
-
-    , ("minimum",[F ({-# SCC "minimum"   #-}B.minimum fps)
-                 ,F ({-# SCC "lazy minimum" #-}L.minimum lps)])
-
-    , ("elem",[F ({-# SCC "elem"      #-}B.elem 122 fps)
-                 ,F ({-# SCC "lazy elem" #-}L.elem 122 lps)])
-
-    , ("notElem",[F ({-# SCC "notElem"      #-}B.notElem 122 fps)
-                 ,F ({-# SCC "lazy notElem" #-}L.notElem 122 lps)])
-
-    , ("elemIndex",[F ({-# SCC "elemIndex" #-}B.elemIndex 122 fps)
-                 ,F ({-# SCC "lazy elemIndex" #-}L.elemIndex 122 lps)])
-
-    , ("findIndices",[F ({-# SCC "findIndicies" #-} B.findIndices (==122) fps)
-                 ,F ({-# SCC "lazy findIndices" #-}L.findIndices (==122) lps)])
-
-    , ("elemIndices",[F ({-# SCC "elemIndicies" #-} B.elemIndices 122 fps)
-                 ,F ({-# SCC "lazy elemIndices" #-}L.elemIndices 122 lps)])
-
-    , ("splitAt",[F ({-# SCC "splitAt" #-} B.splitAt 10000 fps)
-                 ,F ({-# SCC "lazy splitAt" #-}L.splitAt 10000 lps)])
-
-    , ("splitWith",[F ({-# SCC "splitWith" #-} B.splitWith (==122) fps)
-                   ,F ({-# SCC "lazy splitWith" #-}L.splitWith (==122) lps)])
-
-    , ("replicate",[F ({-# SCC "replicate" #-}B.replicate 10000000 120)
-                ,F ({-# SCC "lazy replicate" #-}L.replicate 10000000 120)])
-
-    , ("group",[F ({-# SCC "group" #-} B.group fps)
-               ,F ({-# SCC "lazy group" #-}L.group lps)])
-
-    , ("groupBy",[F ({-# SCC "groupBy" #-} B.groupBy (==) fps)
-                 ,F ({-# SCC "lazy groupBy" #-}L.groupBy (==) lps)])
-
-    , ("inits",[F ({-# SCC "inits"     #-}B.inits fps)])
-
-    , ("tails",[F ({-# SCC "tails"     #-}B.tails fps)])
-
+    , ("index",
+        [F ({-# SCC "index"        #-}      app$  flip B.index 260000)
+        ,F ({-# SCC "lazy index"   #-}      app$  flip L.index 260000)
+    ])
+    , ("map",
+        [F ({-# SCC "map"          #-}      app$  B.map (+1))
+        ,F ({-# SCC "lazy map"     #-}      app$  L.map (+1))
+    ])
+    , ("filter",
+        [F ({-# SCC "filter"       #-}      app$  B.filter (/=101))
+        ,F ({-# SCC "lazy filter"  #-}      app$  L.filter (/=101))
+    ])
+    , ("map'",
+        [F ({-# SCC "map"          #-}      app$  B.map (*2))
+        ,F ({-# SCC "map"          #-}      app$  B.map' (*1))
+    ])
+    , ("filter'",
+        [F ({-# SCC "filter"       #-}      app$  B.filter  (/=121))
+        ,F ({-# SCC "filter'"      #-}      app$  B.filter' (/=121))
+    ])
+    , ("filterNotByte",
+        [F ({-# SCC "filterNotByte"      #-}app$  B.filterNotByte 101)
+        ,F ({-# SCC "lazy filterNotByte" #-}app$  L.filterNotByte 101)
+    ])
+    , ("filterByte",
+        [F ({-# SCC "filterByte"       #-}  app$  B.filterByte 103)
+        ,F ({-# SCC "lazy filterByte"  #-}  app$  L.filterByte 103)
+    ])
+    , ("findIndexOrEnd",
+        [F ({-# SCC "findIndexOrEnd"   #-}  app$  B.findIndexOrEnd (==126))
+    ])
+    , ("findIndex",
+        [F ({-# SCC "findIndex"      #-}    app$  B.findIndex (==126))
+        ,F ({-# SCC "lazy findIndex" #-}    app$  L.findIndex (==126))
+    ])
+    , ("find",
+        [F ({-# SCC "find"          #-}     app$  B.find (==126))
+        ,F ({-# SCC "lazy find"     #-}     app$  L.find (==126))
+    ])
+    , ("foldl",
+        [F ({-# SCC "fold"          #-}     app$  B.foldl (\a w -> a+1::Int) 0)
+        ,F ({-# SCC "lazy fold"     #-}     app$  L.foldl (\a w -> a+1::Int) 0)
+    ])
+    , ("foldl'",
+        [F ({-# SCC "fold"          #-}     app$  B.foldl' (\a w -> a+1::Int) 0)
+        ,F ({-# SCC "lazy fold"     #-}     app$  L.foldl' (\a w -> a+1::Int) 0)
+    ])
+    , ("take",
+        [F ({-# SCC "take"          #-}     app $ B.take 100000)
+        ,F ({-# SCC "lazy take"     #-}     app $ L.take 100000)
+    ])
+    , ("drop",
+        [F ({-# SCC "drop"          #-}     app $ B.drop 100000)
+        ,F ({-# SCC "lazy drop"     #-}     app $ L.drop 100000)
+    ])
+    , ("takeWhile",
+        [F ({-# SCC "takeWhile"     #-}     app $ B.takeWhile (/=122))
+        ,F ({-# SCC "lazy takeWhile" #-}    app $ L.takeWhile (==122))
+    ])
+    , ("dropWhile",
+        [F ({-# SCC "dropWhile"     #-}     app $ B.dropWhile (/=122))
+        ,F ({-# SCC "lazy dropWhile" #-}    app $ L.dropWhile (/=122))
+    ])
+    , ("span",
+        [F ({-# SCC "span"          #-}     app $ B.span (/=122))
+        ,F ({-# SCC "lazy span"     #-}     app $ L.span (/=122))
+    ])
+    , ("break",
+        [F ({-# SCC "break"         #-}     app $ B.break (==122))
+        ,F ({-# SCC "lazy break"    #-}     app $ L.break (==122))
+    ])
+    , ("split",
+        [F ({-# SCC "split"         #-}     app $ B.split 0x0a)
+        ,F ({-# SCC "lazy split"    #-}     app $ L.split 0x0a)
+    ])
+    , ("breakByte",
+        [F ({-# SCC "breakChar"     #-}     app $ B.breakByte 122)
+        ,F ({-# SCC "lazy breakChar" #-}    app $ L.breakByte 122)
+    ])
+    , ("spanByte",
+        [F ({-# SCC "spanChar"      #-}     app $ B.spanByte 122)
+        ,F ({-# SCC "lazy spanChar" #-}     app $ L.spanByte 122)
+    ])
+    , ("reverse",
+        [F ({-# SCC "reverse"       #-}     app B.reverse)
+        ,F ({-# SCC "lazy reverse"  #-}     app L.reverse)
+    ])
+    , ("cons",
+        [F ({-# SCC "cons"          #-}     app $ B.cons 120)
+        ,F ({-# SCC "lazy cons"     #-}     app $ L.cons 120)
+    ])
+    , ("snoc",
+        [F ({-# SCC "snoc"          #-}     app $ flip B.snoc 120)
+        ,F ({-# SCC "lazy snoc"     #-}     app $ flip L.snoc 120)
+    ])
+    , ("empty",
+        [F ({-# SCC "empty"         #-}     const B.empty)
+        ,F ({-# SCC "lazy empty"    #-}     const L.empty)
+    ])
+    , ("head",
+        [F ({-# SCC "head"          #-}     app B.head)
+        ,F ({-# SCC "lazy head"     #-}     app L.head)
+    ])
+    , ("tail",
+        [F ({-# SCC "tail"          #-}     app B.tail)
+        ,F ({-# SCC "lazy tail"     #-}     app L.tail)
+    ])
+    , ("last",
+        [F ({-# SCC "last"          #-}     app B.last)
+        ,F ({-# SCC "lazy last"     #-}     app L.last)
+    ])
+    , ("init",
+        [F ({-# SCC "init"          #-}     app B.init)
+        ,F ({-# SCC "lazy init"     #-}     app L.init)
+    ])
+    , ("count",
+        [F ({-# SCC "count"         #-}     app $ B.count 10)
+        ,F ({-# SCC "lazy count"    #-}     app $ L.count 10)
+    ])
+    , ("isPrefixOf",
+        [F ({-# SCC "isPrefixOf" #-}        app $ B.isPrefixOf
+                (C.pack "The Project Gutenberg eBook"))
+        ,F ({-# SCC "lazy isPrefixOf" #-}   app $ L.isPrefixOf
+                (L.pack [84,104,101,32,80,114,111,106,101
+                           ,99,116,32,71,117,116,101,110,98
+                           ,101,114,103,32,101,66,111,111,107]))
+    ])
+    , ("join",
+        [F ({-# SCC "join"          #-}     app $ B.join (B.pack [1,2,3]))
+        ,F ({-# SCC "lazy join"     #-}     app $ L.join (L.pack [1,2,3]))
+    ])
+    , ("joinWithByte",
+        [F ({-# SCC "joinWithByte"  #-}     app $ uncurry (B.joinWithByte 32))
+        ,F ({-# SCC "lazy joinWithByte" #-} app $ uncurry (L.joinWithByte 32))
+    ])
+    , ("any",
+        [F ({-# SCC "any"           #-}     app $ B.any (==120))
+        ,F ({-# SCC "lazy any"      #-}     app $ L.any (==120))
+    ])
+    , ("all",
+        [F ({-# SCC "all"           #-}     app $ B.all (==120))
+        ,F ({-# SCC "lazy all"      #-}     app $ L.all (==120))
+    ])
+    , ("maximum",
+        [F ({-# SCC "maximum"       #-}     app B.maximum)
+        ,F ({-# SCC "lazy maximum"  #-}     app L.maximum)
+    ])
+    , ("minimum",
+        [F ({-# SCC "minimum"       #-}     app B.minimum)
+        ,F ({-# SCC "lazy minimum"  #-}     app L.minimum)
+    ])
+    , ("elem",
+        [F ({-# SCC "elem"          #-}     app $ B.elem 122)
+        ,F ({-# SCC "lazy elem"     #-}     app $ L.elem 122)
+    ])
+    , ("notElem",
+        [F ({-# SCC "notElem"       #-}     app $ B.notElem 122)
+        ,F ({-# SCC "lazy notElem"  #-}     app $ L.notElem 122)
+    ])
+    , ("elemIndex",
+        [F ({-# SCC "elemIndex"     #-}     app $ B.elemIndex 122)
+        ,F ({-# SCC "lazy elemIndex" #-}    app $ L.elemIndex 122)
+    ])
+    , ("findIndices",
+        [F ({-# SCC "findIndicies"  #-}     app $ B.findIndices (==122))
+        ,F ({-# SCC "lazy findIndices" #-}  app $ L.findIndices (==122))
+    ])
+    , ("elemIndices",
+        [F ({-# SCC "elemIndicies"  #-}     app $ B.elemIndices 122)
+        ,F ({-# SCC "lazy elemIndices" #-}  app $ L.elemIndices 122)
+    ])
+    , ("splitAt",
+        [F ({-# SCC "splitAt"       #-}     app $ B.splitAt 10000)
+        ,F ({-# SCC "lazy splitAt"  #-}     app $ L.splitAt 10000)
+    ])
+    , ("splitWith",
+        [F ({-# SCC "splitWith"     #-}     app $ B.splitWith (==122))
+        ,F ({-# SCC "lazy splitWith" #-}    app $ L.splitWith (==122))
+    ])
+    , ("replicate",
+        [F ({-# SCC "replicate"     #-}     const $ B.replicate 10000000 120)
+        ,F ({-# SCC "lazy replicate" #-}    const $ L.replicate 10000000 120)
+    ])
+    , ("group",
+        [F ({-# SCC "group"         #-}     app B.group)
+        ,F ({-# SCC "lazy group"    #-}     app L.group)
+    ])
+    , ("groupBy",
+        [F ({-# SCC "groupBy"       #-}     app $ B.groupBy (==))
+        ,F ({-# SCC "lazy groupBy"  #-}     app $ L.groupBy (==))
+    ])
+    , ("inits",
+        [F ({-# SCC "inits"         #-}     app B.inits)
+    ])
+    , ("tails",
+        [F ({-# SCC "tails"         #-}     app B.tails)
+    ])
 --  , ("transpose",[F ({-# SCC "transpose" #-}B.transpose [fps,fps'])])
 
 ------------------------------------------------------------------------
 --
 -- Char8 or ByteString only
 
-    , ("intersperse",[F ({-# SCC "intersperse" #-}B.intersperse 120 fps)])
-
-
-    , ("sort",[F ({-# SCC "sort"      #-}B.sort fps)])
-
-    , ("lineIndices",[F ({-# SCC "lineIndicies" #-} C.lineIndices fps)])
-
-    , ("elemIndexEnd",[F ({-# SCC "elemIndexEnd" #-}B.elemIndexEnd 122 fps)])
-
-    , ("breakSpace",[F ({-# SCC "breakSpace" #-} C.breakSpace fps)])
-
-    , ("dropSpace",[F ({-# SCC "dropSpace" #-} C.dropSpace fps)])
-    , ("dropSpaceEnd",[F ({-# SCC "dropSpaceEnd" #-} C.dropSpaceEnd fps)])
+    , ("intersperse",
+        [F ({-# SCC "intersperse"   #-}     app $ B.intersperse 120 )
+    ])
+    , ("sort",
+        [F ({-# SCC "sort"          #-}     app B.sort)
+    ])
+    , ("lineIndices",
+        [F ({-# SCC "lineIndicies"  #-}     app C.lineIndices)
+    ])
+    , ("elemIndexEnd",
+        [F ({-# SCC "elemIndexEnd"  #-}     app $ B.elemIndexEnd 122)
+    ])
+    , ("breakSpace",
+        [F ({-# SCC "breakSpace"    #-}     app C.breakSpace)
+    ])
+    , ("dropSpace",
+        [F ({-# SCC "dropSpace"     #-}     app C.dropSpace)
+    ])
+    , ("dropSpaceEnd",
+        [F ({-# SCC "dropSpaceEnd"  #-}     app C.dropSpaceEnd)
+    ])
 
 --  , ("zip",[F ({-# SCC "zip" #-} B.zip fps fps)])
---  , ("zipWith",[F ({-# SCC "zipWith" #-} B.zipWith (+) fps fps)])
 
-    , ("isSubstringOf",  [F ({-# SCC "isSubstringOf" #-} B.isSubstringOf (C.pack "email news") fps)])
+    , ("zipWith'",
+        [F ({-# SCC "zipWith'"      #-}     app (uncurry (B.zipWith (+))))
+    ])
+    , ("isSubstringOf",
+        [F ({-# SCC "isSubstringOf" #-}     app $ B.isSubstringOf (C.pack "email news"))
+    ])
+    , ("isSuffixOf",
+        [F ({-# SCC "isSuffixOf"    #-}     app $ B.isSuffixOf (C.pack "new eBooks"))
+    ])
+    , ("spanEnd",
+        [F ({-# SCC "spanEnd"       #-}     app $ B.spanEnd (/=122))
+    ])
+    , ("lines",
+        [F ({-# SCC "lines"         #-}     app C.lines)
+    ])
+    , ("unlines",
+        [F ({-# SCC "unlines"       #-}     app C.unlines)
+    ])
+    , ("words",
+        [F ({-# SCC "words"         #-}     app C.words)
+    ])
+    , ("unwords",
+        [F ({-# SCC "unwords"       #-}     app C.unwords)
+    ])
 
-    , ("isSuffixOf",  [F ({-# SCC "isSuffixOf" #-}
-                            B.isSuffixOf (C.pack "new eBooks") fps)])
-  --                  ,F (L.isSuffixOf (L.pack [110,101,119,32,101,66,111,111,107,115]) lps )])
+ ]
 
-    , ("spanEnd",[F ({-# SCC "spanEnd"      #-}B.spanEnd (/=122) fps)])
-    , ("lines",[F ({-# SCC "lines"     #-}C.lines fps)])
-    , ("unlines",[F ({-# SCC "unlines"   #-}C.unlines [fps,fps'])])
-    , ("words",[F ({-# SCC "words"     #-}C.words fps)])
-    , ("unwords",[F ({-# SCC "unwords"   #-}C.unwords [fps,fps'])])
+------------------------------------------------------------------------
 
-    , ("addr1",  [F ({-# SCC "packAddress" #-}let s = "my\nstring\nhaskell"# in B.length (C.packAddress s) == 17)])
-    , ("addr2",  [F ({-# SCC "unsafePackAddress" #-}let s = "my\nstring\nhaskell"# in C.unsafePackAddress 17 s == C.packAddress s)])
+fst1        f ((x,_),_) = f x
+snd1        f (_,(x,_)) = f x
+fst2list    f ((x,y),_) = f [x,y]
+snd2list    f (_,(x,y)) = f [x,y]
+fst2        f (x,_)     = f x
+snd2        f (_,y)     = f y
 
-    ]
+type Input = ((B.ByteString,B.ByteString),(L.ByteString,L.ByteString))
+
+class (Eq a, Ord a) => Ap a where app :: (a -> b) -> Input -> b
+
+instance Ap B.ByteString                   where app = fst1
+instance Ap L.ByteString                   where app = snd1
+instance Ap [B.ByteString]                 where app = fst2list
+instance Ap [L.ByteString]                 where app = snd2list
+instance Ap (B.ByteString, B.ByteString)   where app = fst2
+instance Ap (L.ByteString, L.ByteString)   where app = snd2
+
+app2 :: Ap (a, b) => (a -> b -> c) -> Input -> c
+app2 = app . uncurry

@@ -55,11 +55,11 @@ prop-fusion-compiled:
 
 .PHONY: runbench
 runbench: bench
-	: ./bench +RTS -H64m
+	./bench +RTS -H64m
 
 bench::
 	@if [ ! -f "bigdata" ] ; then ln -s data bigdata ; fi
-	: ${GHC} ${PKG} --make -O -funbox-strict-fields Bench.hs -cpp -o bench -no-recomp
+	${GHC} ${PKG} --make -O -funbox-strict-fields Bench.hs -cpp -o bench -no-recomp
 
 fusionbench::
 	${GHC} ${PKG} --make -O -funbox-strict-fields FusionBench.hs -cpp -ddump-simpl-stats -o fusionbench -no-recomp

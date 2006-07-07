@@ -68,3 +68,4 @@ main = do
     printf "# Size of test data: %dk\n" ((floor $ (fromIntegral (P.length fps)) / 1024) :: Int)
     printf "#Byte\n"
     run 11 fps (tests ++ bigtests)
+
