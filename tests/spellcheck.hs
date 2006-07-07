@@ -62,6 +62,7 @@ hash ps = go 0 0
     go :: Int -> Int -> Int32
     go n acc | acc `seq` False = undefined
              | n == len  = fromIntegral acc
-             | otherwise = go (n+1) ((ord .fromIntegral)(ps `P.unsafeIndex` n) +
-                                  acc * 128 `rem` fromIntegral prime)
+             | otherwise = go (n+1)
+                              ((fromIntegral)(ps `P.unsafeIndex` n) +
+                                  (acc * 128 `rem` fromIntegral prime))
 #endif
