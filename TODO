@@ -34,19 +34,6 @@ Todo items
   we choose to realloc to save space. This combined with GC-movable strings
   might improve fragmentation / space usage for the many small strings case.
 
-* avoid the extra copy involved in lazy io + handles.
-
-    GHC.Handle:
-    - we must initially empty the handle buffer but then after that we
-        -- flushReadHandle ? Or something from GHC.IO.hGetBuf
-
-    - can use the low level bits that read N bytes directly into a supplied buffer
-        -- readRawBufferPtr  :: String -> FD -> Bool -> Ptr CChar -> Int -> CInt -> IO CInt
-        -- writeRawBufferPtr :: String -> FD -> Bool -> Ptr CChar -> Int -> CInt -> IO CInt
-
-    - and that also handles the blocking issues so we'll get the right
-      semantics for hGetContents on sockets / pipes
-
 * if we can be sure there is very little variance then it might be interesting to look 
  into the cases where we're doing slightly worse eg the map/up, filter/up cases
  and why we're doing so much better in the up/up case!?  that one makes no sense
@@ -76,5 +63,3 @@ Todo items
     scanl1
     partition
     unzip
-
-* add specialised zipWith
