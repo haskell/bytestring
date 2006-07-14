@@ -1656,19 +1656,30 @@ packMallocCString cstr = unsafePerformIO $ do
 -- null-terminated @CString@.  The @CString@ will be freed
 -- automatically. This is a memcpy(3).
 useAsCString :: ByteString -> (CString -> IO a) -> IO a
-useAsCString ps f = useAsCStringLen ps (\(s,_) -> f s)
+useAsCString (PS ps s l) = bracket alloc (c_free.castPtr)
+    where alloc = withForeignPtr ps $ \p -> do
+            buf <- c_malloc (fromIntegral l+1)
+            memcpy (castPtr buf) (castPtr p `plusPtr` s) (fromIntegral l)
+            poke (buf `plusPtr` l) (0::Word8) -- n.b.
+            return (castPtr buf)
 
--- | /O(n) construction/ Use a @ByteString@ with a function requiring a
--- @CStringLen@. The @CStringLen@ will be freed automatically. This is a
--- memcpy(3).
+-- | /O(1) construction/ Use a @ByteString@ with a function requiring a @CStringLen@.
 useAsCStringLen :: ByteString -> (CStringLen -> IO a) -> IO a
-useAsCStringLen (PS ps s l) = bracket alloc (c_free.castPtr.fst)
-    where
-      alloc = withForeignPtr ps $ \p -> do
-                buf <- c_malloc (fromIntegral l+1)
-                memcpy (castPtr buf) (castPtr p `plusPtr` s) (fromIntegral l)
-                poke (buf `plusPtr` l) (0::Word8) -- n.b.
-                return $! (castPtr buf, l)
+useAsCStringLen (PS ps s l) f = withForeignPtr ps $ \p ->
+    f (castPtr p `plusPtr` s, l)
+
+--
+-- why were we doing this?
+--
+-- useAsCStringLen :: ByteString -> (CStringLen -> IO a) -> IO a
+-- useAsCStringLen (PS ps s l) = bracket alloc (c_free.castPtr.fst)
+--     where
+--       alloc = withForeignPtr ps $ \p -> do
+--                 buf <- c_malloc (fromIntegral l+1)
+--                 memcpy (castPtr buf) (castPtr p `plusPtr` s) (fromIntegral l)
+--                 poke (buf `plusPtr` l) (0::Word8) -- n.b.
+--                 return $! (castPtr buf, l)
+--
 
 -- | /O(n)/ Make a copy of the 'ByteString' with its own storage. 
 --   This is mainly useful to allow the rest of the data pointed
