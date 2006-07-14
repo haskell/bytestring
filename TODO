@@ -63,3 +63,5 @@ Todo items
     scanl1
     partition
     unzip
+
+* fix documentation in Fusion.hs
