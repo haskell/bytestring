@@ -1874,18 +1874,18 @@ getContents = hGetContents stdin
 -- 'pack'.  It also may be more efficient than opening the file and
 -- reading it using hGet.
 readFile :: FilePath -> IO ByteString
-readFile f = bracket (openBinaryFile f ReadMode) hClose
+readFile f = bracket (openFile f ReadMode) hClose
     (\h -> hFileSize h >>= hGet h . fromIntegral)
 
 -- | Write a 'ByteString' to a file.
 writeFile :: FilePath -> ByteString -> IO ()
-writeFile f ps = bracket (openBinaryFile f WriteMode) hClose
-    (\h -> hPut h ps)
+writeFile f txt = bracket (openFile f WriteMode) hClose
+    (\h -> hPut h txt)
 
 -- | Append a 'ByteString' to a file.
 appendFile :: FilePath -> ByteString -> IO ()
-appendFile f txt = bracket (openBinaryFile f AppendMode) hClose
-    (\hdl -> hPut hdl txt)
+appendFile f txt = bracket (openFile f AppendMode) hClose
+    (\h -> hPut h txt)
 
 {-
 --
