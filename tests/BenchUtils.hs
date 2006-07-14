@@ -41,11 +41,12 @@ doit count x n (s,ls) = do
                             >> runN count g x >> putStr "\t"
                     [f]     -> runN count f x >> putStr "\t"
                     _       -> return ()
-        run f x = dirtyCache >> performGC >> threadDelay 100 >> time f x
+        run f x = dirtyCache fps' >> performGC >> threadDelay 100 >> time f x
         runN 0 f x = return ()
         runN c f x = run f x >> runN (c-1) f x
 
-dirtyCache = evaluate (P.foldl1' (+) fps')
+dirtyCache x = evaluate (P.foldl1' (+) x)
+{-# NOINLINE dirtyCache #-}
 
 time :: F a -> a -> IO ()
 time (F f) a = do
