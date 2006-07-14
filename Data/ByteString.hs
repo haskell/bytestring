@@ -261,8 +261,7 @@ import Foreign.Storable         (Storable(..))
 
 -- hGetBuf and hPutBuf not available in yhc or nhc
 import System.IO                (stdin,stdout,hClose,hFileSize
-                                ,hGetBuf,hPutBuf,openBinaryFile
-                                ,Handle,IOMode(..))
+                                ,hGetBuf,hPutBuf,Handle,IOMode(..))
 
 import Data.Monoid              (Monoid, mempty, mappend, mconcat)
 
