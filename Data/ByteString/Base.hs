@@ -373,12 +373,9 @@ unsafeUseAsCString :: ByteString -> (CString -> IO a) -> IO a
 unsafeUseAsCString (PS ps s _) ac = withForeignPtr ps $ \p -> ac (castPtr p `plusPtr` s)
 
 -- | /O(1) construction/ Use a @ByteString@ with a function requiring a
--- @CStringLen@.  Warning: modifying the @CStringLen@ will affect the
--- @ByteString@.  This is analogous to unsafeUseAsCString, and comes
--- with the same safety requirements. The user must ensure there is a
--- null byte at the end of the string.
+-- @CStringLen@.
 unsafeUseAsCStringLen :: ByteString -> (CStringLen -> IO a) -> IO a
-unsafeUseAsCStringLen (PS ps s l) ac = withForeignPtr ps $ \p -> ac (castPtr p `plusPtr` s,l)
+unsafeUseAsCStringLen (PS ps s l) f = withForeignPtr ps $ \p -> f (castPtr p `plusPtr` s,l)
 
 -- ---------------------------------------------------------------------
 -- 

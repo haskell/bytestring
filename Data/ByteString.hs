@@ -1665,8 +1665,7 @@ useAsCString (PS ps s l) = bracket alloc (c_free.castPtr)
 
 -- | /O(1) construction/ Use a @ByteString@ with a function requiring a @CStringLen@.
 useAsCStringLen :: ByteString -> (CStringLen -> IO a) -> IO a
-useAsCStringLen (PS ps s l) f = withForeignPtr ps $ \p ->
-    f (castPtr p `plusPtr` s, l)
+useAsCStringLen = unsafeUseAsCStringLen
 
 --
 -- why were we doing this?
