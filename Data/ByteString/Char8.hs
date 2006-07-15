@@ -210,6 +210,7 @@ module Data.ByteString.Char8 (
         getContents,            -- :: IO ByteString
         putStr,                 -- :: ByteString -> IO ()
         putStrLn,               -- :: ByteString -> IO ()
+        interact,               -- :: (ByteString -> ByteString) -> IO ()
 
         -- ** Files
         readFile,               -- :: FilePath -> IO ByteString
@@ -251,7 +252,7 @@ import Prelude hiding           (reverse,head,tail,last,init,null
                                 ,words,maximum,minimum,all,concatMap,scanl,scanl1
                                 ,appendFile,readFile,writeFile
                                 ,foldl1,foldr1,replicate
-                                ,getContents,getLine,putStr,putStrLn
+                                ,getContents,getLine,putStr,putStrLn,interact
                                 ,zip,zipWith,unzip,notElem)
 
 import qualified Data.ByteString as B
@@ -265,10 +266,15 @@ import Data.ByteString (empty,null,length,tail,init,append
                        ,findSubstrings,copy,group
 
                        ,getContents, putStr, putStrLn
+                       ,readFile, {-mmapFile,-} writeFile, appendFile
                        ,hGetContents, hGet, hPut, hPutStr, hPutStrLn
                        ,packCString,packCStringLen, packMallocCString
                        ,useAsCString,useAsCStringLen, copyCString,copyCStringLen
-                       ,getLine, getArgs, hGetLine, hGetLines, hGetNonBlocking
+
+                       ,getLine, getContents, putStr, putStrLn, interact
+                       ,readFile, {-mmapFile,-} writeFile, appendFile
+                       ,hGetContents, hGet, hPut, hPutStr, hPutStrLn
+                       ,getArgs, hGetLine, hGetLines, hGetNonBlocking
 #if defined(__GLASGOW_HASKELL__)
                        ,unpackList
 #endif

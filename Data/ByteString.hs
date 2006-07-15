@@ -200,6 +200,7 @@ module Data.ByteString (
         getContents,            -- :: IO ByteString
         putStr,                 -- :: ByteString -> IO ()
         putStrLn,               -- :: ByteString -> IO ()
+        interact,               -- :: (ByteString -> ByteString) -> IO ()
 
         -- ** Files
         readFile,               -- :: FilePath -> IO ByteString
@@ -235,7 +236,7 @@ import Prelude hiding           (reverse,head,tail,last,init,null
                                 ,minimum,all,concatMap,foldl1,foldr1
                                 ,scanl,scanl1,scanr,scanr1
                                 ,readFile,writeFile,appendFile,replicate
-                                ,getContents,getLine,putStr,putStrLn
+                                ,getContents,getLine,putStr,putStrLn,interact
                                 ,zip,zipWith,unzip,notElem)
 
 import Data.ByteString.Base
@@ -1869,6 +1870,13 @@ hGetContents h = do
 -- | getContents. Equivalent to hGetContents stdin
 getContents :: IO ByteString
 getContents = hGetContents stdin
+
+-- | The interact function takes a function of type @ByteString -> ByteString@
+-- as its argument. The entire input from the standard input device is passed
+-- to this function as its argument, and the resulting string is output on the
+-- standard output device. It's great for writing one line programs!
+interact :: (ByteString -> ByteString) -> IO ()
+interact transformer = putStr . transformer =<< getContents
 
 -- | Read an entire file strictly into a 'ByteString'.  This is far more
 -- efficient than reading the characters into a 'String' and then using
