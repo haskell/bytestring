@@ -260,7 +260,7 @@ import Foreign.Ptr
 import Foreign.Storable         (Storable(..))
 
 -- hGetBuf and hPutBuf not available in yhc or nhc
-import System.IO                (stdin,stdout,hClose,hFileSize
+import System.IO                (stdin,stdout,hClose,hFileSize,hIsEOF
                                 ,hGetBuf,hPutBuf,Handle,IOMode(..))
 
 import Data.Monoid              (Monoid, mempty, mappend, mconcat)
@@ -1716,13 +1716,14 @@ hGetLines :: Handle -> IO [ByteString]
 hGetLines h = go
     where
         go = unsafeInterleaveIO $ do
-                ms <- catch (hGetLine h >>= return . Just)
-                            (\_ -> return Nothing)
-                case ms of
-                    Nothing -> return []
-                    Just s  -> do ss <- go
-                                  return (s:ss)
-
+                e <- hIsEOF h
+                if e  
+                  then return []  
+                  else do
+                x  <- hGetLine h
+                xs <- go
+                return (x:xs)
+                
 -- | hGetLine. read a ByteString from a handle
 hGetLine :: Handle -> IO ByteString
 hGetLine h = wantReadableHandle "Data.ByteString.hGetLine" h $ \ handle_ -> do
