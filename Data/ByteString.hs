@@ -208,8 +208,8 @@ module Data.ByteString (
 --      mmapFile,               -- :: FilePath -> IO ByteString
 
         -- ** I\/O with Handles
-#if defined(__GLASGOW_HASKELL__)
         getArgs,                -- :: IO [ByteString]
+#if defined(__GLASGOW_HASKELL__)
         hGetLine,               -- :: Handle -> IO ByteString
         hGetLines,              -- :: Handle -> IO [ByteString]
         hGetNonBlocking,        -- :: Handle -> Int -> IO ByteString
@@ -267,6 +267,7 @@ import Data.Monoid              (Monoid, mempty, mappend, mconcat)
 
 #if !defined(__GLASGOW_HASKELL__)
 import System.IO.Unsafe
+import qualified System.Environment
 #endif
 
 #if defined(__GLASGOW_HASKELL__)
@@ -1945,11 +1946,11 @@ mmap f = do
     where mmap_limit = 16*1024
 -}
 
-#if defined(__GLASGOW_HASKELL__)
 --
 -- | A ByteString equivalent for getArgs. More efficient for large argument lists
 --
 getArgs :: IO [ByteString]
+#if defined(__GLASGOW_HASKELL__)
 getArgs =
   alloca $ \ p_argc ->
   alloca $ \ p_argv -> do
@@ -1957,6 +1958,10 @@ getArgs =
     p    <- fromIntegral `fmap` peek p_argc
     argv <- peek p_argv
     P.map packCString `fmap` peekArray (p - 1) (advancePtr argv 1)
+#else
+getArgs = do
+  stringArgs <- System.Environment.getArgs 
+  return $ List.map (packWith c2w) stringArgs
 #endif
 
 -- ---------------------------------------------------------------------
