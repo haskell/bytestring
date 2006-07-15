@@ -1125,10 +1125,9 @@ hGetContentsN k h = lazyRead >>= return . LPS
     lazyRead = unsafeInterleaveIO $ do
         ps <- P.hGet h k
         case P.length ps of
-            0         -> return []
-            n | n < k -> return [ps]
-            _         -> do pss <- lazyRead
-                            return (ps : pss)
+            0 -> return []
+            _ -> do pss <- lazyRead
+                    return (ps : pss)
 
 -- | Read @n@ bytes into a 'ByteString', directly from the
 -- specified 'Handle', in chunks of size @k@.
@@ -1140,10 +1139,9 @@ hGetN k h n = readChunks n >>= return . LPS
     readChunks i = do
         ps <- P.hGet h (min k i)
         case P.length ps of
-            0          -> return []
-            m | m == i -> return [ps]
-            m          -> do pss <- readChunks (i - m)
-                             return (ps : pss)
+            0 -> return []
+            m -> do pss <- readChunks (i - m)
+                    return (ps : pss)
 
 -- | hGetNonBlockingN is similar to 'hGetContentsN', except that it will never block
 -- waiting for data to become available, instead it returns only whatever data
@@ -1153,6 +1151,7 @@ hGetNonBlockingN :: Int -> Handle -> Int -> IO ByteString
 hGetNonBlockingN _ _ 0 = return empty
 hGetNonBlockingN k h n = readChunks n >>= return . LPS
   where
+    STRICT1(readChunks)
     readChunks i = do
         ps <- P.hGetNonBlocking h (min k i)
         case P.length ps of
@@ -1160,8 +1159,6 @@ hGetNonBlockingN k h n = readChunks n >>= return . LPS
             m | fromIntegral m < i -> return [ps]
             m         -> do pss <- readChunks (i - m)
                             return (ps : pss)
-#else
-hGetNonBlockingN = hGetN
 #endif
 
 -- | Read entire handle contents /lazily/ into a 'ByteString'. Chunks
