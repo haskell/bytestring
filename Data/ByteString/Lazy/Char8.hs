@@ -1,6 +1,4 @@
-{-# OPTIONS_GHC -cpp -optc-O1 -fno-warn-orphans #-}
---
--- -optc-O2 breaks with 4.0.4 gcc on debian
+{-# OPTIONS_GHC -cpp -fno-warn-orphans #-}
 --
 -- Module      : Data.ByteString.Lazy.Char8
 -- Copyright   : (c) Don Stewart 2006
