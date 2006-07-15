@@ -206,10 +206,7 @@ module Data.ByteString.Char8 (
         -- * I\/O with @ByteString@s
 
         -- ** Standard input and output
-
-#if defined(__GLASGOW_HASKELL__)
         getLine,                -- :: IO ByteString
-#endif
         getContents,            -- :: IO ByteString
         putStr,                 -- :: ByteString -> IO ()
         putStrLn,               -- :: ByteString -> IO ()
@@ -221,12 +218,10 @@ module Data.ByteString.Char8 (
 --      mmapFile,               -- :: FilePath -> IO ByteString
 
         -- ** I\/O with Handles
-#if defined(__GLASGOW_HASKELL__)
         getArgs,                -- :: IO [ByteString]
         hGetLine,               -- :: Handle -> IO ByteString
         hGetLines,              -- :: Handle -> IO ByteString
         hGetNonBlocking,        -- :: Handle -> Int -> IO ByteString
-#endif
         hGetContents,           -- :: Handle -> IO ByteString
         hGet,                   -- :: Handle -> Int -> IO ByteString
         hPut,                   -- :: Handle -> ByteString -> IO ()
@@ -273,8 +268,8 @@ import Data.ByteString (empty,null,length,tail,init,append
                        ,hGetContents, hGet, hPut, hPutStr, hPutStrLn
                        ,packCString,packCStringLen, packMallocCString
                        ,useAsCString,useAsCStringLen, copyCString,copyCStringLen
-#if defined(__GLASGOW_HASKELL__)
                        ,getLine, getArgs, hGetLine, hGetLines, hGetNonBlocking
+#if defined(__GLASGOW_HASKELL__)
                        ,unpackList
 #endif
                        )
@@ -842,12 +837,12 @@ lines ps
     where search = elemIndex '\n'
 {-# INLINE lines #-}
 
-{-# Bogus rule, wrong if there's not \n at end of line
+{- Bogus rule, wrong if there's not \n at end of line
 
 "length.lines/count" 
     P.length . lines = count '\n'
 
-  #-}
+  -}
 
 {-
 -- Just as fast, but more complex. Should be much faster, I thought.
