@@ -1155,10 +1155,11 @@ hGetNonBlockingN k h n = readChunks n >>= return . LPS
     readChunks i = do
         ps <- P.hGetNonBlocking h (min k i)
         case P.length ps of
-            0         -> return []
-            m | fromIntegral m < i -> return [ps]
-            m         -> do pss <- readChunks (i - m)
-                            return (ps : pss)
+            0 -> return []
+            m -> do pss <- readChunks (i - m)
+                    return (ps : pss)
+#else
+hGetNonBlockingN = hGetN
 #endif
 
 -- | Read entire handle contents /lazily/ into a 'ByteString'. Chunks
