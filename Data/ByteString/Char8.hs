@@ -265,16 +265,11 @@ import Data.ByteString (empty,null,length,tail,init,append
                        ,sort,isPrefixOf,isSuffixOf,isSubstringOf,findSubstring
                        ,findSubstrings,copy,group
 
-                       ,getContents, putStr, putStrLn
-                       ,readFile, {-mmapFile,-} writeFile, appendFile
-                       ,hGetContents, hGet, hPut, hPutStr, hPutStrLn
-                       ,packCString,packCStringLen, packMallocCString
-                       ,useAsCString,useAsCStringLen, copyCString,copyCStringLen
-
                        ,getLine, getContents, putStr, putStrLn, interact
-                       ,readFile, {-mmapFile,-} writeFile, appendFile
                        ,hGetContents, hGet, hPut, hPutStr, hPutStrLn
                        ,getArgs, hGetLine, hGetLines, hGetNonBlocking
+                       ,packCString,packCStringLen, packMallocCString
+                       ,useAsCString,useAsCStringLen, copyCString,copyCStringLen
 #if defined(__GLASGOW_HASKELL__)
                        ,unpackList
 #endif
