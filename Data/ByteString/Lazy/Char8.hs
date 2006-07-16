@@ -191,8 +191,7 @@ import Data.ByteString.Lazy
 #if defined(__GLASGOW_HASKELL__)
         ,hGetNonBlocking, hGetNonBlockingN
 #endif
-        ,putStr, putStrLn
-        ,readFile, writeFile, appendFile)
+        ,putStr, putStrLn)
 
 -- Functions we need to wrap.
 import qualified Data.ByteString.Lazy as L
@@ -210,6 +209,9 @@ import Prelude hiding
         ,unwords,words,maximum,minimum,all,concatMap,scanl,scanl1,foldl1,foldr1
         ,readFile,writeFile,appendFile,replicate,getContents,getLine,putStr,putStrLn
         ,zip,zipWith,unzip,notElem,repeat,iterate)
+
+import System.IO            (hClose,openFile,IOMode(..))
+import Control.Exception    (bracket)
 
 #define STRICT1(f) f a | a `seq` False = undefined
 #define STRICT2(f) f a b | a `seq` b `seq` False = undefined
@@ -691,3 +693,18 @@ readInt (LPS (x:xs)) =
                                        | otherwise = ps:pss
                                 in n' `seq` ps' `seq` Just $! (n', LPS ps')
 
+
+-- | Read an entire file /lazily/ into a 'ByteString'. Use 'text mode'
+-- on Windows to interpret newlines
+readFile :: FilePath -> IO ByteString
+readFile f = openFile f ReadMode >>= hGetContents
+
+-- | Write a 'ByteString' to a file.
+writeFile :: FilePath -> ByteString -> IO ()
+writeFile f txt = bracket (openFile f WriteMode) hClose
+    (\hdl -> hPut hdl txt)
+
+-- | Append a 'ByteString' to a file.
+appendFile :: FilePath -> ByteString -> IO ()
+appendFile f txt = bracket (openFile f AppendMode) hClose
+    (\hdl -> hPut hdl txt)

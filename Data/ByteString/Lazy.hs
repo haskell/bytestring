@@ -1183,7 +1183,6 @@ hGetNonBlocking :: Handle -> Int -> IO ByteString
 hGetNonBlocking = hGetNonBlockingN defaultChunkSize
 #endif
 
-
 -- | Read an entire file /lazily/ into a 'ByteString'.
 readFile :: FilePath -> IO ByteString
 readFile f = openBinaryFile f ReadMode >>= hGetContents
