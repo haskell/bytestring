@@ -167,7 +167,7 @@ module Data.ByteString (
         -- * Zipping and unzipping ByteStrings
         zip,                    -- :: ByteString -> ByteString -> [(Word8,Word8)]
         zipWith,                -- :: (Word8 -> Word8 -> c) -> ByteString -> ByteString -> [c]
-        zipWith', 
+        zipWith',
         unzip,                  -- :: [(Word8,Word8)] -> (ByteString,ByteString)
 
         -- * Ordered ByteStrings
@@ -1871,19 +1871,20 @@ getContents = hGetContents stdin
 -- | Read an entire file strictly into a 'ByteString'.  This is far more
 -- efficient than reading the characters into a 'String' and then using
 -- 'pack'.  It also may be more efficient than opening the file and
--- reading it using hGet.
+-- reading it using hGet. Files are read using 'binary mode' on Windows,
+-- for 'text mode' use the Char8 version of this function.
 readFile :: FilePath -> IO ByteString
-readFile f = bracket (openFile f ReadMode) hClose
+readFile f = bracket (openBinaryFile f ReadMode) hClose
     (\h -> hFileSize h >>= hGet h . fromIntegral)
 
 -- | Write a 'ByteString' to a file.
 writeFile :: FilePath -> ByteString -> IO ()
-writeFile f txt = bracket (openFile f WriteMode) hClose
+writeFile f txt = bracket (openBinaryFile f WriteMode) hClose
     (\h -> hPut h txt)
 
 -- | Append a 'ByteString' to a file.
 appendFile :: FilePath -> ByteString -> IO ()
-appendFile f txt = bracket (openFile f AppendMode) hClose
+appendFile f txt = bracket (openBinaryFile f AppendMode) hClose
     (\h -> hPut h txt)
 
 {-

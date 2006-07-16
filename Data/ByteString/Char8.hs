@@ -254,7 +254,8 @@ import Prelude hiding           (reverse,head,tail,last,init,null
                                 ,concat,any,take,drop,splitAt,takeWhile
                                 ,dropWhile,span,break,elem,filter,unwords
                                 ,words,maximum,minimum,all,concatMap,scanl,scanl1
-                                ,foldl1,foldr1,readFile,writeFile,appendFile,replicate
+                                ,appendFile,readFile,writeFile
+                                ,foldl1,foldr1,replicate
                                 ,getContents,getLine,putStr,putStrLn
                                 ,zip,zipWith,unzip,notElem)
 
@@ -269,7 +270,6 @@ import Data.ByteString (empty,null,length,tail,init,append
                        ,findSubstrings,copy,group
 
                        ,getContents, putStr, putStrLn
-                       ,readFile, {-mmapFile,-} writeFile, appendFile
                        ,hGetContents, hGet, hPut, hPutStr, hPutStrLn
                        ,packCString,packCStringLen, packMallocCString
                        ,useAsCString,useAsCStringLen, copyCString,copyCStringLen
@@ -289,6 +289,8 @@ import Data.ByteString.Base (
 
 import qualified Data.List as List (intersperse)
 
+import System.IO                (openFile,hClose,hFileSize,IOMode(..))
+import Control.Exception        (bracket)
 import Foreign
 
 #if defined(__GLASGOW_HASKELL__)
@@ -1015,3 +1017,22 @@ map' f = B.map' (c2w . f . w2c)
 -- around 2x faster for some one-shot applications.
 filter' :: (Char -> Bool) -> ByteString -> ByteString
 filter' f = B.filter' (f . w2c)
+
+-- | Read an entire file strictly into a 'ByteString'.  This is far more
+-- efficient than reading the characters into a 'String' and then using
+-- 'pack'.  It also may be more efficient than opening the file and
+-- reading it using hGet.
+readFile :: FilePath -> IO ByteString
+readFile f = bracket (openFile f ReadMode) hClose
+    (\h -> hFileSize h >>= hGet h . fromIntegral)
+
+-- | Write a 'ByteString' to a file.
+writeFile :: FilePath -> ByteString -> IO ()
+writeFile f txt = bracket (openFile f WriteMode) hClose
+    (\h -> hPut h txt)
+
+-- | Append a 'ByteString' to a file.
+appendFile :: FilePath -> ByteString -> IO ()
+appendFile f txt = bracket (openFile f AppendMode) hClose
+    (\h -> hPut h txt)
+
