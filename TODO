@@ -65,3 +65,8 @@ Todo items
     unzip
 
 * fix documentation in Fusion.hs
+
+* Prelude Data.ByteString.Lazy> List.groupBy (/=) $ [97,99,103,103]
+  [[97,99,103,103]]
+  Prelude Data.ByteString.Lazy> groupBy (/=) $ pack [97,99,103,103]
+  [LPS ["ac","g"],LPS ["g"]]
