@@ -174,10 +174,8 @@ module Data.ByteString.Lazy.Char8 (
         hGet,                   -- :: Handle -> Int64 -> IO ByteString
         hGetN,                  -- :: Int -> Handle -> Int64 -> IO ByteString
         hPut,                   -- :: Handle -> ByteString -> IO ()
-#if defined(__GLASGOW_HASKELL__)
         hGetNonBlocking,        -- :: Handle -> IO ByteString
         hGetNonBlockingN,       -- :: Int -> Handle -> IO ByteString
-#endif
   ) where
 
 -- Functions transparently exported
@@ -186,9 +184,7 @@ import Data.ByteString.Lazy
         ,empty,null,length,tail,init,append,reverse,transpose
         ,concat,take,drop,splitAt,join,isPrefixOf,group,inits, tails
         ,hGetContentsN, hGetN, hGetContents, hGet, hPut, getContents
-#if defined(__GLASGOW_HASKELL__)
         ,hGetNonBlocking, hGetNonBlockingN
-#endif
         ,putStr, putStrLn)
 
 -- Functions we need to wrap.

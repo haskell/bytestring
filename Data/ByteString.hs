@@ -193,10 +193,7 @@ module Data.ByteString (
         -- * I\/O with 'ByteString's
 
         -- ** Standard input and output
-
-#if defined(__GLASGOW_HASKELL__)
         getLine,                -- :: IO ByteString
-#endif
         getContents,            -- :: IO ByteString
         putStr,                 -- :: ByteString -> IO ()
         putStrLn,               -- :: ByteString -> IO ()
@@ -210,13 +207,11 @@ module Data.ByteString (
 
         -- ** I\/O with Handles
         getArgs,                -- :: IO [ByteString]
-#if defined(__GLASGOW_HASKELL__)
         hGetLine,               -- :: Handle -> IO ByteString
         hGetLines,              -- :: Handle -> IO [ByteString]
-        hGetNonBlocking,        -- :: Handle -> Int -> IO ByteString
-#endif
         hGetContents,           -- :: Handle -> IO ByteString
         hGet,                   -- :: Handle -> Int -> IO ByteString
+        hGetNonBlocking,        -- :: Handle -> Int -> IO ByteString
         hPut,                   -- :: Handle -> ByteString -> IO ()
         hPutStr,                -- :: Handle -> ByteString -> IO ()
         hPutStrLn,              -- :: Handle -> ByteString -> IO ()
@@ -269,6 +264,7 @@ import Data.Monoid              (Monoid, mempty, mappend, mconcat)
 #if !defined(__GLASGOW_HASKELL__)
 import System.IO.Unsafe
 import qualified System.Environment
++import qualified System.IO      (hGetLine)
 #endif
 
 #if defined(__GLASGOW_HASKELL__)
@@ -1705,28 +1701,34 @@ copyCStringLen (cstr, len) = create len $ \p ->
 -- ---------------------------------------------------------------------
 -- line IO
 
-#if defined(__GLASGOW_HASKELL__)
-
--- | getLine, read a line from stdin.
+-- | Read a line from stdin.
 getLine :: IO ByteString
 getLine = hGetLine stdin
 
 -- | Lazily construct a list of lines of ByteStrings. This will be much
--- better on memory consumption than using lines =<< getContents.
+-- better on memory consumption than using 'hGetContents >>= lines'
+-- If you're considering this, a better choice might be to use
+-- Data.ByteString.Lazy
 hGetLines :: Handle -> IO [ByteString]
 hGetLines h = go
     where
         go = unsafeInterleaveIO $ do
                 e <- hIsEOF h
-                if e  
-                  then return []  
+                if e
+                  then return []
                   else do
                 x  <- hGetLine h
                 xs <- go
                 return (x:xs)
-                
--- | hGetLine. read a ByteString from a handle
+
+-- | Read a line from a handle
+
 hGetLine :: Handle -> IO ByteString
+#if !defined(__GLASGOW_HASKELL__)
+hGetLine h = do
+  string <- System.IO.hGetLine h
+  return $ packWith c2w string
+#else
 hGetLine h = wantReadableHandle "Data.ByteString.hGetLine" h $ \ handle_ -> do
     case haBufferMode handle_ of
        NoBuffering -> error "no buffering"
@@ -1827,13 +1829,15 @@ hGet :: Handle -> Int -> IO ByteString
 hGet _ 0 = return empty
 hGet h i = createAndTrim i $ \p -> hGetBuf h p i
 
-#if defined(__GLASGOW_HASKELL__)
 -- | hGetNonBlocking is identical to 'hGet', except that it will never block
 -- waiting for data to become available, instead it returns only whatever data
 -- is available.
 hGetNonBlocking :: Handle -> Int -> IO ByteString
+#if defined(__GLASGOW_HASKELL__)
 hGetNonBlocking _ 0 = return empty
 hGetNonBlocking h i = createAndTrim i $ \p -> hGetBufNonBlocking h p i
+#else
+hGetNonBlocking = hGet
 #endif
 
 -- | Read entire handle contents into a 'ByteString'.
@@ -1969,7 +1973,7 @@ getArgs =
     P.map packCString `fmap` peekArray (p - 1) (advancePtr argv 1)
 #else
 getArgs = do
-  stringArgs <- System.Environment.getArgs 
+  stringArgs <- System.Environment.getArgs
   return $ List.map (packWith c2w) stringArgs
 #endif
 

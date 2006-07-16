@@ -186,10 +186,8 @@ module Data.ByteString.Lazy (
         hGet,                   -- :: Handle -> Int -> IO ByteString
         hGetN,                  -- :: Int -> Handle -> Int -> IO ByteString
         hPut,                   -- :: Handle -> ByteString -> IO ()
-#if defined(__GLASGOW_HASKELL__)
         hGetNonBlocking,        -- :: Handle -> IO ByteString
         hGetNonBlockingN,       -- :: Int -> Handle -> IO ByteString
-#endif
 
   ) where
 
@@ -1147,11 +1145,11 @@ hGetN k h n = readChunks n >>= return . LPS
             m          -> do pss <- readChunks (i - m)
                              return (ps : pss)
 
-#if defined(__GLASGOW_HASKELL__)
 -- | hGetNonBlockingN is similar to 'hGetContentsN', except that it will never block
 -- waiting for data to become available, instead it returns only whatever data
 -- is available. Chunks are read on demand, in @k@-sized chunks.
 hGetNonBlockingN :: Int -> Handle -> Int -> IO ByteString
+#if defined(__GLASGOW_HASKELL__)
 hGetNonBlockingN _ _ 0 = return empty
 hGetNonBlockingN k h n = readChunks n >>= return . LPS
   where
@@ -1162,6 +1160,8 @@ hGetNonBlockingN k h n = readChunks n >>= return . LPS
             m | fromIntegral m < i -> return [ps]
             m         -> do pss <- readChunks (i - m)
                             return (ps : pss)
+#else
+hGetNonBlockingN = hGetN
 #endif
 
 -- | Read entire handle contents /lazily/ into a 'ByteString'. Chunks
@@ -1173,12 +1173,14 @@ hGetContents = hGetContentsN defaultChunkSize
 hGet :: Handle -> Int -> IO ByteString
 hGet = hGetN defaultChunkSize
 
-#if defined(__GLASGOW_HASKELL__)
 -- | hGetNonBlocking is similar to 'hGet', except that it will never block
 -- waiting for data to become available, instead it returns only whatever data
 -- is available.
+#if defined(__GLASGOW_HASKELL__)
 hGetNonBlocking :: Handle -> Int -> IO ByteString
 hGetNonBlocking = hGetNonBlockingN defaultChunkSize
+#else
+hGetNonBlocking = hGet
 #endif
 
 -- | Read an entire file /lazily/ into a 'ByteString'.
