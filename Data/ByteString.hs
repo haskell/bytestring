@@ -264,7 +264,7 @@ import Data.Monoid              (Monoid, mempty, mappend, mconcat)
 #if !defined(__GLASGOW_HASKELL__)
 import System.IO.Unsafe
 import qualified System.Environment
-+import qualified System.IO      (hGetLine)
+import qualified System.IO      (hGetLine)
 #endif
 
 #if defined(__GLASGOW_HASKELL__)
