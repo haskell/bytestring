@@ -256,4 +256,3 @@ eqnotnull3 f g = \x y z -> (not (isNull z)) ==> eq3 f g x y z
 class    IsNull t            where isNull :: t -> Bool
 instance IsNull L.ByteString where isNull = L.null
 instance IsNull P.ByteString where isNull = P.null
-
