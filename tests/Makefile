@@ -9,7 +9,7 @@ BIN=            run-utests run-qtests
 all:  prop prop-fusion-compiled prop-compiled prop-opt
 fast: prop-fast
 
-everything: prop hugs prop-compiled prop-fusion-compiled runbench fusionbench wc spellcheck letter_frequency linesort fuse down-fuse inline zipwith
+everything: prop hugs prop-compiled prop-fusion-compiled runbench fusionbench wc spellcheck letter_frequency linesort fuse down-fuse inline zipwith unpack groupby
 
 # ---------------------------------------------
 # QuickCheck
