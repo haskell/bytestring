@@ -132,6 +132,11 @@ unpack: unpack.o
 unpack.o: unpack.hs
 	${GHC} ${PKG} -O -ddump-simpl-stats $< -o unpack
 
+groupby: groupby.o
+	time ./groupby
+groupby.o: groupby.hs
+	${GHC} ${PKG} -O $< -o groupby
+
 # ---------------------------------------------------
 # Plotting graphs
 
@@ -154,4 +159,4 @@ plot:: results
 clean:
 	rm -f *~ *.o *.hi $(BIN) bench */*.o */*.hi */*~ 
 	rm -f wc letter_frequency spellcheck linesort fuse inline p fp lazylines
-	rm -f down-fuse zipwith fusionbench unpack
+	rm -f down-fuse zipwith fusionbench unpack groupby
