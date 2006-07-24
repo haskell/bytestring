@@ -185,7 +185,7 @@ import Data.ByteString.Lazy
         ,concat,take,drop,splitAt,join,isPrefixOf,group,inits, tails
         ,hGetContentsN, hGetN, hGetContents, hGet, hPut, getContents
         ,hGetNonBlocking, hGetNonBlockingN
-        ,putStr, putStrLn)
+        ,putStr, putStrLn, interact)
 
 -- Functions we need to wrap.
 import qualified Data.ByteString.Lazy as L
@@ -202,7 +202,7 @@ import Prelude hiding
         ,concat,any,take,drop,splitAt,takeWhile,dropWhile,span,break,elem,filter
         ,unwords,words,maximum,minimum,all,concatMap,scanl,scanl1,foldl1,foldr1
         ,readFile,writeFile,appendFile,replicate,getContents,getLine,putStr,putStrLn
-        ,zip,zipWith,unzip,notElem,repeat,iterate)
+        ,zip,zipWith,unzip,notElem,repeat,iterate,interact)
 
 import System.IO            (hClose,openFile,IOMode(..))
 import Control.Exception    (bracket)
