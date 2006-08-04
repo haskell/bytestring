@@ -80,12 +80,12 @@ module Data.ByteString.Char8 (
         -- ** Scans
         scanl,                  -- :: (Char -> Char -> Char) -> Char -> ByteString -> ByteString
         scanl1,                 -- :: (Char -> Char -> Char) -> ByteString -> ByteString
---      scanr,                  -- :: (Char -> Char -> Char) -> Char -> ByteString -> ByteString
---      scanr1,                 -- :: (Char -> Char -> Char) -> ByteString -> ByteString
+        scanr,                  -- :: (Char -> Char -> Char) -> Char -> ByteString -> ByteString
+        scanr1,                 -- :: (Char -> Char -> Char) -> ByteString -> ByteString
 
         -- ** Accumulating maps
---      mapAccumL,              -- :: (acc -> Char -> (acc, Char)) -> acc -> ByteString -> (acc, ByteString)
---      mapAccumR,              -- :: (acc -> Char -> (acc, Char)) -> acc -> ByteString -> (acc, ByteString)
+        mapAccumL,              -- :: (acc -> Char -> (acc, Char)) -> acc -> ByteString -> (acc, ByteString)
+        mapAccumR,              -- :: (acc -> Char -> (acc, Char)) -> acc -> ByteString -> (acc, ByteString)
         mapIndexed,             -- :: (Int -> Char -> Char) -> ByteString -> ByteString
 
         -- * Generating and unfolding ByteStrings
@@ -249,7 +249,8 @@ import Prelude hiding           (reverse,head,tail,last,init,null
                                 ,length,map,lines,foldl,foldr,unlines
                                 ,concat,any,take,drop,splitAt,takeWhile
                                 ,dropWhile,span,break,elem,filter,unwords
-                                ,words,maximum,minimum,all,concatMap,scanl,scanl1
+                                ,words,maximum,minimum,all,concatMap
+                                ,scanl,scanl1,scanr,scanr1
                                 ,appendFile,readFile,writeFile
                                 ,foldl1,foldr1,replicate
                                 ,getContents,getLine,putStr,putStrLn,interact
@@ -448,6 +449,20 @@ mapIndexed :: (Int -> Char -> Char) -> ByteString -> ByteString
 mapIndexed f = B.mapIndexed (\i c -> c2w (f i (w2c c)))
 {-# INLINE mapIndexed #-}
 
+-- | The 'mapAccumL' function behaves like a combination of 'map' and
+-- 'foldl'; it applies a function to each element of a ByteString,
+-- passing an accumulating parameter from left to right, and returning a
+-- final value of this accumulator together with the new list.
+mapAccumL :: (acc -> Char -> (acc, Char)) -> acc -> ByteString -> (acc, ByteString)
+mapAccumL f = B.mapAccumL (\acc w -> case f acc (w2c w) of (acc', c) -> (acc', c2w c))
+
+-- | The 'mapAccumR' function behaves like a combination of 'map' and
+-- 'foldr'; it applies a function to each element of a ByteString,
+-- passing an accumulating parameter from right to left, and returning a
+-- final value of this accumulator together with the new ByteString.
+mapAccumR :: (acc -> Char -> (acc, Char)) -> acc -> ByteString -> (acc, ByteString)
+mapAccumR f = B.mapAccumR (\acc w -> case f acc (w2c w) of (acc', c) -> (acc', c2w c))
+
 -- | 'scanl' is similar to 'foldl', but returns a list of successive
 -- reduced values from the left:
 --
@@ -464,6 +479,14 @@ scanl f z = B.scanl (\a b -> c2w (f (w2c a) (w2c b))) (c2w z)
 -- > scanl1 f [x1, x2, ...] == [x1, x1 `f` x2, ...]
 scanl1 :: (Char -> Char -> Char) -> ByteString -> ByteString
 scanl1 f = B.scanl1 (\a b -> c2w (f (w2c a) (w2c b)))
+
+-- | scanr is the right-to-left dual of scanl.
+scanr :: (Char -> Char -> Char) -> Char -> ByteString -> ByteString
+scanr f z = B.scanr (\a b -> c2w (f (w2c a) (w2c b))) (c2w z)
+
+-- | 'scanr1' is a variant of 'scanr' that has no starting value argument.
+scanr1 :: (Char -> Char -> Char) -> ByteString -> ByteString
+scanr1 f = B.scanr1 (\a b -> c2w (f (w2c a) (w2c b)))
 
 -- | /O(n)/ 'replicate' @n x@ is a ByteString of length @n@ with @x@
 -- the value of every element. The following holds:
