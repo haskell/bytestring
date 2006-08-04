@@ -1,6 +1,10 @@
 Todo items
 ----------
 
+* check that api again.
+    - in particular, unsafeHead/Tail for Char8?
+    - scanr,scanr1... in Char8
+
 * would it make sense to move the IO bits into a different module too?
         - System.IO.ByteString
         - Data.ByteString.IO
