@@ -31,6 +31,9 @@
 --
 -- > import qualified Data.ByteString as B
 --
+-- GHC users of this module are encouraged to compile with
+-- -funbox-strict-fields, for maximum performance.
+--
 -- Original GHC implementation by Bryan O\'Sullivan. Rewritten to use
 -- UArray by Simon Marlow. Rewritten to support slices and use
 -- ForeignPtr by David Roundy. Polished and extended by Don Stewart.
