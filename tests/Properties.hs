@@ -434,7 +434,7 @@ prop_splitWith f xs = (l1 == l2 || l1 == l2+1) &&
 prop_joinsplit c xs = L.join (pack [c]) (L.split c xs) == id xs
 
 prop_group xs       = group xs == (map unpack . L.group . pack) xs
-prop_groupBy  f xs  = groupBy f xs == (map unpack . L.groupBy f . pack) xs
+-- prop_groupBy  f xs  = groupBy f xs == (map unpack . L.groupBy f . pack) xs
 
 prop_joinjoinByte xs ys c = L.joinWithByte c xs ys == L.join (L.singleton c) [xs,ys]
 
@@ -626,7 +626,7 @@ prop_append3BB xs ys = P.append xs ys == P.pack (P.unpack xs ++ P.unpack ys)
 prop_map1BB f xs   = P.map f (P.pack xs)    == P.pack (map f xs)
 prop_map2BB f g xs = P.map f (P.map g xs) == P.map (f . g) xs
 prop_map3BB f xs   = map f xs == (P.unpack . P.map f .  P.pack) xs
-prop_mapBB' f xs   = P.map' f (P.pack xs) == P.pack (map f xs)
+-- prop_mapBB' f xs   = P.map' f (P.pack xs) == P.pack (map f xs)
 
 prop_filter1BB xs   = (filter (=='X') xs) == (C.unpack $ C.filter (=='X') (C.pack xs))
 prop_filter2BB p xs = (filter p xs) == (P.unpack $ P.filter p (P.pack xs))
@@ -1393,7 +1393,7 @@ bb_tests =
     ,    ("tail",           mytest prop_tailSBB)
     ,    ("index",          mytest prop_indexBB)
     ,    ("unsafeIndex",    mytest prop_unsafeIndexBB)
-    ,    ("map'",           mytest prop_mapBB')
+--  ,    ("map'",           mytest prop_mapBB')
     ,    ("filter",         mytest prop_filterBB)
     ,    ("elem",           mytest prop_elemSBB)
     ,    ("take",           mytest prop_takeSBB)
@@ -1552,7 +1552,7 @@ ll_tests =
     ,("join.split/id",      mytest prop_joinsplit)
     ,("join/joinByte",      mytest prop_joinjoinByte)
     ,("group",              mytest prop_group)
-    ,("groupBy",            mytest prop_groupBy)
+--  ,("groupBy",            mytest prop_groupBy)
     ,("index",              mytest prop_index)
     ,("elemIndex",          mytest prop_elemIndex)
     ,("elemIndices",        mytest prop_elemIndices)
