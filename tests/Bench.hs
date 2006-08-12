@@ -32,7 +32,7 @@ main = do
     printf "# Size of test data: %dk\n" ((floor $ (fromIntegral (B.length fps)) / 1024) :: Int)
     printf "#Byte\t Lazy\n"
 
-    run 11 ((fps,fps'),(lps,lps')) tests
+    run 5 ((fps,fps'),(lps,lps')) tests
 
 ------------------------------------------------------------------------
 
