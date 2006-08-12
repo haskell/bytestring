@@ -65,8 +65,11 @@ module Data.ByteString.Char8 (
         foldl',                 -- :: (a -> Char -> a) -> a -> ByteString -> a
         foldl1,                 -- :: (Char -> Char -> Char) -> ByteString -> Char
         foldl1',                -- :: (Char -> Char -> Char) -> ByteString -> Char
+
         foldr,                  -- :: (Char -> a -> a) -> a -> ByteString -> a
+        foldr',                 -- :: (Char -> a -> a) -> a -> ByteString -> a
         foldr1,                 -- :: (Char -> Char -> Char) -> ByteString -> Char
+        foldr1',                -- :: (Char -> Char -> Char) -> ByteString -> Char
 
         -- ** Special folds
         concat,                 -- :: [ByteString] -> ByteString
@@ -240,7 +243,6 @@ module Data.ByteString.Char8 (
 #if defined(__GLASGOW_HASKELL__)
         unpackList,
 #endif
-        filter', map'
 
     ) where
 
@@ -400,6 +402,11 @@ foldr :: (Char -> a -> a) -> a -> ByteString -> a
 foldr f = B.foldr (\c a -> f (w2c c) a)
 {-# INLINE foldr #-}
 
+-- | 'foldr\'' is a strict variant of foldr
+foldr' :: (Char -> a -> a) -> a -> ByteString -> a
+foldr' f = B.foldr' (\c a -> f (w2c c) a)
+{-# INLINE foldr' #-}
+
 -- | 'foldl1' is a variant of 'foldl' that has no starting value
 -- argument, and thus must be applied to non-empty 'ByteStrings'.
 foldl1 :: (Char -> Char -> Char) -> ByteString -> Char
@@ -416,6 +423,11 @@ foldl1' f ps = w2c (B.foldl1' (\x y -> c2w (f (w2c x) (w2c y))) ps)
 foldr1 :: (Char -> Char -> Char) -> ByteString -> Char
 foldr1 f ps = w2c (B.foldr1 (\x y -> c2w (f (w2c x) (w2c y))) ps)
 {-# INLINE foldr1 #-}
+
+-- | A strict variant of foldr1
+foldr1' :: (Char -> Char -> Char) -> ByteString -> Char
+foldr1' f ps = w2c (B.foldr1' (\x y -> c2w (f (w2c x) (w2c y))) ps)
+{-# INLINE foldr1' #-}
 
 -- | Map a function over a 'ByteString' and concatenate the results
 concatMap :: (Char -> ByteString) -> ByteString -> ByteString
@@ -1026,16 +1038,6 @@ readInt as
           end _    0 _ _  = Nothing
           end True _ n ps = Just (negate n, ps)
           end _    _ n ps = Just (n, ps)
-
--- | /O(n)/ Like 'map', but not fuseable. The benefit is that it is
--- slightly faster for one-shot cases.
-map' :: (Char -> Char) -> ByteString -> ByteString
-map' f = B.map' (c2w . f . w2c)
-
--- | /O(n)/ 'filter\'' is a non-fuseable version of filter, that may be
--- around 2x faster for some one-shot applications.
-filter' :: (Char -> Bool) -> ByteString -> ByteString
-filter' f = B.filter' (f . w2c)
 
 -- | Read an entire file strictly into a 'ByteString'.  This is far more
 -- efficient than reading the characters into a 'String' and then using

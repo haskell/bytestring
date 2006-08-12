@@ -95,6 +95,7 @@ module Data.ByteString.Lazy (
 
         -- ** Accumulating maps
         mapAccumL,  -- :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
+        mapAccumR,  -- :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
         mapIndexed, -- :: (Int64 -> Word8 -> Word8) -> ByteString -> ByteString
 
         -- ** Infinite ByteStrings
@@ -580,6 +581,9 @@ minimum (LPS xs) = L.minimum (L.map P.minimum xs)
 mapAccumL :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
 mapAccumL f z = (\(a :*: ps) -> (a, LPS ps)) . loopL (P.mapAccumEFL f) z . unLPS
 
+mapAccumR :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
+mapAccumR = error "mapAccumR unimplemented"
+
 -- | /O(n)/ map Word8 functions, provided with the index at each position
 mapIndexed :: (Int -> Word8 -> Word8) -> ByteString -> ByteString
 mapIndexed f = LPS . P.loopArr . loopL (P.mapIndexEFL f) 0 . unLPS
@@ -854,8 +858,26 @@ group xs
 -}
 
 -- | The 'groupBy' function is the non-overloaded version of 'group'.
+{-
+01:16  ndm:: the bug is that you can't do P.groupBy on the inner strings
+01:16  ndm:: since you're changing the base element
+01:16  ndm:: you'll need to do span on them
+01:17  Igloo:: Yeah, the []  _ (s:[]) (x:xs) case should recurse on 
+        ((reverse s ++ x):xs) or something
+01:17  * Igloo hasn't got time to look at it properly ATM though
+01:19  ndm:: I think the problem with groupBy is that its just wrong,
+        you are relying on transitivity of ==
+01:20  Igloo:: It's only wrong when a group spans multiple non-lazy
+        bytestrings, I think
+01:21  ndm:: yes, because of doing groupBy on the second set
+01:21  ndm:: and then trying to join them
+01:22  ndm:: its relying on groupBy "abcd" == ["abc","d"]  ==> groupBy "bcd" == ["bc","d"]
+01:23  ndm:: which is only true if a `k` b ^ a `k` c ==> b `k` c
+-}
 --
 groupBy :: (Word8 -> Word8 -> Bool) -> ByteString -> [ByteString]
+groupBy = error "Data.ByteString.Lazy.groupBy: unimplemented"
+{-
 groupBy _ (LPS [])     = []
 groupBy k (LPS (a:as)) = groupBy' [] 0 (P.groupBy k a) as
   where groupBy' :: [P.ByteString] -> Word8 -> [P.ByteString] -> [P.ByteString] -> [ByteString]
@@ -865,6 +887,7 @@ groupBy k (LPS (a:as)) = groupBy' [] 0 (P.groupBy k a) as
         groupBy' []  _ (s:[]) (x:xs)   = groupBy' (s:[]) (P.unsafeHead s) (P.groupBy k x) xs
         groupBy' acc c (s:[]) (x:xs)   = groupBy' (s:acc) c (P.groupBy k x) xs
         groupBy' acc _ (s:ss) xs       = LPS (L.reverse (s : acc)) : groupBy' [] 0 ss xs
+-}
 
 {-
 TODO: check if something like this might be faster

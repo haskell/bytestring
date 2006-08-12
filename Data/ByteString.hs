@@ -31,9 +31,6 @@
 --
 -- > import qualified Data.ByteString as B
 --
--- GHC users of this module are encouraged to compile with
--- -funbox-strict-fields, for maximum performance.
---
 -- Original GHC implementation by Bryan O\'Sullivan. Rewritten to use
 -- UArray by Simon Marlow. Rewritten to support slices and use
 -- ForeignPtr by David Roundy. Polished and extended by Don Stewart.
@@ -65,7 +62,6 @@ module Data.ByteString (
 
         -- * Transformating ByteStrings
         map,                    -- :: (Word8 -> Word8) -> ByteString -> ByteString
-        map',                   -- :: (Word8 -> Word8) -> ByteString -> ByteString
         reverse,                -- :: ByteString -> ByteString
         intersperse,            -- :: Word8 -> ByteString -> ByteString
         transpose,              -- :: [ByteString] -> [ByteString]
@@ -75,8 +71,11 @@ module Data.ByteString (
         foldl',                 -- :: (a -> Word8 -> a) -> a -> ByteString -> a
         foldl1,                 -- :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
         foldl1',                -- :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
+
         foldr,                  -- :: (Word8 -> a -> a) -> a -> ByteString -> a
+        foldr',                 -- :: (Word8 -> a -> a) -> a -> ByteString -> a
         foldr1,                 -- :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
+        foldr1',                -- :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 
         -- ** Special folds
         concat,                 -- :: [ByteString] -> ByteString
@@ -154,7 +153,6 @@ module Data.ByteString (
         -- ** Searching with a predicate
         find,                   -- :: (Word8 -> Bool) -> ByteString -> Maybe Word8
         filter,                 -- :: (Word8 -> Bool) -> ByteString -> ByteString
-        filter',                -- :: (Word8 -> Bool) -> ByteString -> ByteString
 --      partition               -- :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
 
         -- * Indexing ByteStrings
@@ -222,8 +220,8 @@ module Data.ByteString (
         -- * Fusion utilities
 #if defined(__GLASGOW_HASKELL__)
         unpackList, -- eek, otherwise it gets thrown away by the simplifier
-#endif
         lengthU, maximumU, minimumU
+#endif
   ) where
 
 import qualified Prelude as P
@@ -615,6 +613,7 @@ map f = loopArr . loopMap f
 #endif
 {-# INLINE map #-}
 
+{-
 -- | /O(n)/ Like 'map', but not fuseable. The benefit is that it is
 -- slightly faster for one-shot cases.
 map' :: (Word8 -> Word8) -> ByteString -> ByteString
@@ -630,6 +629,7 @@ map' f (PS fp s len) = inlinePerformIO $ withForeignPtr fp $ \a ->
             pokeByteOff p2 n (f x)
             map_ (n+1) p1 p2
 {-# INLINE map' #-}
+-}
 
 -- | /O(n)/ 'reverse' @xs@ efficiently returns the elements of @xs@ in reverse order.
 reverse :: ByteString -> ByteString
@@ -700,6 +700,17 @@ foldr :: (Word8 -> a -> a) -> a -> ByteString -> a
 foldr k z = loopAcc . loopDown (foldEFL (flip k)) z
 {-# INLINE foldr #-}
 
+-- | 'foldr\'' is like 'foldr', but strict in the accumulator.
+foldr' :: (Word8 -> a -> a) -> a -> ByteString -> a
+foldr' k v (PS x s l) = inlinePerformIO $ withForeignPtr x $ \ptr ->
+        go v (ptr `plusPtr` (s+l-1)) (ptr `plusPtr` (s-1))
+    where
+        STRICT3(go)
+        go z p q | p == q    = return z
+                 | otherwise = do c  <- peek p
+                                  go (c `k` z) (p `plusPtr` (-1)) q -- tail recursive
+{-# INLINE [1] foldr' #-}
+
 -- | 'foldl1' is a variant of 'foldl' that has no starting value
 -- argument, and thus must be applied to non-empty 'ByteStrings'.
 -- This function is subject to array fusion. 
@@ -726,6 +737,14 @@ foldr1 f ps
     | null ps        = errorEmptyList "foldr1"
     | otherwise      = foldr f (last ps) (init ps)
 {-# INLINE foldr1 #-}
+
+-- | 'foldr1\'' is a variant of 'foldr1', but is strict in the
+-- accumulator.
+foldr1' :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
+foldr1' f ps
+    | null ps        = errorEmptyList "foldr1"
+    | otherwise      = foldr' f (last ps) (init ps)
+{-# INLINE [1] foldr1' #-}
 
 -- ---------------------------------------------------------------------
 -- Special folds
@@ -1380,6 +1399,7 @@ filter f = loopArr . loopFilter f
 #endif
 {-# INLINE filter #-}
 
+{-
 -- | /O(n)/ 'filter\'' is a non-fuseable version of filter, that may be
 -- around 2x faster for some one-shot applications.
 filter' :: (Word8 -> Bool) -> ByteString -> ByteString
@@ -1397,6 +1417,7 @@ filter' k ps@(PS x s l)
                             then poke t w >> go (f `plusPtr` 1) (t `plusPtr` 1) end
                             else             go (f `plusPtr` 1) t               end
 {-# INLINE filter' #-}
+-}
 
 --
 -- | /O(n)/ A first order equivalent of /filter . (==)/, for the common
@@ -1420,7 +1441,7 @@ filterByte w ps = replicate (count w ps) w
 --
 -- filterNotByte is around 2x faster than its filter equivalent.
 filterNotByte :: Word8 -> ByteString -> ByteString
-filterNotByte w = filter' (/= w)
+filterNotByte w = filter (/= w)
 {-# INLINE filterNotByte #-}
 
 -- | /O(n)/ The 'find' function takes a predicate and a ByteString,
