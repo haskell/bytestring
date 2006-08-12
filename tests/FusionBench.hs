@@ -17,7 +17,7 @@ tests =
  ,("force1",          [F  (P.map (+1))])
 
 -- non directional
- ,("map/map",         [F  ({-# SCC "map/map" #-}P.map (*2) . P.map (+4)                                                   )])
+ ,("map/map",         [F  ({-# SCC "map/map" #-}        P.map (*2) . P.map (+4)                                           )])
  ,("filter/filter",   [F  ({-# SCC "filter/filter" #-}  P.filter (/=101) . P.filter (/=102)                               )])
  ,("filter/map",      [F  ({-# SCC "filter/map" #-}     P.filter (/=103) . P.map (+5)                                     )])
  ,("map/filter",      [F  ({-# SCC "map/filter" #-}     P.map (*3) . P.filter (/=104)                                     )])
@@ -28,29 +28,28 @@ tests =
  ,("noacc/noacc",     [F  ({-# SCC "noacc/noacc" #-}    (P.map (*3) . P.filter (/=108)) . (P.map (*4) . P.filter (/=109)) )])
 
 -- up loops
- ,("up/up",           [F  ({-# SCC "up/up" #-}          P.foldl (const.(+1)) (0::X) . P.scanl (flip const) (0::W)         )])
- ,("map/up",          [F  ({-# SCC "map/up" #-}         P.foldl (const.(+6)) (0::X) . P.map (*4)                          )])
+ ,("up/up",           [F  ({-# SCC "up/up" #-}          P.foldl' (const.(+1)) (0::X) . P.scanl (flip const) (0::W)        )])
+ ,("map/up",          [F  ({-# SCC "map/up" #-}         P.foldl' (const.(+6)) (0::X) . P.map (*4)                         )])
  ,("up/map",          [F  ({-# SCC "up/map" #-}         P.map (+7) . P.scanl const (0::W)                                 )])
- ,("filter/up",       [F  ({-# SCC "filter/up" #-}      P.foldl (const.(+8)) (0::X) . P.filter (/=105)                    )])
+ ,("filter/up",       [F  ({-# SCC "filter/up" #-}      P.foldl' (const.(+8)) (0::X) . P.filter (/=105)                   )])
  ,("up/filter",       [F  ({-# SCC "up/filter" #-}      P.filter (/=106) . P.scanl (flip const) (0::W)                    )])
- ,("noacc/up",        [F  ({-# SCC "noacc/up" #-}       P.foldl (const.(+1)) (0::W) . (P.map (+1) . P.filter (/=110))     )])
+ ,("noacc/up",        [F  ({-# SCC "noacc/up" #-}       P.foldl' (const.(+1)) (0::W) . (P.map (+1) . P.filter (/=110))    )])
  ,("up/noacc",        [F  ({-# SCC "up/noacc" #-}       (P.map (+1) . P.filter (/=111)) . P.scanl (flip const) (0::W)     )])
 
-#if !defined(LOOPU_FUSION)
 -- down loops
- ,("down/down",       [F  ({-# SCC "down/down"  #-}     P.foldr (const.(+9))  (0::W) . P.scanr const (0::W)               )])
- ,("map/down",        [F  ({-# SCC "map/down"   #-}     P.foldr (const.(+10)) (0::W) . P.map (*2)                         )])
+ ,("down/down",       [F  ({-# SCC "down/down"  #-}     P.foldr (const (+9))  (0::W) . P.scanr const (0::W)              )])
+ ,("map/down",        [F  ({-# SCC "map/down"   #-}     P.foldr (const (+10)) (0::W) . P.map (*2)                        )])
  ,("down/map",        [F  ({-# SCC "down/map"   #-}     P.map (*2) . P.scanr const (0::W)                                 )])
- ,("filter/down",     [F  ({-# SCC "filter/down"#-}     P.foldr (const.(+11)) (0::W) . P.filter (/=106)                   )])
+ ,("filter/down",     [F  ({-# SCC "filter/down"#-}     P.foldr (const (+11)) (0::W) . P.filter (/=106)                  )])
  ,("down/filter",     [F  ({-# SCC "down/filter"#-}     P.filter (/=107) . P.scanr const (0::W)                           )])
- ,("noacc/down",      [F  ({-# SCC "noacc/down" #-}     P.foldr (const.(+1)) (0::W) . (P.map (+1) . P.filter (/=116))     )])
+ ,("noacc/down",      [F  ({-# SCC "noacc/down" #-}     P.foldr (const (+1)) (0::W) . (P.map (+1) . P.filter (/=116))    )])
  ,("down/noacc",      [F  ({-# SCC "down/noacc" #-}     (P.map (+1) . P.filter (/=101)) . P.scanr const (0::W)            )])
 
 -- misc
  ,("length/loop",     [F  ({-# SCC "length/loop"#-}     P.length  . P.filter (/=105)                                      )])
  ,("maximum/loop",    [F  ({-# SCC "maximum/map"#-}     P.maximum . P.map (*4)                                            )])
  ,("minimum/loop",    [F  ({-# SCC "minimum/map"#-}     P.minimum . P.map (+6)                                            )])
-#endif
+
  ]
 
 -- and some longer ones to see the full effect
@@ -67,5 +66,5 @@ main = do
     force (fps,fps')
     printf "# Size of test data: %dk\n" ((floor $ (fromIntegral (P.length fps)) / 1024) :: Int)
     printf "#Byte\n"
-    run 11 fps (tests ++ bigtests)
+    run 5 fps (tests ++ bigtests)
 
