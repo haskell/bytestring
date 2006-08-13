@@ -189,6 +189,7 @@ module Data.ByteString.Lazy (
         hPut,                   -- :: Handle -> ByteString -> IO ()
         hGetNonBlocking,        -- :: Handle -> IO ByteString
         hGetNonBlockingN,       -- :: Int -> Handle -> IO ByteString
+#endif
 
   ) where
 
@@ -1166,6 +1167,7 @@ hGetN k h n = readChunks n >>= return . LPS
             m -> do pss <- readChunks (i - m)
                     return (ps : pss)
 
+#if defined(__GLASGOW_HASKELL__)
 -- | hGetNonBlockingN is similar to 'hGetContentsN', except that it will never block
 -- waiting for data to become available, instead it returns only whatever data
 -- is available. Chunks are read on demand, in @k@-sized chunks.
