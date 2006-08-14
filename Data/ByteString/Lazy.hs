@@ -189,7 +189,7 @@ module Data.ByteString.Lazy (
         hPut,                   -- :: Handle -> ByteString -> IO ()
         hGetNonBlocking,        -- :: Handle -> IO ByteString
         hGetNonBlockingN,       -- :: Int -> Handle -> IO ByteString
-#endif
+        hGetSomeContentsN,      -- :: Int -> Handle -> IO ByteString
 
   ) where
 
@@ -1167,7 +1167,19 @@ hGetN k h n = readChunks n >>= return . LPS
             m -> do pss <- readChunks (i - m)
                     return (ps : pss)
 
-#if defined(__GLASGOW_HASKELL__)
+-- | Read entire handle contents /lazily/ into a 'ByteString'. Chunks
+-- are read on demand, in @k@-sized chunks, but data is produced as soon
+-- as availible
+hGetSomeContentsN :: Int -> Handle -> IO ByteString
+hGetSomeContentsN k h = lazyRead >>= return . LPS
+  where
+    lazyRead = unsafeInterleaveIO $ do
+        ps <- P.hGetSome h k
+        case P.length ps of
+            0         -> return []
+            _         -> do pss <- lazyRead
+                            return (ps : pss)
+
 -- | hGetNonBlockingN is similar to 'hGetContentsN', except that it will never block
 -- waiting for data to become available, instead it returns only whatever data
 -- is available. Chunks are read on demand, in @k@-sized chunks.

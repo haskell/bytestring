@@ -212,6 +212,8 @@ module Data.ByteString (
         hGetLines,              -- :: Handle -> IO [ByteString]
         hGetContents,           -- :: Handle -> IO ByteString
         hGet,                   -- :: Handle -> Int -> IO ByteString
+        hGetNonBlocking,        -- :: Handle -> Int -> IO ByteString
+        hGetSome,               -- :: Handle -> Int -> IO ByteString
         hPut,                   -- :: Handle -> ByteString -> IO ()
         hPutStr,                -- :: Handle -> ByteString -> IO ()
         hPutStrLn,              -- :: Handle -> ByteString -> IO ()
@@ -259,7 +261,7 @@ import Foreign.Storable         (Storable(..))
 -- hGetBuf and hPutBuf not available in yhc or nhc
 import System.IO                (stdin,stdout,hClose,hFileSize,hIsEOF
                                 ,hGetBuf,hPutBuf,openBinaryFile
-                                ,Handle,IOMode(..))
+                                ,Handle,IOMode(..),hWaitForInput)
 
 import Data.Monoid              (Monoid, mempty, mappend, mconcat)
 
@@ -1854,7 +1856,15 @@ hGet :: Handle -> Int -> IO ByteString
 hGet _ 0 = return empty
 hGet h i = createAndTrim i $ \p -> hGetBuf h p i
 
-#if defined(__GLASGOW_HASKELL__)
+-- | Like 'hGet', but returns any amount of data, blocking if no data is ready
+-- to read
+hGetSome :: Handle -> Int -> IO ByteString
+hGetSome h i = do
+  Exception.catch (do hWaitForInput h (0-1)
+                      result <- hGetNonBlocking h i
+                      return result)
+                  (\_ -> return empty)
+
 -- | hGetNonBlocking is identical to 'hGet', except that it will never block
 -- waiting for data to become available, instead it returns only whatever data
 -- is available.
