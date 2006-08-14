@@ -394,7 +394,7 @@ null (_)      = False  -- TODO: guarantee this invariant is maintained
 
 -- | /O(n\/c)/ 'length' returns the length of a ByteString as an 'Int64'
 length :: ByteString -> Int64
-length (LPS ss) = L.sum (L.map (fromIntegral.P.length) ss)
+length (LPS ss) = L.foldl' (\n ps -> n + fromIntegral (P.length ps)) 0 ss
 
 -- avoid the intermediate list?
 -- length (LPS ss) = L.foldl lengthF 0 ss
@@ -471,7 +471,13 @@ map f = LPS . P.loopArr . loopL (P.mapEFL f) P.NoAcc . unLPS
 
 -- | /O(n)/ 'reverse' @xs@ efficiently returns the elements of @xs@ in reverse order.
 reverse :: ByteString -> ByteString
-reverse (LPS xs) = LPS (L.reverse . L.map P.reverse $ xs)
+reverse (LPS ps) = LPS (rev [] ps)
+  where rev a []     = a
+        rev a (x:xs) = rev (P.reverse x:a) xs
+-- note, here is one example where the extra element lazyness is an advantage.
+-- we can reerse the list of chunks strictly but reverse each chunk lazily
+-- so while we may force the whole lot into memory we do not need to copy
+-- each chunk until it is used.
 {-# INLINE reverse #-}
 
 -- The 'intersperse' function takes a 'Word8' and a 'ByteString' and
@@ -565,14 +571,14 @@ all f (LPS xs) = L.and (L.map (P.all f) xs)
 
 -- | /O(n)/ 'maximum' returns the maximum value from a 'ByteString'
 maximum :: ByteString -> Word8
-maximum (LPS []) = errorEmptyList "maximum"
-maximum (LPS xs) = L.maximum (L.map P.maximum xs)
+maximum (LPS [])     = errorEmptyList "maximum"
+maximum (LPS (x:xs)) = L.foldl' (\n ps -> n `max` P.maximum ps) (P.maximum x) xs
 {-# INLINE maximum #-}
 
 -- | /O(n)/ 'minimum' returns the minimum value from a 'ByteString'
 minimum :: ByteString -> Word8
-minimum (LPS []) = errorEmptyList "minimum"
-minimum (LPS xs) = L.minimum (L.map P.minimum xs)
+minimum (LPS [])     = errorEmptyList "minimum"
+minimum (LPS (x:xs)) = L.foldl' (\n ps -> n `min` P.minimum ps) (P.minimum x) xs
 {-# INLINE minimum #-}
 
 -- | The 'mapAccumL' function behaves like a combination of 'map' and
@@ -973,7 +979,7 @@ elemIndices c (LPS ps) = elemIndices' 0 ps
 --
 -- But more efficiently than using length on the intermediate list.
 count :: Word8 -> ByteString -> Int64
-count w (LPS xs) = L.sum (L.map (fromIntegral . P.count w) xs)
+count w (LPS xs) = L.foldl' (\n ps -> n + fromIntegral (P.count w ps)) 0 xs
 
 -- | The 'findIndex' function takes a predicate and a 'ByteString' and
 -- returns the index of the first element in the ByteString
