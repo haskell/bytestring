@@ -1033,6 +1033,7 @@ prop_down_filter_loop_fusion f1 f2 acc1 acc2 xs =
 
 ------------------------------------------------------------------------
 
+{-
 prop_length_loop_fusion_1 f1 acc1 xs =
   P.length  (loopArr (loopWrapper (doUpLoop f1 acc1) xs)) ==
   P.lengthU (loopArr (loopWrapper (doUpLoop f1 acc1) xs))
@@ -1052,6 +1053,7 @@ prop_length_loop_fusion_4 f1 acc1 xs =
   P.length  (loopArr (loopWrapper (doFilterLoop f1 acc1) xs)) ==
   P.lengthU (loopArr (loopWrapper (doFilterLoop f1 acc1) xs))
   where _ = acc1 :: Int
+-}
 
 prop_zipwith_spec f p q =
   P.pack (P.zipWith f p q) == P.zipWith' f p q
@@ -1462,10 +1464,12 @@ fusion_tests =
     ,("filter/down   loop fusion",    mytest prop_filter_down_fusion)
     ,("down/filter   loop fusion",    mytest prop_down_filter_loop_fusion)
 
+{-
     ,("length/loop   fusion",          mytest prop_length_loop_fusion_1)
     ,("length/loop   fusion",          mytest prop_length_loop_fusion_2)
     ,("length/loop   fusion",          mytest prop_length_loop_fusion_3)
     ,("length/loop   fusion",          mytest prop_length_loop_fusion_4)
+-}
 
     ,("zipwith/spec",                  mytest prop_zipwith_spec)
     ]
