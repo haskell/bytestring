@@ -443,7 +443,7 @@ last (LPS []) = errorEmptyList "last"
 last (LPS xs) = P.last (L.last xs)
 {-# INLINE last #-}
 
--- | /O(1)/ Return all the elements of a 'ByteString' except the last one.
+-- | /O(n\/c)/ Return all the elements of a 'ByteString' except the last one.
 init :: ByteString -> ByteString
 init (LPS []) = errorEmptyList "init"
 init (LPS xs)
