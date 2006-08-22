@@ -143,8 +143,6 @@ module Data.ByteString.Char8 (
 
         -- ** Joining strings
         join,                   -- :: ByteString -> [ByteString] -> ByteString
-        joinWithChar,           -- :: Char -> ByteString -> ByteString -> ByteString
-
 
         -- ** Searching for substrings
         isPrefixOf,             -- :: ByteString -> ByteString -> Bool
@@ -643,12 +641,14 @@ tokens f = B.tokens (f . w2c)
 groupBy :: (Char -> Char -> Bool) -> ByteString -> [ByteString]
 groupBy k = B.groupBy (\a b -> k (w2c a) (w2c b))
 
+{-
 -- | /O(n)/ joinWithChar. An efficient way to join to two ByteStrings with a
 -- char. Around 4 times faster than the generalised join.
 --
 joinWithChar :: Char -> ByteString -> ByteString -> ByteString
 joinWithChar = B.joinWithByte . c2w
 {-# INLINE joinWithChar #-}
+-}
 
 -- | /O(1)/ 'ByteString' index (subscript) operator, starting from 0.
 index :: ByteString -> Int -> Char

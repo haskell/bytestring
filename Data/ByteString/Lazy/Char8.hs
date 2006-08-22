@@ -117,7 +117,6 @@ module Data.ByteString.Lazy.Char8 (
 
         -- ** Joining strings
         join,                   -- :: ByteString -> [ByteString] -> ByteString
-        joinWithChar,           -- :: Char -> ByteString -> ByteString -> ByteString
 
         -- * Predicates
         isPrefixOf,             -- :: ByteString -> ByteString -> Bool
@@ -465,13 +464,6 @@ tokens f = L.tokens (f . w2c)
 -- | The 'groupBy' function is the non-overloaded version of 'group'.
 groupBy :: (Char -> Char -> Bool) -> ByteString -> [ByteString]
 groupBy k = L.groupBy (\a b -> k (w2c a) (w2c b))
-
--- | /O(n)/ joinWithChar. An efficient way to join to two ByteStrings with a
--- char. Around 4 times faster than the generalised join.
---
-joinWithChar :: Char -> ByteString -> ByteString -> ByteString
-joinWithChar = L.joinWithByte . c2w
-{-# INLINE joinWithChar #-}
 
 -- | /O(1)/ 'ByteString' index (subscript) operator, starting from 0.
 index :: ByteString -> Int64 -> Char

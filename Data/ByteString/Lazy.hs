@@ -133,7 +133,6 @@ module Data.ByteString.Lazy (
 
         -- ** Joining strings
         join,                   -- :: ByteString -> [ByteString] -> ByteString
-        joinWithByte,           -- :: Word8 -> ByteString -> ByteString -> ByteString
 
         -- * Predicates
         isPrefixOf,             -- :: ByteString -> ByteString -> Bool
@@ -714,7 +713,7 @@ takeWhile :: (Word8 -> Bool) -> ByteString -> ByteString
 takeWhile f (LPS ps) = LPS (takeWhile' ps)
   where takeWhile' []     = []
         takeWhile' (x:xs) =
-          case P.findIndexOrEnd (not . f) x of
+          case findIndexOrEnd (not . f) x of
             0                  -> []
             n | n < P.length x -> P.take n x : []
               | otherwise      -> x : takeWhile' xs
@@ -724,7 +723,7 @@ dropWhile :: (Word8 -> Bool) -> ByteString -> ByteString
 dropWhile f (LPS ps) = LPS (dropWhile' ps)
   where dropWhile' []     = []
         dropWhile' (x:xs) =
-          case P.findIndexOrEnd (not . f) x of
+          case findIndexOrEnd (not . f) x of
             n | n < P.length x -> P.drop n x : xs
               | otherwise      -> dropWhile' xs
 
@@ -733,7 +732,7 @@ break :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
 break f (LPS ps) = case (break' ps) of (a,b) -> (LPS a, LPS b)
   where break' []     = ([], [])
         break' (x:xs) =
-          case P.findIndexOrEnd f x of
+          case findIndexOrEnd f x of
             0                  -> ([], x : xs)
             n | n < P.length x -> (P.take n x : [], P.drop n x : xs)
               | otherwise      -> let (xs', xs'') = break' xs
@@ -899,12 +898,6 @@ groupBy k xs
 -- argument between each element of the list.
 join :: ByteString -> [ByteString] -> ByteString
 join s = concat . (L.intersperse s)
-
--- | /O(n)/ joinWithByte. An efficient way to join to two ByteStrings
--- with a char.
---
-joinWithByte :: Word8 -> ByteString -> ByteString -> ByteString
-joinWithByte c x y = append x (cons c y)
 
 -- ---------------------------------------------------------------------
 -- Indexing ByteStrings
@@ -1284,3 +1277,16 @@ filterMap f (x:xs) = case f x of
                       | otherwise -> y : filterMap f xs
 {-# INLINE filterMap #-}
 
+
+-- | 'findIndexOrEnd' is a variant of findIndex, that returns the length
+-- of the string if no element is found, rather than Nothing.
+findIndexOrEnd :: (Word8 -> Bool) -> ByteString -> Int
+findIndexOrEnd k (PS x s l) = inlinePerformIO $ withForeignPtr x $ \f -> go (f `plusPtr` s) 0
+  where
+    STRICT2(go)
+    go ptr n | n >= l    = return l
+             | otherwise = do w <- peek ptr
+                              if k w
+                                then return n
+                                else go (ptr `plusPtr` 1) (n+1)
+{-# INLINE findIndexOrEnd #-}

@@ -130,7 +130,6 @@ module Data.ByteString (
 
         -- ** Joining strings
         join,                   -- :: ByteString -> [ByteString] -> ByteString
-        joinWithByte,           -- :: Word8 -> ByteString -> ByteString -> ByteString
 
         -- * Predicates
         isPrefixOf,             -- :: ByteString -> ByteString -> Bool
@@ -1210,6 +1209,7 @@ join :: ByteString -> [ByteString] -> ByteString
 join s = concat . (List.intersperse s)
 {-# INLINE join #-}
 
+{-
 --
 -- | /O(n)/ joinWithByte. An efficient way to join to two ByteStrings
 -- with a char. Around 4 times faster than the generalised join.
@@ -1224,6 +1224,7 @@ joinWithByte c f@(PS ffp s l) g@(PS fgp t m) = unsafeCreate len $ \ptr ->
     where
       len = length f + length g + 1
 {-# INLINE joinWithByte #-}
+-}
 
 -- ---------------------------------------------------------------------
 -- Indexing ByteStrings
