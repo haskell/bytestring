@@ -116,7 +116,6 @@ module Data.ByteString.Char8 (
         -- ** Breaking into many substrings
         split,                  -- :: Char -> ByteString -> [ByteString]
         splitWith,              -- :: (Char -> Bool) -> ByteString -> [ByteString]
-        tokens,                 -- :: (Char -> Bool) -> ByteString -> [ByteString]
 
         -- ** Breaking into lines and words
         lines,                  -- :: ByteString -> [ByteString]
@@ -609,6 +608,7 @@ splitWith f = B.splitWith (f . w2c)
 {-# INLINE splitWith #-}
 -- the inline makes a big difference here.
 
+{-
 -- | Like 'splitWith', except that sequences of adjacent separators are
 -- treated as a single separator. eg.
 -- 
@@ -617,6 +617,7 @@ splitWith f = B.splitWith (f . w2c)
 tokens :: (Char -> Bool) -> ByteString -> [ByteString]
 tokens f = B.tokens (f . w2c)
 {-# INLINE tokens #-}
+-}
 
 -- | The 'groupBy' function is the non-overloaded version of 'group'.
 groupBy :: (Char -> Char -> Bool) -> ByteString -> [ByteString]

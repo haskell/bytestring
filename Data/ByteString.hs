@@ -122,7 +122,6 @@ module Data.ByteString (
         -- ** Breaking into many substrings
         split,                  -- :: Word8 -> ByteString -> [ByteString]
         splitWith,              -- :: (Word8 -> Bool) -> ByteString -> [ByteString]
-        tokens,                 -- :: (Word8 -> Bool) -> ByteString -> [ByteString]
 
         -- ** Joining strings
         join,                   -- :: ByteString -> [ByteString] -> ByteString
@@ -1178,6 +1177,7 @@ split (W8# w#) (PS fp off len) = splitWith' off len fp
                    else splitLoop p (idx'+1) off' len' fp'
 -}
 
+{-
 -- | Like 'splitWith', except that sequences of adjacent separators are
 -- treated as a single separator. eg.
 -- 
@@ -1186,6 +1186,7 @@ split (W8# w#) (PS fp off len) = splitWith' off len fp
 tokens :: (Word8 -> Bool) -> ByteString -> [ByteString]
 tokens f = P.filter (not.null) . splitWith f
 {-# INLINE tokens #-}
+-}
 
 -- | The 'group' function takes a ByteString and returns a list of
 -- ByteStrings such that the concatenation of the result is equal to the
