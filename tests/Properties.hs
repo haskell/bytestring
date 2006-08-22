@@ -236,7 +236,7 @@ prop_maximumPL    = P.maximum   `eqnotnull1` (maximum   :: [W] -> W)
 prop_minimumPL    = P.minimum   `eqnotnull1` (minimum   :: [W] -> W)
 prop_tailPL       = P.tail      `eqnotnull1` (tail      :: [W] -> [W])
 
-prop_zipWithPL'   = P.zipWith'  `eq3` (zipWith :: (W -> W -> W) -> [W] -> [W] -> [W])
+-- prop_zipWithPL'   = P.zipWith'  `eq3` (zipWith :: (W -> W -> W) -> [W] -> [W] -> [W])
 
 prop_zipWithPL    = (P.zipWith  :: (W -> W -> X) -> P   -> P   -> [X]) `eq3`
                       (zipWith  :: (W -> W -> X) -> [W] -> [W] -> [X])
@@ -418,9 +418,9 @@ prop_breakspan xs c = L.break (==c) xs == L.span (/=c) xs
 
 prop_span xs a = (span (/=a) xs) == (let (x,y) = L.span (/=a) (pack xs) in (unpack x, unpack y))
 
-prop_breakByte xs c = L.break (== c) xs == L.breakByte c xs
+-- prop_breakByte xs c = L.break (== c) xs == L.breakByte c xs
 
-prop_spanByte c xs = (L.span (==c) xs) == L.spanByte c xs
+-- prop_spanByte c xs = (L.span (==c) xs) == L.spanByte c xs
 
 prop_split c xs = (map L.unpack . map checkInvariant . L.split c $ xs)
                == (map P.unpack . P.split c . P.pack . L.unpack $ xs)
@@ -436,7 +436,7 @@ prop_joinsplit c xs = L.join (pack [c]) (L.split c xs) == id xs
 prop_group xs       = group xs == (map unpack . L.group . pack) xs
 -- prop_groupBy  f xs  = groupBy f xs == (map unpack . L.groupBy f . pack) xs
 
-prop_joinjoinByte xs ys c = L.joinWithByte c xs ys == L.join (L.singleton c) [xs,ys]
+-- prop_joinjoinByte xs ys c = L.joinWithByte c xs ys == L.join (L.singleton c) [xs,ys]
 
 prop_index xs =
   not (null xs) ==>
@@ -566,17 +566,17 @@ prop_splitWithBB f xs = (l1 == l2 || l1 == l2+1) &&
 
 prop_joinsplitBB c xs = P.join (P.pack [c]) (P.split c xs) == xs
 
-prop_linessplitBB xs =
-    (not . C.null) xs ==>
-    C.lines' xs == C.split '\n' xs
+-- prop_linessplitBB xs =
+--     (not . C.null) xs ==>
+--     C.lines' xs == C.split '\n' xs
 
 prop_linessplit2BB xs =
     C.lines xs == C.split '\n' xs ++ (if C.last xs == '\n' then [C.empty] else [])
 
 prop_splitsplitWithBB c xs = P.split c xs == P.splitWith (== c) xs
 
-prop_bijectionBB  c = (C.w2c . C.c2w) c == id c
-prop_bijectionBB' w = (C.c2w . C.w2c) w == id w
+prop_bijectionBB  c = (P.w2c . P.c2w) c == id c
+prop_bijectionBB' w = (P.c2w . P.w2c) w == id w
 
 prop_packunpackBB  s = (P.unpack . P.pack) s == id s
 prop_packunpackBB' s = (P.pack . P.unpack) s == id s
@@ -732,7 +732,7 @@ prop_joinBB xs ys = (concat . (intersperse ys) . lines) xs ==
 prop_elemIndex1BB xs   = (elemIndex 'X' xs) == (C.elemIndex 'X' (C.pack xs))
 prop_elemIndex2BB xs c = (elemIndex c xs) == (C.elemIndex c (C.pack xs))
 
-prop_lineIndices1BB xs = C.elemIndices '\n' xs == C.lineIndices xs
+-- prop_lineIndices1BB xs = C.elemIndices '\n' xs == C.lineIndices xs
 
 prop_countBB c xs = length (P.elemIndices c xs) == P.count c xs
 
@@ -770,13 +770,13 @@ prop_transposeBB xs = (transpose xs) == ((map P.unpack) . P.transpose .  (map P.
 prop_maximumBB xs = (not (null xs)) ==> (maximum xs) == (P.maximum ( P.pack xs ))
 prop_minimumBB xs = (not (null xs)) ==> (minimum xs) == (P.minimum ( P.pack xs ))
 
-prop_dropSpaceBB xs    = dropWhile isSpace xs == C.unpack (C.dropSpace (C.pack xs))
-prop_dropSpaceEndBB xs = (C.reverse . (C.dropWhile isSpace) . C.reverse) (C.pack xs) ==
-                       (C.dropSpaceEnd (C.pack xs))
+-- prop_dropSpaceBB xs    = dropWhile isSpace xs == C.unpack (C.dropSpace (C.pack xs))
+-- prop_dropSpaceEndBB xs = (C.reverse . (C.dropWhile isSpace) . C.reverse) (C.pack xs) ==
+--                        (C.dropSpaceEnd (C.pack xs))
 
-prop_breakSpaceBB xs =
-    (let (x,y) = C.breakSpace (C.pack xs)
-     in (C.unpack x, C.unpack y)) == (break isSpace xs)
+-- prop_breakSpaceBB xs =
+--     (let (x,y) = C.breakSpace (C.pack xs)
+--      in (C.unpack x, C.unpack y)) == (break isSpace xs)
 
 prop_spanEndBB xs =
         (C.spanEnd (not . isSpace) (C.pack xs)) ==
@@ -784,6 +784,7 @@ prop_spanEndBB xs =
 
 prop_breakEndBB p xs = P.breakEnd (not.p) xs == P.spanEnd p xs
 
+{-
 prop_breakCharBB c xs =
         (break (==c) xs) ==
         (let (x,y) = C.breakChar c (C.pack xs) in (C.unpack x, C.unpack y))
@@ -799,7 +800,8 @@ prop_wordsBB' xs =
     (C.unpack . C.unwords  . C.words' . C.pack) xs ==
     (map (\c -> if isSpace c then ' ' else c) xs)
 
-prop_linesBB' xs = (C.unpack . C.unlines' . C.lines' . C.pack) xs == (xs)
+-- prop_linesBB' xs = (C.unpack . C.unlines' . C.lines' . C.pack) xs == (xs)
+-}
 
 prop_unfoldrBB c n =
     (fst $ C.unfoldrN n fn c) == (C.pack $ take n $ unfoldr fn c)
@@ -847,13 +849,13 @@ prop_readint2BB s =
 -- prop_filterNotChar1BB c xs = (filter (/=c) xs) == ((C.unpack . C.filterNotChar c . C.pack) xs)
 -- prop_filterNotChar2BB c xs = (C.filter (/=c) (C.pack xs)) == (C.filterNotChar c (C.pack xs))
 
-prop_joinjoinpathBB xs ys c = C.joinWithChar c xs ys == C.join (C.singleton c) [xs,ys]
+-- prop_joinjoinpathBB xs ys c = C.joinWithChar c xs ys == C.join (C.singleton c) [xs,ys]
 
 prop_zipBB  xs ys = zip xs ys == P.zip (P.pack xs) (P.pack ys)
 prop_zip1BB xs ys = P.zip xs ys == zip (P.unpack xs) (P.unpack ys)
 
 prop_zipWithBB xs ys = P.zipWith (,) xs ys == P.zip xs ys
-prop_zipWith'BB xs ys = P.pack (P.zipWith (+) xs ys) == P.zipWith' (+) xs ys
+-- prop_zipWith'BB xs ys = P.pack (P.zipWith (+) xs ys) == P.zipWith' (+) xs ys
 
 prop_unzipBB x = let (xs,ys) = unzip x in (P.pack xs, P.pack ys) == P.unzip x
 
@@ -1055,9 +1057,9 @@ prop_length_loop_fusion_4 f1 acc1 xs =
   where _ = acc1 :: Int
 -}
 
-prop_zipwith_spec f p q =
-  P.pack (P.zipWith f p q) == P.zipWith' f p q
-  where _ = f :: Word8 -> Word8 -> Word8
+-- prop_zipwith_spec f p q =
+--   P.pack (P.zipWith f p q) == P.zipWith' f p q
+--   where _ = f :: Word8 -> Word8 -> Word8
 
 ------------------------------------------------------------------------
 -- The entry point
@@ -1236,7 +1238,7 @@ pl_tests =
     ,("zip",         mytest prop_zipPL)
     ,("unzip",       mytest prop_unzipPL)
     ,("zipWith",          mytest prop_zipWithPL)
-    ,("zipWith/zipWith'", mytest prop_zipWithPL')
+--     ,("zipWith/zipWith'", mytest prop_zipWithPL')
 
     ,("isPrefixOf",  mytest prop_isPrefixOfPL)
     ,("length",      mytest prop_lengthPL)
@@ -1362,18 +1364,18 @@ bb_tests =
     ,    ("intersperse",    mytest prop_intersperseBB)
     ,    ("maximum",        mytest prop_maximumBB)
     ,    ("minimum",        mytest prop_minimumBB)
-    ,    ("breakChar",      mytest prop_breakCharBB)
-    ,    ("spanChar 1",     mytest prop_spanCharBB)
-    ,    ("spanChar 2",     mytest prop_spanChar_1BB)
-    ,    ("breakSpace",     mytest prop_breakSpaceBB)
-    ,    ("dropSpace",      mytest prop_dropSpaceBB)
+--  ,    ("breakChar",      mytest prop_breakCharBB)
+--  ,    ("spanChar 1",     mytest prop_spanCharBB)
+--  ,    ("spanChar 2",     mytest prop_spanChar_1BB)
+--  ,    ("breakSpace",     mytest prop_breakSpaceBB)
+--  ,    ("dropSpace",      mytest prop_dropSpaceBB)
     ,    ("spanEnd",        mytest prop_spanEndBB)
     ,    ("breakEnd",       mytest prop_breakEndBB)
     ,    ("elemIndexEnd 1",mytest prop_elemIndexEnd1BB)
     ,    ("elemIndexEnd 2",mytest prop_elemIndexEnd2BB)
-    ,    ("words'",         mytest prop_wordsBB')
-    ,    ("lines'",         mytest prop_linesBB')
-    ,    ("dropSpaceEnd",   mytest prop_dropSpaceEndBB)
+--  ,    ("words'",         mytest prop_wordsBB')
+--     ,    ("lines'",         mytest prop_linesBB')
+--  ,    ("dropSpaceEnd",   mytest prop_dropSpaceEndBB)
     ,    ("unfoldr",        mytest prop_unfoldrBB)
     ,    ("prefix",         mytest prop_prefixBB)
     ,    ("suffix",         mytest prop_suffixBB)
@@ -1415,15 +1417,15 @@ bb_tests =
     ,    ("wordstokens",    mytest prop_wordstokensBB)
     ,    ("splitWith",      mytest prop_splitWithBB)
     ,    ("joinsplit",      mytest prop_joinsplitBB)
-    ,    ("lineIndices",    mytest prop_lineIndices1BB)
+--     ,    ("lineIndices",    mytest prop_lineIndices1BB)
     ,    ("count",          mytest prop_countBB)
-    ,    ("linessplit",     mytest prop_linessplitBB)
+--  ,    ("linessplit",     mytest prop_linessplitBB)
     ,    ("splitsplitWith", mytest prop_splitsplitWithBB)
-    ,    ("joinjoinpath",   mytest prop_joinjoinpathBB)
+--  ,    ("joinjoinpath",   mytest prop_joinjoinpathBB)
     ,    ("zip",            mytest prop_zipBB)
     ,    ("zip1",           mytest prop_zip1BB)
     ,    ("zipWith",        mytest prop_zipWithBB)
-    ,    ("zipWith'",       mytest prop_zipWith'BB)
+--     ,    ("zipWith'",       mytest prop_zipWith'BB)
     ,    ("unzip",          mytest prop_unzipBB)
     ,    ("concatMap",      mytest prop_concatMapBB)
     ]
@@ -1471,7 +1473,7 @@ fusion_tests =
     ,("length/loop   fusion",          mytest prop_length_loop_fusion_4)
 -}
 
-    ,("zipwith/spec",                  mytest prop_zipwith_spec)
+--  ,("zipwith/spec",                  mytest prop_zipwith_spec)
     ]
 
 
@@ -1549,12 +1551,12 @@ ll_tests =
     ,("break",              mytest prop_break)
     ,("span",               mytest prop_span)
     ,("break/span",         mytest prop_breakspan)
-    ,("break/breakByte",    mytest prop_breakByte)
-    ,("span/spanByte",      mytest prop_spanByte)
+--     ,("break/breakByte",    mytest prop_breakByte)
+--     ,("span/spanByte",      mytest prop_spanByte)
     ,("split",              mytest prop_split)
     ,("splitWith",          mytest prop_splitWith)
     ,("join.split/id",      mytest prop_joinsplit)
-    ,("join/joinByte",      mytest prop_joinjoinByte)
+--  ,("join/joinByte",      mytest prop_joinjoinByte)
     ,("group",              mytest prop_group)
 --  ,("groupBy",            mytest prop_groupBy)
     ,("index",              mytest prop_index)
