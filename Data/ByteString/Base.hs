@@ -241,24 +241,20 @@ createAndTrim l f = do
     fp <- mallocByteString l
     withForeignPtr fp $ \p -> do
         l' <- f p
-        case l' of
-          0 -> return empty
-          _ | assert (l' <= l) $ l' < (4*1024) || l' >= l -- only trim > 4k
-                        -> return $! PS fp 0 l'
-            | otherwise -> create l' $ \p' -> memcpy p' p (fromIntegral l')
+        if assert (l' <= l) $ l' >= l
+            then return $! PS fp 0 l
+            else create l' $ \p' -> memcpy p' p (fromIntegral l')
 
 createAndTrim' :: Int -> (Ptr Word8 -> IO (Int, Int, a)) -> IO (ByteString, a)
 createAndTrim' l f = do
     fp <- mallocByteString l
     withForeignPtr fp $ \p -> do
         (off, l', res) <- f p
-        case l' of
-          0 -> return (empty, res)
-          _ | assert (l' <= l) $ l' < (4*1024) || l' >= l -- only trim > 4k
-                        -> return $! (PS fp 0 l', res)
-            | otherwise -> do ps <- create l' $ \p' ->
-                                memcpy p' (p `plusPtr` off) (fromIntegral l')
-                              return $! (ps, res)
+        if assert (l' <= l) $ l' >= l
+            then return $! (PS fp 0 l, res)
+            else do ps <- create l' $ \p' ->
+                            memcpy p' (p `plusPtr` off) (fromIntegral l')
+                    return $! (ps, res)
 
 -- | Wrapper of mallocForeignPtrBytes with faster implementation
 -- for GHC 6.5 builds newer than 06/06/06
