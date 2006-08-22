@@ -456,11 +456,11 @@ prop_elem    xs c = (c `elem` xs)    == (c `L.elem` (pack xs))
 prop_notElem xs c = (c `notElem` xs) == (L.notElem c (pack xs))
 prop_elem_notelem xs c = c `L.elem` xs == not (c `L.notElem` xs)
 
-prop_filterByte  xs c = L.filterByte c xs == L.filter (==c) xs
-prop_filterByte2 xs c = unpack (L.filterByte c xs) == filter (==c) (unpack xs)
+-- prop_filterByte  xs c = L.filterByte c xs == L.filter (==c) xs
+-- prop_filterByte2 xs c = unpack (L.filterByte c xs) == filter (==c) (unpack xs)
 
-prop_filterNotByte  xs c = L.filterNotByte c xs == L.filter (/=c) xs
-prop_filterNotByte2 xs c = unpack (L.filterNotByte c xs) == filter (/=c) (unpack xs)
+-- prop_filterNotByte  xs c = L.filterNotByte c xs == L.filter (/=c) xs
+-- prop_filterNotByte2 xs c = unpack (L.filterNotByte c xs) == filter (/=c) (unpack xs)
 
 prop_find p xs = find p xs == L.find p (pack xs)
 
@@ -840,12 +840,12 @@ prop_readint2BB s =
     let s' = filter (\c -> c `notElem` ['0'..'9']) s
     in C.readInt (C.pack s') == Nothing
 
-prop_filterChar1BB c xs = (filter (==c) xs) == ((C.unpack . C.filterChar c . C.pack) xs)
-prop_filterChar2BB c xs = (C.filter (==c) (C.pack xs)) == (C.filterChar c (C.pack xs))
-prop_filterChar3BB c xs = C.filterChar c xs == C.replicate (C.count c xs) c
+-- prop_filterChar1BB c xs = (filter (==c) xs) == ((C.unpack . C.filterChar c . C.pack) xs)
+-- prop_filterChar2BB c xs = (C.filter (==c) (C.pack xs)) == (C.filterChar c (C.pack xs))
+-- prop_filterChar3BB c xs = C.filterChar c xs == C.replicate (C.count c xs) c
 
-prop_filterNotChar1BB c xs = (filter (/=c) xs) == ((C.unpack . C.filterNotChar c . C.pack) xs)
-prop_filterNotChar2BB c xs = (C.filter (/=c) (C.pack xs)) == (C.filterNotChar c (C.pack xs))
+-- prop_filterNotChar1BB c xs = (filter (/=c) xs) == ((C.unpack . C.filterNotChar c . C.pack) xs)
+-- prop_filterNotChar2BB c xs = (C.filter (/=c) (C.pack xs)) == (C.filterNotChar c (C.pack xs))
 
 prop_joinjoinpathBB xs ys c = C.joinWithChar c xs ys == C.join (C.singleton c) [xs,ys]
 
@@ -1387,11 +1387,11 @@ bb_tests =
     ,    ("readInt",        mytest prop_readintBB)
     ,    ("readInt 2",      mytest prop_readint2BB)
     ,    ("Lazy.readInt",   mytest prop_readintLL)
-    ,    ("filterChar1",    mytest prop_filterChar1BB)
-    ,    ("filterChar2",    mytest prop_filterChar2BB)
-    ,    ("filterChar3",    mytest prop_filterChar3BB)
-    ,    ("filterNotChar1", mytest prop_filterNotChar1BB)
-    ,    ("filterNotChar2", mytest prop_filterNotChar2BB)
+--  ,    ("filterChar1",    mytest prop_filterChar1BB)
+--  ,    ("filterChar2",    mytest prop_filterChar2BB)
+--  ,    ("filterChar3",    mytest prop_filterChar3BB)
+--  ,    ("filterNotChar1", mytest prop_filterNotChar1BB)
+--  ,    ("filterNotChar2", mytest prop_filterNotChar2BB)
     ,    ("tail",           mytest prop_tailSBB)
     ,    ("index",          mytest prop_indexBB)
     ,    ("unsafeIndex",    mytest prop_unsafeIndexBB)
@@ -1568,10 +1568,10 @@ ll_tests =
     ,("elem",               mytest prop_elem)
     ,("notElem",            mytest prop_notElem)
     ,("elem/notElem",       mytest prop_elem_notelem)
-    ,("filterByte 1",       mytest prop_filterByte)
-    ,("filterByte 2",       mytest prop_filterByte2)
-    ,("filterNotByte 1",    mytest prop_filterNotByte)
-    ,("filterNotByte 2",    mytest prop_filterNotByte2)
+--  ,("filterByte 1",       mytest prop_filterByte)
+--  ,("filterByte 2",       mytest prop_filterByte2)
+--  ,("filterNotByte 1",    mytest prop_filterNotByte)
+--  ,("filterNotByte 2",    mytest prop_filterNotByte2)
     ,("isPrefixOf",         mytest prop_isPrefixOf)
     ,("concatMap",          mytest prop_concatMap)
     ]

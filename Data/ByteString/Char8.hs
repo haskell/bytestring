@@ -221,7 +221,6 @@ module Data.ByteString.Char8 (
 
         -- ** I\/O with Handles
         hGetLine,               -- :: Handle -> IO ByteString
-        hGetLines,              -- :: Handle -> IO ByteString
         hGetNonBlocking,        -- :: Handle -> Int -> IO ByteString
         hGetContents,           -- :: Handle -> IO ByteString
         hGet,                   -- :: Handle -> Int -> IO ByteString

@@ -161,12 +161,10 @@ module Data.ByteString (
         findIndex,              -- :: (Word8 -> Bool) -> ByteString -> Maybe Int
         findIndices,            -- :: (Word8 -> Bool) -> ByteString -> [Int]
         count,                  -- :: Word8 -> ByteString -> Int
-        findIndexOrEnd,         -- :: (Word8 -> Bool) -> ByteString -> Int
 
         -- * Zipping and unzipping ByteStrings
         zip,                    -- :: ByteString -> ByteString -> [(Word8,Word8)]
         zipWith,                -- :: (Word8 -> Word8 -> c) -> ByteString -> ByteString -> [c]
-        zipWith',
         unzip,                  -- :: [(Word8,Word8)] -> (ByteString,ByteString)
 
         -- * Ordered ByteStrings
@@ -254,9 +252,9 @@ import Foreign.Ptr
 import Foreign.Storable         (Storable(..))
 
 -- hGetBuf and hPutBuf not available in yhc or nhc
-import System.IO                (stdin,stdout,hClose,hFileSize,hIsEOF
+import System.IO                (stdin,stdout,hClose,hFileSize
                                 ,hGetBuf,hPutBuf,openBinaryFile
-                                ,Handle,IOMode(..),hWaitForInput)
+                                ,Handle,IOMode(..))
 
 import Data.Monoid              (Monoid, mempty, mappend, mconcat)
 
@@ -367,11 +365,6 @@ cmp p1 p2 n len1 len2
 
 -- -----------------------------------------------------------------------------
 -- Introducing and eliminating 'ByteString's
-
--- | /O(1)/ The empty 'ByteString'
-empty :: ByteString
-empty = unsafeCreate 0 $ const $ return ()
-{-# NOINLINE empty #-}
 
 -- | /O(1)/ Convert a 'Word8' into a 'ByteString'
 singleton :: Word8 -> ByteString
@@ -1353,19 +1346,6 @@ findIndices p ps = loop 0 ps
                | p (unsafeHead qs) = n : loop (n+1) (unsafeTail qs)
                | otherwise         =     loop (n+1) (unsafeTail qs)
 
--- | 'findIndexOrEnd' is a variant of findIndex, that returns the length
--- of the string if no element is found, rather than Nothing.
-findIndexOrEnd :: (Word8 -> Bool) -> ByteString -> Int
-findIndexOrEnd k (PS x s l) = inlinePerformIO $ withForeignPtr x $ \f -> go (f `plusPtr` s) 0
-  where
-    STRICT2(go)
-    go ptr n | n >= l    = return l
-             | otherwise = do w <- peek ptr
-                              if k w
-                                then return n
-                                else go (ptr `plusPtr` 1) (n+1)
-{-# INLINE findIndexOrEnd #-}
-
 -- ---------------------------------------------------------------------
 -- Searching ByteStrings
 
@@ -1990,6 +1970,19 @@ mmap f = do
 
 -- ---------------------------------------------------------------------
 -- Internal utilities
+
+-- | 'findIndexOrEnd' is a variant of findIndex, that returns the length
+-- of the string if no element is found, rather than Nothing.
+findIndexOrEnd :: (Word8 -> Bool) -> ByteString -> Int
+findIndexOrEnd k (PS x s l) = inlinePerformIO $ withForeignPtr x $ \f -> go (f `plusPtr` s) 0
+  where
+    STRICT2(go)
+    go ptr n | n >= l    = return l
+             | otherwise = do w <- peek ptr
+                              if k w
+                                then return n
+                                else go (ptr `plusPtr` 1) (n+1)
+{-# INLINE findIndexOrEnd #-}
 
 -- | Perform an operation with a temporary ByteString
 withPtr :: ForeignPtr a -> (Ptr a -> IO b) -> b
