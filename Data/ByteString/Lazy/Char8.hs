@@ -100,10 +100,6 @@ module Data.ByteString.Lazy.Char8 (
         inits,                  -- :: ByteString -> [ByteString]
         tails,                  -- :: ByteString -> [ByteString]
 
-        -- ** Breaking and dropping on specific Chars
-        breakChar,              -- :: Char -> ByteString -> (ByteString, ByteString)
-        spanChar,               -- :: Char -> ByteString -> (ByteString, ByteString)
-
         -- ** Breaking into many substrings
         split,                  -- :: Char -> ByteString -> [ByteString]
         splitWith,              -- :: (Char -> Bool) -> ByteString -> [ByteString]
@@ -401,6 +397,7 @@ span :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
 span f = L.span (f . w2c)
 {-# INLINE span #-}
 
+{-
 -- | 'breakChar' breaks its ByteString argument at the first occurence
 -- of the specified Char. It is more efficient than 'break' as it is
 -- implemented with @memchr(3)@. I.e.
@@ -420,6 +417,11 @@ breakChar = L.breakByte . c2w
 spanChar :: Char -> ByteString -> (ByteString, ByteString)
 spanChar = L.spanByte . c2w
 {-# INLINE spanChar #-}
+-}
+
+--
+-- TODO, more rules for breakChar*
+--
 
 -- | /O(n)/ Break a 'ByteString' into pieces separated by the byte
 -- argument, consuming the delimiter. I.e.

@@ -113,13 +113,6 @@ module Data.ByteString.Char8 (
         inits,                  -- :: ByteString -> [ByteString]
         tails,                  -- :: ByteString -> [ByteString]
 
-        -- ** Breaking and dropping on specific Chars
-        breakChar,              -- :: Char -> ByteString -> (ByteString, ByteString)
-        spanChar,               -- :: Char -> ByteString -> (ByteString, ByteString)
-        breakSpace,             -- :: ByteString -> (ByteString,ByteString)
-        dropSpace,              -- :: ByteString -> ByteString
-        dropSpaceEnd,           -- :: ByteString -> ByteString
-
         -- ** Breaking into many substrings
         split,                  -- :: Char -> ByteString -> [ByteString]
         splitWith,              -- :: (Char -> Bool) -> ByteString -> [ByteString]
@@ -130,16 +123,6 @@ module Data.ByteString.Char8 (
         words,                  -- :: ByteString -> [ByteString]
         unlines,                -- :: [ByteString] -> ByteString
         unwords,                -- :: ByteString -> [ByteString]
-
-        lines',                 -- :: ByteString -> [ByteString]
-        unlines',               -- :: [ByteString] -> ByteString
-        linesCRLF',             -- :: ByteString -> [ByteString]
-        unlinesCRLF',           -- :: [ByteString] -> ByteString
-        words',                 -- :: ByteString -> [ByteString]
-        unwords',               -- :: ByteString -> [ByteString]
-
-        lineIndices,            -- :: ByteString -> [Int]
-        betweenLines,           -- :: ByteString -> ByteString -> ByteString -> Maybe (ByteString)
 
         -- ** Joining strings
         join,                   -- :: ByteString -> [ByteString] -> ByteString
@@ -178,10 +161,6 @@ module Data.ByteString.Char8 (
 
         -- * Ordered ByteStrings
         sort,                   -- :: ByteString -> ByteString
-
-        -- * Conversion
-        w2c,                    -- :: Word8 -> Char
-        c2w,                    -- :: Char  -> Word8
 
         -- * Reading from ByteStrings
         readInt,                -- :: ByteString -> Maybe Int
@@ -277,7 +256,7 @@ import Data.ByteString.Base (
 #if defined(__GLASGOW_HASKELL__)
                        ,packAddress, unsafePackAddress
 #endif
-                       ,c2w, w2c, unsafeTail, inlinePerformIO, isSpaceWord8
+                       ,c2w, w2c, unsafeTail, isSpaceWord8
                        )
 
 import qualified Data.List as List (intersperse)
@@ -576,6 +555,7 @@ breakEnd :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
 breakEnd f = B.breakEnd (f . w2c)
 {-# INLINE breakEnd #-}
 
+{-
 -- | 'breakChar' breaks its ByteString argument at the first occurence
 -- of the specified Char. It is more efficient than 'break' as it is
 -- implemented with @memchr(3)@. I.e.
@@ -595,6 +575,7 @@ breakChar = B.breakByte . c2w
 spanChar :: Char -> ByteString -> (ByteString, ByteString)
 spanChar = B.spanByte . c2w
 {-# INLINE spanChar #-}
+-}
 
 -- | /O(n)/ Break a 'ByteString' into pieces separated by the byte
 -- argument, consuming the delimiter. I.e.
@@ -787,17 +768,19 @@ unsafeHead :: ByteString -> Char
 unsafeHead  = w2c . B.unsafeHead
 {-# INLINE unsafeHead #-}
 
--- | Unsafe 'ByteString' index (subscript) operator, starting from 0, returning a Char.
--- This omits the bounds check, which means there is an accompanying
--- obligation on the programmer to ensure the bounds are checked in some
--- other way.
-unsafeIndex :: ByteString -> Int -> Char
-unsafeIndex = (w2c .) . B.unsafeIndex
-{-# INLINE unsafeIndex #-}
-
 -- ---------------------------------------------------------------------
 -- Things that depend on the encoding
 
+--
+-- TODO
+--
+-- RULES:
+--
+--  break isSpace == breakSpace 
+--  dropWhile isSpace == dropSpace
+--
+
+{-
 -- | 'breakSpace' returns the pair of ByteStrings when the argument is
 -- broken at the first whitespace byte. I.e.
 -- 
@@ -858,6 +841,11 @@ lastnonspace ptr n
     | n < 0     = return n
     | otherwise = do w <- peekElemOff ptr n
                      if isSpaceWord8 w then lastnonspace ptr (n-1) else return n
+-}
+
+-- 
+-- TODO more rules for the above
+--
 
 -- | 'lines' breaks a ByteString up into a list of ByteStrings at
 -- newline Chars. The resulting strings do not contain newlines.
@@ -870,13 +858,6 @@ lines ps
              Just n  -> take n ps : lines (drop (n+1) ps)
     where search = elemIndex '\n'
 {-# INLINE lines #-}
-
-{- Bogus rule, wrong if there's not \n at end of line
-
-"length.lines/count" 
-    P.length . lines = count '\n'
-
-  -}
 
 {-
 -- Just as fast, but more complex. Should be much faster, I thought.
@@ -916,95 +897,6 @@ words = B.tokens isSpaceWord8
 unwords :: [ByteString] -> ByteString
 unwords = join (singleton ' ')
 {-# INLINE unwords #-}
-
--- | /O(n)/ Indicies of newlines. Shorthand for 
---
--- > elemIndices '\n'
---
-lineIndices :: ByteString -> [Int]
-lineIndices = elemIndices '\n'
-{-# INLINE lineIndices #-}
-
--- | 'lines\'' behaves like 'lines', in that it breaks a ByteString on
--- newline Chars. However, unlike the Prelude functions, 'lines\'' and
--- 'unlines\'' correctly reconstruct lines that are missing terminating
--- newlines characters. I.e.
---
--- > unlines  (lines "a\nb\nc")  == "a\nb\nc\n"
--- > unlines' (lines' "a\nb\nc") == "a\nb\nc"
---
--- Note that this means:
---
--- > lines  "a\nb\nc\n" == ["a","b","c"]
--- > lines' "a\nb\nc\n" == ["a","b","c",""]
---
-lines' :: ByteString -> [ByteString]
-lines' ps = ps `seq` case elemIndex '\n' ps of
-     Nothing -> [ps]
-     Just n -> take n ps : lines' (drop (n+1) ps)
-
--- | 'linesCRLF\'' behaves like 'lines\'', but breaks on (\\cr?\\lf)
-linesCRLF' :: ByteString -> [ByteString]
-linesCRLF' ps = ps `seq` case elemIndex '\n' ps of
-     Nothing -> [ps]
-     Just 0  -> empty : linesCRLF' (drop 1 ps)
-     Just n  -> let k = if ps `unsafeIndex` (n-1) == '\r' then n-1 else n
-                in take k ps : linesCRLF' (drop (n+1) ps)
-
--- | 'unlines\'' behaves like 'unlines', except that it also correctly
--- retores lines that do not have terminating newlines (see the
--- description for 'lines\'').
---
-unlines' :: [ByteString] -> ByteString
-unlines' ss = concat $ intersperse_newlines ss
-    where intersperse_newlines (a:b:s) = a:newline: intersperse_newlines (b:s)
-          intersperse_newlines s = s
-          newline = singleton '\n'
-
--- | 'unlines\'' behaves like 'unlines', except that it also correctly
--- retores lines that do not have terminating newlines (see the
--- description for 'lines\''). Uses CRLF instead of LF.
---
-unlinesCRLF' :: [ByteString] -> ByteString
-unlinesCRLF' ss = concat $ intersperse_newlines ss
-    where intersperse_newlines (a:b:s) = a:newline: intersperse_newlines (b:s)
-          intersperse_newlines s = s
-          newline = pack "\r\n"
-
--- | 'words\'' behaves like 'words', with the exception that it produces
--- output on ByteStrings with trailing whitespace that can be
--- correctly inverted by 'unwords'. I.e.
---
--- > words  "a b c " == ["a","b","c"]
--- > words' "a b c " == ["a","b","c",""]
---
--- > unwords $ words  "a b c " == "a b c"
--- > unwords $ words' "a b c " == "a b c "
---
-words' :: ByteString -> [ByteString]
-words' = B.splitWith isSpaceWord8
-
--- | 'unwords\'' behaves like 'unwords'. It is provided for consistency
--- with the other invertable words and lines functions.
-unwords' :: [ByteString] -> ByteString
-unwords' = unwords
-
--- | 'betweenLines' returns the ByteString between the two lines given,
--- or Nothing if they do not appear.  The returned string is the first
--- and shortest string such that the line before it is the given first
--- line, and the line after it is the given second line.
-betweenLines :: ByteString -- ^ First line to look for
-             -> ByteString -- ^ Second line to look for
-             -> ByteString -- ^ 'ByteString' to look in
-             -> Maybe (ByteString)
-
-betweenLines start end ps =
-    case P.break (start ==) (lines ps) of
-        (_, _:rest@(PS ps1 s1 _:_)) ->
-            case P.break (end ==) rest of
-                (_, PS _ s2 _:_) -> Just $ PS ps1 s1 (s2 - s1)
-                _ -> Nothing
-        _ -> Nothing
 
 -- ---------------------------------------------------------------------
 -- Reading from ByteStrings

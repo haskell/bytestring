@@ -122,10 +122,6 @@ module Data.ByteString.Lazy (
         inits,                  -- :: ByteString -> [ByteString]
         tails,                  -- :: ByteString -> [ByteString]
 
-        -- ** Breaking and dropping on specific bytes
-        breakByte,              -- :: Word8 -> ByteString -> (ByteString, ByteString)
-        spanByte,               -- :: Word8 -> ByteString -> (ByteString, ByteString)
-
         -- ** Breaking into many substrings
         split,                  -- :: Word8 -> ByteString -> [ByteString]
         splitWith,              -- :: (Word8 -> Bool) -> ByteString -> [ByteString]
@@ -209,11 +205,14 @@ import Data.Monoid              (Monoid(..))
 
 import Data.Word                (Word8)
 import Data.Int                 (Int64)
-import Foreign.Storable         (sizeOf)
 import System.IO                (Handle,stdin,stdout,openBinaryFile,IOMode(..)
                                 ,hClose,hWaitForInput,hIsEOF)
 import System.IO.Unsafe
 import Control.Exception        (bracket)
+
+import Foreign.ForeignPtr       (withForeignPtr)
+import Foreign.Ptr
+import Foreign.Storable
 
 #if defined(__GLASGOW_HASKELL__)
 import Data.Generics            (Data(..), Typeable(..))
@@ -738,6 +737,13 @@ break f (LPS ps) = case (break' ps) of (a,b) -> (LPS a, LPS b)
               | otherwise      -> let (xs', xs'') = break' xs
                                    in (x : xs', xs'')
 
+--
+-- TODO
+--
+-- Add rules
+--
+
+{-
 -- | 'breakByte' breaks its ByteString argument at the first occurence
 -- of the specified byte. It is more efficient than 'break' as it is
 -- implemented with @memchr(3)@. I.e.
@@ -769,6 +775,7 @@ spanByte c (LPS ps) = case (spanByte' ps) of (a,b) -> (LPS a, LPS b)
                       | P.null x'' -> let (xs', xs'') = spanByte' xs
                                        in (x : xs', xs'')
                       | otherwise  -> (x' : [], x'' : xs)
+-}
 
 -- | 'span' @p xs@ breaks the ByteString into two segments. It is
 -- equivalent to @('takeWhile' p xs, 'dropWhile' p xs)@
@@ -1280,8 +1287,8 @@ filterMap f (x:xs) = case f x of
 
 -- | 'findIndexOrEnd' is a variant of findIndex, that returns the length
 -- of the string if no element is found, rather than Nothing.
-findIndexOrEnd :: (Word8 -> Bool) -> ByteString -> Int
-findIndexOrEnd k (PS x s l) = inlinePerformIO $ withForeignPtr x $ \f -> go (f `plusPtr` s) 0
+findIndexOrEnd :: (Word8 -> Bool) -> P.ByteString -> Int
+findIndexOrEnd k (P.PS x s l) = P.inlinePerformIO $ withForeignPtr x $ \f -> go (f `plusPtr` s) 0
   where
     STRICT2(go)
     go ptr n | n >= l    = return l
