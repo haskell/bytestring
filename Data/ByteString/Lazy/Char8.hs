@@ -128,8 +128,6 @@ module Data.ByteString.Lazy.Char8 (
         -- ** Searching by equality
         elem,                   -- :: Char -> ByteString -> Bool
         notElem,                -- :: Char -> ByteString -> Bool
-        filterChar,             -- :: Char -> ByteString -> ByteString
-        filterNotChar,          -- :: Char -> ByteString -> ByteString
 
         -- ** Searching with a predicate
         find,                   -- :: (Char -> Bool) -> ByteString -> Maybe Char
@@ -151,6 +149,8 @@ module Data.ByteString.Lazy.Char8 (
 
         -- * Ordered ByteStrings
 --        sort,                   -- :: ByteString -> ByteString
+
+        copy,                   -- :: ByteString -> ByteString
 
         -- * Reading from ByteStrings
         readInt,
@@ -182,7 +182,7 @@ module Data.ByteString.Lazy.Char8 (
 import Data.ByteString.Lazy 
         (ByteString(..)
         ,empty,null,length,tail,init,append,reverse,transpose
-        ,concat,take,drop,splitAt,join,isPrefixOf,group,inits, tails
+        ,concat,take,drop,splitAt,join,isPrefixOf,group,inits,tails,copy
         ,hGetContentsN, hGetN, hGetContents, hGet, hPut, getContents
         ,hGetNonBlocking, hGetNonBlockingN
         ,putStr, putStrLn, interact)
@@ -536,6 +536,7 @@ find :: (Char -> Bool) -> ByteString -> Maybe Char
 find f ps = w2c `fmap` L.find (f . w2c) ps
 {-# INLINE find #-}
 
+{-
 -- | /O(n)/ A first order equivalent of /filter . (==)/, for the common
 -- case of filtering a single Char. It is more efficient to use
 -- filterChar in this case.
@@ -561,6 +562,7 @@ filterChar c = L.filterByte (c2w c)
 filterNotChar :: Char -> ByteString -> ByteString
 filterNotChar c = L.filterNotByte (c2w c)
 {-# INLINE filterNotChar #-}
+-}
 
 -- | /O(n)/ 'zip' takes two ByteStrings and returns a list of
 -- corresponding pairs of Chars. If one input ByteString is short,

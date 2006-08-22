@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -cpp -fffi -fglasgow-exts -fno-warn-incomplete-patterns #-}
+{-# OPTIONS_GHC -cpp -fglasgow-exts -fno-warn-orphans -fno-warn-incomplete-patterns #-}
 --
 -- Module      : ByteString.Lazy
 -- Copyright   : (c) Don Stewart 2006
@@ -144,8 +144,6 @@ module Data.ByteString.Lazy (
         -- ** Searching by equality
         elem,                   -- :: Word8 -> ByteString -> Bool
         notElem,                -- :: Word8 -> ByteString -> Bool
-        filterByte,             -- :: Word8 -> ByteString -> ByteString
-        filterNotByte,          -- :: Word8 -> ByteString -> ByteString
 
         -- ** Searching with a predicate
         find,                   -- :: (Word8 -> Bool) -> ByteString -> Maybe Word8
@@ -168,6 +166,8 @@ module Data.ByteString.Lazy (
         -- * Ordered ByteStrings
 --        sort,                   -- :: ByteString -> ByteString
 
+        copy,                   -- :: ByteString -> ByteString
+
         -- * I\/O with 'ByteString's
 
         -- ** Standard input and output
@@ -189,7 +189,6 @@ module Data.ByteString.Lazy (
         hPut,                   -- :: Handle -> ByteString -> IO ()
         hGetNonBlocking,        -- :: Handle -> IO ByteString
         hGetNonBlockingN,       -- :: Int -> Handle -> IO ByteString
-        hGetSomeContentsN,      -- :: Int -> Handle -> IO ByteString
 
   ) where
 
@@ -211,7 +210,9 @@ import Data.Monoid              (Monoid(..))
 
 import Data.Word                (Word8)
 import Data.Int                 (Int64)
-import System.IO (Handle,stdin,stdout,openBinaryFile,IOMode(..),hClose)
+import Foreign.Storable         (sizeOf)
+import System.IO                (Handle,stdin,stdout,openBinaryFile,IOMode(..)
+                                ,hClose,hWaitForInput,hIsEOF)
 import System.IO.Unsafe
 import Control.Exception        (bracket)
 
@@ -302,12 +303,14 @@ _abstr (LPS xs) = P.concat xs
 -- and need to share the cache with other programs.
 --
 defaultChunkSize :: Int
-defaultChunkSize = 64 * k
+defaultChunkSize = 32 * k - overhead
    where k = 1024
+         overhead = 2 * sizeOf (undefined :: Int)
 
 smallChunkSize :: Int
-smallChunkSize = 4 * k
+smallChunkSize = 4 * k - overhead
    where k = 1024
+         overhead = 2 * sizeOf (undefined :: Int)
 
 -- defaultChunkSize = 1
 
@@ -389,7 +392,7 @@ unpackWith k (LPS ss) = L.concatMap (P.unpackWith k) ss
 -- | /O(1)/ Test whether a ByteString is empty.
 null :: ByteString -> Bool
 null (LPS []) = True
-null (_)      = False  -- TODO: guarantee this invariant is maintained
+null (_)      = False
 {-# INLINE null #-}
 
 -- | /O(n\/c)/ 'length' returns the length of a ByteString as an 'Int64'
@@ -865,22 +868,6 @@ group xs
 -}
 
 -- | The 'groupBy' function is the non-overloaded version of 'group'.
-{-
-01:16  ndm:: the bug is that you can't do P.groupBy on the inner strings
-01:16  ndm:: since you're changing the base element
-01:16  ndm:: you'll need to do span on them
-01:17  Igloo:: Yeah, the []  _ (s:[]) (x:xs) case should recurse on 
-        ((reverse s ++ x):xs) or something
-01:17  * Igloo hasn't got time to look at it properly ATM though
-01:19  ndm:: I think the problem with groupBy is that its just wrong,
-        you are relying on transitivity of ==
-01:20  Igloo:: It's only wrong when a group spans multiple non-lazy
-        bytestrings, I think
-01:21  ndm:: yes, because of doing groupBy on the second set
-01:21  ndm:: and then trying to join them
-01:22  ndm:: its relying on groupBy "abcd" == ["abc","d"]  ==> groupBy "bcd" == ["bc","d"]
-01:23  ndm:: which is only true if a `k` b ^ a `k` c ==> b `k` c
--}
 --
 groupBy :: (Word8 -> Word8 -> Bool) -> ByteString -> [ByteString]
 groupBy = error "Data.ByteString.Lazy.groupBy: unimplemented"
@@ -1034,6 +1021,7 @@ filter :: (Word8 -> Bool) -> ByteString -> ByteString
 filter p = LPS . P.loopArr . loopL (P.filterEFL p) P.NoAcc . unLPS
 {-# INLINE filter #-}
 
+{-
 -- | /O(n)/ and /O(n\/c) space/ A first order equivalent of /filter .
 -- (==)/, for the common case of filtering a single byte. It is more
 -- efficient to use /filterByte/ in this case.
@@ -1055,6 +1043,7 @@ filterByte w ps = replicate (count w ps) w
 -- filterNotByte is around 2x faster than its filter equivalent.
 filterNotByte :: Word8 -> ByteString -> ByteString
 filterNotByte w (LPS xs) = LPS (filterMap (P.filterNotByte w) xs)
+-}
 
 -- ---------------------------------------------------------------------
 -- Searching for substrings
@@ -1140,6 +1129,20 @@ tails = tails' . unLPS
           | otherwise       = LPS xs : tails' (P.unsafeTail x : xs')
 
 -- ---------------------------------------------------------------------
+-- Low level constructors
+
+-- | /O(n)/ Make a copy of the 'ByteString' with its own storage.
+--   This is mainly useful to allow the rest of the data pointed
+--   to by the 'ByteString' to be garbage collected, for example
+--   if a large string has been read in, and only a small part of it
+--   is needed in the rest of the program.
+copy :: ByteString -> ByteString
+copy (LPS lps) = LPS (L.map P.copy lps)
+--TODO, we could coalese small blocks here
+--FIXME: probably not strict enough, if we're doing this to avoid retaining
+-- the parent blocks then we'd better copy strictly.
+
+-- ---------------------------------------------------------------------
 
 -- TODO defrag func that concatenates block together that are below a threshold
 -- defrag :: Int -> ByteString -> ByteString
@@ -1148,16 +1151,26 @@ tails = tails' . unLPS
 -- Lazy ByteString IO
 
 -- | Read entire handle contents /lazily/ into a 'ByteString'. Chunks
--- are read on demand, in @k@-sized chunks.
+-- are read on demand, in at most @k@-sized chunks. It does not block
+-- waiting for a whole @k@-sized chunk, so if less than @k@ bytes are
+-- available then they will be returned immediately as a smaller chunk.
 hGetContentsN :: Int -> Handle -> IO ByteString
 hGetContentsN k h = lazyRead >>= return . LPS
   where
-    lazyRead = unsafeInterleaveIO $ do
-        ps <- P.hGet h k
-        case P.length ps of
-            0 -> return []
-            _ -> do pss <- lazyRead
-                    return (ps : pss)
+    lazyRead = unsafeInterleaveIO loop
+
+    loop = do
+        ps <- P.hGetNonBlocking h k
+        --TODO: I think this should distinguish EOF from no data available
+        -- the otherlying POSIX call makes this distincion, returning either
+        -- 0 or EAGAIN
+        if P.null ps
+          then do eof <- hIsEOF h
+                  if eof then return []
+                         else hWaitForInput h (-1)
+                           >> loop
+          else do pss <- lazyRead
+                  return (ps : pss)
 
 -- | Read @n@ bytes into a 'ByteString', directly from the
 -- specified 'Handle', in chunks of size @k@.
@@ -1172,19 +1185,6 @@ hGetN k h n = readChunks n >>= return . LPS
             0 -> return []
             m -> do pss <- readChunks (i - m)
                     return (ps : pss)
-
--- | Read entire handle contents /lazily/ into a 'ByteString'. Chunks
--- are read on demand, in @k@-sized chunks, but data is produced as soon
--- as availible
-hGetSomeContentsN :: Int -> Handle -> IO ByteString
-hGetSomeContentsN k h = lazyRead >>= return . LPS
-  where
-    lazyRead = unsafeInterleaveIO $ do
-        ps <- P.hGetSome h k
-        case P.length ps of
-            0         -> return []
-            _         -> do pss <- lazyRead
-                            return (ps : pss)
 
 -- | hGetNonBlockingN is similar to 'hGetContentsN', except that it will never block
 -- waiting for data to become available, instead it returns only whatever data

@@ -158,8 +158,6 @@ module Data.ByteString.Char8 (
         -- ** Searching by equality
         elem,                   -- :: Char -> ByteString -> Bool
         notElem,                -- :: Char -> ByteString -> Bool
-        filterChar,             -- :: Char -> ByteString -> ByteString
-        filterNotChar,          -- :: Char -> ByteString -> ByteString
 
         -- ** Searching with a predicate
         find,                   -- :: (Char -> Bool) -> ByteString -> Maybe Char
@@ -222,7 +220,6 @@ module Data.ByteString.Char8 (
 --      mmapFile,               -- :: FilePath -> IO ByteString
 
         -- ** I\/O with Handles
-        getArgs,                -- :: IO [ByteString]
         hGetLine,               -- :: Handle -> IO ByteString
         hGetLines,              -- :: Handle -> IO ByteString
         hGetNonBlocking,        -- :: Handle -> Int -> IO ByteString
@@ -270,7 +267,7 @@ import Data.ByteString (empty,null,length,tail,init,append
 
                        ,getLine, getContents, putStr, putStrLn, interact
                        ,hGetContents, hGet, hPut, hPutStr, hPutStrLn
-                       ,getArgs, hGetLine, hGetLines, hGetNonBlocking
+                       ,hGetLine, hGetNonBlocking
                        ,packCString,packCStringLen, packMallocCString
                        ,useAsCString,useAsCStringLen, copyCString,copyCStringLen
 #if defined(__GLASGOW_HASKELL__)
@@ -732,6 +729,7 @@ find :: (Char -> Bool) -> ByteString -> Maybe Char
 find f ps = w2c `fmap` B.find (f . w2c) ps
 {-# INLINE find #-}
 
+{-
 -- | /O(n)/ A first order equivalent of /filter . (==)/, for the common
 -- case of filtering a single Char. It is more efficient to use
 -- filterChar in this case.
@@ -757,6 +755,7 @@ filterChar c = B.filterByte (c2w c)
 filterNotChar :: Char -> ByteString -> ByteString
 filterNotChar c = B.filterNotByte (c2w c)
 {-# INLINE filterNotChar #-}
+-}
 
 -- | /O(n)/ 'zip' takes two ByteStrings and returns a list of
 -- corresponding pairs of Chars. If one input ByteString is short,

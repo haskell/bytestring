@@ -100,7 +100,7 @@ module Data.ByteString (
         -- ** Unfolding ByteStrings
         replicate,              -- :: Int -> Word8 -> ByteString
         unfoldr,                -- :: (a -> Maybe (Word8, a)) -> a -> ByteString
-        unfoldrN,               -- :: Int -> (a -> Maybe (Word8, a)) -> a -> ByteString
+        unfoldrN,               -- :: Int -> (a -> Maybe (Word8, a)) -> a -> (ByteString, Maybe a)
 
         -- * Substrings
 
@@ -147,8 +147,6 @@ module Data.ByteString (
         -- | These functions use memchr(3) to efficiently search the ByteString
         elem,                   -- :: Word8 -> ByteString -> Bool
         notElem,                -- :: Word8 -> ByteString -> Bool
-        filterByte,             -- :: Word8 -> ByteString -> ByteString
-        filterNotByte,          -- :: Word8 -> ByteString -> ByteString
 
         -- ** Searching with a predicate
         find,                   -- :: (Word8 -> Bool) -> ByteString -> Maybe Word8
@@ -207,13 +205,10 @@ module Data.ByteString (
 --      mmapFile,               -- :: FilePath -> IO ByteString
 
         -- ** I\/O with Handles
-        getArgs,                -- :: IO [ByteString]
         hGetLine,               -- :: Handle -> IO ByteString
-        hGetLines,              -- :: Handle -> IO [ByteString]
         hGetContents,           -- :: Handle -> IO ByteString
         hGet,                   -- :: Handle -> Int -> IO ByteString
         hGetNonBlocking,        -- :: Handle -> Int -> IO ByteString
-        hGetSome,               -- :: Handle -> Int -> IO ByteString
         hPut,                   -- :: Handle -> ByteString -> IO ()
         hPutStr,                -- :: Handle -> ByteString -> IO ()
         hPutStrLn,              -- :: Handle -> ByteString -> IO ()
@@ -275,9 +270,6 @@ import qualified System.IO      (hGetLine)
 
 import System.IO                (hGetBufNonBlocking)
 import System.IO.Error          (isEOFError)
-
-import Foreign.Marshal          (alloca)
-import qualified Foreign.Concurrent as FC (newForeignPtr)
 
 import GHC.Handle
 import GHC.Prim                 (Word#, (+#), writeWord8OffAddr#)
@@ -1435,6 +1427,10 @@ filterByte :: Word8 -> ByteString -> ByteString
 filterByte w ps = replicate (count w ps) w
 {-# INLINE filterByte #-}
 
+{-# RULES
+  "FPS specialise filter (== x)" forall x.
+      filter ((==) x) = filterByte x
+  #-}
 --
 -- | /O(n)/ A first order equivalent of /filter . (\/=)/, for the common
 -- case of filtering a single byte out of a list. It is more efficient
@@ -1447,6 +1443,10 @@ filterNotByte :: Word8 -> ByteString -> ByteString
 filterNotByte w = filter (/= w)
 {-# INLINE filterNotByte #-}
 
+{-# RULES
+"FPS specialise filter (/= x)" forall x.
+    filter ((/=) x) = filterNotByte x
+  #-}
 -- | /O(n)/ The 'find' function takes a predicate and a ByteString,
 -- and returns the first element in matching the predicate, or 'Nothing'
 -- if there is no such element.
@@ -1591,8 +1591,8 @@ zipWith' f (PS fp s l) (PS fq t m) = inlinePerformIO $
 
 {-# RULES
 
-"Specialise zipWith" forall (f :: Word8 -> Word8 -> Word8) p q .
-    pack (zipWith f p q) = zipWith' f p q
+"FPS specialise zipWith" forall (f :: Word8 -> Word8 -> Word8) p q .
+    zipWith f p q = unpack (zipWith' f p q)
   #-}
 
 -- | /O(n)/ 'unzip' transforms a list of pairs of bytes into a pair of
@@ -1732,6 +1732,7 @@ copyCStringLen (cstr, len) = create len $ \p ->
 getLine :: IO ByteString
 getLine = hGetLine stdin
 
+{-
 -- | Lazily construct a list of lines of ByteStrings. This will be much
 -- better on memory consumption than using 'hGetContents >>= lines'
 -- If you're considering this, a better choice might be to use
@@ -1747,6 +1748,7 @@ hGetLines h = go
                 x  <- hGetLine h
                 xs <- go
                 return (x:xs)
+-}
 
 -- | Read a line from a handle
 
@@ -1855,15 +1857,6 @@ putStrLn = hPutStrLn stdout
 hGet :: Handle -> Int -> IO ByteString
 hGet _ 0 = return empty
 hGet h i = createAndTrim i $ \p -> hGetBuf h p i
-
--- | Like 'hGet', but returns any amount of data, blocking if no data is ready
--- to read
-hGetSome :: Handle -> Int -> IO ByteString
-hGetSome h i = do
-  Exception.catch (do hWaitForInput h (0-1)
-                      result <- hGetNonBlocking h i
-                      return result)
-                  (\_ -> return empty)
 
 -- | hGetNonBlocking is identical to 'hGet', except that it will never block
 -- waiting for data to become available, instead it returns only whatever data
@@ -1987,31 +1980,13 @@ mmap f = do
 #else
                              let unmap = return ()
 #endif
-                             fp <- FC.newForeignPtr p unmap
+                             fp <- newForeignPtr p unmap
                              return fp
                c_close fd
                hClose h
                return (fp, l)
     where mmap_limit = 16*1024
 -}
-
---
--- | A ByteString equivalent for getArgs. More efficient for large argument lists
---
-getArgs :: IO [ByteString]
-#if defined(__GLASGOW_HASKELL__)
-getArgs =
-  alloca $ \ p_argc ->
-  alloca $ \ p_argv -> do
-    getProgArgv p_argc p_argv
-    p    <- fromIntegral `fmap` peek p_argc
-    argv <- peek p_argv
-    P.map packCString `fmap` peekArray (p - 1) (advancePtr argv 1)
-#else
-getArgs = do
-  stringArgs <- System.Environment.getArgs
-  return $ List.map (packWith c2w) stringArgs
-#endif
 
 -- ---------------------------------------------------------------------
 -- Internal utilities
@@ -2041,8 +2016,4 @@ findFromEndUntil f ps@(PS x s l) =
 
 {-# INLINE newForeignFreePtr #-}
 newForeignFreePtr :: Ptr Word8 -> IO (ForeignPtr Word8)
-#if defined(__GLASGOW_HASKELL__)
-newForeignFreePtr p = FC.newForeignPtr p (c_free p)
-#else
 newForeignFreePtr p = newForeignPtr c_free_finalizer p
-#endif
