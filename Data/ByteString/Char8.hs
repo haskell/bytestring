@@ -891,7 +891,7 @@ unlines ss = (concat $ List.intersperse nl ss) `append` nl -- half as much space
 -- > tokens isSpace = words
 --
 words :: ByteString -> [ByteString]
-words = B.tokens isSpaceWord8
+words = P.filter (not . B.null) . B.splitWith isSpaceWord8
 {-# INLINE words #-}
 
 -- | The 'unwords' function is analogous to the 'unlines' function, on words.

@@ -179,8 +179,8 @@ import Data.ByteString.Lazy
         (ByteString(..)
         ,empty,null,length,tail,init,append,reverse,transpose
         ,concat,take,drop,splitAt,join,isPrefixOf,group,inits,tails,copy
-        ,hGetContentsN, hGetN, hGetContents, hGet, hPut, getContents
-        ,hGetNonBlocking, hGetNonBlockingN
+        ,hGetContents, hGet, hPut, getContents
+        ,hGetNonBlocking,
         ,putStr, putStrLn, interact)
 
 -- Functions we need to wrap.
