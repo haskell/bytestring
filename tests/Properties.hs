@@ -716,7 +716,7 @@ prop_unlinesBB xs = (unlines.lines) xs == (C.unpack. C.unlines . C.lines .C.pack
 
 prop_wordsBB xs =
     (words xs) == ((map C.unpack) . C.words . C.pack) xs
-prop_wordstokensBB xs = C.words xs == C.tokens isSpace xs
+-- prop_wordstokensBB xs = C.words xs == C.tokens isSpace xs
 
 prop_unwordsBB xs =
     (C.pack.unwords.words) xs == (C.unwords . C.words .C.pack) xs
@@ -1414,7 +1414,7 @@ bb_tests =
     ,    ("unlines ",       mytest prop_unlinesSBB)
     ,    ("words ",         mytest prop_wordsSBB)
     ,    ("unwords ",       mytest prop_unwordsSBB)
-    ,    ("wordstokens",    mytest prop_wordstokensBB)
+--     ,    ("wordstokens",    mytest prop_wordstokensBB)
     ,    ("splitWith",      mytest prop_splitWithBB)
     ,    ("joinsplit",      mytest prop_joinsplitBB)
 --     ,    ("lineIndices",    mytest prop_lineIndices1BB)
