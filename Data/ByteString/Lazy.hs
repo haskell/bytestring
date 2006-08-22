@@ -50,8 +50,6 @@ module Data.ByteString.Lazy (
         singleton,               -- :: Word8   -> ByteString
         pack,                   -- :: [Word8] -> ByteString
         unpack,                 -- :: ByteString -> [Word8]
-        packWith,               -- :: (a -> Word8) -> [a] -> ByteString
-        unpackWith,             -- :: (Word8 -> a) -> ByteString -> [a]
 
         -- * Basic interface
         cons,                   -- :: Word8 -> ByteString -> ByteString
@@ -371,6 +369,7 @@ unpack (LPS ss) = L.concatMap P.unpack ss
 
 ------------------------------------------------------------------------
 
+{-
 -- | /O(n)/ Convert a '[a]' into a 'ByteString' using some
 -- conversion function
 packWith :: (a -> Word8) -> [a] -> ByteString
@@ -383,6 +382,7 @@ unpackWith :: (Word8 -> a) -> ByteString -> [a]
 unpackWith k (LPS ss) = L.concatMap (P.unpackWith k) ss
 {-# INLINE unpackWith #-}
 {-# SPECIALIZE unpackWith :: (Word8 -> Char) -> ByteString -> [Char] #-}
+-}
 
 -- ---------------------------------------------------------------------
 -- Basic interface

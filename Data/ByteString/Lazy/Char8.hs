@@ -218,11 +218,11 @@ singleton = L.singleton . c2w
 
 -- | /O(n)/ Convert a 'String' into a 'ByteString'. 
 pack :: [Char] -> ByteString
-pack = L.packWith c2w
+pack = L.pack. P.map c2w
 
 -- | /O(n)/ Converts a 'ByteString' to a 'String'.
 unpack :: ByteString -> [Char]
-unpack = L.unpackWith w2c
+unpack = P.map w2c . L.unpack
 {-# INLINE unpack #-}
 
 -- | /O(n)/ 'cons' is analogous to (:) for lists, but of different

@@ -318,7 +318,7 @@ pack str = B.unsafeCreate (P.length str) $ \(Ptr p) -> stToIO (go p str)
 
 -- | /O(n)/ Converts a 'ByteString' to a 'String'.
 unpack :: ByteString -> [Char]
-unpack = B.unpackWith w2c
+unpack = P.map w2c . B.unpack
 {-# INLINE unpack #-}
 
 -- | /O(n)/ 'cons' is analogous to (:) for lists, but of different

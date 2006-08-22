@@ -46,8 +46,6 @@ module Data.ByteString (
         singleton,              -- :: Word8   -> ByteString
         pack,                   -- :: [Word8] -> ByteString
         unpack,                 -- :: ByteString -> [Word8]
-        packWith,               -- :: (a -> Word8) -> [a] -> ByteString
-        unpackWith,             -- :: (Word8 -> a) -> ByteString -> [a]
 
         -- * Basic interface
         cons,                   -- :: Word8 -> ByteString -> ByteString
