@@ -165,12 +165,13 @@ module Data.ByteString.Lazy.Char8 (
 
         -- ** I\/O with Handles
         hGetContents,           -- :: Handle -> IO ByteString
-        hGetContentsN,          -- :: Int -> Handle -> IO ByteString
         hGet,                   -- :: Handle -> Int64 -> IO ByteString
-        hGetN,                  -- :: Int -> Handle -> Int64 -> IO ByteString
         hPut,                   -- :: Handle -> ByteString -> IO ()
         hGetNonBlocking,        -- :: Handle -> IO ByteString
-        hGetNonBlockingN,       -- :: Int -> Handle -> IO ByteString
+
+--      hGetN,                  -- :: Int -> Handle -> Int64 -> IO ByteString
+--      hGetContentsN,          -- :: Int -> Handle -> IO ByteString
+--      hGetNonBlockingN,       -- :: Int -> Handle -> IO ByteString
   ) where
 
 -- Functions transparently exported

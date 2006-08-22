@@ -178,12 +178,12 @@ module Data.ByteString.Lazy (
 
         -- ** I\/O with Handles
         hGetContents,           -- :: Handle -> IO ByteString
-        hGetContentsN,          -- :: Int -> Handle -> IO ByteString
         hGet,                   -- :: Handle -> Int -> IO ByteString
-        hGetN,                  -- :: Int -> Handle -> Int -> IO ByteString
         hPut,                   -- :: Handle -> ByteString -> IO ()
         hGetNonBlocking,        -- :: Handle -> IO ByteString
-        hGetNonBlockingN,       -- :: Int -> Handle -> IO ByteString
+--      hGetN,                  -- :: Int -> Handle -> Int -> IO ByteString
+--      hGetContentsN,          -- :: Int -> Handle -> IO ByteString
+--      hGetNonBlockingN,       -- :: Int -> Handle -> IO ByteString
 
   ) where
 
