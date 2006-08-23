@@ -82,9 +82,8 @@ module Data.ByteString.Base (
 
   ) where
 
-import Foreign.ForeignPtr       (ForeignPtr, newForeignPtr_,
-                                 withForeignPtr, finalizeForeignPtr)
-import Foreign.Ptr              (FunPtr, plusPtr, castPtr)
+import Foreign.ForeignPtr       (ForeignPtr, newForeignPtr_, withForeignPtr)
+import Foreign.Ptr              (Ptr, FunPtr, plusPtr, castPtr)
 import Foreign.Storable         (Storable(..))
 import Foreign.C.Types          (CInt, CSize, CULong)
 import Foreign.C.String         (CString, CStringLen)
@@ -95,7 +94,7 @@ import Data.Char                (ord)
 import Data.Word                (Word8)
 
 #if defined(__GLASGOW_HASKELL__)
-import qualified Foreign.Concurrent as FC (newForeignPtr)
+import qualified Foreign.Concurrent as FC (newForeignPtr, finalizeForeignPtr)
 
 import Data.Generics            (Data(..), Typeable(..))
 import GHC.Prim                 (Addr#)
@@ -318,7 +317,7 @@ packCStringFinalizer p l f = do
 -- this, you need to have a proof of some kind that all 'ByteString's
 -- ever generated from the underlying byte array are no longer live.
 unsafeFinalize :: ByteString -> IO ()
-unsafeFinalize (PS p _ _) = finalizeForeignPtr p
+unsafeFinalize (PS p _ _) = FC.finalizeForeignPtr p
 
 #endif
 
