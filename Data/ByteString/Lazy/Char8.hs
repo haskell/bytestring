@@ -180,7 +180,7 @@ import Data.ByteString.Lazy
         ,empty,null,length,tail,init,append,reverse,transpose
         ,concat,take,drop,splitAt,join,isPrefixOf,group,inits,tails,copy
         ,hGetContents, hGet, hPut, getContents
-        ,hGetNonBlocking,
+        ,hGetNonBlocking
         ,putStr, putStrLn, interact)
 
 -- Functions we need to wrap.

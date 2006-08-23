@@ -94,7 +94,8 @@ import Data.Char                (ord)
 import Data.Word                (Word8)
 
 #if defined(__GLASGOW_HASKELL__)
-import qualified Foreign.Concurrent as FC (newForeignPtr, finalizeForeignPtr)
+import qualified Foreign.ForeignPtr as FC (finalizeForeignPtr)
+import qualified Foreign.Concurrent as FC (newForeignPtr)
 
 import Data.Generics            (Data(..), Typeable(..))
 import GHC.Prim                 (Addr#)
