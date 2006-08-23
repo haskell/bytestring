@@ -1061,6 +1061,10 @@ prop_length_loop_fusion_4 f1 acc1 xs =
 --   P.pack (P.zipWith f p q) == P.zipWith' f p q
 --   where _ = f :: Word8 -> Word8 -> Word8
 
+-- prop_join_spec c s1 s2 =
+--  P.join (P.singleton c) (s1 : s2 : []) == P.joinWithByte c s1 s2
+
+
 ------------------------------------------------------------------------
 -- The entry point
 
@@ -1428,6 +1432,7 @@ bb_tests =
 --     ,    ("zipWith'",       mytest prop_zipWith'BB)
     ,    ("unzip",          mytest prop_unzipBB)
     ,    ("concatMap",      mytest prop_concatMapBB)
+--  ,    ("join/joinByte",  mytest prop_join_spec)
     ]
 
 ------------------------------------------------------------------------

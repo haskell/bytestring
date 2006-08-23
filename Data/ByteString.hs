@@ -203,11 +203,12 @@ module Data.ByteString (
         hPutStr,                -- :: Handle -> ByteString -> IO ()
         hPutStrLn,              -- :: Handle -> ByteString -> IO ()
 
-        -- * Fusion utilities
 #if defined(__GLASGOW_HASKELL__)
+        -- * Fusion utilities
         unpackList, -- eek, otherwise it gets thrown away by the simplifier
         lengthU, maximumU, minimumU
 #endif
+
   ) where
 
 import qualified Prelude as P
@@ -361,7 +362,7 @@ cmp p1 p2 n len1 len2
 -- | /O(1)/ Convert a 'Word8' into a 'ByteString'
 singleton :: Word8 -> ByteString
 singleton c = unsafeCreate 1 $ \p -> poke p c
-{-# INLINE singleton #-}
+{-# INLINE [1] singleton #-}
 
 --
 -- XXX The unsafePerformIO is critical!
@@ -1216,15 +1217,13 @@ groupBy k xs
 -- argument between each element of the list.
 join :: ByteString -> [ByteString] -> ByteString
 join s = concat . (List.intersperse s)
-{-# INLINE join #-}
+{-# INLINE [1] join #-}
 
--- 
--- TODO
---
---  join (singleton c) (s1 : s2 : []) = joinWithByte c s1 s2
---
+{-# RULES
+"FPS specialise join c -> joinByte" forall c s1 s2 .
+    join (singleton c) (s1 : s2 : []) = joinWithByte c s1 s2
+  #-}
 
-{-
 --
 -- | /O(n)/ joinWithByte. An efficient way to join to two ByteStrings
 -- with a char. Around 4 times faster than the generalised join.
@@ -1239,7 +1238,6 @@ joinWithByte c f@(PS ffp s l) g@(PS fgp t m) = unsafeCreate len $ \ptr ->
     where
       len = length f + length g + 1
 {-# INLINE joinWithByte #-}
--}
 
 -- ---------------------------------------------------------------------
 -- Indexing ByteStrings
