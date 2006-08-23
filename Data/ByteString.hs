@@ -1001,21 +1001,20 @@ dropWhile f ps = unsafeDrop (findIndexOrEnd (not . f) ps) ps
 -- | 'break' @p@ is equivalent to @'span' ('not' . p)@.
 break :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
 break p ps = case findIndexOrEnd p ps of n -> (unsafeTake n ps, unsafeDrop n ps)
-{-# INLINE break #-}
+{-# INLINE [1] break #-}
 
--- | 'breakEnd' behaves like 'break' but from the end of the 'ByteString'
--- 
--- breakEnd p == spanEnd (not.p)
-breakEnd :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
-breakEnd  p ps = splitAt (findFromEndUntil p ps) ps
+{-# RULES
+"FPS specialise break (x==)" forall x.
+    break ((==) x) = breakByte x
+  #-}
 
--- TODO, add rules:
---
--- break (==c) = breakByte c
--- break (c==) = breakByte c
---
+#if __GLASGOW_HASKELL__ >= 605
+-- {-# RULES
+-- "FPS specialise break (==x)" forall x.
+--     break (==x) = breakByte x
+--   #-}
+#endif
 
-{-
 -- | 'breakByte' breaks its ByteString argument at the first occurence
 -- of the specified byte. It is more efficient than 'break' as it is
 -- implemented with @memchr(3)@. I.e.
@@ -1027,7 +1026,18 @@ breakByte c p = case elemIndex c p of
     Nothing -> (p,empty)
     Just n  -> (unsafeTake n p, unsafeDrop n p)
 {-# INLINE breakByte #-}
--}
+
+-- | 'breakEnd' behaves like 'break' but from the end of the 'ByteString'
+-- 
+-- breakEnd p == spanEnd (not.p)
+breakEnd :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
+breakEnd  p ps = splitAt (findFromEndUntil p ps) ps
+
+-- | 'span' @p xs@ breaks the ByteString into two segments. It is
+-- equivalent to @('takeWhile' p xs, 'dropWhile' p xs)@
+span :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
+span p ps = break (not . p) ps
+{-# INLINE [1] span #-}
 
 -- | 'spanByte' breaks its ByteString argument at the first
 -- occurence of a byte other than its argument. It is more efficient
@@ -1047,17 +1057,17 @@ spanByte c ps@(PS x s l) = inlinePerformIO $ withForeignPtr x $ \p ->
                                 else go p (i+1)
 {-# INLINE spanByte #-}
 
--- TODO, add rules:
---
--- span (==c) = spanByte c
--- span (c==) = spanByte c
---
+{-# RULES
+"FPS specialise span (x==)" forall x.
+    span ((==) x) = spanByte x
+  #-}
 
--- | 'span' @p xs@ breaks the ByteString into two segments. It is
--- equivalent to @('takeWhile' p xs, 'dropWhile' p xs)@
-span :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
-span p ps = break (not . p) ps
-{-# INLINE span #-}
+#if __GLASGOW_HASKELL__ >= 605
+-- {-# RULES
+-- "FPS specialise span (==x)" forall x.
+--     span (==x) = spanByte x
+--   #-}
+#endif
 
 -- | 'spanEnd' behaves like 'span' but from the end of the 'ByteString'.
 -- We have
