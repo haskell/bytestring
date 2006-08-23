@@ -1064,6 +1064,12 @@ prop_length_loop_fusion_4 f1 acc1 xs =
 -- prop_join_spec c s1 s2 =
 --  P.join (P.singleton c) (s1 : s2 : []) == P.joinWithByte c s1 s2
 
+-- prop_break_spec x s =
+--     P.break ((==) x) s == P.breakByte x s
+
+-- prop_span_spec x s =
+--     P.span ((==) x) s == P.spanByte x s
+
 
 ------------------------------------------------------------------------
 -- The entry point
@@ -1433,6 +1439,8 @@ bb_tests =
     ,    ("unzip",          mytest prop_unzipBB)
     ,    ("concatMap",      mytest prop_concatMapBB)
 --  ,    ("join/joinByte",  mytest prop_join_spec)
+--  ,    ("span/spanByte",  mytest prop_span_spec)
+--  ,    ("break/breakByte",mytest prop_break_spec)
     ]
 
 ------------------------------------------------------------------------
