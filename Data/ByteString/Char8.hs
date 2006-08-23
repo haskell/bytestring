@@ -800,8 +800,10 @@ firstspace ptr n m
     | otherwise = do w <- peekByteOff ptr n
                      if (not . isSpaceWord8) w then firstspace ptr (n+1) m else return n
 
-{-
---  dropWhile isSpace == dropSpace
+{-# RULES
+    "FPS specialise dropWhile isSpace -> dropSpace"
+        dropWhile isSpace = dropSpace
+  #-}
 
 -- | 'dropSpace' efficiently returns the 'ByteString' argument with
 -- white space Chars removed from the front. It is more efficient than
@@ -822,6 +824,7 @@ firstnonspace ptr n m
     | otherwise = do w <- peekElemOff ptr n
                      if isSpaceWord8 w then firstnonspace ptr (n+1) m else return n
 
+{-
 -- | 'dropSpaceEnd' efficiently returns the 'ByteString' argument with
 -- white space removed from the end. I.e.
 -- 
@@ -842,10 +845,6 @@ lastnonspace ptr n
     | otherwise = do w <- peekElemOff ptr n
                      if isSpaceWord8 w then lastnonspace ptr (n-1) else return n
 -}
-
--- 
--- TODO more rules for the above
---
 
 -- | 'lines' breaks a ByteString up into a list of ByteStrings at
 -- newline Chars. The resulting strings do not contain newlines.
