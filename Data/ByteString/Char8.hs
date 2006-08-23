@@ -255,9 +255,10 @@ import Data.ByteString.Base (
 #if defined(__GLASGOW_HASKELL__)
                        ,packAddress, unsafePackAddress
 #endif
-                       ,c2w, w2c, unsafeTail, isSpaceWord8
+                       ,c2w, w2c, unsafeTail, isSpaceWord8, inlinePerformIO
                        )
 
+import Data.Char    ( isSpace )
 import qualified Data.List as List (intersperse)
 
 import System.IO                (openFile,hClose,hFileSize,IOMode(..))
@@ -772,16 +773,11 @@ unsafeHead  = w2c . B.unsafeHead
 -- ---------------------------------------------------------------------
 -- Things that depend on the encoding
 
---
--- TODO
---
--- RULES:
---
---  break isSpace == breakSpace 
---  dropWhile isSpace == dropSpace
---
+{-# RULES
+    "FPS specialise break -> breakSpace"
+        break isSpace = breakSpace
+  #-}
 
-{-
 -- | 'breakSpace' returns the pair of ByteStrings when the argument is
 -- broken at the first whitespace byte. I.e.
 -- 
@@ -803,6 +799,9 @@ firstspace ptr n m
     | n >= m    = return n
     | otherwise = do w <- peekByteOff ptr n
                      if (not . isSpaceWord8) w then firstspace ptr (n+1) m else return n
+
+{-
+--  dropWhile isSpace == dropSpace
 
 -- | 'dropSpace' efficiently returns the 'ByteString' argument with
 -- white space Chars removed from the front. It is more efficient than
