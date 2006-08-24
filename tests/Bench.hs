@@ -70,25 +70,25 @@ tests =
         [F ({-# SCC "filter"       #-}      app$  B.filter (/=101))
         ,F ({-# SCC "lazy filter"  #-}      app$  L.filter (/=101))
     ])
-    , ("map'",
-        [F ({-# SCC "map"          #-}      app$  B.map (*2))
-        ,F ({-# SCC "map"          #-}      app$  B.map' (*1))
-    ])
-    , ("filter'",
-        [F ({-# SCC "filter"       #-}      app$  B.filter  (/=121))
-        ,F ({-# SCC "filter'"      #-}      app$  B.filter' (/=121))
-    ])
-    , ("filterNotByte",
-        [F ({-# SCC "filterNotByte"      #-}app$  B.filterNotByte 101)
-        ,F ({-# SCC "lazy filterNotByte" #-}app$  L.filterNotByte 101)
-    ])
-    , ("filterByte",
-        [F ({-# SCC "filterByte"       #-}  app$  B.filterByte 103)
-        ,F ({-# SCC "lazy filterByte"  #-}  app$  L.filterByte 103)
-    ])
-    , ("findIndexOrEnd",
-        [F ({-# SCC "findIndexOrEnd"   #-}  app$  B.findIndexOrEnd (==126))
-    ])
+--  , ("map'",
+--      [F ({-# SCC "map"          #-}      app$  B.map (*2))
+--      ,F ({-# SCC "map"          #-}      app$  B.map' (*1))
+--  ])
+--  , ("filter'",
+--      [F ({-# SCC "filter"       #-}      app$  B.filter  (/=121))
+--      ,F ({-# SCC "filter'"      #-}      app$  B.filter' (/=121))
+--  ])
+--  , ("filterNotByte",
+--      [F ({-# SCC "filterNotByte"      #-}app$  B.filterNotByte 101)
+--      ,F ({-# SCC "lazy filterNotByte" #-}app$  L.filterNotByte 101)
+--  ])
+--  , ("filterByte",
+--      [F ({-# SCC "filterByte"       #-}  app$  B.filterByte 103)
+---     ,F ({-# SCC "lazy filterByte"  #-}  app$  L.filterByte 103)
+--  ])
+--  , ("findIndexOrEnd",
+--      [F ({-# SCC "findIndexOrEnd"   #-}  app$  B.findIndexOrEnd (==126))
+--  ])
     , ("findIndex",
         [F ({-# SCC "findIndex"      #-}    app$  B.findIndex (==126))
         ,F ({-# SCC "lazy findIndex" #-}    app$  L.findIndex (==126))
@@ -133,14 +133,14 @@ tests =
         [F ({-# SCC "split"         #-}     app $ B.split 0x0a)
         ,F ({-# SCC "lazy split"    #-}     app $ L.split 0x0a)
     ])
-    , ("breakByte",
-        [F ({-# SCC "breakChar"     #-}     app $ B.breakByte 122)
-        ,F ({-# SCC "lazy breakChar" #-}    app $ L.breakByte 122)
-    ])
-    , ("spanByte",
-        [F ({-# SCC "spanChar"      #-}     app $ B.spanByte 122)
-        ,F ({-# SCC "lazy spanChar" #-}     app $ L.spanByte 122)
-    ])
+--  , ("breakByte",
+--      [F ({-# SCC "breakChar"     #-}     app $ B.breakByte 122)
+--      ,F ({-# SCC "lazy breakChar" #-}    app $ L.breakByte 122)
+--  ])
+--  , ("spanByte",
+--      [F ({-# SCC "spanChar"      #-}     app $ B.spanByte 122)
+--      ,F ({-# SCC "lazy spanChar" #-}     app $ L.spanByte 122)
+--  ])
     , ("reverse",
         [F ({-# SCC "reverse"       #-}     app B.reverse)
         ,F ({-# SCC "lazy reverse"  #-}     app L.reverse)
@@ -189,10 +189,10 @@ tests =
         [F ({-# SCC "join"          #-}     app $ B.join (B.pack [1,2,3]))
         ,F ({-# SCC "lazy join"     #-}     app $ L.join (L.pack [1,2,3]))
     ])
-    , ("joinWithByte",
-        [F ({-# SCC "joinWithByte"  #-}     app $ uncurry (B.joinWithByte 32))
-        ,F ({-# SCC "lazy joinWithByte" #-} app $ uncurry (L.joinWithByte 32))
-    ])
+--  , ("joinWithByte",
+--      [F ({-# SCC "joinWithByte"  #-}     app $ uncurry (B.joinWithByte 32))
+--      ,F ({-# SCC "lazy joinWithByte" #-} app $ uncurry (L.joinWithByte 32))
+--  ])
     , ("any",
         [F ({-# SCC "any"           #-}     app $ B.any (==120))
         ,F ({-# SCC "lazy any"      #-}     app $ L.any (==120))
@@ -267,21 +267,21 @@ tests =
     , ("sort",
         [F ({-# SCC "sort"          #-}     app B.sort)
     ])
-    , ("lineIndices",
-        [F ({-# SCC "lineIndicies"  #-}     app C.lineIndices)
-    ])
+--  , ("lineIndices",
+--      [F ({-# SCC "lineIndicies"  #-}     app C.lineIndices)
+--  ])
     , ("elemIndexEnd",
         [F ({-# SCC "elemIndexEnd"  #-}     app $ B.elemIndexEnd 122)
     ])
-    , ("breakSpace",
-        [F ({-# SCC "breakSpace"    #-}     app C.breakSpace)
-    ])
-    , ("dropSpace",
-        [F ({-# SCC "dropSpace"     #-}     app C.dropSpace)
-    ])
-    , ("dropSpaceEnd",
-        [F ({-# SCC "dropSpaceEnd"  #-}     app C.dropSpaceEnd)
-    ])
+--  , ("breakSpace",
+--      [F ({-# SCC "breakSpace"    #-}     app C.breakSpace)
+--  ])
+--  , ("dropSpace",
+--      [F ({-# SCC "dropSpace"     #-}     app C.dropSpace)
+--  ])
+--  , ("dropSpaceEnd",
+--      [F ({-# SCC "dropSpaceEnd"  #-}     app C.dropSpaceEnd)
+--  ])
 
 --  , ("zip",[F ({-# SCC "zip" #-} B.zip fps fps)])
 
