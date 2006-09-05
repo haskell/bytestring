@@ -20,7 +20,7 @@
 -- without requiring the entire vector be resident in memory.
 --
 -- Some operations, such as concat, append, reverse and cons, have
--- better complexity than their "Data.ByteString" equivalents, as due to
+-- better complexity than their "Data.ByteString" equivalents, due to
 -- optimisations resulting from the list spine structure. And for other
 -- operations Lazy ByteStrings are usually within a few percent of
 -- strict ones, but with better heap usage. For data larger than the
