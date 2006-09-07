@@ -361,9 +361,9 @@ unpack (LPS ss) = L.concatMap P.unpack ss
 fromChunks :: [P.ByteString] -> ByteString
 fromChunks ls = LPS $ L.filter (not . P.null) ls
 
--- | /O(n)/ Convert a lazy 'ByteString' to a strict 'ByteString'
-toChunks :: ByteString -> P.ByteString
-toChunks (LPS s) = P.concat s
+-- | /O(n)/ Convert a lazy 'ByteString' into a list of strict 'ByteString'
+toChunks :: ByteString -> [P.ByteString]
+toChunks (LPS s) = s
 
 ------------------------------------------------------------------------
 
