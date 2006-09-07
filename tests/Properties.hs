@@ -23,6 +23,7 @@ import Foreign.Ptr
 
 import Data.ByteString.Lazy (ByteString(..), pack , unpack)
 import qualified Data.ByteString.Lazy as L
+import Data.ByteString.Base (LazyByteString(..))
 
 import qualified Data.ByteString       as P
 import qualified Data.ByteString.Base  as P

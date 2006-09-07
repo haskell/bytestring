@@ -19,6 +19,7 @@ import System.IO
 import Data.ByteString.Fusion
 import qualified Data.ByteString      as P
 import qualified Data.ByteString.Lazy as L
+import qualified Data.ByteString.Base as L (LazyByteString(..))
 
 import qualified Data.ByteString.Char8      as PC
 import qualified Data.ByteString.Lazy.Char8 as LC
