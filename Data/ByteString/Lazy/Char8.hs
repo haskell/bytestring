@@ -734,11 +734,9 @@ readInteger (LPS (x:xs)) =
           combine d acc ns ps pss =
               end (10^d * combine1 1000000000 ns + fromIntegral acc) ps pss
 
-          STRICT2(combine1)
           combine1 _ [n] = n
           combine1 b ns  = combine1 (b*b) $ combine2 b ns
 
-          STRICT2(combine2)
           combine2 b (n:m:ns) = let t = n+m*b in t `seq` (t : combine2 b ns)
           combine2 _ ns       = ns
 
