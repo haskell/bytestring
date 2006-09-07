@@ -43,11 +43,11 @@
 module Data.ByteString.Lazy (
 
         -- * The @ByteString@ type
-        ByteString(..),         -- instances: Eq, Ord, Show, Read, Data, Typeable
+        ByteString,             -- instances: Eq, Ord, Show, Read, Data, Typeable
 
         -- * Introducing and eliminating 'ByteString's
         empty,                  -- :: ByteString
-        singleton,               -- :: Word8   -> ByteString
+        singleton,              -- :: Word8   -> ByteString
         pack,                   -- :: [Word8] -> ByteString
         unpack,                 -- :: ByteString -> [Word8]
 
@@ -179,6 +179,7 @@ module Data.ByteString.Lazy (
         hGet,                   -- :: Handle -> Int -> IO ByteString
         hPut,                   -- :: Handle -> ByteString -> IO ()
         hGetNonBlocking,        -- :: Handle -> IO ByteString
+
 --      hGetN,                  -- :: Int -> Handle -> Int -> IO ByteString
 --      hGetContentsN,          -- :: Int -> Handle -> IO ByteString
 --      hGetNonBlockingN,       -- :: Int -> Handle -> IO ByteString
@@ -196,6 +197,7 @@ import Prelude hiding
 import qualified Data.List              as L  -- L for list/lazy
 import qualified Data.ByteString        as P  -- P for packed
 import qualified Data.ByteString.Base   as P
+import Data.ByteString.Base (LazyByteString(..))
 import qualified Data.ByteString.Fusion as P
 import Data.ByteString.Fusion (PairS(..),loopL)
 
@@ -212,10 +214,6 @@ import Foreign.ForeignPtr       (withForeignPtr)
 import Foreign.Ptr
 import Foreign.Storable
 
-#if defined(__GLASGOW_HASKELL__)
-import Data.Generics            (Data(..), Typeable(..))
-#endif
-
 -- -----------------------------------------------------------------------------
 --
 -- Useful macros, until we have bang patterns
@@ -229,17 +227,7 @@ import Data.Generics            (Data(..), Typeable(..))
 
 -- -----------------------------------------------------------------------------
 
--- | A space-efficient representation of a Word8 vector, supporting many
--- efficient operations.  A 'ByteString' contains 8-bit characters only.
---
--- Instances of Eq, Ord, Read, Show, Data, Typeable
---
-newtype ByteString = LPS [P.ByteString] -- LPS for lazy packed string
-    deriving (Show,Read
-#if defined(__GLASGOW_HASKELL__)
-                        ,Data, Typeable
-#endif
-             )
+type ByteString = LazyByteString
 
 --
 -- hmm, what about getting the PS constructor unpacked into the cons cell?

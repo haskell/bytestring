@@ -24,7 +24,7 @@
 module Data.ByteString.Lazy.Char8 (
 
         -- * The @ByteString@ type
-        ByteString(..),         -- instances: Eq, Ord, Show, Read, Data, Typeable
+        ByteString,            -- instances: Eq, Ord, Show, Read, Data, Typeable
 
         -- * Introducing and eliminating 'ByteString's
         empty,                  -- :: ByteString
@@ -176,7 +176,7 @@ module Data.ByteString.Lazy.Char8 (
 
 -- Functions transparently exported
 import Data.ByteString.Lazy 
-        (ByteString(..)
+        (ByteString
         ,empty,null,length,tail,init,append,reverse,transpose
         ,concat,take,drop,splitAt,join,isPrefixOf,group,inits,tails,copy
         ,hGetContents, hGet, hPut, getContents
@@ -187,6 +187,8 @@ import Data.ByteString.Lazy
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Base as B
+import Data.ByteString.Base (LazyByteString(LPS))
+
 import Data.ByteString.Base (w2c, c2w, isSpaceWord8)
 
 import Data.Int (Int64)
