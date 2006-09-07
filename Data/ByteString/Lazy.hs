@@ -50,6 +50,8 @@ module Data.ByteString.Lazy (
         singleton,              -- :: Word8   -> ByteString
         pack,                   -- :: [Word8] -> ByteString
         unpack,                 -- :: ByteString -> [Word8]
+        fromChunks,             -- :: [Strict.ByteString] -> ByteString
+        toChunks,               -- :: ByteString -> [Strict.ByteString]
 
         -- * Basic interface
         cons,                   -- :: Word8 -> ByteString -> ByteString
@@ -354,6 +356,14 @@ chunk size xs = case L.splitAt size xs of (xs', xs'') -> xs' : chunk size xs''
 unpack :: ByteString -> [Word8]
 unpack (LPS ss) = L.concatMap P.unpack ss
 {-# INLINE unpack #-}
+
+-- | /O(c)/ Convert a list of strict 'ByteString' into a lazy 'ByteString'
+fromChunks :: [P.ByteString] -> ByteString
+fromChunks ls = LPS $ L.filter (not . P.null) ls
+
+-- | /O(n)/ Convert a lazy 'ByteString' to a strict 'ByteString'
+toChunks :: ByteString -> P.ByteString
+toChunks (LPS s) = P.concat s
 
 ------------------------------------------------------------------------
 

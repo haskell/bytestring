@@ -31,6 +31,8 @@ module Data.ByteString.Lazy.Char8 (
         singleton,               -- :: Char   -> ByteString
         pack,                   -- :: String -> ByteString
         unpack,                 -- :: ByteString -> String
+        fromChunks,             -- :: [Strict.ByteString] -> ByteString
+        toChunks,               -- :: ByteString -> [Strict.ByteString]
 
         -- * Basic interface
         cons,                   -- :: Char -> ByteString -> ByteString
@@ -176,7 +178,7 @@ module Data.ByteString.Lazy.Char8 (
 
 -- Functions transparently exported
 import Data.ByteString.Lazy 
-        (ByteString
+        (ByteString, fromChunks, toChunks
         ,empty,null,length,tail,init,append,reverse,transpose
         ,concat,take,drop,splitAt,join,isPrefixOf,group,inits,tails,copy
         ,hGetContents, hGet, hPut, getContents
