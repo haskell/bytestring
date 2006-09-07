@@ -151,6 +151,7 @@ module Data.ByteString.Lazy.Char8 (
 
         -- * Reading from ByteStrings
         readInt,
+        readInteger,
 
         -- * I\/O with 'ByteString's
 
@@ -688,6 +689,62 @@ readInt (LPS (x:xs)) =
                                        | otherwise = ps:pss
                                 in n' `seq` ps' `seq` Just $! (n', LPS ps')
 
+
+-- | readInteger reads an Integer from the beginning of the ByteString.  If
+-- there is no integer at the beginning of the string, it returns Nothing,
+-- otherwise it just returns the int read, and the rest of the string.
+readInteger :: ByteString -> Maybe (Integer, ByteString)
+readInteger (LPS []) = Nothing
+readInteger (LPS (x:xs)) =
+        case w2c (B.unsafeHead x) of
+            '-' -> first (B.unsafeTail x) xs >>= \(n, bs) -> return (-n, bs)
+            '+' -> first (B.unsafeTail x) xs
+            _   -> first x xs
+
+    where first ps pss
+              | B.null ps = case pss of
+                  []         -> Nothing
+                  (ps':pss') -> first' ps' pss'
+              | otherwise = first' ps pss
+
+          first' ps pss = case B.unsafeHead ps of
+              w | w >= 0x30 && w <= 0x39 -> Just $
+                  loop 1 (fromIntegral w - 0x30) [] (B.unsafeTail ps) pss
+                | otherwise              -> Nothing
+
+          loop :: Int -> Int -> [Integer]
+               -> B.ByteString -> [B.ByteString] -> (Integer, ByteString)
+          STRICT5(loop)
+          loop d acc ns ps pss
+              | B.null ps = case pss of
+                                []         -> combine d acc ns ps pss
+                                (ps':pss') -> loop d acc ns ps' pss'
+              | otherwise =
+                  case B.unsafeHead ps of
+                   w | w >= 0x30 && w <= 0x39 ->
+                       if d < 9 then loop (d+1)
+                                          (10*acc + (fromIntegral w - 0x30))
+                                          ns (B.unsafeTail ps) pss
+                                else loop 1 (fromIntegral w - 0x30)
+                                          (fromIntegral acc : ns)
+                                          (B.unsafeTail ps) pss
+                     | otherwise -> combine d acc ns ps pss
+
+          combine _ acc [] ps pss = end (fromIntegral acc) ps pss
+          combine d acc ns ps pss =
+              end (10^d * combine1 1000000000 ns + fromIntegral acc) ps pss
+
+          STRICT2(combine1)
+          combine1 _ [n] = n
+          combine1 b ns  = combine1 (b*b) $ combine2 b ns
+
+          STRICT2(combine2)
+          combine2 b (n:m:ns) = let t = n+m*b in t `seq` (t : combine2 b ns)
+          combine2 _ ns       = ns
+
+          end n ps pss = let ps' | B.null ps =    pss
+                                 | otherwise = ps:pss
+                          in ps' `seq` (n, LPS ps')
 
 -- | Read an entire file /lazily/ into a 'ByteString'. Use 'text mode'
 -- on Windows to interpret newlines

@@ -843,6 +843,13 @@ prop_readint2BB s =
     let s' = filter (\c -> c `notElem` ['0'..'9']) s
     in C.readInt (C.pack s') == Nothing
 
+prop_readintegerBB n = (fst . fromJust . C.readInteger . C.pack . show) n == (n :: Integer)
+prop_readintegerLL n = (fst . fromJust . D.readInteger . D.pack . show) n == (n :: Integer)
+
+prop_readinteger2BB s =
+    let s' = filter (\c -> c `notElem` ['0'..'9']) s
+    in C.readInteger (C.pack s') == Nothing
+
 -- prop_filterChar1BB c xs = (filter (==c) xs) == ((C.unpack . C.filterChar c . C.pack) xs)
 -- prop_filterChar2BB c xs = (C.filter (==c) (C.pack xs)) == (C.filterChar c (C.pack xs))
 -- prop_filterChar3BB c xs = C.filterChar c xs == C.replicate (C.count c xs) c
@@ -1399,7 +1406,10 @@ bb_tests =
     ,    ("replicate3",     mytest prop_replicate3BB)
     ,    ("readInt",        mytest prop_readintBB)
     ,    ("readInt 2",      mytest prop_readint2BB)
+    ,    ("readInteger",    mytest prop_readintegerBB)
+    ,    ("readInteger 2",  mytest prop_readinteger2BB)
     ,    ("Lazy.readInt",   mytest prop_readintLL)
+    ,    ("Lazy.readInteger", mytest prop_readintegerLL)
 --  ,    ("filterChar1",    mytest prop_filterChar1BB)
 --  ,    ("filterChar2",    mytest prop_filterChar2BB)
 --  ,    ("filterChar3",    mytest prop_filterChar3BB)
