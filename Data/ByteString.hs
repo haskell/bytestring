@@ -1747,9 +1747,7 @@ hGetLines h = go
 
 hGetLine :: Handle -> IO ByteString
 #if !defined(__GLASGOW_HASKELL__)
-hGetLine h = do
-  string <- System.IO.hGetLine h
-  return $ packWith c2w string
+hGetLine h = System.IO.hGetLine h >>= return . pack . map c2w
 #else
 hGetLine h = wantReadableHandle "Data.ByteString.hGetLine" h $ \ handle_ -> do
     case haBufferMode handle_ of
