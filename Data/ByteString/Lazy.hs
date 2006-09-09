@@ -95,7 +95,6 @@ module Data.ByteString.Lazy (
 
         -- ** Accumulating maps
         mapAccumL,  -- :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
-        mapAccumR,  -- :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
         mapIndexed, -- :: (Int64 -> Word8 -> Word8) -> ByteString -> ByteString
 
         -- ** Infinite ByteStrings
@@ -125,7 +124,6 @@ module Data.ByteString.Lazy (
         -- ** Breaking into many substrings
         split,                  -- :: Word8 -> ByteString -> [ByteString]
         splitWith,              -- :: (Word8 -> Bool) -> ByteString -> [ByteString]
-        tokens,                 -- :: (Word8 -> Bool) -> ByteString -> [ByteString]
 
         -- ** Joining strings
         join,                   -- :: ByteString -> [ByteString] -> ByteString
@@ -587,9 +585,6 @@ minimum (LPS (x:xs)) = L.foldl' (\n ps -> n `min` P.minimum ps) (P.minimum x) xs
 mapAccumL :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
 mapAccumL f z = (\(a :*: ps) -> (a, LPS ps)) . loopL (P.mapAccumEFL f) z . unLPS
 
-mapAccumR :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
-mapAccumR = error "mapAccumR unimplemented"
-
 -- | /O(n)/ map Word8 functions, provided with the index at each position
 mapIndexed :: (Int -> Word8 -> Word8) -> ByteString -> ByteString
 mapIndexed f = LPS . P.loopArr . loopL (P.mapIndexEFL f) 0 . unLPS
@@ -832,6 +827,7 @@ split c (LPS (a:as)) = comb [] (P.split c a) as
         {-# INLINE cons' #-}
 {-# INLINE split #-}
 
+{-
 -- | Like 'splitWith', except that sequences of adjacent separators are
 -- treated as a single separator. eg.
 -- 
@@ -839,6 +835,7 @@ split c (LPS (a:as)) = comb [] (P.split c a) as
 --
 tokens :: (Word8 -> Bool) -> ByteString -> [ByteString]
 tokens f = L.filter (not.null) . splitWith f
+-}
 
 -- | The 'group' function takes a ByteString and returns a list of
 -- ByteStrings such that the concatenation of the result is equal to the
