@@ -105,7 +105,6 @@ module Data.ByteString.Lazy.Char8 (
         -- ** Breaking into many substrings
         split,                  -- :: Char -> ByteString -> [ByteString]
         splitWith,              -- :: (Char -> Bool) -> ByteString -> [ByteString]
-        tokens,                 -- :: (Char -> Bool) -> ByteString -> [ByteString]
 
         -- ** Breaking into lines and words
         lines,                  -- :: ByteString -> [ByteString]
@@ -460,15 +459,6 @@ splitWith :: (Char -> Bool) -> ByteString -> [ByteString]
 splitWith f = L.splitWith (f . w2c)
 {-# INLINE splitWith #-}
 
--- | Like 'splitWith', except that sequences of adjacent separators are
--- treated as a single separator. eg.
--- 
--- > tokens (=='a') "aabbaca" == ["bb","c"]
---
-tokens :: (Char -> Bool) -> ByteString -> [ByteString]
-tokens f = L.tokens (f . w2c)
-{-# INLINE tokens #-}
-
 -- | The 'groupBy' function is the non-overloaded version of 'group'.
 groupBy :: (Char -> Char -> Bool) -> ByteString -> [ByteString]
 groupBy k = L.groupBy (\a b -> k (w2c a) (w2c b))
@@ -648,7 +638,7 @@ unlines ss = (concat $ List.intersperse nl ss) `append` nl -- half as much space
 -- > tokens isSpace = words
 --
 words :: ByteString -> [ByteString]
-words = L.tokens isSpaceWord8
+words = P.filter (not . L.null) . L.splitWith isSpaceWord8
 {-# INLINE words #-}
 
 -- | The 'unwords' function is analogous to the 'unlines' function, on words.
