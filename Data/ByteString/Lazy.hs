@@ -245,13 +245,13 @@ unLPS :: ByteString -> [S.ByteString]
 unLPS (LPS xs) = xs
 {-# INLINE unLPS #-}
 
-instance Eq  ByteString
+instance Eq  LazyByteString
     where (==)    = eq
 
-instance Ord ByteString
+instance Ord LazyByteString
     where compare = compareBytes
 
-instance Monoid ByteString where
+instance Monoid LazyByteString where
     mempty  = empty
     mappend = append
     mconcat = concat
