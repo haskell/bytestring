@@ -194,11 +194,12 @@ import Prelude hiding
     ,getContents,getLine,putStr,putStrLn ,zip,zipWith,unzip,notElem)
 
 import qualified Data.List              as L  -- L for list/lazy
+import qualified Data.ByteString        as S  -- S for strict (hmm...)
 import qualified Data.ByteString        as P  -- P for packed
 import qualified Data.ByteString.Base   as P
-import Data.ByteString.Base (LazyByteString(..))
+import Data.ByteString.Base (LazyByteString(LPS))
 import qualified Data.ByteString.Fusion as P
-import Data.ByteString.Fusion (PairS(..),loopL)
+import Data.ByteString.Fusion (PairS((:*:)),loopL)
 
 import Data.Monoid              (Monoid(..))
 
@@ -207,7 +208,11 @@ import Data.Int                 (Int64)
 import System.IO                (Handle,stdin,stdout,openBinaryFile,IOMode(..)
                                 ,hClose,hWaitForInput,hIsEOF)
 import System.IO.Unsafe
+#ifndef __NHC__
 import Control.Exception        (bracket)
+#else
+import IO		        (bracket)
+#endif
 
 import Foreign.ForeignPtr       (withForeignPtr)
 import Foreign.Ptr
@@ -231,12 +236,12 @@ type ByteString = LazyByteString
 --
 -- hmm, what about getting the PS constructor unpacked into the cons cell?
 --
--- data List = Nil | Cons {-# UNPACK #-} !P.ByteString List
+-- data List = Nil | Cons {-# UNPACK #-} !S.ByteString List
 --
 -- Would avoid one indirection per chunk.
 --
 
-unLPS :: ByteString -> [P.ByteString]
+unLPS :: ByteString -> [S.ByteString]
 unLPS (LPS xs) = xs
 {-# INLINE unLPS #-}
 
@@ -270,8 +275,8 @@ _checkInvariant lps
 
 -- The Data abstraction function
 --
-_abstr :: ByteString -> P.ByteString
-_abstr (LPS []) = P.empty
+_abstr :: ByteString -> S.ByteString
+_abstr (LPS []) = Data.ByteString.Base.empty
 _abstr (LPS xs) = P.concat xs
 
 -- The representation uses lists of packed chunks. When we have to convert from
@@ -355,11 +360,11 @@ unpack (LPS ss) = L.concatMap P.unpack ss
 {-# INLINE unpack #-}
 
 -- | /O(c)/ Convert a list of strict 'ByteString' into a lazy 'ByteString'
-fromChunks :: [P.ByteString] -> ByteString
+fromChunks :: [S.ByteString] -> ByteString
 fromChunks ls = LPS $ L.filter (not . P.null) ls
 
 -- | /O(n)/ Convert a lazy 'ByteString' into a list of strict 'ByteString'
-toChunks :: ByteString -> [P.ByteString]
+toChunks :: ByteString -> [S.ByteString]
 toChunks (LPS s) = s
 
 ------------------------------------------------------------------------
@@ -786,7 +791,7 @@ splitWith :: (Word8 -> Bool) -> ByteString -> [ByteString]
 splitWith _ (LPS [])     = []
 splitWith p (LPS (a:as)) = comb [] (P.splitWith p a) as
 
-  where comb :: [P.ByteString] -> [P.ByteString] -> [P.ByteString] -> [ByteString]
+  where comb :: [S.ByteString] -> [S.ByteString] -> [S.ByteString] -> [ByteString]
         comb acc (s:[]) []     = LPS (L.reverse (cons' s acc)) : []
         comb acc (s:[]) (x:xs) = comb (cons' s acc) (P.splitWith p x) xs
         comb acc (s:ss) xs     = LPS (L.reverse (cons' s acc)) : comb [] ss xs
@@ -816,7 +821,7 @@ split :: Word8 -> ByteString -> [ByteString]
 split _ (LPS [])     = []
 split c (LPS (a:as)) = comb [] (P.split c a) as
 
-  where comb :: [P.ByteString] -> [P.ByteString] -> [P.ByteString] -> [ByteString]
+  where comb :: [S.ByteString] -> [S.ByteString] -> [S.ByteString] -> [ByteString]
         comb acc (s:[]) []     = LPS (L.reverse (cons' s acc)) : []
         comb acc (s:[]) (x:xs) = comb (cons' s acc) (P.split c x) xs
         comb acc (s:ss) xs     = LPS (L.reverse (cons' s acc)) : comb [] ss xs
@@ -848,7 +853,7 @@ tokens f = L.filter (not.null) . splitWith f
 group :: ByteString -> [ByteString]
 group (LPS [])     = []
 group (LPS (a:as)) = group' [] (P.group a) as
-  where group' :: [P.ByteString] -> [P.ByteString] -> [P.ByteString] -> [ByteString]
+  where group' :: [S.ByteString] -> [S.ByteString] -> [S.ByteString] -> [ByteString]
         group' acc@(s':_) ss@(s:_) xs
           | P.unsafeHead s'
          /= P.unsafeHead s       = LPS (L.reverse acc) : group' [] ss xs
@@ -874,7 +879,7 @@ groupBy = error "Data.ByteString.Lazy.groupBy: unimplemented"
 {-
 groupBy _ (LPS [])     = []
 groupBy k (LPS (a:as)) = groupBy' [] 0 (P.groupBy k a) as
-  where groupBy' :: [P.ByteString] -> Word8 -> [P.ByteString] -> [P.ByteString] -> [ByteString]
+  where groupBy' :: [S.ByteString] -> Word8 -> [S.ByteString] -> [S.ByteString] -> [ByteString]
         groupBy' acc@(_:_) c ss@(s:_) xs
           | not (c `k` P.unsafeHead s) = LPS (L.reverse acc) : groupBy' [] 0 ss xs
         groupBy' acc _ (s:[]) []       = LPS (L.reverse (s : acc)) : []
@@ -1271,7 +1276,7 @@ moduleError fun msg = error ("Data.ByteString.Lazy." ++ fun ++ ':':' ':msg)
 --
 -- TODO fuse.
 --
-filterMap :: (P.ByteString -> P.ByteString) -> [P.ByteString] -> [P.ByteString]
+filterMap :: (S.ByteString -> S.ByteString) -> [S.ByteString] -> [S.ByteString]
 filterMap _ []     = []
 filterMap f (x:xs) = case f x of
                     y | P.null y  ->     filterMap f xs      -- manually fuse the invariant filter
@@ -1281,7 +1286,7 @@ filterMap f (x:xs) = case f x of
 
 -- | 'findIndexOrEnd' is a variant of findIndex, that returns the length
 -- of the string if no element is found, rather than Nothing.
-findIndexOrEnd :: (Word8 -> Bool) -> P.ByteString -> Int
+findIndexOrEnd :: (Word8 -> Bool) -> S.ByteString -> Int
 findIndexOrEnd k (P.PS x s l) = P.inlinePerformIO $ withForeignPtr x $ \f -> go (f `plusPtr` s) 0
   where
     STRICT2(go)
