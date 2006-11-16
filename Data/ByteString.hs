@@ -230,8 +230,12 @@ import Data.Array               (listArray)
 import qualified Data.Array as Array ((!))
 
 -- Control.Exception.bracket not available in yhc or nhc
+#ifndef __NHC__
 import Control.Exception        (bracket, assert)
 import qualified Control.Exception as Exception
+#else
+import IO			(bracket)
+#endif
 import Control.Monad            (when)
 
 import Foreign.C.String         (CString, CStringLen)
@@ -267,6 +271,22 @@ import GHC.Ptr                  (Ptr(..))
 import GHC.ST                   (ST(..))
 import GHC.IOBase
 
+#endif
+
+-- An alternative to Control.Exception (assert) for nhc98
+#ifdef __NHC__
+#define assert  assertS "__FILE__ : __LINE__"
+assertS :: String -> Bool -> a -> a
+assertS _ True  = id
+assertS s False = error ("assertion failed at "++s)
+#endif
+
+-- Stubs for System.IO (hGetBuf, hPutBuf) for nhc98
+#ifdef __NHC__
+hGetBuf :: Handle -> Ptr a -> Int -> IO Int
+hPutBuf :: Handle -> Ptr a -> Int -> IO ()
+hGetBuf = error "not implemented: System.IO.hGetBuf"
+hPutBuf = error "not implemented: System.IO.hPutBuf"
 #endif
 
 -- -----------------------------------------------------------------------------

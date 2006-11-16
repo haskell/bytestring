@@ -203,7 +203,12 @@ import Prelude hiding
         ,zip,zipWith,unzip,notElem,repeat,iterate,interact,cycle)
 
 import System.IO            (hClose,openFile,IOMode(..))
+#ifndef __NHC__
 import Control.Exception    (bracket)
+#else
+import IO                   (bracket)
+#else
+#endif
 
 #define STRICT1(f) f a | a `seq` False = undefined
 #define STRICT2(f) f a b | a `seq` b `seq` False = undefined

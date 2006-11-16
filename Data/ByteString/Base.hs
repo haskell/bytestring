@@ -87,7 +87,9 @@ import Foreign.Storable         (Storable(..))
 import Foreign.C.Types          (CInt, CSize, CULong)
 import Foreign.C.String         (CString, CStringLen)
 
+#ifndef __NHC__
 import Control.Exception        (assert)
+#endif
 
 import Data.Char                (ord)
 import Data.Word                (Word8)
@@ -121,6 +123,14 @@ import Foreign.Ptr              (nullPtr)
 
 -- CFILES stuff is Hugs only
 {-# CFILES cbits/fpstring.c #-}
+
+-- An alternative to Control.Exception (assert) for nhc98
+#ifdef __NHC__
+#define assert	assertS "__FILE__ : __LINE__"
+assertS :: String -> Bool -> a -> a
+assertS _ True  = id
+assertS s False = error ("assertion failed at "++s)
+#endif
 
 -- -----------------------------------------------------------------------------
 --
