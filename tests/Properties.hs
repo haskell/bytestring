@@ -75,6 +75,10 @@ prop_lengthBP       = L.length      `eq1`  (fromIntegral . P.length :: P.ByteStr
 prop_readIntBP      = D.readInt     `eq1`  C.readInt
 prop_linesBP        = D.lines       `eq1`  C.lines
 
+-- double check:
+prop_linesNLBP      = eq1 D.lines C.lines x
+    where x = D.pack "one\ntwo\n\n\nfive\n\nseven\n"
+
 prop_headBP         = L.head        `eqnotnull1` P.head
 prop_initBP         = L.init        `eqnotnull1` P.init
 prop_lastBP         = L.last        `eqnotnull1` P.last
@@ -1190,6 +1194,7 @@ bp_tests =
     ,("length",      mytest prop_lengthBP)
     ,("readInt",     mytest prop_readIntBP)
     ,("lines",       mytest prop_linesBP)
+    ,("lines \\n",   mytest prop_linesNLBP)
     ,("map",         mytest prop_mapBP)
     ,("maximum   ",  mytest prop_maximumBP)
     ,("minimum"   ,  mytest prop_minimumBP)

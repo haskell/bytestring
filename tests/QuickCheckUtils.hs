@@ -86,7 +86,7 @@ done mesg ntest stamps =
 ------------------------------------------------------------------------
 
 instance Arbitrary Char where
-    arbitrary     = choose ('a', 'i')
+    arbitrary     = choose ('\0','\255')
     coarbitrary c = variant (ord c `rem` 4)
 
 instance (Arbitrary a, Arbitrary b) => Arbitrary (PairS a b) where
