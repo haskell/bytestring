@@ -15,10 +15,10 @@ Requirements:
         > GHC 6.4 or greater, or hugs
 
 Building:
-        > chmod +x Setup.hs
-        > ./Setup.hs configure --prefix=/f/g
-        > ./Setup.hs build
-        > ./Setup.hs install
+        > chmod +x Setup.lhs
+        > ./Setup.lhs configure --prefix=/f/g
+        > ./Setup.lhs build
+        > ./Setup.lhs install
 
 After installation, you can run the testsuite as follows:
     
