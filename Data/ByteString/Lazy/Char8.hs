@@ -207,7 +207,6 @@ import System.IO            (hClose,openFile,IOMode(..))
 import Control.Exception    (bracket)
 #else
 import IO                   (bracket)
-#else
 #endif
 
 #define STRICT1(f) f a | a `seq` False = undefined

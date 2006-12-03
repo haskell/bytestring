@@ -197,6 +197,7 @@ import qualified Data.List              as L  -- L for list/lazy
 import qualified Data.ByteString        as S  -- S for strict (hmm...)
 import qualified Data.ByteString        as P  -- P for packed
 import qualified Data.ByteString.Base   as P
+import qualified Data.ByteString.Base
 import Data.ByteString.Base (LazyByteString(LPS))
 import qualified Data.ByteString.Fusion as P
 import Data.ByteString.Fusion (PairS((:*:)),loopL)
