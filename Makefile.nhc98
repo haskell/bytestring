@@ -1,6 +1,6 @@
 THISPKG	= fps
 VERSION = 0.8
-SEARCH	= -package base
+SEARCH	= -package base -Icbits
 #EXTRA_H_FLAGS   = -K6M -DVERSION=$(VERSION)
 #EXTRA_HBC_FLAGS = -H50M -A4M
 
@@ -8,9 +8,11 @@ SRCS	= \
 	Data/ByteString/Base.hs \
 	Data/ByteString.hs \
 	Data/ByteString/Fusion.hs \
-	Data/ByteString/Char8.hs \
 	Data/ByteString/Lazy.hs \
 	Data/ByteString/Lazy/Char8.hs \
+	fpstring.c
+
+#	Data/ByteString/Char8.hs \
 
 
 # Here are the main rules.
