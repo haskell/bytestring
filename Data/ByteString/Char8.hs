@@ -250,7 +250,7 @@ import Data.ByteString (empty,null,length,tail,init,append
                        )
 
 import Data.ByteString.Base (
-                        ByteString(..)
+                        ByteString(PS)
 #if defined(__GLASGOW_HASKELL__)
                        ,packAddress, unsafePackAddress
 #endif
@@ -261,7 +261,11 @@ import Data.Char    ( isSpace )
 import qualified Data.List as List (intersperse)
 
 import System.IO                (openFile,hClose,hFileSize,IOMode(..))
+#ifndef __NHC__
 import Control.Exception        (bracket)
+#else
+import IO			(bracket)
+#endif
 import Foreign
 
 #if defined(__GLASGOW_HASKELL__)
