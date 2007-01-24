@@ -1,6 +1,7 @@
 GHC=            ghc
 GHCFLAGS=       -cpp -O2 -funbox-strict-fields -no-recomp
-PKG=            -package fps
+PKG=            -i..
+#PKG=            -package fps
 
 #GHC=            /usr/obj/build/compiler/stage2/ghc-inplace
 #PKG=            
@@ -13,11 +14,19 @@ fast: prop-fast
 everything: prop hugs prop-compiled prop-fusion-compiled runbench fusionbench wc spellcheck letter_frequency linesort fuse down-fuse inline zipwith unpack groupby
 
 # ---------------------------------------------
+# Boot in-place
+
+.PHONY: boot-in-place
+
+boot-in-place:
+	cd .. && ${GHC} ${GHCFLAGS} --make Data/*hs Data/*/*hs Data/*/*/*hs
+
+# ---------------------------------------------
 # QuickCheck
 
 # interpreted
 .PHONY: prop hugs
-prop::
+prop:: boot-in-place
 	@echo "Interpreted"	
 	runhaskell ${PKG} Properties.hs
 
@@ -26,8 +35,8 @@ hugs::
 
 # interpreted fast. Just a quick check.
 .PHONY: prop-fast
-prop-fast::
-	runhaskell Properties.hs 10
+prop-fast:: boot-in-place
+	runhaskell ${PKG} Properties.hs 10
 
 # compiled
 .PHONY: prop-compiled
