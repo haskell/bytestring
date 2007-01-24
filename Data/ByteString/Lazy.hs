@@ -457,7 +457,6 @@ init (LPS xs)
 -- | /O(n)/ Append two ByteStrings
 append :: ByteString -> ByteString -> ByteString
 append (LPS []) (LPS ys) = LPS ys
-append (LPS xs) (LPS []) = LPS xs
 append (LPS xs) (LPS ys) = LPS (xs ++ ys)
 {-# INLINE append #-}
 

@@ -8,7 +8,7 @@ PKG=            -i..
 
 BIN=            run-utests run-qtests
 
-all:  prop prop-fusion-compiled prop-compiled prop-opt
+all:  prop prop-fusion-compiled prop-compiled prop-opt units-compiled
 fast: prop-fast
 
 everything: prop hugs prop-compiled prop-fusion-compiled runbench fusionbench wc spellcheck letter_frequency linesort fuse down-fuse inline zipwith unpack groupby
@@ -20,6 +20,16 @@ everything: prop hugs prop-compiled prop-fusion-compiled runbench fusionbench wc
 
 boot-in-place:
 	cd .. && ${GHC} ${GHCFLAGS} --make Data/*hs Data/*/*hs Data/*/*/*hs
+
+# ---------------------------------------------
+# HUnit
+
+# compiled
+.PHONY: units-compiled
+units-compiled:
+	@echo "Compiled, rules off"
+	${GHC} ${PKG} ${GHCFLAGS} -frules-off --make Units.hs -o u -package HUnit
+	time ./u
 
 # ---------------------------------------------
 # QuickCheck
@@ -168,5 +178,5 @@ plot:: results
 .PHONY: clean
 clean:
 	rm -f *~ *.o *.hi $(BIN) bench */*.o */*.hi */*~ 
-	rm -f wc letter_frequency spellcheck linesort fuse inline p fp lazylines
+	rm -f wc letter_frequency spellcheck linesort fuse inline p u fp lazylines
 	rm -f down-fuse zipwith fusionbench unpack groupby
