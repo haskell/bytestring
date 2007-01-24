@@ -1,4 +1,5 @@
 GHC=            ghc
+GHCFLAGS=       -cpp -O2 -funbox-strict-fields -no-recomp
 PKG=            -package fps
 
 #GHC=            /usr/obj/build/compiler/stage2/ghc-inplace
@@ -18,7 +19,7 @@ everything: prop hugs prop-compiled prop-fusion-compiled runbench fusionbench wc
 .PHONY: prop hugs
 prop::
 	@echo "Interpreted"	
-	runhaskell Properties.hs
+	runhaskell ${PKG} Properties.hs
 
 hugs::
 	runhugs -98 Properties.hs
@@ -32,14 +33,14 @@ prop-fast::
 .PHONY: prop-compiled
 prop-compiled: 
 	@echo "Compiled, rules off"	
-	${GHC} ${PKG} --make -cpp -O2 -frules-off -funbox-strict-fields Properties.hs -o p -no-recomp -package QuickCheck
+	${GHC} ${PKG} ${GHCFLAGS} -frules-off --make Properties.hs -o p -package QuickCheck
 	time ./p
 
 # rules-on
 .PHONY: prop-opt
 prop-opt: 
 	@echo "Compiled, rules on"	
-	${GHC} ${PKG} --make -cpp -O2 -funbox-strict-fields Properties.hs -o p -no-recomp -package QuickCheck
+	${GHC} ${PKG} ${GHCFLAGS} --make Properties.hs -o p -package QuickCheck
 	time ./p
 
 #
@@ -47,7 +48,7 @@ prop-opt:
 #
 .PHONY: prop-fusion-compiled
 prop-fusion-compiled:
-	${GHC} ${PKG} --make -cpp -O2 -funbox-strict-fields FusionProperties.hs -o fp -no-recomp -package QuickCheck
+	${GHC} ${PKG} ${GHCFLAGS} --make FusionProperties.hs -o fp -package QuickCheck
 	time ./fp
 
 # ---------------------------------------------------------
@@ -59,10 +60,10 @@ runbench: bench
 
 bench::
 	@if [ ! -f "bigdata" ] ; then ln -s data bigdata ; fi
-	${GHC} ${PKG} --make -O -funbox-strict-fields Bench.hs -cpp -o bench -no-recomp
+	${GHC} ${PKG} ${GHCFLAGS} --make Bench.hs -o bench
 
 fusionbench::
-	${GHC} ${PKG} --make -O -funbox-strict-fields FusionBench.hs -cpp -ddump-simpl-stats -o fusionbench -no-recomp
+	${GHC} ${PKG} ${GHCFLAGS} --make FusionBench.hs -ddump-simpl-stats -o fusionbench
 
 # ---------------------------------------------------------
 # Profiling
@@ -70,12 +71,12 @@ fusionbench::
 
 prof::
 	@if [ ! -f "bigdata" ] ; then ln -s data bigdata ; fi
-	${GHC} ${PKG} -prof -auto-all --make -O -funbox-strict-fields Bench.hs -o bench
+	${GHC} ${PKG} ${GHCFLAGS} -prof -auto-all --make Bench.hs -o bench
 	./bench +RTS -H64m -p
 
 fusionprof::
 	@if [ ! -f "bigdata" ] ; then ln -s data bigdata ; fi
-	${GHC} ${PKG} -prof -auto-all --make -O -funbox-strict-fields FusionBench.hs -o fusionbench
+	${GHC} ${PKG} ${GHCFLAGS} -prof -auto-all --make FusionBench.hs -o fusionbench
 	./bench +RTS -H64m -p
 
 # ---------------------------------------------------------
@@ -85,57 +86,57 @@ wc: wc.o
 	@if [ ! -f "bigdata" ] ; then ln -s data bigdata ; fi
 	time ./wc bigdata
 wc.o: wc.hs
-	${GHC} ${PKG} -O -ddump-simpl-stats wc.hs -o wc
+	${GHC} ${PKG} ${GHCFLAGS} -ddump-simpl-stats wc.hs -o wc
 
 spellcheck: spellcheck.o
 	time ./spellcheck < spellcheck-input.txt
 spellcheck.o: spellcheck.hs
-	${GHC} ${PKG} -O $< -o spellcheck
+	${GHC} ${PKG} ${GHCFLAGS} $< -o spellcheck
 
 letter_frequency: letter_frequency.o
 	time ./letter_frequency < Usr.Dict.Words
 letter_frequency.o: letter_frequency.hs
-	${GHC} ${PKG} -O $< -o letter_frequency -ddump-simpl-stats
+	${GHC} ${PKG} ${GHCFLAGS}  $< -o letter_frequency -ddump-simpl-stats
 
 linesort: linesort.o
 	time ./linesort < Usr.Dict.Words
 linesort.o: linesort.hs
-	${GHC} ${PKG} -O $< -o linesort
+	${GHC} ${PKG} ${GHCFLAGS} $< -o linesort
 
 fuse: fuse.o
 	time ./fuse < Usr.Dict.Words
 fuse.o: fuse.hs
-	${GHC} ${PKG} -O $< -o fuse -ddump-simpl-stats
+	${GHC} ${PKG} ${GHCFLAGS} $< -o fuse -ddump-simpl-stats
 
 down-fuse: down-fuse.o
 	time ./down-fuse
 down-fuse.o: down-fuse.hs
-	${GHC} ${PKG} -O $< -o ./down-fuse -ddump-simpl-stats
+	${GHC} ${PKG} ${GHCFLAGS} $< -o ./down-fuse -ddump-simpl-stats
 
 lazylines: lazylines.o
 	time ./lazylines < bigdata
 lazylines.o: lazylines.hs
-	${GHC} ${PKG} -O $< -o lazylines
+	${GHC} ${PKG} ${GHCFLAGS} $< -o lazylines
 
 inline: inline.o
 	time ./inline
 inline.o: inline.hs
-	${GHC} ${PKG} -O $< -o inline
+	${GHC} ${PKG} ${GHCFLAGS} $< -o inline
 
 zipwith: zipwith.o
 	time ./zipwith
 zipwith.o: zipwith.hs
-	${GHC} ${PKG} -O -ddump-simpl-stats $< -o zipwith
+	${GHC} ${PKG} ${GHCFLAGS} -ddump-simpl-stats $< -o zipwith
 
 unpack: unpack.o
 	time ./unpack
 unpack.o: unpack.hs
-	${GHC} ${PKG} -O -ddump-simpl-stats $< -o unpack
+	${GHC} ${PKG} ${GHCFLAGS} -ddump-simpl-stats $< -o unpack
 
 groupby: groupby.o
 	time ./groupby
 groupby.o: groupby.hs
-	${GHC} ${PKG} -O $< -o groupby
+	${GHC} ${PKG} ${GHCFLAGS} $< -o groupby
 
 # ---------------------------------------------------
 # Plotting graphs
