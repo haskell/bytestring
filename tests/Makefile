@@ -1,5 +1,5 @@
 GHC=            ghc
-GHCFLAGS=       -cpp -O2 -funbox-strict-fields -no-recomp
+GHCFLAGS=       -cpp -O2 -funbox-strict-fields -no-recomp -v0
 PKG=            -i..
 #PKG=            -package fps
 
