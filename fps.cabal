@@ -17,4 +17,5 @@ ghc-options:         -Wall -fglasgow-exts -O2 -funbox-strict-fields -DSLOW_FOREI
 include-dirs:        cbits
 c-sources:           cbits/fpstring.c
 
+-- For ghc 6.4.2 or older:
 -- -DSLOW_FOREIGN_PTR

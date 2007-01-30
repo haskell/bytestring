@@ -30,20 +30,29 @@ module Data.ByteString.Base (
         create,                 -- :: Int -> (Ptr Word8 -> IO ()) -> IO ByteString
         createAndTrim,          -- :: Int -> (Ptr Word8 -> IO Int) -> IO  ByteString
         createAndTrim',         -- :: Int -> (Ptr Word8 -> IO (Int, Int, a)) -> IO (ByteString, a)
-        mallocByteString,       -- :: Int -> IO (ForeignPtr a)
-
         unsafeCreate,           -- :: Int -> (Ptr Word8 -> IO ()) ->  ByteString
-        unsafeUseAsCString,     -- :: ByteString -> (CString -> IO a) -> IO a
-        unsafeUseAsCStringLen,  -- :: ByteString -> (CStringLen -> IO a) -> IO a
+        mallocByteString,       -- :: Int -> IO (ForeignPtr a)
+        newForeignFreePtr,
 
+        -- * Conversion to and from ForeignPtrs
         fromForeignPtr,         -- :: ForeignPtr Word8 -> Int -> ByteString
         toForeignPtr,           -- :: ByteString -> (ForeignPtr Word8, Int, Int)
 
+        -- * Low level interaction with CStrings
+        -- ** Using ByteStrings with functions for CStrings
+        unsafeUseAsCString,     -- :: ByteString -> (CString -> IO a) -> IO a
+        unsafeUseAsCStringLen,  -- :: ByteString -> (CStringLen -> IO a) -> IO a
+
+        -- ** Converting CStrings to ByteStrings
+        unsafePackCString,      -- :: CString -> IO ByteString
+        unsafePackCStringLen,   -- :: CStringLen -> IO ByteString
+        unsafePackMallocCString,-- :: CString -> IO ByteString
+
 #if defined(__GLASGOW_HASKELL__)
-        packCStringFinalizer,   -- :: Ptr Word8 -> Int -> IO () -> IO ByteString
-        packAddress,            -- :: Addr# -> ByteString
-        unsafePackAddress,      -- :: Int -> Addr# -> ByteString
-        unsafeFinalize,         -- :: ByteString -> IO ()
+        unsafePackAddress,          -- :: Addr# -> IO ByteString
+        unsafePackAddressLen,       -- :: Int -> Addr# -> IO ByteString
+        unsafePackCStringFinalizer, -- :: Ptr Word8 -> Int -> IO () -> IO ByteString
+        unsafeFinalize,             -- :: ByteString -> IO ()
 #endif
 
         -- * Utilities
@@ -71,8 +80,8 @@ module Data.ByteString.Base (
         c_minimum,                  -- :: Ptr Word8 -> CInt -> IO Word8
         c_count,                    -- :: Ptr Word8 -> CInt -> Word8 -> IO CInt
 
-        -- * Internal GHC magic
 #if defined(__GLASGOW_HASKELL__)
+        -- * Internal GHC magic
         memcpy_ptr_baoff,           -- :: Ptr a -> RawBuffer -> CInt -> CSize -> IO (Ptr ())
 #endif
 
@@ -81,7 +90,7 @@ module Data.ByteString.Base (
 
   ) where
 
-import Foreign.ForeignPtr       (ForeignPtr, newForeignPtr_, withForeignPtr)
+import Foreign.ForeignPtr       (ForeignPtr, newForeignPtr, newForeignPtr_, withForeignPtr)
 import Foreign.Ptr              (Ptr, FunPtr, plusPtr, castPtr)
 import Foreign.Storable         (Storable(..))
 import Foreign.C.Types          (CInt, CSize, CULong)
@@ -335,46 +344,123 @@ mallocByteString l = do
 --
 -- > literalFS = packAddress "literal"#
 --
-packAddress :: Addr# -> ByteString
-packAddress addr# = inlinePerformIO $ do
+-- This function is /unsafe/. If you modify the buffer pointed to by the
+-- original Addr# this modification will be reflected in the resulting
+-- @ByteString@, breaking referential transparency.
+--
+unsafePackAddress :: Addr# -> IO ByteString
+unsafePackAddress addr# = do
     p <- newForeignPtr_ cstr
     l <- c_strlen cstr
     return $ PS p 0 (fromIntegral l)
   where
     cstr = Ptr addr#
-{-# INLINE packAddress #-}
+{-# INLINE unsafePackAddress #-}
 
--- | /O(1)/ 'unsafePackAddress' provides constant-time construction of
--- 'ByteStrings' -- which is ideal for string literals. It packs a
+-- | /O(1)/ 'unsafePackAddressLen' provides constant-time construction of
+-- 'ByteStrings' which is ideal for string literals. It packs a
 -- null-terminated sequence of bytes into a 'ByteString', given a raw
--- 'Addr\#' to the string, and the length of the string. Make sure the
--- length is correct, otherwise use the safer 'packAddress' (where the
--- length will be calculated once at runtime).
-unsafePackAddress :: Int -> Addr# -> ByteString
-unsafePackAddress len addr# = inlinePerformIO $ do
-    p <- newForeignPtr_ cstr
+-- 'Addr\#' to the string, and the length of the string.
+--
+-- This function is /unsafe/ in two ways:
+--
+-- * the length argument is assumed to be correct. If the length
+-- argument is incorrect, it is possible to overstep the end of the
+-- byte array.
+--
+-- * if the underying Addr# is later modified, this change will be
+-- reflected in resulting @ByteString@, breaking referential
+-- transparency.
+--
+-- If in doubt, don't use these functions.
+--
+unsafePackAddressLen :: Int -> Addr# -> IO ByteString
+unsafePackAddressLen len addr# = do
+    p <- newForeignPtr_ (Ptr addr#)
     return $ PS p 0 len
-    where cstr = Ptr addr#
+{-# INLINE unsafePackAddressLen #-}
 
--- | /O(1)/ Construct a 'ByteString' given a C Ptr Word8 buffer, a
+-- | /O(1)/ Construct a 'ByteString' given a Ptr Word8 to a buffer, a
 -- length, and an IO action representing a finalizer. This function is
 -- not available on Hugs.
 --
-packCStringFinalizer :: Ptr Word8 -> Int -> IO () -> IO ByteString
-packCStringFinalizer p l f = do
+-- This function is /unsafe/, it is possible to break referential
+-- transparency by modifying the underlying buffer pointed to by the
+-- first argument. Any changes to the original buffer will be reflected
+-- in the resulting @ByteString@.
+--
+unsafePackCStringFinalizer :: Ptr Word8 -> Int -> IO () -> IO ByteString
+unsafePackCStringFinalizer p l f = do
     fp <- FC.newForeignPtr p f
     return $ PS fp 0 l
 
 -- | Explicitly run the finaliser associated with a 'ByteString'.
--- Further references to this value may generate invalid memory
--- references. This operation is unsafe, as there may be other
+-- References to this value after finalisation may generate invalid memory
+-- references.
+--
+-- This function is /unsafe/, as there may be other
 -- 'ByteStrings' referring to the same underlying pages. If you use
 -- this, you need to have a proof of some kind that all 'ByteString's
 -- ever generated from the underlying byte array are no longer live.
+--
 unsafeFinalize :: ByteString -> IO ()
 unsafeFinalize (PS p _ _) = FC.finalizeForeignPtr p
 
 #endif
+
+------------------------------------------------------------------------
+-- Packing CStrings into ByteStrings
+
+-- | /O(n)/ Build a @ByteString@ from a @CString@. This value will have /no/
+-- finalizer associated to it, and will not be garbage collected by
+-- Haskell. The ByteString length is calculated using /strlen(3)/,
+-- and thus the complexity is a /O(n)/.
+--
+-- This function is /unsafe/. If the @CString@ is later modified, this
+-- change will be reflected in the resulting @ByteString@, breaking
+-- referential transparency.
+--
+unsafePackCString :: CString -> IO ByteString
+unsafePackCString cstr = do
+    fp <- newForeignPtr_ (castPtr cstr)
+    l <- c_strlen cstr
+    return $! PS fp 0 (fromIntegral l)
+
+-- | /O(1)/ Build a @ByteString@ from a @CStringLen@. This value will
+-- have /no/ finalizer associated with it, and will not be garbage
+-- collected by Haskell. This operation has /O(1)/ complexity as we
+-- already know the final size, so no /strlen(3)/ is required.
+--
+-- This funtion is /unsafe/. If the original @CStringLen@ is later
+-- modified, this change will be reflected in the resulting @ByteString@,
+-- breaking referential transparency.
+--
+unsafePackCStringLen :: CStringLen -> IO ByteString
+unsafePackCStringLen (ptr,len) = do
+    fp <- newForeignPtr_ (castPtr ptr)
+    return $! PS fp 0 (fromIntegral len)
+
+-- | /O(n)/ Build a @ByteString@ from a malloced @CString@. This value will
+-- have a @free(3)@ finalizer associated to it.
+--
+-- This funtion is /unsafe/. If the original @CStringLen@ is later
+-- modified, this change will be reflected in the resulting @ByteString@,
+-- breaking referential transparency.
+--
+-- This function is also unsafe if you call its finalizer twice,
+-- which will result in a /double free/ error.
+--
+unsafePackMallocCString :: CString -> IO ByteString
+unsafePackMallocCString cstr = do
+    fp <- newForeignFreePtr (castPtr cstr)
+    len <- c_strlen cstr
+    return $! PS fp 0 (fromIntegral len)
+
+-- | Construct a ForeignPtr from a Ptr Word8, with a free(3) finalizer
+-- attached.
+newForeignFreePtr :: Ptr Word8 -> IO (ForeignPtr Word8)
+newForeignFreePtr p = newForeignPtr c_free_finalizer p
+{-# INLINE newForeignFreePtr #-}
 
 ------------------------------------------------------------------------
 
@@ -410,8 +496,11 @@ isSpaceWord8 w = case w of
 {-# INLINE isSpaceWord8 #-}
 
 ------------------------------------------------------------------------
+
 -- | Just like unsafePerformIO, but we inline it. Big performance gains as
--- it exposes lots of things to further inlining
+-- it exposes lots of things to further inlining. /Very unsafe/. In
+-- particular, you should do no memory allocation inside an
+-- 'inlinePerformIO' block. On Hugs this is just @unsafePerformIO@.
 --
 {-# INLINE inlinePerformIO #-}
 inlinePerformIO :: IO a -> a
@@ -423,7 +512,6 @@ inlinePerformIO = unsafePerformIO
 
 -- | Count the number of occurrences of each byte.
 --
-{-# SPECIALIZE countOccurrences :: Ptr CSize -> Ptr Word8 -> Int -> IO () #-}
 countOccurrences :: (Storable a, Num a) => Ptr a -> Ptr Word8 -> Int -> IO ()
 STRICT3(countOccurrences)
 countOccurrences counts str l = go 0
@@ -434,18 +522,49 @@ countOccurrences counts str l = go 0
                           x <- peekElemOff counts k
                           pokeElemOff counts k (x + 1)
                           go (i + 1)
+{-# SPECIALIZE countOccurrences :: Ptr CSize -> Ptr Word8 -> Int -> IO () #-}
+
+-- ---------------------------------------------------------------------
 
 -- | /O(1) construction/ Use a @ByteString@ with a function requiring a
--- @CString@.  Warning: modifying the @CString@ will affect the
--- @ByteString@.  Why is this function unsafe? It relies on the null
--- byte at the end of the ByteString to be there. Unless you can
--- guarantee the null byte, you should use the safe version, which will
--- copy the string first.
+-- @CString@.
+--
+-- This function does zero copying, and merely unwraps a @ByteString@ to
+-- appear as a @CString@. It is /unsafe/ in two ways:
+--
+-- * After calling this function the @CString@ shares the underlying
+-- byte buffer with the original @ByteString@. Thus modifying the
+-- @CString@, either in C, or using poke, will cause the contents of the
+-- @ByteString@ to change, breaking referential transparency. Other
+-- @ByteStrings@ created by sharing (such as those produced via 'take'
+-- or 'drop') will also reflect these changes. Modifying the @CString@
+-- will break referential transparency. To avoid this, use
+-- @useAsCString@, which makes a copy of the original @ByteString@.
+--
+-- * @CStrings@ are often passed to functions that require them to be
+-- null-terminated. If the original @ByteString@ wasn't null terminated,
+-- neither will the @CString@ be. It is the programmers responsibility
+-- to guarantee that the @ByteString@ is indeed null terminated. If in
+-- doubt, use @useAsCString@.
+--
 unsafeUseAsCString :: ByteString -> (CString -> IO a) -> IO a
 unsafeUseAsCString (PS ps s _) ac = withForeignPtr ps $ \p -> ac (castPtr p `plusPtr` s)
 
 -- | /O(1) construction/ Use a @ByteString@ with a function requiring a
 -- @CStringLen@.
+-- 
+-- This function does zero copying, and merely unwraps a @ByteString@ to
+-- appear as a @CStringLen@. It is /unsafe/:
+--
+-- * After calling this function the @CStringLen@ shares the underlying
+-- byte buffer with the original @ByteString@. Thus modifying the
+-- @CStringLen@, either in C, or using poke, will cause the contents of the
+-- @ByteString@ to change, breaking referential transparency. Other
+-- @ByteStrings@ created by sharing (such as those produced via 'take'
+-- or 'drop') will also reflect these changes. Modifying the @CStringLen@
+-- will break referential transparency. To avoid this, use
+-- @useAsCStringLen@, which makes a copy of the original @ByteString@.
+--
 unsafeUseAsCStringLen :: ByteString -> (CStringLen -> IO a) -> IO a
 unsafeUseAsCStringLen (PS ps s l) f = withForeignPtr ps $ \p -> f (castPtr p `plusPtr` s,l)
 

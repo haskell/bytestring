@@ -161,20 +161,18 @@ module Data.ByteString (
 
         -- * Low level CString conversions
 
+        -- ** Copying ByteStrings
+        -- | This function performs a memcpy(3) operations
+        copy,                   -- :: ByteString -> ByteString
+
         -- ** Packing CStrings and pointers
-        packCString,            -- :: CString -> ByteString
-        packCStringLen,         -- :: CString -> ByteString
-        packMallocCString,      -- :: CString -> ByteString
+        -- | These functions perform memcpy(3) operations
+        packCString,            -- :: CString -> IO ByteString
+        packCStringLen,         -- :: CString -> IO ByteString
 
         -- ** Using ByteStrings as CStrings
-        useAsCString,           -- :: ByteString -> (CString -> IO a) -> IO a
+        useAsCString,           -- :: ByteString -> (CString    -> IO a) -> IO a
         useAsCStringLen,        -- :: ByteString -> (CStringLen -> IO a) -> IO a
-
-        -- ** Copying ByteStrings
-        -- | These functions perform memcpy(3) operations
-        copy,                   -- :: ByteString -> ByteString
-        copyCString,            -- :: CString -> IO ByteString
-        copyCStringLen,         -- :: CStringLen -> IO ByteString
 
         -- * I\/O with 'ByteString's
 
@@ -1649,7 +1647,7 @@ sort (PS x s l) = unsafeCreate l $ \p -> withForeignPtr x $ \f -> do
         c_qsort p l -- inplace
 -}
 
--- | The 'sortBy' function is the non-overloaded version of 'sort'.
+-- The 'sortBy' function is the non-overloaded version of 'sort'.
 --
 -- Try some linear sorts: radix, counting
 -- Or mergesort.
@@ -1659,32 +1657,6 @@ sort (PS x s l) = unsafeCreate l $ \p -> withForeignPtr x $ \f -> do
 
 -- ---------------------------------------------------------------------
 -- Low level constructors
-
--- | /O(n)/ Build a @ByteString@ from a @CString@. This value will have /no/
--- finalizer associated to it. The ByteString length is calculated using
--- /strlen(3)/, and thus the complexity is a /O(n)/.
-packCString :: CString -> ByteString
-packCString cstr = unsafePerformIO $ do
-    fp <- newForeignPtr_ (castPtr cstr)
-    l <- c_strlen cstr
-    return $! PS fp 0 (fromIntegral l)
-
--- | /O(1)/ Build a @ByteString@ from a @CStringLen@. This value will
--- have /no/ finalizer associated with it. This operation has /O(1)/
--- complexity as we already know the final size, so no /strlen(3)/ is
--- required.
-packCStringLen :: CStringLen -> ByteString
-packCStringLen (ptr,len) = unsafePerformIO $ do
-    fp <- newForeignPtr_ (castPtr ptr)
-    return $! PS fp 0 (fromIntegral len)
-
--- | /O(n)/ Build a @ByteString@ from a malloced @CString@. This value will
--- have a @free(3)@ finalizer associated to it.
-packMallocCString :: CString -> ByteString
-packMallocCString cstr = unsafePerformIO $ do
-    fp <- newForeignFreePtr (castPtr cstr)
-    len <- c_strlen cstr
-    return $! PS fp 0 (fromIntegral len)
 
 -- | /O(n) construction/ Use a @ByteString@ with a function requiring a
 -- null-terminated @CString@.  The @CString@ will be freed
@@ -1697,43 +1669,41 @@ useAsCString (PS ps s l) = bracket alloc (c_free.castPtr)
             poke (buf `plusPtr` l) (0::Word8) -- n.b.
             return (castPtr buf)
 
--- | /O(1) construction/ Use a @ByteString@ with a function requiring a @CStringLen@.
+-- | /O(n) construction/ Use a @ByteString@ with a function requiring a @CStringLen@.
+-- As for @useAsCString@ this function makes a copy of the original @ByteString@.
 useAsCStringLen :: ByteString -> (CStringLen -> IO a) -> IO a
-useAsCStringLen = unsafeUseAsCStringLen
+useAsCStringLen p@(PS _ _ l) f = useAsCString p $ \cstr -> f (cstr,l)
 
---
--- why were we doing this?
---
--- useAsCStringLen :: ByteString -> (CStringLen -> IO a) -> IO a
--- useAsCStringLen (PS ps s l) = bracket alloc (c_free.castPtr.fst)
---     where
---       alloc = withForeignPtr ps $ \p -> do
---                 buf <- c_malloc (fromIntegral l+1)
---                 memcpy (castPtr buf) (castPtr p `plusPtr` s) (fromIntegral l)
---                 poke (buf `plusPtr` l) (0::Word8) -- n.b.
---                 return $! (castPtr buf, l)
---
+------------------------------------------------------------------------
+
+-- | /O(n)./ Construct a new @ByteString@ from a @CString@. The
+-- resulting @ByteString@ is an immutable copy of the original
+-- @CString@, and is managed on the Haskell heap. The original
+-- @CString@ must be null terminated.
+packCString :: CString -> IO ByteString
+packCString cstr = do
+    len <- c_strlen cstr
+    packCStringLen (cstr, fromIntegral len)
+
+-- | /O(n)./ Construct a new @ByteString@ from a @CStringLen@. The
+-- resulting @ByteString@ is an immutable copy of the original @CStringLen@.
+-- The @ByteString@ is a normal Haskell value and will be managed on the
+-- Haskell heap.
+packCStringLen :: CStringLen -> IO ByteString
+packCStringLen (cstr, len) = create len $ \p ->
+    memcpy p (castPtr cstr) (fromIntegral len)
+
+------------------------------------------------------------------------
 
 -- | /O(n)/ Make a copy of the 'ByteString' with its own storage. 
---   This is mainly useful to allow the rest of the data pointed
---   to by the 'ByteString' to be garbage collected, for example
---   if a large string has been read in, and only a small part of it 
---   is needed in the rest of the program.
+-- This is mainly useful to allow the rest of the data pointed
+-- to by the 'ByteString' to be garbage collected, for example
+-- if a large string has been read in, and only a small part of it 
+-- is needed in the rest of the program.
+-- 
 copy :: ByteString -> ByteString
 copy (PS x s l) = unsafeCreate l $ \p -> withForeignPtr x $ \f ->
     memcpy p (f `plusPtr` s) (fromIntegral l)
-
--- | /O(n)/ Duplicate a CString as a ByteString. Useful if you know the
--- CString is going to be deallocated from C land.
-copyCString :: CString -> IO ByteString
-copyCString cstr = do
-    len <- c_strlen cstr
-    copyCStringLen (cstr, fromIntegral len)
-
--- | /O(n)/ Same as copyCString, but saves a strlen call when the length is known.
-copyCStringLen :: CStringLen -> IO ByteString
-copyCStringLen (cstr, len) = create len $ \p ->
-    memcpy p (castPtr cstr) (fromIntegral len)
 
 -- ---------------------------------------------------------------------
 -- line IO
@@ -2034,7 +2004,3 @@ findFromEndUntil f ps@(PS x s l) =
     if null ps then 0
     else if f (last ps) then l
          else findFromEndUntil f (PS x s (l-1))
-
-{-# INLINE newForeignFreePtr #-}
-newForeignFreePtr :: Ptr Word8 -> IO (ForeignPtr Word8)
-newForeignFreePtr p = newForeignPtr c_free_finalizer p

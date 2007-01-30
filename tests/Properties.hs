@@ -76,6 +76,8 @@ prop_readIntBP      = D.readInt     `eq1`  C.readInt
 prop_linesBP        = D.lines       `eq1`  C.lines
 
 -- double check:
+-- Currently there's a bug in the lazy bytestring version of lines, this
+-- catches it:
 prop_linesNLBP      = eq1 D.lines C.lines x
     where x = D.pack "one\ntwo\n\n\nfive\n\nseven\n"
 

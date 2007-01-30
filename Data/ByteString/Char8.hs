@@ -168,7 +168,6 @@ module Data.ByteString.Char8 (
         -- ** Packing CStrings and pointers
         packCString,            -- :: CString -> ByteString
         packCStringLen,         -- :: CString -> ByteString
-        packMallocCString,      -- :: CString -> ByteString
 
         -- ** Using ByteStrings as CStrings
         useAsCString,           -- :: ByteString -> (CString -> IO a) -> IO a
@@ -176,8 +175,6 @@ module Data.ByteString.Char8 (
 
         -- * Copying ByteStrings
         copy,                   -- :: ByteString -> ByteString
-        copyCString,            -- :: CString -> IO ByteString
-        copyCStringLen,         -- :: CStringLen -> IO ByteString
 
         -- * I\/O with @ByteString@s
 
@@ -202,13 +199,6 @@ module Data.ByteString.Char8 (
         hPut,                   -- :: Handle -> ByteString -> IO ()
         hPutStr,                -- :: Handle -> ByteString -> IO ()
         hPutStrLn,              -- :: Handle -> ByteString -> IO ()
-
-#if defined(__GLASGOW_HASKELL__)
-        -- * Low level construction
-        -- | For constructors from foreign language types see "Data.ByteString"
-        packAddress,            -- :: Addr# -> ByteString
-        unsafePackAddress,      -- :: Int -> Addr# -> ByteString
-#endif
 
         -- * Utilities (needed for array fusion)
 #if defined(__GLASGOW_HASKELL__)
@@ -242,8 +232,8 @@ import Data.ByteString (empty,null,length,tail,init,append
                        ,getLine, getContents, putStr, putStrLn, interact
                        ,hGetContents, hGet, hPut, hPutStr, hPutStrLn
                        ,hGetLine, hGetNonBlocking
-                       ,packCString,packCStringLen, packMallocCString
-                       ,useAsCString,useAsCStringLen, copyCString,copyCStringLen
+                       ,packCString,packCStringLen
+                       ,useAsCString,useAsCStringLen
 #if defined(__GLASGOW_HASKELL__)
                        ,unpackList
 #endif
@@ -252,7 +242,7 @@ import Data.ByteString (empty,null,length,tail,init,append
 import Data.ByteString.Base (
                         ByteString(PS)
 #if defined(__GLASGOW_HASKELL__)
-                       ,packAddress, unsafePackAddress
+                       ,unsafePackAddress -- for the rule
 #endif
                        ,c2w, w2c, unsafeTail, isSpaceWord8, inlinePerformIO
                        )
@@ -291,7 +281,7 @@ singleton = B.singleton . c2w
 -- | /O(n)/ Convert a 'String' into a 'ByteString'
 --
 -- For applications with large numbers of string literals, pack can be a
--- bottleneck. In such cases, consider using packAddress (GHC only).
+-- bottleneck.
 pack :: String -> ByteString
 #if !defined(__GLASGOW_HASKELL__)
 
@@ -314,7 +304,7 @@ pack str = B.unsafeCreate (P.length str) $ \(Ptr p) -> stToIO (go p str)
 
 {-# RULES
     "FPS pack/packAddress" forall s .
-       pack (unpackCString# s) = B.packAddress s
+       pack (unpackCString# s) = inlinePerformIO (B.unsafePackAddress s)
  #-}
 
 #endif
