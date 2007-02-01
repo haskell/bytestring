@@ -410,7 +410,7 @@ cons :: Word8 -> ByteString -> ByteString
 cons c (LPS ss) = LPS (P.singleton c : ss)
 {-# INLINE cons #-}
 
--- | Unlike 'cons', 'cons\'' is
+-- | /O(1)/ Unlike 'cons', 'cons\'' is
 -- strict in the ByteString that we are consing onto. More precisely, it forces
 -- the head and the first chunk. It does this because, for space efficiency, it
 -- may coalesce the new byte onto the first \'chunk\' rather than starting a
