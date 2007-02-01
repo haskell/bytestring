@@ -46,6 +46,7 @@ module Data.ByteString.Char8 (
         snoc,                   -- :: ByteString -> Char -> ByteString
         append,                 -- :: ByteString -> ByteString -> ByteString
         head,                   -- :: ByteString -> Char
+        headTail,               -- :: ByteString -> Maybe (Char, ByteString)
         last,                   -- :: ByteString -> Char
         tail,                   -- :: ByteString -> ByteString
         init,                   -- :: ByteString -> ByteString
@@ -325,6 +326,14 @@ cons = B.cons . c2w
 snoc :: ByteString -> Char -> ByteString
 snoc p = B.snoc p . c2w
 {-# INLINE snoc #-}
+
+-- | /O(1)/ Extract the head and tail of a ByteString, returning Nothing
+-- if it is empty.
+headTail :: ByteString -> Maybe (Char, ByteString)
+headTail bs = case B.headTail bs of
+                  Nothing -> Nothing
+                  Just (w, bs') -> Just (w2c w, bs')
+{-# INLINE headTail #-}
 
 -- | /O(1)/ Extract the first element of a ByteString, which must be non-empty.
 head :: ByteString -> Char

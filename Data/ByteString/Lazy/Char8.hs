@@ -38,6 +38,7 @@ module Data.ByteString.Lazy.Char8 (
         snoc,                   -- :: ByteString -> Char -> ByteString
         append,                 -- :: ByteString -> ByteString -> ByteString
         head,                   -- :: ByteString -> Char
+        headTail,               -- :: ByteString -> Maybe (Char, ByteString)
         last,                   -- :: ByteString -> Char
         tail,                   -- :: ByteString -> ByteString
         init,                   -- :: ByteString -> ByteString
@@ -264,6 +265,14 @@ snoc p = L.snoc p . c2w
 head :: ByteString -> Char
 head = w2c . L.head
 {-# INLINE head #-}
+
+-- | /O(1)/ Extract the head and tail of a ByteString, returning Nothing
+-- if it is empty.
+headTail :: ByteString -> Maybe (Char, ByteString)
+headTail bs = case L.headTail bs of
+                  Nothing -> Nothing
+                  Just (w, bs') -> Just (w2c w, bs')
+{-# INLINE headTail #-}
 
 -- | /O(1)/ Extract the last element of a packed string, which must be non-empty.
 last :: ByteString -> Char

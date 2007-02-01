@@ -58,6 +58,7 @@ module Data.ByteString.Lazy (
         snoc,                   -- :: ByteString -> Word8 -> ByteString
         append,                 -- :: ByteString -> ByteString -> ByteString
         head,                   -- :: ByteString -> Word8
+        headTail,               -- :: ByteString -> Maybe (Word8, ByteString)
         last,                   -- :: ByteString -> Word8
         tail,                   -- :: ByteString -> ByteString
         init,                   -- :: ByteString -> ByteString
@@ -438,6 +439,15 @@ head :: ByteString -> Word8
 head (LPS [])    = errorEmptyList "head"
 head (LPS (x:_)) = P.unsafeHead x
 {-# INLINE head #-}
+
+-- | /O(1)/ Extract the head and tail of a ByteString, returning Nothing
+-- if it is empty.
+headTail :: ByteString -> Maybe (Word8, ByteString)
+headTail (LPS []) = Nothing
+headTail (LPS (x:xs))
+    = Just (P.unsafeHead x,
+            if P.length x == 1 then LPS xs else LPS (P.unsafeTail x : xs))
+{-# INLINE headTail #-}
 
 -- | /O(1)/ Extract the elements after the head of a ByteString, which must be non-empty.
 tail :: ByteString -> ByteString

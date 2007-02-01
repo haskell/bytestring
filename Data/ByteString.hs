@@ -49,6 +49,7 @@ module Data.ByteString (
         snoc,                   -- :: ByteString -> Word8 -> ByteString
         append,                 -- :: ByteString -> ByteString -> ByteString
         head,                   -- :: ByteString -> Word8
+        headTail,               -- :: ByteString -> Maybe (Word8, ByteString)
         last,                   -- :: ByteString -> Word8
         tail,                   -- :: ByteString -> ByteString
         init,                   -- :: ByteString -> ByteString
@@ -537,6 +538,16 @@ tail (PS p s l)
     | l <= 0    = errorEmptyList "tail"
     | otherwise = PS p (s+1) (l-1)
 {-# INLINE tail #-}
+
+-- | /O(1)/ Extract the head and tail of a ByteString, returning Nothing
+-- if it is empty.
+headTail :: ByteString -> Maybe (Word8, ByteString)
+headTail (PS x s l)
+    | l <= 0    = Nothing
+    | otherwise = Just (inlinePerformIO $ withForeignPtr x
+                                        $ \p -> peekByteOff p s,
+                        PS x (s+1) (l-1))
+{-# INLINE headTail #-}
 
 -- | /O(1)/ Extract the last element of a ByteString, which must be finite and non-empty.
 -- An exception will be thrown in the case of an empty ByteString.
