@@ -231,8 +231,7 @@ unpack :: ByteString -> [Char]
 unpack = P.map w2c . L.unpack
 {-# INLINE unpack #-}
 
--- | /O(n)/ 'cons' is analogous to (:) for lists, but of different
--- complexity, as it requires a memcpy.
+-- | /O(1)/ 'cons' is analogous to '(:)' for lists.
 cons :: Char -> ByteString -> ByteString
 cons = L.cons . c2w
 {-# INLINE cons #-}
