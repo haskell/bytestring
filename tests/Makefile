@@ -11,7 +11,7 @@ BIN=            run-utests run-qtests
 all:  prop prop-fusion-compiled prop-compiled prop-opt units-compiled
 fast: prop-fast
 
-everything: prop hugs prop-compiled prop-fusion-compiled runbench fusionbench wc spellcheck letter_frequency linesort fuse down-fuse inline zipwith unpack groupby run-lazybuild
+everything: prop hugs prop-compiled prop-fusion-compiled runbench fusionbench wc spellcheck letter_frequency linesort fuse down-fuse inline zipwith unpack groupby run-lazybuild run-lazybuildcons
 
 # ---------------------------------------------
 # Boot in-place
@@ -138,6 +138,12 @@ run-lazybuild: lazybuild
 lazybuild: lazybuild.hs
 	${GHC} ${PKG} ${GHCFLAGS} --make $< -o lazybuild
 
+.PHONY: run-lazybuildcons
+run-lazybuildcons: lazybuildcons
+	time ./lazybuildcons 100000000 > /dev/null
+lazybuildcons: lazybuildcons.hs
+	${GHC} ${PKG} ${GHCFLAGS} --make $< -o lazybuildcons
+
 lazylines: lazylines.o
 	time ./lazylines < bigdata
 lazylines.o: lazylines.hs
@@ -184,5 +190,5 @@ plot:: results
 .PHONY: clean
 clean:
 	rm -f *~ *.o *.hi $(BIN) bench */*.o */*.hi */*~ 
-	rm -f wc letter_frequency spellcheck linesort fuse inline p u fp lazylines lazybuild
+	rm -f wc letter_frequency spellcheck linesort fuse inline p u fp lazylines lazybuild lazybuildcons
 	rm -f down-fuse zipwith fusionbench unpack groupby

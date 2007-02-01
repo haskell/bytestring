@@ -54,6 +54,7 @@ module Data.ByteString.Lazy (
 
         -- * Basic interface
         cons,                   -- :: Word8 -> ByteString -> ByteString
+        cons',                  -- :: Word8 -> ByteString -> ByteString
         snoc,                   -- :: ByteString -> Word8 -> ByteString
         append,                 -- :: ByteString -> ByteString -> ByteString
         head,                   -- :: ByteString -> Word8
@@ -403,7 +404,13 @@ length (LPS ss) = L.foldl' (\n ps -> n + fromIntegral (P.length ps)) 0 ss
 --     where lengthF n s = let m = n + fromIntegral (P.length s) in m `seq` m
 {-# INLINE length #-}
 
--- | /O(1)/ 'cons' is analogous to '(:)' for lists. Unlike '(:)' however it is
+-- | /O(1)/ 'cons' is analogous to '(:)' for lists.
+--
+cons :: Word8 -> ByteString -> ByteString
+cons c (LPS ss) = LPS (P.singleton c : ss)
+{-# INLINE cons #-}
+
+-- | Unlike 'cons', 'cons\'' is
 -- strict in the ByteString that we are consing onto. More precisely, it forces
 -- the head and the first chunk. It does this because, for space efficiency, it
 -- may coalesce the new byte onto the first \'chunk\' rather than starting a
@@ -411,14 +418,15 @@ length (LPS ss) = L.foldl' (\n ps -> n + fromIntegral (P.length ps)) 0 ss
 --
 -- So that means you can't use a lazy recursive contruction like this:
 --
--- > let xs = cons c xs in xs
+-- > let xs = cons\' c xs in xs
 --
--- You can however use 'repeat' and 'cycle' to build infinite lazy ByteStrings.
+-- You can however use 'cons', as well as 'repeat' and 'cycle', to build
+-- infinite lazy ByteStrings.
 --
-cons :: Word8 -> ByteString -> ByteString
-cons c (LPS (s:ss)) | P.length s < 16 = LPS (P.cons c s : ss)
-cons c (LPS ss)                       = LPS (P.singleton c : ss)
-{-# INLINE cons #-}
+cons' :: Word8 -> ByteString -> ByteString
+cons' c (LPS (s:ss)) | P.length s < 16 = LPS (P.cons c s : ss)
+cons' c (LPS ss)                       = LPS (P.singleton c : ss)
+{-# INLINE cons' #-}
 
 -- | /O(n\/c)/ Append a byte to the end of a 'ByteString'
 snoc :: ByteString -> Word8 -> ByteString
