@@ -34,6 +34,7 @@ module Data.ByteString.Lazy.Char8 (
 
         -- * Basic interface
         cons,                   -- :: Char -> ByteString -> ByteString
+        cons',                  -- :: Char -> ByteString -> ByteString
         snoc,                   -- :: ByteString -> Char -> ByteString
         append,                 -- :: ByteString -> ByteString -> ByteString
         head,                   -- :: ByteString -> Char
@@ -235,6 +236,23 @@ unpack = P.map w2c . L.unpack
 cons :: Char -> ByteString -> ByteString
 cons = L.cons . c2w
 {-# INLINE cons #-}
+
+-- | /O(1)/ Unlike 'cons', 'cons\'' is
+-- strict in the ByteString that we are consing onto. More precisely, it forces
+-- the head and the first chunk. It does this because, for space efficiency, it
+-- may coalesce the new byte onto the first \'chunk\' rather than starting a
+-- new \'chunk\'.
+--
+-- So that means you can't use a lazy recursive contruction like this:
+--
+-- > let xs = cons\' c xs in xs
+--
+-- You can however use 'cons', as well as 'repeat' and 'cycle', to build
+-- infinite lazy ByteStrings.
+--
+cons' :: Char -> ByteString -> ByteString
+cons' = L.cons' . c2w
+{-# INLINE cons' #-}
 
 -- | /O(n)/ Append a Char to the end of a 'ByteString'. Similar to
 -- 'cons', this function performs a memcpy.
