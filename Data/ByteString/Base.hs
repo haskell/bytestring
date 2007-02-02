@@ -35,7 +35,7 @@ module Data.ByteString.Base (
         newForeignFreePtr,
 
         -- * Conversion to and from ForeignPtrs
-        fromForeignPtr,         -- :: ForeignPtr Word8 -> Int -> ByteString
+        fromForeignPtr,         -- :: ForeignPtr Word8 -> Int -> Int -> ByteString
         toForeignPtr,           -- :: ByteString -> (ForeignPtr Word8, Int, Int)
 
         -- * Low level interaction with CStrings
@@ -269,8 +269,8 @@ unsafeDrop n (PS x s l) = assert (0 <= n && n <= l) $ PS x (s+n) (l-n)
 -- Low level constructors
 
 -- | /O(1)/ Build a ByteString from a ForeignPtr
-fromForeignPtr :: ForeignPtr Word8 -> Int -> ByteString
-fromForeignPtr fp l = PS fp 0 l
+fromForeignPtr :: ForeignPtr Word8 -> Int -> Int -> ByteString
+fromForeignPtr fp s l = PS fp s l
 
 -- | /O(1)/ Deconstruct a ForeignPtr from a ByteString
 toForeignPtr :: ByteString -> (ForeignPtr Word8, Int, Int)
