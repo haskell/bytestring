@@ -982,6 +982,8 @@ dropWhile :: (Word8 -> Bool) -> ByteString -> ByteString
 dropWhile f ps = unsafeDrop (findIndexOrEnd (not . f) ps) ps
 {-# INLINE dropWhile #-}
 
+-- instead of findIndexOrEnd, we could use memchr here.
+
 -- | 'break' @p@ is equivalent to @'span' ('not' . p)@.
 break :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
 break p ps = case findIndexOrEnd p ps of n -> (unsafeTake n ps, unsafeDrop n ps)
@@ -1411,6 +1413,7 @@ filter' k ps@(PS x s l)
 --
 -- filterByte is around 10x faster, and uses much less space, than its
 -- filter equivalent
+--
 filterByte :: Word8 -> ByteString -> ByteString
 filterByte w ps = replicate (count w ps) w
 {-# INLINE filterByte #-}
@@ -1424,30 +1427,6 @@ filterByte w ps = replicate (count w ps) w
 {-# RULES
   "FPS specialise filter (== x)" forall x.
      filter (== x) = filterByte x
-  #-}
-#endif
-
---
--- | /O(n)/ A first order equivalent of /filter . (\/=)/, for the common
--- case of filtering a single byte out of a list. It is more efficient
--- to use /filterNotByte/ in this case.
---
--- > filterNotByte == filter . (/=)
---
--- filterNotByte is around 2x faster than its filter equivalent.
-filterNotByte :: Word8 -> ByteString -> ByteString
-filterNotByte w = filter (/= w)
-{-# INLINE filterNotByte #-}
-
-{-# RULES
-"FPS specialise filter (x /=)" forall x.
-    filter ((/=) x) = filterNotByte x
-  #-}
-
-#if __GLASGOW_HASKELL__ >= 605
-{-# RULES
-"FPS specialise filter (/= x)" forall x.
-    filter (/= x) = filterNotByte x
   #-}
 #endif
 
