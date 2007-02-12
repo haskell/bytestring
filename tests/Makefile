@@ -36,7 +36,7 @@ units-compiled:
 
 # interpreted
 .PHONY: prop hugs
-prop:: boot-in-place
+prop:: 
 	@echo "Interpreted"	
 	runhaskell ${PKG} Properties.hs
 
