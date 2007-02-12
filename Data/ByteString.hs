@@ -55,7 +55,7 @@ module Data.ByteString (
         null,                   -- :: ByteString -> Bool
         length,                 -- :: ByteString -> Int
 
-        -- * Transformating ByteStrings
+        -- * Transforming ByteStrings
         map,                    -- :: (Word8 -> Word8) -> ByteString -> ByteString
         reverse,                -- :: ByteString -> ByteString
         intersperse,            -- :: Word8 -> ByteString -> ByteString
