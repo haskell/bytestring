@@ -168,7 +168,7 @@ module Data.ByteString (
         -- ** Packing CStrings and pointers
         -- | These functions perform memcpy(3) operations
         packCString,            -- :: CString -> IO ByteString
-        packCStringLen,         -- :: CString -> IO ByteString
+        packCStringLen,         -- :: CStringLen -> IO ByteString
 
         -- ** Using ByteStrings as CStrings
         useAsCString,           -- :: ByteString -> (CString    -> IO a) -> IO a
