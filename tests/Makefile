@@ -45,7 +45,7 @@ hugs::
 
 # interpreted fast. Just a quick check.
 .PHONY: prop-fast
-prop-fast:: boot-in-place
+prop-fast::
 	runhaskell ${PKG} Properties.hs 10
 
 # compiled
