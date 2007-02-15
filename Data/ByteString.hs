@@ -6,6 +6,7 @@
 --               (c) Simon Marlow 2005
 --               (c) Don Stewart 2005-2006
 --               (c) Bjorn Bringert 2006
+--
 --               Array fusion code:
 --               (c) 2001,2002 Manuel M T Chakravarty & Gabriele Keller
 --               (c) 2006      Manuel M T Chakravarty & Roman Leshchinskiy
@@ -49,7 +50,7 @@ module Data.ByteString (
         snoc,                   -- :: ByteString -> Word8 -> ByteString
         append,                 -- :: ByteString -> ByteString -> ByteString
         head,                   -- :: ByteString -> Word8
-        headTail,               -- :: ByteString -> Maybe (Word8, ByteString)
+        uncons,                 -- :: ByteString -> Maybe (Word8, ByteString)
         last,                   -- :: ByteString -> Word8
         tail,                   -- :: ByteString -> ByteString
         init,                   -- :: ByteString -> ByteString
@@ -541,13 +542,13 @@ tail (PS p s l)
 
 -- | /O(1)/ Extract the head and tail of a ByteString, returning Nothing
 -- if it is empty.
-headTail :: ByteString -> Maybe (Word8, ByteString)
-headTail (PS x s l)
+uncons :: ByteString -> Maybe (Word8, ByteString)
+uncons (PS x s l)
     | l <= 0    = Nothing
     | otherwise = Just (inlinePerformIO $ withForeignPtr x
                                         $ \p -> peekByteOff p s,
                         PS x (s+1) (l-1))
-{-# INLINE headTail #-}
+{-# INLINE uncons #-}
 
 -- | /O(1)/ Extract the last element of a ByteString, which must be finite and non-empty.
 -- An exception will be thrown in the case of an empty ByteString.

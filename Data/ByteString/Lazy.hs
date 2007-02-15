@@ -58,7 +58,7 @@ module Data.ByteString.Lazy (
         snoc,                   -- :: ByteString -> Word8 -> ByteString
         append,                 -- :: ByteString -> ByteString -> ByteString
         head,                   -- :: ByteString -> Word8
-        headTail,               -- :: ByteString -> Maybe (Word8, ByteString)
+        uncons,               -- :: ByteString -> Maybe (Word8, ByteString)
         last,                   -- :: ByteString -> Word8
         tail,                   -- :: ByteString -> ByteString
         init,                   -- :: ByteString -> ByteString
@@ -442,12 +442,12 @@ head (LPS (x:_)) = P.unsafeHead x
 
 -- | /O(1)/ Extract the head and tail of a ByteString, returning Nothing
 -- if it is empty.
-headTail :: ByteString -> Maybe (Word8, ByteString)
-headTail (LPS []) = Nothing
-headTail (LPS (x:xs))
+uncons :: ByteString -> Maybe (Word8, ByteString)
+uncons (LPS []) = Nothing
+uncons (LPS (x:xs))
     = Just (P.unsafeHead x,
             if P.length x == 1 then LPS xs else LPS (P.unsafeTail x : xs))
-{-# INLINE headTail #-}
+{-# INLINE uncons #-}
 
 -- | /O(1)/ Extract the elements after the head of a ByteString, which must be non-empty.
 tail :: ByteString -> ByteString
@@ -810,13 +810,13 @@ splitWith _ (LPS [])     = []
 splitWith p (LPS (a:as)) = comb [] (P.splitWith p a) as
 
   where comb :: [S.ByteString] -> [S.ByteString] -> [S.ByteString] -> [ByteString]
-        comb acc (s:[]) []     = LPS (L.reverse (cons' s acc)) : []
-        comb acc (s:[]) (x:xs) = comb (cons' s acc) (P.splitWith p x) xs
-        comb acc (s:ss) xs     = LPS (L.reverse (cons' s acc)) : comb [] ss xs
+        comb acc (s:[]) []     = LPS (L.reverse (cons2 s acc)) : []
+        comb acc (s:[]) (x:xs) = comb (cons2 s acc) (P.splitWith p x) xs
+        comb acc (s:ss) xs     = LPS (L.reverse (cons2 s acc)) : comb [] ss xs
 
-        cons' x xs | P.null x  = xs
+        cons2 x xs | P.null x  = xs
                    | otherwise = x:xs
-        {-# INLINE cons' #-}
+        {-# INLINE cons2 #-}
 {-# INLINE splitWith #-}
 
 -- | /O(n)/ Break a 'ByteString' into pieces separated by the byte
@@ -840,13 +840,13 @@ split _ (LPS [])     = []
 split c (LPS (a:as)) = comb [] (P.split c a) as
 
   where comb :: [S.ByteString] -> [S.ByteString] -> [S.ByteString] -> [ByteString]
-        comb acc (s:[]) []     = LPS (L.reverse (cons' s acc)) : []
-        comb acc (s:[]) (x:xs) = comb (cons' s acc) (P.split c x) xs
-        comb acc (s:ss) xs     = LPS (L.reverse (cons' s acc)) : comb [] ss xs
+        comb acc (s:[]) []     = LPS (L.reverse (cons2 s acc)) : []
+        comb acc (s:[]) (x:xs) = comb (cons2 s acc) (P.split c x) xs
+        comb acc (s:ss) xs     = LPS (L.reverse (cons2 s acc)) : comb [] ss xs
 
-        cons' x xs | P.null x  = xs
+        cons2 x xs | P.null x  = xs
                    | otherwise = x:xs
-        {-# INLINE cons' #-}
+        {-# INLINE cons2 #-}
 {-# INLINE split #-}
 
 {-
