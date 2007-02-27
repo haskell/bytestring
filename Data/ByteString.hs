@@ -60,6 +60,7 @@ module Data.ByteString (
         -- * Transforming ByteStrings
         map,                    -- :: (Word8 -> Word8) -> ByteString -> ByteString
         reverse,                -- :: ByteString -> ByteString
+        byteswap,               -- :: ByteString -> ByteString
         intersperse,            -- :: Word8 -> ByteString -> ByteString
         transpose,              -- :: [ByteString] -> [ByteString]
 
@@ -612,6 +613,11 @@ map' f (PS fp s len) = inlinePerformIO $ withForeignPtr fp $ \a ->
 reverse :: ByteString -> ByteString
 reverse (PS x s l) = unsafeCreate l $ \p -> withForeignPtr x $ \f ->
         c_reverse p (f `plusPtr` s) (fromIntegral l)
+
+-- | /O(n)/ 'byteswap' @xs@ efficiently swaps the four-byte endianness throughout @xs@.  (Assumes length @xs@ is a multiple of 4.)
+byteswap :: ByteString -> ByteString
+byteswap (PS x s l) = unsafeCreate l $ \p -> withForeignPtr x $ \f ->
+        c_byteswap p (f `plusPtr` s) (fromIntegral l)
 
 -- todo, fuseable version
 
