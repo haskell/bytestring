@@ -282,14 +282,6 @@ assertS _ True  = id
 assertS s False = error ("assertion failed at "++s)
 #endif
 
--- Stubs for System.IO (hGetBuf, hPutBuf) for nhc98
-#ifdef __NHC__
-hGetBuf :: Handle -> Ptr a -> Int -> IO Int
-hPutBuf :: Handle -> Ptr a -> Int -> IO ()
-hGetBuf = error "not implemented: System.IO.hGetBuf"
-hPutBuf = error "not implemented: System.IO.hPutBuf"
-#endif
-
 -- -----------------------------------------------------------------------------
 --
 -- Useful macros, until we have bang patterns
