@@ -472,7 +472,7 @@ init (LPS xs)
     where (y,ys) = (L.last xs, L.init xs)
 {-# INLINE init #-}
 
--- | /O(n)/ Append two ByteStrings
+-- | /O(n\/c)/ Append two ByteStrings
 append :: ByteString -> ByteString -> ByteString
 append (LPS []) (LPS ys) = LPS ys
 append (LPS xs) (LPS ys) = LPS (xs ++ ys)
