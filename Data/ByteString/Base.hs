@@ -639,22 +639,6 @@ foreign import ccall unsafe "static fpstring.h fps_count" c_count
     :: Ptr Word8 -> CULong -> Word8 -> IO CULong
 
 -- ---------------------------------------------------------------------
--- MMap
-
-{-
-foreign import ccall unsafe "static fpstring.h my_mmap" my_mmap
-    :: Int -> Int -> IO (Ptr Word8)
-
-foreign import ccall unsafe "static unistd.h close" c_close
-    :: Int -> IO Int
-
-#  if !defined(__OpenBSD__)
-foreign import ccall unsafe "static sys/mman.h munmap" c_munmap
-    :: Ptr Word8 -> Int -> IO Int
-#  endif
--}
-
--- ---------------------------------------------------------------------
 -- Internal GHC Haskell magic
 
 #if defined(__GLASGOW_HASKELL__)
