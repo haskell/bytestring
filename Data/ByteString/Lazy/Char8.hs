@@ -188,10 +188,10 @@ import Data.ByteString.Lazy
 -- Functions we need to wrap.
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString as B
-import qualified Data.ByteString.Base as Base
-import Data.ByteString.Base (LazyByteString(LPS))
+import qualified Data.ByteString.Internal as Base
+import Data.ByteString.Internal (LazyByteString(LPS))
 
-import Data.ByteString.Base (w2c, c2w, isSpaceWord8)
+import Data.ByteString.Internal (w2c, c2w, isSpaceWord8)
 
 import Data.Int (Int64)
 import qualified Data.List as List (intersperse)

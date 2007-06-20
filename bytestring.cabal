@@ -9,7 +9,7 @@ Build-Depends:       base
 extensions:          CPP, ForeignFunctionInterface
 Exposed-modules:     Data.ByteString
                      Data.ByteString.Char8
-                     Data.ByteString.Base
+                     Data.ByteString.Internal
                      Data.ByteString.Fusion
                      Data.ByteString.Lazy
                      Data.ByteString.Lazy.Char8

@@ -38,7 +38,7 @@ module Data.ByteString.Fusion (
 
   ) where
 
-import Data.ByteString.Base
+import Data.ByteString.Internal
 
 import Foreign.ForeignPtr
 import Foreign.Ptr

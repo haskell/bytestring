@@ -221,7 +221,7 @@ import Prelude hiding           (reverse,head,tail,last,init,null
                                 ,zip,zipWith,unzip,notElem)
 
 import qualified Data.ByteString as B
-import qualified Data.ByteString.Base as B
+import qualified Data.ByteString.Internal as B
 
 -- Listy functions transparently exported
 import Data.ByteString (empty,null,length,tail,init,append
@@ -240,7 +240,7 @@ import Data.ByteString (empty,null,length,tail,init,append
 #endif
                        )
 
-import Data.ByteString.Base (
+import Data.ByteString.Internal (
                         ByteString(PS)
 #if defined(__GLASGOW_HASKELL__)
                        ,unsafePackAddress -- for the rule

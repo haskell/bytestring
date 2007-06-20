@@ -198,9 +198,9 @@ import Prelude hiding
 import qualified Data.List              as L  -- L for list/lazy
 import qualified Data.ByteString        as S  -- S for strict (hmm...)
 import qualified Data.ByteString        as P  -- P for packed
-import qualified Data.ByteString.Base   as P
-import qualified Data.ByteString.Base
-import Data.ByteString.Base (LazyByteString(LPS))
+import qualified Data.ByteString.Internal as P
+import qualified Data.ByteString.Internal
+import Data.ByteString.Internal (LazyByteString(LPS))
 import qualified Data.ByteString.Fusion as P
 import Data.ByteString.Fusion (PairS((:*:)),loopL)
 
@@ -279,7 +279,7 @@ _checkInvariant lps
 -- The Data abstraction function
 --
 _abstr :: ByteString -> S.ByteString
-_abstr (LPS []) = Data.ByteString.Base.empty
+_abstr (LPS []) = Data.ByteString.Internal.empty
 _abstr (LPS xs) = P.concat xs
 
 -- The representation uses lists of packed chunks. When we have to convert from

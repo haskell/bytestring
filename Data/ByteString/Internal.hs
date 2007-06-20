@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -cpp -fglasgow-exts #-}
 -- |
--- Module      : Data.ByteString.Base
+-- Module      : Data.ByteString.Internal
 -- License     : BSD-style
 -- Maintainer  : dons@cse.unsw.edu.au
 -- Stability   : experimental
@@ -12,7 +12,7 @@
 -- while ideally most users will be able to make do with the public interface
 -- modules.
 --
-module Data.ByteString.Base (
+module Data.ByteString.Internal (
 
         -- * The @ByteString@ type and representation
         ByteString(..),         -- instances: Eq, Ord, Show, Read, Data, Typeable
