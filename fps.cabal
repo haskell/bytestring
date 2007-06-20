@@ -13,7 +13,7 @@ Exposed-modules:     Data.ByteString
                      Data.ByteString.Fusion
                      Data.ByteString.Lazy
                      Data.ByteString.Lazy.Char8
-ghc-options:         -Wall -fglasgow-exts -O2 -funbox-strict-fields -DSLOW_FOREIGN_PTR
+ghc-options:         -Wall -fglasgow-exts -O2
 nhc98-options:       -K4M
 include-dirs:        cbits
 c-sources:           cbits/fpstring.c
