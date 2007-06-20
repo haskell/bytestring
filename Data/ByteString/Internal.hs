@@ -26,7 +26,6 @@ module Data.ByteString.Internal (
         unsafeDrop,             -- :: Int -> ByteString -> ByteString
 
         -- * Low level introduction and elimination
-        empty,                  -- :: ByteString
         create,                 -- :: Int -> (Ptr Word8 -> IO ()) -> IO ByteString
         createAndTrim,          -- :: Int -> (Ptr Word8 -> IO Int) -> IO  ByteString
         createAndTrim',         -- :: Int -> (Ptr Word8 -> IO (Int, Int, a)) -> IO (ByteString, a)
@@ -212,10 +211,6 @@ newtype LazyByteString = LPS [ByteString] -- LPS for lazy packed string
              )
 
 ------------------------------------------------------------------------
-
--- | /O(1)/ The empty 'ByteString'
-empty :: ByteString
-empty = PS nullForeignPtr 0 0
 
 nullForeignPtr :: ForeignPtr Word8
 #if __GLASGOW_HASKELL__>=605

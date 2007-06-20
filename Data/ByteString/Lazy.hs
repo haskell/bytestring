@@ -279,7 +279,7 @@ _checkInvariant lps
 -- The Data abstraction function
 --
 _abstr :: ByteString -> S.ByteString
-_abstr (LPS []) = Data.ByteString.Internal.empty
+_abstr (LPS []) = P.empty
 _abstr (LPS xs) = P.concat xs
 
 -- The representation uses lists of packed chunks. When we have to convert from

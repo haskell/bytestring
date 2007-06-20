@@ -363,6 +363,10 @@ cmp p1 p2 n len1 len2
 -- -----------------------------------------------------------------------------
 -- Introducing and eliminating 'ByteString's
 
+-- | /O(1)/ The empty 'ByteString'
+empty :: ByteString
+empty = PS nullForeignPtr 0 0
+
 -- | /O(1)/ Convert a 'Word8' into a 'ByteString'
 singleton :: Word8 -> ByteString
 singleton c = unsafeCreate 1 $ \p -> poke p c
