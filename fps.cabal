@@ -1,10 +1,10 @@
-Name:                fps
-Version:             0.8
+Name:                bytestring
+Version:             0.9
 Description:         Fast, packed, strict and lazy byte arrays with a list interface
 License:             BSD3
 License-file:        LICENSE
-Author:              Don Stewart
-Maintainer:          dons@cse.unsw.edu.au
+Author:              Don Stewart, Duncan Coutts
+Maintainer:          dons@cse.unsw.edu.au, duncan@haskell.org
 Build-Depends:       base
 extensions:          CPP, ForeignFunctionInterface
 Exposed-modules:     Data.ByteString
