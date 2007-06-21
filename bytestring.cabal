@@ -8,10 +8,11 @@ Maintainer:          dons@cse.unsw.edu.au, duncan@haskell.org
 Build-Depends:       base
 extensions:          CPP, ForeignFunctionInterface
 Exposed-modules:     Data.ByteString
-                     Data.ByteString.Char8
                      Data.ByteString.Internal
-                     Data.ByteString.Fusion
+                     Data.ByteString.Unsafe
+                     Data.ByteString.Char8
                      Data.ByteString.Lazy
+                     Data.ByteString.Lazy.Internal
                      Data.ByteString.Lazy.Char8
 ghc-options:         -Wall -fglasgow-exts -O2
 nhc98-options:       -K4M

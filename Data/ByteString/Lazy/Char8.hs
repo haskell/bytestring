@@ -188,8 +188,9 @@ import Data.ByteString.Lazy
 -- Functions we need to wrap.
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString as B
-import qualified Data.ByteString.Internal as Base
-import Data.ByteString.Internal (LazyByteString(LPS))
+import qualified Data.ByteString.Internal as B
+import qualified Data.ByteString.Unsafe as B
+import Data.ByteString.Lazy.Internal (ByteString(LPS))
 
 import Data.ByteString.Internal (w2c, c2w, isSpaceWord8)
 
@@ -628,9 +629,9 @@ lines (LPS (x:xs)) = loop0 x xs
                                | B.null ps -> loop0 ps'      pss'
                                | otherwise -> loop  ps' [ps] pss'
 
-            Just n | n /= 0    -> LPS [Base.unsafeTake n ps]
-                                : loop0 (Base.unsafeDrop (n+1) ps) pss
-                   | otherwise -> loop0 (Base.unsafeTail ps) pss
+            Just n | n /= 0    -> LPS [B.unsafeTake n ps]
+                                : loop0 (B.unsafeDrop (n+1) ps) pss
+                   | otherwise -> loop0 (B.unsafeTail ps) pss
 
     -- the general case when we are building a list of chunks that are
     -- part of the same line
@@ -650,8 +651,8 @@ lines (LPS (x:xs)) = loop0 x xs
 
             Just n ->
                 let ps' | n == 0    = P.reverse line
-                        | otherwise = P.reverse (Base.unsafeTake n ps : line)
-                 in ps' `seq` (LPS ps' : loop0 (Base.unsafeDrop (n+1) ps) pss)
+                        | otherwise = P.reverse (B.unsafeTake n ps : line)
+                 in ps' `seq` (LPS ps' : loop0 (B.unsafeDrop (n+1) ps) pss)
 
 -- | 'unlines' is an inverse operation to 'lines'.  It joins lines,
 -- after appending a terminating newline to each.
@@ -681,9 +682,9 @@ unwords = join (singleton ' ')
 readInt :: ByteString -> Maybe (Int, ByteString)
 readInt (LPS [])     = Nothing
 readInt (LPS (x:xs)) =
-        case w2c (Base.unsafeHead x) of
-            '-' -> loop True  0 0 (Base.unsafeTail x) xs
-            '+' -> loop False 0 0 (Base.unsafeTail x) xs
+        case w2c (B.unsafeHead x) of
+            '-' -> loop True  0 0 (B.unsafeTail x) xs
+            '+' -> loop False 0 0 (B.unsafeTail x) xs
             _   -> loop False 0 0 x xs
 
     where loop :: Bool -> Int -> Int -> B.ByteString -> [B.ByteString] -> Maybe (Int, ByteString)
@@ -693,11 +694,11 @@ readInt (LPS (x:xs)) =
                                 []         -> end  neg i n ps  pss
                                 (ps':pss') -> loop neg i n ps' pss'
               | otherwise =
-                  case Base.unsafeHead ps of
+                  case B.unsafeHead ps of
                     w | w >= 0x30
                      && w <= 0x39 -> loop neg (i+1)
                                           (n * 10 + (fromIntegral w - 0x30))
-                                          (Base.unsafeTail ps) pss
+                                          (B.unsafeTail ps) pss
                       | otherwise -> end neg i n ps pss
 
           end _   0 _ _  _   = Nothing
@@ -714,9 +715,9 @@ readInt (LPS (x:xs)) =
 readInteger :: ByteString -> Maybe (Integer, ByteString)
 readInteger (LPS []) = Nothing
 readInteger (LPS (x:xs)) =
-        case w2c (Base.unsafeHead x) of
-            '-' -> first (Base.unsafeTail x) xs >>= \(n, bs) -> return (-n, bs)
-            '+' -> first (Base.unsafeTail x) xs
+        case w2c (B.unsafeHead x) of
+            '-' -> first (B.unsafeTail x) xs >>= \(n, bs) -> return (-n, bs)
+            '+' -> first (B.unsafeTail x) xs
             _   -> first x xs
 
     where first ps pss
@@ -725,9 +726,9 @@ readInteger (LPS (x:xs)) =
                   (ps':pss') -> first' ps' pss'
               | otherwise = first' ps pss
 
-          first' ps pss = case Base.unsafeHead ps of
+          first' ps pss = case B.unsafeHead ps of
               w | w >= 0x30 && w <= 0x39 -> Just $
-                  loop 1 (fromIntegral w - 0x30) [] (Base.unsafeTail ps) pss
+                  loop 1 (fromIntegral w - 0x30) [] (B.unsafeTail ps) pss
                 | otherwise              -> Nothing
 
           loop :: Int -> Int -> [Integer]
@@ -738,14 +739,14 @@ readInteger (LPS (x:xs)) =
                                 []         -> combine d acc ns ps pss
                                 (ps':pss') -> loop d acc ns ps' pss'
               | otherwise =
-                  case Base.unsafeHead ps of
+                  case B.unsafeHead ps of
                    w | w >= 0x30 && w <= 0x39 ->
                        if d < 9 then loop (d+1)
                                           (10*acc + (fromIntegral w - 0x30))
-                                          ns (Base.unsafeTail ps) pss
+                                          ns (B.unsafeTail ps) pss
                                 else loop 1 (fromIntegral w - 0x30)
                                           (fromIntegral acc : ns)
-                                          (Base.unsafeTail ps) pss
+                                          (B.unsafeTail ps) pss
                      | otherwise -> combine d acc ns ps pss
 
           combine _ acc [] ps pss = end (fromIntegral acc) ps pss

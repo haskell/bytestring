@@ -199,8 +199,9 @@ import qualified Data.List              as L  -- L for list/lazy
 import qualified Data.ByteString        as S  -- S for strict (hmm...)
 import qualified Data.ByteString        as P  -- P for packed
 import qualified Data.ByteString.Internal as P
+import qualified Data.ByteString.Unsafe as P
 import qualified Data.ByteString.Internal
-import Data.ByteString.Internal (LazyByteString(LPS))
+import Data.ByteString.Lazy.Internal (ByteString(LPS), unLPS)
 import qualified Data.ByteString.Fusion as P
 import Data.ByteString.Fusion (PairS((:*:)),loopL)
 
@@ -234,27 +235,7 @@ import Foreign.Storable
 
 -- -----------------------------------------------------------------------------
 
-type ByteString = LazyByteString
-
---
--- hmm, what about getting the PS constructor unpacked into the cons cell?
---
--- data List = Nil | Cons {-# UNPACK #-} !S.ByteString List
---
--- Would avoid one indirection per chunk.
---
-
-unLPS :: ByteString -> [S.ByteString]
-unLPS (LPS xs) = xs
-{-# INLINE unLPS #-}
-
-instance Eq  LazyByteString
-    where (==)    = eq
-
-instance Ord LazyByteString
-    where compare = compareBytes
-
-instance Monoid LazyByteString where
+instance Monoid ByteString where
     mempty  = empty
     mappend = append
     mconcat = concat
@@ -304,36 +285,6 @@ smallChunkSize = 4 * k - overhead
          overhead = 2 * sizeOf (undefined :: Int)
 
 -- defaultChunkSize = 1
-
-------------------------------------------------------------------------
-
-eq :: ByteString -> ByteString -> Bool
-eq (LPS xs) (LPS ys) = eq' xs ys
-  where eq' [] [] = True
-        eq' [] _  = False
-        eq' _  [] = False
-        eq' (a:as) (b:bs) =
-          case compare (P.length a) (P.length b) of
-            LT -> a == (P.take (P.length a) b) && eq' as (P.drop (P.length a) b : bs)
-            EQ -> a == b                       && eq' as bs
-            GT -> (P.take (P.length b) a) == b && eq' (P.drop (P.length b) a : as) bs
-
-compareBytes :: ByteString -> ByteString -> Ordering
-compareBytes (LPS xs) (LPS ys) = cmp xs ys
-  where cmp [] [] = EQ
-        cmp [] _  = LT
-        cmp _  [] = GT
-        cmp (a:as) (b:bs) =
-          case compare (P.length a) (P.length b) of
-            LT -> case compare a (P.take (P.length a) b) of
-                    EQ     -> cmp as (P.drop (P.length a) b : bs)
-                    result -> result
-            EQ -> case compare a b of
-                    EQ     -> cmp as bs
-                    result -> result
-            GT -> case compare (P.take (P.length b) a) b of
-                    EQ     -> cmp (P.drop (P.length b) a : as) bs
-                    result -> result
 
 -- -----------------------------------------------------------------------------
 -- Introducing and eliminating 'ByteString's

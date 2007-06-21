@@ -222,6 +222,7 @@ import Prelude hiding           (reverse,head,tail,last,init,null
 
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Internal as B
+import qualified Data.ByteString.Unsafe as B
 
 -- Listy functions transparently exported
 import Data.ByteString (empty,null,length,tail,init,append
@@ -240,13 +241,12 @@ import Data.ByteString (empty,null,length,tail,init,append
 #endif
                        )
 
-import Data.ByteString.Internal (
-                        ByteString(PS)
+import Data.ByteString.Internal (ByteString(PS), c2w, w2c, isSpaceWord8
+                                ,inlinePerformIO)
+
 #if defined(__GLASGOW_HASKELL__)
-                       ,unsafePackAddress -- for the rule
+import Data.ByteString.Unsafe (unsafePackAddress) -- for the rule
 #endif
-                       ,c2w, w2c, unsafeTail, isSpaceWord8, inlinePerformIO
-                       )
 
 import Data.Char    ( isSpace )
 import qualified Data.List as List (intersperse)
@@ -913,8 +913,8 @@ readInt as
     | null as   = Nothing
     | otherwise =
         case unsafeHead as of
-            '-' -> loop True  0 0 (unsafeTail as)
-            '+' -> loop False 0 0 (unsafeTail as)
+            '-' -> loop True  0 0 (B.unsafeTail as)
+            '+' -> loop False 0 0 (B.unsafeTail as)
             _   -> loop False 0 0 as
 
     where loop :: Bool -> Int -> Int -> ByteString -> Maybe (Int, ByteString)
@@ -926,7 +926,7 @@ readInt as
                     w | w >= 0x30
                      && w <= 0x39 -> loop neg (i+1)
                                           (n * 10 + (fromIntegral w - 0x30))
-                                          (unsafeTail ps)
+                                          (B.unsafeTail ps)
                       | otherwise -> end neg i n ps
 
           end _    0 _ _  = Nothing
@@ -941,15 +941,15 @@ readInteger as
     | null as   = Nothing
     | otherwise =
         case unsafeHead as of
-            '-' -> first (unsafeTail as) >>= \(n, bs) -> return (-n, bs)
-            '+' -> first (unsafeTail as)
+            '-' -> first (B.unsafeTail as) >>= \(n, bs) -> return (-n, bs)
+            '+' -> first (B.unsafeTail as)
             _   -> first as
 
     where first ps | null ps   = Nothing
                    | otherwise =
                        case B.unsafeHead ps of
                         w | w >= 0x30 && w <= 0x39 -> Just $
-                            loop 1 (fromIntegral w - 0x30) [] (unsafeTail ps)
+                            loop 1 (fromIntegral w - 0x30) [] (B.unsafeTail ps)
                           | otherwise              -> Nothing
 
           loop :: Int -> Int -> [Integer]
@@ -962,10 +962,10 @@ readInteger as
                    w | w >= 0x30 && w <= 0x39 ->
                        if d == 9 then loop 1 (fromIntegral w - 0x30)
                                            (toInteger acc : ns)
-                                           (unsafeTail ps)
+                                           (B.unsafeTail ps)
                                  else loop (d+1)
                                            (10*acc + (fromIntegral w - 0x30))
-                                           ns (unsafeTail ps)
+                                           ns (B.unsafeTail ps)
                      | otherwise -> combine d acc ns ps
 
           combine _ acc [] ps = (toInteger acc, ps)

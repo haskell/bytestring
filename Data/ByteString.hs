@@ -221,6 +221,7 @@ import Prelude hiding           (reverse,head,tail,last,init,null
                                 ,zip,zipWith,unzip,notElem)
 
 import Data.ByteString.Internal
+import Data.ByteString.Unsafe
 import Data.ByteString.Fusion
 
 import qualified Data.List as List
