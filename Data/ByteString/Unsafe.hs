@@ -42,7 +42,7 @@ module Data.ByteString.Unsafe (
 
 import Data.ByteString.Internal
 
-import Foreign.ForeignPtr       (newForeignPtr_, withForeignPtr)
+import Foreign.ForeignPtr       (newForeignPtr_, newForeignPtr, withForeignPtr)
 import Foreign.Ptr              (Ptr, plusPtr, castPtr)
 
 import Foreign.Storable         (Storable(..))
@@ -248,7 +248,7 @@ unsafePackCStringLen (ptr,len) = do
 --
 unsafePackMallocCString :: CString -> IO ByteString
 unsafePackMallocCString cstr = do
-    fp <- newForeignFreePtr (castPtr cstr)
+    fp <- newForeignPtr c_free_finalizer (castPtr cstr)
     len <- c_strlen cstr
     return $! PS fp 0 (fromIntegral len)
 

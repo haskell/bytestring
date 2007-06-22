@@ -23,7 +23,6 @@ module Data.ByteString.Internal (
         createAndTrim',         -- :: Int -> (Ptr Word8 -> IO (Int, Int, a)) -> IO (ByteString, a)
         unsafeCreate,           -- :: Int -> (Ptr Word8 -> IO ()) ->  ByteString
         mallocByteString,       -- :: Int -> IO (ForeignPtr a)
-        newForeignFreePtr,
 
         -- * Conversion to and from ForeignPtrs
         fromForeignPtr,         -- :: ForeignPtr Word8 -> Int -> Int -> ByteString
@@ -240,12 +239,6 @@ mallocByteString l = do
 #else
     mallocForeignPtrBytes l
 #endif
-
--- | Construct a ForeignPtr from a Ptr Word8, with a free(3) finalizer
--- attached.
-newForeignFreePtr :: Ptr Word8 -> IO (ForeignPtr Word8)
-newForeignFreePtr p = newForeignPtr c_free_finalizer p
-{-# INLINE newForeignFreePtr #-}
 
 ------------------------------------------------------------------------
 
