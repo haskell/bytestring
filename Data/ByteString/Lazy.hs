@@ -7,7 +7,7 @@
 --
 -- Maintainer  : dons@cse.unsw.edu.au
 -- Stability   : experimental
--- Portability : non-portable (instance of type synonym)
+-- Portability : portable
 -- 
 -- A time and space-efficient implementation of lazy byte vectors
 -- using lists of packed 'Word8' arrays, suitable for high performance
