@@ -1858,7 +1858,7 @@ hGetContents h = do
     i <- hGetBuf h p start_size
     if i < start_size
         then do p' <- reallocArray p i
-                fp <- newForeignFreePtr p'
+                fp <- newForeignPtr finalizerFree p'
                 return $! PS fp 0 i
         else f p start_size
     where
@@ -1869,7 +1869,7 @@ hGetContents h = do
             if i < s
                 then do let i' = s + i
                         p'' <- reallocArray p' i'
-                        fp  <- newForeignFreePtr p''
+                        fp  <- newForeignPtr finalizerFree p''
                         return $! PS fp 0 i'
                 else f p' s'
 
