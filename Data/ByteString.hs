@@ -243,7 +243,6 @@ import Control.Monad            (when)
 import Foreign.C.String         (CString, CStringLen)
 import Foreign.C.Types          (CSize)
 import Foreign.ForeignPtr
-import Foreign.Marshal.Array
 import Foreign.Marshal.Alloc
 import Foreign.Ptr
 import Foreign.Storable         (Storable(..))
@@ -1623,7 +1622,7 @@ tails p | null p    = [empty]
 
 -- | /O(n)/ Sort a ByteString efficiently, using counting sort.
 sort :: ByteString -> ByteString
-sort (PS input s l) = unsafeCreate l $ \p -> allocaArray 256 $ \arr -> do
+sort (PS input s l) = unsafeCreate l $ \p -> allocaBytes 256 $ \arr -> do
 
     memset (castPtr arr) 0 (256 * fromIntegral (sizeOf (undefined :: CSize)))
     withForeignPtr input (\x -> countOccurrences arr (x `plusPtr` s) l)
@@ -1854,21 +1853,21 @@ hGetNonBlocking = hGet
 hGetContents :: Handle -> IO ByteString
 hGetContents h = do
     let start_size = 1024
-    p <- mallocArray start_size
+    p <- mallocBytes start_size
     i <- hGetBuf h p start_size
     if i < start_size
-        then do p' <- reallocArray p i
+        then do p' <- reallocBytes p i
                 fp <- newForeignPtr finalizerFree p'
                 return $! PS fp 0 i
         else f p start_size
     where
         f p s = do
             let s' = 2 * s
-            p' <- reallocArray p s'
+            p' <- reallocBytes p s'
             i  <- hGetBuf h (p' `plusPtr` s) s
             if i < s
                 then do let i' = s + i
-                        p'' <- reallocArray p' i'
+                        p'' <- reallocBytes p' i'
                         fp  <- newForeignPtr finalizerFree p''
                         return $! PS fp 0 i'
                 else f p' s'
