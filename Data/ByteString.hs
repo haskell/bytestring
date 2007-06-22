@@ -244,6 +244,7 @@ import Foreign.C.String         (CString, CStringLen)
 import Foreign.C.Types          (CSize)
 import Foreign.ForeignPtr
 import Foreign.Marshal.Array
+import Foreign.Marshal.Alloc
 import Foreign.Ptr
 import Foreign.Storable         (Storable(..))
 
@@ -1656,12 +1657,12 @@ sort (PS x s l) = unsafeCreate l $ \p -> withForeignPtr x $ \f -> do
 -- null-terminated @CString@.  The @CString@ will be freed
 -- automatically. This is a memcpy(3).
 useAsCString :: ByteString -> (CString -> IO a) -> IO a
-useAsCString (PS ps s l) = bracket alloc (c_free.castPtr)
-    where alloc = withForeignPtr ps $ \p -> do
-            buf <- c_malloc (fromIntegral l+1)
-            memcpy (castPtr buf) (castPtr p `plusPtr` s) (fromIntegral l)
-            poke (buf `plusPtr` l) (0::Word8) -- n.b.
-            return (castPtr buf)
+useAsCString (PS fp o l) action = do
+ allocaBytes (l+1) $ \buf ->
+   withForeignPtr fp $ \p -> do
+     memcpy buf (p `plusPtr` o) (fromIntegral l)
+     pokeByteOff buf l (0::Word8)
+     action (castPtr buf)
 
 -- | /O(n) construction/ Use a @ByteString@ with a function requiring a @CStringLen@.
 -- As for @useAsCString@ this function makes a copy of the original @ByteString@.
