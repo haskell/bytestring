@@ -36,8 +36,6 @@ module Data.ByteString.Internal (
 
         -- * Standard C Functions
         c_strlen,                   -- :: CString -> IO CInt
-        c_malloc,                   -- :: CInt -> IO (Ptr Word8)
-        c_free,                     -- :: Ptr Word8 -> IO ()
         c_free_finalizer,           -- :: FunPtr (Ptr Word8 -> IO ())
 
         memchr,                     -- :: Ptr Word8 -> Word8 -> CSize -> IO Ptr Word8
@@ -309,12 +307,6 @@ countOccurrences counts str l = go 0
 
 foreign import ccall unsafe "string.h strlen" c_strlen
     :: CString -> IO CSize
-
-foreign import ccall unsafe "stdlib.h malloc" c_malloc
-    :: CSize -> IO (Ptr Word8)
-
-foreign import ccall unsafe "static stdlib.h free" c_free
-    :: Ptr Word8 -> IO ()
 
 foreign import ccall unsafe "static stdlib.h &free" c_free_finalizer
     :: FunPtr (Ptr Word8 -> IO ())
