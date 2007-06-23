@@ -1,4 +1,7 @@
 {-# OPTIONS_GHC -cpp -fglasgow-exts -fno-warn-orphans -fno-warn-incomplete-patterns #-}
+
+-- #prune
+
 -- |
 -- Module      : Data.ByteString.Lazy
 -- Copyright   : (c) Don Stewart 2006
@@ -58,7 +61,7 @@ module Data.ByteString.Lazy (
         snoc,                   -- :: ByteString -> Word8 -> ByteString
         append,                 -- :: ByteString -> ByteString -> ByteString
         head,                   -- :: ByteString -> Word8
-        uncons,               -- :: ByteString -> Maybe (Word8, ByteString)
+        uncons,                 -- :: ByteString -> Maybe (Word8, ByteString)
         last,                   -- :: ByteString -> Word8
         tail,                   -- :: ByteString -> ByteString
         init,                   -- :: ByteString -> ByteString
@@ -127,9 +130,6 @@ module Data.ByteString.Lazy (
         split,                  -- :: Word8 -> ByteString -> [ByteString]
         splitWith,              -- :: (Word8 -> Bool) -> ByteString -> [ByteString]
 
-        -- ** Joining strings
-        join,                   -- :: ByteString -> [ByteString] -> ByteString
-
         -- * Predicates
         isPrefixOf,             -- :: ByteString -> ByteString -> Bool
 --      isSuffixOf,             -- :: ByteString -> ByteString -> Bool
@@ -185,6 +185,9 @@ module Data.ByteString.Lazy (
 --      hGetN,                  -- :: Int -> Handle -> Int -> IO ByteString
 --      hGetContentsN,          -- :: Int -> Handle -> IO ByteString
 --      hGetNonBlockingN,       -- :: Int -> Handle -> IO ByteString
+
+        -- undocumented deprecated things:
+        join                    -- :: ByteString -> [ByteString] -> ByteString
 
   ) where
 

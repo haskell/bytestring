@@ -1,4 +1,7 @@
 {-# OPTIONS_GHC -cpp -fglasgow-exts #-}
+
+-- #prune
+
 -- |
 -- Module      : Data.ByteString.Char8
 -- Copyright   : (c) Don Stewart 2006
@@ -123,9 +126,6 @@ module Data.ByteString.Char8 (
         unlines,                -- :: [ByteString] -> ByteString
         unwords,                -- :: ByteString -> [ByteString]
 
-        -- ** Joining strings
-        join,                   -- :: ByteString -> [ByteString] -> ByteString
-
         -- ** Searching for substrings
         isPrefixOf,             -- :: ByteString -> ByteString -> Bool
         isSuffixOf,             -- :: ByteString -> ByteString -> Bool
@@ -206,6 +206,9 @@ module Data.ByteString.Char8 (
 #if defined(__GLASGOW_HASKELL__)
         unpackList,
 #endif
+
+        -- undocumented deprecated things:
+        join                    -- :: ByteString -> [ByteString] -> ByteString
 
     ) where
 

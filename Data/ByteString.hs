@@ -1,4 +1,7 @@
 {-# OPTIONS_GHC -cpp -fglasgow-exts -fno-warn-orphans #-}
+
+-- #prune
+
 -- |
 -- Module      : Data.ByteString
 -- Copyright   : (c) The University of Glasgow 2001,
@@ -121,9 +124,6 @@ module Data.ByteString (
         split,                  -- :: Word8 -> ByteString -> [ByteString]
         splitWith,              -- :: (Word8 -> Bool) -> ByteString -> [ByteString]
 
-        -- ** Joining strings
-        join,                   -- :: ByteString -> [ByteString] -> ByteString
-
         -- * Predicates
         isPrefixOf,             -- :: ByteString -> ByteString -> Bool
         isSuffixOf,             -- :: ByteString -> ByteString -> Bool
@@ -204,8 +204,11 @@ module Data.ByteString (
 #if defined(__GLASGOW_HASKELL__)
         -- * Fusion utilities
         unpackList, -- eek, otherwise it gets thrown away by the simplifier
-        lengthU, maximumU, minimumU
+        lengthU, maximumU, minimumU,
 #endif
+
+        -- undocumented deprecated things:
+        join                    -- :: ByteString -> [ByteString] -> ByteString
 
   ) where
 

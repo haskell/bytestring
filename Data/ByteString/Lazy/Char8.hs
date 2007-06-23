@@ -1,4 +1,7 @@
 {-# OPTIONS_GHC -cpp -fno-warn-orphans #-}
+
+-- #prune
+
 -- |
 -- Module      : Data.ByteString.Lazy.Char8
 -- Copyright   : (c) Don Stewart 2006
@@ -113,9 +116,6 @@ module Data.ByteString.Lazy.Char8 (
         unlines,                -- :: [ByteString] -> ByteString
         unwords,                -- :: ByteString -> [ByteString]
 
-        -- ** Joining strings
-        join,                   -- :: ByteString -> [ByteString] -> ByteString
-
         -- * Predicates
         isPrefixOf,             -- :: ByteString -> ByteString -> Bool
 --      isSuffixOf,             -- :: ByteString -> ByteString -> Bool
@@ -175,6 +175,10 @@ module Data.ByteString.Lazy.Char8 (
 --      hGetN,                  -- :: Int -> Handle -> Int64 -> IO ByteString
 --      hGetContentsN,          -- :: Int -> Handle -> IO ByteString
 --      hGetNonBlockingN,       -- :: Int -> Handle -> IO ByteString
+
+        -- undocumented deprecated things:
+        join                    -- :: ByteString -> [ByteString] -> ByteString
+
   ) where
 
 -- Functions transparently exported
