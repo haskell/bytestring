@@ -15,10 +15,24 @@
 module Data.ByteString.Lazy.Internal (
 
         -- * The lazy @ByteString@ type and representation
-        ByteString(..)      -- instances: Eq, Ord, Show, Read, Data, Typeable
+        ByteString(..),     -- instances: Eq, Ord, Show, Read, Data, Typeable
+
+        -- * Data type invariant and abstraction function
+        invariant,
+        checkInvariant,
+        abstr,
+
+        -- * Chunk allocation sizes
+        defaultChunkSize,
+        smallChunkSize,
+        chunkOverhead
+
   ) where
 
 import qualified Data.ByteString as S
+import qualified Data.List       as L
+
+import Foreign.Storable (sizeOf)
 
 #if defined(__GLASGOW_HASKELL__)
 import Data.Generics            (Data(..), Typeable(..))
@@ -42,6 +56,57 @@ newtype ByteString = LPS { unLPS :: [S.ByteString] } -- LPS for lazy packed stri
 --
 -- Would avoid one indirection per chunk.
 --
+
+------------------------------------------------------------------------
+
+-- | The data type invariant:
+-- Every ByteString is either empty or consists of non-null ByteStrings.
+-- All functions must preserve this, and the QC properties must check this.
+--
+invariant :: ByteString -> Bool
+invariant (LPS []) = True
+invariant (LPS xs) = L.all (not . S.null) xs
+
+-- | In a form useful for QC testing
+checkInvariant :: ByteString -> ByteString
+checkInvariant lps
+    | invariant lps = lps
+    | otherwise     = error ("Data.ByteString.Lazy: invariant violation:" ++ show lps)
+
+-- | The data abstraction function
+--
+abstr :: ByteString -> S.ByteString
+abstr (LPS []) = S.empty
+abstr (LPS xs) = S.concat xs
+
+------------------------------------------------------------------------
+
+-- The representation uses lists of packed chunks. When we have to convert from
+-- a lazy list to the chunked representation, then by default we use this
+-- chunk size. Some functions give you more control over the chunk size.
+--
+-- Measurements here:
+--  http://www.cse.unsw.edu.au/~dons/tmp/chunksize_v_cache.png
+--
+-- indicate that a value around 0.5 to 1 x your L2 cache is best.
+-- The following value assumes people have something greater than 128k,
+-- and need to share the cache with other programs.
+
+-- | Currently set to 32k, less the memory management overhead
+defaultChunkSize :: Int
+defaultChunkSize = 32 * k - chunkOverhead
+   where k = 1024
+
+-- | Currently set to 4k, less the memory management overhead
+smallChunkSize :: Int
+smallChunkSize = 4 * k - chunkOverhead
+   where k = 1024
+
+-- | The memory management overhead. Currently this is tuned for GHC only.
+chunkOverhead :: Int
+chunkOverhead = 2 * sizeOf (undefined :: Int)
+
+------------------------------------------------------------------------
 
 instance Eq  ByteString
     where (==)    = eq

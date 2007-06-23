@@ -204,7 +204,7 @@ import qualified Data.ByteString        as S  -- S for strict (hmm...)
 import qualified Data.ByteString        as P  -- P for packed
 import qualified Data.ByteString.Internal as P
 import qualified Data.ByteString.Unsafe as P
-import Data.ByteString.Lazy.Internal (ByteString(LPS), unLPS)
+import Data.ByteString.Lazy.Internal
 import qualified Data.ByteString.Fusion as P
 import Data.ByteString.Fusion (PairS((:*:)),loopL)
 
@@ -242,52 +242,6 @@ instance Monoid ByteString where
     mempty  = empty
     mappend = append
     mconcat = concat
-
-------------------------------------------------------------------------
-
--- XXX
--- The data type invariant:
--- Every ByteString is either empty or consists of non-null ByteStrings.
--- All functions must preserve this, and the QC properties must check this.
---
-_invariant :: ByteString -> Bool
-_invariant (LPS []) = True
-_invariant (LPS xs) = L.all (not . P.null) xs
-
--- In a form useful for QC testing
-_checkInvariant :: ByteString -> ByteString
-_checkInvariant lps
-    | _invariant lps = lps
-    | otherwise      = moduleError "invariant" ("violation: " ++ show lps)
-
--- The Data abstraction function
---
-_abstr :: ByteString -> S.ByteString
-_abstr (LPS []) = P.empty
-_abstr (LPS xs) = P.concat xs
-
--- The representation uses lists of packed chunks. When we have to convert from
--- a lazy list to the chunked representation, then by default we'll use this
--- chunk size. Some functions give you more control over the chunk size.
---
--- Measurements here:
---  http://www.cse.unsw.edu.au/~dons/tmp/chunksize_v_cache.png
---
--- indicate that a value around 0.5 to 1 x your L2 cache is best.
--- The following value assumes people have something greater than 128k,
--- and need to share the cache with other programs.
---
-defaultChunkSize :: Int
-defaultChunkSize = 32 * k - overhead
-   where k = 1024
-         overhead = 2 * sizeOf (undefined :: Int)
-
-smallChunkSize :: Int
-smallChunkSize = 4 * k - overhead
-   where k = 1024
-         overhead = 2 * sizeOf (undefined :: Int)
-
--- defaultChunkSize = 1
 
 -- -----------------------------------------------------------------------------
 -- Introducing and eliminating 'ByteString's
