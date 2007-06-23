@@ -200,7 +200,6 @@ import qualified Data.ByteString        as S  -- S for strict (hmm...)
 import qualified Data.ByteString        as P  -- P for packed
 import qualified Data.ByteString.Internal as P
 import qualified Data.ByteString.Unsafe as P
-import qualified Data.ByteString.Internal
 import Data.ByteString.Lazy.Internal (ByteString(LPS), unLPS)
 import qualified Data.ByteString.Fusion as P
 import Data.ByteString.Fusion (PairS((:*:)),loopL)
