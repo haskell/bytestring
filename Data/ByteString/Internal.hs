@@ -46,7 +46,6 @@ module Data.ByteString.Internal (
 
         -- * cbits functions
         c_reverse,                  -- :: Ptr Word8 -> Ptr Word8 -> CInt -> IO ()
-        c_byteswap,                 -- :: Ptr Word8 -> Ptr Word8 -> CInt -> IO ()
         c_intersperse,              -- :: Ptr Word8 -> Ptr Word8 -> CInt -> Word8 -> IO ()
         c_maximum,                  -- :: Ptr Word8 -> CInt -> IO Word8
         c_minimum,                  -- :: Ptr Word8 -> CInt -> IO Word8
@@ -346,9 +345,6 @@ memset p w s = c_memset p (fromIntegral w) s
 --
 
 foreign import ccall unsafe "static fpstring.h fps_reverse" c_reverse
-    :: Ptr Word8 -> Ptr Word8 -> CULong -> IO ()
-
-foreign import ccall unsafe "static fpstring.h fps_byteswap" c_byteswap
     :: Ptr Word8 -> Ptr Word8 -> CULong -> IO ()
 
 foreign import ccall unsafe "static fpstring.h fps_intersperse" c_intersperse

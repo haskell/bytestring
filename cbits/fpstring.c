@@ -38,18 +38,6 @@ void fps_reverse(unsigned char *q, unsigned char *p, unsigned long n) {
         *q++ = *p--;
 }
 
-void fps_byteswap(unsigned char *q, unsigned char *p, unsigned long n) {
-    while (n > 3) {
-      *(q+3) = *p;
-      *(q+2) = *(p+1);
-      *(q+1) = *(p+2);
-      *q     = *(p+3);
-      q += 4;
-      p += 4;
-      n -= 4;
-   }
-}
-
 /* duplicate a string, interspersing the character through the elements
    of the duplicated string */
 void fps_intersperse(unsigned char *q,
