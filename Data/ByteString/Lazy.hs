@@ -68,7 +68,7 @@ module Data.ByteString.Lazy (
         -- * Transformating ByteStrings
         map,                    -- :: (Word8 -> Word8) -> ByteString -> ByteString
         reverse,                -- :: ByteString -> ByteString
---      intersperse,            -- :: Word8 -> ByteString -> ByteString
+        intersperse,            -- :: Word8 -> ByteString -> ByteString
         transpose,              -- :: [ByteString] -> [ByteString]
 
         -- * Reducing 'ByteString's (folds)
@@ -450,20 +450,16 @@ reverse (LPS ps) = LPS (rev [] ps)
 -- each chunk until it is used.
 {-# INLINE reverse #-}
 
--- The 'intersperse' function takes a 'Word8' and a 'ByteString' and
+-- | The 'intersperse' function takes a 'Word8' and a 'ByteString' and
 -- \`intersperses\' that byte between the elements of the 'ByteString'.
 -- It is analogous to the intersperse function on Lists.
--- intersperse :: Word8 -> ByteString -> ByteString
--- intersperse = error "FIXME: not yet implemented"
-
-{-
-intersperse c (LPS [])     = LPS []
-intersperse c (LPS (x:xs)) = LPS (P.intersperse c x : L.map intersperse')
-  where intersperse' c ps@(PS x s l) =
-          P.create (2*l) $ \p -> withForeignPtr x $ \f ->
-                poke p c
-                c_intersperse (p `plusPtr` 1) (f `plusPtr` s) l c
--}
+intersperse :: Word8 -> ByteString -> ByteString
+intersperse _ (LPS [])     = LPS []
+intersperse c (LPS (x:xs)) = LPS (P.intersperse c x : L.map intersperse' xs )
+  where intersperse' (P.PS fp o l) =
+          P.unsafeCreate (2*l) $ \p' -> withForeignPtr fp $ \p -> do
+            poke p' c
+            P.c_intersperse (p' `plusPtr` 1) (p `plusPtr` o) (fromIntegral l) c
 
 -- | The 'transpose' function transposes the rows and columns of its
 -- 'ByteString' argument.
