@@ -57,6 +57,7 @@ module Data.ByteString.Char8 (
         map,                    -- :: (Char -> Char) -> ByteString -> ByteString
         reverse,                -- :: ByteString -> ByteString
         intersperse,            -- :: Char -> ByteString -> ByteString
+        intercalate,            -- :: ByteString -> [ByteString] -> ByteString
         transpose,              -- :: [ByteString] -> [ByteString]
 
         -- * Reducing 'ByteString's (folds)
@@ -227,7 +228,7 @@ import qualified Data.ByteString.Unsafe as B
 -- Listy functions transparently exported
 import Data.ByteString (empty,null,length,tail,init,append
                        ,inits,tails,reverse,transpose
-                       ,concat,take,drop,splitAt,join
+                       ,concat,take,drop,splitAt,intercalate
                        ,sort,isPrefixOf,isSuffixOf,isSubstringOf,findSubstring
                        ,findSubstrings,copy,group
 
@@ -356,6 +357,10 @@ map f = B.map (c2w . f . w2c)
 intersperse :: Char -> ByteString -> ByteString
 intersperse = B.intersperse . c2w
 {-# INLINE intersperse #-}
+
+join :: ByteString -> [ByteString] -> ByteString
+join = intercalate
+{-# DEPRECATED join "use intercalate" #-}
 
 -- | 'foldl', applied to a binary operator, a starting value (typically
 -- the left-identity of the operator), and a ByteString, reduces the
@@ -591,7 +596,7 @@ spanChar = B.spanByte . c2w
 -- 
 -- and
 --
--- > join [c] . split c == id
+-- > intercalate [c] . split c == id
 -- > split == splitWith . (==)
 -- 
 -- As for all splitting functions in this library, this function does
@@ -628,15 +633,6 @@ tokens f = B.tokens (f . w2c)
 -- | The 'groupBy' function is the non-overloaded version of 'group'.
 groupBy :: (Char -> Char -> Bool) -> ByteString -> [ByteString]
 groupBy k = B.groupBy (\a b -> k (w2c a) (w2c b))
-
-{-
--- | /O(n)/ joinWithChar. An efficient way to join to two ByteStrings with a
--- char. Around 4 times faster than the generalised join.
---
-joinWithChar :: Char -> ByteString -> ByteString -> ByteString
-joinWithChar = B.joinWithByte . c2w
-{-# INLINE joinWithChar #-}
--}
 
 -- | /O(1)/ 'ByteString' index (subscript) operator, starting from 0.
 index :: ByteString -> Int -> Char
@@ -899,7 +895,7 @@ words = P.filter (not . B.null) . B.splitWith isSpaceWord8
 
 -- | The 'unwords' function is analogous to the 'unlines' function, on words.
 unwords :: [ByteString] -> ByteString
-unwords = join (singleton ' ')
+unwords = intercalate (singleton ' ')
 {-# INLINE unwords #-}
 
 -- ---------------------------------------------------------------------

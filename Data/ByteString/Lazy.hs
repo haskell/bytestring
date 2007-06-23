@@ -69,6 +69,7 @@ module Data.ByteString.Lazy (
         map,                    -- :: (Word8 -> Word8) -> ByteString -> ByteString
         reverse,                -- :: ByteString -> ByteString
         intersperse,            -- :: Word8 -> ByteString -> ByteString
+        intercalate,            -- :: ByteString -> [ByteString] -> ByteString
         transpose,              -- :: [ByteString] -> [ByteString]
 
         -- * Reducing 'ByteString's (folds)
@@ -774,7 +775,7 @@ splitWith p (LPS (a:as)) = comb [] (P.splitWith p a) as
 -- 
 -- and
 --
--- > join [c] . split c == id
+-- > intercalate [c] . split c == id
 -- > split == splitWith . (==)
 -- 
 -- As for all splitting functions in this library, this function does
@@ -863,11 +864,15 @@ groupBy k xs
         n = 1 + findIndexOrEnd (not . k (head xs)) (tail xs)
 -}
 
--- | /O(n)/ The 'join' function takes a 'ByteString' and a list of
+-- | /O(n)/ The 'intercalate' function takes a 'ByteString' and a list of
 -- 'ByteString's and concatenates the list after interspersing the first
 -- argument between each element of the list.
+intercalate :: ByteString -> [ByteString] -> ByteString
+intercalate s = concat . (L.intersperse s)
+
 join :: ByteString -> [ByteString] -> ByteString
-join s = concat . (L.intersperse s)
+join = intercalate
+{-# DEPRECATED join "use intercalate" #-}
 
 -- ---------------------------------------------------------------------
 -- Indexing ByteStrings

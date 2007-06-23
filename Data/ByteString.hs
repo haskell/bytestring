@@ -61,6 +61,7 @@ module Data.ByteString (
         map,                    -- :: (Word8 -> Word8) -> ByteString -> ByteString
         reverse,                -- :: ByteString -> ByteString
         intersperse,            -- :: Word8 -> ByteString -> ByteString
+        intercalate,            -- :: ByteString -> [ByteString] -> ByteString
         transpose,              -- :: [ByteString] -> [ByteString]
 
         -- * Reducing 'ByteString's (folds)
@@ -1131,7 +1132,7 @@ splitWith p ps = loop p ps
 -- 
 -- and
 --
--- > join [c] . split c == id
+-- > intercalate [c] . split c == id
 -- > split == splitWith . (==)
 -- 
 -- As for all splitting functions in this library, this function does
@@ -1215,24 +1216,27 @@ groupBy k xs
     where
         n = 1 + findIndexOrEnd (not . k (unsafeHead xs)) (unsafeTail xs)
 
--- | /O(n)/ The 'join' function takes a 'ByteString' and a list of
+-- | /O(n)/ The 'intercalate' function takes a 'ByteString' and a list of
 -- 'ByteString's and concatenates the list after interspersing the first
 -- argument between each element of the list.
-join :: ByteString -> [ByteString] -> ByteString
-join s = concat . (List.intersperse s)
+intercalate :: ByteString -> [ByteString] -> ByteString
+intercalate s = concat . (List.intersperse s)
 {-# INLINE [1] join #-}
 
+join :: ByteString -> [ByteString] -> ByteString
+join = intercalate
+{-# DEPRECATED join "use intercalate" #-}
+
 {-# RULES
-"FPS specialise join c -> joinByte" forall c s1 s2 .
-    join (singleton c) (s1 : s2 : []) = joinWithByte c s1 s2
+"FPS specialise intercalate c -> intercalateByte" forall c s1 s2 .
+    intercalate (singleton c) (s1 : s2 : []) = intercalateWithByte c s1 s2
   #-}
 
---
--- | /O(n)/ joinWithByte. An efficient way to join to two ByteStrings
+-- | /O(n)/ intercalateWithByte. An efficient way to join to two ByteStrings
 -- with a char. Around 4 times faster than the generalised join.
 --
-joinWithByte :: Word8 -> ByteString -> ByteString -> ByteString
-joinWithByte c f@(PS ffp s l) g@(PS fgp t m) = unsafeCreate len $ \ptr ->
+intercalateWithByte :: Word8 -> ByteString -> ByteString -> ByteString
+intercalateWithByte c f@(PS ffp s l) g@(PS fgp t m) = unsafeCreate len $ \ptr ->
     withForeignPtr ffp $ \fp ->
     withForeignPtr fgp $ \gp -> do
         memcpy ptr (fp `plusPtr` s) (fromIntegral l)
@@ -1240,7 +1244,7 @@ joinWithByte c f@(PS ffp s l) g@(PS fgp t m) = unsafeCreate len $ \ptr ->
         memcpy (ptr `plusPtr` (l + 1)) (gp `plusPtr` t) (fromIntegral m)
     where
       len = length f + length g + 1
-{-# INLINE joinWithByte #-}
+{-# INLINE intercalateWithByte #-}
 
 -- ---------------------------------------------------------------------
 -- Indexing ByteStrings

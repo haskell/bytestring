@@ -48,7 +48,8 @@ module Data.ByteString.Lazy.Char8 (
         -- * Transformating ByteStrings
         map,                    -- :: (Char -> Char) -> ByteString -> ByteString
         reverse,                -- :: ByteString -> ByteString
---      intersperse,            -- :: Char -> ByteString -> ByteString
+        intersperse,            -- :: Char -> ByteString -> ByteString
+        intercalate,            -- :: ByteString -> [ByteString] -> ByteString
         transpose,              -- :: [ByteString] -> [ByteString]
 
         -- * Reducing 'ByteString's (folds)
@@ -180,7 +181,7 @@ module Data.ByteString.Lazy.Char8 (
 import Data.ByteString.Lazy 
         (ByteString, fromChunks, toChunks
         ,empty,null,length,tail,init,append,reverse,transpose,cycle
-        ,concat,take,drop,splitAt,join,isPrefixOf,group,inits,tails,copy
+        ,concat,take,drop,splitAt,intercalate,isPrefixOf,group,inits,tails,copy
         ,hGetContents, hGet, hPut, getContents
         ,hGetNonBlocking
         ,putStr, putStrLn, interact)
@@ -284,6 +285,17 @@ last = w2c . L.last
 map :: (Char -> Char) -> ByteString -> ByteString
 map f = L.map (c2w . f . w2c)
 {-# INLINE map #-}
+
+-- | /O(n)/ The 'intersperse' function takes a Char and a 'ByteString'
+-- and \`intersperses\' that Char between the elements of the
+-- 'ByteString'.  It is analogous to the intersperse function on Lists.
+intersperse :: Char -> ByteString -> ByteString
+intersperse = L.intersperse . c2w
+{-# INLINE intersperse #-}
+
+join :: ByteString -> [ByteString] -> ByteString
+join = intercalate
+{-# DEPRECATED join "use intercalate" #-}
 
 -- | 'foldl', applied to a binary operator, a starting value (typically
 -- the left-identity of the operator), and a ByteString, reduces the
@@ -466,7 +478,7 @@ spanChar = L.spanByte . c2w
 -- 
 -- and
 --
--- > join [c] . split c == id
+-- > intercalate [c] . split c == id
 -- > split == splitWith . (==)
 -- 
 -- As for all splitting functions in this library, this function does
@@ -672,7 +684,7 @@ words = P.filter (not . L.null) . L.splitWith isSpaceWord8
 
 -- | The 'unwords' function is analogous to the 'unlines' function, on words.
 unwords :: [ByteString] -> ByteString
-unwords = join (singleton ' ')
+unwords = intercalate (singleton ' ')
 {-# INLINE unwords #-}
 
 -- | readInt reads an Int from the beginning of the ByteString.  If
