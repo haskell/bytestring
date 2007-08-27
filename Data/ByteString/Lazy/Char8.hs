@@ -647,7 +647,8 @@ lines (LPS (x:xs)) = loop0 x xs
 
             Just n | n /= 0    -> LPS [B.unsafeTake n ps]
                                 : loop0 (B.unsafeDrop (n+1) ps) pss
-                   | otherwise -> loop0 (B.unsafeTail ps) pss
+                   | otherwise -> LPS []
+                                : loop0 (B.unsafeTail ps) pss
 
     -- the general case when we are building a list of chunks that are
     -- part of the same line
