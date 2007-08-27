@@ -246,7 +246,8 @@ import Control.Monad            (when)
 import Foreign.C.String         (CString, CStringLen)
 import Foreign.C.Types          (CSize)
 import Foreign.ForeignPtr
-import Foreign.Marshal.Alloc
+import Foreign.Marshal.Alloc    (allocaBytes, mallocBytes, reallocBytes, finalizerFree)
+import Foreign.Marshal.Array    (allocaArray)
 import Foreign.Ptr
 import Foreign.Storable         (Storable(..))
 
@@ -1621,7 +1622,7 @@ tails p | null p    = [empty]
 
 -- | /O(n)/ Sort a ByteString efficiently, using counting sort.
 sort :: ByteString -> ByteString
-sort (PS input s l) = unsafeCreate l $ \p -> allocaBytes 256 $ \arr -> do
+sort (PS input s l) = unsafeCreate l $ \p -> allocaArray 256 $ \arr -> do
 
     memset (castPtr arr) 0 (256 * fromIntegral (sizeOf (undefined :: CSize)))
     withForeignPtr input (\x -> countOccurrences arr (x `plusPtr` s) l)
