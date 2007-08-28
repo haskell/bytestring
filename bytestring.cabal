@@ -11,7 +11,7 @@ Maintainer:          dons@cse.unsw.edu.au, duncan@haskell.org
 Stability:           provisional
 Homepage:            http://www.cse.unsw.edu.au/~dons/fps.html
 Tested-With:         GHC ==6.6.1
-Build-Depends:       base
+Build-Depends:       base, array
 extensions:          CPP, ForeignFunctionInterface
 Exposed-modules:     Data.ByteString
                      Data.ByteString.Fusion
