@@ -815,18 +815,16 @@ group xs
 -- | The 'groupBy' function is the non-overloaded version of 'group'.
 --
 groupBy :: (Word8 -> Word8 -> Bool) -> ByteString -> [ByteString]
-groupBy = error "Data.ByteString.Lazy.groupBy: unimplemented"
-{-
 groupBy _ (LPS [])     = []
 groupBy k (LPS (a:as)) = groupBy' [] 0 (P.groupBy k a) as
   where groupBy' :: [S.ByteString] -> Word8 -> [S.ByteString] -> [S.ByteString] -> [ByteString]
         groupBy' acc@(_:_) c ss@(s:_) xs
           | not (c `k` P.unsafeHead s) = LPS (L.reverse acc) : groupBy' [] 0 ss xs
         groupBy' acc _ (s:[]) []       = LPS (L.reverse (s : acc)) : []
-        groupBy' []  _ (s:[]) (x:xs)   = groupBy' (s:[]) (P.unsafeHead s) (P.groupBy k x) xs
-        groupBy' acc c (s:[]) (x:xs)   = groupBy' (s:acc) c (P.groupBy k x) xs
+        groupBy' acc c (s:[]) (x:xs)   = groupBy' (s:acc) c' (P.groupBy k x) xs
+                                         where c' | L.null acc = P.unsafeHead s
+                                                  | otherwise  = c
         groupBy' acc _ (s:ss) xs       = LPS (L.reverse (s : acc)) : groupBy' [] 0 ss xs
--}
 
 {-
 TODO: check if something like this might be faster
