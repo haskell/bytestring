@@ -142,7 +142,7 @@ module Data.ByteString (
         -- ** Searching with a predicate
         find,                   -- :: (Word8 -> Bool) -> ByteString -> Maybe Word8
         filter,                 -- :: (Word8 -> Bool) -> ByteString -> ByteString
---      partition               -- :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
+        partition,              -- :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
 
         -- * Indexing ByteStrings
         index,                  -- :: ByteString -> Int -> Word8
@@ -1457,6 +1457,16 @@ find k = foldl findEFL Nothing
           findEFL _          c | k c       = Just c
                                | otherwise = Nothing
 -}
+
+-- | /O(n)/ The 'partition' function takes a predicate a ByteString and returns
+-- the pair of ByteStrings with elements which do and do not satisfy the
+-- predicate, respectively; i.e.,
+--
+-- > partition p bs == (filter p xs, filter (not . p) xs)
+--
+partition :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
+partition p bs = (filter p bs, filter (not . p) bs)
+--TODO: use a better implementation
 
 -- ---------------------------------------------------------------------
 -- Searching for substrings
