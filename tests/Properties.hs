@@ -184,6 +184,9 @@ prop_foldrBL      = eq3
 prop_mapAccumLBL  = eq3
     (L.mapAccumL :: (X -> W -> (X,W)) -> X -> B   -> (X, B))
     (  mapAccumL :: (X -> W -> (X,W)) -> X -> [W] -> (X, [W]))
+prop_mapAccumRBL  = eq3
+    (L.mapAccumR :: (X -> W -> (X,W)) -> X -> B   -> (X, B))
+    (  mapAccumR :: (X -> W -> (X,W)) -> X -> [W] -> (X, [W]))
 prop_unfoldrBL = eq3
     ((\n f a -> L.take (fromIntegral n) $
         L.unfoldr f a) :: Int -> (X -> Maybe (W,X)) -> X -> B)
@@ -1134,6 +1137,7 @@ bl_tests =
     ,("foldr",       mytest prop_foldrBL)
     ,("foldr1",      mytest prop_foldr1BL)
     ,("mapAccumL",   mytest prop_mapAccumLBL)
+    ,("mapAccumR",   mytest prop_mapAccumRBL)
     ,("unfoldr",     mytest prop_unfoldrBL)
     ,("head",        mytest prop_headBL)
     ,("init",        mytest prop_initBL)

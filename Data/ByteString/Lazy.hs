@@ -100,6 +100,7 @@ module Data.ByteString.Lazy (
 
         -- ** Accumulating maps
         mapAccumL,  -- :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
+        mapAccumR,  -- :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
         mapIndexed, -- :: (Int64 -> Word8 -> Word8) -> ByteString -> ByteString
 
         -- ** Infinite ByteStrings
@@ -509,7 +510,24 @@ minimum (LPS (x:xs)) = L.foldl' (\n ps -> n `min` P.minimum ps) (P.minimum x) xs
 -- passing an accumulating parameter from left to right, and returning a
 -- final value of this accumulator together with the new ByteString.
 mapAccumL :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
-mapAccumL f z = (\(a :*: ps) -> (a, LPS ps)) . loopL (P.mapAccumEFL f) z . unLPS
+mapAccumL f = go
+  where
+    go s (LPS [])     = (s, LPS [])
+    go s (LPS (c:cs)) = (s'', LPS (c':cs'))
+        where (s',  c') = P.mapAccumL f s c
+              (s'', LPS cs') = go s' (LPS cs)
+
+-- | The 'mapAccumR' function behaves like a combination of 'map' and
+-- 'foldr'; it applies a function to each element of a ByteString,
+-- passing an accumulating parameter from right to left, and returning a
+-- final value of this accumulator together with the new ByteString.
+mapAccumR :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
+mapAccumR f = go
+  where
+    go s (LPS [])     = (s, LPS [])
+    go s (LPS (c:cs)) = (s'', LPS (c':cs'))
+        where (s'', c') = P.mapAccumR f s' c
+              (s', LPS cs') = go s (LPS cs)
 
 -- | /O(n)/ map Word8 functions, provided with the index at each position
 mapIndexed :: (Int -> Word8 -> Word8) -> ByteString -> ByteString
