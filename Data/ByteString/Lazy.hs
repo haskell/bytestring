@@ -191,7 +191,7 @@ module Data.ByteString.Lazy (
         hGet,                   -- :: Handle -> Int -> IO ByteString
         hGetNonBlocking,        -- :: Handle -> IO ByteString
         hPut,                   -- :: Handle -> ByteString -> IO ()
---        hPutStr,                -- :: Handle -> ByteString -> IO ()
+        hPutStr,                -- :: Handle -> ByteString -> IO ()
 
 --      hGetN,                  -- :: Int -> Handle -> Int -> IO ByteString
 --      hGetContentsN,          -- :: Int -> Handle -> IO ByteString
@@ -1206,6 +1206,10 @@ getContents = hGetContents stdin
 -- | Outputs a 'ByteString' to the specified 'Handle'.
 hPut :: Handle -> ByteString -> IO ()
 hPut h (LPS xs) = mapM_ (P.hPut h) xs
+
+-- | A synonym for @hPut@, for compatibility
+hPutStr :: Handle -> ByteString -> IO ()
+hPutStr = hPut
 
 -- | Write a ByteString to stdout
 putStr :: ByteString -> IO ()
