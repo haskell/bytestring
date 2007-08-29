@@ -127,6 +127,7 @@ module Data.ByteString (
         -- * Predicates
         isPrefixOf,             -- :: ByteString -> ByteString -> Bool
         isSuffixOf,             -- :: ByteString -> ByteString -> Bool
+        isInfixOf,              -- :: ByteString -> ByteString -> Bool
 
         -- ** Search for arbitrary substrings
         isSubstringOf,          -- :: ByteString -> ByteString -> Bool
