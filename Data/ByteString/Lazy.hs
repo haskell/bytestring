@@ -94,14 +94,14 @@ module Data.ByteString.Lazy (
         -- * Building ByteStrings
         -- ** Scans
         scanl,                  -- :: (Word8 -> Word8 -> Word8) -> Word8 -> ByteString -> ByteString
---      scanl1,                 -- :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString
---      scanr,                  -- :: (Word8 -> Word8 -> Word8) -> Word8 -> ByteString -> ByteString
---      scanr1,                 -- :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString
+--        scanl1,                 -- :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString
+--        scanr,                  -- :: (Word8 -> Word8 -> Word8) -> Word8 -> ByteString -> ByteString
+--        scanr1,                 -- :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString
 
         -- ** Accumulating maps
-        mapAccumL,  -- :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
-        mapAccumR,  -- :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
-        mapIndexed, -- :: (Int64 -> Word8 -> Word8) -> ByteString -> ByteString
+        mapAccumL,              -- :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
+        mapAccumR,              -- :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
+        mapIndexed,             -- :: (Int64 -> Word8 -> Word8) -> ByteString -> ByteString
 
         -- ** Infinite ByteStrings
         repeat,                 -- :: Word8 -> ByteString
@@ -133,7 +133,13 @@ module Data.ByteString.Lazy (
 
         -- * Predicates
         isPrefixOf,             -- :: ByteString -> ByteString -> Bool
---      isSuffixOf,             -- :: ByteString -> ByteString -> Bool
+--        isSuffixOf,             -- :: ByteString -> ByteString -> Bool
+--        isInfixOf,              -- :: ByteString -> ByteString -> Bool
+
+        -- ** Search for arbitrary substrings
+--        isSubstringOf,          -- :: ByteString -> ByteString -> Bool
+--        findSubstring,          -- :: ByteString -> ByteString -> Maybe Int
+--        findSubstrings,         -- :: ByteString -> ByteString -> [Int]
 
         -- * Searching ByteStrings
 
@@ -157,12 +163,15 @@ module Data.ByteString.Lazy (
         -- * Zipping and unzipping ByteStrings
         zip,                    -- :: ByteString -> ByteString -> [(Word8,Word8)]
         zipWith,                -- :: (Word8 -> Word8 -> c) -> ByteString -> ByteString -> [c]
---      unzip,                  -- :: [(Word8,Word8)] -> (ByteString,ByteString)
+--        unzip,                  -- :: [(Word8,Word8)] -> (ByteString,ByteString)
 
         -- * Ordered ByteStrings
 --        sort,                   -- :: ByteString -> ByteString
 
+        -- * Low level conversions
+        -- ** Copying ByteStrings
         copy,                   -- :: ByteString -> ByteString
+--        rechunk,                -- :: ByteString -> ByteString
 
         -- * I\/O with 'ByteString's
 
@@ -180,8 +189,9 @@ module Data.ByteString.Lazy (
         -- ** I\/O with Handles
         hGetContents,           -- :: Handle -> IO ByteString
         hGet,                   -- :: Handle -> Int -> IO ByteString
-        hPut,                   -- :: Handle -> ByteString -> IO ()
         hGetNonBlocking,        -- :: Handle -> IO ByteString
+        hPut,                   -- :: Handle -> ByteString -> IO ()
+--        hPutStr,                -- :: Handle -> ByteString -> IO ()
 
 --      hGetN,                  -- :: Int -> Handle -> Int -> IO ByteString
 --      hGetContentsN,          -- :: Int -> Handle -> IO ByteString

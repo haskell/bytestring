@@ -136,7 +136,6 @@ module Data.ByteString (
         -- * Searching ByteStrings
 
         -- ** Searching by equality
-        -- | These functions use memchr(3) to efficiently search the ByteString
         elem,                   -- :: Word8 -> ByteString -> Bool
         notElem,                -- :: Word8 -> ByteString -> Bool
 
@@ -165,11 +164,9 @@ module Data.ByteString (
         -- * Low level CString conversions
 
         -- ** Copying ByteStrings
-        -- | This function performs a memcpy(3) operations
         copy,                   -- :: ByteString -> ByteString
 
         -- ** Packing CStrings and pointers
-        -- | These functions perform memcpy(3) operations
         packCString,            -- :: CString -> IO ByteString
         packCStringLen,         -- :: CStringLen -> IO ByteString
 
