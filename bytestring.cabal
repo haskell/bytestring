@@ -14,17 +14,19 @@ Tested-With:         GHC ==6.6.1
 Build-Depends:       base, array
 extensions:          CPP, ForeignFunctionInterface
 Exposed-modules:     Data.ByteString
-                     Data.ByteString.Fusion
-                     Data.ByteString.Internal
-                     Data.ByteString.Unsafe
                      Data.ByteString.Char8
+                     Data.ByteString.Unsafe
+                     Data.ByteString.Internal
                      Data.ByteString.Lazy
-                     Data.ByteString.Lazy.Internal
                      Data.ByteString.Lazy.Char8
+                     Data.ByteString.Lazy.Internal
+Other-modules:       Data.ByteString.Fusion
 ghc-options:         -Wall -fglasgow-exts -O2
-nhc-options:         -K4M
-include-dirs:        cbits
+nhc-options:         -K4M -K3M
 c-sources:           cbits/fpstring.c
+include-dirs:        cbits
+includes:            fpstring.h
+install-includes:    fpstring.h
 
 -- For ghc 6.4.2 or older:
 -- -DSLOW_FOREIGN_PTR
