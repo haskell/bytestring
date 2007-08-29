@@ -23,10 +23,11 @@ import Foreign.Ptr
 
 import Data.ByteString.Lazy (ByteString(..), pack , unpack)
 import qualified Data.ByteString.Lazy as L
-import Data.ByteString.Base (LazyByteString(..))
+import Data.ByteString.Lazy.Internal (ByteString(..))
 
 import qualified Data.ByteString       as P
-import qualified Data.ByteString.Base  as P
+import qualified Data.ByteString.Internal as P
+import qualified Data.ByteString.Unsafe as P
 import qualified Data.ByteString.Char8 as C
 import qualified Data.ByteString.Lazy.Char8 as D
 import Data.ByteString.Fusion
@@ -438,7 +439,7 @@ prop_splitWith f xs = (l1 == l2 || l1 == l2+1) &&
         l1 = fromIntegral (length splits)
         l2 = L.length (L.filter f xs)
 
-prop_joinsplit c xs = L.join (pack [c]) (L.split c xs) == id xs
+prop_joinsplit c xs = L.intercalate (pack [c]) (L.split c xs) == id xs
 
 prop_group xs       = group xs == (map unpack . L.group . pack) xs
 -- prop_groupBy  f xs  = groupBy f xs == (map unpack . L.groupBy f . pack) xs
@@ -571,7 +572,7 @@ prop_splitWithBB f xs = (l1 == l2 || l1 == l2+1) &&
         l1 = length splits
         l2 = P.length (P.filter f xs)
 
-prop_joinsplitBB c xs = P.join (P.pack [c]) (P.split c xs) == xs
+prop_joinsplitBB c xs = P.intercalate (P.pack [c]) (P.split c xs) == xs
 
 -- prop_linessplitBB xs =
 --     (not . C.null) xs ==>
@@ -734,7 +735,7 @@ prop_groupByBB  xs = groupBy (==) xs == (map P.unpack . P.groupBy (==) . P.pack)
 prop_groupBy1BB xs = groupBy (/=) xs == (map P.unpack . P.groupBy (/=) . P.pack) xs
 
 prop_joinBB xs ys = (concat . (intersperse ys) . lines) xs ==
-               (C.unpack $ C.join (C.pack ys) (C.lines (C.pack xs)))
+               (C.unpack $ C.intercalate (C.pack ys) (C.lines (C.pack xs)))
 
 prop_elemIndex1BB xs   = (elemIndex 'X' xs) == (C.elemIndex 'X' (C.pack xs))
 prop_elemIndex2BB xs c = (elemIndex c xs) == (C.elemIndex c (C.pack xs))

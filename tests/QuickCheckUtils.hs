@@ -19,7 +19,7 @@ import System.IO
 import Data.ByteString.Fusion
 import qualified Data.ByteString      as P
 import qualified Data.ByteString.Lazy as L
-import qualified Data.ByteString.Base as L (LazyByteString(..))
+import qualified Data.ByteString.Lazy.Internal as L (ByteString(LPS))
 
 import qualified Data.ByteString.Char8      as PC
 import qualified Data.ByteString.Lazy.Char8 as LC
@@ -100,11 +100,6 @@ instance Arbitrary Word8 where
 instance Arbitrary Int64 where
   arbitrary     = sized $ \n -> choose (-fromIntegral n,fromIntegral n)
   coarbitrary n = variant (fromIntegral (if n >= 0 then 2*n else 2*(-n) + 1))
-
-instance Arbitrary a => Arbitrary (Maybe a) where
-  arbitrary           = do a <- arbitrary ; elements [Nothing, Just a]
-  coarbitrary Nothing = variant 0
-  coarbitrary _       = variant 1 -- ok?
 
 instance Arbitrary a => Arbitrary (MaybeS a) where
   arbitrary            = do a <- arbitrary ; elements [NothingS, JustS a]
