@@ -1225,7 +1225,7 @@ groupBy k xs
 -- argument between each element of the list.
 intercalate :: ByteString -> [ByteString] -> ByteString
 intercalate s = concat . (List.intersperse s)
-{-# INLINE [1] join #-}
+{-# INLINE [1] intercalate #-}
 
 join :: ByteString -> [ByteString] -> ByteString
 join = intercalate
