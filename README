@@ -1,5 +1,5 @@
 ------------------------------------------------------------------------
-                 FPS : Fast, packed strings
+               ByteString : Fast, packed strings of bytes
 ------------------------------------------------------------------------
 
 This library provides the Data.ByteString library -- strict and lazy
@@ -15,10 +15,9 @@ Requirements:
         > GHC 6.4 or greater, or hugs
 
 Building:
-        > chmod +x Setup.lhs
-        > ./Setup.lhs configure --prefix=/f/g
-        > ./Setup.lhs build
-        > ./Setup.lhs install
+        > runhaskell Setup.lhs configure --prefix=/f/g
+        > runhaskell Setup.lhs build
+        > runhaskell Setup.lhs install
 
 After installation, you can run the testsuite as follows:
     
@@ -35,7 +34,8 @@ Authors:
     originally written by Bryan O'Sullivan, and then by Simon Marlow.
     It was adapted, and greatly extended for darcs by David Roundy, and
     others. Don Stewart cleaned up and further extended the implementation.
-    Duncan Coutts wrote much of the .Lazy code.
+    Duncan Coutts wrote much of the .Lazy code. Don, Duncan and Roman
+    Leshchinskiy wrote the fusion system.
 
 ------------------------------------------------------------------------
 
