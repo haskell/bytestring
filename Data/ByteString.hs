@@ -201,12 +201,6 @@ module Data.ByteString (
         hPutStr,                -- :: Handle -> ByteString -> IO ()
         hPutStrLn,              -- :: Handle -> ByteString -> IO ()
 
-#if defined(__GLASGOW_HASKELL__)
-        -- * Fusion utilities
-        unpackList, -- eek, otherwise it gets thrown away by the simplifier
-        lengthU, maximumU, minimumU,
-#endif
-
         -- undocumented deprecated things:
         join                    -- :: ByteString -> [ByteString] -> ByteString
 

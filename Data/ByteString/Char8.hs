@@ -202,11 +202,6 @@ module Data.ByteString.Char8 (
         hPutStr,                -- :: Handle -> ByteString -> IO ()
         hPutStrLn,              -- :: Handle -> ByteString -> IO ()
 
-        -- * Utilities (needed for array fusion)
-#if defined(__GLASGOW_HASKELL__)
-        unpackList,
-#endif
-
         -- undocumented deprecated things:
         join                    -- :: ByteString -> [ByteString] -> ByteString
 
@@ -240,9 +235,6 @@ import Data.ByteString (empty,null,length,tail,init,append
                        ,hGetLine, hGetNonBlocking
                        ,packCString,packCStringLen
                        ,useAsCString,useAsCStringLen
-#if defined(__GLASGOW_HASKELL__)
-                       ,unpackList
-#endif
                        )
 
 import Data.ByteString.Internal (ByteString(PS), c2w, w2c, isSpaceWord8
