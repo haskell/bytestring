@@ -133,7 +133,7 @@ module Data.ByteString.Lazy (
 
         -- * Predicates
         isPrefixOf,             -- :: ByteString -> ByteString -> Bool
---        isSuffixOf,             -- :: ByteString -> ByteString -> Bool
+        isSuffixOf,             -- :: ByteString -> ByteString -> Bool
 --        isInfixOf,              -- :: ByteString -> ByteString -> Bool
 
         -- ** Search for arbitrary substrings
@@ -163,7 +163,7 @@ module Data.ByteString.Lazy (
         -- * Zipping and unzipping ByteStrings
         zip,                    -- :: ByteString -> ByteString -> [(Word8,Word8)]
         zipWith,                -- :: (Word8 -> Word8 -> c) -> ByteString -> ByteString -> [c]
---        unzip,                  -- :: [(Word8,Word8)] -> (ByteString,ByteString)
+        unzip,                  -- :: [(Word8,Word8)] -> (ByteString,ByteString)
 
         -- * Ordered ByteStrings
 --        sort,                   -- :: ByteString -> ByteString
@@ -1028,11 +1028,9 @@ isPrefixOf (LPS as) (LPS bs) = isPrefixL as bs
 --
 -- > isSuffixOf x y == reverse x `isPrefixOf` reverse y
 --
--- However, the real implemenation uses memcmp to compare the end of the
--- string only, with no reverse required..
---
---isSuffixOf :: ByteString -> ByteString -> Bool
---isSuffixOf = error "not yet implemented"
+isSuffixOf :: ByteString -> ByteString -> Bool
+isSuffixOf x y = reverse x `isPrefixOf` reverse y
+--TODO: a better implementation
 
 -- ---------------------------------------------------------------------
 -- Zipping
@@ -1065,11 +1063,9 @@ zipWith f (LPS (a:as)) (LPS (b:bs)) = zipWith' a as b bs
 
 -- | /O(n)/ 'unzip' transforms a list of pairs of bytes into a pair of
 -- ByteStrings. Note that this performs two 'pack' operations.
-{-
 unzip :: [(Word8,Word8)] -> (ByteString,ByteString)
-unzip _ls = error "not yet implemented"
+unzip ls = (pack (L.map fst ls), pack (L.map snd ls))
 {-# INLINE unzip #-}
--}
 
 -- ---------------------------------------------------------------------
 -- Special lists
