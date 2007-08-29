@@ -1499,6 +1499,10 @@ isSuffixOf (PS x1 s1 l1) (PS x2 s2 l2)
             i <- memcmp (p1 `plusPtr` s1) (p2 `plusPtr` s2 `plusPtr` (l2 - l1)) (fromIntegral l1)
             return $! i == 0
 
+-- | Alias of 'isSubstringOf'
+isInfixOf :: ByteString -> ByteString -> Bool
+isInfixOf = isSubstringOf
+
 -- | Check whether one string is a substring of another. @isSubstringOf
 -- p s@ is equivalent to @not (null (findSubstrings p s))@.
 isSubstringOf :: ByteString -- ^ String to search for.
