@@ -217,7 +217,7 @@ import qualified Data.ByteString.Internal as P
 import qualified Data.ByteString.Unsafe as P
 import Data.ByteString.Lazy.Internal
 import qualified Data.ByteString.Fusion as P
-import Data.ByteString.Fusion (PairS((:*:)),loopL)
+import Data.ByteString.Fusion (loopL)
 
 import Data.Monoid              (Monoid(..))
 
