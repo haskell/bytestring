@@ -24,7 +24,7 @@ Other-modules:       Data.ByteString.Fusion
 ghc-options:         -Wall -fglasgow-exts -O2
 nhc-options:         -K4M -K3M
 c-sources:           cbits/fpstring.c
-include-dirs:        cbits
+include-dirs:        include
 includes:            fpstring.h
 install-includes:    fpstring.h
 
