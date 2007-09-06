@@ -20,7 +20,7 @@ Exposed-modules:     Data.ByteString
                      Data.ByteString.Lazy
                      Data.ByteString.Lazy.Char8
                      Data.ByteString.Lazy.Internal
-Other-modules:       Data.ByteString.Fusion
+                     Data.ByteString.Fusion
 ghc-options:         -Wall -fglasgow-exts -O2
 nhc98-options:       -K4M -K3M
 c-sources:           cbits/fpstring.c
