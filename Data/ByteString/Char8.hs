@@ -880,10 +880,7 @@ unlines ss = (concat $ List.intersperse nl ss) `append` nl -- half as much space
     where nl = singleton '\n'
 
 -- | 'words' breaks a ByteString up into a list of words, which
--- were delimited by Chars representing white space. And
---
--- > tokens isSpace = words
---
+-- were delimited by Chars representing white space.
 words :: ByteString -> [ByteString]
 words = P.filter (not . B.null) . B.splitWith isSpaceWord8
 {-# INLINE words #-}
