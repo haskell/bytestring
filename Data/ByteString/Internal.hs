@@ -97,6 +97,10 @@ import GHC.Base                 (nullAddr#)
 import Foreign.Ptr              (nullPtr)
 #endif
 
+#if __HUGS__
+import Hugs.ForeignPtr          (newForeignPtr_)
+#endif
+
 -- CFILES stuff is Hugs only
 {-# CFILES cbits/fpstring.c #-}
 
