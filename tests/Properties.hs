@@ -287,8 +287,8 @@ prop_unfoldrPL = eq3
 --
 
 invariant :: L.ByteString -> Bool
-invariant (LPS []) = True
-invariant (LPS xs) = all (not . P.null) xs
+invariant Empty       = True
+invariant (Chunk c cs) = not (P.null c) && invariant cs
 
 prop_invariant = invariant
 

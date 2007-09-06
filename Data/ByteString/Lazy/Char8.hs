@@ -195,14 +195,13 @@ import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Internal as B
 import qualified Data.ByteString.Unsafe as B
-import Data.ByteString.Lazy.Internal (ByteString(LPS))
+import Data.ByteString.Lazy.Internal
 
 import Data.ByteString.Internal (w2c, c2w, isSpaceWord8)
 
 import Data.Int (Int64)
-import qualified Data.List as List (intersperse)
+import qualified Data.List as List
 
-import qualified Prelude as P
 import Prelude hiding           
         (reverse,head,tail,last,init,null,length,map,lines,foldl,foldr,unlines
         ,concat,any,take,drop,splitAt,takeWhile,dropWhile,span,break,elem,filter
@@ -232,11 +231,11 @@ singleton = L.singleton . c2w
 
 -- | /O(n)/ Convert a 'String' into a 'ByteString'. 
 pack :: [Char] -> ByteString
-pack = L.pack. P.map c2w
+pack = L.pack. List.map c2w
 
 -- | /O(n)/ Converts a 'ByteString' to a 'String'.
 unpack :: ByteString -> [Char]
-unpack = P.map w2c . L.unpack
+unpack = List.map w2c . L.unpack
 {-# INLINE unpack #-}
 
 -- | /O(1)/ 'cons' is analogous to '(:)' for lists.
@@ -620,8 +619,8 @@ zipWith f = L.zipWith ((. w2c) . f . w2c)
 -- newline Chars. The resulting strings do not contain newlines.
 --
 lines :: ByteString -> [ByteString]
-lines (LPS [])     = []
-lines (LPS (x:xs)) = loop0 x xs
+lines Empty          = []
+lines (Chunk c0 cs0) = loop0 c0 cs0
     where
     -- this is a really performance sensitive function but the
     -- chunked representation makes the general case a bit expensive
@@ -634,42 +633,38 @@ lines (LPS (x:xs)) = loop0 x xs
 
     -- the common special case where we have no existing chunks of
     -- the current line
-    loop0 :: B.ByteString -> [B.ByteString] -> [ByteString]
+    loop0 :: B.ByteString -> ByteString -> [ByteString]
     STRICT2(loop0)
-    loop0 ps pss =
-        case B.elemIndex (c2w '\n') ps of
-            Nothing -> case pss of
-                           []  | B.null ps ->            []
-                               | otherwise -> LPS [ps] : []
-                           (ps':pss')
-                               | B.null ps -> loop0 ps'      pss'
-                               | otherwise -> loop  ps' [ps] pss'
+    loop0 c cs =
+        case B.elemIndex (c2w '\n') c of
+            Nothing -> case cs of
+                           Empty  | B.null c  ->                 []
+                                  | otherwise -> Chunk c Empty : []
+                           (Chunk c' cs')
+                               | B.null c  -> loop0 c'     cs'
+                               | otherwise -> loop  c' [c] cs'
 
-            Just n | n /= 0    -> LPS [B.unsafeTake n ps]
-                                : loop0 (B.unsafeDrop (n+1) ps) pss
-                   | otherwise -> LPS []
-                                : loop0 (B.unsafeTail ps) pss
+            Just n | n /= 0    -> Chunk (B.unsafeTake n c) Empty
+                                : loop0 (B.unsafeDrop (n+1) c) cs
+                   | otherwise -> Empty
+                                : loop0 (B.unsafeTail c) cs
 
     -- the general case when we are building a list of chunks that are
     -- part of the same line
-    loop :: B.ByteString -> [B.ByteString] -> [B.ByteString] -> [ByteString]
+    loop :: B.ByteString -> [B.ByteString] -> ByteString -> [ByteString]
     STRICT3(loop)
-    loop ps line pss =
-        case B.elemIndex (c2w '\n') ps of
+    loop c line cs =
+        case B.elemIndex (c2w '\n') c of
             Nothing ->
-                case pss of
-                    [] -> let ps' | B.null ps = P.reverse line
-                                  | otherwise = P.reverse (ps : line)
-                           in ps' `seq` (LPS ps' : [])
+                case cs of
+                    Empty -> let c' = revChunks (c : line)
+                              in c' `seq` (c' : [])
 
-                    (ps':pss')
-                        | B.null ps -> loop ps'       line  pss'
-                        | otherwise -> loop ps' (ps : line) pss'
+                    (Chunk c' cs') -> loop c' (c : line) cs'
 
             Just n ->
-                let ps' | n == 0    = P.reverse line
-                        | otherwise = P.reverse (B.unsafeTake n ps : line)
-                 in ps' `seq` (LPS ps' : loop0 (B.unsafeDrop (n+1) ps) pss)
+                let c' = revChunks (B.unsafeTake n c : line)
+                 in c' `seq` (c' : loop0 (B.unsafeDrop (n+1) c) cs)
 
 -- | 'unlines' is an inverse operation to 'lines'.  It joins lines,
 -- after appending a terminating newline to each.
@@ -684,7 +679,7 @@ unlines ss = (concat $ List.intersperse nl ss) `append` nl -- half as much space
 -- > tokens isSpace = words
 --
 words :: ByteString -> [ByteString]
-words = P.filter (not . L.null) . L.splitWith isSpaceWord8
+words = List.filter (not . L.null) . L.splitWith isSpaceWord8
 {-# INLINE words #-}
 
 -- | The 'unwords' function is analogous to the 'unlines' function, on words.
@@ -697,78 +692,77 @@ unwords = intercalate (singleton ' ')
 -- Nothing, otherwise it just returns the int read, and the rest of the
 -- string.
 readInt :: ByteString -> Maybe (Int, ByteString)
-readInt (LPS [])     = Nothing
-readInt (LPS (x:xs)) =
+readInt Empty        = Nothing
+readInt (Chunk x xs) =
         case w2c (B.unsafeHead x) of
             '-' -> loop True  0 0 (B.unsafeTail x) xs
             '+' -> loop False 0 0 (B.unsafeTail x) xs
             _   -> loop False 0 0 x xs
 
-    where loop :: Bool -> Int -> Int -> B.ByteString -> [B.ByteString] -> Maybe (Int, ByteString)
+    where loop :: Bool -> Int -> Int -> B.ByteString -> ByteString -> Maybe (Int, ByteString)
           STRICT5(loop)
-          loop neg i n ps pss
-              | B.null ps = case pss of
-                                []         -> end  neg i n ps  pss
-                                (ps':pss') -> loop neg i n ps' pss'
+          loop neg i n c cs
+              | B.null c = case cs of
+                             Empty          -> end  neg i n c  cs
+                             (Chunk c' cs') -> loop neg i n c' cs'
               | otherwise =
-                  case B.unsafeHead ps of
+                  case B.unsafeHead c of
                     w | w >= 0x30
                      && w <= 0x39 -> loop neg (i+1)
                                           (n * 10 + (fromIntegral w - 0x30))
-                                          (B.unsafeTail ps) pss
-                      | otherwise -> end neg i n ps pss
+                                          (B.unsafeTail c) cs
+                      | otherwise -> end neg i n c cs
 
           end _   0 _ _  _   = Nothing
-          end neg _ n ps pss = let n'  | neg       = negate n
-                                       | otherwise = n
-                                   ps' | B.null ps =    pss
-                                       | otherwise = ps:pss
-                                in n' `seq` ps' `seq` Just $! (n', LPS ps')
+          end neg _ n c cs = let n' | neg       = negate n
+                                    | otherwise = n
+                                 c' = chunk c cs
+                              in n' `seq` c' `seq` Just $! (n', c')
 
 
 -- | readInteger reads an Integer from the beginning of the ByteString.  If
 -- there is no integer at the beginning of the string, it returns Nothing,
 -- otherwise it just returns the int read, and the rest of the string.
 readInteger :: ByteString -> Maybe (Integer, ByteString)
-readInteger (LPS []) = Nothing
-readInteger (LPS (x:xs)) =
-        case w2c (B.unsafeHead x) of
-            '-' -> first (B.unsafeTail x) xs >>= \(n, bs) -> return (-n, bs)
-            '+' -> first (B.unsafeTail x) xs
-            _   -> first x xs
+readInteger Empty = Nothing
+readInteger (Chunk c0 cs0) =
+        case w2c (B.unsafeHead c0) of
+            '-' -> first (B.unsafeTail c0) cs0 >>= \(n, cs') -> return (-n, cs')
+            '+' -> first (B.unsafeTail c0) cs0
+            _   -> first c0 cs0
 
-    where first ps pss
-              | B.null ps = case pss of
-                  []         -> Nothing
-                  (ps':pss') -> first' ps' pss'
-              | otherwise = first' ps pss
+    where first c cs
+              | B.null c = case cs of
+                  Empty          -> Nothing
+                  (Chunk c' cs') -> first' c' cs'
+              | otherwise = first' c cs
 
-          first' ps pss = case B.unsafeHead ps of
+          first' c cs = case B.unsafeHead c of
               w | w >= 0x30 && w <= 0x39 -> Just $
-                  loop 1 (fromIntegral w - 0x30) [] (B.unsafeTail ps) pss
+                  loop 1 (fromIntegral w - 0x30) [] (B.unsafeTail c) cs
                 | otherwise              -> Nothing
 
           loop :: Int -> Int -> [Integer]
-               -> B.ByteString -> [B.ByteString] -> (Integer, ByteString)
+               -> B.ByteString -> ByteString -> (Integer, ByteString)
           STRICT5(loop)
-          loop d acc ns ps pss
-              | B.null ps = case pss of
-                                []         -> combine d acc ns ps pss
-                                (ps':pss') -> loop d acc ns ps' pss'
+          loop d acc ns c cs
+              | B.null c = case cs of
+                             Empty          -> combine d acc ns c cs
+                             (Chunk c' cs') -> loop d acc ns c' cs'
               | otherwise =
-                  case B.unsafeHead ps of
+                  case B.unsafeHead c of
                    w | w >= 0x30 && w <= 0x39 ->
                        if d < 9 then loop (d+1)
                                           (10*acc + (fromIntegral w - 0x30))
-                                          ns (B.unsafeTail ps) pss
+                                          ns (B.unsafeTail c) cs
                                 else loop 1 (fromIntegral w - 0x30)
                                           (fromIntegral acc : ns)
-                                          (B.unsafeTail ps) pss
-                     | otherwise -> combine d acc ns ps pss
+                                          (B.unsafeTail c) cs
+                     | otherwise -> combine d acc ns c cs
 
-          combine _ acc [] ps pss = end (fromIntegral acc) ps pss
-          combine d acc ns ps pss =
-              end (10^d * combine1 1000000000 ns + fromIntegral acc) ps pss
+          combine _ acc [] c cs = end (fromIntegral acc) c cs
+          combine d acc ns c cs =
+              end (10^d * combine1 1000000000 ns + fromIntegral acc) c cs
 
           combine1 _ [n] = n
           combine1 b ns  = combine1 (b*b) $ combine2 b ns
@@ -776,9 +770,8 @@ readInteger (LPS (x:xs)) =
           combine2 b (n:m:ns) = let t = n+m*b in t `seq` (t : combine2 b ns)
           combine2 _ ns       = ns
 
-          end n ps pss = let ps' | B.null ps =    pss
-                                 | otherwise = ps:pss
-                          in ps' `seq` (n, LPS ps')
+          end n c cs = let c' = chunk c cs
+                        in c' `seq` (n, c')
 
 -- | Read an entire file /lazily/ into a 'ByteString'. Use 'text mode'
 -- on Windows to interpret newlines
@@ -794,3 +787,11 @@ writeFile f txt = bracket (openFile f WriteMode) hClose
 appendFile :: FilePath -> ByteString -> IO ()
 appendFile f txt = bracket (openFile f AppendMode) hClose
     (\hdl -> hPut hdl txt)
+
+
+-- ---------------------------------------------------------------------
+-- Internal utilities
+
+-- reverse a list of possibly-empty chunks into a lazy ByteString
+revChunks :: [B.ByteString] -> ByteString
+revChunks cs = List.foldl' (flip chunk) Empty cs

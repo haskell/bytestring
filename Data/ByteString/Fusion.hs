@@ -39,6 +39,7 @@ module Data.ByteString.Fusion (
   ) where
 
 import Data.ByteString.Internal
+import qualified Data.ByteString.Lazy.Internal as L
 
 import Foreign.ForeignPtr
 import Foreign.Ptr
@@ -243,14 +244,14 @@ loopU f start (PS z s i) = unsafePerformIO $ withForeignPtr z $ \a -> do
 --
 loopL :: AccEFL acc          -- ^ mapping & folding, once per elem
       -> acc                 -- ^ initial acc value
-      -> [ByteString]        -- ^ input ByteString
-      -> PairS acc [ByteString]
+      -> L.ByteString        -- ^ input ByteString
+      -> PairS acc L.ByteString
 loopL f = loop
-  where loop s []     = (s :*: [])
-        loop s (x:xs)
+  where loop s L.Empty     = (s :*: L.Empty)
+        loop s (L.Chunk x xs)
           | l == 0    = (s'' :*: ys)
-          | otherwise = (s'' :*: y:ys)
-          where (s'  :*: y@(PS _ _ l)) = loopU f s x -- avoid circular dep on P.null
+          | otherwise = (s'' :*: L.Chunk y ys)
+          where (s'  :*: y@(PS _ _ l)) = loopU f s x -- avoid circular dep on S.null
                 (s'' :*: ys)           = loop s' xs
 
 #if defined(__GLASGOW_HASKELL__)

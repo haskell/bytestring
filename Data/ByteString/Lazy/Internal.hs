@@ -16,11 +16,13 @@ module Data.ByteString.Lazy.Internal (
 
         -- * The lazy @ByteString@ type and representation
         ByteString(..),     -- instances: Eq, Ord, Show, Read, Data, Typeable
+        chunk,
+        foldrChunks,
+        foldlChunks,
 
         -- * Data type invariant and abstraction function
         invariant,
         checkInvariant,
-        abstr,
 
         -- * Chunk allocation sizes
         defaultChunkSize,
@@ -29,8 +31,7 @@ module Data.ByteString.Lazy.Internal (
 
   ) where
 
-import qualified Data.ByteString as S
-import qualified Data.List       as L
+import qualified Data.ByteString.Internal as S
 
 import Foreign.Storable (sizeOf)
 
@@ -43,41 +44,54 @@ import Data.Generics            (Data(..), Typeable(..))
 --
 -- Instances of Eq, Ord, Read, Show, Data, Typeable
 --
-newtype ByteString = LPS { unLPS :: [S.ByteString] } -- LPS for lazy packed string
+data ByteString = Empty | Chunk {-# UNPACK #-} !S.ByteString ByteString
     deriving (Show, Read
 #if defined(__GLASGOW_HASKELL__)
                         ,Data, Typeable
 #endif
              )
---
--- hmm, what about getting the PS constructor unpacked into the cons cell?
---
--- data List = Nil | Cons {-# UNPACK #-} !S.ByteString List
---
--- Would avoid one indirection per chunk.
---
 
 ------------------------------------------------------------------------
 
 -- | The data type invariant:
--- Every ByteString is either empty or consists of non-null ByteStrings.
+-- Every ByteString is either 'Empty' or consists of non-null 'S.ByteString's.
 -- All functions must preserve this, and the QC properties must check this.
 --
 invariant :: ByteString -> Bool
-invariant (LPS []) = True
-invariant (LPS xs) = L.all (not . S.null) xs
+invariant Empty                     = True
+invariant (Chunk (S.PS _ _ len) cs) = len > 0 && invariant cs
 
--- | In a form useful for QC testing
+-- | In a form that checks the invariant lazily.
 checkInvariant :: ByteString -> ByteString
-checkInvariant lps
-    | invariant lps = lps
-    | otherwise     = error ("Data.ByteString.Lazy: invariant violation:" ++ show lps)
+checkInvariant Empty = Empty
+checkInvariant (Chunk c@(S.PS _ _ len) cs)
+    | len > 0   = Chunk c (checkInvariant cs)
+    | otherwise = error $ "Data.ByteString.Lazy: invariant violation:"
+               ++ show (Chunk c cs)
 
--- | The data abstraction function
---
-abstr :: ByteString -> S.ByteString
-abstr (LPS []) = S.empty
-abstr (LPS xs) = S.concat xs
+------------------------------------------------------------------------
+
+-- | Smart constructor for 'Chunk'. Guarantees the data type invariant.
+chunk :: S.ByteString -> ByteString -> ByteString
+chunk c@(S.PS _ _ len) cs | len == 0  = cs
+                          | otherwise = Chunk c cs
+{-# INLINE chunk #-}
+
+-- | Consume the chunks of a lazy ByteString with a natural right fold.
+foldrChunks :: (S.ByteString -> a -> a) -> a -> ByteString -> a
+foldrChunks f z = go
+  where go Empty        = z
+        go (Chunk c cs) = f c (go cs)
+{-# INLINE foldrChunks #-}
+
+-- | Consume the chunks of a lazy ByteString with a strict, tail-recursive,
+-- accumulating left fold.
+foldlChunks :: (a -> S.ByteString -> a) -> a -> ByteString -> a
+foldlChunks f z = go z
+  where go a _ | a `seq` False = undefined
+        go a Empty        = a
+        go a (Chunk c cs) = go (f a c) cs
+{-# INLINE foldlChunks #-}
 
 ------------------------------------------------------------------------
 
@@ -105,39 +119,3 @@ smallChunkSize = 4 * k - chunkOverhead
 -- | The memory management overhead. Currently this is tuned for GHC only.
 chunkOverhead :: Int
 chunkOverhead = 2 * sizeOf (undefined :: Int)
-
-------------------------------------------------------------------------
-
-instance Eq  ByteString
-    where (==)    = eq
-
-instance Ord ByteString
-    where compare = compareBytes
-
-eq :: ByteString -> ByteString -> Bool
-eq (LPS xs) (LPS ys) = eq' xs ys
-  where eq' [] [] = True
-        eq' [] _  = False
-        eq' _  [] = False
-        eq' (a:as) (b:bs) =
-          case compare (S.length a) (S.length b) of
-            LT -> a == (S.take (S.length a) b) && eq' as (S.drop (S.length a) b : bs)
-            EQ -> a == b                       && eq' as bs
-            GT -> (S.take (S.length b) a) == b && eq' (S.drop (S.length b) a : as) bs
-
-compareBytes :: ByteString -> ByteString -> Ordering
-compareBytes (LPS xs) (LPS ys) = cmp xs ys
-  where cmp [] [] = EQ
-        cmp [] _  = LT
-        cmp _  [] = GT
-        cmp (a:as) (b:bs) =
-          case compare (S.length a) (S.length b) of
-            LT -> case compare a (S.take (S.length a) b) of
-                    EQ     -> cmp as (S.drop (S.length a) b : bs)
-                    result -> result
-            EQ -> case compare a b of
-                    EQ     -> cmp as bs
-                    result -> result
-            GT -> case compare (S.take (S.length b) a) b of
-                    EQ     -> cmp (S.drop (S.length b) a : as) bs
-                    result -> result
