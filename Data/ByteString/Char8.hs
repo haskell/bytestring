@@ -129,6 +129,7 @@ module Data.ByteString.Char8 (
         -- * Predicates
         isPrefixOf,             -- :: ByteString -> ByteString -> Bool
         isSuffixOf,             -- :: ByteString -> ByteString -> Bool
+        isInfixOf,              -- :: ByteString -> ByteString -> Bool
         isSubstringOf,          -- :: ByteString -> ByteString -> Bool
 
         -- ** Search for arbitrary substrings
@@ -229,8 +230,8 @@ import qualified Data.ByteString.Unsafe as B
 import Data.ByteString (empty,null,length,tail,init,append
                        ,inits,tails,reverse,transpose
                        ,concat,take,drop,splitAt,intercalate
-                       ,sort,isPrefixOf,isSuffixOf,isSubstringOf,findSubstring
-                       ,findSubstrings,copy,group
+                       ,sort,isPrefixOf,isSuffixOf,isInfixOf,isSubstringOf,
+                       ,findSubstring,findSubstrings,copy,group
 
                        ,getLine, getContents, putStr, putStrLn, interact
                        ,hGetContents, hGet, hPut, hPutStr, hPutStrLn
