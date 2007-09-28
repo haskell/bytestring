@@ -1511,6 +1511,7 @@ isSubstringOf :: ByteString -- ^ String to search for.
               -> Bool
 isSubstringOf p s = not $ P.null $ findSubstrings p s
 
+{-# DEPRECATED findSubstring "Do not use. The ByteString searching api is about to be replaced." #-}
 -- | Get the first index of a substring in another string,
 --   or 'Nothing' if the string is not found.
 --   @findSubstring p s@ is equivalent to @listToMaybe (findSubstrings p s)@.
@@ -1519,6 +1520,7 @@ findSubstring :: ByteString -- ^ String to search for.
               -> Maybe Int
 findSubstring = (listToMaybe .) . findSubstrings
 
+{-# DEPRECATED findSubstrings "Do not use. The ByteString searching api is about to be replaced." #-}
 -- | Find the indexes of all (possibly overlapping) occurances of a
 -- substring in a string.  This function uses the Knuth-Morris-Pratt
 -- string matching algorithm.
