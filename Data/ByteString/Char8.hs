@@ -94,7 +94,7 @@ module Data.ByteString.Char8 (
         mapAccumR,              -- :: (acc -> Char -> (acc, Char)) -> acc -> ByteString -> (acc, ByteString)
         mapIndexed,             -- :: (Int -> Char -> Char) -> ByteString -> ByteString
 
-        -- * Generating and unfolding ByteStrings
+        -- ** Generating and unfolding ByteStrings
         replicate,              -- :: Int -> Char -> ByteString
         unfoldr,                -- :: (a -> Maybe (Char, a)) -> a -> ByteString
         unfoldrN,               -- :: Int -> (a -> Maybe (Char, a)) -> a -> (ByteString, Maybe a)
@@ -126,10 +126,12 @@ module Data.ByteString.Char8 (
         unlines,                -- :: [ByteString] -> ByteString
         unwords,                -- :: ByteString -> [ByteString]
 
-        -- ** Searching for substrings
+        -- * Predicates
         isPrefixOf,             -- :: ByteString -> ByteString -> Bool
         isSuffixOf,             -- :: ByteString -> ByteString -> Bool
         isSubstringOf,          -- :: ByteString -> ByteString -> Bool
+
+        -- ** Search for arbitrary substrings
         findSubstring,          -- :: ByteString -> ByteString -> Maybe Int
         findSubstrings,         -- :: ByteString -> ByteString -> [Int]
 
@@ -167,18 +169,18 @@ module Data.ByteString.Char8 (
 
         -- * Low level CString conversions
 
-        -- ** Packing CStrings and pointers
-        packCString,            -- :: CString -> ByteString
-        packCStringLen,         -- :: CString -> ByteString
-
-        -- ** Using ByteStrings as CStrings
-        useAsCString,           -- :: ByteString -> (CString -> IO a) -> IO a
-        useAsCStringLen,        -- :: ByteString -> (CStringLen -> IO a) -> IO a
-
-        -- * Copying ByteStrings
+        -- ** Copying ByteStrings
         copy,                   -- :: ByteString -> ByteString
 
-        -- * I\/O with @ByteString@s
+        -- ** Packing CStrings and pointers
+        packCString,            -- :: CString -> IO ByteString
+        packCStringLen,         -- :: CStringLen -> IO ByteString
+
+        -- ** Using ByteStrings as CStrings
+        useAsCString,           -- :: ByteString -> (CString    -> IO a) -> IO a
+        useAsCStringLen,        -- :: ByteString -> (CStringLen -> IO a) -> IO a
+
+        -- * I\/O with 'ByteString's
 
         -- ** Standard input and output
         getLine,                -- :: IO ByteString
@@ -195,9 +197,9 @@ module Data.ByteString.Char8 (
 
         -- ** I\/O with Handles
         hGetLine,               -- :: Handle -> IO ByteString
-        hGetNonBlocking,        -- :: Handle -> Int -> IO ByteString
         hGetContents,           -- :: Handle -> IO ByteString
         hGet,                   -- :: Handle -> Int -> IO ByteString
+        hGetNonBlocking,        -- :: Handle -> Int -> IO ByteString
         hPut,                   -- :: Handle -> ByteString -> IO ()
         hPutStr,                -- :: Handle -> ByteString -> IO ()
         hPutStrLn,              -- :: Handle -> ByteString -> IO ()
@@ -205,7 +207,7 @@ module Data.ByteString.Char8 (
         -- undocumented deprecated things:
         join                    -- :: ByteString -> [ByteString] -> ByteString
 
-    ) where
+  ) where
 
 import qualified Prelude as P
 import Prelude hiding           (reverse,head,tail,last,init,null

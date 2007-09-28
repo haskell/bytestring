@@ -68,7 +68,7 @@ module Data.ByteString.Lazy (
         null,                   -- :: ByteString -> Bool
         length,                 -- :: ByteString -> Int64
 
-        -- * Transformating ByteStrings
+        -- * Transforming ByteStrings
         map,                    -- :: (Word8 -> Word8) -> ByteString -> ByteString
         reverse,                -- :: ByteString -> ByteString
         intersperse,            -- :: Word8 -> ByteString -> ByteString
@@ -109,7 +109,7 @@ module Data.ByteString.Lazy (
         cycle,                  -- :: ByteString -> ByteString
         iterate,                -- :: (Word8 -> Word8) -> Word8 -> ByteString
 
-        -- ** Unfolding
+        -- ** Unfolding ByteStrings
         unfoldr,                -- :: (a -> Maybe (Word8, a)) -> a -> ByteString
 
         -- * Substrings
@@ -189,7 +189,7 @@ module Data.ByteString.Lazy (
         -- ** I\/O with Handles
         hGetContents,           -- :: Handle -> IO ByteString
         hGet,                   -- :: Handle -> Int -> IO ByteString
-        hGetNonBlocking,        -- :: Handle -> IO ByteString
+        hGetNonBlocking,        -- :: Handle -> Int -> IO ByteString
         hPut,                   -- :: Handle -> ByteString -> IO ()
         hPutStr,                -- :: Handle -> ByteString -> IO ()
 

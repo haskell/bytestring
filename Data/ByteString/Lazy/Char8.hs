@@ -25,11 +25,11 @@
 module Data.ByteString.Lazy.Char8 (
 
         -- * The @ByteString@ type
-        ByteString,            -- instances: Eq, Ord, Show, Read, Data, Typeable
+        ByteString,             -- instances: Eq, Ord, Show, Read, Data, Typeable
 
         -- * Introducing and eliminating 'ByteString's
         empty,                  -- :: ByteString
-        singleton,               -- :: Char   -> ByteString
+        singleton,              -- :: Char   -> ByteString
         pack,                   -- :: String -> ByteString
         unpack,                 -- :: ByteString -> String
         fromChunks,             -- :: [Strict.ByteString] -> ByteString
@@ -41,14 +41,14 @@ module Data.ByteString.Lazy.Char8 (
         snoc,                   -- :: ByteString -> Char -> ByteString
         append,                 -- :: ByteString -> ByteString -> ByteString
         head,                   -- :: ByteString -> Char
-        uncons,               -- :: ByteString -> Maybe (Char, ByteString)
+        uncons,                 -- :: ByteString -> Maybe (Char, ByteString)
         last,                   -- :: ByteString -> Char
         tail,                   -- :: ByteString -> ByteString
         init,                   -- :: ByteString -> ByteString
         null,                   -- :: ByteString -> Bool
         length,                 -- :: ByteString -> Int64
 
-        -- * Transformating ByteStrings
+        -- * Transforming ByteStrings
         map,                    -- :: (Char -> Char) -> ByteString -> ByteString
         reverse,                -- :: ByteString -> ByteString
         intersperse,            -- :: Char -> ByteString -> ByteString
@@ -79,8 +79,8 @@ module Data.ByteString.Lazy.Char8 (
 --      scanr1,                 -- :: (Char -> Char -> Char) -> ByteString -> ByteString
 
         -- ** Accumulating maps
-        mapAccumL,   -- :: (acc -> Char -> (acc, Char)) -> acc -> ByteString -> (acc, ByteString)
-        mapIndexed,  -- :: (Int64 -> Char -> Char) -> ByteString -> ByteString
+        mapAccumL,              -- :: (acc -> Char -> (acc, Char)) -> acc -> ByteString -> (acc, ByteString)
+        mapIndexed,             -- :: (Int64 -> Char -> Char) -> ByteString -> ByteString
 
         -- ** Infinite ByteStrings
         repeat,                 -- :: Char -> ByteString
@@ -88,7 +88,7 @@ module Data.ByteString.Lazy.Char8 (
         cycle,                  -- :: ByteString -> ByteString
         iterate,                -- :: (Char -> Char) -> Char -> ByteString
 
-        -- ** Unfolding
+        -- ** Unfolding ByteStrings
         unfoldr,                -- :: (a -> Maybe (Char, a)) -> a -> ByteString
 
         -- * Substrings
@@ -147,6 +147,8 @@ module Data.ByteString.Lazy.Char8 (
         -- * Ordered ByteStrings
 --        sort,                   -- :: ByteString -> ByteString
 
+        -- * Low level conversions
+        -- ** Copying ByteStrings
         copy,                   -- :: ByteString -> ByteString
 
         -- * Reading from ByteStrings
@@ -169,8 +171,8 @@ module Data.ByteString.Lazy.Char8 (
         -- ** I\/O with Handles
         hGetContents,           -- :: Handle -> IO ByteString
         hGet,                   -- :: Handle -> Int64 -> IO ByteString
+        hGetNonBlocking,        -- :: Handle -> Int64 -> IO ByteString
         hPut,                   -- :: Handle -> ByteString -> IO ()
-        hGetNonBlocking,        -- :: Handle -> IO ByteString
 
 --      hGetN,                  -- :: Int -> Handle -> Int64 -> IO ByteString
 --      hGetContentsN,          -- :: Int -> Handle -> IO ByteString

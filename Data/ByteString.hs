@@ -98,7 +98,7 @@ module Data.ByteString (
         mapAccumR,              -- :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
         mapIndexed,             -- :: (Int -> Word8 -> Word8) -> ByteString -> ByteString
 
-        -- ** Unfolding ByteStrings
+        -- ** Generating and unfolding ByteStrings
         replicate,              -- :: Int -> Word8 -> ByteString
         unfoldr,                -- :: (a -> Maybe (Word8, a)) -> a -> ByteString
         unfoldrN,               -- :: Int -> (a -> Maybe (Word8, a)) -> a -> (ByteString, Maybe a)
@@ -128,9 +128,9 @@ module Data.ByteString (
         isPrefixOf,             -- :: ByteString -> ByteString -> Bool
         isSuffixOf,             -- :: ByteString -> ByteString -> Bool
         isInfixOf,              -- :: ByteString -> ByteString -> Bool
+        isSubstringOf,          -- :: ByteString -> ByteString -> Bool
 
         -- ** Search for arbitrary substrings
-        isSubstringOf,          -- :: ByteString -> ByteString -> Bool
         findSubstring,          -- :: ByteString -> ByteString -> Maybe Int
         findSubstrings,         -- :: ByteString -> ByteString -> [Int]
 
@@ -162,16 +162,15 @@ module Data.ByteString (
         -- * Ordered ByteStrings
         sort,                   -- :: ByteString -> ByteString
 
-        -- * Low level CString conversions
-
+        -- * Low level conversions
         -- ** Copying ByteStrings
         copy,                   -- :: ByteString -> ByteString
 
-        -- ** Packing CStrings and pointers
+        -- ** Packing 'CString's and pointers
         packCString,            -- :: CString -> IO ByteString
         packCStringLen,         -- :: CStringLen -> IO ByteString
 
-        -- ** Using ByteStrings as CStrings
+        -- ** Using ByteStrings as 'CString's
         useAsCString,           -- :: ByteString -> (CString    -> IO a) -> IO a
         useAsCStringLen,        -- :: ByteString -> (CStringLen -> IO a) -> IO a
 
