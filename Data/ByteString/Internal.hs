@@ -99,6 +99,8 @@ import Foreign.Ptr              (nullPtr)
 
 #if __HUGS__
 import Hugs.ForeignPtr          (newForeignPtr_)
+#elif __GLASGOW_HASKELL__<=604
+import Foreign.ForeignPtr       (newForeignPtr_)
 #endif
 
 -- CFILES stuff is Hugs only
