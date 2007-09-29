@@ -230,7 +230,7 @@ import qualified Data.ByteString.Unsafe as B
 import Data.ByteString (empty,null,length,tail,init,append
                        ,inits,tails,reverse,transpose
                        ,concat,take,drop,splitAt,intercalate
-                       ,sort,isPrefixOf,isSuffixOf,isInfixOf,isSubstringOf,
+                       ,sort,isPrefixOf,isSuffixOf,isInfixOf,isSubstringOf
                        ,findSubstring,findSubstrings,copy,group
 
                        ,getLine, getContents, putStr, putStrLn, interact
