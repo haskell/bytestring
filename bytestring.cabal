@@ -15,7 +15,7 @@ Build-Type:          Simple
 -- Cabal-Version:       >= 1.2
 
 library
-  build-depends:     base
+  build-depends:     base, array
   extensions:        CPP, ForeignFunctionInterface
   exposed-modules:   Data.ByteString
                      Data.ByteString.Char8
