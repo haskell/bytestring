@@ -12,10 +12,15 @@ Stability:           provisional
 Homepage:            http://www.cse.unsw.edu.au/~dons/fps.html
 Tested-With:         GHC ==6.6.1, GHC ==6.4.2
 Build-Type:          Simple
--- Cabal-Version:       >= 1.2
+Cabal-Version:       >= 1.2
+
+flag split-base
 
 library
-  build-depends:     base, array
+  if flag(split-base)
+    build-depends:     base >= 3, array
+  else
+    build-depends:     base < 3
   extensions:        CPP, ForeignFunctionInterface
   exposed-modules:   Data.ByteString
                      Data.ByteString.Char8
