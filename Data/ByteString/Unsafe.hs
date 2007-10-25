@@ -138,7 +138,7 @@ unsafeDrop n (PS x s l) = assert (0 <= n && n <= l) $ PS x (s+n) (l-n)
 --
 -- An example:
 --
--- > literalFS = packAddress "literal"#
+-- > literalFS = unsafePackAddress "literal"#
 --
 -- This function is /unsafe/. If you modify the buffer pointed to by the
 -- original Addr# this modification will be reflected in the resulting
