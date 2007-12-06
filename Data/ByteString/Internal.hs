@@ -183,11 +183,14 @@ nullForeignPtr = unsafePerformIO $ newForeignPtr_ nullPtr
 -- Low level constructors
 
 -- | /O(1)/ Build a ByteString from a ForeignPtr
-fromForeignPtr :: ForeignPtr Word8 -> Int -> Int -> ByteString
+fromForeignPtr :: ForeignPtr Word8 
+               -> Int -- ^ Offset
+               -> Int -- ^ Length
+               -> ByteString
 fromForeignPtr fp s l = PS fp s l
 
 -- | /O(1)/ Deconstruct a ForeignPtr from a ByteString
-toForeignPtr :: ByteString -> (ForeignPtr Word8, Int, Int)
+toForeignPtr :: ByteString -> (ForeignPtr Word8, Int, Int) -- ^ (ptr, offset, length)
 toForeignPtr (PS ps s l) = (ps, s, l)
 
 -- | A way of creating ByteStrings outside the IO monad. The @Int@
