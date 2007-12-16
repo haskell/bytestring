@@ -49,15 +49,13 @@ tests =
         [F ({-# SCC "length"       #-}      app   B.length)
         ,F ({-# SCC "lazy length"  #-}      app   L.length)
     ])
---  , ("pack",   [F (\_ -> {-# SCC "pack"      #-}   B.pack [1..1000000])
---  ])
-    , ("unpack", [F ({-# SCC "unpack"   #-} app   B.unpack)
-    ])
+
 {-
     , ("compare",
         [F ({-# SCC "compare"      #-}      app2 compare) :: needs type annotation
         ,F ({-# SCC "lazy compare" #-}      app2 compare) ])
 -}
+
     , ("index",
         [F ({-# SCC "index"        #-}      app$  flip B.index 260000)
         ,F ({-# SCC "lazy index"   #-}      app$  flip L.index 260000)
