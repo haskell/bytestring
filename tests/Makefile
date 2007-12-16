@@ -1,6 +1,5 @@
 GHC=            ghc
 GHCFLAGS=       -cpp -O2 -funbox-strict-fields -no-recomp -v0
-PKG=            -i..
 #PKG=            -package fps
 
 #GHC=            /usr/obj/build/compiler/stage2/ghc-inplace
@@ -28,7 +27,7 @@ boot-in-place:
 .PHONY: units-compiled
 units-compiled:
 	@echo "Compiled, rules off"
-	${GHC} ${PKG} ${GHCFLAGS} -frules-off --make Units.hs -o u -package HUnit
+	${GHC} ${PKG} ${GHCFLAGS} -fno-rewrite-rules --make Units.hs -o u -package HUnit
 	time ./u
 
 # ---------------------------------------------
@@ -38,7 +37,7 @@ units-compiled:
 .PHONY: prop hugs
 prop:: 
 	@echo "Interpreted"	
-	runhaskell ${PKG} Properties.hs
+	runhaskell -i../cbits/fpstring.o Properties.hs
 
 hugs::
 	runhugs -98 Properties.hs
@@ -46,13 +45,13 @@ hugs::
 # interpreted fast. Just a quick check.
 .PHONY: prop-fast
 prop-fast::
-	runhaskell ${PKG} Properties.hs 10
+	runhaskell -i../cbits/fpstring.o Properties.hs 10 
 
 # compiled
 .PHONY: prop-compiled
 prop-compiled: 
 	@echo "Compiled, rules off"	
-	${GHC} ${PKG} ${GHCFLAGS} -frules-off --make Properties.hs -o p -package QuickCheck
+	${GHC} ${PKG} ${GHCFLAGS} -fno-rewrite-rules --make Properties.hs -o p -package QuickCheck
 	time ./p
 
 # rules-on
