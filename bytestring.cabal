@@ -1,16 +1,24 @@
 Name:                bytestring
-Version:             0.9
+Version:             0.9.1
 Synopsis:            Fast, packed, strict and lazy byte arrays with a list interface
+Description:
+    .
+    A time and space-efficient implementation of byte vectors using
+    packed Word8 arrays, suitable for high performance use, both in terms
+    of large data quantities, or high speed requirements. Byte vectors
+    are encoded as strict 'Word8' arrays of bytes, held in a 'ForeignPtr',
+    and can be passed between C and Haskell with little effort.
+    .
 License:             BSD3
 License-file:        LICENSE
-Copyright:           Copyright (c) Don Stewart 2005-2007,
+Copyright:           Copyright (c) Don Stewart   2005-2007,
                                (c) Duncan Coutts 2006-2007,
-                               (c) David Roundy 2003-2005.
+                               (c) David Roundy  2003-2005.
 Author:              Don Stewart, Duncan Coutts
-Maintainer:          dons@cse.unsw.edu.au, duncan@haskell.org
+Maintainer:          dons@galois.com, duncan@haskell.org
 Stability:           provisional
 Homepage:            http://www.cse.unsw.edu.au/~dons/fps.html
-Tested-With:         GHC ==6.6.1, GHC ==6.4.2
+Tested-With:         GHC ==6.8.2, GHC ==6.6.1, GHC ==6.4.2
 Build-Type:          Simple
 Cabal-Version:       >= 1.2
 
@@ -18,10 +26,9 @@ flag split-base
 
 library
   if flag(split-base)
-    build-depends:     base >= 3, array
+    build-depends:   base >= 3, array
   else
-    build-depends:     base < 3
-  extensions:        CPP, ForeignFunctionInterface
+    build-depends:   base < 3
   exposed-modules:   Data.ByteString
                      Data.ByteString.Char8
                      Data.ByteString.Unsafe
@@ -30,11 +37,18 @@ library
                      Data.ByteString.Lazy.Char8
                      Data.ByteString.Lazy.Internal
                      Data.ByteString.Fusion
-  ghc-options:       -Wall -fglasgow-exts -O2
-  if impl(ghc <= 6.4.2)
-    ghc-options:     -DSLOW_FOREIGN_PTR
-  nhc98-options:     -K4M -K3M
+  extensions:        CPP, ForeignFunctionInterface
+
   c-sources:         cbits/fpstring.c
   include-dirs:      include
   includes:          fpstring.h
   install-includes:  fpstring.h
+
+  ghc-options: -Wall
+               -fglasgow-exts -O2 -funbox-strict-fields 
+               -fdicts-cheap -fno-method-sharing
+               -fmax-simplifier-iterations10 -fcpr-off
+
+  nhc98-options:     -K4M -K3M
+  if impl(ghc <= 6.4.2)
+    ghc-options:     -DSLOW_FOREIGN_PTR
