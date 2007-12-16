@@ -32,8 +32,6 @@ module Data.ByteString.Internal (
         inlinePerformIO,            -- :: IO a -> a
         nullForeignPtr,             -- :: ForeignPtr Word8
 
-        countOccurrences,           -- :: (Storable a, Num a) => Ptr a -> Ptr Word8 -> Int -> IO ()
-
         -- * Standard C Functions
         c_strlen,                   -- :: CString -> IO CInt
         c_free_finalizer,           -- :: FunPtr (Ptr Word8 -> IO ())
@@ -294,20 +292,6 @@ inlinePerformIO (IO m) = case m realWorld# of (# _, r #) -> r
 inlinePerformIO = unsafePerformIO
 #endif
 
--- | Count the number of occurrences of each byte.
---
-countOccurrences :: (Storable a, Num a) => Ptr a -> Ptr Word8 -> Int -> IO ()
-STRICT3(countOccurrences)
-countOccurrences counts str l = go 0
- where
-    STRICT1(go)
-    go i | i == l    = return ()
-         | otherwise = do k <- fromIntegral `fmap` peekElemOff str i
-                          x <- peekElemOff counts k
-                          pokeElemOff counts k (x + 1)
-                          go (i + 1)
-{-# SPECIALIZE countOccurrences :: Ptr CSize -> Ptr Word8 -> Int -> IO () #-}
-
 -- ---------------------------------------------------------------------
 -- 
 -- Standard C functions
@@ -332,8 +316,7 @@ foreign import ccall unsafe "string.h memcpy" c_memcpy
     :: Ptr Word8 -> Ptr Word8 -> CSize -> IO (Ptr Word8)
 
 memcpy :: Ptr Word8 -> Ptr Word8 -> CSize -> IO ()
-memcpy p q s = do c_memcpy p q s
-                  return ()
+memcpy p q s = c_memcpy p q s >> return ()
 
 foreign import ccall unsafe "string.h memmove" c_memmove
     :: Ptr Word8 -> Ptr Word8 -> CSize -> IO (Ptr Word8)

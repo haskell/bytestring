@@ -1640,6 +1640,20 @@ sort (PS input s l) = unsafeCreate l $ \p -> allocaArray 256 $ \arr -> do
                         when (n /= 0) $ memset ptr (fromIntegral i) n >> return ()
                         go (i + 1) (ptr `plusPtr` (fromIntegral n))
     go 0 p
+  where
+    -- | Count the number of occurrences of each byte.
+    -- Used by 'sort'
+    --
+    countOccurrences :: Ptr CSize -> Ptr Word8 -> Int -> IO ()
+    STRICT3(countOccurrences)
+    countOccurrences counts str len = go 0
+     where
+        STRICT1(go)
+        go i | i == len    = return ()
+             | otherwise = do k <- fromIntegral `fmap` peekElemOff str i
+                              x <- peekElemOff counts k
+                              pokeElemOff counts k (x + 1)
+                              go (i + 1)
 
 {-
 sort :: ByteString -> ByteString
