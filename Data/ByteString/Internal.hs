@@ -130,9 +130,9 @@ assertS s False = error ("assertion failed at "++s)
 --
 -- Instances of Eq, Ord, Read, Show, Data, Typeable
 --
-data ByteString = PS {-# UNPACK #-} !(ForeignPtr Word8) -- ^ payload
-                     {-# UNPACK #-} !Int                -- ^ offset
-                     {-# UNPACK #-} !Int                -- ^ length
+data ByteString = PS {-# UNPACK #-} !(ForeignPtr Word8) -- payload
+                     {-# UNPACK #-} !Int                -- offset
+                     {-# UNPACK #-} !Int                -- length
 
 #if defined(__GLASGOW_HASKELL__)
     deriving (Data, Typeable)
