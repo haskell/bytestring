@@ -137,16 +137,6 @@ instance Arbitrary P.ByteString where
   arbitrary = P.pack `fmap` arbitrary
   coarbitrary s = coarbitrary (P.unpack s)
 
-instance Functor ((->) r) where
-    fmap = (.)
-
-instance Monad ((->) r) where
-    return = const
-    f >>= k = \ r -> k (f r) r
-
-instance Functor ((,) a) where
-    fmap f (x,y) = (x, f y)
-
 ------------------------------------------------------------------------
 --
 -- We're doing two forms of testing here. Firstly, model based testing.
