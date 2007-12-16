@@ -8,7 +8,7 @@
 --               (c) Duncan Coutts 2006
 -- License     : BSD-style
 --
--- Maintainer  : dons@cse.unsw.edu.au
+-- Maintainer  : dons@galois.com
 -- Stability   : experimental
 -- Portability : portable
 -- 
@@ -290,15 +290,17 @@ cmp (Chunk a as) (Chunk b bs) =
 -- | /O(1)/ The empty 'ByteString'
 empty :: ByteString
 empty = Empty
+{-# INLINE empty #-}
 
 -- | /O(1)/ Convert a 'Word8' into a 'ByteString'
 singleton :: Word8 -> ByteString
 singleton w = Chunk (S.singleton w) Empty
+{-# INLINE singleton #-}
 
 -- | /O(n)/ Convert a '[Word8]' into a 'ByteString'. 
 pack :: [Word8] -> ByteString
 pack ws = L.foldr (Chunk . S.pack) Empty (chunks defaultChunkSize ws)
-  where 
+  where
     chunks :: Int -> [a] -> [[a]]
     chunks _    [] = []
     chunks size xs = case L.splitAt size xs of
@@ -341,15 +343,18 @@ unpackWith k (LPS ss) = L.concatMap (S.unpackWith k) ss
 null :: ByteString -> Bool
 null Empty = True
 null _     = False
+{-# INLINE null #-}
 
 -- | /O(n\/c)/ 'length' returns the length of a ByteString as an 'Int64'
 length :: ByteString -> Int64
 length cs = foldlChunks (\n c -> n + fromIntegral (S.length c)) 0 cs
+{-# INLINE length #-}
 
 -- | /O(1)/ 'cons' is analogous to '(:)' for lists.
 --
 cons :: Word8 -> ByteString -> ByteString
 cons c cs = Chunk (S.singleton c) cs
+{-# INLINE cons #-}
 
 -- | /O(1)/ Unlike 'cons', 'cons\'' is
 -- strict in the ByteString that we are consing onto. More precisely, it forces
@@ -367,10 +372,12 @@ cons c cs = Chunk (S.singleton c) cs
 cons' :: Word8 -> ByteString -> ByteString
 cons' w (Chunk c cs) | S.length c < 16 = Chunk (S.cons w c) cs
 cons' w cs                             = Chunk (S.singleton w) cs
+{-# INLINE cons' #-}
 
 -- | /O(n\/c)/ Append a byte to the end of a 'ByteString'
 snoc :: ByteString -> Word8 -> ByteString
 snoc cs w = foldrChunks Chunk (singleton w) cs
+{-# INLINE snoc #-}
 
 -- | /O(1)/ Extract the first element of a ByteString, which must be non-empty.
 head :: ByteString -> Word8
@@ -394,6 +401,7 @@ tail Empty          = errorEmptyList "tail"
 tail (Chunk c cs)
   | S.length c == 1 = cs
   | otherwise       = Chunk (S.unsafeTail c) cs
+{-# INLINE tail #-}
 
 -- | /O(n\/c)/ Extract the last element of a ByteString, which must be finite
 -- and non-empty.
@@ -402,6 +410,7 @@ last Empty          = errorEmptyList "last"
 last (Chunk c0 cs0) = go c0 cs0
   where go c Empty        = S.last c
         go _ (Chunk c cs) = go c cs
+-- XXX Don't inline this. Something breaks with 6.8.2 (haven't investigated yet)
 
 -- | /O(n\/c)/ Return all the elements of a 'ByteString' except the last one.
 init :: ByteString -> ByteString
@@ -414,6 +423,7 @@ init (Chunk c0 cs0) = go c0 cs0
 -- | /O(n\/c)/ Append two ByteStrings
 append :: ByteString -> ByteString -> ByteString
 append xs ys = foldrChunks Chunk ys xs
+{-# INLINE append #-}
 
 -- ---------------------------------------------------------------------
 -- Transformations
@@ -421,7 +431,13 @@ append xs ys = foldrChunks Chunk ys xs
 -- | /O(n)/ 'map' @f xs@ is the ByteString obtained by applying @f@ to each
 -- element of @xs@.
 map :: (Word8 -> Word8) -> ByteString -> ByteString
-map f = F.loopArr . F.loopL (F.mapEFL f) F.NoAcc
+map f s = go s
+    where
+        go Empty        = Empty
+        go (Chunk x xs) = Chunk y ys
+            where
+                y  = S.map f x
+                ys = go xs
 {-# INLINE map #-}
 
 -- | /O(n)/ 'reverse' @xs@ returns the elements of @xs@ in reverse order.
@@ -458,12 +474,17 @@ transpose css = L.map (\ss -> Chunk (S.pack ss) Empty)
 -- the left-identity of the operator), and a ByteString, reduces the
 -- ByteString using the binary operator, from left to right.
 foldl :: (a -> Word8 -> a) -> a -> ByteString -> a
-foldl f z = F.loopAcc . F.loopL (F.foldEFL f) z
+foldl f z = go z
+  where go a Empty        = a
+        go a (Chunk c cs) = go (S.foldl f a c) cs
 {-# INLINE foldl #-}
 
 -- | 'foldl\'' is like 'foldl', but strict in the accumulator.
 foldl' :: (a -> Word8 -> a) -> a -> ByteString -> a
-foldl' f z = F.loopAcc . F.loopL (F.foldEFL' f) z
+foldl' f z = go z
+  where go a _ | a `seq` False = undefined
+        go a Empty        = a
+        go a (Chunk c cs) = go (S.foldl f a c) cs
 {-# INLINE foldl' #-}
 
 -- | 'foldr', applied to a binary operator, a starting value
@@ -515,7 +536,7 @@ concatMap f (Chunk c0 cs0) = to c0 cs0
     go (Chunk c cs) c' cs' = Chunk c (go cs c' cs')
 
     to :: S.ByteString -> ByteString -> ByteString
-    to c cs | S.null c  = case cs of 
+    to c cs | S.null c  = case cs of
         Empty          -> Empty
         (Chunk c' cs') -> to c' cs'
             | otherwise = go (f (S.unsafeHead c)) (S.unsafeTail c) cs
@@ -524,12 +545,14 @@ concatMap f (Chunk c0 cs0) = to c0 cs0
 -- any element of the 'ByteString' satisfies the predicate.
 any :: (Word8 -> Bool) -> ByteString -> Bool
 any f cs = foldrChunks (\c rest -> S.any f c || rest) False cs
+{-# INLINE any #-}
 -- todo fuse
 
 -- | /O(n)/ Applied to a predicate and a 'ByteString', 'all' determines
 -- if all elements of the 'ByteString' satisfy the predicate.
 all :: (Word8 -> Bool) -> ByteString -> Bool
 all f cs = foldrChunks (\c rest -> S.all f c && rest) True cs
+{-# INLINE all #-}
 -- todo fuse
 
 -- | /O(n)/ 'maximum' returns the maximum value from a 'ByteString'
@@ -621,7 +644,6 @@ replicate n w
     (q, r) = quotRem n (fromIntegral smallChunkSize)
     nChunks 0 = Empty
     nChunks m = Chunk c (nChunks (m-1))
-    
 
 -- | 'cycle' ties a finite ByteString into a circular one, or equivalently,
 -- the infinite repetition of the original ByteString.
@@ -998,10 +1020,14 @@ notElem w cs = not (elem w cs)
 -- returns a ByteString containing those characters that satisfy the
 -- predicate.
 filter :: (Word8 -> Bool) -> ByteString -> ByteString
-filter p = F.loopArr . F.loopL (F.filterEFL p) F.NoAcc
-{-# INLINE filter #-}
+filter p s = go s
+    where
+        go Empty        = Empty
+        go (Chunk x xs) = chunk (S.filter p x) (go xs)
+#if __GLASGOW_HASKELL__
+{-# INLINE [1] filter #-}
+#endif
 
-{-
 -- | /O(n)/ and /O(n\/c) space/ A first order equivalent of /filter .
 -- (==)/, for the common case of filtering a single byte. It is more
 -- efficient to use /filterByte/ in this case.
@@ -1012,8 +1038,19 @@ filter p = F.loopArr . F.loopL (F.filterEFL p) F.NoAcc
 -- filter equivalent
 filterByte :: Word8 -> ByteString -> ByteString
 filterByte w ps = replicate (count w ps) w
--- filterByte w (LPS xs) = LPS (filterMap (P.filterByte w) xs)
+{-# INLINE filterByte #-}
 
+{-# RULES
+  "FPS specialise filter (== x)" forall x.
+      filter ((==) x) = filterByte x
+  #-}
+
+{-# RULES
+  "FPS specialise filter (== x)" forall x.
+     filter (== x) = filterByte x
+  #-}
+
+{-
 -- | /O(n)/ A first order equivalent of /filter . (\/=)/, for the common
 -- case of filtering a single byte out of a list. It is more efficient
 -- to use /filterNotByte/ in this case.

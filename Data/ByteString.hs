@@ -474,29 +474,7 @@ null (PS _ _ l) = assert (l >= 0) $ l <= 0
 -- | /O(1)/ 'length' returns the length of a ByteString as an 'Int'.
 length :: ByteString -> Int
 length (PS _ _ l) = assert (l >= 0) $ l
-
---
--- length/loop fusion. When taking the length of any fuseable loop,
--- rewrite it as a foldl', and thus avoid allocating the result buffer
--- worth around 10% in speed testing.
---
-
-#if defined(__GLASGOW_HASKELL__)
-{-# INLINE [1] length #-}
-#endif
-
-lengthU :: ByteString -> Int
-lengthU = foldl' (const . (+1)) (0::Int)
-{-# INLINE lengthU #-}
-
-{-# RULES
-
--- v2 fusion
-"FPS length/loop" forall loop s .
-  length  (loopArr (loopWrapper loop s)) =
-  lengthU (loopArr (loopWrapper loop s))
-
-  #-}
+{-# INLINE length #-}
 
 ------------------------------------------------------------------------
 
@@ -572,22 +550,7 @@ append xs ys | null xs   = ys
 -- | /O(n)/ 'map' @f xs@ is the ByteString obtained by applying @f@ to each
 -- element of @xs@. This function is subject to array fusion.
 map :: (Word8 -> Word8) -> ByteString -> ByteString
-#if defined(LOOPU_FUSION)
-map f = loopArr . loopU (mapEFL f) NoAcc
-#elif defined(LOOPUP_FUSION)
-map f = loopArr . loopUp (mapEFL f) NoAcc
-#elif defined(LOOPNOACC_FUSION)
-map f = loopArr . loopNoAcc (mapEFL f)
-#else
-map f = loopArr . loopMap f
-#endif
-{-# INLINE map #-}
-
-{-
--- | /O(n)/ Like 'map', but not fuseable. The benefit is that it is
--- slightly faster for one-shot cases.
-map' :: (Word8 -> Word8) -> ByteString -> ByteString
-map' f (PS fp s len) = inlinePerformIO $ withForeignPtr fp $ \a ->
+map f (PS fp s len) = inlinePerformIO $ withForeignPtr fp $ \a ->
     create len $ map_ 0 (a `plusPtr` s)
   where
     map_ :: Int -> Ptr Word8 -> Ptr Word8 -> IO ()
@@ -598,8 +561,7 @@ map' f (PS fp s len) = inlinePerformIO $ withForeignPtr fp $ \a ->
             x <- peekByteOff p1 n
             pokeByteOff p2 n (f x)
             map_ (n+1) p1 p2
-{-# INLINE map' #-}
--}
+{-# INLINE map #-}
 
 -- | /O(n)/ 'reverse' @xs@ efficiently returns the elements of @xs@ in reverse order.
 reverse :: ByteString -> ByteString
@@ -633,18 +595,6 @@ transpose ps = P.map pack (List.transpose (P.map unpack ps))
 -- ByteString using the binary operator, from left to right.
 -- This function is subject to array fusion.
 foldl :: (a -> Word8 -> a) -> a -> ByteString -> a
-#if !defined(LOOPU_FUSION)
-foldl f z = loopAcc . loopUp (foldEFL f) z
-#else
-foldl f z = loopAcc . loopU (foldEFL f) z
-#endif
-{-# INLINE foldl #-}
-
-{-
---
--- About twice as fast with 6.4.1, but not fuseable
--- A simple fold . map is enough to make it worth while.
---
 foldl f v (PS x s l) = inlinePerformIO $ withForeignPtr x $ \ptr ->
         lgo v (ptr `plusPtr` s) (ptr `plusPtr` (s+l))
     where
@@ -652,20 +602,25 @@ foldl f v (PS x s l) = inlinePerformIO $ withForeignPtr x $ \ptr ->
         lgo z p q | p == q    = return z
                   | otherwise = do c <- peek p
                                    lgo (f z c) (p `plusPtr` 1) q
--}
+{-# INLINE foldl #-}
 
 -- | 'foldl\'' is like 'foldl', but strict in the accumulator.
 -- Though actually foldl is also strict in the accumulator.
 foldl' :: (a -> Word8 -> a) -> a -> ByteString -> a
 foldl' = foldl
--- foldl' f z = loopAcc . loopU (foldEFL' f) z
 {-# INLINE foldl' #-}
 
 -- | 'foldr', applied to a binary operator, a starting value
 -- (typically the right-identity of the operator), and a ByteString,
 -- reduces the ByteString using the binary operator, from right to left.
 foldr :: (Word8 -> a -> a) -> a -> ByteString -> a
-foldr k z = loopAcc . loopDown (foldEFL (flip k)) z
+foldr k v (PS x s l) = inlinePerformIO $ withForeignPtr x $ \ptr ->
+        go v (ptr `plusPtr` (s+l-1)) (ptr `plusPtr` (s-1))
+    where
+        STRICT3(go)
+        go z p q | p == q    = return z
+                 | otherwise = do c  <- peek p
+                                  go (c `k` z) (p `plusPtr` (-1)) q -- tail recursive
 {-# INLINE foldr #-}
 
 -- | 'foldr\'' is like 'foldr', but strict in the accumulator.
@@ -677,7 +632,7 @@ foldr' k v (PS x s l) = inlinePerformIO $ withForeignPtr x $ \ptr ->
         go z p q | p == q    = return z
                  | otherwise = do c  <- peek p
                                   go (c `k` z) (p `plusPtr` (-1)) q -- tail recursive
-{-# INLINE [1] foldr' #-}
+{-# INLINE foldr' #-}
 
 -- | 'foldl1' is a variant of 'foldl' that has no starting value
 -- argument, and thus must be applied to non-empty 'ByteStrings'.
@@ -712,7 +667,7 @@ foldr1' :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldr1' f ps
     | null ps        = errorEmptyList "foldr1"
     | otherwise      = foldr' f (last ps) (init ps)
-{-# INLINE [1] foldr1' #-}
+{-# INLINE foldr1' #-}
 
 -- ---------------------------------------------------------------------
 -- Special folds
@@ -747,6 +702,7 @@ any f (PS x s l) = inlinePerformIO $ withForeignPtr x $ \ptr ->
                | otherwise = do c <- peek p
                                 if f c then return True
                                        else go (p `plusPtr` 1) q
+{-# INLINE any #-}
 
 -- todo fuse
 
@@ -763,6 +719,7 @@ all f (PS x s l) = inlinePerformIO $ withForeignPtr x $ \ptr ->
                                  if f c
                                     then go (p `plusPtr` 1) q
                                     else return False
+{-# INLINE all #-}
 
 ------------------------------------------------------------------------
 
@@ -774,6 +731,7 @@ maximum xs@(PS x s l)
     | null xs   = errorEmptyList "maximum"
     | otherwise = inlinePerformIO $ withForeignPtr x $ \p ->
                       c_maximum (p `plusPtr` s) (fromIntegral l)
+{-# INLINE maximum #-}
 
 -- | /O(n)/ 'minimum' returns the minimum value from a 'ByteString'
 -- This function will fuse.
@@ -783,38 +741,7 @@ minimum xs@(PS x s l)
     | null xs   = errorEmptyList "minimum"
     | otherwise = inlinePerformIO $ withForeignPtr x $ \p ->
                       c_minimum (p `plusPtr` s) (fromIntegral l)
-
---
--- minimum/maximum/loop fusion. As for length (and other folds), when we
--- see we're applied after a fuseable op, switch from using the C
--- version, to the fuseable version. The result should then avoid
--- allocating a buffer.
---
-
-#if defined(__GLASGOW_HASKELL__)
-{-# INLINE [1] minimum #-}
-{-# INLINE [1] maximum #-}
-#endif
-
-maximumU :: ByteString -> Word8
-maximumU = foldl1' max
-{-# INLINE maximumU #-}
-
-minimumU :: ByteString -> Word8
-minimumU = foldl1' min
-{-# INLINE minimumU #-}
-
-{-# RULES
-
-"FPS minimum/loop" forall loop s .
-  minimum  (loopArr (loopWrapper loop s)) =
-  minimumU (loopArr (loopWrapper loop s))
-
-"FPS maximum/loop" forall loop s .
-  maximum  (loopArr (loopWrapper loop s)) =
-  maximumU (loopArr (loopWrapper loop s))
-
-  #-}
+{-# INLINE minimum #-}
 
 ------------------------------------------------------------------------
 
@@ -921,6 +848,7 @@ unfoldr f = concat . unfoldChunk 32 64
           case unfoldrN n f x of
             (s, Nothing) -> s : []
             (s, Just x') -> s : unfoldChunk n' (n+n') x'
+{-# INLINE unfoldr #-}
 
 -- | /O(n)/ Like 'unfoldr', 'unfoldrN' builds a ByteString from a seed
 -- value.  However, the length of the result is limited by the first
@@ -943,6 +871,7 @@ unfoldrN i f x0
              | n == i    -> return (0, n, Just x)
              | otherwise -> do poke p w
                                go (p `plusPtr` 1) x' (n+1)
+{-# INLINE unfoldrN #-}
 
 -- ---------------------------------------------------------------------
 -- Substrings
@@ -990,15 +919,12 @@ dropWhile f ps = unsafeDrop (findIndexOrEnd (not . f) ps) ps
 -- | 'break' @p@ is equivalent to @'span' ('not' . p)@.
 break :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
 break p ps = case findIndexOrEnd p ps of n -> (unsafeTake n ps, unsafeDrop n ps)
+#if __GLASGOW_HASKELL__ 
 {-# INLINE [1] break #-}
 
 {-# RULES
 "FPS specialise break (x==)" forall x.
     break ((==) x) = breakByte x
-  #-}
-
-#if __GLASGOW_HASKELL__ >= 605
-{-# RULES
 "FPS specialise break (==x)" forall x.
     break (==x) = breakByte x
   #-}
@@ -1026,7 +952,9 @@ breakEnd  p ps = splitAt (findFromEndUntil p ps) ps
 -- equivalent to @('takeWhile' p xs, 'dropWhile' p xs)@
 span :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
 span p ps = break (not . p) ps
+#if __GLASGOW_HASKELL__
 {-# INLINE [1] span #-}
+#endif
 
 -- | 'spanByte' breaks its ByteString argument at the first
 -- occurence of a byte other than its argument. It is more efficient
@@ -1049,14 +977,9 @@ spanByte c ps@(PS x s l) = inlinePerformIO $ withForeignPtr x $ \p ->
 {-# RULES
 "FPS specialise span (x==)" forall x.
     span ((==) x) = spanByte x
-  #-}
-
-#if __GLASGOW_HASKELL__ >= 605
-{-# RULES
 "FPS specialise span (==x)" forall x.
     span (==x) = spanByte x
   #-}
-#endif
 
 -- | 'spanEnd' behaves like 'span' but from the end of the 'ByteString'.
 -- We have
@@ -1379,22 +1302,7 @@ notElem c ps = not (elem c ps)
 -- returns a ByteString containing those characters that satisfy the
 -- predicate. This function is subject to array fusion.
 filter :: (Word8 -> Bool) -> ByteString -> ByteString
-#if defined(LOOPU_FUSION)
-filter p  = loopArr . loopU (filterEFL p) NoAcc
-#elif defined(LOOPUP_FUSION)
-filter p  = loopArr . loopUp (filterEFL p) NoAcc
-#elif defined(LOOPNOACC_FUSION)
-filter p  = loopArr . loopNoAcc (filterEFL p)
-#else
-filter f = loopArr . loopFilter f
-#endif
-{-# INLINE filter #-}
-
-{-
--- | /O(n)/ 'filter\'' is a non-fuseable version of filter, that may be
--- around 2x faster for some one-shot applications.
-filter' :: (Word8 -> Bool) -> ByteString -> ByteString
-filter' k ps@(PS x s l)
+filter k ps@(PS x s l)
     | null ps   = ps
     | otherwise = unsafePerformIO $ createAndTrim l $ \p -> withForeignPtr x $ \f -> do
         t <- go (f `plusPtr` s) p (f `plusPtr` (s + l))
@@ -1407,8 +1315,9 @@ filter' k ps@(PS x s l)
                         if k w
                             then poke t w >> go (f `plusPtr` 1) (t `plusPtr` 1) end
                             else             go (f `plusPtr` 1) t               end
-{-# INLINE filter' #-}
--}
+#if __GLASGOW_HASKELL__
+{-# INLINE [1] filter #-}
+#endif
 
 --
 -- | /O(n)/ A first order equivalent of /filter . (==)/, for the common
@@ -1429,12 +1338,10 @@ filterByte w ps = replicate (count w ps) w
       filter ((==) x) = filterByte x
   #-}
 
-#if __GLASGOW_HASKELL__ >= 605
 {-# RULES
   "FPS specialise filter (== x)" forall x.
      filter (== x) = filterByte x
   #-}
-#endif
 
 -- | /O(n)/ The 'find' function takes a predicate and a ByteString,
 -- and returns the first element in matching the predicate, or 'Nothing'
