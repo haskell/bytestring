@@ -6,7 +6,8 @@ Useful for benchmarking filter, map, sort and group.
 import Data.Char (isAlpha, toLower)
 import Data.List (sortBy)
 import qualified Data.ByteString.Char8 as P
-import qualified Data.ByteString.Base  as P
+import qualified Data.ByteString.Unsafe  as P
+import qualified Data.ByteString.Internal  as P
 
 main =
     mapM (\(a, b) -> putStrLn ([a] ++ ": " ++ show b))

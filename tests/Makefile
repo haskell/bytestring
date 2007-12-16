@@ -104,32 +104,32 @@ wc: wc.o
 	@if [ ! -f "bigdata" ] ; then ln -s data bigdata ; fi
 	time ./wc bigdata
 wc.o: wc.hs
-	${GHC} ${PKG} ${GHCFLAGS} -ddump-simpl-stats wc.hs -o wc
+	${GHC} ${PKG} ${GHCFLAGS} --make -ddump-simpl-stats wc.hs -o wc
 
 spellcheck: spellcheck.o
 	time ./spellcheck < spellcheck-input.txt
 spellcheck.o: spellcheck.hs
-	${GHC} ${PKG} ${GHCFLAGS} $< -o spellcheck
+	${GHC} ${PKG} ${GHCFLAGS} --make $< -o spellcheck
 
 letter_frequency: letter_frequency.o
 	time ./letter_frequency < Usr.Dict.Words
 letter_frequency.o: letter_frequency.hs
-	${GHC} ${PKG} ${GHCFLAGS}  $< -o letter_frequency -ddump-simpl-stats
+	${GHC} ${PKG} ${GHCFLAGS} --make  $< -o letter_frequency -ddump-simpl-stats
 
 linesort: linesort.o
 	time ./linesort < Usr.Dict.Words
 linesort.o: linesort.hs
-	${GHC} ${PKG} ${GHCFLAGS} $< -o linesort
+	${GHC} ${PKG} ${GHCFLAGS} --make  $< -o linesort
 
 fuse: fuse.o
 	time ./fuse < Usr.Dict.Words
 fuse.o: fuse.hs
-	${GHC} ${PKG} ${GHCFLAGS} $< -o fuse -ddump-simpl-stats
+	${GHC} ${PKG} ${GHCFLAGS} --make $< -o fuse -ddump-simpl-stats
 
 down-fuse: down-fuse.o
 	time ./down-fuse
 down-fuse.o: down-fuse.hs
-	${GHC} ${PKG} ${GHCFLAGS} $< -o ./down-fuse -ddump-simpl-stats
+	${GHC} ${PKG} ${GHCFLAGS} --make $< -o ./down-fuse -ddump-simpl-stats
 
 .PHONY: run-lazybuild
 run-lazybuild: lazybuild
@@ -146,27 +146,27 @@ lazybuildcons: lazybuildcons.hs
 lazylines: lazylines.o
 	time ./lazylines < bigdata
 lazylines.o: lazylines.hs
-	${GHC} ${PKG} ${GHCFLAGS} $< -o lazylines
+	${GHC} ${PKG} ${GHCFLAGS} --make $< -o lazylines
 
 inline: inline.o
 	time ./inline
 inline.o: inline.hs
-	${GHC} ${PKG} ${GHCFLAGS} $< -o inline
+	${GHC} ${PKG} ${GHCFLAGS} --make $< -o inline
 
 zipwith: zipwith.o
 	time ./zipwith
 zipwith.o: zipwith.hs
-	${GHC} ${PKG} ${GHCFLAGS} -ddump-simpl-stats $< -o zipwith
+	${GHC} ${PKG} ${GHCFLAGS} --make -ddump-simpl-stats $< -o zipwith
 
 unpack: unpack.o
 	time ./unpack
 unpack.o: unpack.hs
-	${GHC} ${PKG} ${GHCFLAGS} -ddump-simpl-stats $< -o unpack
+	${GHC} ${PKG} ${GHCFLAGS} --make -ddump-simpl-stats $< -o unpack
 
 groupby: groupby.o
 	time ./groupby
 groupby.o: groupby.hs
-	${GHC} ${PKG} ${GHCFLAGS} $< -o groupby
+	${GHC} ${PKG} ${GHCFLAGS} --make $< -o groupby
 
 # ---------------------------------------------------
 # Plotting graphs
