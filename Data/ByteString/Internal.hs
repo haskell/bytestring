@@ -2,7 +2,7 @@
 -- |
 -- Module      : Data.ByteString.Internal
 -- License     : BSD-style
--- Maintainer  : dons@cse.unsw.edu.au
+-- Maintainer  : Don Stewart <dons@galois.com>
 -- Stability   : experimental
 -- Portability : portable
 -- 
@@ -29,29 +29,29 @@ module Data.ByteString.Internal (
         toForeignPtr,           -- :: ByteString -> (ForeignPtr Word8, Int, Int)
 
         -- * Utilities
-        inlinePerformIO,            -- :: IO a -> a
-        nullForeignPtr,             -- :: ForeignPtr Word8
+        inlinePerformIO,        -- :: IO a -> a
+        nullForeignPtr,         -- :: ForeignPtr Word8
 
         -- * Standard C Functions
-        c_strlen,                   -- :: CString -> IO CInt
-        c_free_finalizer,           -- :: FunPtr (Ptr Word8 -> IO ())
+        c_strlen,               -- :: CString -> IO CInt
+        c_free_finalizer,       -- :: FunPtr (Ptr Word8 -> IO ())
 
-        memchr,                     -- :: Ptr Word8 -> Word8 -> CSize -> IO Ptr Word8
-        memcmp,                     -- :: Ptr Word8 -> Ptr Word8 -> CSize -> IO CInt
-        memcpy,                     -- :: Ptr Word8 -> Ptr Word8 -> CSize -> IO ()
-        memmove,                    -- :: Ptr Word8 -> Ptr Word8 -> CSize -> IO ()
-        memset,                     -- :: Ptr Word8 -> Word8 -> CSize -> IO (Ptr Word8)
+        memchr,                 -- :: Ptr Word8 -> Word8 -> CSize -> IO Ptr Word8
+        memcmp,                 -- :: Ptr Word8 -> Ptr Word8 -> CSize -> IO CInt
+        memcpy,                 -- :: Ptr Word8 -> Ptr Word8 -> CSize -> IO ()
+        memmove,                -- :: Ptr Word8 -> Ptr Word8 -> CSize -> IO ()
+        memset,                 -- :: Ptr Word8 -> Word8 -> CSize -> IO (Ptr Word8)
 
         -- * cbits functions
-        c_reverse,                  -- :: Ptr Word8 -> Ptr Word8 -> CInt -> IO ()
-        c_intersperse,              -- :: Ptr Word8 -> Ptr Word8 -> CInt -> Word8 -> IO ()
-        c_maximum,                  -- :: Ptr Word8 -> CInt -> IO Word8
-        c_minimum,                  -- :: Ptr Word8 -> CInt -> IO Word8
-        c_count,                    -- :: Ptr Word8 -> CInt -> Word8 -> IO CInt
+        c_reverse,              -- :: Ptr Word8 -> Ptr Word8 -> CInt -> IO ()
+        c_intersperse,          -- :: Ptr Word8 -> Ptr Word8 -> CInt -> Word8 -> IO ()
+        c_maximum,              -- :: Ptr Word8 -> CInt -> IO Word8
+        c_minimum,              -- :: Ptr Word8 -> CInt -> IO Word8
+        c_count,                -- :: Ptr Word8 -> CInt -> Word8 -> IO CInt
 
 #if defined(__GLASGOW_HASKELL__)
         -- * Internal GHC magic
-        memcpy_ptr_baoff,           -- :: Ptr a -> RawBuffer -> CInt -> CSize -> IO (Ptr ())
+        memcpy_ptr_baoff,       -- :: Ptr a -> RawBuffer -> CInt -> CSize -> IO (Ptr ())
 #endif
 
         -- * Chars
@@ -130,9 +130,9 @@ assertS s False = error ("assertion failed at "++s)
 --
 -- Instances of Eq, Ord, Read, Show, Data, Typeable
 --
-data ByteString = PS {-# UNPACK #-} !(ForeignPtr Word8)
-                     {-# UNPACK #-} !Int                -- offset
-                     {-# UNPACK #-} !Int                -- length
+data ByteString = PS {-# UNPACK #-} !(ForeignPtr Word8) -- ^ payload
+                     {-# UNPACK #-} !Int                -- ^ offset
+                     {-# UNPACK #-} !Int                -- ^ length
 
 #if defined(__GLASGOW_HASKELL__)
     deriving (Data, Typeable)
@@ -169,6 +169,7 @@ packWith k str = unsafeCreate (length str) $ \p -> go p str
 
 ------------------------------------------------------------------------
 
+-- | The 0 pointer. Used to indicate the empty Bytestring.
 nullForeignPtr :: ForeignPtr Word8
 #if __GLASGOW_HASKELL__>=605
 nullForeignPtr = ForeignPtr nullAddr# undefined --TODO: should ForeignPtrContents be strict?
@@ -181,15 +182,17 @@ nullForeignPtr = unsafePerformIO $ newForeignPtr_ nullPtr
 -- Low level constructors
 
 -- | /O(1)/ Build a ByteString from a ForeignPtr
-fromForeignPtr :: ForeignPtr Word8 
+fromForeignPtr :: ForeignPtr Word8
                -> Int -- ^ Offset
                -> Int -- ^ Length
                -> ByteString
 fromForeignPtr fp s l = PS fp s l
+{-# INLINE fromForeignPtr #-}
 
 -- | /O(1)/ Deconstruct a ForeignPtr from a ByteString
 toForeignPtr :: ByteString -> (ForeignPtr Word8, Int, Int) -- ^ (ptr, offset, length)
 toForeignPtr (PS ps s l) = (ps, s, l)
+{-# INLINE toForeignPtr #-}
 
 -- | A way of creating ByteStrings outside the IO monad. The @Int@
 -- argument gives the final size of the ByteString. Unlike
@@ -205,6 +208,7 @@ create l f = do
     fp <- mallocByteString l
     withForeignPtr fp $ \p -> f p
     return $! PS fp 0 l
+{-# INLINE create #-}
 
 -- | Given the maximum size needed and a function to make the contents
 -- of a ByteString, createAndTrim makes the 'ByteString'. The generating
@@ -222,6 +226,7 @@ createAndTrim l f = do
         if assert (l' <= l) $ l' >= l
             then return $! PS fp 0 l
             else create l' $ \p' -> memcpy p' p (fromIntegral l')
+{-# INLINE createAndTrim #-}
 
 createAndTrim' :: Int -> (Ptr Word8 -> IO (Int, Int, a)) -> IO (ByteString, a)
 createAndTrim' l f = do
@@ -243,6 +248,7 @@ mallocByteString l = do
 #else
     mallocForeignPtrBytes l
 #endif
+{-# INLINE mallocByteString #-}
 
 ------------------------------------------------------------------------
 
