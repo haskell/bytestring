@@ -217,6 +217,7 @@ import qualified Data.ByteString.Unsafe as S
 import Data.ByteString.Lazy.Internal
 import qualified Data.ByteString.Fusion as F
 
+import Control.Monad            (when)
 import Data.Monoid              (Monoid(..))
 
 import Data.Word                (Word8)
@@ -1177,8 +1178,11 @@ copy cs = foldrChunks (Chunk . S.copy) Empty cs
 -- are read on demand, in at most @k@-sized chunks. It does not block
 -- waiting for a whole @k@-sized chunk, so if less than @k@ bytes are
 -- available then they will be returned immediately as a smaller chunk.
+--
+-- The handle is closed on EOF.
+--
 hGetContentsN :: Int -> Handle -> IO ByteString
-hGetContentsN k h = lazyRead
+hGetContentsN k h = lazyRead -- TODO close on exceptions
   where
     lazyRead = unsafeInterleaveIO loop
 
@@ -1189,7 +1193,7 @@ hGetContentsN k h = lazyRead
         -- 0 or EAGAIN
         if S.null c
           then do eof <- hIsEOF h
-                  if eof then return Empty
+                  if eof then hClose h >> return Empty
                          else hWaitForInput h (-1)
                            >> loop
           else do cs <- lazyRead
@@ -1197,6 +1201,9 @@ hGetContentsN k h = lazyRead
 
 -- | Read @n@ bytes into a 'ByteString', directly from the
 -- specified 'Handle', in chunks of size @k@.
+--
+-- If EOF is encountered, the Handle is closed.
+--
 hGetN :: Int -> Handle -> Int -> IO ByteString
 hGetN _ _ 0 = return empty
 hGetN k h n = readChunks n
@@ -1205,23 +1212,30 @@ hGetN k h n = readChunks n
     readChunks i = do
         c <- S.hGet h (min k i)
         case S.length c of
-            0 -> return Empty
+            0 -> do eof <- hIsEOF h
+                    when eof (hClose h)
+                    return Empty
             m -> do cs <- readChunks (i - m)
                     return (Chunk c cs)
 
 -- | hGetNonBlockingN is similar to 'hGetContentsN', except that it will never block
 -- waiting for data to become available, instead it returns only whatever data
 -- is available. Chunks are read on demand, in @k@-sized chunks.
+--
+-- If EOF is encountered, the Handle is closed.
+--
 hGetNonBlockingN :: Int -> Handle -> Int -> IO ByteString
 #if defined(__GLASGOW_HASKELL__)
-hGetNonBlockingN _ _ 0 = return empty
+hGetNonBlockingN _ _ 0 = return Empty
 hGetNonBlockingN k h n = readChunks n
   where
     STRICT1(readChunks)
     readChunks i = do
         c <- S.hGetNonBlocking h (min k i)
         case S.length c of
-            0 -> return Empty
+            0 -> do eof <- hIsEOF h
+                    when eof (hClose h)
+                    return Empty
             m -> do cs <- readChunks (i - m)
                     return (Chunk c cs)
 #else
@@ -1230,10 +1244,16 @@ hGetNonBlockingN = hGetN
 
 -- | Read entire handle contents /lazily/ into a 'ByteString'. Chunks
 -- are read on demand, using the default chunk size.
+--
+-- Once EOF is encountered, the Handle is closed.
+--
 hGetContents :: Handle -> IO ByteString
 hGetContents = hGetContentsN defaultChunkSize
 
 -- | Read @n@ bytes into a 'ByteString', directly from the specified 'Handle'.
+--
+-- If EOF is encountered, the Handle is closed.
+--
 hGet :: Handle -> Int -> IO ByteString
 hGet = hGetN defaultChunkSize
 
@@ -1248,6 +1268,7 @@ hGetNonBlocking = hGet
 #endif
 
 -- | Read an entire file /lazily/ into a 'ByteString'.
+-- The Handle will be held open until EOF is encountered.
 readFile :: FilePath -> IO ByteString
 readFile f = openBinaryFile f ReadMode >>= hGetContents
 
