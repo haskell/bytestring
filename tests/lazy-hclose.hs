@@ -12,55 +12,54 @@ import System.IO
 import Data.ByteString.Internal
 import Foreign.ForeignPtr
 
--- works fine for strict bytestrings.
-main_strict = forever $ do
-     r <- S.readFile "a"
-     S.writeFile "b" (S8.pack "abc")
-     renameFile "b" "a"
+main = do
+    writeFile "a" "x"
 
--- lazy bytestrings
-main_too_lazy = forever $ do
-     r <- L.readFile "a"
-     L.length r `seq` return ()      -- force the input, and done with 'r' now.
-     L.writeFile "b" (L8.pack "abc") -- but we still need the finalizers to run
-     renameFile "b" "a"
-{-
-    $ time ./A            
-    A: b: openBinaryFile: resource exhausted (Too many open files)
--}
+    ------------------------------------------------------------------------
+    -- readFile tests
 
--- manage the resources explicitly.
-main_broken = forever $ do
-     r <- L.readFile "a"
-     L.length r `seq` return ()
-     mapM_ release (L.toChunks r) -- should be enough
-     performGC
-     L.writeFile "b" (L8.pack "abc")
-     renameFile "b" "a"
-  where
-    release c = finalizeForeignPtr fp where (fp,_,_) = toForeignPtr c
+    print "Testing resource leaks for Strict.readFile"
+    forM_ [1..n] $ const $ do
+         r <- S.readFile "a"
+         S.writeFile "b" (S8.pack "abc")
+         renameFile "b" "a"
 
-{-
-        however, looking in Data.ByteString.Lazy, we're 
-        not putting handles into closed states in lazyRead.
--}
+    print "Testing resource leaks for Lazy.readFile"
+    forM_ [1..n] $ const $ do
+         r <- L.readFile "a"
+         L.length r `seq` return ()      -- force the input, and done with 'r' now.
+         L.writeFile "b" (L8.pack "abc") -- but we still need the finalizers to run
+         renameFile "b" "a"
 
-{-
--- we can close explicitly...
-main = forever $ do
-     h <- openFile "a" ReadMode
-     r <- L.hGetContents h
-     L.length r `seq` return ()
-     hClose h
+    -- manage the resources explicitly.
+    print "Testing resource leaks when converting lazy to strict"
+    forM_ [1..n] $ const $ do
+         let release c = finalizeForeignPtr fp where (fp,_,_) = toForeignPtr c
+         r <- L.readFile "a"
+         mapM_ release (L.toChunks r) -- should close it.
+         L.writeFile "b" (L8.pack "abc")
+         renameFile "b" "a"
 
-     L.writeFile "b" (L8.pack "abc")
-     renameFile "b" "a"
-  where
-    release c = finalizeForeignPtr fp where (fp,_,_) = toForeignPtr c
--}
+    ------------------------------------------------------------------------
+    -- hGetContents tests
 
--- works now
-main = forever $ do
-     r <- L.readFile "a" ; L.last r `seq` return ()
-     L.writeFile "b" (L8.pack "abc")
-     renameFile "b" "a"
+    -- works now
+    print "Testing strict hGetContents"
+    forM_ [1..n] $ const $ do
+         h <- openFile "a" ReadMode
+         r <- S.hGetContents h -- should be strict, and hClosed.
+         S.last r `seq` return ()
+         S.writeFile "b" (S8.pack "abc")
+         renameFile "b" "a"
+
+    -- works now
+    print "Testing lazy hGetContents"
+    forM_ [1..n] $ const $ do
+         h <- openFile "a" ReadMode
+         r <- L.hGetContents h -- should be strict, and hClosed.
+         L.last r `seq` return ()
+         L.writeFile "b" (L8.pack "abc")
+         renameFile "b" "a"
+
+
+n = 1000
