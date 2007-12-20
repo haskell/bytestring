@@ -217,7 +217,6 @@ import qualified Data.ByteString.Unsafe as S
 import Data.ByteString.Lazy.Internal
 import qualified Data.ByteString.Fusion as F
 
-import Control.Monad            (when)
 import Data.Monoid              (Monoid(..))
 
 import Data.Word                (Word8)
@@ -1173,6 +1172,10 @@ copy cs = foldrChunks (Chunk . S.copy) Empty cs
 
 -- ---------------------------------------------------------------------
 -- Lazy ByteString IO
+--
+-- Rule for when to close: is it expected to read the whole file?
+-- If so, close when done. 
+--
 
 -- | Read entire handle contents /lazily/ into a 'ByteString'. Chunks
 -- are read on demand, in at most @k@-sized chunks. It does not block
@@ -1202,8 +1205,6 @@ hGetContentsN k h = lazyRead -- TODO close on exceptions
 -- | Read @n@ bytes into a 'ByteString', directly from the
 -- specified 'Handle', in chunks of size @k@.
 --
--- If EOF is encountered, the Handle is closed.
---
 hGetN :: Int -> Handle -> Int -> IO ByteString
 hGetN _ _ 0 = return empty
 hGetN k h n = readChunks n
@@ -1212,17 +1213,13 @@ hGetN k h n = readChunks n
     readChunks i = do
         c <- S.hGet h (min k i)
         case S.length c of
-            0 -> do eof <- hIsEOF h
-                    when eof (hClose h)
-                    return Empty
+            0 -> return Empty
             m -> do cs <- readChunks (i - m)
                     return (Chunk c cs)
 
 -- | hGetNonBlockingN is similar to 'hGetContentsN', except that it will never block
 -- waiting for data to become available, instead it returns only whatever data
 -- is available. Chunks are read on demand, in @k@-sized chunks.
---
--- If EOF is encountered, the Handle is closed.
 --
 hGetNonBlockingN :: Int -> Handle -> Int -> IO ByteString
 #if defined(__GLASGOW_HASKELL__)
@@ -1233,9 +1230,7 @@ hGetNonBlockingN k h n = readChunks n
     readChunks i = do
         c <- S.hGetNonBlocking h (min k i)
         case S.length c of
-            0 -> do eof <- hIsEOF h
-                    when eof (hClose h)
-                    return Empty
+            0 -> return Empty
             m -> do cs <- readChunks (i - m)
                     return (Chunk c cs)
 #else
@@ -1252,8 +1247,6 @@ hGetContents = hGetContentsN defaultChunkSize
 
 -- | Read @n@ bytes into a 'ByteString', directly from the specified 'Handle'.
 --
--- If EOF is encountered, the Handle is closed.
---
 hGet :: Handle -> Int -> IO ByteString
 hGet = hGetN defaultChunkSize
 
@@ -1269,28 +1262,34 @@ hGetNonBlocking = hGet
 
 -- | Read an entire file /lazily/ into a 'ByteString'.
 -- The Handle will be held open until EOF is encountered.
+--
 readFile :: FilePath -> IO ByteString
 readFile f = openBinaryFile f ReadMode >>= hGetContents
 
 -- | Write a 'ByteString' to a file.
+--
 writeFile :: FilePath -> ByteString -> IO ()
 writeFile f txt = bracket (openBinaryFile f WriteMode) hClose
     (\hdl -> hPut hdl txt)
 
 -- | Append a 'ByteString' to a file.
+--
 appendFile :: FilePath -> ByteString -> IO ()
 appendFile f txt = bracket (openBinaryFile f AppendMode) hClose
     (\hdl -> hPut hdl txt)
 
 -- | getContents. Equivalent to hGetContents stdin. Will read /lazily/
+--
 getContents :: IO ByteString
 getContents = hGetContents stdin
 
 -- | Outputs a 'ByteString' to the specified 'Handle'.
+--
 hPut :: Handle -> ByteString -> IO ()
 hPut h cs = foldrChunks (\c rest -> S.hPut h c >> rest) (return ()) cs
 
 -- | A synonym for @hPut@, for compatibility
+--
 hPutStr :: Handle -> ByteString -> IO ()
 hPutStr = hPut
 
@@ -1299,13 +1298,15 @@ putStr :: ByteString -> IO ()
 putStr = hPut stdout
 
 -- | Write a ByteString to stdout, appending a newline byte
+--
 putStrLn :: ByteString -> IO ()
 putStrLn ps = hPut stdout ps >> hPut stdout (singleton 0x0a)
 
 -- | The interact function takes a function of type @ByteString -> ByteString@
 -- as its argument. The entire input from the standard input device is passed
 -- to this function as its argument, and the resulting string is output on the
--- standard output device. It's great for writing one line programs!
+-- standard output device.
+--
 interact :: (ByteString -> ByteString) -> IO ()
 interact transformer = putStr . transformer =<< getContents
 
