@@ -227,10 +227,10 @@ import qualified Data.Array as Array ((!))
 
 -- Control.Exception.bracket not available in yhc or nhc
 #ifndef __NHC__
-import Control.Exception        (bracket, assert)
+import Control.Exception        (finally, bracket, assert)
 import qualified Control.Exception as Exception
 #else
-import IO			(bracket)
+import IO			(bracket, finally)
 #endif
 import Control.Monad            (when)
 
@@ -1628,29 +1628,11 @@ copy (PS x s l) = unsafeCreate l $ \p -> withForeignPtr x $ \f ->
     memcpy p (f `plusPtr` s) (fromIntegral l)
 
 -- ---------------------------------------------------------------------
--- line IO
+-- Line IO
 
 -- | Read a line from stdin.
 getLine :: IO ByteString
 getLine = hGetLine stdin
-
-{-
--- | Lazily construct a list of lines of ByteStrings. This will be much
--- better on memory consumption than using 'hGetContents >>= lines'
--- If you're considering this, a better choice might be to use
--- Data.ByteString.Lazy
-hGetLines :: Handle -> IO [ByteString]
-hGetLines h = go
-    where
-        go = unsafeInterleaveIO $ do
-                e <- hIsEOF h
-                if e
-                  then return []
-                  else do
-                x  <- hGetLine h
-                xs <- go
-                return (x:xs)
--}
 
 -- | Read a line from a handle
 
@@ -1751,9 +1733,13 @@ putStr = hPut stdout
 putStrLn :: ByteString -> IO ()
 putStrLn = hPutStrLn stdout
 
+------------------------------------------------------------------------
+-- Low level IO
+
 -- | Read a 'ByteString' directly from the specified 'Handle'.  This
 -- is far more efficient than reading the characters into a 'String'
 -- and then using 'pack'.
+--
 hGet :: Handle -> Int -> IO ByteString
 hGet _ 0 = return empty
 hGet h i = createAndTrim i $ \p -> hGetBuf h p i
@@ -1761,6 +1747,7 @@ hGet h i = createAndTrim i $ \p -> hGetBuf h p i
 -- | hGetNonBlocking is identical to 'hGet', except that it will never block
 -- waiting for data to become available, instead it returns only whatever data
 -- is available.
+--
 hGetNonBlocking :: Handle -> Int -> IO ByteString
 #if defined(__GLASGOW_HASKELL__)
 hGetNonBlocking _ 0 = return empty
@@ -1769,7 +1756,8 @@ hGetNonBlocking h i = createAndTrim i $ \p -> hGetBufNonBlocking h p i
 hGetNonBlocking = hGet
 #endif
 
--- | Read entire handle contents into a 'ByteString'.
+-- | Read entire handle contents strictly into a 'ByteString'.
+--
 -- This function reads chunks at a time, doubling the chunksize on each
 -- read. The final buffer is then realloced to the appropriate size. For
 -- files > half of available memory, this may lead to memory exhaustion.
@@ -1778,8 +1766,11 @@ hGetNonBlocking = hGet
 -- As with 'hGet', the string representation in the file is assumed to
 -- be ISO-8859-1.
 --
+-- The Handle is closed once the contents have been read,
+-- or if an exception is thrown.
+--
 hGetContents :: Handle -> IO ByteString
-hGetContents h = do
+hGetContents h = always (hClose h) $ do -- strict, so hClose
     let start_size = 1024
     p <- mallocBytes start_size
     i <- hGetBuf h p start_size
@@ -1789,6 +1780,7 @@ hGetContents h = do
                 return $! PS fp 0 i
         else f p start_size
     where
+        always = flip finally
         f p s = do
             let s' = 2 * s
             p' <- reallocBytes p s'
@@ -1800,14 +1792,17 @@ hGetContents h = do
                         return $! PS fp 0 i'
                 else f p' s'
 
--- | getContents. Equivalent to hGetContents stdin
+-- | getContents. Read stdin strictly. Equivalent to hGetContents stdin
+-- The 'Handle' is closed after the contents have been read.
+--
 getContents :: IO ByteString
 getContents = hGetContents stdin
 
 -- | The interact function takes a function of type @ByteString -> ByteString@
 -- as its argument. The entire input from the standard input device is passed
 -- to this function as its argument, and the resulting string is output on the
--- standard output device. It's great for writing one line programs!
+-- standard output device.
+--
 interact :: (ByteString -> ByteString) -> IO ()
 interact transformer = putStr . transformer =<< getContents
 
@@ -1816,6 +1811,7 @@ interact transformer = putStr . transformer =<< getContents
 -- 'pack'.  It also may be more efficient than opening the file and
 -- reading it using hGet. Files are read using 'binary mode' on Windows,
 -- for 'text mode' use the Char8 version of this function.
+--
 readFile :: FilePath -> IO ByteString
 readFile f = bracket (openBinaryFile f ReadMode) hClose
     (\h -> hFileSize h >>= hGet h . fromIntegral)
@@ -1829,64 +1825,6 @@ writeFile f txt = bracket (openBinaryFile f WriteMode) hClose
 appendFile :: FilePath -> ByteString -> IO ()
 appendFile f txt = bracket (openBinaryFile f AppendMode) hClose
     (\h -> hPut h txt)
-
-{-
---
--- Disable until we can move it into a portable .hsc file
---
-
--- | Like readFile, this reads an entire file directly into a
--- 'ByteString', but it is even more efficient.  It involves directly
--- mapping the file to memory.  This has the advantage that the contents
--- of the file never need to be copied.  Also, under memory pressure the
--- page may simply be discarded, while in the case of readFile it would
--- need to be written to swap.  If you read many small files, mmapFile
--- will be less memory-efficient than readFile, since each mmapFile
--- takes up a separate page of memory.  Also, you can run into bus
--- errors if the file is modified.  As with 'readFile', the string
--- representation in the file is assumed to be ISO-8859-1.
---
--- On systems without mmap, this is the same as a readFile.
---
-mmapFile :: FilePath -> IO ByteString
-mmapFile f = mmap f >>= \(fp,l) -> return $! PS fp 0 l
-
-mmap :: FilePath -> IO (ForeignPtr Word8, Int)
-mmap f = do
-    h <- openBinaryFile f ReadMode
-    l <- fromIntegral `fmap` hFileSize h
-    -- Don't bother mmaping small files because each mmapped file takes up
-    -- at least one full VM block.
-    if l < mmap_limit
-       then do thefp <- mallocByteString l
-               withForeignPtr thefp $ \p-> hGetBuf h p l
-               hClose h
-               return (thefp, l)
-       else do
-               -- unix only :(
-               fd <- fromIntegral `fmap` handleToFd h
-               p  <- my_mmap l fd
-               fp <- if p == nullPtr
-                     then do thefp <- mallocByteString l
-                             withForeignPtr thefp $ \p' -> hGetBuf h p' l
-                             return thefp
-                     else do
-                          -- The munmap leads to crashes on OpenBSD.
-                          -- maybe there's a use after unmap in there somewhere?
-                          -- Bulat suggests adding the hClose to the
-                          -- finalizer, excellent idea.
-#if !defined(__OpenBSD__)
-                             let unmap = c_munmap p l >> return ()
-#else
-                             let unmap = return ()
-#endif
-                             fp <- newForeignPtr p unmap
-                             return fp
-               c_close fd
-               hClose h
-               return (fp, l)
-    where mmap_limit = 16*1024
--}
 
 -- ---------------------------------------------------------------------
 -- Internal utilities
