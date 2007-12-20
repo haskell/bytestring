@@ -2,7 +2,7 @@
 -- |
 -- Module      : Data.ByteString.Lazy.Internal
 -- License     : BSD-style
--- Maintainer  : dons@cse.unsw.edu.au, duncan@haskell.org
+-- Maintainer  : dons@galois.com, duncan@haskell.org
 -- Stability   : experimental
 -- Portability : portable
 -- 
