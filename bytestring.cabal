@@ -1,5 +1,5 @@
 Name:                bytestring
-Version:             0.9.0.3
+Version:             0.9.0.4
 Synopsis:            Fast, packed, strict and lazy byte arrays with a list interface
 Description:
     .
