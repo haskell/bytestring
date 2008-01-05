@@ -672,7 +672,6 @@ lines (Chunk c0 cs0) = loop0 c0 cs0
     -- the common special case where we have no existing chunks of
     -- the current line
     loop0 :: B.ByteString -> ByteString -> [ByteString]
-    STRICT2(loop0)
     loop0 c cs =
         case B.elemIndex (c2w '\n') c of
             Nothing -> case cs of
@@ -690,7 +689,6 @@ lines (Chunk c0 cs0) = loop0 c0 cs0
     -- the general case when we are building a list of chunks that are
     -- part of the same line
     loop :: B.ByteString -> [B.ByteString] -> ByteString -> [ByteString]
-    STRICT3(loop)
     loop c line cs =
         case B.elemIndex (c2w '\n') c of
             Nothing ->
