@@ -1,13 +1,13 @@
 TODO:
 
     * back port streams fusion code.
-    * check Lazy.groupBy
     * close bug in Lazy.lines
     * show instance for LPS
     * export chunk sizes
     * ensure memchr / (== c) rules either always work, or we can back door them
     * stress testing
     * strictness testing
+    * determine the threshold for the memcmp ffi call.
 
 
 Todo items
