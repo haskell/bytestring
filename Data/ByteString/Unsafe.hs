@@ -133,7 +133,7 @@ unsafeDrop n (PS x s l) = assert (0 <= n && n <= l) $ PS x (s+n) (l-n)
 -- boxed string. A unboxed string literal is compiled to a static @char
 -- []@ by GHC. Establishing the length of the string requires a call to
 -- @strlen(3)@, so the Addr# must point to a null-terminated buffer (as
--- is the case with "string"# literals in GHC). Use 'unsafePackAddress'
+-- is the case with "string"# literals in GHC). Use 'unsafePackAddressLen'
 -- if you know the length of the string statically.
 --
 -- An example:
@@ -143,6 +143,9 @@ unsafeDrop n (PS x s l) = assert (0 <= n && n <= l) $ PS x (s+n) (l-n)
 -- This function is /unsafe/. If you modify the buffer pointed to by the
 -- original Addr# this modification will be reflected in the resulting
 -- @ByteString@, breaking referential transparency.
+--
+-- Note this also won't work if you Add# has embedded '\0' characters in
+-- the string (strlen will fail).
 --
 unsafePackAddress :: Addr# -> IO ByteString
 unsafePackAddress addr# = do
