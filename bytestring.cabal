@@ -1,18 +1,19 @@
 Name:                bytestring
-Version:             0.9.0.4
+Version:             0.9.0.5
 Synopsis:            Fast, packed, strict and lazy byte arrays with a list interface
 Description:
     .
     A time and space-efficient implementation of byte vectors using
     packed Word8 arrays, suitable for high performance use, both in terms
     of large data quantities, or high speed requirements. Byte vectors
-    are encoded as strict 'Word8' arrays of bytes, held in a 'ForeignPtr',
-    and can be passed between C and Haskell with little effort.
+    are encoded as strict 'Word8' arrays of bytes, and lazy lists of
+    strict chunks, held in a 'ForeignPtr', and can be passed between C
+    and Haskell with little effort.
     .
 License:             BSD3
 License-file:        LICENSE
 Category:            Data
-Copyright:           Copyright (c) Don Stewart   2005-2007,
+Copyright:           Copyright (c) Don Stewart   2005-2008,
                                (c) Duncan Coutts 2006-2007,
                                (c) David Roundy  2003-2005.
 Author:              Don Stewart, Duncan Coutts
