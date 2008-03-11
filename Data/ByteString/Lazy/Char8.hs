@@ -579,7 +579,7 @@ filter f = L.filter (f . w2c)
 -- (==)/, for the common case of filtering a single Char. It is more
 -- efficient to use /filterChar/ in this case.
 --
--- > filterByte == filter . (==)
+-- > filterChar == filter . (==)
 --
 -- filterChar is around 10x faster, and uses much less space, than its
 -- filter equivalent
