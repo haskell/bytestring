@@ -77,6 +77,7 @@ import Data.Generics            (Data(..), Typeable(..))
 import GHC.Ptr                  (Ptr(..))
 import GHC.Base                 (realWorld#,unsafeChr)
 import GHC.IOBase               (IO(IO), unsafePerformIO, RawBuffer)
+import GHC.IOBase               (unsafeDupablePerformIO)
 #else
 import Data.Char                (chr)
 import System.IO.Unsafe         (unsafePerformIO)
@@ -199,8 +200,14 @@ toForeignPtr (PS ps s l) = (ps, s, l)
 -- 'createAndTrim' the ByteString is not reallocated if the final size
 -- is less than the estimated size.
 unsafeCreate :: Int -> (Ptr Word8 -> IO ()) -> ByteString
-unsafeCreate l f = unsafePerformIO (create l f)
+unsafeCreate l f = unsafeDupablePerformIO (create l f)
 {-# INLINE unsafeCreate #-}
+
+#if !defined(__GLASGOW_HASKELL__)
+-- for Hugs   
+unsafeDupablePerformIO :: IO a -> a
+unsafeDupablePerformIO = unsafePerformIO
+#endif
 
 -- | Create ByteString of size @l@ and use action @f@ to fill it's contents.
 create :: Int -> (Ptr Word8 -> IO ()) -> IO ByteString
