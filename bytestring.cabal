@@ -53,4 +53,4 @@ library
 
   nhc98-options:     -K4M -K3M
   if impl(ghc <= 6.4.2)
-    ghc-options:     -DSLOW_FOREIGN_PTR
+    cc-options:     -DSLOW_FOREIGN_PTR
