@@ -76,8 +76,12 @@ import Data.Word                (Word8)
 import Data.Generics            (Data(..), Typeable(..))
 import GHC.Ptr                  (Ptr(..))
 import GHC.Base                 (realWorld#,unsafeChr)
-import GHC.IOBase               (IO(IO), unsafePerformIO, RawBuffer)
+import GHC.IOBase               (IO(IO), RawBuffer)
+#if __GLASGOW_HASKELL__ >= 608
 import GHC.IOBase               (unsafeDupablePerformIO)
+#else
+import GHC.IOBase               (unsafePerformIO)
+#endif
 #else
 import Data.Char                (chr)
 import System.IO.Unsafe         (unsafePerformIO)
@@ -203,7 +207,7 @@ unsafeCreate :: Int -> (Ptr Word8 -> IO ()) -> ByteString
 unsafeCreate l f = unsafeDupablePerformIO (create l f)
 {-# INLINE unsafeCreate #-}
 
-#if !defined(__GLASGOW_HASKELL__)
+#if !defined(__GLASGOW_HASKELL__) || __GLASGOW_HASKELL__ < 608
 -- for Hugs   
 unsafeDupablePerformIO :: IO a -> a
 unsafeDupablePerformIO = unsafePerformIO
