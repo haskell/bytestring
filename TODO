@@ -1,5 +1,7 @@
 TODO:
 
+    * check rewrite rules are working for Char8 == functions
+
     * back port streams fusion code.
     * close bug in Lazy.lines
     * show instance for LPS
@@ -7,7 +9,6 @@ TODO:
     * ensure memchr / (== c) rules either always work, or we can back door them
     * stress testing
     * strictness testing
-    * determine the threshold for the memcmp ffi call.
 
 
 Todo items
