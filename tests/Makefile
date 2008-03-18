@@ -1,5 +1,6 @@
 GHC=            ghc
-GHCFLAGS=       -cpp -O2 -funbox-strict-fields -no-recomp -v0
+GHCFLAGS=       -cpp -O2 -funbox-strict-fields -no-recomp -v0 -fglasgow-exts -O2 -funbox-strict-fields -fdicts-cheap -fno-method-sharing -fmax-simplifier-iterations10 -fcpr-off
+
 #PKG=            -package fps
 
 #GHC=            /usr/obj/build/compiler/stage2/ghc-inplace
@@ -59,6 +60,13 @@ prop-compiled:
 prop-opt: 
 	@echo "Compiled, rules on"	
 	${GHC} ${PKG} ${GHCFLAGS} --make Properties.hs -o p -package QuickCheck
+	time ./p
+
+# rules-on
+.PHONY: hpc
+hpc: 
+	@echo "Compiled, rules on, with hpc"	
+	${GHC} ${GHCFLAGS} -ddump-simpl-stats -fhpc --make -i.. -i../dist/build/ Properties.hs -o p -no-recomp
 	time ./p
 
 #

@@ -6,7 +6,9 @@
 --
 import GHC.Base
 import Data.Char
-import qualified Data.ByteString as B
+import qualified Data.ByteString.Char8 as B
+import qualified Data.ByteString.Unsafe   as B
+import qualified Data.ByteString.Internal as B
 
 main = B.getContents >>= process B.empty []
 
@@ -16,8 +18,8 @@ process h b ps
     | x == '>'  = write h b >> process h' [] ps'
     | x == '\n' = process h b xs
     | otherwise = process h ((complement . toUpper $ x) : b) xs
-    where (x,xs)   = (B.unsafeHead ps, B.unsafeTail ps)
-          (h',ps') = B.breakOn '\n' ps
+    where (x,xs)   = (B.w2c (B.unsafeHead ps), B.unsafeTail ps)
+          (h',ps') = B.break (=='\n') ps
 
 write h s
     | B.null h  = return ()
