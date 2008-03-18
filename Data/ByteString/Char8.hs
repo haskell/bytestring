@@ -535,7 +535,7 @@ takeWhile f = B.takeWhile (f . w2c)
 dropWhile :: (Char -> Bool) -> ByteString -> ByteString
 dropWhile f = B.dropWhile (f . w2c)
 #if defined(__GLASGOW_HASKELL__)
-{-# INLINE [1] dropWhile #-}
+{-# INLINE dropWhile #-}
 #endif
 
 -- | 'break' @p@ is equivalent to @'span' ('not' . p)@.
