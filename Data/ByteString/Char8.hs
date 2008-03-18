@@ -545,6 +545,29 @@ break f = B.break (f . w2c)
 {-# INLINE [1] break #-}
 #endif
 
+#if defined(__GLASGOW_HASKELL__)
+{-# RULES
+"FPS specialise break (x==)" forall x.
+    break ((==) x) = breakChar x
+"FPS specialise break (==x)" forall x.
+    break (==x) = breakChar x
+  #-}
+#endif
+
+-- INTERNAL:
+
+-- | 'breakChar' breaks its ByteString argument at the first occurence
+-- of the specified char. It is more efficient than 'break' as it is
+-- implemented with @memchr(3)@. I.e.
+-- 
+-- > break (=='c') "abcd" == breakChar 'c' "abcd"
+--
+breakChar :: Char -> ByteString -> (ByteString, ByteString)
+breakChar c p = case elemIndex c p of
+    Nothing -> (p,empty)
+    Just n  -> (B.unsafeTake n p, B.unsafeDrop n p)
+{-# INLINE breakChar #-}
+
 -- | 'span' @p xs@ breaks the ByteString into two segments. It is
 -- equivalent to @('takeWhile' p xs, 'dropWhile' p xs)@
 span :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)

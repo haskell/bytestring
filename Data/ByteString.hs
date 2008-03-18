@@ -940,6 +940,13 @@ dropWhile f ps = unsafeDrop (findIndexOrEnd (not . f) ps) ps
 -- instead of findIndexOrEnd, we could use memchr here.
 
 -- | 'break' @p@ is equivalent to @'span' ('not' . p)@.
+--
+-- Under GHC, a rewrite rule will transform break (==) into a
+-- call to the specialised breakByte:
+--
+-- > break ((==) x) = breakByte x
+-- > break (==x) = breakByte x
+--
 break :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
 break p ps = case findIndexOrEnd p ps of n -> (unsafeTake n ps, unsafeDrop n ps)
 #if __GLASGOW_HASKELL__ 
@@ -952,6 +959,8 @@ break p ps = case findIndexOrEnd p ps of n -> (unsafeTake n ps, unsafeDrop n ps)
     break (==x) = breakByte x
   #-}
 #endif
+
+-- INTERNAL:
 
 -- | 'breakByte' breaks its ByteString argument at the first occurence
 -- of the specified byte. It is more efficient than 'break' as it is
