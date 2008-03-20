@@ -298,12 +298,6 @@ instance Monoid ByteString where
     mappend = append
     mconcat = concat
 
-{-
-instance Arbitrary PackedString where
-    arbitrary = P.pack `fmap` arbitrary
-    coarbitrary s = coarbitrary (P.unpack s)
--}
-
 -- | /O(n)/ Equality on the 'ByteString' type.
 eq :: ByteString -> ByteString -> Bool
 eq a@(PS p s l) b@(PS p' s' l')
@@ -326,6 +320,9 @@ compareBytes (PS x1 s1 l1) (PS x2 s2 l2)
                         x   -> x
 
 {-
+
+-- Pure Haskell version
+
 compareBytes (PS fp1 off1 len1) (PS fp2 off2 len2)
 --    | len1 == 0  && len2 == 0                     = EQ  -- short cut for empty strings
 --    | fp1 == fp2 && off1 == off2 && len1 == len2  = EQ  -- short cut for the same string
@@ -347,32 +344,6 @@ cmp p1 p2 n len1 len2
                 EQ -> cmp p1 p2 (n+1) len1 len2
                 LT -> return LT
                 GT -> return GT
--}
-
-{-
---
--- About 4x slower over 32M
---
-compareBytes :: ByteString -> ByteString -> Ordering
-compareBytes (PS fp1 off1 len1) (PS fp2 off2 len2) = inlinePerformIO $
-    withForeignPtr fp1 $ \p1 ->
-        withForeignPtr fp2 $ \p2 ->
-            cmp (p1 `plusPtr` off1)
-                (p2 `plusPtr` off2) 0 len1 len2
-
-cmp :: Ptr Word8 -> Ptr Word8 -> Int -> Int -> Int-> IO Ordering
-STRICT5(cmp)
-cmp p1 p2 n len1 len2
-      | n == len1 = if n == len2 then return EQ else return LT
-      | n == len2 = return GT
-      | otherwise = do
-          (a :: Word8) <- peekByteOff p1 n
-          (b :: Word8) <- peekByteOff p2 n
-          case a `compare` b of
-                EQ -> cmp p1 p2 (n+1) len1 len2
-                LT -> return LT
-                GT -> return GT
-{-# INLINE compareBytes #-}
 -}
 
 -- -----------------------------------------------------------------------------
