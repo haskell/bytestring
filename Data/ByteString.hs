@@ -358,8 +358,10 @@ singleton :: Word8 -> ByteString
 singleton c = unsafeCreate 1 $ \p -> poke p c
 {-# INLINE [1] singleton #-}
 
+-- Inline [1] for intercalate rule
+
 --
--- XXX The unsafePerformIO is critical!
+-- XXX The use of unsafePerformIO in allocating functions (unsafeCreate) is critical!
 --
 -- Otherwise:
 --
@@ -447,7 +449,7 @@ unpackList (PS fp off len) = withPtr fp $ \p -> do
     loop (p `plusPtr` off) (len-1) []
 
 {-# RULES
-    "FPS unpack-list"  [1]  forall p  . unpackFoldr p (:) [] = unpackList p
+    "ByteString unpack-list"  [1]  forall p  . unpackFoldr p (:) [] = unpackList p
  #-}
 
 #endif
@@ -918,14 +920,14 @@ break :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
 break p ps = case findIndexOrEnd p ps of n -> (unsafeTake n ps, unsafeDrop n ps)
 #if __GLASGOW_HASKELL__ 
 {-# INLINE [1] break #-}
+#endif
 
 {-# RULES
-"FPS specialise break (x==)" forall x.
-    break ((==) x) = breakByte x
-"FPS specialise break (==x)" forall x.
-    break (==x) = breakByte x
+    "ByteString specialise break (x==)" forall x.
+        break ((==) x) = breakByte x
+    "ByteString specialise break (==x)" forall x.
+        break (==x) = breakByte x
   #-}
-#endif
 
 -- INTERNAL:
 
@@ -974,10 +976,10 @@ spanByte c ps@(PS x s l) = inlinePerformIO $ withForeignPtr x $ \p ->
 {-# INLINE spanByte #-}
 
 {-# RULES
-"FPS specialise span (x==)" forall x.
-    span ((==) x) = spanByte x
-"FPS specialise span (==x)" forall x.
-    span (==x) = spanByte x
+    "ByteString specialise span (x==)" forall x.
+        span ((==) x) = spanByte x
+    "ByteString specialise span (==x)" forall x.
+        span (==x) = spanByte x
   #-}
 
 -- | 'spanEnd' behaves like 'span' but from the end of the 'ByteString'.
@@ -1141,8 +1143,8 @@ intercalate s = concat . (List.intersperse s)
 {-# INLINE [1] intercalate #-}
 
 {-# RULES
-"FPS specialise intercalate c -> intercalateByte" forall c s1 s2 .
-    intercalate (singleton c) (s1 : s2 : []) = intercalateWithByte c s1 s2
+    "ByteString specialise intercalate c -> intercalateByte" forall c s1 s2 .
+        intercalate (singleton c) (s1 : s2 : []) = intercalateWithByte c s1 s2
   #-}
 
 -- | /O(n)/ intercalateWithByte. An efficient way to join to two ByteStrings
@@ -1329,12 +1331,9 @@ filterByte w ps = replicate (count w ps) w
 {-# INLINE filterByte #-}
 
 {-# RULES
-  "FPS specialise filter (== x)" forall x.
+  "ByteString specialise filter (== x)" forall x.
       filter ((==) x) = filterByte x
-  #-}
-
-{-# RULES
-  "FPS specialise filter (== x)" forall x.
+  "ByteString specialise filter (== x)" forall x.
      filter (== x) = filterByte x
   #-}
 
@@ -1500,10 +1499,8 @@ zipWith' f (PS fp s l) (PS fq t m) = inlinePerformIO $
 {-# INLINE zipWith' #-}
 
 {-# RULES
-
-"FPS specialise zipWith" forall (f :: Word8 -> Word8 -> Word8) p q .
-    zipWith f p q = unpack (zipWith' f p q)
-
+    "ByteString specialise zipWith" forall (f :: Word8 -> Word8 -> Word8) p q .
+        zipWith f p q = unpack (zipWith' f p q)
   #-}
 
 -- | /O(n)/ 'unzip' transforms a list of pairs of bytes into a pair of
