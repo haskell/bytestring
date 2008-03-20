@@ -32,6 +32,11 @@
 --
 -- > import qualified Data.ByteString.Char8 as B
 --
+-- The Char8 interface to bytestrings provides an instance of IsString
+-- for the ByteString type, enabling you to use string literals, and
+-- have them implicitly packed to ByteStrings. Use -XOverloadedStrings
+-- to enable this.
+--
 
 module Data.ByteString.Char8 (
 
