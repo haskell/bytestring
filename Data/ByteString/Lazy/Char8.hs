@@ -178,9 +178,6 @@ module Data.ByteString.Lazy.Char8 (
 --      hGetContentsN,          -- :: Int -> Handle -> IO ByteString
 --      hGetNonBlockingN,       -- :: Int -> Handle -> IO ByteString
 
-        -- undocumented deprecated things:
-        join                    -- :: ByteString -> [ByteString] -> ByteString
-
   ) where
 
 -- Functions transparently exported
@@ -307,10 +304,6 @@ map f = L.map (c2w . f . w2c)
 intersperse :: Char -> ByteString -> ByteString
 intersperse = L.intersperse . c2w
 {-# INLINE intersperse #-}
-
-join :: ByteString -> [ByteString] -> ByteString
-join = intercalate
-{-# DEPRECATED join "use intercalate" #-}
 
 -- | 'foldl', applied to a binary operator, a starting value (typically
 -- the left-identity of the operator), and a ByteString, reduces the

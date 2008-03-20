@@ -187,7 +187,6 @@ module Data.ByteString (
         readFile,               -- :: FilePath -> IO ByteString
         writeFile,              -- :: FilePath -> ByteString -> IO ()
         appendFile,             -- :: FilePath -> ByteString -> IO ()
---      mmapFile,               -- :: FilePath -> IO ByteString
 
         -- ** I\/O with Handles
         hGetLine,               -- :: Handle -> IO ByteString
@@ -197,9 +196,6 @@ module Data.ByteString (
         hPut,                   -- :: Handle -> ByteString -> IO ()
         hPutStr,                -- :: Handle -> ByteString -> IO ()
         hPutStrLn,              -- :: Handle -> ByteString -> IO ()
-
-        -- undocumented deprecated things:
-        join                    -- :: ByteString -> [ByteString] -> ByteString
 
   ) where
 
@@ -1172,10 +1168,6 @@ groupBy k xs
 intercalate :: ByteString -> [ByteString] -> ByteString
 intercalate s = concat . (List.intersperse s)
 {-# INLINE [1] intercalate #-}
-
-join :: ByteString -> [ByteString] -> ByteString
-join = intercalate
-{-# DEPRECATED join "use intercalate" #-}
 
 {-# RULES
 "FPS specialise intercalate c -> intercalateByte" forall c s1 s2 .

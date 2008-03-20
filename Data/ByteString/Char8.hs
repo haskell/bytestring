@@ -205,9 +205,6 @@ module Data.ByteString.Char8 (
         hPutStr,                -- :: Handle -> ByteString -> IO ()
         hPutStrLn,              -- :: Handle -> ByteString -> IO ()
 
-        -- undocumented deprecated things:
-        join                    -- :: ByteString -> [ByteString] -> ByteString
-
   ) where
 
 import qualified Prelude as P
@@ -365,10 +362,6 @@ map f = B.map (c2w . f . w2c)
 intersperse :: Char -> ByteString -> ByteString
 intersperse = B.intersperse . c2w
 {-# INLINE intersperse #-}
-
-join :: ByteString -> [ByteString] -> ByteString
-join = intercalate
-{-# DEPRECATED join "use intercalate" #-}
 
 -- | 'foldl', applied to a binary operator, a starting value (typically
 -- the left-identity of the operator), and a ByteString, reduces the

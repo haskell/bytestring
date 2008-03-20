@@ -197,9 +197,6 @@ module Data.ByteString.Lazy (
 --      hGetContentsN,          -- :: Int -> Handle -> IO ByteString
 --      hGetNonBlockingN,       -- :: Int -> Handle -> IO ByteString
 
-        -- undocumented deprecated things:
-        join                    -- :: ByteString -> [ByteString] -> ByteString
-
   ) where
 
 import qualified Prelude
@@ -904,10 +901,6 @@ groupBy k xs
 -- argument between each element of the list.
 intercalate :: ByteString -> [ByteString] -> ByteString
 intercalate s = concat . (L.intersperse s)
-
-join :: ByteString -> [ByteString] -> ByteString
-join = intercalate
-{-# DEPRECATED join "use intercalate" #-}
 
 -- ---------------------------------------------------------------------
 -- Indexing ByteStrings
