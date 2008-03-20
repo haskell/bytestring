@@ -315,8 +315,8 @@ pack str = B.unsafeCreate (P.length str) $ \(Ptr p) -> stToIO (go p str)
 {-# INLINE [1] pack #-}
 
 {-# RULES
-    "FPS pack/packAddress" forall s .
-       pack (unpackCString# s) = inlinePerformIO (B.unsafePackAddress s)
+"ByteString pack/packAddress" forall s .
+   pack (unpackCString# s) = inlinePerformIO (B.unsafePackAddress s)
  #-}
 
 #endif
@@ -543,14 +543,12 @@ break f = B.break (f . w2c)
 {-# INLINE [1] break #-}
 #endif
 
-#if defined(__GLASGOW_HASKELL__)
 {-# RULES
-"FPS specialise break (x==)" forall x.
+"ByteString specialise break (x==)" forall x.
     break ((==) x) = breakChar x
-"FPS specialise break (==x)" forall x.
+"ByteString specialise break (==x)" forall x.
     break (==x) = breakChar x
   #-}
-#endif
 
 -- INTERNAL:
 
@@ -748,13 +746,10 @@ filterChar c ps = replicate (count c ps) c
 {-# INLINE filterChar #-}
 
 {-# RULES
-  "FPS specialise filter (== x)" forall x.
-      filter ((==) x) = filterChar x
-  #-}
-
-{-# RULES
-  "FPS specialise filter (== x)" forall x.
-     filter (== x) = filterChar x
+"ByteString specialise filter (== x)" forall x.
+    filter ((==) x) = filterChar x
+"ByteString specialise filter (== x)" forall x.
+    filter (== x) = filterChar x
   #-}
 
 -- | /O(n)/ The 'find' function takes a predicate and a ByteString,
@@ -827,8 +822,8 @@ unsafeHead  = w2c . B.unsafeHead
 -- Things that depend on the encoding
 
 {-# RULES
-    "FPS specialise break -> breakSpace"
-        break isSpace = breakSpace
+"ByteString specialise break -> breakSpace"
+    break isSpace = breakSpace
   #-}
 
 -- | 'breakSpace' returns the pair of ByteStrings when the argument is
@@ -854,8 +849,8 @@ firstspace ptr n m
                      if (not . isSpaceWord8) w then firstspace ptr (n+1) m else return n
 
 {-# RULES
-    "FPS specialise dropWhile isSpace -> dropSpace"
-        dropWhile isSpace = dropSpace
+"ByteString specialise dropWhile isSpace -> dropSpace"
+    dropWhile isSpace = dropSpace
   #-}
 
 -- | 'dropSpace' efficiently returns the 'ByteString' argument with

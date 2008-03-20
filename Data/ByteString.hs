@@ -449,7 +449,8 @@ unpackList (PS fp off len) = withPtr fp $ \p -> do
     loop (p `plusPtr` off) (len-1) []
 
 {-# RULES
-    "ByteString unpack-list"  [1]  forall p  . unpackFoldr p (:) [] = unpackList p
+"ByteString unpack-list" [1]  forall p  .
+    unpackFoldr p (:) [] = unpackList p
  #-}
 
 #endif
@@ -570,10 +571,6 @@ intersperse c ps@(PS x s l)
     | otherwise      = unsafeCreate (2*l-1) $ \p -> withForeignPtr x $ \f ->
         c_intersperse p (f `plusPtr` s) (fromIntegral l) c
 
-{-
-intersperse c = pack . List.intersperse c . unpack
--}
-
 -- | The 'transpose' function transposes the rows and columns of its
 -- 'ByteString' argument.
 transpose :: [ByteString] -> [ByteString]
@@ -585,7 +582,9 @@ transpose ps = P.map pack (List.transpose (P.map unpack ps))
 -- | 'foldl', applied to a binary operator, a starting value (typically
 -- the left-identity of the operator), and a ByteString, reduces the
 -- ByteString using the binary operator, from left to right.
+--
 -- This function is subject to array fusion.
+--
 foldl :: (a -> Word8 -> a) -> a -> ByteString -> a
 foldl f v (PS x s l) = inlinePerformIO $ withForeignPtr x $ \ptr ->
         lgo v (ptr `plusPtr` s) (ptr `plusPtr` (s+l))
@@ -597,7 +596,8 @@ foldl f v (PS x s l) = inlinePerformIO $ withForeignPtr x $ \ptr ->
 {-# INLINE foldl #-}
 
 -- | 'foldl\'' is like 'foldl', but strict in the accumulator.
--- Though actually foldl is also strict in the accumulator.
+-- However, for ByteStrings, all left folds are strict in the accumulator.
+--
 foldl' :: (a -> Word8 -> a) -> a -> ByteString -> a
 foldl' = foldl
 {-# INLINE foldl' #-}
@@ -923,10 +923,10 @@ break p ps = case findIndexOrEnd p ps of n -> (unsafeTake n ps, unsafeDrop n ps)
 #endif
 
 {-# RULES
-    "ByteString specialise break (x==)" forall x.
-        break ((==) x) = breakByte x
-    "ByteString specialise break (==x)" forall x.
-        break (==x) = breakByte x
+"ByteString specialise break (x==)" forall x.
+    break ((==) x) = breakByte x
+"ByteString specialise break (==x)" forall x.
+    break (==x) = breakByte x
   #-}
 
 -- INTERNAL:
@@ -976,10 +976,10 @@ spanByte c ps@(PS x s l) = inlinePerformIO $ withForeignPtr x $ \p ->
 {-# INLINE spanByte #-}
 
 {-# RULES
-    "ByteString specialise span (x==)" forall x.
-        span ((==) x) = spanByte x
-    "ByteString specialise span (==x)" forall x.
-        span (==x) = spanByte x
+"ByteString specialise span (x==)" forall x.
+    span ((==) x) = spanByte x
+"ByteString specialise span (==x)" forall x.
+    span (==x) = spanByte x
   #-}
 
 -- | 'spanEnd' behaves like 'span' but from the end of the 'ByteString'.
@@ -1143,8 +1143,8 @@ intercalate s = concat . (List.intersperse s)
 {-# INLINE [1] intercalate #-}
 
 {-# RULES
-    "ByteString specialise intercalate c -> intercalateByte" forall c s1 s2 .
-        intercalate (singleton c) (s1 : s2 : []) = intercalateWithByte c s1 s2
+"ByteString specialise intercalate c -> intercalateByte" forall c s1 s2 .
+    intercalate (singleton c) (s1 : s2 : []) = intercalateWithByte c s1 s2
   #-}
 
 -- | /O(n)/ intercalateWithByte. An efficient way to join to two ByteStrings
@@ -1331,10 +1331,10 @@ filterByte w ps = replicate (count w ps) w
 {-# INLINE filterByte #-}
 
 {-# RULES
-  "ByteString specialise filter (== x)" forall x.
-      filter ((==) x) = filterByte x
-  "ByteString specialise filter (== x)" forall x.
-     filter (== x) = filterByte x
+"ByteString specialise filter (== x)" forall x.
+    filter ((==) x) = filterByte x
+"ByteString specialise filter (== x)" forall x.
+    filter (== x) = filterByte x
   #-}
 
 -- | /O(n)/ The 'find' function takes a predicate and a ByteString,
@@ -1499,8 +1499,8 @@ zipWith' f (PS fp s l) (PS fq t m) = inlinePerformIO $
 {-# INLINE zipWith' #-}
 
 {-# RULES
-    "ByteString specialise zipWith" forall (f :: Word8 -> Word8 -> Word8) p q .
-        zipWith f p q = unpack (zipWith' f p q)
+"ByteString specialise zipWith" forall (f :: Word8 -> Word8 -> Word8) p q .
+    zipWith f p q = unpack (zipWith' f p q)
   #-}
 
 -- | /O(n)/ 'unzip' transforms a list of pairs of bytes into a pair of
