@@ -200,7 +200,7 @@ checkInvariant :: L.ByteString -> L.ByteString
 checkInvariant cs0 = check cs0
   where check L.Empty        = L.Empty
         check (L.Chunk c cs)
-	       | P.null c    = error ("invariant violation: " ++ show cs0)
+               | P.null c    = error ("invariant violation: " ++ show cs0)
                | otherwise   = L.Chunk c (check cs)
 
 abstr :: L.ByteString -> P.ByteString

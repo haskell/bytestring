@@ -66,7 +66,7 @@ prop-opt:
 .PHONY: hpc
 hpc: 
 	@echo "Compiled, rules on, with hpc"	
-	${GHC} ${GHCFLAGS} -ddump-simpl-stats -fhpc --make -i.. -i../dist/build/ Properties.hs -o p -no-recomp
+	${GHC} ${GHCFLAGS} ../dist/build/cbits/fpstring.o -ddump-simpl-stats -fhpc --make -i.. -i../dist/build/ Properties.hs -o p -no-recomp
 	time ./p
 
 #
