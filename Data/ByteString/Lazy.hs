@@ -193,10 +193,6 @@ module Data.ByteString.Lazy (
         hPut,                   -- :: Handle -> ByteString -> IO ()
         hPutStr,                -- :: Handle -> ByteString -> IO ()
 
---      hGetN,                  -- :: Int -> Handle -> Int -> IO ByteString
---      hGetContentsN,          -- :: Int -> Handle -> IO ByteString
---      hGetNonBlockingN,       -- :: Int -> Handle -> IO ByteString
-
   ) where
 
 import qualified Prelude
@@ -1034,13 +1030,11 @@ filterByte w ps = replicate (count w ps) w
 {-# INLINE filterByte #-}
 
 {-# RULES
-  "FPS specialise filter (== x)" forall x.
-      filter ((==) x) = filterByte x
-  #-}
+"ByteString specialise filter (== x)" forall x.
+  filter ((==) x) = filterByte x
 
-{-# RULES
-  "FPS specialise filter (== x)" forall x.
-     filter (== x) = filterByte x
+"ByteString specialise filter (== x)" forall x.
+ filter (== x) = filterByte x
   #-}
 
 {-
