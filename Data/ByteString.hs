@@ -1730,7 +1730,8 @@ putStrLn = hPutStrLn stdout
 
 -- | Read a 'ByteString' directly from the specified 'Handle'.  This
 -- is far more efficient than reading the characters into a 'String'
--- and then using 'pack'.
+-- and then using 'pack'. First argument is the Handle to read from, 
+-- and the second is the number of bytes to read.
 --
 hGet :: Handle -> Int -> IO ByteString
 hGet _ 0 = return empty
