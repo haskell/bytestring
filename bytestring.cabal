@@ -39,17 +39,19 @@ library
                      Data.ByteString.Lazy.Char8
                      Data.ByteString.Lazy.Internal
                      Data.ByteString.Fusion
+
   extensions:        CPP, ForeignFunctionInterface
+
+  ghc-options: -XUnliftedFFITypes -XMagicHash -XUnboxedTuples -XDeriveDataTypeable
+               -Wall -fno-warn-orphans
+               -O2 -funbox-strict-fields 
+               -fdicts-cheap -fno-method-sharing
+               -fmax-simplifier-iterations10 -fcpr-off
 
   c-sources:         cbits/fpstring.c
   include-dirs:      include
   includes:          fpstring.h
   install-includes:  fpstring.h
-
-  ghc-options: -Wall
-               -fglasgow-exts -O2 -funbox-strict-fields 
-               -fdicts-cheap -fno-method-sharing
-               -fmax-simplifier-iterations10 -fcpr-off
 
   nhc98-options:     -K4M -K3M
   if impl(ghc <= 6.4.2)
