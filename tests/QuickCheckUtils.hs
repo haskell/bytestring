@@ -24,6 +24,34 @@ import qualified Data.ByteString.Lazy.Internal as L (ByteString(..))
 import qualified Data.ByteString.Char8      as PC
 import qualified Data.ByteString.Lazy.Char8 as LC
 
+{-
+
+-- HUGS needs: 
+
+instance Functor ((->) r) where
+        fmap = (.)
+
+instance (Arbitrary a) => Arbitrary (Maybe a) where
+  arbitrary            = sized arbMaybe
+   where
+    arbMaybe 0 = return Nothing
+    arbMaybe n = fmap Just (resize (n-1) arbitrary)
+  coarbitrary Nothing  = variant 0
+  coarbitrary (Just x) = variant 1 . coarbitrary x
+
+instance Monad ((->) r) where
+        return = const
+        f >>= k = \ r -> k (f r) r
+
+instance Functor ((,) a) where
+        fmap f (x,y) = (x, f y)
+
+instance Functor (Either a) where
+        fmap _ (Left x) = Left x
+        fmap f (Right y) = Right (f y)
+
+-}
+
 -- Enable this to get verbose test output. Including the actual tests.
 debug = False
 
@@ -185,6 +213,7 @@ class (Functor f, Functor g) => NatTrans f g where
 instance NatTrans [] []             where eta = id
 instance NatTrans Maybe Maybe       where eta = id
 instance NatTrans ((->) X) ((->) X) where eta = id
+
 instance NatTrans ((->) W) ((->) W) where eta = id
 
 -- We have a transformation of pairs, if the pairs are in Model
