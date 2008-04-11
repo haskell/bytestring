@@ -1,4 +1,5 @@
-{-# OPTIONS_GHC -cpp -fglasgow-exts -fno-warn-orphans #-}
+{-# LANGUAGE CPP #-}
+{-# OPTIONS_GHC -fglasgow-exts -fno-warn-orphans #-}
 -- |
 -- Module      : Data.ByteString.Fusion
 -- License     : BSD-style

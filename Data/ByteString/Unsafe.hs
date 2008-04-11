@@ -1,4 +1,5 @@
-{-# OPTIONS_GHC -cpp -fglasgow-exts #-}
+{-# LANGUAGE CPP #-}
+{-# OPTIONS_GHC -XMagicHash #-}
 -- |
 -- Module      : Data.ByteString.Unsafe
 -- License     : BSD-style

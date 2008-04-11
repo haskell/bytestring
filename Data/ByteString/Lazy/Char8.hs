@@ -1,4 +1,5 @@
-{-# OPTIONS_GHC -cpp -fno-warn-orphans #-}
+{-# LANGUAGE CPP #-}
+{-# GHC_OPTIONS -fno-warn-orphans #-}
 
 -- #prune
 

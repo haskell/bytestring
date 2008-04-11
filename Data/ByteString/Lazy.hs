@@ -1,4 +1,5 @@
-{-# OPTIONS_GHC -cpp -fglasgow-exts -fno-warn-orphans -fno-warn-incomplete-patterns #-}
+{-# LANGUAGE CPP #-}
+{-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
 
 -- #prune
 

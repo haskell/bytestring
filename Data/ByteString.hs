@@ -1,4 +1,5 @@
-{-# OPTIONS_GHC -cpp -fglasgow-exts -fno-warn-orphans #-}
+{-# LANGUAGE CPP #-}
+{-# OPTIONS_GHC -XMagicHash -XUnboxedTuples #-}
 
 -- #prune
 
@@ -7,8 +8,8 @@
 -- Copyright   : (c) The University of Glasgow 2001,
 --               (c) David Roundy 2003-2005,
 --               (c) Simon Marlow 2005
---               (c) Don Stewart 2005-2006
 --               (c) Bjorn Bringert 2006
+--               (c) Don Stewart 2005-2008
 --
 --               Array fusion code:
 --               (c) 2001,2002 Manuel M T Chakravarty & Gabriele Keller

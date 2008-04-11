@@ -1,4 +1,5 @@
-{-# OPTIONS_GHC -cpp -fglasgow-exts #-}
+{-# LANGUAGE CPP #-}
+{-# OPTIONS_GHC -XDeriveDataTypeable #-}
 -- |
 -- Module      : Data.ByteString.Lazy.Internal
 -- License     : BSD-style

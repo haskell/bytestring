@@ -1,4 +1,5 @@
-{-# OPTIONS_GHC -cpp -fglasgow-exts #-}
+{-# LANGUAGE CPP, ForeignFunctionInterface #-}
+{-# OPTIONS_GHC -XUnliftedFFITypes -XMagicHash -XUnboxedTuples -XDeriveDataTypeable #-}
 -- |
 -- Module      : Data.ByteString.Internal
 -- License     : BSD-style
