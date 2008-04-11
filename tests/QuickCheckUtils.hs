@@ -19,7 +19,7 @@ import System.IO
 import Data.ByteString.Fusion
 import qualified Data.ByteString      as P
 import qualified Data.ByteString.Lazy as L
-import qualified Data.ByteString.Lazy.Internal as L (ByteString(..))
+import qualified Data.ByteString.Lazy.Internal as L (checkInvariant,ByteString(..))
 
 import qualified Data.ByteString.Char8      as PC
 import qualified Data.ByteString.Lazy.Char8 as LC
@@ -158,7 +158,7 @@ integralRandomR  (a,b) g = case randomR (fromIntegral a :: Integer,
                             (x,g) -> (fromIntegral x, g)
 
 instance Arbitrary L.ByteString where
-    arbitrary     = arbitrary >>= return . L.fromChunks . filter (not. P.null) -- maintain the invariant.
+    arbitrary     = arbitrary >>= return . L.checkInvariant . L.fromChunks . filter (not. P.null)  -- maintain the invariant.
     coarbitrary s = coarbitrary (L.unpack s)
 
 instance Arbitrary P.ByteString where
@@ -226,11 +226,7 @@ instance (NatTrans m n, Model a b) => Model (m a) (n b) where model x = fmap mod
 
 -- In a form more useful for QC testing (and it's lazy)
 checkInvariant :: L.ByteString -> L.ByteString
-checkInvariant cs0 = check cs0
-  where check L.Empty        = L.Empty
-        check (L.Chunk c cs)
-               | P.null c    = error ("invariant violation: " ++ show cs0)
-               | otherwise   = L.Chunk c (check cs)
+checkInvariant = L.checkInvariant
 
 abstr :: L.ByteString -> P.ByteString
 abstr = P.concat . L.toChunks 
