@@ -10,6 +10,7 @@ import Data.Char
 import Data.Word
 import Data.Maybe
 import Data.Int (Int64)
+import Data.Monoid
 
 import Text.Printf
 import Debug.Trace
@@ -52,6 +53,7 @@ prop_appendBP       = L.append      `eq2`  P.append
 prop_breakBP        = L.break       `eq2`  P.break
 prop_concatMapBP    = L.concatMap   `eq2`  P.concatMap
 prop_consBP         = L.cons        `eq2`  P.cons
+prop_unconsBP       = L.uncons      `eq1`  P.uncons
 prop_countBP        = L.count       `eq2`  P.count
 prop_dropBP         = L.drop        `eq2`  P.drop
 prop_dropWhileBP    = L.dropWhile   `eq2`  P.dropWhile
@@ -503,6 +505,8 @@ prop_sort5 xs ys =
 
 prop_nil1BB = P.length P.empty == 0
 prop_nil2BB = P.unpack P.empty == []
+prop_nil1BB_monoid = P.length mempty == 0
+prop_nil2BB_monoid = P.unpack mempty == []
 
 prop_tailSBB xs = not (P.null xs) ==> P.tail xs == P.pack (tail (P.unpack xs))
 
@@ -581,8 +585,12 @@ prop_joinsplitBB c xs = P.intercalate (P.pack [c]) (P.split c xs) == xs
 --     (not . C.null) xs ==>
 --     C.lines' xs == C.split '\n' xs
 
+-- false:
+{-
 prop_linessplit2BB xs =
+   (not . C.null) xs ==>
     C.lines xs == C.split '\n' xs ++ (if C.last xs == '\n' then [C.empty] else [])
+-}
 
 prop_splitsplitWithBB c xs = P.split c xs == P.splitWith (== c) xs
 
@@ -593,7 +601,7 @@ prop_packunpackBB  s = (P.unpack . P.pack) s == id s
 prop_packunpackBB' s = (P.pack . P.unpack) s == id s
 
 prop_eq1BB xs      = xs            == (P.unpack . P.pack $ xs)
-prop_eq2BB xs      = xs == xs
+prop_eq2BB xs      = xs == (xs :: P.ByteString)
 prop_eq3BB xs ys   = (xs == ys) == (P.unpack xs == P.unpack ys)
 
 prop_compare1BB xs  = (P.pack xs         `compare` P.pack xs) == EQ
@@ -633,6 +641,11 @@ prop_initBB xs     =
 prop_append1BB xs    = (xs ++ xs) == (P.unpack $ P.pack xs `P.append` P.pack xs)
 prop_append2BB xs ys = (xs ++ ys) == (P.unpack $ P.pack xs `P.append` P.pack ys)
 prop_append3BB xs ys = P.append xs ys == P.pack (P.unpack xs ++ P.unpack ys)
+
+prop_append1BB_monoid xs    = (xs ++ xs) == (P.unpack $ P.pack xs `mappend` P.pack xs)
+prop_append2BB_monoid xs ys = (xs ++ ys) == (P.unpack $ P.pack xs `mappend` P.pack ys)
+prop_append3BB_monoid xs ys = mappend xs ys == P.pack (P.unpack xs ++ P.unpack ys)
+
 
 prop_map1BB f xs   = P.map f (P.pack xs)    == P.pack (map f xs)
 prop_map2BB f g xs = P.map f (P.map g xs) == P.map (f . g) xs
@@ -716,6 +729,10 @@ prop_concat1BB xs = (concat [xs,xs]) == (P.unpack $ P.concat [P.pack xs, P.pack 
 prop_concat2BB xs = (concat [xs,[]]) == (P.unpack $ P.concat [P.pack xs, P.pack []])
 prop_concatBB xss = P.concat (map P.pack xss) == P.pack (concat xss)
 
+prop_concat1BB_monoid xs = (concat [xs,xs]) == (P.unpack $ mconcat [P.pack xs, P.pack xs])
+prop_concat2BB_monoid xs = (concat [xs,[]]) == (P.unpack $ mconcat [P.pack xs, P.pack []])
+prop_concatBB_monoid xss = mconcat (map P.pack xss) == P.pack (concat xss)
+
 prop_concatMapBB xs = C.concatMap C.singleton xs == (C.pack . concatMap (:[]) . C.unpack) xs
 
 prop_anyBB xs a = (any (== a) xs) == (P.any (== a) (P.pack xs))
@@ -776,7 +793,7 @@ prop_sort5BB xs ys =
 
 prop_intersperseBB c xs = (intersperse c xs) == (P.unpack $ P.intersperse c (P.pack xs))
 
-prop_transposeBB xs = (transpose xs) == ((map P.unpack) . P.transpose .  (map P.pack)) xs
+-- prop_transposeBB xs = (transpose xs) == ((map P.unpack) . P.transpose .  (map P.pack)) xs
 
 prop_maximumBB xs = (not (null xs)) ==> (maximum xs) == (P.maximum ( P.pack xs ))
 prop_minimumBB xs = (not (null xs)) ==> (minimum xs) == (P.minimum ( P.pack xs ))
@@ -1181,6 +1198,7 @@ bp_tests =
     ,("compare",     mytest prop_compareBP)
     ,("concat",      mytest prop_concatBP)
     ,("cons",        mytest prop_consBP)
+    ,("uncons",      mytest prop_unconsBP)
     ,("eq",          mytest prop_eqBP)
     ,("filter",      mytest prop_filterBP)
     ,("find",        mytest prop_findBP)
@@ -1290,7 +1308,7 @@ pl_tests =
     ,("tails",       mytest prop_tailsPL)
     ,("elem",        mytest prop_elemPL)
     ,("notElem",     mytest prop_notElemPL)
-    ,("lines",       mytest prop_linesBL)
+    ,("lines",       mytest prop_linesPL)
     ,("elemIndex",   mytest prop_elemIndexPL)
     ,("elemIndices", mytest prop_elemIndicesPL)
     ,("concatMap",   mytest prop_concatMapPL)
@@ -1305,7 +1323,7 @@ bb_tests =
     ,    ("pack/unpack",    mytest prop_packunpackBB)
     ,    ("unpack/pack",    mytest prop_packunpackBB')
     ,    ("eq 1",           mytest prop_eq1BB)
-    ,    ("eq 2",           mytest prop_eq3BB)
+    ,    ("eq 2",           mytest prop_eq2BB)
     ,    ("eq 3",           mytest prop_eq3BB)
     ,    ("compare 1",      mytest prop_compare1BB)
     ,    ("compare 2",      mytest prop_compare2BB)
@@ -1317,6 +1335,9 @@ bb_tests =
     ,    ("compare 8",      mytest prop_compare8BB)
     ,    ("empty 1",        mytest prop_nil1BB)
     ,    ("empty 2",        mytest prop_nil2BB)
+    ,    ("empty 1 monoid", mytest prop_nil1BB_monoid)
+    ,    ("empty 2 monoid", mytest prop_nil2BB_monoid)
+
     ,    ("null",           mytest prop_nullBB)
     ,    ("length 1",       mytest prop_lengthBB)
     ,    ("length 2",       mytest prop_lengthSBB)
@@ -1336,6 +1357,10 @@ bb_tests =
     ,    ("append 1",       mytest prop_append1BB)
     ,    ("append 2",       mytest prop_append2BB)
     ,    ("append 3",       mytest prop_append3BB)
+    ,    ("mappend 1",       mytest prop_append1BB_monoid)
+    ,    ("mappend 2",       mytest prop_append2BB_monoid)
+    ,    ("mappend 3",       mytest prop_append3BB_monoid)
+
     ,    ("map 1",          mytest prop_map1BB)
     ,    ("map 2",          mytest prop_map2BB)
     ,    ("map 3",          mytest prop_map3BB)
@@ -1368,9 +1393,14 @@ bb_tests =
     ,    ("break",          mytest prop_breakBB)
     ,    ("elem",           mytest prop_elemBB)
     ,    ("notElem",        mytest prop_notElemBB)
+
     ,    ("concat 1",       mytest prop_concat1BB)
     ,    ("concat 2",       mytest prop_concat2BB)
     ,    ("concat 3",       mytest prop_concatBB)
+    ,    ("mconcat 1",       mytest prop_concat1BB_monoid)
+    ,    ("mconcat 2",       mytest prop_concat2BB_monoid)
+    ,    ("mconcat 3",       mytest prop_concatBB_monoid)
+
     ,    ("lines",          mytest prop_linesBB)
     ,    ("unlines",        mytest prop_unlinesBB)
     ,    ("words",          mytest prop_wordsBB)
@@ -1452,7 +1482,7 @@ bb_tests =
     ,    ("joinsplit",      mytest prop_joinsplitBB)
 --     ,    ("lineIndices",    mytest prop_lineIndices1BB)
     ,    ("count",          mytest prop_countBB)
---  ,    ("linessplit",     mytest prop_linessplitBB)
+--  ,    ("linessplit",     mytest prop_linessplit2BB)
     ,    ("splitsplitWith", mytest prop_splitsplitWithBB)
 --  ,    ("joinjoinpath",   mytest prop_joinjoinpathBB)
     ,    ("zip",            mytest prop_zipBB)
@@ -1586,6 +1616,7 @@ ll_tests =
     ,("dropWhile",          mytest prop_dropWhile)
     ,("break",              mytest prop_break)
     ,("span",               mytest prop_span)
+    ,("splitAt",               mytest prop_splitAt)
     ,("break/span",         mytest prop_breakspan)
 --     ,("break/breakByte",    mytest prop_breakByte)
 --     ,("span/spanByte",      mytest prop_spanByte)
