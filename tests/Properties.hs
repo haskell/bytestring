@@ -93,6 +93,7 @@ prop_tailBP         = L.tail        `eqnotnull1` P.tail
 prop_foldl1BP       = L.foldl1      `eqnotnull2` P.foldl1
 prop_foldl1BP'      = L.foldl1'     `eqnotnull2` P.foldl1'
 prop_foldr1BP       = L.foldr1      `eqnotnull2` P.foldr1
+prop_foldr1BP'      = L.foldr1      `eqnotnull2` P.foldr1'
 prop_scanlBP        = L.scanl       `eqnotnull3` P.scanl
 
 prop_eqBP        = eq2
@@ -110,6 +111,9 @@ prop_foldlBP'    = eq3
 prop_foldrBP     = eq3
     (L.foldr     :: (W -> X -> X) -> X -> B -> X)
     (P.foldr     :: (W -> X -> X) -> X -> P -> X)
+prop_foldrBP'    = eq3
+    (L.foldr     :: (W -> X -> X) -> X -> B -> X)
+    (P.foldr'    :: (W -> X -> X) -> X -> P -> X)
 prop_mapAccumLBP = eq3
     (L.mapAccumL :: (X -> W -> (X,W)) -> X -> B -> (X, B))
     (P.mapAccumL :: (X -> W -> (X,W)) -> X -> P -> (X, P))
@@ -119,6 +123,14 @@ prop_unfoldrBP   = eq3
         L.unfoldr    f a) :: Int -> (X -> Maybe (W,X)) -> X -> B)
     ((\n f a ->                     fst $
         P.unfoldrN n f a) :: Int -> (X -> Maybe (W,X)) -> X -> P)
+
+prop_unfoldr2BP   = eq2
+    ((\n a -> P.take (n*100) $
+        P.unfoldr    (\x -> if x <= (n*100) then Just (fromIntegral x, x + 1) else Nothing) a)
+                :: Int -> Int -> P)
+    ((\n a ->                     fst $
+        P.unfoldrN (n*100) (\x -> if x <= (n*100) then Just (fromIntegral x, x + 1) else Nothing) a)
+                :: Int -> Int -> P)
 
 --
 -- properties comparing ByteString.Lazy `eq1` List
@@ -858,6 +870,19 @@ prop_findSubstringsBB s x l
     naive_findSubstrings :: String -> String -> [Int]
     naive_findSubstrings p s = [x | x <- [0..length s], p `isPrefixOf` drop x s]
 
+prop_findSubstringBB s x l
+    = C.findSubstring (C.pack p) (C.pack s) == naive_findSubstring p s
+  where
+    _ = l :: Int
+    _ = x :: Int
+
+    -- we look for some random substring of the test string
+    p = take (model l) $ drop (model x) s
+
+    -- naive reference implementation
+    naive_findSubstring :: String -> String -> Maybe Int
+    naive_findSubstring p s = listToMaybe [x | x <- [0..length s], p `isPrefixOf` drop x s]
+
 prop_replicate1BB n c = P.unpack (P.replicate n c) == replicate n c
 prop_replicate2BB n c = P.replicate n c == fst (P.unfoldrN n (\u -> Just (u,u)) c)
 
@@ -1209,9 +1234,12 @@ bp_tests =
     ,("foldl1",      mytest prop_foldl1BP)
     ,("foldl1'",     mytest prop_foldl1BP')
     ,("foldr",       mytest prop_foldrBP)
+    ,("foldr'",       mytest prop_foldrBP')
     ,("foldr1",      mytest prop_foldr1BP)
+    ,("foldr1'",      mytest prop_foldr1BP')
     ,("mapAccumL",   mytest prop_mapAccumLBP)
     ,("unfoldr",     mytest prop_unfoldrBP)
+    ,("unfoldr 2",   mytest prop_unfoldr2BP)
     ,("head",        mytest prop_headBP)
     ,("init",        mytest prop_initBP)
     ,("isPrefixOf",  mytest prop_isPrefixOfBP)
@@ -1443,6 +1471,7 @@ bb_tests =
     ,    ("inits",          mytest prop_initsBB)
     ,    ("tails",          mytest prop_tailsBB)
     ,    ("findSubstrings ",mytest prop_findSubstringsBB)
+    ,    ("findSubstring ",mytest prop_findSubstringBB)
     ,    ("replicate1",     mytest prop_replicate1BB)
     ,    ("replicate2",     mytest prop_replicate2BB)
     ,    ("replicate3",     mytest prop_replicate3BB)

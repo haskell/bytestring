@@ -200,6 +200,7 @@ instance Model B [Char] where model = LC.unpack . checkInvariant
 -- Types are trivially modeled by themselves
 instance Model Bool  Bool         where model = id
 instance Model Int   Int          where model = id
+instance Model P     P            where model = id
 instance Model Int64 Int64        where model = id
 instance Model Int64 Int          where model = fromIntegral
 instance Model Word8 Word8        where model = id
