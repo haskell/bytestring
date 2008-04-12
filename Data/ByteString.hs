@@ -129,7 +129,6 @@ module Data.ByteString (
         isPrefixOf,             -- :: ByteString -> ByteString -> Bool
         isSuffixOf,             -- :: ByteString -> ByteString -> Bool
         isInfixOf,              -- :: ByteString -> ByteString -> Bool
-        isSubstringOf,          -- :: ByteString -> ByteString -> Bool
 
         -- ** Search for arbitrary substrings
         findSubstring,          -- :: ByteString -> ByteString -> Maybe Int
@@ -218,7 +217,7 @@ import Data.ByteString.Fusion
 import qualified Data.List as List
 
 import Data.Word                (Word8)
-import Data.Maybe               (listToMaybe)
+import Data.Maybe               (isJust, listToMaybe)
 import Data.Array               (listArray)
 import qualified Data.Array as Array ((!))
 
@@ -1402,33 +1401,52 @@ isSuffixOf (PS x1 s1 l1) (PS x2 s2 l2)
             i <- memcmp (p1 `plusPtr` s1) (p2 `plusPtr` s2 `plusPtr` (l2 - l1)) (fromIntegral l1)
             return $! i == 0
 
--- | Alias of 'isSubstringOf'
-isInfixOf :: ByteString -> ByteString -> Bool
-isInfixOf = isSubstringOf
-
--- | Check whether one string is a substring of another. @isSubstringOf
+-- | Check whether one string is a substring of another. @isInfixOf
 -- p s@ is equivalent to @not (null (findSubstrings p s))@.
-isSubstringOf :: ByteString -- ^ String to search for.
-              -> ByteString -- ^ String to search in.
-              -> Bool
-isSubstringOf p s = not $ P.null $ findSubstrings p s
+isInfixOf :: ByteString -> ByteString -> Bool
+isInfixOf p s = isJust (findSubstring p s)
 
-{-# DEPRECATED findSubstring "Do not use. The ByteString searching api is about to be replaced." #-}
 -- | Get the first index of a substring in another string,
 --   or 'Nothing' if the string is not found.
 --   @findSubstring p s@ is equivalent to @listToMaybe (findSubstrings p s)@.
 findSubstring :: ByteString -- ^ String to search for.
               -> ByteString -- ^ String to seach in.
               -> Maybe Int
-findSubstring = (listToMaybe .) . findSubstrings
+findSubstring f i = listToMaybe (findSubstrings f i)
 
-{-# DEPRECATED findSubstrings "Do not use. The ByteString searching api is about to be replaced." #-}
+{-
+findSubstring pat str = search 0 str
+    where
+        STRICT2(search)
+        search n s
+            = let x = pat `isPrefixOf` s
+              in
+                if null s
+                    then if x then Just n else Nothing
+                    else if x then Just n
+                              else     search (n+1) (unsafeTail s)
+-}
+
 -- | Find the indexes of all (possibly overlapping) occurances of a
--- substring in a string.  This function uses the Knuth-Morris-Pratt
--- string matching algorithm.
+-- substring in a string.
+--
 findSubstrings :: ByteString -- ^ String to search for.
                -> ByteString -- ^ String to seach in.
                -> [Int]
+
+findSubstrings pat str = search 0 str
+    where
+        STRICT2(search)
+        search n s
+            = let x = pat `isPrefixOf` s
+              in
+                if null s
+                    then if x then [n] else []
+                    else if x then n : search (n+1) (unsafeTail s)
+                              else     search (n+1) (unsafeTail s)
+
+{-
+{- This function uses the Knuth-Morris-Pratt string matching algorithm.  -}
 
 findSubstrings pat@(PS _ _ m) str@(PS _ _ n) = search 0 0
   where
@@ -1448,6 +1466,7 @@ findSubstrings pat@(PS _ _ m) str@(PS _ _ n) = search 0 0
               rest = if i == n then [] else search (i+1) (next (strc i) j + 1)
       next c j | j >= 0 && (j == m || c /= patc j) = next c (kmpNext Array.! j)
                | otherwise = j
+-}
 
 -- ---------------------------------------------------------------------
 -- Zipping
