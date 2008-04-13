@@ -66,8 +66,19 @@ prop-opt:
 .PHONY: hpc
 hpc: 
 	@echo "Compiled, rules on, with hpc"	
-	${GHC} ${GHCFLAGS} ../dist/build/cbits/fpstring.o -ddump-simpl-stats -fhpc --make -i.. -i../dist/build/ Properties.hs -o p -fno-ignore-asserts
-	time ./p
+	rm *.tix
+	${GHC} ${GHCFLAGS} ../dist/build/cbits/fpstring.o -ddump-simpl-stats -fhpc --make -i.. -i../dist/build/ Properties.hs -o p -fno-ignore-asserts -frewrite-rules
+	time ./p 10
+	hpc markup p --exclude=Main --exclude=QuickCheckUtils
+
+# rules-on
+.PHONY: hpc-lite
+hpc-lite: 
+	@echo "Compiled, rules on, with hpc"	
+	rm *.tix
+	${GHC} ${GHCFLAGS} ../dist/build/cbits/fpstring.o -ddump-simpl-stats -fhpc --make -i.. -i../dist/build/ Properties.hs -o p -fno-ignore-asserts -O -fasm -frewrite-rules
+	time ./p 10
+	hpc markup p --exclude=Main --exclude=QuickCheckUtils
 
 #
 # test rewriting is correct and working.
