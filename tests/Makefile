@@ -1,5 +1,5 @@
 GHC=            ghc
-GHCFLAGS=       -cpp -O2 -funbox-strict-fields -no-recomp -v0 -fglasgow-exts -O2 -funbox-strict-fields -fdicts-cheap -fno-method-sharing -fmax-simplifier-iterations10 -fcpr-off
+GHCFLAGS=       -cpp -O2 -funbox-strict-fields -v0 -fglasgow-exts -O2 -funbox-strict-fields -fdicts-cheap -fno-method-sharing -fmax-simplifier-iterations10 -fcpr-off
 
 #PKG=            -package fps
 
