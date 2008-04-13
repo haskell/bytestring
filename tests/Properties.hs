@@ -898,6 +898,22 @@ prop_findSubstringBB s x l
     naive_findSubstring :: String -> String -> Maybe Int
     naive_findSubstring p s = listToMaybe [x | x <- [0..length s], p `isPrefixOf` drop x s]
 
+-- correspondance between break and breakSubstring
+prop_breakSubstringBB c l
+    = P.break (== c) l == P.breakSubstring (P.singleton c) l
+
+prop_breakSubstring_isInfixOf s l
+    = P.isInfixOf s l == if P.null s then True
+                                     else case P.breakSubstring s l of
+                                            (x,y) | P.null y  -> False
+                                                  | otherwise -> True
+
+prop_breakSubstring_findSubstring s l
+    = P.findSubstring s l == if P.null s then Just 0
+                                       else case P.breakSubstring s l of
+                                            (x,y) | P.null y  -> Nothing
+                                                  | otherwise -> Just (P.length x)
+
 prop_replicate1BB n c = P.unpack (P.replicate n c) == replicate n c
 prop_replicate2BB n c = P.replicate n c == fst (P.unfoldrN n (\u -> Just (u,u)) c)
 
@@ -1494,6 +1510,10 @@ bb_tests =
     ,    ("tails",          mytest prop_tailsBB)
     ,    ("findSubstrings ",mytest prop_findSubstringsBB)
     ,    ("findSubstring ",mytest prop_findSubstringBB)
+    ,    ("breakSubstring 1",mytest prop_breakSubstringBB)
+    ,    ("breakSubstring 2",mytest prop_breakSubstring_findSubstring)
+    ,    ("breakSubstring 3",mytest prop_breakSubstring_isInfixOf)
+
     ,    ("replicate1",     mytest prop_replicate1BB)
     ,    ("replicate2",     mytest prop_replicate2BB)
     ,    ("replicate3",     mytest prop_replicate3BB)
