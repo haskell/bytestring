@@ -4,6 +4,7 @@
 --
 
 import Test.QuickCheck
+import Control.Monad
 
 import Data.List
 import Data.Char
@@ -265,6 +266,9 @@ prop_tailPL       = P.tail      `eqnotnull1` (tail      :: [W] -> [W])
 
 prop_zipWithPL    = (P.zipWith  :: (W -> W -> X) -> P   -> P   -> [X]) `eq3`
                       (zipWith  :: (W -> W -> X) -> [W] -> [W] -> [X])
+
+prop_zipWithPL_rules   = (P.zipWith  :: (W -> W -> W) -> P -> P -> [W]) `eq3`
+                         (zipWith    :: (W -> W -> W) -> [W] -> [W] -> [W])
 
 prop_eqPL      = eq2
     ((==) :: P   -> P   -> Bool)
@@ -1134,13 +1138,16 @@ prop_length_loop_fusion_4 f1 acc1 xs =
 ------------------------------------------------------------------------
 -- The entry point
 
+main :: IO ()
 main = run tests
 
-run :: [(String, Int -> IO ())] -> IO ()
+run :: [(String, Int -> IO (Bool,Int))] -> IO ()
 run tests = do
     x <- getArgs
     let n = if null x then 100 else read . head $ x
-    mapM_ (\(s,a) -> printf "%-25s: " s >> a n) tests
+    (results, passed) <- liftM unzip $ mapM (\(s,a) -> printf "%-40s: " s >> a n) tests
+    printf "Passed %d tests!\n" (sum passed)
+    when (not . and $ results) $ fail "Not all tests passed!"
 
 --
 -- And now a list of all the properties to test.
@@ -1314,6 +1321,7 @@ pl_tests =
     ,("zip",         mytest prop_zipPL)
     ,("unzip",       mytest prop_unzipPL)
     ,("zipWith",          mytest prop_zipWithPL)
+    ,("zipWith ruiles",   mytest prop_zipWithPL_rules)
 --     ,("zipWith/zipWith'", mytest prop_zipWithPL')
 
     ,("isPrefixOf",  mytest prop_isPrefixOfPL)
