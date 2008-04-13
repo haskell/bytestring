@@ -24,13 +24,8 @@ Tested-With:         GHC ==6.8.2
 Build-Type:          Simple
 Cabal-Version:       >= 1.2
 
-flag split-base
-
 library
-  if flag(split-base)
-    build-depends:   base >= 3, array
-  else
-    build-depends:   base < 3
+  build-depends:     base
   exposed-modules:   Data.ByteString
                      Data.ByteString.Char8
                      Data.ByteString.Unsafe
