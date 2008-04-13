@@ -210,3 +210,4 @@ clean:
 	rm -f *~ *.o *.hi $(BIN) bench */*.o */*.hi */*~ 
 	rm -f wc letter_frequency spellcheck linesort fuse inline p u fp lazylines lazybuild lazybuildcons
 	rm -f down-fuse zipwith fusionbench unpack groupby
+	rm -rf *.tix *.html .hpc check
