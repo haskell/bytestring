@@ -1496,8 +1496,7 @@ zipWith f ps qs
 -- | A specialised version of zipWith for the common case of a
 -- simultaneous map over two bytestrings, to build a 3rd. Rewrite rules
 -- are used to automatically covert zipWith into zipWith' when a pack is
--- performed on the result of zipWith, but we also export it for
--- convenience.
+-- performed on the result of zipWith.
 --
 zipWith' :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString -> ByteString
 zipWith' f (PS fp s l) (PS fq t m) = inlinePerformIO $
