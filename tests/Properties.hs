@@ -229,9 +229,13 @@ prop_consPL       = P.cons      `eq2`    ((:)       :: W -> [W] -> [W])
 prop_dropPL       = P.drop      `eq2`    (drop      :: Int -> [W] -> [W])
 prop_dropWhilePL  = P.dropWhile `eq2`    (dropWhile :: (W -> Bool) -> [W] -> [W])
 prop_filterPL     = P.filter    `eq2`    (filter    :: (W -> Bool ) -> [W] -> [W])
+prop_filterPL_rule= (\x -> P.filter ((==) x))  `eq2` -- test rules
+                    ((\x -> filter ((==) x)) :: W -> [W] -> [W])
+prop_partitionPL  = P.partition `eq2`    (partition :: (W -> Bool ) -> [W] -> ([W],[W]))
 prop_findPL       = P.find      `eq2`    (find      :: (W -> Bool) -> [W] -> Maybe W)
 prop_findIndexPL  = P.findIndex `eq2`    (findIndex :: (W -> Bool) -> [W] -> Maybe Int)
 prop_isPrefixOfPL = P.isPrefixOf`eq2`    (isPrefixOf:: [W] -> [W] -> Bool)
+prop_isInfixOfPL = P.isInfixOf`eq2`       (isInfixOf:: [W] -> [W] -> Bool)
 prop_mapPL        = P.map       `eq2`    (map       :: (W -> W) -> [W] -> [W])
 prop_replicatePL  = P.replicate `eq2`    (replicate :: Int -> W -> [W])
 prop_snocPL       = P.snoc      `eq2`    ((\xs x -> xs ++ [x]) :: [W] -> W -> [W])
@@ -596,6 +600,13 @@ prop_splitWithBB f xs = (l1 == l2 || l1 == l2+1) &&
         l2 = P.length (P.filter f xs)
 
 prop_joinsplitBB c xs = P.intercalate (P.pack [c]) (P.split c xs) == xs
+
+prop_intercalatePL c x y =
+
+    P.intercalate (P.singleton c) (x : y : []) ==
+ --     intercalate (singleton c) (s1 : s2 : [])
+
+    P.pack (intercalate [c] [P.unpack x,P.unpack y])
 
 -- prop_linessplitBB xs =
 --     (not . C.null) xs ==>
@@ -1296,6 +1307,8 @@ pl_tests =
     ,("cons",        mytest prop_consPL)
     ,("eq",          mytest prop_eqPL)
     ,("filter",      mytest prop_filterPL)
+    ,("filter rules",mytest prop_filterPL_rule)
+    ,("partition",   mytest prop_partitionPL)
     ,("find",        mytest prop_findPL)
     ,("findIndex",   mytest prop_findIndexPL)
     ,("findIndices", mytest prop_findIndicesPL)
@@ -1325,6 +1338,7 @@ pl_tests =
 --     ,("zipWith/zipWith'", mytest prop_zipWithPL')
 
     ,("isPrefixOf",  mytest prop_isPrefixOfPL)
+    ,("isInfixOf",   mytest prop_isInfixOfPL)
     ,("length",      mytest prop_lengthPL)
     ,("map",         mytest prop_mapPL)
     ,("null",        mytest prop_nullPL)
@@ -1517,6 +1531,7 @@ bb_tests =
 --     ,    ("wordstokens",    mytest prop_wordstokensBB)
     ,    ("splitWith",      mytest prop_splitWithBB)
     ,    ("joinsplit",      mytest prop_joinsplitBB)
+    ,    ("intercalate",    mytest prop_intercalatePL)
 --     ,    ("lineIndices",    mytest prop_lineIndices1BB)
     ,    ("count",          mytest prop_countBB)
 --  ,    ("linessplit",     mytest prop_linessplit2BB)
