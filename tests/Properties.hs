@@ -3,6 +3,9 @@
 -- with the lhs, and we only end up testing lhs == lhs
 --
 
+import Foreign
+import Foreign.ForeignPtr
+import GHC.Ptr
 import Test.QuickCheck
 import Control.Monad
 
@@ -15,6 +18,7 @@ import Data.Monoid
 
 import Text.Printf
 import Debug.Trace
+import Data.String
 
 import System.Environment
 import System.IO
@@ -27,15 +31,88 @@ import Data.ByteString.Lazy (ByteString(..), pack , unpack)
 import qualified Data.ByteString.Lazy as L
 import Data.ByteString.Lazy.Internal (ByteString(..))
 
-import qualified Data.ByteString       as P
-import qualified Data.ByteString.Internal as P
-import qualified Data.ByteString.Unsafe as P
-import qualified Data.ByteString.Char8 as C
+import qualified Data.ByteString            as P
+import qualified Data.ByteString.Internal   as P
+import qualified Data.ByteString.Unsafe     as P
+import qualified Data.ByteString.Char8      as C
 import qualified Data.ByteString.Lazy.Char8 as D
+import qualified Data.ByteString.Lazy.Internal as LP
 import Data.ByteString.Fusion
 import Prelude hiding (abs)
 
 import QuickCheckUtils
+
+--
+-- ByteString.Lazy.Char8 <=> ByteString.Char8
+--
+
+prop_concatCC       = D.concat      `eq1`  C.concat
+prop_nullCC         = D.null        `eq1`  C.null
+prop_reverseCC      = D.reverse     `eq1`  C.reverse
+prop_transposeCC    = D.transpose   `eq1`  C.transpose
+prop_groupCC        = D.group       `eq1`  C.group
+prop_initsCC        = D.inits       `eq1`  C.inits
+prop_tailsCC        = D.tails       `eq1`  C.tails
+prop_allCC          = D.all         `eq2`  C.all
+prop_anyCC          = D.any         `eq2`  C.any
+prop_appendCC       = D.append      `eq2`  C.append
+prop_breakCC        = D.break       `eq2`  C.break
+prop_concatMapCC    = D.concatMap   `eq2`  C.concatMap
+prop_consCC         = D.cons        `eq2`  C.cons
+prop_unconsCC       = D.uncons      `eq1`  C.uncons
+prop_countCC        = D.count       `eq2`  C.count
+prop_dropCC         = D.drop        `eq2`  C.drop
+prop_dropWhileCC    = D.dropWhile   `eq2`  C.dropWhile
+prop_filterCC       = D.filter      `eq2`  C.filter
+prop_findCC         = D.find        `eq2`  C.find
+prop_findIndexCC    = D.findIndex   `eq2`  C.findIndex
+prop_findIndicesCC  = D.findIndices `eq2`  C.findIndices
+prop_isPrefixOfCC   = D.isPrefixOf  `eq2`  C.isPrefixOf
+prop_mapCC          = D.map         `eq2`  C.map
+prop_replicateCC    = D.replicate   `eq2`  C.replicate
+prop_snocCC         = D.snoc        `eq2`  C.snoc
+prop_spanCC         = D.span        `eq2`  C.span
+prop_splitCC        = D.split       `eq2`  C.split
+prop_splitAtCC      = D.splitAt     `eq2`  C.splitAt
+prop_takeCC         = D.take        `eq2`  C.take
+prop_takeWhileCC    = D.takeWhile   `eq2`  C.takeWhile
+prop_elemCC         = D.elem        `eq2`  C.elem
+prop_notElemCC      = D.notElem     `eq2`  C.notElem
+prop_elemIndexCC    = D.elemIndex   `eq2`  C.elemIndex
+prop_elemIndicesCC  = D.elemIndices `eq2`  C.elemIndices
+prop_lengthCC       = D.length      `eq1`  (fromIntegral . C.length :: C.ByteString -> Int64)
+
+prop_headCC         = D.head        `eqnotnull1` C.head
+prop_initCC         = D.init        `eqnotnull1` C.init
+prop_lastCC         = D.last        `eqnotnull1` C.last
+prop_maximumCC      = D.maximum     `eqnotnull1` C.maximum
+prop_minimumCC      = D.minimum     `eqnotnull1` C.minimum
+prop_tailCC         = D.tail        `eqnotnull1` C.tail
+prop_foldl1CC       = D.foldl1      `eqnotnull2` C.foldl1
+prop_foldl1CC'      = D.foldl1'     `eqnotnull2` C.foldl1'
+prop_foldr1CC       = D.foldr1      `eqnotnull2` C.foldr1
+prop_foldr1CC'      = D.foldr1      `eqnotnull2` C.foldr1'
+prop_scanlCC        = D.scanl       `eqnotnull3` C.scanl
+
+prop_intersperseCC = D.intersperse  `eq2` C.intersperse
+
+prop_foldlCC     = eq3
+    (D.foldl     :: (X -> Char -> X) -> X -> B -> X)
+    (C.foldl     :: (X -> Char -> X) -> X -> P -> X)
+prop_foldlCC'    = eq3
+    (D.foldl'    :: (X -> Char -> X) -> X -> B -> X)
+    (C.foldl'    :: (X -> Char -> X) -> X -> P -> X)
+prop_foldrCC     = eq3
+    (D.foldr     :: (Char -> X -> X) -> X -> B -> X)
+    (C.foldr     :: (Char -> X -> X) -> X -> P -> X)
+prop_foldrCC'    = eq3
+    (D.foldr     :: (Char -> X -> X) -> X -> B -> X)
+    (C.foldr'    :: (Char -> X -> X) -> X -> P -> X)
+prop_mapAccumLCC = eq3
+    (D.mapAccumL :: (X -> Char -> (X,Char)) -> X -> B -> (X, B))
+    (C.mapAccumL :: (X -> Char -> (X,Char)) -> X -> P -> (X, P))
+
+prop_mapIndexedCC = D.mapIndexed `eq2` C.mapIndexed
 
 --
 -- ByteString.Lazy <=> ByteString
@@ -44,6 +121,7 @@ import QuickCheckUtils
 prop_concatBP       = L.concat      `eq1`  P.concat
 prop_nullBP         = L.null        `eq1`  P.null
 prop_reverseBP      = L.reverse     `eq1`  P.reverse
+
 prop_transposeBP    = L.transpose   `eq1`  P.transpose
 prop_groupBP        = L.group       `eq1`  P.group
 prop_initsBP        = L.inits       `eq1`  P.inits
@@ -75,6 +153,7 @@ prop_elemBP         = L.elem        `eq2`  P.elem
 prop_notElemBP      = L.notElem     `eq2`  P.notElem
 prop_elemIndexBP    = L.elemIndex   `eq2`  P.elemIndex
 prop_elemIndicesBP  = L.elemIndices `eq2`  P.elemIndices
+prop_intersperseBP  = L.intersperse  `eq2` P.intersperse
 prop_lengthBP       = L.length      `eq1`  (fromIntegral . P.length :: P.ByteString -> Int64)
 prop_readIntBP      = D.readInt     `eq1`  C.readInt
 prop_linesBP        = D.lines       `eq1`  C.lines
@@ -96,6 +175,7 @@ prop_foldl1BP'      = L.foldl1'     `eqnotnull2` P.foldl1'
 prop_foldr1BP       = L.foldr1      `eqnotnull2` P.foldr1
 prop_foldr1BP'      = L.foldr1      `eqnotnull2` P.foldr1'
 prop_scanlBP        = L.scanl       `eqnotnull3` P.scanl
+
 
 prop_eqBP        = eq2
     ((==) :: B -> B -> Bool)
@@ -1161,6 +1241,57 @@ prop_length_loop_fusion_4 f1 acc1 xs =
 -- prop_span_spec x s =
 --     P.span ((==) x) s == P.spanByte x s
 
+------------------------------------------------------------------------
+
+-- Test IsString
+prop_isstring x = C.unpack (fromString x :: C.ByteString) == x
+
+------------------------------------------------------------------------
+-- Unsafe functions
+
+-- Test unsafePackAddress
+prop_unsafePackAddress x = unsafePerformIO $ do
+        let (p,_,_) = P.toForeignPtr (x `P.snoc` 0)
+        y <- withForeignPtr p $ \(Ptr addr) ->
+            P.unsafePackAddress addr
+        return (y == x)
+
+-- Test unsafePackAddressLen
+prop_unsafePackAddressLen x = unsafePerformIO $ do
+        let i = P.length x
+            (p,_,_) = P.toForeignPtr (x `P.snoc` 0)
+        y <- withForeignPtr p $ \(Ptr addr) ->
+            P.unsafePackAddressLen i addr
+        return (y == x)
+
+prop_unsafeUseAsCString x = unsafePerformIO $ do
+        let n = P.length x
+        y <- P.unsafeUseAsCString x $ \cstr ->
+                    sequence [ do a <- peekElemOff cstr i
+                                  let b = x `P.index` i
+                                  return (a == fromIntegral b)
+                             | i <- [0.. n-1]     ]
+        return (and y)
+
+prop_unsafeUseAsCStringLen x = unsafePerformIO $ do
+        let n = P.length x
+        y <- P.unsafeUseAsCStringLen x $ \(cstr,_) ->
+                    sequence [ do a <- peekElemOff cstr i
+                                  let b = x `P.index` i
+                                  return (a == fromIntegral b)
+                             | i <- [0.. n-1]     ]
+        return (and y)
+
+prop_internal_invariant x = LP.invariant x
+
+prop_useAsCString x = unsafePerformIO $ do
+        let n = P.length x
+        y <- P.useAsCString x $ \cstr ->
+                    sequence [ do a <- peekElemOff cstr i
+                                  let b = x `P.index` i
+                                  return (a == fromIntegral b)
+                             | i <- [0.. n-1]     ]
+        return (and y)
 
 ------------------------------------------------------------------------
 -- The entry point
@@ -1182,6 +1313,7 @@ run tests = do
 
 tests = misc_tests
      ++ bl_tests
+     ++ cc_tests
      ++ bp_tests
      ++ pl_tests
      ++ bb_tests
@@ -1189,7 +1321,14 @@ tests = misc_tests
      ++ fusion_tests
 
 misc_tests =
-    [("invariant",          mytest prop_invariant)]
+    [("invariant",              mytest prop_invariant)
+    ,("unsafe pack address",    mytest prop_unsafePackAddress)
+    ,("unsafe pack address len",mytest prop_unsafePackAddressLen)
+    ,("unsafeUseAsCString",     mytest prop_unsafeUseAsCString)
+    ,("unsafeUseAsCStringLen",     mytest prop_unsafeUseAsCStringLen)
+    ,("useAsCString",           mytest prop_useAsCString)
+    ,("invariant",              mytest prop_internal_invariant)
+    ]
 
 ------------------------------------------------------------------------
 -- ByteString.Lazy <=> List
@@ -1250,6 +1389,64 @@ bl_tests =
 ------------------------------------------------------------------------
 -- ByteString.Lazy <=> ByteString
 
+cc_tests =
+    [("prop_concatCC", mytest prop_concatCC)
+    ,("prop_nullCC", mytest prop_nullCC)
+    ,("prop_reverseCC", mytest prop_reverseCC)
+    ,("prop_transposeCC", mytest prop_transposeCC)
+    ,("prop_groupCC", mytest prop_groupCC)
+    ,("prop_initsCC", mytest prop_initsCC)
+    ,("prop_tailsCC", mytest prop_tailsCC)
+    ,("prop_allCC", mytest prop_allCC)
+    ,("prop_anyCC", mytest prop_anyCC)
+    ,("prop_appendCC", mytest prop_appendCC)
+    ,("prop_breakCC", mytest prop_breakCC)
+    ,("prop_concatMapCC", mytest prop_concatMapCC)
+    ,("prop_consCC", mytest prop_consCC)
+    ,("prop_unconsCC", mytest prop_unconsCC)
+    ,("prop_countCC", mytest prop_countCC)
+    ,("prop_dropCC", mytest prop_dropCC)
+    ,("prop_dropWhileCC", mytest prop_dropWhileCC)
+    ,("prop_filterCC", mytest prop_filterCC)
+    ,("prop_findCC", mytest prop_findCC)
+    ,("prop_findIndexCC", mytest prop_findIndexCC)
+    ,("prop_findIndicesCC", mytest prop_findIndicesCC)
+    ,("prop_isPrefixOfCC", mytest prop_isPrefixOfCC)
+    ,("prop_mapCC", mytest prop_mapCC)
+    ,("prop_replicateCC", mytest prop_replicateCC)
+    ,("prop_snocCC", mytest prop_snocCC)
+    ,("prop_spanCC", mytest prop_spanCC)
+    ,("prop_splitCC", mytest prop_splitCC)
+    ,("prop_splitAtCC", mytest prop_splitAtCC)
+    ,("prop_takeCC", mytest prop_takeCC)
+    ,("prop_takeWhileCC", mytest prop_takeWhileCC)
+    ,("prop_elemCC", mytest prop_elemCC)
+    ,("prop_notElemCC", mytest prop_notElemCC)
+    ,("prop_elemIndexCC", mytest prop_elemIndexCC)
+    ,("prop_elemIndicesCC", mytest prop_elemIndicesCC)
+    ,("prop_lengthCC", mytest prop_lengthCC)
+    ,("prop_headCC", mytest prop_headCC)
+    ,("prop_initCC", mytest prop_initCC)
+    ,("prop_lastCC", mytest prop_lastCC)
+    ,("prop_maximumCC", mytest prop_maximumCC)
+    ,("prop_minimumCC", mytest prop_minimumCC)
+    ,("prop_tailCC", mytest prop_tailCC)
+    ,("prop_foldl1CC", mytest prop_foldl1CC)
+    ,("prop_foldl1CC'", mytest prop_foldl1CC')
+    ,("prop_foldr1CC", mytest prop_foldr1CC)
+    ,("prop_foldr1CC'", mytest prop_foldr1CC')
+    ,("prop_scanlCC", mytest prop_scanlCC)
+    ,("prop_intersperseCC", mytest prop_intersperseCC)
+
+    ,("prop_foldlCC", mytest prop_foldlCC)
+    ,("prop_foldlCC'", mytest prop_foldlCC')
+    ,("prop_foldrCC", mytest prop_foldrCC)
+    ,("prop_foldrCC'", mytest prop_foldrCC')
+    ,("prop_mapAccumLCC", mytest prop_mapAccumLCC)
+    ,("prop_mapIndexedCC", mytest prop_mapIndexedCC)
+
+    ]
+
 bp_tests =
     [("all",         mytest prop_allBP)
     ,("any",         mytest prop_anyBP)
@@ -1308,6 +1505,7 @@ bp_tests =
     ,("notElem",     mytest prop_notElemBP)
     ,("elemIndex",   mytest prop_elemIndexBP)
     ,("elemIndices", mytest prop_elemIndicesBP)
+    ,("intersperse", mytest prop_intersperseBP)
     ,("concatMap",   mytest prop_concatMapBP)
     ]
 
@@ -1378,6 +1576,7 @@ pl_tests =
     ,("elemIndex",   mytest prop_elemIndexPL)
     ,("elemIndices", mytest prop_elemIndicesPL)
     ,("concatMap",   mytest prop_concatMapPL)
+    ,("IsString",    mytest prop_isstring)
     ]
 
 ------------------------------------------------------------------------

@@ -220,6 +220,7 @@ instance Model P [W]    where model = P.unpack
 instance Model P [Char] where model = PC.unpack
 instance Model B [W]    where model = L.unpack  . checkInvariant
 instance Model B [Char] where model = LC.unpack . checkInvariant
+instance Model Char Word8 where model = fromIntegral . ord
 
 -- Types are trivially modeled by themselves
 instance Model Bool  Bool         where model = id
@@ -229,6 +230,7 @@ instance Model Int64 Int64        where model = id
 instance Model Int64 Int          where model = fromIntegral
 instance Model Word8 Word8        where model = id
 instance Model Ordering Ordering  where model = id
+instance Model Char Char  where model = id
 
 -- More structured types are modeled recursively, using the NatTrans class from Gofer.
 class (Functor f, Functor g) => NatTrans f g where
@@ -238,6 +240,7 @@ class (Functor f, Functor g) => NatTrans f g where
 instance NatTrans [] []             where eta = id
 instance NatTrans Maybe Maybe       where eta = id
 instance NatTrans ((->) X) ((->) X) where eta = id
+instance NatTrans ((->) Char) ((->) Char) where eta = id
 
 instance NatTrans ((->) W) ((->) W) where eta = id
 

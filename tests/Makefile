@@ -69,7 +69,7 @@ hpc:
 	rm -f *.tix
 	${GHC} ${GHCFLAGS} ../dist/build/cbits/fpstring.o -ddump-simpl-stats -fhpc --make -i.. -i../dist/build/ Properties.hs -o p -fno-ignore-asserts -frewrite-rules
 	time ./p 10
-	hpc markup p --exclude=Main --exclude=QuickCheckUtils
+	hpc markup p --exclude=QuickCheckUtils
 
 # rules-on
 .PHONY: hpc-lite
