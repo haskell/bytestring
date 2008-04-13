@@ -218,8 +218,6 @@ import qualified Data.List as List
 
 import Data.Word                (Word8)
 import Data.Maybe               (isJust, listToMaybe)
-import Data.Array               (listArray)
-import qualified Data.Array as Array ((!))
 
 -- Control.Exception.bracket not available in yhc or nhc
 #ifndef __NHC__
@@ -1433,17 +1431,15 @@ findSubstring pat str = search 0 str
 findSubstrings :: ByteString -- ^ String to search for.
                -> ByteString -- ^ String to seach in.
                -> [Int]
-
-findSubstrings pat str = search 0 str
-    where
-        STRICT2(search)
-        search n s
-            = let x = pat `isPrefixOf` s
-              in
-                if null s
-                    then if x then [n] else []
-                    else if x then n : search (n+1) (unsafeTail s)
-                              else     search (n+1) (unsafeTail s)
+findSubstrings pat str
+    | null pat         = [0 .. length str]
+    | otherwise        = search 0 str
+  where
+    STRICT2(search)
+    search n s
+        | null s             = []
+        | pat `isPrefixOf` s = n : search (n+1) (unsafeTail s)
+        | otherwise          =     search (n+1) (unsafeTail s)
 
 {-
 {- This function uses the Knuth-Morris-Pratt string matching algorithm.  -}
