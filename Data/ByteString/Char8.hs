@@ -5,7 +5,7 @@
 
 -- |
 -- Module      : Data.ByteString.Char8
--- Copyright   : (c) Don Stewart 2006
+-- Copyright   : (c) Don Stewart 2006-2008
 -- License     : BSD-style
 --
 -- Maintainer  : dons@cse.unsw.edu.au
@@ -138,6 +138,7 @@ module Data.ByteString.Char8 (
         isInfixOf,              -- :: ByteString -> ByteString -> Bool
 
         -- ** Search for arbitrary substrings
+        breakSubstring,         -- :: ByteString -> ByteString -> (ByteString,ByteString)
         findSubstring,          -- :: ByteString -> ByteString -> Maybe Int
         findSubstrings,         -- :: ByteString -> ByteString -> [Int]
 
@@ -233,7 +234,7 @@ import Data.ByteString (empty,null,length,tail,init,append
                        ,inits,tails,reverse,transpose
                        ,concat,take,drop,splitAt,intercalate
                        ,sort,isPrefixOf,isSuffixOf,isInfixOf
-                       ,findSubstring,findSubstrings,copy,group
+                       ,findSubstring,findSubstrings,breakSubstring,copy,group
 
                        ,getLine, getContents, putStr, putStrLn, interact
                        ,hGetContents, hGet, hPut, hPutStr, hPutStrLn
@@ -1017,6 +1018,9 @@ readInteger as
 
           combine2 b (n:m:ns) = let t = m*b + n in t `seq` (t : combine2 b ns)
           combine2 _ ns       = ns
+
+------------------------------------------------------------------------
+-- For non-binary text processing:
 
 -- | Read an entire file strictly into a 'ByteString'.  This is far more
 -- efficient than reading the characters into a 'String' and then using

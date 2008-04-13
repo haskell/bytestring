@@ -131,6 +131,7 @@ module Data.ByteString (
         isInfixOf,              -- :: ByteString -> ByteString -> Bool
 
         -- ** Search for arbitrary substrings
+        breakSubstring,         -- :: ByteString -> ByteString -> (ByteString,ByteString)
         findSubstring,          -- :: ByteString -> ByteString -> Maybe Int
         findSubstrings,         -- :: ByteString -> ByteString -> [Int]
 
@@ -1404,6 +1405,46 @@ isSuffixOf (PS x1 s1 l1) (PS x2 s2 l2)
 isInfixOf :: ByteString -> ByteString -> Bool
 isInfixOf p s = isJust (findSubstring p s)
 
+-- | Break a string on a substring, returning a pair of the part of the
+-- string prior to the match, and the rest of the string.
+--
+-- The following relationships hold:
+--
+-- > break (== c) l == breakSubstring (singleton c) l
+--
+-- and:
+--
+-- > findSubstring s l ==
+-- >    if null s then Just 0
+-- >              else case breakSubstring s l of
+-- >                       (x,y) | null y    -> Nothing
+-- >                             | otherwise -> Just (length x)
+--
+-- For example, to tokenise a string, dropping delimiters:
+--
+-- > tokenise x y = h : if null t then [] else tokenise x (drop (length x) t)
+-- >     where (h,t) = breakSubstring x y
+--
+-- To skip to the first occurence of a string:
+-- 
+-- > snd (breakSubstring x y) 
+--
+-- To take the parts of a string before a delimiter:
+--
+-- > fst (breakSubstring x y) 
+--
+breakSubstring :: ByteString -- ^ String to search for
+               -> ByteString -- ^ String to search in
+               -> (ByteString,ByteString) -- ^ Head and tail of string broken at substring
+
+breakSubstring pat src = search 0 src
+  where
+    STRICT2(search)
+    search n s
+        | null s             = (src,empty)      -- not found
+        | pat `isPrefixOf` s = (take n src,s)
+        | otherwise          = search (n+1) (unsafeTail s)
+
 -- | Get the first index of a substring in another string,
 --   or 'Nothing' if the string is not found.
 --   @findSubstring p s@ is equivalent to @listToMaybe (findSubstrings p s)@.
@@ -1411,6 +1452,8 @@ findSubstring :: ByteString -- ^ String to search for.
               -> ByteString -- ^ String to seach in.
               -> Maybe Int
 findSubstring f i = listToMaybe (findSubstrings f i)
+
+{-# DEPRECATED findSubstring "findSubstring is deprecated in favour of breakSubstring." #-}
 
 {-
 findSubstring pat str = search 0 str
@@ -1440,6 +1483,8 @@ findSubstrings pat str
         | null s             = []
         | pat `isPrefixOf` s = n : search (n+1) (unsafeTail s)
         | otherwise          =     search (n+1) (unsafeTail s)
+
+{-# DEPRECATED findSubstrings "findSubstrings is heavily deprecated in favour of breakSubstring." #-}
 
 {-
 {- This function uses the Knuth-Morris-Pratt string matching algorithm.  -}
