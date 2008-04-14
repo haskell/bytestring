@@ -282,9 +282,15 @@ prop_foldrBL      = eq3
 prop_mapAccumLBL  = eq3
     (L.mapAccumL :: (X -> W -> (X,W)) -> X -> B   -> (X, B))
     (  mapAccumL :: (X -> W -> (X,W)) -> X -> [W] -> (X, [W]))
+
 prop_mapAccumRBL  = eq3
     (L.mapAccumR :: (X -> W -> (X,W)) -> X -> B   -> (X, B))
     (  mapAccumR :: (X -> W -> (X,W)) -> X -> [W] -> (X, [W]))
+
+prop_mapAccumRCC  = eq3
+    (C.mapAccumR :: (X -> Char -> (X,Char)) -> X -> P   -> (X, P))
+    (  mapAccumR :: (X -> Char -> (X,Char)) -> X -> [Char] -> (X, [Char]))
+
 prop_unfoldrBL = eq3
     ((\n f a -> L.take (fromIntegral n) $
         L.unfoldr f a) :: Int -> (X -> Maybe (W,X)) -> X -> B)
@@ -314,6 +320,11 @@ prop_dropWhilePL  = P.dropWhile `eq2`    (dropWhile :: (W -> Bool) -> [W] -> [W]
 prop_filterPL     = P.filter    `eq2`    (filter    :: (W -> Bool ) -> [W] -> [W])
 prop_filterPL_rule= (\x -> P.filter ((==) x))  `eq2` -- test rules
                     ((\x -> filter ((==) x)) :: W -> [W] -> [W])
+
+-- under lambda doesn't fire?
+prop_filterLC_rule= (\x -> LC.filter ((==) x))  `eq2` -- test rules
+                    ((\x -> filter ((==) x)) :: Char -> [Char] -> [Char])
+
 prop_partitionPL  = P.partition `eq2`    (partition :: (W -> Bool ) -> [W] -> ([W],[W]))
 prop_partitionLL  = L.partition `eq2`    (partition :: (W -> Bool ) -> [W] -> ([W],[W]))
 prop_findPL       = P.find      `eq2`    (find      :: (W -> Bool) -> [W] -> Maybe W)
@@ -1423,6 +1434,7 @@ bl_tests =
     ,("foldr1",      mytest prop_foldr1BL)
     ,("mapAccumL",   mytest prop_mapAccumLBL)
     ,("mapAccumR",   mytest prop_mapAccumRBL)
+    ,("mapAccumR",   mytest prop_mapAccumRCC)
     ,("unfoldr",     mytest prop_unfoldrBL)
     ,("head",        mytest prop_headBL)
     ,("init",        mytest prop_initBL)
@@ -1525,6 +1537,7 @@ bp_tests =
     ,("concat",      mytest prop_concatBP)
     ,("cons",        mytest prop_consBP)
     ,("cons'",       mytest prop_consBP')
+    ,("cons'",       mytest prop_consLP')
     ,("uncons",      mytest prop_unconsBP)
     ,("eq",          mytest prop_eqBP)
     ,("filter",      mytest prop_filterBP)
@@ -1593,6 +1606,7 @@ pl_tests =
     ,("eq",          mytest prop_eqPL)
     ,("filter",      mytest prop_filterPL)
     ,("filter rules",mytest prop_filterPL_rule)
+    ,("filter rules",mytest prop_filterLC_rule)
     ,("partition",   mytest prop_partitionPL)
     ,("partition",   mytest prop_partitionLL)
     ,("find",        mytest prop_findPL)
