@@ -579,12 +579,12 @@ filterChar c ps = replicate (count c ps) c
 {-# INLINE filterChar #-}
 
 {-# RULES
-  "FPS specialise filter (== x)" forall x.
+  "ByteString specialise filter (== x)" forall x.
       filter ((==) x) = filterChar x
   #-}
 
 {-# RULES
-  "FPS specialise filter (== x)" forall x.
+  "ByteString specialise filter (== x)" forall x.
      filter (== x) = filterChar x
   #-}
 
