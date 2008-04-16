@@ -243,12 +243,13 @@ unsafePackCStringLen (ptr,len) = do
 -- | /O(n)/ Build a @ByteString@ from a malloced @CString@. This value will
 -- have a @free(3)@ finalizer associated to it.
 --
--- This funtion is /unsafe/. If the original @CStringLen@ is later
+-- This funtion is /unsafe/. If the original @CString@ is later
 -- modified, this change will be reflected in the resulting @ByteString@,
 -- breaking referential transparency.
 --
 -- This function is also unsafe if you call its finalizer twice,
--- which will result in a /double free/ error.
+-- which will result in a /double free/ error, or if you pass it
+-- a CString not allocated with 'malloc'.
 --
 unsafePackMallocCString :: CString -> IO ByteString
 unsafePackMallocCString cstr = do
