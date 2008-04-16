@@ -5,6 +5,7 @@
 
 import Foreign
 import Foreign.ForeignPtr
+import Foreign.Marshal.Array
 import GHC.Ptr
 import Test.QuickCheck
 import Control.Monad
@@ -1350,9 +1351,16 @@ prop_packCStringLen x = unsafePerformIO $ do
         y <- P.useAsCStringLen x $ P.unsafePackCStringLen
         return (y == x && P.length y == P.length x)
 
--- prop_packMallocCString x = unsafePerformIO $ do
---         y <- P.useAsCString x $ P.unsafePackMallocCString
---         return (y == x)
+prop_packMallocCString x = unsafePerformIO $ do
+
+         let (fp,_,_) = P.toForeignPtr x
+         ptr <- mallocArray0 (P.length x) :: IO (Ptr Word8)
+         forM_ [0 .. P.length x] $ \n -> pokeElemOff ptr n 0
+         withForeignPtr fp $ \qtr -> copyArray ptr qtr (P.length x)
+         y   <- P.unsafePackMallocCString (castPtr ptr)
+
+         let !z = y == x
+         free ptr `seq` return z
 
 prop_unsafeFinalize    x = unsafePerformIO $ do
         x <- P.unsafeFinalize x
@@ -1404,7 +1412,7 @@ misc_tests =
     ,("packCString",            mytest prop_packCString)
     ,("packCStringLen",         mytest prop_packCStringLen)
     ,("packCStringFinaliser",   mytest prop_packCStringFinaliser)
---  ,("packMallocString",       mytest prop_packMallocCString)
+    ,("packMallocString",       mytest prop_packMallocCString)
     ,("unsafeFinalise",         mytest prop_unsafeFinalize)
     ,("invariant",              mytest prop_internal_invariant)
     ,("show",                   mytest prop_show)
