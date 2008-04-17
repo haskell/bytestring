@@ -184,8 +184,8 @@ tests =
                            ,101,114,103,32,101,66,111,111,107]))
     ])
     , ("join",
-        [F ({-# SCC "join"          #-}     app $ B.join (B.pack [1,2,3]))
-        ,F ({-# SCC "lazy join"     #-}     app $ L.join (L.pack [1,2,3]))
+        [F ({-# SCC "join"          #-}     app $ B.intercalate (B.pack [1,2,3]))
+        ,F ({-# SCC "lazy join"     #-}     app $ L.intercalate (L.pack [1,2,3]))
     ])
 --  , ("joinWithByte",
 --      [F ({-# SCC "joinWithByte"  #-}     app $ uncurry (B.joinWithByte 32))
@@ -286,8 +286,8 @@ tests =
     , ("zipWith'",
         [F ({-# SCC "zipWith'"      #-}     app (uncurry (B.zipWith (+))))
     ])
-    , ("isSubstringOf",
-        [F ({-# SCC "isSubstringOf" #-}     app $ B.isSubstringOf (C.pack "email news"))
+    , ("isInfixOf",
+        [F ({-# SCC "isSubstringOf" #-}     app $ B.isInfixOf     (C.pack "email news"))
     ])
     , ("isSuffixOf",
         [F ({-# SCC "isSuffixOf"    #-}     app $ B.isSuffixOf (C.pack "new eBooks"))

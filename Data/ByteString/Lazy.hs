@@ -208,7 +208,6 @@ import qualified Data.ByteString        as S  -- S for strict (hmm...)
 import qualified Data.ByteString.Internal as S
 import qualified Data.ByteString.Unsafe as S
 import Data.ByteString.Lazy.Internal
-import qualified Data.ByteString.Fusion as F
 
 import Data.Monoid              (Monoid(..))
 
