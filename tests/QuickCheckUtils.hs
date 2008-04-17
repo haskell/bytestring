@@ -226,6 +226,7 @@ instance Model Char Word8 where model = fromIntegral . ord
 instance Model Bool  Bool         where model = id
 instance Model Int   Int          where model = id
 instance Model P     P            where model = id
+instance Model B     B            where model = id
 instance Model Int64 Int64        where model = id
 instance Model Int64 Int          where model = fromIntegral
 instance Model Word8 Word8        where model = id

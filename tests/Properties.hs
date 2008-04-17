@@ -3,12 +3,19 @@
 -- with the lhs, and we only end up testing lhs == lhs
 --
 
+--
+-- -fhpc interferes with rewrite rules firing.
+--
+
 import Foreign
 import Foreign.ForeignPtr
 import Foreign.Marshal.Array
 import GHC.Ptr
 import Test.QuickCheck
 import Control.Monad
+import Control.Concurrent
+import Control.Exception
+import System.Directory
 
 import Data.List
 import Data.Char
@@ -36,13 +43,17 @@ import qualified Data.ByteString            as P
 import qualified Data.ByteString.Internal   as P
 import qualified Data.ByteString.Unsafe     as P
 import qualified Data.ByteString.Char8      as C
-import qualified Data.ByteString.Lazy.Char8 as D
-import qualified Data.ByteString.Lazy.Internal as LP
+
 import qualified Data.ByteString.Lazy.Char8 as LC
+import qualified Data.ByteString.Lazy.Char8 as D
+
+import qualified Data.ByteString.Lazy.Internal as LP
 import Data.ByteString.Fusion
 import Prelude hiding (abs)
 
 import QuickCheckUtils
+
+f = C.dropWhile isSpace
 
 --
 -- ByteString.Lazy.Char8 <=> ByteString.Char8
@@ -217,6 +228,44 @@ prop_unfoldr2BP   = eq2
         P.unfoldrN (n*100) (\x -> if x <= (n*100) then Just (fromIntegral x, x + 1) else Nothing) a)
                 :: Int -> Int -> P)
 
+
+prop_unfoldrLC   = eq3
+    ((\n f a -> LC.take (fromIntegral n) $
+        LC.unfoldr    f a) :: Int -> (X -> Maybe (Char,X)) -> X -> B)
+    ((\n f a ->                     fst $
+        C.unfoldrN n f a) :: Int -> (X -> Maybe (Char,X)) -> X -> P)
+
+
+prop_iterateLC   = eq3
+    ((\n f a -> LC.take (fromIntegral n) $
+        LC.iterate  f a) :: Int -> (Char -> Char) -> Char -> B)
+    ((\n f a -> fst $
+        C.unfoldrN n (\a -> Just (f a, f a)) a) :: Int -> (Char -> Char) -> Char -> P)
+
+prop_iterateLC_2   = eq3
+    ((\n f a -> LC.take (fromIntegral n) $
+        LC.iterate  f a) :: Int -> (Char -> Char) -> Char -> B)
+    ((\n f a -> LC.take (fromIntegral n) $
+        LC.unfoldr (\a -> Just (f a, f a)) a) :: Int -> (Char -> Char) -> Char -> B)
+
+prop_iterateL   = eq3
+    ((\n f a -> L.take (fromIntegral n) $
+        L.iterate  f a) :: Int -> (W -> W) -> W -> B)
+    ((\n f a -> fst $
+        P.unfoldrN n (\a -> Just (f a, f a)) a) :: Int -> (W -> W) -> W -> P)
+
+prop_repeatLC   = eq2
+    ((\n a -> LC.take (fromIntegral n) $
+        LC.repeat a) :: Int -> Char -> B)
+    ((\n a -> fst $
+        C.unfoldrN n (\a -> Just (a, a)) a) :: Int -> Char -> P)
+
+prop_repeatL   = eq2
+    ((\n a -> L.take (fromIntegral n) $
+        L.repeat a) :: Int -> W -> B)
+    ((\n a -> fst $
+        P.unfoldrN n (\a -> Just (a, a)) a) :: Int -> W -> P)
+
 --
 -- properties comparing ByteString.Lazy `eq1` List
 --
@@ -323,8 +372,10 @@ prop_filterPL_rule= (\x -> P.filter ((==) x))  `eq2` -- test rules
                     ((\x -> filter ((==) x)) :: W -> [W] -> [W])
 
 -- under lambda doesn't fire?
-prop_filterLC_rule= (\x -> LC.filter ((==) x))  `eq2` -- test rules
+prop_filterLC_rule= (f)  `eq2` -- test rules
                     ((\x -> filter ((==) x)) :: Char -> [Char] -> [Char])
+    where
+         f x s = LC.filter ((==) x) s
 
 prop_partitionPL  = P.partition `eq2`    (partition :: (W -> Bool ) -> [W] -> ([W],[W]))
 prop_partitionLL  = L.partition `eq2`    (partition :: (W -> Bool ) -> [W] -> ([W],[W]))
@@ -566,6 +617,12 @@ prop_splitWith f xs = (l1 == l2 || l1 == l2+1) &&
         l1 = fromIntegral (length splits)
         l2 = L.length (L.filter f xs)
 
+prop_splitWith_D f xs = (l1 == l2 || l1 == l2+1) &&
+        sum (map D.length splits) == D.length xs - l2
+  where splits = D.splitWith f xs
+        l1 = fromIntegral (length splits)
+        l2 = D.length (D.filter f xs)
+
 prop_joinsplit c xs = L.intercalate (pack [c]) (L.split c xs) == id xs
 
 prop_group xs       = group xs == (map unpack . L.group . pack) xs
@@ -577,6 +634,11 @@ prop_groupBy_LC  f xs  = groupBy f xs == (map LC.unpack . LC.groupBy f .  LC.pac
 prop_index xs =
   not (null xs) ==>
     forAll indices $ \i -> (xs !! i) == L.pack xs `L.index` (fromIntegral i)
+  where indices = choose (0, length xs -1)
+
+prop_index_D xs =
+  not (null xs) ==>
+    forAll indices $ \i -> (xs !! i) == D.pack xs `D.index` (fromIntegral i)
   where indices = choose (0, length xs -1)
 
 prop_elemIndex xs c = (elemIndex c xs) == fmap fromIntegral (L.elemIndex c (pack xs))
@@ -843,7 +905,9 @@ prop_takeWhileBB xs a = (takeWhile (/= a) xs) == (P.unpack . (P.takeWhile (/= a)
 
 prop_dropWhileBB xs a = (dropWhile (/= a) xs) == (P.unpack . (P.dropWhile (/= a)) . P.pack) xs
 
-prop_dropWhileCC_isSpace xs = (dropWhile isSpace xs) == (C.unpack .  (C.dropWhile isSpace) . C.pack) xs
+prop_dropWhileCC_isSpace xs =
+        (dropWhile isSpace xs) ==
+       (C.unpack .  (C.dropWhile isSpace) . C.pack) xs
 
 prop_takeBB xs = (take 10 xs) == (P.unpack . (P.take 10) . P.pack) xs
 
@@ -1047,6 +1111,9 @@ prop_replicate3BB c = P.unpack (P.replicate 0 c) == replicate 0 c
 
 prop_readintBB n = (fst . fromJust . C.readInt . C.pack . show) n == (n :: Int)
 prop_readintLL n = (fst . fromJust . D.readInt . D.pack . show) n == (n :: Int)
+
+prop_readBB x = (read . show) x == (x :: P.ByteString)
+prop_readLL x = (read . show) x == (x :: L.ByteString)
 
 prop_readint2BB s =
     let s' = filter (\c -> c `notElem` ['0'..'9']) s
@@ -1376,6 +1443,91 @@ prop_fromForeignPtr x = (let (a,b,c) = (P.toForeignPtr x)
                                 in P.fromForeignPtr a b c) == x
 
 ------------------------------------------------------------------------
+-- IO
+
+prop_read_write_file_P x = unsafePerformIO $ do
+    tid <- myThreadId
+    let f = "qc-test-"++show tid
+    bracket
+        (do P.writeFile f x)
+        (const $ do removeFile f)
+        (const $ do y <- P.readFile f
+                    return (x==y))
+
+prop_read_write_file_C x = unsafePerformIO $ do
+    tid <- myThreadId
+    let f = "qc-test-"++show tid
+    bracket
+        (do C.writeFile f x)
+        (const $ do removeFile f)
+        (const $ do y <- C.readFile f
+                    return (x==y))
+
+prop_read_write_file_L x = unsafePerformIO $ do
+    tid <- myThreadId
+    let f = "qc-test-"++show tid
+    bracket
+        (do L.writeFile f x)
+        (const $ do removeFile f)
+        (const $ do y <- L.readFile f
+                    return (x==y))
+
+prop_read_write_file_D x = unsafePerformIO $ do
+    tid <- myThreadId
+    let f = "qc-test-"++show tid
+    bracket
+        (do D.writeFile f x)
+        (const $ do removeFile f)
+        (const $ do y <- D.readFile f
+                    return (x==y))
+
+------------------------------------------------------------------------
+
+prop_append_file_P x y = unsafePerformIO $ do
+    tid <- myThreadId
+    let f = "qc-test-"++show tid
+    bracket
+        (do P.writeFile f x
+            P.appendFile f y)
+        (const $ do removeFile f)
+        (const $ do z <- P.readFile f
+                    return (z==(x `P.append` y)))
+
+prop_append_file_C x y = unsafePerformIO $ do
+    tid <- myThreadId
+    let f = "qc-test-"++show tid
+    bracket
+        (do C.writeFile f x
+            C.appendFile f y)
+        (const $ do removeFile f)
+        (const $ do z <- C.readFile f
+                    return (z==(x `C.append` y)))
+
+prop_append_file_L x y = unsafePerformIO $ do
+    tid <- myThreadId
+    let f = "qc-test-"++show tid
+    bracket
+        (do L.writeFile f x
+            L.appendFile f y)
+        (const $ do removeFile f)
+        (const $ do z <- L.readFile f
+                    return (z==(x `L.append` y)))
+
+prop_append_file_D x y = unsafePerformIO $ do
+    tid <- myThreadId
+    let f = "qc-test-"++show tid
+    bracket
+        (do D.writeFile f x
+            D.appendFile f y)
+        (const $ do removeFile f)
+        (const $ do z <- D.readFile f
+                    return (z==(x `D.append` y)))
+
+prop_packAddress = C.pack "this is a test" 
+            ==
+                   C.pack "this is a test" 
+
+------------------------------------------------------------------------
 -- The entry point
 
 main :: IO ()
@@ -1401,6 +1553,25 @@ tests = misc_tests
      ++ bb_tests
      ++ ll_tests
      ++ fusion_tests
+     ++ io_tests
+
+--
+-- 'morally sound' IO
+--
+io_tests =
+    [("readFile.writeFile", mytest prop_read_write_file_P)
+    ,("readFile.writeFile", mytest prop_read_write_file_C)
+    ,("readFile.writeFile", mytest prop_read_write_file_L)
+    ,("readFile.writeFile", mytest prop_read_write_file_D)
+
+    ,("appendFile        ", mytest prop_append_file_P)
+    ,("appendFile        ", mytest prop_append_file_C)
+    ,("appendFile        ", mytest prop_append_file_L)
+    ,("appendFile        ", mytest prop_append_file_D)
+
+    ,("packAddress       ", mytest prop_packAddress)
+
+    ]
 
 misc_tests =
     [("invariant",              mytest prop_invariant)
@@ -1444,6 +1615,12 @@ bl_tests =
     ,("mapAccumR",   mytest prop_mapAccumRBL)
     ,("mapAccumR",   mytest prop_mapAccumRCC)
     ,("unfoldr",     mytest prop_unfoldrBL)
+    ,("unfoldr",     mytest prop_unfoldrLC)
+    ,("iterate",     mytest prop_iterateLC)
+    ,("iterate",     mytest prop_iterateLC_2)
+    ,("iterate",     mytest prop_iterateL)
+    ,("repeat",      mytest prop_repeatLC)
+    ,("repeat",      mytest prop_repeatL)
     ,("head",        mytest prop_headBL)
     ,("init",        mytest prop_initBL)
     ,("isPrefixOf",  mytest prop_isPrefixOfBL)
@@ -1836,6 +2013,9 @@ bb_tests =
     ,    ("readInt 2",      mytest prop_readint2BB)
     ,    ("readInteger",    mytest prop_readintegerBB)
     ,    ("readInteger 2",  mytest prop_readinteger2BB)
+    ,    ("read",  mytest prop_readLL)
+    ,    ("read",  mytest prop_readBB)
+    ,    ("Lazy.readInt",   mytest prop_readintLL)
     ,    ("Lazy.readInt",   mytest prop_readintLL)
     ,    ("Lazy.readInteger", mytest prop_readintegerLL)
     ,    ("mconcat 1",       mytest prop_append1LL_monoid)
@@ -2016,12 +2196,14 @@ ll_tests =
 --     ,("span/spanByte",      mytest prop_spanByte)
     ,("split",              mytest prop_split)
     ,("splitWith",          mytest prop_splitWith)
+    ,("splitWith",          mytest prop_splitWith_D)
     ,("join.split/id",      mytest prop_joinsplit)
 --  ,("join/joinByte",      mytest prop_joinjoinByte)
     ,("group",              mytest prop_group)
     ,("groupBy",            mytest prop_groupBy)
     ,("groupBy",            mytest prop_groupBy_LC)
     ,("index",              mytest prop_index)
+    ,("index",              mytest prop_index_D)
     ,("elemIndex",          mytest prop_elemIndex)
     ,("elemIndices",        mytest prop_elemIndices)
     ,("count/elemIndices",  mytest prop_count)
