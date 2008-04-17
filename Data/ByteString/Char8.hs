@@ -736,8 +736,9 @@ notElem c = B.notElem (c2w c)
 -- predicate.
 filter :: (Char -> Bool) -> ByteString -> ByteString
 filter f = B.filter (f . w2c)
-{-# INLINE [1] filter #-}
+{-# INLINE filter #-}
 
+{-
 -- | /O(n)/ and /O(n\/c) space/ A first order equivalent of /filter .
 -- (==)/, for the common case of filtering a single Char. It is more
 -- efficient to use /filterChar/ in this case.
@@ -757,6 +758,7 @@ filterChar c ps = replicate (count c ps) c
 "ByteString specialise filter (== x)" forall x.
     filter (== x) = filterChar x
   #-}
+-}
 
 -- | /O(n)/ The 'find' function takes a predicate and a ByteString,
 -- and returns the first element in matching the predicate, or 'Nothing'
