@@ -46,7 +46,7 @@ hugs::
 # interpreted fast. Just a quick check.
 .PHONY: prop-fast
 prop-fast::
-	runhaskell -i../cbits/fpstring.o Properties.hs 10 
+	runhaskell -i../cbits/fpstring.o Properties.hs 30 
 
 # compiled
 .PHONY: prop-compiled

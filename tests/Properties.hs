@@ -418,6 +418,10 @@ prop_maximumPL    = P.maximum   `eqnotnull1` (maximum   :: [W] -> W)
 prop_minimumPL    = P.minimum   `eqnotnull1` (minimum   :: [W] -> W)
 prop_tailPL       = P.tail      `eqnotnull1` (tail      :: [W] -> [W])
 
+prop_scanl1CL     = C.scanl1    `eqnotnull2` (scanl1 :: (Char -> Char -> Char) -> [Char] -> [Char])
+prop_scanrCL      = C.scanr     `eqnotnull3` (scanr  :: (Char -> Char -> Char) -> Char -> [Char] -> [Char])
+prop_scanr1CL     = C.scanr1    `eqnotnull2` (scanr1 :: (Char -> Char -> Char) -> [Char] -> [Char])
+
 -- prop_zipWithPL'   = P.zipWith'  `eq3` (zipWith :: (W -> W -> W) -> [W] -> [W] -> [W])
 
 prop_zipWithPL    = (P.zipWith  :: (W -> W -> X) -> P   -> P   -> [X]) `eq3`
@@ -624,6 +628,12 @@ prop_splitWith_D f xs = (l1 == l2 || l1 == l2+1) &&
         l1 = fromIntegral (length splits)
         l2 = D.length (D.filter f xs)
 
+prop_splitWith_C f xs = (l1 == l2 || l1 == l2+1) &&
+        sum (map C.length splits) == C.length xs - l2
+  where splits = C.splitWith f xs
+        l1 = fromIntegral (length splits)
+        l2 = C.length (C.filter f xs)
+
 prop_joinsplit c xs = L.intercalate (pack [c]) (L.split c xs) == id xs
 
 prop_group xs       = group xs == (map unpack . L.group . pack) xs
@@ -640,6 +650,11 @@ prop_index xs =
 prop_index_D xs =
   not (null xs) ==>
     forAll indices $ \i -> (xs !! i) == D.pack xs `D.index` (fromIntegral i)
+  where indices = choose (0, length xs -1)
+
+prop_index_C xs =
+  not (null xs) ==>
+    forAll indices $ \i -> (xs !! i) == C.pack xs `C.index` (fromIntegral i)
   where indices = choose (0, length xs -1)
 
 prop_elemIndex xs c = (elemIndex c xs) == fmap fromIntegral (L.elemIndex c (pack xs))
@@ -981,6 +996,11 @@ prop_countBB c xs = length (P.elemIndices c xs) == P.count c xs
 
 prop_elemIndexEnd1BB c xs = (P.elemIndexEnd c (P.pack xs)) ==
                            (case P.elemIndex c (P.pack (reverse xs)) of
+                                Nothing -> Nothing
+                                Just i  -> Just (length xs -1 -i))
+
+prop_elemIndexEnd1CC c xs = (C.elemIndexEnd c (C.pack xs)) ==
+                           (case C.elemIndex c (C.pack (reverse xs)) of
                                 Nothing -> Nothing
                                 Just i  -> Just (length xs -1 -i))
 
@@ -1415,8 +1435,16 @@ prop_packCString x = unsafePerformIO $ do
         y <- P.useAsCString x $ P.unsafePackCString
         return (y == x)
 
+prop_packCString_safe x = unsafePerformIO $ do
+        y <- P.useAsCString x $ P.packCString
+        return (y == x)
+
 prop_packCStringLen x = unsafePerformIO $ do
         y <- P.useAsCStringLen x $ P.unsafePackCStringLen
+        return (y == x && P.length y == P.length x)
+
+prop_packCStringLen_safe x = unsafePerformIO $ do
+        y <- P.useAsCStringLen x $ P.packCStringLen
         return (y == x && P.length y == P.length x)
 
 prop_packMallocCString x = unsafePerformIO $ do
@@ -1583,10 +1611,12 @@ misc_tests =
     ,("unsafe pack address",    mytest prop_unsafePackAddress)
     ,("unsafe pack address len",mytest prop_unsafePackAddressLen)
     ,("unsafeUseAsCString",     mytest prop_unsafeUseAsCString)
-    ,("unsafeUseAsCStringLen",     mytest prop_unsafeUseAsCStringLen)
+    ,("unsafeUseAsCStringLen",  mytest prop_unsafeUseAsCStringLen)
     ,("useAsCString",           mytest prop_useAsCString)
     ,("packCString",            mytest prop_packCString)
+    ,("packCString safe",       mytest prop_packCString_safe)
     ,("packCStringLen",         mytest prop_packCStringLen)
+    ,("packCStringLen safe",    mytest prop_packCStringLen_safe)
     ,("packCStringFinaliser",   mytest prop_packCStringFinaliser)
     ,("packMallocString",       mytest prop_packMallocCString)
     ,("unsafeFinalise",         mytest prop_unsafeFinalize)
@@ -1813,8 +1843,11 @@ pl_tests =
     ,("unfoldr",     mytest prop_unfoldrPL)
     ,("scanl",       mytest prop_scanlPL)
     ,("scanl1",      mytest prop_scanl1PL)
+    ,("scanl1",      mytest prop_scanl1CL)
+    ,("scanr",      mytest prop_scanrCL)
     ,("scanr",       mytest prop_scanrPL)
     ,("scanr1",      mytest prop_scanr1PL)
+    ,("scanr1",      mytest prop_scanr1CL)
     ,("head",        mytest prop_headPL)
     ,("init",        mytest prop_initPL)
     ,("last",        mytest prop_lastPL)
@@ -1993,6 +2026,7 @@ bb_tests =
     ,    ("breakEnd",       mytest prop_breakEndBB)
     ,    ("breakEnd",       mytest prop_breakEndCC)
     ,    ("elemIndexEnd 1",mytest prop_elemIndexEnd1BB)
+    ,    ("elemIndexEnd 1",mytest prop_elemIndexEnd1CC)
     ,    ("elemIndexEnd 2",mytest prop_elemIndexEnd2BB)
 --  ,    ("words'",         mytest prop_wordsBB')
 --     ,    ("lines'",         mytest prop_linesBB')
@@ -2202,6 +2236,7 @@ ll_tests =
     ,("split",              mytest prop_split)
     ,("splitWith",          mytest prop_splitWith)
     ,("splitWith",          mytest prop_splitWith_D)
+    ,("splitWith",          mytest prop_splitWith_C)
     ,("join.split/id",      mytest prop_joinsplit)
 --  ,("join/joinByte",      mytest prop_joinjoinByte)
     ,("group",              mytest prop_group)
@@ -2209,6 +2244,7 @@ ll_tests =
     ,("groupBy",            mytest prop_groupBy_LC)
     ,("index",              mytest prop_index)
     ,("index",              mytest prop_index_D)
+    ,("index",              mytest prop_index_C)
     ,("elemIndex",          mytest prop_elemIndex)
     ,("elemIndices",        mytest prop_elemIndices)
     ,("count/elemIndices",  mytest prop_count)
