@@ -1488,7 +1488,7 @@ findSubstrings pat str
         | pat `isPrefixOf` s = n : search (n+1) (unsafeTail s)
         | otherwise          =     search (n+1) (unsafeTail s)
 
-{-# DEPRECATED findSubstrings "findSubstrings is heavily deprecated in favour of breakSubstring." #-}
+{-# DEPRECATED findSubstrings "findSubstrings is deprecated in favour of breakSubstring." #-}
 
 {-
 {- This function uses the Knuth-Morris-Pratt string matching algorithm.  -}
