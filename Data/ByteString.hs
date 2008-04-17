@@ -198,6 +198,8 @@ module Data.ByteString (
         hPutStr,                -- :: Handle -> ByteString -> IO ()
         hPutStrLn,              -- :: Handle -> ByteString -> IO ()
 
+        breakByte
+
   ) where
 
 import qualified Prelude as P
@@ -422,6 +424,8 @@ unpack (PS ps s l) = inlinePerformIO $ withForeignPtr ps $ \p ->
 unpack ps = build (unpackFoldr ps)
 {-# INLINE unpack #-}
 
+--
+-- Have unpack fuse with good list consumers
 --
 -- critical this isn't strict in the acc
 -- as it will break in the presence of list fusion. this is a known
@@ -1311,10 +1315,9 @@ filter k ps@(PS x s l)
                         if k w
                             then poke t w >> go (f `plusPtr` 1) (t `plusPtr` 1) end
                             else             go (f `plusPtr` 1) t               end
-#if __GLASGOW_HASKELL__
-{-# INLINE [1] filter #-}
-#endif
+{-# INLINE filter #-}
 
+{-
 --
 -- | /O(n)/ A first order equivalent of /filter . (==)/, for the common
 -- case of filtering a single byte. It is more efficient to use
@@ -1335,6 +1338,7 @@ filterByte w ps = replicate (count w ps) w
 "ByteString specialise filter (== x)" forall x.
     filter (== x) = filterByte x
   #-}
+-}
 
 -- | /O(n)/ The 'find' function takes a predicate and a ByteString,
 -- and returns the first element in matching the predicate, or 'Nothing'

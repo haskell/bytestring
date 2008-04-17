@@ -1014,10 +1014,9 @@ filter p s = go s
     where
         go Empty        = Empty
         go (Chunk x xs) = chunk (S.filter p x) (go xs)
-#if __GLASGOW_HASKELL__
-{-# INLINE [1] filter #-}
-#endif
+{-# INLINE filter #-}
 
+{-
 -- | /O(n)/ and /O(n\/c) space/ A first order equivalent of /filter .
 -- (==)/, for the common case of filtering a single byte. It is more
 -- efficient to use /filterByte/ in this case.
@@ -1037,6 +1036,7 @@ filterByte w ps = replicate (count w ps) w
 "ByteString specialise filter (== x)" forall x.
  filter (== x) = filterByte x
   #-}
+-}
 
 {-
 -- | /O(n)/ A first order equivalent of /filter . (\/=)/, for the common

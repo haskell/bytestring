@@ -534,8 +534,13 @@ takeWhile f = B.takeWhile (f . w2c)
 dropWhile :: (Char -> Bool) -> ByteString -> ByteString
 dropWhile f = B.dropWhile (f . w2c)
 #if defined(__GLASGOW_HASKELL__)
-{-# INLINE dropWhile #-}
+{-# INLINE [1] dropWhile #-}
 #endif
+
+{-# RULES
+"ByteString specialise dropWhile isSpace -> dropSpace"
+    dropWhile isSpace = dropSpace
+  #-}
 
 -- | 'break' @p@ is equivalent to @'span' ('not' . p)@.
 break :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
@@ -848,11 +853,6 @@ firstspace ptr n m
     | n >= m    = return n
     | otherwise = do w <- peekByteOff ptr n
                      if (not . isSpaceWord8) w then firstspace ptr (n+1) m else return n
-
-{-# RULES
-"ByteString specialise dropWhile isSpace -> dropSpace"
-    dropWhile isSpace = dropSpace
-  #-}
 
 -- | 'dropSpace' efficiently returns the 'ByteString' argument with
 -- white space Chars removed from the front. It is more efficient than

@@ -40,7 +40,6 @@ module Data.ByteString.Internal (
         memchr,                 -- :: Ptr Word8 -> Word8 -> CSize -> IO Ptr Word8
         memcmp,                 -- :: Ptr Word8 -> Ptr Word8 -> CSize -> IO CInt
         memcpy,                 -- :: Ptr Word8 -> Ptr Word8 -> CSize -> IO ()
-        memmove,                -- :: Ptr Word8 -> Ptr Word8 -> CSize -> IO ()
         memset,                 -- :: Ptr Word8 -> Word8 -> CSize -> IO (Ptr Word8)
 
         -- * cbits functions
@@ -346,12 +345,14 @@ foreign import ccall unsafe "string.h memcpy" c_memcpy
 memcpy :: Ptr Word8 -> Ptr Word8 -> CSize -> IO ()
 memcpy p q s = c_memcpy p q s >> return ()
 
+{-
 foreign import ccall unsafe "string.h memmove" c_memmove
     :: Ptr Word8 -> Ptr Word8 -> CSize -> IO (Ptr Word8)
 
 memmove :: Ptr Word8 -> Ptr Word8 -> CSize -> IO ()
 memmove p q s = do c_memmove p q s
                    return ()
+-}
 
 foreign import ccall unsafe "string.h memset" c_memset
     :: Ptr Word8 -> CInt -> CSize -> IO (Ptr Word8)
