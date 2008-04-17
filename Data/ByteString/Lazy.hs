@@ -102,7 +102,6 @@ module Data.ByteString.Lazy (
         -- ** Accumulating maps
         mapAccumL,              -- :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
         mapAccumR,              -- :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
-        mapIndexed,             -- :: (Int64 -> Word8 -> Word8) -> ByteString -> ByteString
 
         -- ** Infinite ByteStrings
         repeat,                 -- :: Word8 -> ByteString
@@ -587,10 +586,6 @@ mapAccumR f s0 cs0 = go s0 cs0
         where (s'', c') = S.mapAccumR f s' c
               (s', cs') = go s cs
 
--- | /O(n)/ map Word8 functions, provided with the index at each position
-mapIndexed :: (Int -> Word8 -> Word8) -> ByteString -> ByteString
-mapIndexed f = F.loopArr . F.loopL (F.mapIndexEFL f) 0
-
 -- ---------------------------------------------------------------------
 -- Building ByteStrings
 
@@ -603,7 +598,9 @@ mapIndexed f = F.loopArr . F.loopL (F.mapIndexEFL f) 0
 --
 -- > last (scanl f z xs) == foldl f z xs.
 scanl :: (Word8 -> Word8 -> Word8) -> Word8 -> ByteString -> ByteString
-scanl f z ps = F.loopArr . F.loopL (F.scanEFL f) z $ (ps `snoc` 0)
+scanl f z = snd . foldl k (z,singleton z)
+ where
+    k (c,acc) a = let n = f c a in (n, acc `snoc` n)
 {-# INLINE scanl #-}
 
 -- ---------------------------------------------------------------------

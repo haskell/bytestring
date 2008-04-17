@@ -97,7 +97,6 @@ module Data.ByteString (
         -- ** Accumulating maps
         mapAccumL,              -- :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
         mapAccumR,              -- :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
-        mapIndexed,             -- :: (Int -> Word8 -> Word8) -> ByteString -> ByteString
 
         -- ** Generating and unfolding ByteStrings
         replicate,              -- :: Int -> Word8 -> ByteString
@@ -215,7 +214,6 @@ import Prelude hiding           (reverse,head,tail,last,init,null
 
 import Data.ByteString.Internal
 import Data.ByteString.Unsafe
-import Data.ByteString.Fusion
 
 import qualified Data.List as List
 
@@ -745,11 +743,19 @@ minimum xs@(PS x s l)
 -- passing an accumulating parameter from left to right, and returning a
 -- final value of this accumulator together with the new list.
 mapAccumL :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
-#if !defined(LOOPU_FUSION)
-mapAccumL f z = unSP . loopUp (mapAccumEFL f) z
-#else
-mapAccumL f z = unSP . loopU (mapAccumEFL f) z
-#endif
+mapAccumL f acc (PS fp o len) = inlinePerformIO $ withForeignPtr fp $ \a -> do
+    gp   <- mallocByteString len
+    acc' <- withForeignPtr gp $ \p -> mapAccumL_ acc 0 (a `plusPtr` o) p
+    return $! (acc', PS gp 0 len)
+  where
+    STRICT4(mapAccumL_)
+    mapAccumL_ s n p1 p2
+       | n >= len = return s
+       | otherwise = do
+            x <- peekByteOff p1 n
+            let (s', y) = f s x
+            pokeByteOff p2 n y
+            mapAccumL_ s' (n+1) p1 p2
 {-# INLINE mapAccumL #-}
 
 -- | The 'mapAccumR' function behaves like a combination of 'map' and
@@ -757,13 +763,20 @@ mapAccumL f z = unSP . loopU (mapAccumEFL f) z
 -- passing an accumulating parameter from right to left, and returning a
 -- final value of this accumulator together with the new ByteString.
 mapAccumR :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
-mapAccumR f z = unSP . loopDown (mapAccumEFL f) z
+mapAccumR f acc (PS fp o len) = inlinePerformIO $ withForeignPtr fp $ \a -> do
+    gp   <- mallocByteString len
+    acc' <- withForeignPtr gp $ \p -> mapAccumR_ acc (len-1) (a `plusPtr` o) p
+    return $! (acc', PS gp 0 len)
+  where
+    STRICT4(mapAccumR_)
+    mapAccumR_ s n p q
+       | n <  0    = return s
+       | otherwise = do
+            x  <- peekByteOff p n
+            let (s', y) = f s x
+            pokeByteOff q n y
+            mapAccumR_ s' (n-1) p q
 {-# INLINE mapAccumR #-}
-
--- | /O(n)/ map Word8 functions, provided with the index at each position
-mapIndexed :: (Int -> Word8 -> Word8) -> ByteString -> ByteString
-mapIndexed f = loopArr . loopUp (mapIndexEFL f) 0
-{-# INLINE mapIndexed #-}
 
 -- ---------------------------------------------------------------------
 -- Building ByteStrings
@@ -776,17 +789,27 @@ mapIndexed f = loopArr . loopUp (mapIndexEFL f) 0
 -- Note that
 --
 -- > last (scanl f z xs) == foldl f z xs.
+--
 scanl :: (Word8 -> Word8 -> Word8) -> Word8 -> ByteString -> ByteString
-#if !defined(LOOPU_FUSION)
-scanl f z ps = loopArr . loopUp (scanEFL f) z $ (ps `snoc` 0)
-#else
-scanl f z ps = loopArr . loopU (scanEFL f) z $ (ps `snoc` 0)
-#endif
+
+scanl f v (PS fp s len) = inlinePerformIO $ withForeignPtr fp $ \a ->
+    create (len+1) $ \q -> do
+        poke q v
+        scanl_ v 0 (a `plusPtr` s) (q `plusPtr` 1)
+  where
+    STRICT4(scanl_)
+    scanl_ z n p q
+        | n >= len  = return ()
+        | otherwise = do
+            x <- peekByteOff p n
+            let z' = f z x
+            pokeByteOff q n z'
+            scanl_ z' (n+1) p q
+{-# INLINE scanl #-}
 
     -- n.b. haskell's List scan returns a list one bigger than the
     -- input, so we need to snoc here to get some extra space, however,
     -- it breaks map/up fusion (i.e. scanl . map no longer fuses)
-{-# INLINE scanl #-}
 
 -- | 'scanl1' is a variant of 'scanl' that has no starting value argument.
 -- This function will fuse.
@@ -800,7 +823,19 @@ scanl1 f ps
 
 -- | scanr is the right-to-left dual of scanl.
 scanr :: (Word8 -> Word8 -> Word8) -> Word8 -> ByteString -> ByteString
-scanr f z ps = loopArr . loopDown (scanEFL (flip f)) z $ (0 `cons` ps) -- extra space
+scanr f v (PS fp s len) = inlinePerformIO $ withForeignPtr fp $ \a ->
+    create (len+1) $ \q -> do
+        poke (q `plusPtr` len) v
+        scanr_ v (len-1) (a `plusPtr` s) q
+  where
+    STRICT4(scanr_)
+    scanr_ z n p q
+        | n <  0    = return ()
+        | otherwise = do
+            x <- peekByteOff p n
+            let z' = f x z
+            pokeByteOff q n z'
+            scanr_ z' (n-1) p q
 {-# INLINE scanr #-}
 
 -- | 'scanr1' is a variant of 'scanr' that has no starting value argument.
@@ -1025,7 +1060,6 @@ splitWith pred_ (PS fp off len) = splitWith0 pred# off len fp
                   -> IO [ByteString]
 
         splitLoop pred' p idx' off' len' fp'
-            | pred' `seq` p `seq` idx' `seq` off' `seq` len' `seq` fp' `seq` False = undefined
             | idx' >= len'  = return [PS fp' off' idx']
             | otherwise = do
                 w <- peekElemOff p (off'+idx')
@@ -1092,7 +1126,6 @@ split (W8# w#) (PS fp off len) = splitWith' off len fp
 
         STRICT5(splitLoop)
         splitLoop p idx' off' len' fp'
-            | p `seq` idx' `seq` off' `seq` len' `seq` fp' `seq` False = undefined
             | idx' >= len'  = return [PS fp' off' idx']
             | otherwise = do
                 (W8# x#) <- peekElemOff p (off'+idx')

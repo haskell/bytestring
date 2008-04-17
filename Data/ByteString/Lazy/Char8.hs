@@ -81,7 +81,7 @@ module Data.ByteString.Lazy.Char8 (
 
         -- ** Accumulating maps
         mapAccumL,              -- :: (acc -> Char -> (acc, Char)) -> acc -> ByteString -> (acc, ByteString)
-        mapIndexed,             -- :: (Int64 -> Char -> Char) -> ByteString -> ByteString
+        mapAccumR,              -- :: (acc -> Char -> (acc, Char)) -> acc -> ByteString -> (acc, ByteString)
 
         -- ** Infinite ByteStrings
         repeat,                 -- :: Char -> ByteString
@@ -385,9 +385,12 @@ scanl f z = L.scanl (\a b -> c2w (f (w2c a) (w2c b))) (c2w z)
 mapAccumL :: (acc -> Char -> (acc, Char)) -> acc -> ByteString -> (acc, ByteString)
 mapAccumL f = L.mapAccumL (\a w -> case f a (w2c w) of (a',c) -> (a', c2w c))
 
--- | /O(n)/ map Char functions, provided with the index at each position
-mapIndexed :: (Int -> Char -> Char) -> ByteString -> ByteString
-mapIndexed f = L.mapIndexed (\i w -> c2w (f i (w2c w)))
+-- | The 'mapAccumR' function behaves like a combination of 'map' and
+-- 'foldr'; it applies a function to each element of a ByteString,
+-- passing an accumulating parameter from right to left, and returning a
+-- final value of this accumulator together with the new ByteString.
+mapAccumR :: (acc -> Char -> (acc, Char)) -> acc -> ByteString -> (acc, ByteString)
+mapAccumR f = L.mapAccumR (\acc w -> case f acc (w2c w) of (acc', c) -> (acc', c2w c))
 
 ------------------------------------------------------------------------
 -- Generating and unfolding ByteStrings

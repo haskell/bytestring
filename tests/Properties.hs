@@ -126,7 +126,12 @@ prop_mapAccumLCC = eq3
     (D.mapAccumL :: (X -> Char -> (X,Char)) -> X -> B -> (X, B))
     (C.mapAccumL :: (X -> Char -> (X,Char)) -> X -> P -> (X, P))
 
-prop_mapIndexedCC = D.mapIndexed `eq2` C.mapIndexed
+--prop_mapIndexedCC = D.mapIndexed `eq2` C.mapIndexed
+--prop_mapIndexedPL = L.mapIndexed `eq2` P.mapIndexed
+
+--prop_mapAccumL_mapIndexedBP =
+--        P.mapIndexed `eq2`
+--        (\k p -> snd $ P.mapAccumL (\i w -> (i+1, k i w)) (0::Int) p)
 
 --
 -- ByteString.Lazy <=> ByteString
@@ -337,6 +342,10 @@ prop_mapAccumLBL  = eq3
 prop_mapAccumRBL  = eq3
     (L.mapAccumR :: (X -> W -> (X,W)) -> X -> B   -> (X, B))
     (  mapAccumR :: (X -> W -> (X,W)) -> X -> [W] -> (X, [W]))
+
+prop_mapAccumRDL  = eq3
+    (D.mapAccumR :: (X -> Char -> (X,Char)) -> X -> B   -> (X, B))
+    (  mapAccumR :: (X -> Char -> (X,Char)) -> X -> [Char] -> (X, [Char]))
 
 prop_mapAccumRCC  = eq3
     (C.mapAccumR :: (X -> Char -> (X,Char)) -> X -> P   -> (X, P))
@@ -1172,6 +1181,7 @@ prop_unzipBB x = let (xs,ys) = unzip x in (P.pack xs, P.pack ys) == P.unzip x
 -- And check fusion RULES.
 --
 
+{-
 prop_lazylooploop em1 em2 start1 start2 arr =
     loopL em2 start2 (loopArr (loopL em1 start1 arr))             ==
     loopSndAcc (loopL (em1 `fuseEFL` em2) (start1 :*: start2) arr)
@@ -1363,6 +1373,8 @@ prop_length_loop_fusion_4 f1 acc1 xs =
   P.length  (loopArr (loopWrapper (doFilterLoop f1 acc1) xs)) ==
   P.lengthU (loopArr (loopWrapper (doFilterLoop f1 acc1) xs))
   where _ = acc1 :: Int
+-}
+
 -}
 
 -- prop_zipwith_spec f p q =
@@ -1585,7 +1597,6 @@ tests = misc_tests
      ++ pl_tests
      ++ bb_tests
      ++ ll_tests
-     ++ fusion_tests
      ++ io_tests
 
 --
@@ -1648,6 +1659,7 @@ bl_tests =
     ,("foldr1",      mytest prop_foldr1BL)
     ,("mapAccumL",   mytest prop_mapAccumLBL)
     ,("mapAccumR",   mytest prop_mapAccumRBL)
+    ,("mapAccumR",   mytest prop_mapAccumRDL)
     ,("mapAccumR",   mytest prop_mapAccumRCC)
     ,("unfoldr",     mytest prop_unfoldrBL)
     ,("unfoldr",     mytest prop_unfoldrLC)
@@ -1745,7 +1757,8 @@ cc_tests =
     ,("prop_foldrCC", mytest prop_foldrCC)
     ,("prop_foldrCC'", mytest prop_foldrCC')
     ,("prop_mapAccumLCC", mytest prop_mapAccumLCC)
-    ,("prop_mapIndexedCC", mytest prop_mapIndexedCC)
+--    ,("prop_mapIndexedCC", mytest prop_mapIndexedCC)
+--    ,("prop_mapIndexedPL", mytest prop_mapIndexedPL)
 
     ]
 
@@ -1773,6 +1786,7 @@ bp_tests =
     ,("foldr1",      mytest prop_foldr1BP)
     ,("foldr1'",      mytest prop_foldr1BP')
     ,("mapAccumL",   mytest prop_mapAccumLBP)
+--  ,("mapAccumL",   mytest prop_mapAccumL_mapIndexedBP)
     ,("unfoldr",     mytest prop_unfoldrBP)
     ,("unfoldr 2",   mytest prop_unfoldr2BP)
     ,("head",        mytest prop_headBP)
@@ -1950,8 +1964,8 @@ bb_tests =
     ,    ("map 3",          mytest prop_map3BB)
     ,    ("filter1",        mytest prop_filter1BB)
     ,    ("filter2",        mytest prop_filter2BB)
-    ,    ("map fusion",     mytest prop_mapfusionBB)
-    ,    ("filter fusion",  mytest prop_filterfusionBB)
+--  ,    ("map fusion",     mytest prop_mapfusionBB)
+--  ,    ("filter fusion",  mytest prop_filterfusionBB)
     ,    ("reverse 1",      mytest prop_reverse1BB)
     ,    ("reverse 2",      mytest prop_reverse2BB)
     ,    ("reverse 3",      mytest prop_reverse3BB)
@@ -2112,6 +2126,7 @@ bb_tests =
 ------------------------------------------------------------------------
 -- Fusion rules
 
+{-
 fusion_tests =
 -- v1 fusion
     [    ("lazy loop/loop fusion", mytest prop_lazylooploop)
@@ -2154,6 +2169,8 @@ fusion_tests =
 
 --  ,("zipwith/spec",                  mytest prop_zipwith_spec)
     ]
+
+-}
 
 
 ------------------------------------------------------------------------

@@ -141,9 +141,11 @@ instance Arbitrary Char where
     arbitrary     = choose ('\0','\255')
     coarbitrary c = variant (ord c `rem` 4)
 
+{-
 instance (Arbitrary a, Arbitrary b) => Arbitrary (PairS a b) where
   arbitrary             = liftM2 (:*:) arbitrary arbitrary
   coarbitrary (a :*: b) = coarbitrary a . coarbitrary b
+-}
 
 instance Arbitrary Word8 where
     arbitrary = choose (97, 105)
@@ -153,10 +155,12 @@ instance Arbitrary Int64 where
   arbitrary     = sized $ \n -> choose (-fromIntegral n,fromIntegral n)
   coarbitrary n = variant (fromIntegral (if n >= 0 then 2*n else 2*(-n) + 1))
 
+{-
 instance Arbitrary a => Arbitrary (MaybeS a) where
   arbitrary            = do a <- arbitrary ; elements [NothingS, JustS a]
   coarbitrary NothingS = variant 0
   coarbitrary _        = variant 1 -- ok?
+-}
 
 {-
 instance Arbitrary Char where

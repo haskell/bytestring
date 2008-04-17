@@ -98,7 +98,6 @@ module Data.ByteString.Char8 (
         -- ** Accumulating maps
         mapAccumL,              -- :: (acc -> Char -> (acc, Char)) -> acc -> ByteString -> (acc, ByteString)
         mapAccumR,              -- :: (acc -> Char -> (acc, Char)) -> acc -> ByteString -> (acc, ByteString)
-        mapIndexed,             -- :: (Int -> Char -> Char) -> ByteString -> ByteString
 
         -- ** Generating and unfolding ByteStrings
         replicate,              -- :: Int -> Char -> ByteString
@@ -441,11 +440,6 @@ maximum = w2c . B.maximum
 minimum :: ByteString -> Char
 minimum = w2c . B.minimum
 {-# INLINE minimum #-}
-
--- | /O(n)/ map Char functions, provided with the index at each position
-mapIndexed :: (Int -> Char -> Char) -> ByteString -> ByteString
-mapIndexed f = B.mapIndexed (\i c -> c2w (f i (w2c c)))
-{-# INLINE mapIndexed #-}
 
 -- | The 'mapAccumL' function behaves like a combination of 'map' and
 -- 'foldl'; it applies a function to each element of a ByteString,
