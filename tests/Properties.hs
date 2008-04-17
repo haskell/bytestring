@@ -1,3 +1,4 @@
+{-# LANGUAGE PatternSignatures #-}
 --
 -- Must have rules off, otherwise the fusion rules will replace the rhs
 -- with the lhs, and we only end up testing lhs == lhs
@@ -1527,6 +1528,10 @@ prop_packAddress = C.pack "this is a test"
             ==
                    C.pack "this is a test" 
 
+prop_isSpaceWord8 (w :: Word8) = isSpace c == P.isSpaceChar8 c
+   where c = chr (fromIntegral w)
+ 
+
 ------------------------------------------------------------------------
 -- The entry point
 
@@ -2220,4 +2225,5 @@ ll_tests =
 --  ,("filterNotByte 2",    mytest prop_filterNotByte2)
     ,("isPrefixOf",         mytest prop_isPrefixOf)
     ,("concatMap",          mytest prop_concatMap)
+    ,("isSpace",            mytest prop_isSpaceWord8)
     ]
