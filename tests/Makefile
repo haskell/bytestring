@@ -63,22 +63,16 @@ prop-opt:
 	time ./p
 
 # rules-on
-.PHONY: hpc
-hpc: 
-	@echo "Compiled, rules on, with hpc"	
-	rm -f *.tix
-	${GHC} ${GHCFLAGS} ../dist/build/cbits/fpstring.o -ddump-simpl-stats -fhpc --make -i.. -i../dist/build/ Properties.hs -o p -fno-ignore-asserts -frewrite-rules
-	time ./p 10
-	hpc markup p --exclude=QuickCheckUtils
-
-# rules-on
 .PHONY: hpc-lite
 hpc-lite: 
 	@echo "Compiled, rules on, with hpc"	
-	rm -f *.tix
-	${GHC} ${GHCFLAGS} ../dist/build/cbits/fpstring.o -ddump-simpl-stats -fhpc --make -i.. -i../dist/build/ Properties.hs -o p -O -fno-ignore-asserts -fasm -frewrite-rules
-	time ./p 10
-	hpc markup p --exclude=Main --exclude=QuickCheckUtils
+	rm -f p.tix
+	${GHC} ${GHCFLAGS} ../dist/build/cbits/fpstring.o -ddump-simpl-stats -fhpc --make -i.. Properties.hs -o p -O -fno-ignore-asserts -fasm -frewrite-rules
+	rm Rules.o Rules.hi
+	${GHC} ${GHCFLAGS} -hide-package bytestring ../dist/build/cbits/fpstring.o -ddump-simpl-stats -i.. Rules.hs -O -fno-ignore-asserts -fasm -frewrite-rules ../Data/ByteString/*.o ../Data/ByteString/*/*.o ../Data/ByteString.o -package QuickCheck QuickCheckUtils.o -c -no-recomp
+	${GHC} ${GHCFLAGS} -package QuickCheck ../dist/build/cbits/fpstring.o Properties.o Rules.o QuickCheckUtils.o ../Data/ByteString/*.o ../Data/ByteString/*/*.o ../Data/ByteString.o -o p
+	time ./p 40
+	hpc markup p --exclude=Main --exclude=QuickCheckUtils --exclude=Data.ByteString.Fusion
 
 #
 # test rewriting is correct and working.

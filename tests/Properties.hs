@@ -52,6 +52,7 @@ import qualified Data.ByteString.Lazy.Internal as LP
 import Data.ByteString.Fusion
 import Prelude hiding (abs)
 
+import Rules
 import QuickCheckUtils
 
 f = C.dropWhile isSpace
@@ -234,12 +235,29 @@ prop_unfoldr2BP   = eq2
         P.unfoldrN (n*100) (\x -> if x <= (n*100) then Just (fromIntegral x, x + 1) else Nothing) a)
                 :: Int -> Int -> P)
 
+prop_unfoldr2CP   = eq2
+    ((\n a -> C.take (n*100) $
+        C.unfoldr    (\x -> if x <= (n*100) then Just (chr (x `mod` 256), x + 1) else Nothing) a)
+                :: Int -> Int -> P)
+    ((\n a ->                     fst $
+        C.unfoldrN (n*100) (\x -> if x <= (n*100) then Just (chr (x `mod` 256), x + 1) else Nothing) a)
+                :: Int -> Int -> P)
+
 
 prop_unfoldrLC   = eq3
     ((\n f a -> LC.take (fromIntegral n) $
         LC.unfoldr    f a) :: Int -> (X -> Maybe (Char,X)) -> X -> B)
     ((\n f a ->                     fst $
         C.unfoldrN n f a) :: Int -> (X -> Maybe (Char,X)) -> X -> P)
+
+prop_cycleLC  a   = not (LC.null a) ==> eq1
+    ((\n   -> LC.take (fromIntegral n) $
+              LC.cycle a
+     ) :: Int -> B)
+
+    ((\n   -> LC.take (fromIntegral (n::Int)) . LC.concat $
+              unfoldr (\x ->  Just (x,x) ) a
+     ) :: Int -> B)
 
 
 prop_iterateLC   = eq3
@@ -1598,6 +1616,7 @@ tests = misc_tests
      ++ bb_tests
      ++ ll_tests
      ++ io_tests
+     ++ rules
 
 --
 -- 'morally sound' IO
@@ -1663,6 +1682,7 @@ bl_tests =
     ,("mapAccumR",   mytest prop_mapAccumRCC)
     ,("unfoldr",     mytest prop_unfoldrBL)
     ,("unfoldr",     mytest prop_unfoldrLC)
+    ,("unfoldr",     mytest prop_cycleLC)
     ,("iterate",     mytest prop_iterateLC)
     ,("iterate",     mytest prop_iterateLC_2)
     ,("iterate",     mytest prop_iterateL)
@@ -1789,6 +1809,7 @@ bp_tests =
 --  ,("mapAccumL",   mytest prop_mapAccumL_mapIndexedBP)
     ,("unfoldr",     mytest prop_unfoldrBP)
     ,("unfoldr 2",   mytest prop_unfoldr2BP)
+    ,("unfoldr 2",   mytest prop_unfoldr2CP)
     ,("head",        mytest prop_headBP)
     ,("init",        mytest prop_initBP)
     ,("isPrefixOf",  mytest prop_isPrefixOfBP)
