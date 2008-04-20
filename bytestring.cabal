@@ -10,6 +10,9 @@ Description:
     strict chunks, held in a 'ForeignPtr', and can be passed between C
     and Haskell with little effort.
     .
+    Test coverage data for this library is available at:
+        <http://code.haskell.org/~dons/tests/bytestring/hpc_index.html>
+    .
 License:             BSD3
 License-file:        LICENSE
 Category:            Data
