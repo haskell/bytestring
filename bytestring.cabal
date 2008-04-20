@@ -41,15 +41,17 @@ library
 
   extensions:        CPP, ForeignFunctionInterface
 
-  --
-  -- -fglasgow-exts needed for local rewrite rules:
-  --
-  ghc-options: -XUnliftedFFITypes -XMagicHash -XUnboxedTuples -XDeriveDataTypeable
-               -fglasgow-exts
+  if impl(ghc)
+      extensions:  UnliftedFFITypes, MagicHash, UnboxedTuples, DeriveDataTypeable
+
+  ghc-options: -fglasgow-exts
                -Wall -fno-warn-orphans
                -O2 -funbox-strict-fields 
                -fdicts-cheap -fno-method-sharing
                -fmax-simplifier-iterations10 -fcpr-off
+  --
+  -- -fglasgow-exts needed for local rewrite rules:
+  --
 
   c-sources:         cbits/fpstring.c
   include-dirs:      include
