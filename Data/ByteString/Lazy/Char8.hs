@@ -746,15 +746,25 @@ unwords = intercalate (singleton ' ')
 -- there is no integer at the beginning of the string, it returns
 -- Nothing, otherwise it just returns the int read, and the rest of the
 -- string.
-readInt :: ByteString -> Maybe (Int, ByteString)
-readInt Empty        = Nothing
-readInt (Chunk x xs) =
-        case w2c (B.unsafeHead x) of
-            '-' -> loop True  0 0 (B.unsafeTail x) xs
-            '+' -> loop False 0 0 (B.unsafeTail x) xs
-            _   -> loop False 0 0 x xs
 
-    where loop :: Bool -> Int -> Int -> B.ByteString -> ByteString -> Maybe (Int, ByteString)
+{-
+-- Faster:
+
+data MaybeS = NothingS
+            | JustS {-# UNPACK #-} !Int {-# UNPACK #-} !ByteString
+-}
+
+readInt :: ByteString -> Maybe (Int, ByteString)
+{-# INLINE readInt #-}
+readInt Empty        = Nothing
+readInt (Chunk x xs) = case w2c (B.unsafeHead x) of
+    '-' -> loop True  0 0 (B.unsafeTail x) xs
+    '+' -> loop False 0 0 (B.unsafeTail x) xs
+    _   -> loop False 0 0 x xs
+
+    where loop :: Bool -> Int -> Int
+                -> B.ByteString -> ByteString -> Maybe (Int, ByteString)
+          {-# INLINE loop #-}
           STRICT5(loop)
           loop neg i n c cs
               | B.null c = case cs of
@@ -768,11 +778,13 @@ readInt (Chunk x xs) =
                                           (B.unsafeTail c) cs
                       | otherwise -> end neg i n c cs
 
-          end _   0 _ _  _   = Nothing
-          end neg _ n c cs = let n' | neg       = negate n
-                                    | otherwise = n
-                                 c' = chunk c cs
-                              in n' `seq` c' `seq` Just $! (n', c')
+          {-# INLINE end #-}
+          end _   0 _ _  _ = Nothing
+          end neg _ n c cs = e `seq` e
+                where n' = if neg then negate n else n
+                      c' = chunk c cs
+                      e  = n' `seq` c' `seq` Just $! (n',c')
+         --                  in n' `seq` c' `seq` JustS n' c'
 
 
 -- | readInteger reads an Integer from the beginning of the ByteString.  If
