@@ -30,6 +30,9 @@ extra-source-files:  README TODO
 
 library
   build-depends:     base
+  if impl(ghc > 6.8.2)
+       build-depends: ghc-prim
+
   exposed-modules:   Data.ByteString
                      Data.ByteString.Char8
                      Data.ByteString.Unsafe
@@ -42,13 +45,19 @@ library
   extensions:        CPP, ForeignFunctionInterface
 
   if impl(ghc)
-      extensions:  UnliftedFFITypes, MagicHash, UnboxedTuples, DeriveDataTypeable
+      extensions:   UnliftedFFITypes,
+                    MagicHash,
+                    UnboxedTuples,
+                    DeriveDataTypeable
 
-  ghc-options: -fglasgow-exts
-               -Wall -fno-warn-orphans
-               -O2 -funbox-strict-fields 
-               -fdicts-cheap -fno-method-sharing
-               -fmax-simplifier-iterations10 -fcpr-off
+  ghc-options:      -fglasgow-exts
+                    -Wall -fno-warn-orphans
+                    -O2
+                    -funbox-strict-fields 
+                    -fdicts-cheap
+                    -fno-method-sharing
+                    -fmax-simplifier-iterations10
+                    -fcpr-off
   --
   -- -fglasgow-exts needed for local rewrite rules:
   --
@@ -61,3 +70,4 @@ library
   nhc98-options:     -K4M -K3M
   if impl(ghc <= 6.4.2)
     cc-options:     -DSLOW_FOREIGN_PTR
+
