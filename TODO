@@ -1,11 +1,10 @@
 TODO:
 
     * back port streams fusion code.
-    * close bug in Lazy.lines
     * show instance for LPS
-    * ensure memchr / (== c) rules either always work, or we can back door them
     * stress testing
     * strictness testing
+    * rewrite C code to Haskell
 
 
 Todo items

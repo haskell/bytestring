@@ -57,7 +57,7 @@ library
                     -fdicts-cheap
                     -fno-method-sharing
                     -fmax-simplifier-iterations10
-                    -fcpr-off
+
   --
   -- -fglasgow-exts needed for local rewrite rules:
   --
