@@ -1828,7 +1828,13 @@ putStrLn = hPutStrLn stdout
 -- | Read a 'ByteString' directly from the specified 'Handle'.  This
 -- is far more efficient than reading the characters into a 'String'
 -- and then using 'pack'. First argument is the Handle to read from, 
--- and the second is the number of bytes to read.
+-- and the second is the number of bytes to read. It returns the bytes
+-- read, up to n, or EOF.
+--
+-- 'hGet' is implemented in terms of 'hGetBuf'.
+--
+-- If the handle is a pipe or socket, and the writing end
+-- is closed, 'hGet' will behave as if EOF was reached.
 --
 hGet :: Handle -> Int -> IO ByteString
 hGet _ 0 = return empty
