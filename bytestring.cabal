@@ -1,5 +1,5 @@
 Name:                bytestring
-Version:             0.9.1.1
+Version:             0.9.1.2
 Synopsis:            Fast, packed, strict and lazy byte arrays with a list interface
 Description:
     .
@@ -30,7 +30,7 @@ extra-source-files:  README TODO
 
 library
   build-depends:     base
-  if impl(ghc > 6.8.2)
+  if impl(ghc >= 6.9)
        build-depends: ghc-prim
 
   exposed-modules:   Data.ByteString
