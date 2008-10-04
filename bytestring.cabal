@@ -56,18 +56,14 @@ library
                     MagicHash,
                     UnboxedTuples,
                     DeriveDataTypeable
+                    ScopedTypeVariables
 
-  ghc-options:      -fglasgow-exts
-                    -Wall -fno-warn-orphans
+  ghc-options:      -Wall -fno-warn-orphans
                     -O2
                     -funbox-strict-fields 
                     -fdicts-cheap
                     -fno-method-sharing
                     -fmax-simplifier-iterations10
-
-  --
-  -- -fglasgow-exts needed for local rewrite rules:
-  --
 
   c-sources:         cbits/fpstring.c
   include-dirs:      include
