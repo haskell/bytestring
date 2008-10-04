@@ -2,7 +2,6 @@ Name:                bytestring
 Version:             0.9.1.2
 Synopsis:            Fast, packed, strict and lazy byte arrays with a list interface
 Description:
-    .
     A time and space-efficient implementation of byte vectors using
     packed Word8 arrays, suitable for high performance use, both in terms
     of large data quantities, or high speed requirements. Byte vectors
@@ -12,7 +11,7 @@ Description:
     .
     Test coverage data for this library is available at:
         <http://code.haskell.org/~dons/tests/bytestring/hpc_index.html>
-    .
+
 License:             BSD3
 License-file:        LICENSE
 Category:            Data
