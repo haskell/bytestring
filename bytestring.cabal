@@ -28,10 +28,17 @@ Build-Type:          Simple
 Cabal-Version:       >= 1.2
 extra-source-files:  README TODO
 
+flag split-syb
+
 library
-  build-depends:     base
+  build-depends:     base < 5
+  if flag(split-syb)
+    build-depends:   base >= 4, syb
+  else
+    build-depends:   base < 4
+
   if impl(ghc >= 6.9)
-       build-depends: ghc-prim
+    build-depends:   ghc-prim
 
   exposed-modules:   Data.ByteString
                      Data.ByteString.Char8
