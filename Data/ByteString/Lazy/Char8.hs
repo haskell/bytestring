@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP #-}
-{-# GHC_OPTIONS -fno-warn-orphans #-}
 
 -- #prune
 
