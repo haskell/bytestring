@@ -37,7 +37,12 @@ import qualified Data.ByteString.Internal as S
 import Foreign.Storable (sizeOf)
 
 #if defined(__GLASGOW_HASKELL__)
-import Data.Generics            (Data(..), Typeable(..))
+import Data.Typeable    (Typeable)
+#if __GLASGOW_HASKELL__ >= 610
+import Data.Data        (Data)
+#else
+import Data.Generics    (Data)
+#endif
 #endif
 
 -- | A space-efficient representation of a Word8 vector, supporting many

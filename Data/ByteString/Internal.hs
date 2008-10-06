@@ -73,7 +73,12 @@ import Data.Char                (ord)
 import Data.Word                (Word8)
 
 #if defined(__GLASGOW_HASKELL__)
-import Data.Generics            (Data(..), Typeable(..))
+import Data.Typeable            (Typeable)
+#if __GLASGOW_HASKELL__ >= 610
+import Data.Data                (Data)
+#else
+import Data.Generics            (Data)
+#endif
 import GHC.Ptr                  (Ptr(..))
 import GHC.Base                 (realWorld#,unsafeChr)
 import GHC.IOBase               (IO(IO), RawBuffer)
