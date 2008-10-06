@@ -34,7 +34,7 @@ module Data.ByteString.Lazy.Internal (
 
 import qualified Data.ByteString.Internal as S
 
-import Foreign.Storable (sizeOf)
+import Foreign.Storable (Storable(sizeOf))
 
 #if defined(__GLASGOW_HASKELL__)
 import Data.Typeable    (Typeable)
