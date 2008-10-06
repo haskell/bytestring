@@ -1,5 +1,5 @@
 Name:                bytestring
-Version:             0.9.1.3
+Version:             0.9.1.4
 Synopsis:            Fast, packed, strict and lazy byte arrays with a list interface
 Description:
     A time and space-efficient implementation of byte vectors using
@@ -16,7 +16,7 @@ License:             BSD3
 License-file:        LICENSE
 Category:            Data
 Copyright:           Copyright (c) Don Stewart   2005-2008,
-                               (c) Duncan Coutts 2006-2007,
+                               (c) Duncan Coutts 2006-2008,
                                (c) David Roundy  2003-2005.
 Author:              Don Stewart, Duncan Coutts
 Maintainer:          dons@galois.com, duncan@haskell.org
