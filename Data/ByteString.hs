@@ -220,13 +220,13 @@ import qualified Data.List as List
 import Data.Word                (Word8)
 import Data.Maybe               (isJust, listToMaybe)
 
--- Control.Exception.bracket not available in yhc or nhc
+-- Control.Exception.assert not available in yhc or nhc
 #ifndef __NHC__
 import Control.Exception        (finally, bracket, assert)
-import qualified Control.Exception as Exception
 #else
-import IO			(bracket, finally)
+import Control.Exception	(bracket, finally)
 #endif
+import qualified Control.Exception as Exception
 import Control.Monad            (when)
 
 import Foreign.C.String         (CString, CStringLen)
