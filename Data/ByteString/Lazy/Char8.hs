@@ -187,6 +187,7 @@ import Data.ByteString.Lazy
 
 -- Functions we need to wrap.
 import qualified Data.ByteString.Lazy as L
+import qualified Data.ByteString as S (ByteString) -- typename only
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Internal as B
 import qualified Data.ByteString.Unsafe as B
@@ -665,7 +666,7 @@ lines (Chunk c0 cs0) = loop0 c0 cs0
 
     -- the common special case where we have no existing chunks of
     -- the current line
-    loop0 :: B.ByteString -> ByteString -> [ByteString]
+    loop0 :: S.ByteString -> ByteString -> [ByteString]
     loop0 c cs =
         case B.elemIndex (c2w '\n') c of
             Nothing -> case cs of
@@ -682,7 +683,7 @@ lines (Chunk c0 cs0) = loop0 c0 cs0
 
     -- the general case when we are building a list of chunks that are
     -- part of the same line
-    loop :: B.ByteString -> [B.ByteString] -> ByteString -> [ByteString]
+    loop :: S.ByteString -> [S.ByteString] -> ByteString -> [ByteString]
     loop c line cs =
         case B.elemIndex (c2w '\n') c of
             Nothing ->
@@ -762,7 +763,7 @@ readInt (Chunk x xs) = case w2c (B.unsafeHead x) of
     _   -> loop False 0 0 x xs
 
     where loop :: Bool -> Int -> Int
-                -> B.ByteString -> ByteString -> Maybe (Int, ByteString)
+                -> S.ByteString -> ByteString -> Maybe (Int, ByteString)
           {-# INLINE loop #-}
           STRICT5(loop)
           loop neg i n c cs
@@ -809,7 +810,7 @@ readInteger (Chunk c0 cs0) =
                 | otherwise              -> Nothing
 
           loop :: Int -> Int -> [Integer]
-               -> B.ByteString -> ByteString -> (Integer, ByteString)
+               -> S.ByteString -> ByteString -> (Integer, ByteString)
           STRICT5(loop)
           loop d acc ns c cs
               | B.null c = case cs of
@@ -859,5 +860,5 @@ appendFile f txt = bracket (openFile f AppendMode) hClose
 -- Internal utilities
 
 -- reverse a list of possibly-empty chunks into a lazy ByteString
-revChunks :: [B.ByteString] -> ByteString
+revChunks :: [S.ByteString] -> ByteString
 revChunks cs = List.foldl' (flip chunk) Empty cs

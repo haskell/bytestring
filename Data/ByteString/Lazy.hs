@@ -204,6 +204,7 @@ import Prelude hiding
     ,getContents,getLine,putStr,putStrLn ,zip,zipWith,unzip,notElem)
 
 import qualified Data.List              as L  -- L for list/lazy
+import qualified Data.ByteString        as P  (ByteString) -- type name only
 import qualified Data.ByteString        as S  -- S for strict (hmm...)
 import qualified Data.ByteString.Internal as S
 import qualified Data.ByteString.Unsafe as S
@@ -304,11 +305,11 @@ unpack cs = L.concatMap S.unpack (toChunks cs)
 --TODO: we can do better here by integrating the concat with the unpack
 
 -- | /O(c)/ Convert a list of strict 'ByteString' into a lazy 'ByteString'
-fromChunks :: [S.ByteString] -> ByteString
+fromChunks :: [P.ByteString] -> ByteString
 fromChunks cs = L.foldr chunk Empty cs
 
 -- | /O(n)/ Convert a lazy 'ByteString' into a list of strict 'ByteString'
-toChunks :: ByteString -> [S.ByteString]
+toChunks :: ByteString -> [P.ByteString]
 toChunks cs = foldrChunks (:) [] cs
 
 ------------------------------------------------------------------------
@@ -446,7 +447,7 @@ intersperse :: Word8 -> ByteString -> ByteString
 intersperse _ Empty        = Empty
 intersperse w (Chunk c cs) = Chunk (S.intersperse w c)
                                    (foldrChunks (Chunk . intersperse') Empty cs)
-  where intersperse' :: S.ByteString -> S.ByteString
+  where intersperse' :: P.ByteString -> P.ByteString
         intersperse' (S.PS fp o l) =
           S.unsafeCreate (2*l) $ \p' -> withForeignPtr fp $ \p -> do
             poke p' w
@@ -523,11 +524,11 @@ concatMap :: (Word8 -> ByteString) -> ByteString -> ByteString
 concatMap _ Empty        = Empty
 concatMap f (Chunk c0 cs0) = to c0 cs0
   where
-    go :: ByteString -> S.ByteString -> ByteString -> ByteString
+    go :: ByteString -> P.ByteString -> ByteString -> ByteString
     go Empty        c' cs' = to c' cs'
     go (Chunk c cs) c' cs' = Chunk c (go cs c' cs')
 
-    to :: S.ByteString -> ByteString -> ByteString
+    to :: P.ByteString -> ByteString -> ByteString
     to c cs | S.null c  = case cs of
         Empty          -> Empty
         (Chunk c' cs') -> to c' cs'
@@ -788,7 +789,7 @@ splitWith :: (Word8 -> Bool) -> ByteString -> [ByteString]
 splitWith _ Empty          = []
 splitWith p (Chunk c0 cs0) = comb [] (S.splitWith p c0) cs0
 
-  where comb :: [S.ByteString] -> [S.ByteString] -> ByteString -> [ByteString]
+  where comb :: [P.ByteString] -> [P.ByteString] -> ByteString -> [ByteString]
         comb acc (s:[]) Empty        = revChunks (s:acc) : []
         comb acc (s:[]) (Chunk c cs) = comb (s:acc) (S.splitWith p c) cs
         comb acc (s:ss) cs           = revChunks (s:acc) : comb [] ss cs
@@ -815,7 +816,7 @@ split :: Word8 -> ByteString -> [ByteString]
 split _ Empty     = []
 split w (Chunk c0 cs0) = comb [] (S.split w c0) cs0
 
-  where comb :: [S.ByteString] -> [S.ByteString] -> ByteString -> [ByteString]
+  where comb :: [P.ByteString] -> [P.ByteString] -> ByteString -> [ByteString]
         comb acc (s:[]) Empty        = revChunks (s:acc) : []
         comb acc (s:[]) (Chunk c cs) = comb (s:acc) (S.split w c) cs
         comb acc (s:ss) cs           = revChunks (s:acc) : comb [] ss cs
@@ -844,7 +845,7 @@ group :: ByteString -> [ByteString]
 group Empty          = []
 group (Chunk c0 cs0) = group' [] (S.group c0) cs0
   where 
-    group' :: [S.ByteString] -> [S.ByteString] -> ByteString -> [ByteString]
+    group' :: [P.ByteString] -> [P.ByteString] -> ByteString -> [ByteString]
     group' acc@(s':_) ss@(s:_) cs
       | S.unsafeHead s'
      /= S.unsafeHead s             = revNonEmptyChunks    acc  : group' [] ss cs
@@ -869,7 +870,7 @@ groupBy :: (Word8 -> Word8 -> Bool) -> ByteString -> [ByteString]
 groupBy _ Empty          = []
 groupBy k (Chunk c0 cs0) = groupBy' [] 0 (S.groupBy k c0) cs0
   where
-    groupBy' :: [S.ByteString] -> Word8 -> [S.ByteString] -> ByteString -> [ByteString]
+    groupBy' :: [P.ByteString] -> Word8 -> [P.ByteString] -> ByteString -> [ByteString]
     groupBy' acc@(_:_) c ss@(s:_) cs
       | not (c `k` S.unsafeHead s)     = revNonEmptyChunks acc : groupBy' [] 0 ss cs
     groupBy' acc _ (s:[]) Empty        = revNonEmptyChunks (s : acc) : []
@@ -1307,16 +1308,16 @@ moduleError fun msg = error ("Data.ByteString.Lazy." ++ fun ++ ':':' ':msg)
 
 
 -- reverse a list of non-empty chunks into a lazy ByteString
-revNonEmptyChunks :: [S.ByteString] -> ByteString
+revNonEmptyChunks :: [P.ByteString] -> ByteString
 revNonEmptyChunks cs = L.foldl' (flip Chunk) Empty cs
 
 -- reverse a list of possibly-empty chunks into a lazy ByteString
-revChunks :: [S.ByteString] -> ByteString
+revChunks :: [P.ByteString] -> ByteString
 revChunks cs = L.foldl' (flip chunk) Empty cs
 
 -- | 'findIndexOrEnd' is a variant of findIndex, that returns the length
 -- of the string if no element is found, rather than Nothing.
-findIndexOrEnd :: (Word8 -> Bool) -> S.ByteString -> Int
+findIndexOrEnd :: (Word8 -> Bool) -> P.ByteString -> Int
 findIndexOrEnd k (S.PS x s l) = S.inlinePerformIO $ withForeignPtr x $ \f -> go (f `plusPtr` s) 0
   where
     STRICT2(go)
