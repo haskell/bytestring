@@ -1,5 +1,9 @@
 {-# LANGUAGE CPP #-}
+#if __GLASGOW_HASKELL__ >= 608
+{-# LANGUAGE MagicHash #-}
+#else
 {-# OPTIONS_GHC -XMagicHash #-}
+#endif
 -- |
 -- Module      : Data.ByteString.Unsafe
 -- License     : BSD-style

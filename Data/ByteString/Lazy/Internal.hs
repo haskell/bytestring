@@ -1,5 +1,9 @@
 {-# LANGUAGE CPP #-}
-{-# OPTIONS_GHC -XDeriveDataTypeable #-}
+#if __GLASGOW_HASKELL__ >= 608
+{-# LANGUAGE DeriveDataTypeable #-}
+#else
+{-# OPTIONS_GHC -fglasgow-exts #-}
+#endif
 -- |
 -- Module      : Data.ByteString.Lazy.Internal
 -- License     : BSD-style

@@ -1,5 +1,9 @@
 {-# LANGUAGE CPP #-}
-{-# OPTIONS_GHC -XMagicHash -XUnboxedTuples #-}
+#if __GLASGOW_HASKELL__ >= 608
+{-# LANGUAGE MagicHash UnboxedTuples #-}
+#else
+{-# OPTIONS_GHC -fglasgow-exts #-}
+#endif
 
 -- #prune
 
@@ -543,12 +547,15 @@ break f = B.break (f . w2c)
 {-# INLINE [1] break #-}
 #endif
 
+#if __GLASGOW_HASKELL__ >= 606
+-- This RULE LHS is not allowed by ghc-6.4
 {-# RULES
 "ByteString specialise break (x==)" forall x.
     break ((==) x) = breakChar x
 "ByteString specialise break (==x)" forall x.
     break (==x) = breakChar x
   #-}
+#endif
 
 -- INTERNAL:
 

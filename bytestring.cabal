@@ -54,9 +54,10 @@ library
   ghc-options:      -Wall -fno-warn-orphans
                     -O2
                     -funbox-strict-fields 
-                    -fdicts-cheap
                     -fno-method-sharing
                     -fmax-simplifier-iterations10
+  if impl(ghc >= 6.6)
+    ghc-options:    -fdicts-cheap
 
   c-sources:         cbits/fpstring.c
   include-dirs:      include
