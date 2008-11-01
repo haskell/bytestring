@@ -5,6 +5,7 @@ TODO:
     * stress testing
     * strictness testing
     * rewrite C code to Haskell
+    * eliminate use of -fno-warn-orphans
 
 
 Todo items
