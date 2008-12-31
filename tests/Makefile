@@ -11,7 +11,7 @@ BIN=            run-utests run-qtests
 all:  prop prop-fusion-compiled prop-compiled prop-opt units-compiled
 fast: prop-fast
 
-everything: prop hugs prop-compiled prop-fusion-compiled runbench fusionbench wc spellcheck letter_frequency linesort fuse down-fuse inline zipwith unpack groupby run-lazybuild run-lazybuildcons
+everything: prop hugs prop-compiled prop-fusion-compiled runbench fusionbench wc spellcheck letter_frequency linesort fuse down-fuse inline zipwith unpack groupby run-lazybuild run-lazybuildcons run-lazyread
 
 # ---------------------------------------------
 # Boot in-place
@@ -155,6 +155,12 @@ run-lazybuildcons: lazybuildcons
 	time ./lazybuildcons 100000000 > /dev/null
 lazybuildcons: lazybuildcons.hs
 	${GHC} ${PKG} ${GHCFLAGS} --make $< -o lazybuildcons
+
+.PHONY: run-lazyread
+run-lazyread: lazyread
+	./lazyread > /dev/null
+lazyread: lazyread.hs
+	${GHC} ${PKG} ${GHCFLAGS} --make $< -o lazyread
 
 lazylines: lazylines.o
 	time ./lazylines < bigdata
