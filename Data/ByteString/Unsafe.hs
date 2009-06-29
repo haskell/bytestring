@@ -10,12 +10,12 @@
 -- Maintainer  : dons@cse.unsw.edu.au, duncan@haskell.org
 -- Stability   : experimental
 -- Portability : portable
--- 
--- A module containing unsafe 'ByteString' operations. This exposes
--- the 'ByteString' representation and low level construction functions.
--- Modules which extend the 'ByteString' system will need to use this module
--- while ideally most users will be able to make do with the public interface
--- modules.
+--
+-- A module containing unsafe 'ByteString' operations.
+--
+-- While these functions have a stable API and you may use these functions in
+-- applications, do carefully consider the documented pre-conditions;
+-- incorrect use can break referential transparency or worse.
 --
 module Data.ByteString.Unsafe (
 
