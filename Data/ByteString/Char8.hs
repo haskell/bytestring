@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP #-}
 #if __GLASGOW_HASKELL__ >= 608
-{-# LANGUAGE MagicHash UnboxedTuples #-}
+{-# LANGUAGE MagicHash, UnboxedTuples #-}
 #else
 {-# OPTIONS_GHC -fglasgow-exts #-}
 #endif

@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP, ForeignFunctionInterface #-}
 #if __GLASGOW_HASKELL__ >= 608
-{-# LANGUAGE UnliftedFFITypes MagicHash UnboxedTuples DeriveDataTypeable #-}
+{-# LANGUAGE UnliftedFFITypes, MagicHash, UnboxedTuples, DeriveDataTypeable #-}
 #else
 {-# OPTIONS_GHC -fglasgow-exts #-}
 #endif
