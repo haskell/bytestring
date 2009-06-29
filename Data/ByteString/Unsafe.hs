@@ -162,9 +162,9 @@ unsafePackAddress addr# = do
 {-# INLINE unsafePackAddress #-}
 
 -- | /O(1)/ 'unsafePackAddressLen' provides constant-time construction of
--- 'ByteStrings' which is ideal for string literals. It packs a
--- null-terminated sequence of bytes into a 'ByteString', given a raw
--- 'Addr\#' to the string, and the length of the string.
+-- 'ByteStrings' which is ideal for string literals. It packs a sequence
+-- of bytes into a 'ByteString', given a raw 'Addr#' to the string, and
+-- the length of the string.
 --
 -- This function is /unsafe/ in two ways:
 --
