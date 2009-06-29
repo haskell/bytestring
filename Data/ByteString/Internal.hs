@@ -197,7 +197,12 @@ nullForeignPtr = unsafePerformIO $ newForeignPtr_ nullPtr
 -- ---------------------------------------------------------------------
 -- Low level constructors
 
--- | /O(1)/ Build a ByteString from a ForeignPtr
+-- | /O(1)/ Build a ByteString from a ForeignPtr.
+--
+-- If you do not need the offset parameter then you do should be using
+-- 'Data.ByteString.Unsafe.unsafePackCStringLen' or
+-- 'Data.ByteString.Unsafe.unsafePackCStringFinalizer' instead.
+--
 fromForeignPtr :: ForeignPtr Word8
                -> Int -- ^ Offset
                -> Int -- ^ Length
