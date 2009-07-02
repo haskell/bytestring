@@ -1,3 +1,4 @@
+{-# OPTIONS_HADDOCK hide #-}
 -- |
 -- Module      : Data.ByteString.Fusion
 -- License     : BSD-style
@@ -11,7 +12,6 @@
 -- Coutts, Leshchinskiy and Stewart, 2007.  
 --
 
--- #hide
 module Data.ByteString.Fusion (
 
     -- A place holder for Stream Fusion

@@ -4,6 +4,7 @@
 #else
 {-# OPTIONS_GHC -fglasgow-exts #-}
 #endif
+{-# OPTIONS_HADDOCK hide #-}
 -- |
 -- Module      : Data.ByteString.Lazy.Internal
 -- License     : BSD-style
