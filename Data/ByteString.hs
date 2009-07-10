@@ -1637,7 +1637,7 @@ tails p | null p    = [empty]
 sort :: ByteString -> ByteString
 sort (PS input s l) = unsafeCreate l $ \p -> allocaArray 256 $ \arr -> do
 
-    memset (castPtr arr) 0 (256 * fromIntegral (sizeOf (undefined :: CSize)))
+    _ <- memset (castPtr arr) 0 (256 * fromIntegral (sizeOf (undefined :: CSize)))
     withForeignPtr input (\x -> countOccurrences arr (x `plusPtr` s) l)
 
     let STRICT2(go)
