@@ -908,7 +908,6 @@ lines ps
              Nothing -> [ps]
              Just n  -> take n ps : lines (drop (n+1) ps)
     where search = elemIndex '\n'
-{-# INLINE lines #-}
 
 {-
 -- Just as fast, but more complex. Should be much faster, I thought.

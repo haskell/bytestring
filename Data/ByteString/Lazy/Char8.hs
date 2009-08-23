@@ -765,7 +765,6 @@ readInt (Chunk x xs) = case w2c (B.unsafeHead x) of
 
     where loop :: Bool -> Int -> Int
                 -> S.ByteString -> ByteString -> Maybe (Int, ByteString)
-          {-# INLINE loop #-}
           STRICT5_(loop)
           loop neg i n c cs
               | B.null c = case cs of

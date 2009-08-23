@@ -1576,9 +1576,6 @@ zipWith :: (Word8 -> Word8 -> a) -> ByteString -> ByteString -> [a]
 zipWith f ps qs
     | null ps || null qs = []
     | otherwise = f (unsafeHead ps) (unsafeHead qs) : zipWith f (unsafeTail ps) (unsafeTail qs)
-#if defined(__GLASGOW_HASKELL__)
-{-# INLINE [1] zipWith #-}
-#endif
 
 --
 -- | A specialised version of zipWith for the common case of a
