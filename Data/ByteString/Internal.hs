@@ -55,8 +55,7 @@ module Data.ByteString.Internal (
         c_maximum,              -- :: Ptr Word8 -> CInt -> IO Word8
         c_minimum,              -- :: Ptr Word8 -> CInt -> IO Word8
         c_count,                -- :: Ptr Word8 -> CInt -> Word8 -> IO CInt
-
-#if defined(__GLASGOW_HASKELL__)
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ < 611
         -- * Internal GHC magic
         memcpy_ptr_baoff,       -- :: Ptr a -> RawBuffer -> CInt -> CSize -> IO (Ptr ())
 #endif
@@ -88,8 +87,14 @@ import Data.Generics            (Data)
 #endif
 import GHC.Ptr                  (Ptr(..))
 import GHC.Base                 (realWorld#,unsafeChr)
-import GHC.IOBase               (IO(IO), RawBuffer)
-#if __GLASGOW_HASKELL__ >= 608
+#if __GLASGOW_HASKELL__ >= 611
+import GHC.IO                   (IO(IO))
+#else
+import GHC.IOBase               (IO(IO),RawBuffer)
+#endif
+#if __GLASGOW_HASKELL__ >= 611
+import GHC.IO                   (unsafeDupablePerformIO)
+#elif __GLASGOW_HASKELL__ >= 608
 import GHC.IOBase               (unsafeDupablePerformIO)
 #else
 import GHC.IOBase               (unsafePerformIO)
@@ -400,7 +405,7 @@ foreign import ccall unsafe "static fpstring.h fps_count" c_count
 -- ---------------------------------------------------------------------
 -- Internal GHC Haskell magic
 
-#if defined(__GLASGOW_HASKELL__)
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ < 611
 foreign import ccall unsafe "__hscore_memcpy_src_off"
    memcpy_ptr_baoff :: Ptr a -> RawBuffer -> CInt -> CSize -> IO (Ptr ())
 #endif

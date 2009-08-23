@@ -257,15 +257,27 @@ import qualified System.IO      (hGetLine)
 #if defined(__GLASGOW_HASKELL__)
 
 import System.IO                (hGetBufNonBlocking)
-import System.IO.Error          (isEOFError)
 
+#if __GLASGOW_HASKELL__ >= 611
+import Data.IORef
+import GHC.IO.Handle.Internals
+import GHC.IO.Handle.Types
+import GHC.IO.Buffer
+import GHC.IO.BufferedIO as Buffered
+import GHC.IO hiding (finally)
+import Data.Char                (ord)
+import Foreign.Marshal.Utils    (copyBytes)
+#else
+import System.IO.Error          (isEOFError)
+import GHC.IOBase
 import GHC.Handle
+#endif
+
 import GHC.Prim                 (Word#, (+#), writeWord8OffAddr#)
 import GHC.Base                 (build)
 import GHC.Word hiding (Word8)
 import GHC.Ptr                  (Ptr(..))
 import GHC.ST                   (ST(..))
-import GHC.IOBase
 
 #endif
 
@@ -1733,9 +1745,71 @@ getLine = hGetLine stdin
 -- | Read a line from a handle
 
 hGetLine :: Handle -> IO ByteString
+
 #if !defined(__GLASGOW_HASKELL__)
+
 hGetLine h = System.IO.hGetLine h >>= return . pack . P.map c2w
+
+#elif __GLASGOW_HASKELL__ >= 611
+
+hGetLine h =
+  wantReadableHandle_ "Data.ByteString.hGetLine" h $
+    \ h_@Handle__{haByteBuffer} -> do
+      flushCharReadBuffer h_
+      buf <- readIORef haByteBuffer
+      if isEmptyBuffer buf
+         then fill h_ buf 0 []
+         else haveBuf h_ buf 0 []
+ where
+
+  fill h_@Handle__{haByteBuffer,haDevice} buf len xss =
+    len `seq` do
+    (r,buf') <- Buffered.fillReadBuffer haDevice buf
+    if r == 0
+       then do writeIORef haByteBuffer buf{ bufR=0, bufL=0 }
+               if len > 0
+                  then mkBigPS len xss
+                  else ioe_EOF
+       else haveBuf h_ buf' len xss
+
+  haveBuf h_@Handle__{haByteBuffer}
+          buf@Buffer{ bufRaw=raw, bufR=w, bufL=r }
+          len xss =
+    do
+        off <- findEOL r w raw
+        let new_len = len + off - r
+        xs <- mkPS raw r off
+
+      -- if eol == True, then off is the offset of the '\n'
+      -- otherwise off == w and the buffer is now empty.
+        if off /= w
+            then do if (w == off + 1)
+                            then writeIORef haByteBuffer buf{ bufL=0, bufR=0 }
+                            else writeIORef haByteBuffer buf{ bufL = off + 1 }
+                    mkBigPS new_len (xs:xss)
+            else do
+                 fill h_ buf{ bufL=0, bufR=0 } new_len (xs:xss)
+
+  -- find the end-of-line character, if there is one
+  findEOL r w raw
+        | r == w = return w
+        | otherwise =  do
+            c <- readWord8Buf raw r
+            if c == fromIntegral (ord '\n')
+                then return r -- NB. not r+1: don't include the '\n'
+                else findEOL (r+1) w raw
+
+mkPS :: RawBuffer Word8 -> Int -> Int -> IO ByteString
+mkPS buf start end =
+ create len $ \p ->
+   withRawBuffer buf $ \pbuf -> do
+   copyBytes p (pbuf `plusPtr` start) len
+ where
+   len = end - start
+
 #else
+-- GHC 6.10 and older, pre-Unicode IO library
+
 hGetLine h = wantReadableHandle "Data.ByteString.hGetLine" h $ \ handle_ -> do
     case haBufferMode handle_ of
        NoBuffering -> error "no buffering"
@@ -1797,11 +1871,11 @@ mkPS buf start end =
         memcpy_ptr_baoff p buf (fromIntegral start) (fromIntegral len)
         return ()
 
+#endif
+
 mkBigPS :: Int -> [ByteString] -> IO ByteString
 mkBigPS _ [ps] = return ps
 mkBigPS _ pss = return $! concat (P.reverse pss)
-
-#endif
 
 -- ---------------------------------------------------------------------
 -- Block IO

@@ -266,7 +266,11 @@ import Foreign
 
 #if defined(__GLASGOW_HASKELL__)
 import GHC.Base                 (Char(..),unpackCString#,ord#,int2Word#)
-import GHC.IOBase               (IO(..),stToIO)
+#if __GLASGOW_HASKELL__ >= 611
+import GHC.IO                   (stToIO)
+#else
+import GHC.IOBase               (stToIO)
+#endif
 import GHC.Prim                 (Addr#,writeWord8OffAddr#,plusAddr#)
 import GHC.Ptr                  (Ptr(..))
 import GHC.ST                   (ST(..))

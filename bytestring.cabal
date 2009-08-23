@@ -50,6 +50,8 @@ library
                     UnboxedTuples,
                     DeriveDataTypeable
                     ScopedTypeVariables
+  if impl(ghc >= 6.11)
+      extensions:   NamedFieldPuns
 
   ghc-options:      -Wall -fno-warn-orphans
                     -O2
