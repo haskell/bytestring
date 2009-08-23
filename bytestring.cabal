@@ -22,7 +22,7 @@ Author:              Don Stewart, Duncan Coutts
 Maintainer:          dons@galois.com, duncan@haskell.org
 Stability:           provisional
 Homepage:            http://www.cse.unsw.edu.au/~dons/fps.html
-Tested-With:         GHC ==6.8.2
+Tested-With:         GHC==6.10.4, GHC ==6.8.2, GHC==6.6.1, GHC==6.4.2
 Build-Type:          Simple
 Cabal-Version:       >= 1.2.3
 extra-source-files:  README TODO
@@ -53,6 +53,7 @@ library
   if impl(ghc >= 6.11)
       extensions:   NamedFieldPuns
 
+  --TODO: eliminate orphan instances:
   ghc-options:      -Wall -fno-warn-orphans
                     -O2
                     -funbox-strict-fields 
