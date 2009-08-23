@@ -1,10 +1,9 @@
-{-# LANGUAGE CPP #-}
-#if __GLASGOW_HASKELL__ >= 608
-{-# LANGUAGE DeriveDataTypeable #-}
-#else
-{-# OPTIONS_GHC -fglasgow-exts #-}
-#endif
+{-# LANGUAGE CPP, ForeignFunctionInterface #-}
+-- We cannot actually specify all the language pragmas, see ghc ticket #
+-- If we could, these are what they would be:
+{- LANGUAGE DeriveDataTypeable -}
 {-# OPTIONS_HADDOCK hide #-}
+
 -- |
 -- Module      : Data.ByteString.Lazy.Internal
 -- License     : BSD-style

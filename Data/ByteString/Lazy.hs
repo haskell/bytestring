@@ -1,7 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
-
--- #prune
+{-# OPTIONS_HADDOCK prune #-}
 
 -- |
 -- Module      : Data.ByteString.Lazy

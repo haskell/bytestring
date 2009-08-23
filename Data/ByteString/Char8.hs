@@ -1,11 +1,8 @@
 {-# LANGUAGE CPP #-}
-#if __GLASGOW_HASKELL__ >= 608
-{-# LANGUAGE MagicHash, UnboxedTuples #-}
-#else
-{-# OPTIONS_GHC -fglasgow-exts #-}
-#endif
-
--- #prune
+-- We cannot actually specify all the language pragmas, see ghc ticket #
+-- If we could, these are what they would be:
+{- LANGUAGE MagicHash, UnboxedTuples -}
+{-# OPTIONS_HADDOCK prune #-}
 
 -- |
 -- Module      : Data.ByteString.Char8

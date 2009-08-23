@@ -1,6 +1,5 @@
 {-# LANGUAGE CPP #-}
-
--- #prune
+{-# OPTIONS_HADDOCK prune #-}
 
 -- |
 -- Module      : Data.ByteString.Lazy.Char8

@@ -1,9 +1,8 @@
 {-# LANGUAGE CPP #-}
-#if __GLASGOW_HASKELL__ >= 608
-{-# LANGUAGE MagicHash #-}
-#else
-{-# OPTIONS_GHC -XMagicHash #-}
-#endif
+-- We cannot actually specify all the language pragmas, see ghc ticket #
+-- If we could, these are what they would be:
+{- LANGUAGE MagicHash -}
+
 -- |
 -- Module      : Data.ByteString.Unsafe
 -- License     : BSD-style

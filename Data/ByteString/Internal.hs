@@ -1,10 +1,10 @@
 {-# LANGUAGE CPP, ForeignFunctionInterface #-}
-#if __GLASGOW_HASKELL__ >= 608
-{-# LANGUAGE UnliftedFFITypes, MagicHash, UnboxedTuples, DeriveDataTypeable #-}
-#else
-{-# OPTIONS_GHC -fglasgow-exts #-}
-#endif
+-- We cannot actually specify all the language pragmas, see ghc ticket #
+-- If we could, these are what they would be:
+{- LANGUAGE UnliftedFFITypes, MagicHash,
+            UnboxedTuples, DeriveDataTypeable -}
 {-# OPTIONS_HADDOCK hide #-}
+
 -- |
 -- Module      : Data.ByteString.Internal
 -- License     : BSD-style
