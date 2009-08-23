@@ -24,7 +24,7 @@ Stability:           provisional
 Homepage:            http://www.cse.unsw.edu.au/~dons/fps.html
 Tested-With:         GHC ==6.8.2
 Build-Type:          Simple
-Cabal-Version:       >= 1.2
+Cabal-Version:       >= 1.2.3
 extra-source-files:  README TODO
 
 library
