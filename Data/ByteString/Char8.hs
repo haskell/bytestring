@@ -249,10 +249,6 @@ import Data.ByteString (empty,null,length,tail,init,append
 import Data.ByteString.Internal (ByteString(PS), c2w, w2c, isSpaceWord8
                                 ,inlinePerformIO)
 
-#if defined(__GLASGOW_HASKELL__)
-import Data.ByteString.Unsafe (unsafePackAddress) -- for the rule
-#endif
-
 import Data.Char    ( isSpace )
 import qualified Data.List as List (intersperse)
 

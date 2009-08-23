@@ -195,7 +195,6 @@ module Data.ByteString.Lazy (
 
   ) where
 
-import qualified Prelude
 import Prelude hiding
     (reverse,head,tail,last,init,null,length,map,lines,foldl,foldr,unlines
     ,concat,any,take,drop,splitAt,takeWhile,dropWhile,span,break,elem,filter,maximum

@@ -230,7 +230,6 @@ import Control.Exception        (finally, bracket, assert)
 #else
 import Control.Exception	(bracket, finally)
 #endif
-import qualified Control.Exception as Exception
 import Control.Monad            (when)
 
 import Foreign.C.String         (CString, CStringLen)
@@ -244,7 +243,7 @@ import Foreign.Storable         (Storable(..))
 -- hGetBuf and hPutBuf not available in yhc or nhc
 import System.IO                (stdin,stdout,hClose,hFileSize
                                 ,hGetBuf,hPutBuf,openBinaryFile
-                                ,Handle,IOMode(..))
+                                ,IOMode(..))
 
 import Data.Monoid              (Monoid, mempty, mappend, mconcat)
 

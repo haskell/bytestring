@@ -85,7 +85,6 @@ import Data.Data                (Data)
 #else
 import Data.Generics            (Data)
 #endif
-import GHC.Ptr                  (Ptr(..))
 import GHC.Base                 (realWorld#,unsafeChr)
 #if __GLASGOW_HASKELL__ >= 611
 import GHC.IO                   (IO(IO))

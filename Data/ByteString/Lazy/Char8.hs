@@ -178,7 +178,7 @@ module Data.ByteString.Lazy.Char8 (
 
 -- Functions transparently exported
 import Data.ByteString.Lazy 
-        (ByteString, fromChunks, toChunks
+        (fromChunks, toChunks
         ,empty,null,length,tail,init,append,reverse,transpose,cycle
         ,concat,take,drop,splitAt,intercalate,isPrefixOf,group,inits,tails,copy
         ,hGetContents, hGet, hPut, getContents
@@ -189,7 +189,6 @@ import Data.ByteString.Lazy
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString as S (ByteString) -- typename only
 import qualified Data.ByteString as B
-import qualified Data.ByteString.Internal as B
 import qualified Data.ByteString.Unsafe as B
 import Data.ByteString.Lazy.Internal
 
