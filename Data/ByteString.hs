@@ -1116,18 +1116,19 @@ splitWith p ps = loop p ps
 --
 split :: Word8 -> ByteString -> [ByteString]
 split _ (PS _ _ 0) = []
-split w (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
-    let ptr = p `plusPtr` s
-
+split w (PS x s l) = loop 0
+    where
         STRICT1(loop)
         loop n =
-            let q = inlinePerformIO $ memchr (ptr `plusPtr` n)
-                                           w (fromIntegral (l-n))
+            let q = inlinePerformIO $ withForeignPtr x $ \p ->
+                      memchr (p `plusPtr` (s+n))
+                             w (fromIntegral (l-n))
             in if q == nullPtr
                 then [PS x (s+n) (l-n)]
-                else let i = q `minusPtr` ptr in PS x (s+n) (i-n) : loop (i+1)
+                else let i = inlinePerformIO $ withForeignPtr x $ \p ->
+                               return (q `minusPtr` (p `plusPtr` s))
+                      in PS x (s+n) (i-n) : loop (i+1)
 
-    return (loop 0)
 {-# INLINE split #-}
 
 {-
@@ -1263,17 +1264,17 @@ elemIndexEnd ch (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p ->
 -- the indices of all elements equal to the query element, in ascending order.
 -- This implementation uses memchr(3).
 elemIndices :: Word8 -> ByteString -> [Int]
-elemIndices w (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
-    let ptr = p `plusPtr` s
-
+elemIndices w (PS x s l) = loop 0
+    where
         STRICT1(loop)
-        loop n = let q = inlinePerformIO $ memchr (ptr `plusPtr` n)
+        loop n = let q = inlinePerformIO $ withForeignPtr x $ \p ->
+                           memchr (p `plusPtr` (n+s))
                                                 w (fromIntegral (l - n))
                  in if q == nullPtr
                         then []
-                        else let i = q `minusPtr` ptr
+                        else let i = inlinePerformIO $ withForeignPtr x $ \p ->
+                                       return (q `minusPtr` (p `plusPtr` s))
                              in i : loop (i+1)
-    return $! loop 0
 {-# INLINE elemIndices #-}
 
 {-
