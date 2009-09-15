@@ -242,6 +242,7 @@ import Foreign.Storable         (Storable(..))
 import System.IO                (stdin,stdout,hClose,hFileSize
                                 ,hGetBuf,hPutBuf,openBinaryFile
                                 ,IOMode(..))
+import System.IO.Error          (mkIOError, ioError, illegalOperationErrorType)
 
 import Data.Monoid              (Monoid, mempty, mappend, mconcat)
 
@@ -1916,8 +1917,10 @@ putStrLn = hPutStrLn stdout
 -- is closed, 'hGet' will behave as if EOF was reached.
 --
 hGet :: Handle -> Int -> IO ByteString
-hGet _ 0 = return empty
-hGet h i = createAndTrim i $ \p -> hGetBuf h p i
+hGet h i
+    | i >  0    = createAndTrim i $ \p -> hGetBuf h p i
+    | i == 0    = return empty
+    | otherwise = illegalBufferSize h "hGet" i
 
 -- | hGetNonBlocking is identical to 'hGet', except that it will never block
 -- waiting for data to become available, instead it returns only whatever data
@@ -1925,11 +1928,21 @@ hGet h i = createAndTrim i $ \p -> hGetBuf h p i
 --
 hGetNonBlocking :: Handle -> Int -> IO ByteString
 #if defined(__GLASGOW_HASKELL__)
-hGetNonBlocking _ 0 = return empty
-hGetNonBlocking h i = createAndTrim i $ \p -> hGetBufNonBlocking h p i
+hGetNonBlocking h i
+    | i >  0    = createAndTrim i $ \p -> hGetBufNonBlocking h p i
+    | i == 0    = return empty
+    | otherwise = illegalBufferSize h "hGetNonBlocking" i
 #else
 hGetNonBlocking = hGet
 #endif
+
+illegalBufferSize :: Handle -> String -> Int -> IO a
+illegalBufferSize handle fn sz =
+    ioError (mkIOError illegalOperationErrorType msg (Just handle) Nothing)
+    --TODO: System.IO uses InvalidArgument here, but it's not exported :-(
+    where
+      msg = fn ++ ": illegal ByteString size " ++ showsPrec 9 sz []
+
 
 -- | Read entire handle contents strictly into a 'ByteString'.
 --

@@ -214,6 +214,7 @@ import Data.Word                (Word8)
 import Data.Int                 (Int64)
 import System.IO                (Handle,stdin,stdout,openBinaryFile,IOMode(..)
                                 ,hClose,hWaitForInput,hIsEOF)
+import System.IO.Error          (mkIOError, ioError, illegalOperationErrorType)
 import System.IO.Unsafe
 #ifndef __NHC__
 import Control.Exception        (bracket)
@@ -1189,8 +1190,7 @@ hGetContentsN k h = lazyRead -- TODO close on exceptions
 -- specified 'Handle', in chunks of size @k@.
 --
 hGetN :: Int -> Handle -> Int -> IO ByteString
-hGetN _ _ 0 = return empty
-hGetN k h n = readChunks n
+hGetN k h n | n > 0 = readChunks n
   where
     STRICT1(readChunks)
     readChunks i = do
@@ -1200,14 +1200,16 @@ hGetN k h n = readChunks n
             m -> do cs <- readChunks (i - m)
                     return (Chunk c cs)
 
+hGetN _ _ 0 = return Empty
+hGetN _ h n = illegalBufferSize h "hGet" n
+
 -- | hGetNonBlockingN is similar to 'hGetContentsN', except that it will never block
 -- waiting for data to become available, instead it returns only whatever data
 -- is available. Chunks are read on demand, in @k@-sized chunks.
 --
 hGetNonBlockingN :: Int -> Handle -> Int -> IO ByteString
 #if defined(__GLASGOW_HASKELL__)
-hGetNonBlockingN _ _ 0 = return Empty
-hGetNonBlockingN k h n = readChunks n
+hGetNonBlockingN k h n | n > 0= readChunks n
   where
     STRICT1(readChunks)
     readChunks i = do
@@ -1216,9 +1218,19 @@ hGetNonBlockingN k h n = readChunks n
             0 -> return Empty
             m -> do cs <- readChunks (i - m)
                     return (Chunk c cs)
+
+hGetNonBlockingN _ _ 0 = return Empty
+hGetNonBlockingN _ h n = illegalBufferSize h "hGetNonBlocking" n
 #else
 hGetNonBlockingN = hGetN
 #endif
+
+illegalBufferSize :: Handle -> String -> Int -> IO a
+illegalBufferSize handle fn sz =
+    ioError (mkIOError illegalOperationErrorType msg (Just handle) Nothing)
+    --TODO: System.IO uses InvalidArgument here, but it's not exported :-(
+    where
+      msg = fn ++ ": illegal ByteString size " ++ showsPrec 9 sz []
 
 -- | Read entire handle contents /lazily/ into a 'ByteString'. Chunks
 -- are read on demand, using the default chunk size.
