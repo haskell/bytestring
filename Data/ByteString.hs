@@ -1719,8 +1719,10 @@ packCString cstr = do
 -- The @ByteString@ is a normal Haskell value and will be managed on the
 -- Haskell heap.
 packCStringLen :: CStringLen -> IO ByteString
-packCStringLen (cstr, len) = create len $ \p ->
+packCStringLen (cstr, len) | len >= 0 = create len $ \p ->
     memcpy p (castPtr cstr) (fromIntegral len)
+packCStringLen (_, len) =
+    moduleError "packCStringLen" ("negative length: " ++ show len)
 
 ------------------------------------------------------------------------
 
