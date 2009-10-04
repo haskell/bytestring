@@ -21,7 +21,7 @@ Copyright:           Copyright (c) Don Stewart   2005-2009,
 Author:              Don Stewart, Duncan Coutts
 Maintainer:          dons@galois.com, duncan@haskell.org
 Homepage:            http://www.cse.unsw.edu.au/~dons/fps.html
-Tested-With:         GHC==6.10.4, GHC ==6.8.2, GHC==6.6.1, GHC==6.4.2
+Tested-With:         GHC==6.12.0, GHC==6.10.4, GHC ==6.8.2, GHC==6.6.1, GHC==6.4.2
 Build-Type:          Simple
 Cabal-Version:       >= 1.2.3
 extra-source-files:  README TODO

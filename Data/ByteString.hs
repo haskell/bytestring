@@ -242,7 +242,7 @@ import Foreign.Storable         (Storable(..))
 import System.IO                (stdin,stdout,hClose,hFileSize
                                 ,hGetBuf,hPutBuf,openBinaryFile
                                 ,IOMode(..))
-import System.IO.Error          (mkIOError, ioError, illegalOperationErrorType)
+import System.IO.Error          (mkIOError, illegalOperationErrorType)
 
 import Data.Monoid              (Monoid, mempty, mappend, mconcat)
 

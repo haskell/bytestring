@@ -214,7 +214,7 @@ import Data.Word                (Word8)
 import Data.Int                 (Int64)
 import System.IO                (Handle,stdin,stdout,openBinaryFile,IOMode(..)
                                 ,hClose,hWaitForInput,hIsEOF)
-import System.IO.Error          (mkIOError, ioError, illegalOperationErrorType)
+import System.IO.Error          (mkIOError, illegalOperationErrorType)
 import System.IO.Unsafe
 #ifndef __NHC__
 import Control.Exception        (bracket)
