@@ -15,8 +15,8 @@ Description:
 License:             BSD3
 License-file:        LICENSE
 Category:            Data
-Copyright:           Copyright (c) Don Stewart   2005-2008,
-                               (c) Duncan Coutts 2006-2008,
+Copyright:           Copyright (c) Don Stewart   2005-2009,
+                               (c) Duncan Coutts 2006-2009,
                                (c) David Roundy  2003-2005.
 Author:              Don Stewart, Duncan Coutts
 Maintainer:          dons@galois.com, duncan@haskell.org
