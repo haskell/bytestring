@@ -175,7 +175,6 @@ unpackWith k (PS ps s l) = inlinePerformIO $ withForeignPtr ps $ \p ->
         go p 0 acc = peek p          >>= \e -> return (k e : acc)
         go p n acc = peekByteOff p n >>= \e -> go p (n-1) (k e : acc)
 {-# INLINE unpackWith #-}
-{-# SPECIALIZE unpackWith :: (Word8 -> Char) -> ByteString -> [Char] #-}
 
 -- | /O(n)/ Convert a '[a]' into a 'ByteString' using some
 -- conversion function
@@ -186,7 +185,6 @@ packWith k str = unsafeCreate (length str) $ \p -> go p str
         go _ []     = return ()
         go p (x:xs) = poke p (k x) >> go (p `plusPtr` 1) xs -- less space than pokeElemOff
 {-# INLINE packWith #-}
-{-# SPECIALIZE packWith :: (Char -> Word8) -> [Char] -> ByteString #-}
 
 ------------------------------------------------------------------------
 
