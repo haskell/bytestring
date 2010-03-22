@@ -1911,7 +1911,11 @@ putStrLn = hPutStrLn stdout
 -- is far more efficient than reading the characters into a 'String'
 -- and then using 'pack'. First argument is the Handle to read from, 
 -- and the second is the number of bytes to read. It returns the bytes
--- read, up to n, or EOF.
+-- read, up to n, or 'null' if EOF has been reached.
+--
+-- If there is any data to read, then 'hGet' will not block, instead
+-- it will return whatever data is available without blocking.  It
+-- only blocks if there is no data available to read.
 --
 -- 'hGet' is implemented in terms of 'hGetBuf'.
 --
@@ -1924,9 +1928,9 @@ hGet h i
     | i == 0    = return empty
     | otherwise = illegalBufferSize h "hGet" i
 
--- | hGetNonBlocking is identical to 'hGet', except that it will never block
--- waiting for data to become available, instead it returns only whatever data
--- is available.
+-- | hGetNonBlocking is identical to 'hGet', except that it will never
+-- block waiting for data to become available.  If there is no data
+-- available to be read, 'hGetNonBlocking' returns 'null'.
 --
 hGetNonBlocking :: Handle -> Int -> IO ByteString
 #if defined(__GLASGOW_HASKELL__)
