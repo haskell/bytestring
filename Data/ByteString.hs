@@ -241,7 +241,7 @@ import Foreign.Storable         (Storable(..))
 -- hGetBuf and hPutBuf not available in yhc or nhc
 import System.IO                (stdin,stdout,hClose,hFileSize
                                 ,hGetBuf,hPutBuf,openBinaryFile
-                                ,IOMode(..),Handle)
+                                ,IOMode(..))
 import System.IO.Error          (mkIOError, illegalOperationErrorType)
 
 import Data.Monoid              (Monoid, mempty, mappend, mconcat)
