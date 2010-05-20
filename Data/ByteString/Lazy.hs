@@ -213,7 +213,7 @@ import Data.Monoid              (Monoid(..))
 import Data.Word                (Word8)
 import Data.Int                 (Int64)
 import System.IO                (Handle,stdin,stdout,openBinaryFile,IOMode(..)
-                                ,hClose)
+                                ,hClose,hWaitForInput,hIsEOF)
 import System.IO.Error          (mkIOError, illegalOperationErrorType)
 import System.IO.Unsafe
 #ifndef __NHC__
@@ -1174,9 +1174,15 @@ hGetContentsN k h = lazyRead -- TODO close on exceptions
     lazyRead = unsafeInterleaveIO loop
 
     loop = do
-        c <- S.hGet h k -- only blocks if there is no data available
+        c <- S.hGetNonBlocking h k
+        --TODO: I think this should distinguish EOF from no data available
+        -- the underlying POSIX call makes this distincion, returning either
+        -- 0 or EAGAIN
         if S.null c
-          then hClose h >> return Empty
+          then do eof <- hIsEOF h
+                  if eof then hClose h >> return Empty
+                         else hWaitForInput h (-1)
+                           >> loop
           else do cs <- lazyRead
                   return (Chunk c cs)
 
