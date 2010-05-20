@@ -1168,6 +1168,10 @@ copy cs = foldrChunks (Chunk . S.copy) Empty cs
 --
 -- The handle is closed on EOF.
 --
+-- Note: the 'Handle' should be placed in binary mode with
+-- 'System.IO.hSetBinaryMode' for 'hGetContentsN' to
+-- work correctly.
+--
 hGetContentsN :: Int -> Handle -> IO ByteString
 hGetContentsN k h = lazyRead -- TODO close on exceptions
   where
@@ -1236,6 +1240,10 @@ illegalBufferSize handle fn sz =
 -- are read on demand, using the default chunk size.
 --
 -- Once EOF is encountered, the Handle is closed.
+--
+-- Note: the 'Handle' should be placed in binary mode with
+-- 'System.IO.hSetBinaryMode' for 'hGetContents' to
+-- work correctly.
 --
 hGetContents :: Handle -> IO ByteString
 hGetContents = hGetContentsN defaultChunkSize
