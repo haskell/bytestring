@@ -153,10 +153,11 @@ unsafeDrop n (PS x s l) = assert (0 <= n && n <= l) $ PS x (s+n) (l-n)
 --
 unsafePackAddress :: Addr# -> IO ByteString
 unsafePackAddress addr# = do
-    p <- newForeignPtr_ cstr
+    p <- newForeignPtr_ (castPtr cstr)
     l <- c_strlen cstr
     return $ PS p 0 (fromIntegral l)
   where
+    cstr :: CString
     cstr = Ptr addr#
 {-# INLINE unsafePackAddress #-}
 
