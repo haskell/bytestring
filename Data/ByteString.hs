@@ -194,6 +194,7 @@ module Data.ByteString (
         hGetLine,               -- :: Handle -> IO ByteString
         hGetContents,           -- :: Handle -> IO ByteString
         hGet,                   -- :: Handle -> Int -> IO ByteString
+        hGetSome,               -- :: Handle -> Int -> IO ByteString
         hGetNonBlocking,        -- :: Handle -> Int -> IO ByteString
         hPut,                   -- :: Handle -> ByteString -> IO ()
         hPutStr,                -- :: Handle -> ByteString -> IO ()
@@ -255,6 +256,10 @@ import qualified System.IO      (hGetLine)
 #if defined(__GLASGOW_HASKELL__)
 
 import System.IO                (hGetBufNonBlocking)
+
+#if MIN_VERSION_base(4,3,0)
+import System.IO                (hGetBufSome)
+#endif
 
 #if __GLASGOW_HASKELL__ >= 611
 import Data.IORef
@@ -1937,6 +1942,32 @@ hGetNonBlocking h i
 #else
 hGetNonBlocking = hGet
 #endif
+
+-- | Like 'hGet', except that a shorter 'ByteString' may be returned
+-- if there are not enough bytes immediately available to satisfy the
+-- whole request.  'hGetSome' only blocks if there is no data
+-- available, and EOF has not yet been reached.
+--
+hGetSome :: Handle -> Int -> IO ByteString
+hGetSome hh i
+#if MIN_VERSION_base(4,3,0)
+    | i >  0    = createAndTrim i $ \p -> hGetBufSome hh p i
+#else
+    | i >  0    = let
+                   loop = do
+                     s <- hGetNonBlocking h i
+                     if not (null s)
+                        then return s
+                        else eof <- hIsEOF h
+                             if eof then return s
+                                    else hWaitForInput h (-1) >> loop
+                                         -- for this to work correctly, the
+                                         -- Handle should be in binary mode
+                                         -- (see GHC ticket #3808)
+                  in loop
+#endif
+    | i == 0    = return empty
+    | otherwise = illegalBufferSize hh "hGetSome" i
 
 illegalBufferSize :: Handle -> String -> Int -> IO a
 illegalBufferSize handle fn sz =
