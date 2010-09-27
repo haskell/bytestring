@@ -1955,12 +1955,12 @@ hGetSome hh i
 #else
     | i >  0    = let
                    loop = do
-                     s <- hGetNonBlocking h i
+                     s <- hGetNonBlocking hh i
                      if not (null s)
                         then return s
-                        else eof <- hIsEOF h
-                             if eof then return s
-                                    else hWaitForInput h (-1) >> loop
+                        else do eof <- hIsEOF hh
+                                if eof then return s
+                                       else hWaitForInput hh (-1) >> loop
                                          -- for this to work correctly, the
                                          -- Handle should be in binary mode
                                          -- (see GHC ticket #3808)
