@@ -242,7 +242,7 @@ import Foreign.Storable         (Storable(..))
 -- hGetBuf and hPutBuf not available in yhc or nhc
 import System.IO                (stdin,stdout,hClose,hFileSize
                                 ,hGetBuf,hPutBuf,openBinaryFile
-                                ,IOMode(..))
+                                ,IOMode(..),Handle,hIsEOF)
 import System.IO.Error          (mkIOError, illegalOperationErrorType)
 
 import Data.Monoid              (Monoid, mempty, mappend, mconcat)
@@ -290,6 +290,10 @@ import GHC.ST                   (ST(..))
 assertS :: String -> Bool -> a -> a
 assertS _ True  = id
 assertS s False = error ("assertion failed at "++s)
+
+-- An alternative to hWaitForInput
+hWaitForInput :: Handle -> Int -> IO ()
+hWaitForInput _ _ = return ()
 #endif
 
 -- -----------------------------------------------------------------------------
