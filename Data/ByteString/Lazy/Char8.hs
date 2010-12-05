@@ -211,7 +211,7 @@ import IO                   (bracket)
 #endif
 
 #if __GLASGOW_HASKELL__ >= 608
-import Data.String
+import Data.String          (IsString(..))
 #endif
 
 #define STRICT1(f) f a | a `seq` False = undefined
