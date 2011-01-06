@@ -242,7 +242,7 @@ import Foreign.Storable         (Storable(..))
 -- hGetBuf and hPutBuf not available in yhc or nhc
 import System.IO                (stdin,stdout,hClose,hFileSize
                                 ,hGetBuf,hPutBuf,openBinaryFile
-                                ,IOMode(..),Handle,hIsEOF)
+                                ,IOMode(..))
 import System.IO.Error          (mkIOError, illegalOperationErrorType)
 
 import Data.Monoid              (Monoid, mempty, mappend, mconcat)
@@ -259,6 +259,8 @@ import System.IO                (hGetBufNonBlocking)
 
 #if MIN_VERSION_base(4,3,0)
 import System.IO                (hGetBufSome)
+#else
+import System.IO                (hWaitForInput, hIsEOF)
 #endif
 
 #if __GLASGOW_HASKELL__ >= 611
@@ -286,6 +288,9 @@ import GHC.ST                   (ST(..))
 
 -- An alternative to Control.Exception (assert) for nhc98
 #ifdef __NHC__
+
+import System.IO (Handle)
+
 #define assert  assertS "__FILE__ : __LINE__"
 assertS :: String -> Bool -> a -> a
 assertS _ True  = id
