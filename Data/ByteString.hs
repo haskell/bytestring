@@ -270,7 +270,7 @@ import GHC.IO.Handle.Internals
 import GHC.IO.Handle.Types
 import GHC.IO.Buffer
 import GHC.IO.BufferedIO as Buffered
-import GHC.IO hiding (finally)
+import GHC.IO                   (stToIO, unsafePerformIO)
 import Data.Char                (ord)
 import Foreign.Marshal.Utils    (copyBytes)
 #else
