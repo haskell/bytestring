@@ -208,6 +208,7 @@ module Data.ByteString.Char8 (
         hGet,                   -- :: Handle -> Int -> IO ByteString
         hGetNonBlocking,        -- :: Handle -> Int -> IO ByteString
         hPut,                   -- :: Handle -> ByteString -> IO ()
+        hPutNonBlocking,        -- :: Handle -> ByteString -> IO ByteString
         hPutStr,                -- :: Handle -> ByteString -> IO ()
         hPutStrLn,              -- :: Handle -> ByteString -> IO ()
 
@@ -238,7 +239,7 @@ import Data.ByteString (empty,null,length,tail,init,append
 
                        ,getLine, getContents, putStr, putStrLn, interact
                        ,hGetContents, hGet, hPut, hPutStr, hPutStrLn
-                       ,hGetLine, hGetNonBlocking
+                       ,hGetLine, hGetNonBlocking, hPutNonBlocking
                        ,packCString,packCStringLen
                        ,useAsCString,useAsCStringLen
                        )

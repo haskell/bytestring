@@ -172,6 +172,7 @@ module Data.ByteString.Lazy.Char8 (
         hGet,                   -- :: Handle -> Int64 -> IO ByteString
         hGetNonBlocking,        -- :: Handle -> Int64 -> IO ByteString
         hPut,                   -- :: Handle -> ByteString -> IO ()
+        hPutNonBlocking,        -- :: Handle -> ByteString -> IO ByteString
 
   ) where
 
@@ -181,7 +182,7 @@ import Data.ByteString.Lazy
         ,empty,null,length,tail,init,append,reverse,transpose,cycle
         ,concat,take,drop,splitAt,intercalate,isPrefixOf,group,inits,tails,copy
         ,hGetContents, hGet, hPut, getContents
-        ,hGetNonBlocking
+        ,hGetNonBlocking, hPutNonBlocking
         ,putStr, putStrLn, interact)
 
 -- Functions we need to wrap.

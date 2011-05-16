@@ -197,6 +197,7 @@ module Data.ByteString (
         hGetSome,               -- :: Handle -> Int -> IO ByteString
         hGetNonBlocking,        -- :: Handle -> Int -> IO ByteString
         hPut,                   -- :: Handle -> ByteString -> IO ()
+        hPutNonBlocking,        -- :: Handle -> ByteString -> IO ByteString
         hPutStr,                -- :: Handle -> ByteString -> IO ()
         hPutStrLn,              -- :: Handle -> ByteString -> IO ()
 
@@ -256,7 +257,7 @@ import System.IO                (hIsEOF)
 
 #if defined(__GLASGOW_HASKELL__)
 
-import System.IO                (hGetBufNonBlocking)
+import System.IO                (hGetBufNonBlocking, hPutBufNonBlocking)
 
 #if MIN_VERSION_base(4,3,0)
 import System.IO                (hGetBufSome)
@@ -1901,6 +1902,24 @@ hPut :: Handle -> ByteString -> IO ()
 hPut _ (PS _  _ 0) = return ()
 hPut h (PS ps s l) = withForeignPtr ps $ \p-> hPutBuf h (p `plusPtr` s) l
 
+-- | Similar to 'hPut' except that it will never block. Instead it returns
+-- any tail that did not get written. This tail may be 'empty' in the case that
+-- the whole string was written, or the whole original string if nothing was
+-- written. Partial writes are also possible.
+--
+-- Note: on Windows and with Haskell implementation other than GHC, this
+-- function does not work correctly; it behaves identically to 'hPut'.
+--
+#if defined(__GLASGOW_HASKELL__)
+hPutNonBlocking :: Handle -> ByteString -> IO ByteString
+hPutNonBlocking h bs@(PS ps s l) = do
+  bytesWritten <- withForeignPtr ps $ \p-> hPutBufNonBlocking h (p `plusPtr` s) l
+  return $! drop bytesWritten bs
+#else
+hPutNonBlocking :: Handle -> B.ByteString -> IO Int
+hPutNonBlocking h bs = hPut h bs >> return empty
+#endif
+
 -- | A synonym for @hPut@, for compatibility 
 hPutStr :: Handle -> ByteString -> IO ()
 hPutStr = hPut
@@ -1939,9 +1958,13 @@ hGet h i
     | i == 0    = return empty
     | otherwise = illegalBufferSize h "hGet" i
 
--- | hGetNonBlocking is identical to 'hGet', except that it will never
--- block waiting for data to become available.  If there is no data
--- available to be read, 'hGetNonBlocking' returns 'null'.
+-- | hGetNonBlocking is similar to 'hGet', except that it will never block
+-- waiting for data to become available, instead it returns only whatever data
+-- is available.  If there is no data available to be read, 'hGetNonBlocking'
+-- returns 'empty'.
+--
+-- Note: on Windows and with Haskell implementation other than GHC, this
+-- function does not work correctly; it behaves identically to 'hGet'.
 --
 hGetNonBlocking :: Handle -> Int -> IO ByteString
 #if defined(__GLASGOW_HASKELL__)

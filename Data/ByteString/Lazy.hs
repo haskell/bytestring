@@ -190,6 +190,7 @@ module Data.ByteString.Lazy (
         hGet,                   -- :: Handle -> Int -> IO ByteString
         hGetNonBlocking,        -- :: Handle -> Int -> IO ByteString
         hPut,                   -- :: Handle -> ByteString -> IO ()
+        hPutNonBlocking,        -- :: Handle -> ByteString -> IO ByteString
         hPutStr,                -- :: Handle -> ByteString -> IO ()
 
   ) where
@@ -1249,7 +1250,12 @@ hGet = hGetN defaultChunkSize
 
 -- | hGetNonBlocking is similar to 'hGet', except that it will never block
 -- waiting for data to become available, instead it returns only whatever data
--- is available.
+-- is available.  If there is no data available to be read, 'hGetNonBlocking'
+-- returns 'empty'.
+--
+-- Note: on Windows and with Haskell implementation other than GHC, this
+-- function does not work correctly; it behaves identically to 'hGet'.
+--
 #if defined(__GLASGOW_HASKELL__)
 hGetNonBlocking :: Handle -> Int -> IO ByteString
 hGetNonBlocking = hGetNonBlockingN defaultChunkSize
@@ -1284,6 +1290,23 @@ getContents = hGetContents stdin
 --
 hPut :: Handle -> ByteString -> IO ()
 hPut h cs = foldrChunks (\c rest -> S.hPut h c >> rest) (return ()) cs
+
+-- | Similar to 'hPut' except that it will never block. Instead it returns
+-- any tail that did not get written. This tail may be 'empty' in the case that
+-- the whole string was written, or the whole original string if nothing was
+-- written. Partial writes are also possible.
+--
+-- Note: on Windows and with Haskell implementation other than GHC, this
+-- function does not work correctly; it behaves identically to 'hPut'.
+--
+hPutNonBlocking :: Handle -> ByteString -> IO ByteString
+hPutNonBlocking _ Empty           = return Empty
+hPutNonBlocking h bs@(Chunk c cs) = do
+  c' <- S.hPutNonBlocking h c
+  case S.length c' of
+    l' | l' == S.length c -> hPutNonBlocking h cs
+    0                     -> return bs
+    _                     -> return (Chunk c' cs)
 
 -- | A synonym for @hPut@, for compatibility
 --
