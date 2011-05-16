@@ -173,6 +173,8 @@ module Data.ByteString.Lazy.Char8 (
         hGetNonBlocking,        -- :: Handle -> Int64 -> IO ByteString
         hPut,                   -- :: Handle -> ByteString -> IO ()
         hPutNonBlocking,        -- :: Handle -> ByteString -> IO ByteString
+        hPutStr,                -- :: Handle -> ByteString -> IO ()
+        hPutStrLn,              -- :: Handle -> ByteString -> IO ()
 
   ) where
 
@@ -183,7 +185,7 @@ import Data.ByteString.Lazy
         ,concat,take,drop,splitAt,intercalate,isPrefixOf,group,inits,tails,copy
         ,hGetContents, hGet, hPut, getContents
         ,hGetNonBlocking, hPutNonBlocking
-        ,putStr, putStrLn, interact)
+        ,putStr, hPutStr, interact)
 
 -- Functions we need to wrap.
 import qualified Data.ByteString.Lazy as L
@@ -204,7 +206,7 @@ import Prelude hiding
         ,readFile,writeFile,appendFile,replicate,getContents,getLine,putStr,putStrLn
         ,zip,zipWith,unzip,notElem,repeat,iterate,interact,cycle)
 
-import System.IO            (hClose,openFile,IOMode(..))
+import System.IO            (Handle,stdout,hClose,openFile,IOMode(..))
 #ifndef __NHC__
 import Control.Exception    (bracket)
 #else
@@ -853,6 +855,16 @@ writeFile f txt = bracket (openFile f WriteMode) hClose
 appendFile :: FilePath -> ByteString -> IO ()
 appendFile f txt = bracket (openFile f AppendMode) hClose
     (\hdl -> hPut hdl txt)
+
+
+-- | Write a ByteString to a handle, appending a newline byte
+--
+hPutStrLn :: Handle -> ByteString -> IO ()
+hPutStrLn h ps = hPut h ps >> hPut h (L.singleton 0x0a)
+
+-- | Write a ByteString to stdout, appending a newline byte
+putStrLn :: ByteString -> IO ()
+putStrLn = hPutStrLn stdout
 
 
 -- ---------------------------------------------------------------------

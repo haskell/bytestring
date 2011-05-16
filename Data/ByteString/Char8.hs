@@ -237,8 +237,8 @@ import Data.ByteString (empty,null,length,tail,init,append
                        ,sort,isPrefixOf,isSuffixOf,isInfixOf
                        ,findSubstring,findSubstrings,breakSubstring,copy,group
 
-                       ,getLine, getContents, putStr, putStrLn, interact
-                       ,hGetContents, hGet, hPut, hPutStr, hPutStrLn
+                       ,getLine, getContents, putStr, interact
+                       ,hGetContents, hGet, hPut, hPutStr
                        ,hGetLine, hGetNonBlocking, hPutNonBlocking
                        ,packCString,packCStringLen
                        ,useAsCString,useAsCStringLen
@@ -250,7 +250,7 @@ import Data.ByteString.Internal (ByteString(PS), c2w, w2c, isSpaceWord8
 import Data.Char    ( isSpace )
 import qualified Data.List as List (intersperse)
 
-import System.IO                (openFile,hClose,hFileSize,IOMode(..))
+import System.IO                (Handle,stdout,openFile,hClose,hFileSize,IOMode(..))
 #ifndef __NHC__
 import Control.Exception        (bracket)
 #else
@@ -1040,3 +1040,13 @@ appendFile :: FilePath -> ByteString -> IO ()
 appendFile f txt = bracket (openFile f AppendMode) hClose
     (\h -> hPut h txt)
 
+
+-- | Write a ByteString to a handle, appending a newline byte
+hPutStrLn :: Handle -> ByteString -> IO ()
+hPutStrLn h ps
+    | length ps < 1024 = hPut h (ps `B.snoc` 0x0a)
+    | otherwise        = hPut h ps >> hPut h (B.singleton (0x0a)) -- don't copy
+
+-- | Write a ByteString to stdout, appending a newline byte
+putStrLn :: ByteString -> IO ()
+putStrLn = hPutStrLn stdout

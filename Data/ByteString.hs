@@ -1938,6 +1938,13 @@ putStr = hPut stdout
 putStrLn :: ByteString -> IO ()
 putStrLn = hPutStrLn stdout
 
+{-# DEPRECATED hPutStrLn
+    "Use Data.ByteString.Char8.hPutStrLn instead. (Functions that rely on ASCII encodings belong in Data.ByteString.Char8)"
+  #-}
+{-# DEPRECATED putStrLn
+    "Use Data.ByteString.Char8.putStrLn instead. (Functions that rely on ASCII encodings belong in Data.ByteString.Char8)"
+  #-}
+
 ------------------------------------------------------------------------
 -- Low level IO
 

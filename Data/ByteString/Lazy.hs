@@ -1322,6 +1322,10 @@ putStr = hPut stdout
 putStrLn :: ByteString -> IO ()
 putStrLn ps = hPut stdout ps >> hPut stdout (singleton 0x0a)
 
+{-# DEPRECATED putStrLn
+    "Use Data.ByteString.Lazy.Char8.putStrLn instead. (Functions that rely on ASCII encodings belong in Data.ByteString.Lazy.Char8)"
+  #-}
+
 -- | The interact function takes a function of type @ByteString -> ByteString@
 -- as its argument. The entire input from the standard input device is passed
 -- to this function as its argument, and the resulting string is output on the
