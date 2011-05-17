@@ -19,7 +19,7 @@ Copyright:           Copyright (c) Don Stewart   2005-2009,
                                (c) Duncan Coutts 2006-2009,
                                (c) David Roundy  2003-2005.
 Author:              Don Stewart, Duncan Coutts
-Maintainer:          dons@galois.com, duncan@haskell.org
+Maintainer:          dons00@gmail.com, duncan@community.haskell.org
 Homepage:            http://www.cse.unsw.edu.au/~dons/fps.html
 Tested-With:         GHC==7.0.2, GHC==6.12.3, GHC==6.10.4, GHC ==6.8.2
 Build-Type:          Simple
