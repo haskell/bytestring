@@ -21,13 +21,13 @@ Copyright:           Copyright (c) Don Stewart   2005-2009,
 Author:              Don Stewart, Duncan Coutts
 Maintainer:          dons@galois.com, duncan@haskell.org
 Homepage:            http://www.cse.unsw.edu.au/~dons/fps.html
-Tested-With:         GHC==6.12.0, GHC==6.10.4, GHC ==6.8.2, GHC==6.6.1, GHC==6.4.2
+Tested-With:         GHC==7.0.2, GHC==6.12.3, GHC==6.10.4, GHC ==6.8.2
 Build-Type:          Simple
 Cabal-Version:       >= 1.2.3
 extra-source-files:  README TODO
 
 library
-  build-depends:     base < 5
+  build-depends:     base >= 3 && < 5
 
   if impl(ghc >= 6.10)
     build-depends:   ghc-prim, base >= 4
@@ -58,8 +58,7 @@ library
                     -funbox-strict-fields 
                     -fno-method-sharing
                     -fmax-simplifier-iterations10
-  if impl(ghc >= 6.6)
-    ghc-options:    -fdicts-cheap
+                    -fdicts-cheap
 
   c-sources:         cbits/fpstring.c
   include-dirs:      include
@@ -67,6 +66,4 @@ library
   install-includes:  fpstring.h
 
   nhc98-options:     -K4M -K3M
-  if impl(ghc <= 6.4.2)
-    cc-options:     -DSLOW_FOREIGN_PTR
 

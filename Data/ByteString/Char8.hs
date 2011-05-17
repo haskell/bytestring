@@ -270,7 +270,7 @@ import GHC.Ptr                  (Ptr(..))
 import GHC.ST                   (ST(..))
 #endif
 
-#if __GLASGOW_HASKELL__ >= 608
+#if MIN_VERSION_base(3,0,0)
 import Data.String              (IsString(..))
 #endif
 
@@ -286,7 +286,7 @@ singleton :: Char -> ByteString
 singleton = B.singleton . c2w
 {-# INLINE singleton #-}
 
-#if __GLASGOW_HASKELL__ >= 608
+#if MIN_VERSION_base(3,0,0)
 instance IsString ByteString where
     fromString = pack
     {-# INLINE fromString #-}
@@ -545,15 +545,12 @@ break f = B.break (f . w2c)
 {-# INLINE [1] break #-}
 #endif
 
-#if __GLASGOW_HASKELL__ >= 606
--- This RULE LHS is not allowed by ghc-6.4
 {-# RULES
 "ByteString specialise break (x==)" forall x.
     break ((==) x) = breakChar x
 "ByteString specialise break (==x)" forall x.
     break (==x) = breakChar x
   #-}
-#endif
 
 -- INTERNAL:
 

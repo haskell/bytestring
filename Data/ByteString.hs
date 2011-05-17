@@ -990,15 +990,12 @@ break p ps = case findIndexOrEnd p ps of n -> (unsafeTake n ps, unsafeDrop n ps)
 {-# INLINE [1] break #-}
 #endif
 
-#if __GLASGOW_HASKELL__ >= 606
--- This RULE LHS is not allowed by ghc-6.4
 {-# RULES
 "ByteString specialise break (x==)" forall x.
     break ((==) x) = breakByte x
 "ByteString specialise break (==x)" forall x.
     break (==x) = breakByte x
   #-}
-#endif
 
 -- INTERNAL:
 
@@ -1046,15 +1043,12 @@ spanByte c ps@(PS x s l) = inlinePerformIO $ withForeignPtr x $ \p ->
                                 else go p (i+1)
 {-# INLINE spanByte #-}
 
-#if __GLASGOW_HASKELL__ >= 606
--- This RULE LHS is not allowed by ghc-6.4
 {-# RULES
 "ByteString specialise span (x==)" forall x.
     span ((==) x) = spanByte x
 "ByteString specialise span (==x)" forall x.
     span (==x) = spanByte x
   #-}
-#endif
 
 -- | 'spanEnd' behaves like 'span' but from the end of the 'ByteString'.
 -- We have

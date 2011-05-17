@@ -93,23 +93,21 @@ import GHC.IOBase               (IO(IO),RawBuffer)
 #endif
 #if __GLASGOW_HASKELL__ >= 611
 import GHC.IO                   (unsafeDupablePerformIO)
-#elif __GLASGOW_HASKELL__ >= 608
-import GHC.IOBase               (unsafeDupablePerformIO)
 #else
-import GHC.IOBase               (unsafePerformIO)
+import GHC.IOBase               (unsafeDupablePerformIO)
 #endif
 #else
 import Data.Char                (chr)
 import System.IO.Unsafe         (unsafePerformIO)
 #endif
 
-#if __GLASGOW_HASKELL__ >= 605 && !defined(SLOW_FOREIGN_PTR)
+#ifdef __GLASGOW_HASKELL__
 import GHC.ForeignPtr           (mallocPlainForeignPtrBytes)
 #else
 import Foreign.ForeignPtr       (mallocForeignPtrBytes)
 #endif
 
-#if __GLASGOW_HASKELL__>=605
+#ifdef __GLASGOW_HASKELL__
 import GHC.ForeignPtr           (ForeignPtr(ForeignPtr))
 import GHC.Base                 (nullAddr#)
 #else
@@ -190,7 +188,7 @@ packWith k str = unsafeCreate (length str) $ \p -> go p str
 
 -- | The 0 pointer. Used to indicate the empty Bytestring.
 nullForeignPtr :: ForeignPtr Word8
-#if __GLASGOW_HASKELL__>=605
+#ifdef __GLASGOW_HASKELL__
 nullForeignPtr = ForeignPtr nullAddr# undefined --TODO: should ForeignPtrContents be strict?
 #else
 nullForeignPtr = unsafePerformIO $ newForeignPtr_ nullPtr
@@ -226,8 +224,8 @@ unsafeCreate :: Int -> (Ptr Word8 -> IO ()) -> ByteString
 unsafeCreate l f = unsafeDupablePerformIO (create l f)
 {-# INLINE unsafeCreate #-}
 
-#if !defined(__GLASGOW_HASKELL__) || __GLASGOW_HASKELL__ < 608
--- for Hugs   
+#ifndef __GLASGOW_HASKELL__
+-- for Hugs, NHC etc
 unsafeDupablePerformIO :: IO a -> a
 unsafeDupablePerformIO = unsafePerformIO
 #endif
@@ -269,11 +267,11 @@ createAndTrim' l f = do
                             memcpy p' (p `plusPtr` off) (fromIntegral l')
                     return $! (ps, res)
 
--- | Wrapper of mallocForeignPtrBytes with faster implementation
--- for GHC 6.5 builds newer than 06/06/06
+-- | Wrapper of 'mallocForeignPtrBytes' with faster implementation for GHC
+--
 mallocByteString :: Int -> IO (ForeignPtr a)
 mallocByteString l = do
-#if __GLASGOW_HASKELL__ >= 605 && !defined(SLOW_FOREIGN_PTR)
+#ifdef __GLASGOW_HASKELL__
     mallocPlainForeignPtrBytes l
 #else
     mallocForeignPtrBytes l
