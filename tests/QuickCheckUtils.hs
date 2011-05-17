@@ -4,7 +4,6 @@
 --
 module QuickCheckUtils where
 
-import Test.QuickCheck.Batch
 import Test.QuickCheck
 import Text.Show.Functions
 
@@ -16,6 +15,7 @@ import Data.Word
 import Data.Int
 import System.Random
 import System.IO
+import Foreign.C (CChar)
 
 import Data.ByteString.Fusion
 import qualified Data.ByteString      as P
@@ -24,6 +24,13 @@ import qualified Data.ByteString.Lazy.Internal as L (checkInvariant,ByteString(.
 
 import qualified Data.ByteString.Char8      as PC
 import qualified Data.ByteString.Lazy.Char8 as LC
+
+------------------------------------------------------------------------
+
+adjustSize :: Testable prop => (Int -> Int) -> prop -> Property
+adjustSize f p = sized $ \sz -> resize (f sz) (property p)
+
+------------------------------------------------------------------------
 
 {-
 
@@ -53,126 +60,25 @@ instance Functor (Either a) where
 
 -}
 
--- Enable this to get verbose test output. Including the actual tests.
-debug = False
-
 mytest :: Testable a => a -> Int -> IO (Bool, Int)
-mytest a n = mycheck defaultConfig
-    { configMaxTest=n
-    , configEvery= \n args -> if debug then show n ++ ":\n" ++ unlines args else [] } a
-
-mycheck :: Testable a => Config -> a -> IO (Bool, Int)
-mycheck config a =
-  do rnd <- newStdGen
-     mytests config (evaluate a) rnd 0 0 []
-
-{-
-mytests :: Config -> Gen Result -> StdGen -> Int -> Int -> [[String]] -> IO ()
-mytests config gen rnd0 ntest nfail stamps
-  | ntest == configMaxTest config = do done "OK," ntest stamps
-  | nfail == configMaxFail config = do done "Arguments exhausted after" ntest stamps
-  | otherwise               =
-      do putStr (configEvery config ntest (arguments result)) >> hFlush stdout
-         case ok result of
-           Nothing    ->
-             mytests config gen rnd1 ntest (nfail+1) stamps
-           Just True  ->
-             mytests config gen rnd1 (ntest+1) nfail (stamp result:stamps)
-           Just False ->
-             putStr ( "Falsifiable after "
-                   ++ show ntest
-                   ++ " tests:\n"
-                   ++ unlines (arguments result)
-                    ) >> hFlush stdout
-     where
-      result      = generate (configSize config ntest) rnd2 gen
-      (rnd1,rnd2) = split rnd0
--}
-
-mytests :: Config -> Gen Result -> StdGen -> Int -> Int -> [[String]] -> IO (Bool, Int)
-mytests config gen rnd0 ntest nfail stamps
-    | ntest == configMaxTest config = done "OK," ntest stamps >> return (True, ntest)
-    | nfail == configMaxFail config = done "Arguments exhausted after" ntest stamps >> return (True, ntest)
-    | otherwise               =
-      do putStr (configEvery config ntest (arguments result)) >> hFlush stdout
-         case ok result of
-           Nothing    ->
-             mytests config gen rnd1 ntest (nfail+1) stamps
-           Just True  ->
-             mytests config gen rnd1 (ntest+1) nfail (stamp result:stamps)
-           Just False ->
-             putStr ( "Falsifiable after "
-                   ++ show ntest
-                   ++ " tests:\n"
-                   ++ unlines (arguments result)
-                    ) >> hFlush stdout >> return (False, ntest)
-     where
-      result      = generate (configSize config ntest) rnd2 gen
-      (rnd1,rnd2) = split rnd0
-
-done :: String -> Int -> [[String]] -> IO ()
-done mesg ntest stamps =
-  do putStr ( mesg ++ " " ++ show ntest ++ " tests" ++ table )
- where
-  table = display
-        . map entry
-        . reverse
-        . sort
-        . map pairLength
-        . group
-        . sort
-        . filter (not . null)
-        $ stamps
-
-  display []  = ".\n"
-  display [x] = " (" ++ x ++ ").\n"
-  display xs  = ".\n" ++ unlines (map (++ ".") xs)
-
-  pairLength xss@(xs:_) = (length xss, xs)
-  entry (n, xs)         = percentage n ntest
-                       ++ " "
-                       ++ concat (intersperse ", " xs)
-
-  percentage n m        = show ((100 * n) `div` m) ++ "%"
+mytest p n = do
+    result <- quickCheckWithResult testArgs p
+    case result of
+      Success {} -> return (True,  numTests result)
+      _          -> return (False, numTests result)
+  where
+    testArgs = stdArgs {
+                 maxSuccess = n
+                 --chatty   = ... if we want to increase verbosity
+               }
 
 ------------------------------------------------------------------------
 
-instance Arbitrary Char where
-    arbitrary     = choose ('\0','\255')
-    coarbitrary c = variant (ord c `rem` 4)
-
-{-
-instance (Arbitrary a, Arbitrary b) => Arbitrary (PairS a b) where
-  arbitrary             = liftM2 (:*:) arbitrary arbitrary
-  coarbitrary (a :*: b) = coarbitrary a . coarbitrary b
--}
-
-instance Arbitrary Word8 where
-    arbitrary = choose (97, 105)
-    coarbitrary c = variant (fromIntegral ((fromIntegral c) `rem` 4))
-
-instance Arbitrary Int64 where
-  arbitrary     = sized $ \n -> choose (-fromIntegral n,fromIntegral n)
-  coarbitrary n = variant (fromIntegral (if n >= 0 then 2*n else 2*(-n) + 1))
-
-{-
-instance Arbitrary a => Arbitrary (MaybeS a) where
-  arbitrary            = do a <- arbitrary ; elements [NothingS, JustS a]
-  coarbitrary NothingS = variant 0
-  coarbitrary _        = variant 1 -- ok?
--}
-
-{-
-instance Arbitrary Char where
-  arbitrary = choose ('\0', '\255') -- since we have to test words, unlines too
-  coarbitrary c = variant (ord c `rem` 16)
-
-instance Arbitrary Word8 where
-  arbitrary = choose (minBound, maxBound)
-  coarbitrary c = variant (fromIntegral ((fromIntegral c) `rem` 16))
--}
-
 instance Random Word8 where
+  randomR = integralRandomR
+  random = randomR (minBound,maxBound)
+
+instance Random CChar where
   randomR = integralRandomR
   random = randomR (minBound,maxBound)
 
@@ -186,12 +92,32 @@ integralRandomR  (a,b) g = case randomR (fromIntegral a :: Integer,
                             (x,g) -> (fromIntegral x, g)
 
 instance Arbitrary L.ByteString where
-    arbitrary     = arbitrary >>= return . L.checkInvariant . L.fromChunks . filter (not. P.null)  -- maintain the invariant.
-    coarbitrary s = coarbitrary (L.unpack s)
+  arbitrary = return . L.checkInvariant
+                     . L.fromChunks
+                     . filter (not. P.null)  -- maintain the invariant.
+                   =<< arbitrary
+
+instance CoArbitrary L.ByteString where
+  coarbitrary s = coarbitrary (L.unpack s)
 
 instance Arbitrary P.ByteString where
   arbitrary = P.pack `fmap` arbitrary
+
+instance CoArbitrary P.ByteString where
   coarbitrary s = coarbitrary (P.unpack s)
+
+
+newtype CByteString = CByteString P.ByteString
+  deriving Show
+
+instance Arbitrary CByteString where
+  arbitrary = fmap (CByteString . P.pack . map fromCChar) arbitrary
+    where
+      fromCChar :: CChar -> Word8
+      fromCChar = fromIntegral
+
+instance Arbitrary CChar where
+  arbitrary = oneof [choose (-128,-1), choose (1,127)]
 
 ------------------------------------------------------------------------
 --

@@ -23,7 +23,7 @@ Maintainer:          dons00@gmail.com, duncan@community.haskell.org
 Homepage:            http://www.cse.unsw.edu.au/~dons/fps.html
 Tested-With:         GHC==7.0.2, GHC==6.12.3, GHC==6.10.4, GHC ==6.8.2
 Build-Type:          Simple
-Cabal-Version:       >= 1.2.3
+Cabal-Version:       >= 1.8
 extra-source-files:  README TODO
 
 library
@@ -67,3 +67,26 @@ library
 
   nhc98-options:     -K4M -K3M
 
+-- QC properties, with GHC RULES disabled
+test-suite prop-compiled
+  type:             exitcode-stdio-1.0
+  main-is:          Properties.hs
+  hs-source-dirs:   . tests
+  build-depends:    base, random, directory,
+                    QuickCheck >= 2.3 && < 3
+  if impl(ghc >= 6.10)
+    build-depends:  ghc-prim
+  c-sources:        cbits/fpstring.c
+  include-dirs:     include
+  if impl(ghc >= 6.10)
+    ghc-options:    -fno-enable-rewrite-rules
+  else
+    ghc-options:    -fno-rewrite-rules
+  if impl(ghc)
+      extensions:   UnliftedFFITypes,
+                    MagicHash,
+                    UnboxedTuples,
+                    DeriveDataTypeable
+                    ScopedTypeVariables
+  if impl(ghc >= 6.11)
+      extensions:   NamedFieldPuns

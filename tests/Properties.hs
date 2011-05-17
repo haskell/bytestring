@@ -72,7 +72,8 @@ prop_allCC          = D.all         `eq2`  C.all
 prop_anyCC          = D.any         `eq2`  C.any
 prop_appendCC       = D.append      `eq2`  C.append
 prop_breakCC        = D.break       `eq2`  C.break
-prop_concatMapCC    = D.concatMap   `eq2`  C.concatMap
+prop_concatMapCC    = adjustSize (min 50) $
+                      D.concatMap   `eq2`  C.concatMap
 prop_consCC         = D.cons        `eq2`  C.cons
 prop_unconsCC       = D.uncons      `eq1`  C.uncons
 prop_countCC        = D.count       `eq2`  C.count
@@ -84,7 +85,8 @@ prop_findIndexCC    = D.findIndex   `eq2`  C.findIndex
 prop_findIndicesCC  = D.findIndices `eq2`  C.findIndices
 prop_isPrefixOfCC   = D.isPrefixOf  `eq2`  C.isPrefixOf
 prop_mapCC          = D.map         `eq2`  C.map
-prop_replicateCC    = D.replicate   `eq2`  C.replicate
+prop_replicateCC    = forAll arbitrarySizedIntegral $
+                      D.replicate   `eq2`  C.replicate
 prop_snocCC         = D.snoc        `eq2`  C.snoc
 prop_spanCC         = D.span        `eq2`  C.span
 prop_splitCC        = D.split       `eq2`  C.split
@@ -138,7 +140,8 @@ prop_mapAccumLCC = eq3
 -- ByteString.Lazy <=> ByteString
 --
 
-prop_concatBP       = L.concat      `eq1`  P.concat
+prop_concatBP       = adjustSize (`div` 2) $
+                      L.concat      `eq1`  P.concat
 prop_nullBP         = L.null        `eq1`  P.null
 prop_reverseBP      = L.reverse     `eq1`  P.reverse
 
@@ -150,7 +153,8 @@ prop_allBP          = L.all         `eq2`  P.all
 prop_anyBP          = L.any         `eq2`  P.any
 prop_appendBP       = L.append      `eq2`  P.append
 prop_breakBP        = L.break       `eq2`  P.break
-prop_concatMapBP    = L.concatMap   `eq2`  P.concatMap
+prop_concatMapBP    = adjustSize (`div` 4) $
+                      L.concatMap   `eq2`  P.concatMap
 prop_consBP         = L.cons        `eq2`  P.cons
 prop_consBP'        = L.cons'       `eq2`  P.cons
 prop_consLP'        = LC.cons'      `eq2`  P.cons
@@ -164,7 +168,8 @@ prop_findIndexBP    = L.findIndex   `eq2`  P.findIndex
 prop_findIndicesBP  = L.findIndices `eq2`  P.findIndices
 prop_isPrefixOfBP   = L.isPrefixOf  `eq2`  P.isPrefixOf
 prop_mapBP          = L.map         `eq2`  P.map
-prop_replicateBP    = L.replicate   `eq2`  P.replicate
+prop_replicateBP    = forAll arbitrarySizedIntegral $
+                      L.replicate   `eq2`  P.replicate
 prop_snocBP         = L.snoc        `eq2`  P.snoc
 prop_spanBP         = L.span        `eq2`  P.span
 prop_splitBP        = L.split       `eq2`  P.split
@@ -221,36 +226,51 @@ prop_mapAccumLBP = eq3
     (L.mapAccumL :: (X -> W -> (X,W)) -> X -> B -> (X, B))
     (P.mapAccumL :: (X -> W -> (X,W)) -> X -> P -> (X, P))
 
-prop_unfoldrBP   = eq3
+prop_unfoldrBP   =
+  forAll arbitrarySizedIntegral $
+  eq3
     ((\n f a -> L.take (fromIntegral n) $
         L.unfoldr    f a) :: Int -> (X -> Maybe (W,X)) -> X -> B)
     ((\n f a ->                     fst $
         P.unfoldrN n f a) :: Int -> (X -> Maybe (W,X)) -> X -> P)
 
-prop_unfoldr2BP   = eq2
+prop_unfoldr2BP   =
+  forAll arbitrarySizedIntegral $ \n ->
+  forAll arbitrarySizedIntegral $ \a ->
+  eq2
     ((\n a -> P.take (n*100) $
         P.unfoldr    (\x -> if x <= (n*100) then Just (fromIntegral x, x + 1) else Nothing) a)
                 :: Int -> Int -> P)
     ((\n a ->                     fst $
         P.unfoldrN (n*100) (\x -> if x <= (n*100) then Just (fromIntegral x, x + 1) else Nothing) a)
                 :: Int -> Int -> P)
+    n a
 
-prop_unfoldr2CP   = eq2
+prop_unfoldr2CP   =
+  forAll arbitrarySizedIntegral $ \n ->
+  forAll arbitrarySizedIntegral $ \a ->
+  eq2
     ((\n a -> C.take (n*100) $
         C.unfoldr    (\x -> if x <= (n*100) then Just (chr (x `mod` 256), x + 1) else Nothing) a)
                 :: Int -> Int -> P)
     ((\n a ->                     fst $
         C.unfoldrN (n*100) (\x -> if x <= (n*100) then Just (chr (x `mod` 256), x + 1) else Nothing) a)
                 :: Int -> Int -> P)
+    n a
 
 
-prop_unfoldrLC   = eq3
+prop_unfoldrLC   =
+  forAll arbitrarySizedIntegral $
+  eq3
     ((\n f a -> LC.take (fromIntegral n) $
         LC.unfoldr    f a) :: Int -> (X -> Maybe (Char,X)) -> X -> B)
     ((\n f a ->                     fst $
         C.unfoldrN n f a) :: Int -> (X -> Maybe (Char,X)) -> X -> P)
 
-prop_cycleLC  a   = not (LC.null a) ==> eq1
+prop_cycleLC  a   =
+  not (LC.null a) ==>
+  forAll arbitrarySizedIntegral $
+  eq1
     ((\n   -> LC.take (fromIntegral n) $
               LC.cycle a
      ) :: Int -> B)
@@ -260,31 +280,41 @@ prop_cycleLC  a   = not (LC.null a) ==> eq1
      ) :: Int -> B)
 
 
-prop_iterateLC   = eq3
+prop_iterateLC =
+  forAll arbitrarySizedIntegral $
+  eq3
     ((\n f a -> LC.take (fromIntegral n) $
         LC.iterate  f a) :: Int -> (Char -> Char) -> Char -> B)
     ((\n f a -> fst $
         C.unfoldrN n (\a -> Just (f a, f a)) a) :: Int -> (Char -> Char) -> Char -> P)
 
-prop_iterateLC_2   = eq3
+prop_iterateLC_2   =
+  forAll arbitrarySizedIntegral $
+  eq3
     ((\n f a -> LC.take (fromIntegral n) $
         LC.iterate  f a) :: Int -> (Char -> Char) -> Char -> B)
     ((\n f a -> LC.take (fromIntegral n) $
         LC.unfoldr (\a -> Just (f a, f a)) a) :: Int -> (Char -> Char) -> Char -> B)
 
-prop_iterateL   = eq3
+prop_iterateL   =
+  forAll arbitrarySizedIntegral $
+  eq3
     ((\n f a -> L.take (fromIntegral n) $
         L.iterate  f a) :: Int -> (W -> W) -> W -> B)
     ((\n f a -> fst $
         P.unfoldrN n (\a -> Just (f a, f a)) a) :: Int -> (W -> W) -> W -> P)
 
-prop_repeatLC   = eq2
+prop_repeatLC   =
+  forAll arbitrarySizedIntegral $
+  eq2
     ((\n a -> LC.take (fromIntegral n) $
         LC.repeat a) :: Int -> Char -> B)
     ((\n a -> fst $
         C.unfoldrN n (\a -> Just (a, a)) a) :: Int -> Char -> P)
 
-prop_repeatL   = eq2
+prop_repeatL   =
+  forAll arbitrarySizedIntegral $
+  eq2
     ((\n a -> L.take (fromIntegral n) $
         L.repeat a) :: Int -> W -> B)
     ((\n a -> fst $
@@ -294,7 +324,8 @@ prop_repeatL   = eq2
 -- properties comparing ByteString.Lazy `eq1` List
 --
 
-prop_concatBL       = L.concat      `eq1` (concat    :: [[W]] -> [W])
+prop_concatBL       = adjustSize (`div` 2) $
+                      L.concat      `eq1` (concat    :: [[W]] -> [W])
 prop_lengthBL       = L.length      `eq1` (length    :: [W] -> Int)
 prop_nullBL         = L.null        `eq1` (null      :: [W] -> Bool)
 prop_reverseBL      = L.reverse     `eq1` (reverse   :: [W] -> [W])
@@ -306,7 +337,8 @@ prop_allBL          = L.all         `eq2` (all       :: (W -> Bool) -> [W] -> Bo
 prop_anyBL          = L.any         `eq2` (any       :: (W -> Bool) -> [W] -> Bool)
 prop_appendBL       = L.append      `eq2` ((++)      :: [W] -> [W] -> [W])
 prop_breakBL        = L.break       `eq2` (break     :: (W -> Bool) -> [W] -> ([W],[W]))
-prop_concatMapBL    = L.concatMap   `eq2` (concatMap :: (W -> [W]) -> [W] -> [W])
+prop_concatMapBL    = adjustSize (`div` 2) $
+                      L.concatMap   `eq2` (concatMap :: (W -> [W]) -> [W] -> [W])
 prop_consBL         = L.cons        `eq2` ((:)       :: W -> [W] -> [W])
 prop_dropBL         = L.drop        `eq2` (drop      :: Int -> [W] -> [W])
 prop_dropWhileBL    = L.dropWhile   `eq2` (dropWhile :: (W -> Bool) -> [W] -> [W])
@@ -316,7 +348,8 @@ prop_findIndicesBL  = L.findIndices `eq2` (findIndices:: (W -> Bool) -> [W] -> [
 prop_findIndexBL    = L.findIndex   `eq2` (findIndex :: (W -> Bool) -> [W] -> Maybe Int)
 prop_isPrefixOfBL   = L.isPrefixOf  `eq2` (isPrefixOf:: [W] -> [W] -> Bool)
 prop_mapBL          = L.map         `eq2` (map       :: (W -> W) -> [W] -> [W])
-prop_replicateBL    = L.replicate   `eq2` (replicate :: Int -> W -> [W])
+prop_replicateBL    = forAll arbitrarySizedIntegral $
+                      L.replicate   `eq2` (replicate :: Int -> W -> [W])
 prop_snocBL         = L.snoc        `eq2` ((\xs x -> xs ++ [x]) :: [W] -> W -> [W])
 prop_spanBL         = L.span        `eq2` (span      :: (W -> Bool) -> [W] -> ([W],[W]))
 prop_splitAtBL      = L.splitAt     `eq2` (splitAt   :: Int -> [W] -> ([W],[W]))
@@ -369,7 +402,9 @@ prop_mapAccumRCC  = eq3
     (C.mapAccumR :: (X -> Char -> (X,Char)) -> X -> P   -> (X, P))
     (  mapAccumR :: (X -> Char -> (X,Char)) -> X -> [Char] -> (X, [Char]))
 
-prop_unfoldrBL = eq3
+prop_unfoldrBL =
+  forAll arbitrarySizedIntegral $
+  eq3
     ((\n f a -> L.take (fromIntegral n) $
         L.unfoldr f a) :: Int -> (X -> Maybe (W,X)) -> X -> B)
     ((\n f a ->                  take n $
@@ -386,12 +421,14 @@ prop_transposePL  = P.transpose `eq1` (transpose :: [[W]] -> [[W]])
 prop_groupPL      = P.group     `eq1` (group     :: [W] -> [[W]])
 prop_initsPL      = P.inits     `eq1` (inits     :: [W] -> [[W]])
 prop_tailsPL      = P.tails     `eq1` (tails     :: [W] -> [[W]])
-prop_concatPL     = P.concat    `eq1` (concat    :: [[W]] -> [W])
+prop_concatPL     = adjustSize (`div` 2) $
+                    P.concat    `eq1` (concat    :: [[W]] -> [W])
 prop_allPL        = P.all       `eq2` (all       :: (W -> Bool) -> [W] -> Bool)
 prop_anyPL        = P.any       `eq2`    (any       :: (W -> Bool) -> [W] -> Bool)
 prop_appendPL     = P.append    `eq2`    ((++)      :: [W] -> [W] -> [W])
 prop_breakPL      = P.break     `eq2`    (break     :: (W -> Bool) -> [W] -> ([W],[W]))
-prop_concatMapPL  = P.concatMap `eq2`    (concatMap :: (W -> [W]) -> [W] -> [W])
+prop_concatMapPL  = adjustSize (`div` 2) $
+                    P.concatMap `eq2`    (concatMap :: (W -> [W]) -> [W] -> [W])
 prop_consPL       = P.cons      `eq2`    ((:)       :: W -> [W] -> [W])
 prop_dropPL       = P.drop      `eq2`    (drop      :: Int -> [W] -> [W])
 prop_dropWhilePL  = P.dropWhile `eq2`    (dropWhile :: (W -> Bool) -> [W] -> [W])
@@ -410,9 +447,10 @@ prop_partitionLL  = L.partition `eq2`    (partition :: (W -> Bool ) -> [W] -> ([
 prop_findPL       = P.find      `eq2`    (find      :: (W -> Bool) -> [W] -> Maybe W)
 prop_findIndexPL  = P.findIndex `eq2`    (findIndex :: (W -> Bool) -> [W] -> Maybe Int)
 prop_isPrefixOfPL = P.isPrefixOf`eq2`    (isPrefixOf:: [W] -> [W] -> Bool)
-prop_isInfixOfPL = P.isInfixOf`eq2`       (isInfixOf:: [W] -> [W] -> Bool)
+prop_isInfixOfPL  = P.isInfixOf `eq2`    (isInfixOf:: [W] -> [W] -> Bool)
 prop_mapPL        = P.map       `eq2`    (map       :: (W -> W) -> [W] -> [W])
-prop_replicatePL  = P.replicate `eq2`    (replicate :: Int -> W -> [W])
+prop_replicatePL  = forAll arbitrarySizedIntegral $
+                    P.replicate `eq2`    (replicate :: Int -> W -> [W])
 prop_snocPL       = P.snoc      `eq2`    ((\xs x -> xs ++ [x]) :: [W] -> W -> [W])
 prop_spanPL       = P.span      `eq2`    (span      :: (W -> Bool) -> [W] -> ([W],[W]))
 prop_splitAtPL    = P.splitAt   `eq2`    (splitAt   :: Int -> [W] -> ([W],[W]))
@@ -478,7 +516,9 @@ prop_mapAccumLPL= eq3
 prop_mapAccumRPL= eq3
     (P.mapAccumR :: (X -> W -> (X,W)) -> X -> P -> (X, P))
     (  mapAccumR :: (X -> W -> (X,W)) -> X -> [W] -> (X, [W]))
-prop_unfoldrPL = eq3
+prop_unfoldrPL =
+  forAll arbitrarySizedIntegral $
+  eq3
     ((\n f a ->      fst $
         P.unfoldrN n f a) :: Int -> (X -> Maybe (W,X)) -> X -> P)
     ((\n f a ->   take n $
@@ -605,7 +645,8 @@ prop_foldr1_3 xs =
 
 prop_concat1 xs = (concat [xs,xs]) == (unpack $ L.concat [pack xs, pack xs])
 prop_concat2 xs = (concat [xs,[]]) == (unpack $ L.concat [pack xs, pack []])
-prop_concat3 xss = L.concat (map pack xss) == pack (concat xss)
+prop_concat3 xss = adjustSize (`div` 2) $
+                   L.concat (map pack xss) == pack (concat xss)
 
 prop_concatMap xs = L.concatMap L.singleton xs == (pack . concatMap (:[]) . unpack) xs
 
@@ -615,15 +656,16 @@ prop_all xs a = (all (== a) xs) == (L.all (== a) (pack xs))
 prop_maximum xs = (not (null xs)) ==> (maximum xs) == (L.maximum ( pack xs ))
 prop_minimum xs = (not (null xs)) ==> (minimum xs) == (L.minimum ( pack xs ))
 
-prop_replicate1 n c =
-    (n >= 0) ==> unpack (L.replicate (fromIntegral n) c) == replicate n c
+prop_replicate1 c =
+    forAll arbitrarySizedIntegral $ \(Positive n) ->
+    unpack (L.replicate (fromIntegral n) c) == replicate n c
 
 prop_replicate2 c = unpack (L.replicate 0 c) == replicate 0 c
 
 prop_take1 i xs = L.take (fromIntegral i) (pack xs) == pack (take i xs)
 prop_drop1 i xs = L.drop (fromIntegral i) (pack xs) == pack (drop i xs)
 
-prop_splitAt i xs = collect (i >= 0 && i < length xs) $
+prop_splitAt i xs = --collect (i >= 0 && i < length xs) $
     L.splitAt (fromIntegral i) (pack xs) == let (a,b) = splitAt i xs in (pack a, pack b)
 
 prop_takeWhile f xs = L.takeWhile f (pack xs) == pack (takeWhile f xs)
@@ -1094,10 +1136,11 @@ prop_wordsBB' xs =
 -- prop_linesBB' xs = (C.unpack . C.unlines' . C.lines' . C.pack) xs == (xs)
 -}
 
-prop_unfoldrBB c n =
-    (fst $ C.unfoldrN n fn c) == (C.pack $ take n $ unfoldr fn c)
-    where
-      fn x = Just (x, chr (ord x + 1))
+prop_unfoldrBB c =
+    forAll arbitrarySizedIntegral $ \n ->
+      (fst $ C.unfoldrN n fn c) == (C.pack $ take n $ unfoldr fn c)
+  where
+    fn x = Just (x, chr (ord x + 1))
 
 prop_prefixBB xs ys = isPrefixOf xs ys == (P.pack xs `P.isPrefixOf` P.pack ys)
 prop_suffixBB xs ys = isSuffixOf xs ys == (P.pack xs `P.isSuffixOf` P.pack ys)
@@ -1152,8 +1195,10 @@ prop_breakSubstring_findSubstring s l
                                             (x,y) | P.null y  -> Nothing
                                                   | otherwise -> Just (P.length x)
 
-prop_replicate1BB n c = P.unpack (P.replicate n c) == replicate n c
-prop_replicate2BB n c = P.replicate n c == fst (P.unfoldrN n (\u -> Just (u,u)) c)
+prop_replicate1BB c = forAll arbitrarySizedIntegral $ \n ->
+                      P.unpack (P.replicate n c) == replicate n c
+prop_replicate2BB c = forAll arbitrarySizedIntegral $ \n ->
+                      P.replicate n c == fst (P.unfoldrN n (\u -> Just (u,u)) c)
 
 prop_replicate3BB c = P.unpack (P.replicate 0 c) == replicate 0 c
 
@@ -1418,7 +1463,7 @@ prop_isstring_lc x = LC.unpack (fromString x :: LC.ByteString) == x
 -- Unsafe functions
 
 -- Test unsafePackAddress
-prop_unsafePackAddress x = unsafePerformIO $ do
+prop_unsafePackAddress (CByteString x) = unsafePerformIO $ do
         let (p,_,_) = P.toForeignPtr (x `P.snoc` 0)
         y <- withForeignPtr p $ \(Ptr addr) ->
             P.unsafePackAddress addr
@@ -1461,11 +1506,11 @@ prop_useAsCString x = unsafePerformIO $ do
                              | i <- [0.. n-1]     ]
         return (and y)
 
-prop_packCString x = unsafePerformIO $ do
+prop_packCString (CByteString x) = unsafePerformIO $ do
         y <- P.useAsCString x $ P.unsafePackCString
         return (y == x)
 
-prop_packCString_safe x = unsafePerformIO $ do
+prop_packCString_safe (CByteString x) = unsafePerformIO $ do
         y <- P.useAsCString x $ P.packCString
         return (y == x)
 
@@ -1477,7 +1522,7 @@ prop_packCStringLen_safe x = unsafePerformIO $ do
         y <- P.useAsCStringLen x $ P.packCStringLen
         return (y == x && P.length y == P.length x)
 
-prop_packMallocCString x = unsafePerformIO $ do
+prop_packMallocCString (CByteString x) = unsafePerformIO $ do
 
          let (fp,_,_) = P.toForeignPtr x
          ptr <- mallocArray0 (P.length x) :: IO (Ptr Word8)
