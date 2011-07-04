@@ -56,7 +56,6 @@ library
   ghc-options:      -Wall -fno-warn-orphans
                     -O2
                     -funbox-strict-fields 
-                    -fno-method-sharing
                     -fmax-simplifier-iterations10
                     -fdicts-cheap
 
