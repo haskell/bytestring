@@ -1,5 +1,8 @@
 {-# LANGUAGE CPP #-}
 {-# OPTIONS_HADDOCK prune #-}
+#if __GLASGOW_HASKELL__ >= 701
+{-# LANGUAGE Trustworthy #-}
+#endif
 
 -- |
 -- Module      : Data.ByteString.Lazy.Char8

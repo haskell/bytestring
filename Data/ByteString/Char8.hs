@@ -3,6 +3,9 @@
 -- If we could, these are what they would be:
 {- LANGUAGE MagicHash, UnboxedTuples -}
 {-# OPTIONS_HADDOCK prune #-}
+#if __GLASGOW_HASKELL__ >= 701
+{-# LANGUAGE Trustworthy #-}
+#endif
 
 -- |
 -- Module      : Data.ByteString.Char8

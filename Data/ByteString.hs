@@ -4,6 +4,9 @@
 {- LANGUAGE MagicHash, UnboxedTuples,
             NamedFieldPuns, BangPatterns, RecordWildCards -}
 {-# OPTIONS_HADDOCK prune #-}
+#if __GLASGOW_HASKELL__ >= 701
+{-# LANGUAGE Trustworthy #-}
+#endif
 
 -- |
 -- Module      : Data.ByteString

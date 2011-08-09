@@ -1,4 +1,7 @@
 {-# OPTIONS_HADDOCK hide #-}
+#if __GLASGOW_HASKELL__ >= 701
+{-# LANGUAGE Safe #-}
+#endif
 -- |
 -- Module      : Data.ByteString.Fusion
 -- License     : BSD-style
