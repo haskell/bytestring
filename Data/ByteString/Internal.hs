@@ -68,7 +68,7 @@ module Data.ByteString.Internal (
 import Foreign.ForeignPtr       (ForeignPtr, withForeignPtr)
 import Foreign.Ptr              (Ptr, FunPtr, plusPtr)
 import Foreign.Storable         (Storable(..))
-import Foreign.C.Types          (CInt, CSize, CULong)
+import Foreign.C.Types          (CInt(..), CSize(..), CULong(..))
 import Foreign.C.String         (CString)
 
 #ifndef __NHC__
