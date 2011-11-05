@@ -40,6 +40,8 @@ import qualified Data.ByteString.Internal as S
 
 import Foreign.Storable (Storable(sizeOf))
 
+import Control.DeepSeq (NFData, rnf)
+
 #if defined(__GLASGOW_HASKELL__)
 import Data.Typeable    (Typeable)
 #if __GLASGOW_HASKELL__ >= 610
@@ -60,6 +62,10 @@ data ByteString = Empty | Chunk {-# UNPACK #-} !S.ByteString ByteString
                         ,Data, Typeable
 #endif
              )
+
+instance NFData ByteString where
+    rnf Empty       = ()
+    rnf (Chunk _ b) = rnf b
 
 ------------------------------------------------------------------------
 

@@ -27,7 +27,7 @@ Cabal-Version:       >= 1.8
 extra-source-files:  README TODO
 
 library
-  build-depends:     base >= 3 && < 5
+  build-depends:     base >= 3 && < 5, deepseq
 
   if impl(ghc >= 6.10)
     build-depends:   ghc-prim, base >= 4
@@ -71,7 +71,7 @@ test-suite prop-compiled
   type:             exitcode-stdio-1.0
   main-is:          Properties.hs
   hs-source-dirs:   . tests
-  build-depends:    base, random, directory,
+  build-depends:    base, deepseq, random, directory,
                     QuickCheck >= 2.3 && < 3
   if impl(ghc >= 6.10)
     build-depends:  ghc-prim

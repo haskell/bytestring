@@ -71,6 +71,8 @@ import Foreign.Storable         (Storable(..))
 import Foreign.C.Types          (CInt(..), CSize(..), CULong(..))
 import Foreign.C.String         (CString)
 
+import Control.DeepSeq          (NFData)
+
 #ifndef __NHC__
 import Control.Exception        (assert)
 #endif
@@ -156,6 +158,8 @@ data ByteString = PS {-# UNPACK #-} !(ForeignPtr Word8) -- payload
 #if defined(__GLASGOW_HASKELL__)
     deriving (Data, Typeable)
 #endif
+
+instance NFData ByteString
 
 instance Show ByteString where
     showsPrec p ps r = showsPrec p (unpackWith w2c ps) r
