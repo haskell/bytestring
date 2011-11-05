@@ -229,7 +229,7 @@ import Data.Maybe               (isJust, listToMaybe)
 
 -- Control.Exception.assert not available in yhc or nhc
 #ifndef __NHC__
-import Control.Exception        (finally, bracket, assert)
+import Control.Exception        (finally, bracket, assert, throwIO)
 #else
 import Control.Exception	(bracket, finally)
 #endif
@@ -1738,7 +1738,7 @@ packCStringLen :: CStringLen -> IO ByteString
 packCStringLen (cstr, len) | len >= 0 = create len $ \p ->
     memcpy p (castPtr cstr) (fromIntegral len)
 packCStringLen (_, len) =
-    moduleError "packCStringLen" ("negative length: " ++ show len)
+    moduleErrorIO "packCStringLen" ("negative length: " ++ show len)
 
 ------------------------------------------------------------------------
 
@@ -2115,8 +2115,15 @@ errorEmptyList fun = moduleError fun "empty ByteString"
 {-# NOINLINE errorEmptyList #-}
 
 moduleError :: String -> String -> a
-moduleError fun msg = error ("Data.ByteString." ++ fun ++ ':':' ':msg)
+moduleError fun msg = error (moduleErrorMsg fun msg)
 {-# NOINLINE moduleError #-}
+
+moduleErrorIO :: String -> String -> IO a
+moduleErrorIO fun msg = throwIO (userError (moduleErrorMsg fun msg))
+{-# NOINLINE moduleErrorIO #-}
+
+moduleErrorMsg :: String -> String -> String
+moduleErrorMsg fun msg = "Data.ByteString." ++ fun ++ ':':' ':msg
 
 -- Find from the end of the string using predicate
 findFromEndUntil :: (Word8 -> Bool) -> ByteString -> Int

@@ -1347,9 +1347,11 @@ interact transformer = putStr . transformer =<< getContents
 -- constant strings created when compiled:
 errorEmptyList :: String -> a
 errorEmptyList fun = moduleError fun "empty ByteString"
+{-# NOINLINE errorEmptyList #-}
 
 moduleError :: String -> String -> a
 moduleError fun msg = error ("Data.ByteString.Lazy." ++ fun ++ ':':' ':msg)
+{-# NOINLINE moduleError #-}
 
 
 -- reverse a list of non-empty chunks into a lazy ByteString
