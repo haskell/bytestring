@@ -505,6 +505,9 @@ length (PS _ _ l) = assert (l >= 0) $ l
 
 ------------------------------------------------------------------------
 
+infixr 5 `cons` --same as list (:)
+infixl 5 `snoc`
+
 -- | /O(n)/ 'cons' is analogous to (:) for lists, but of different
 -- complexity, as it requires a memcpy.
 cons :: Word8 -> ByteString -> ByteString

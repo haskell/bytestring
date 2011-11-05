@@ -346,6 +346,9 @@ length :: ByteString -> Int64
 length cs = foldlChunks (\n c -> n + fromIntegral (S.length c)) 0 cs
 {-# INLINE length #-}
 
+infixr 5 `cons`, `cons'` --same as list (:)
+infixl 5 `snoc`
+
 -- | /O(1)/ 'cons' is analogous to '(:)' for lists.
 --
 cons :: Word8 -> ByteString -> ByteString

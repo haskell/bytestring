@@ -249,6 +249,9 @@ unpack :: ByteString -> [Char]
 unpack = List.map w2c . L.unpack
 {-# INLINE unpack #-}
 
+infixr 5 `cons`, `cons'` --same as list (:)
+infixl 5 `snoc`
+
 -- | /O(1)/ 'cons' is analogous to '(:)' for lists.
 cons :: Char -> ByteString -> ByteString
 cons = L.cons . c2w
