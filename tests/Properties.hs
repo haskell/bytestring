@@ -1,4 +1,4 @@
-{-# LANGUAGE PatternSignatures #-}
+{-# LANGUAGE ScopedTypeVariables, BangPatterns #-}
 --
 -- Must have rules off, otherwise the fusion rules will replace the rhs
 -- with the lhs, and we only end up testing lhs == lhs
@@ -8,8 +8,9 @@
 -- -fhpc interferes with rewrite rules firing.
 --
 
-import Foreign
+import Foreign.Storable
 import Foreign.ForeignPtr
+import Foreign.Marshal.Alloc
 import Foreign.Marshal.Array
 import GHC.Ptr
 import Test.QuickCheck

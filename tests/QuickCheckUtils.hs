@@ -1,4 +1,5 @@
-{-# OPTIONS_GHC -fglasgow-exts #-}
+{-# LANGUAGE CPP, MultiParamTypeClasses,
+             FlexibleInstances, TypeSynonymInstances #-}
 --
 -- Uses multi-param type classes
 --
@@ -73,18 +74,6 @@ mytest p n = do
                }
 
 ------------------------------------------------------------------------
-
-instance Random Word8 where
-  randomR = integralRandomR
-  random = randomR (minBound,maxBound)
-
-instance Random CChar where
-  randomR = integralRandomR
-  random = randomR (minBound,maxBound)
-
-instance Random Int64 where
-  randomR = integralRandomR
-  random  = randomR (minBound,maxBound)
 
 integralRandomR :: (Integral a, RandomGen g) => (a,a) -> g -> (a,g)
 integralRandomR  (a,b) g = case randomR (fromIntegral a :: Integer,
