@@ -16,15 +16,22 @@ License:             BSD3
 License-file:        LICENSE
 Category:            Data
 Copyright:           Copyright (c) Don Stewart   2005-2009,
-                               (c) Duncan Coutts 2006-2009,
+                               (c) Duncan Coutts 2006-2011,
                                (c) David Roundy  2003-2005.
-Author:              Don Stewart, Duncan Coutts
-Maintainer:          dons00@gmail.com, duncan@community.haskell.org
-Homepage:            http://www.cse.unsw.edu.au/~dons/fps.html
+Author:              Don Stewart,
+                     Duncan Coutts
+Maintainer:          Don Stewart <dons00@gmail.com>,
+                     Duncan Coutts <duncan@community.haskell.org>
+Bug-reports:         dons00@gmail.com,
+                     duncan@community.haskell.org
 Tested-With:         GHC==7.0.2, GHC==6.12.3, GHC==6.10.4, GHC ==6.8.2
 Build-Type:          Simple
 Cabal-Version:       >= 1.8
 extra-source-files:  README TODO
+
+source-repository head
+  type:     darcs
+  location: http://darcs.haskell.org/bytestring/
 
 library
   build-depends:     base >= 3 && < 5, deepseq
