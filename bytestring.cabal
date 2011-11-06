@@ -46,7 +46,6 @@ library
                      Data.ByteString.Lazy
                      Data.ByteString.Lazy.Char8
                      Data.ByteString.Lazy.Internal
-                     Data.ByteString.Fusion
 
   extensions:        CPP, ForeignFunctionInterface
 

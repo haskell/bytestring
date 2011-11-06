@@ -18,7 +18,6 @@ import System.Random
 import System.IO
 import Foreign.C (CChar)
 
-import Data.ByteString.Fusion
 import qualified Data.ByteString      as P
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Lazy.Internal as L (checkInvariant,ByteString(..))

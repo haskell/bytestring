@@ -50,7 +50,6 @@ import qualified Data.ByteString.Lazy.Char8 as LC
 import qualified Data.ByteString.Lazy.Char8 as D
 
 import qualified Data.ByteString.Lazy.Internal as LP
-import Data.ByteString.Fusion
 import Prelude hiding (abs)
 
 import Rules
