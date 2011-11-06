@@ -245,7 +245,7 @@ import System.IO                (stdin,stdout,hClose,hFileSize
                                 ,IOMode(..))
 import System.IO.Error          (mkIOError, illegalOperationErrorType)
 
-import Data.Monoid              (Monoid, mempty, mappend, mconcat)
+import Data.Monoid              (Monoid(..))
 
 #if !defined(__GLASGOW_HASKELL__)
 import System.IO.Unsafe
@@ -310,67 +310,6 @@ hWaitForInput _ _ = return ()
 #define STRICT3(f) f a b c | a `seq` b `seq` c `seq` False = undefined
 #define STRICT4(f) f a b c d | a `seq` b `seq` c `seq` d `seq` False = undefined
 #define STRICT5(f) f a b c d e | a `seq` b `seq` c `seq` d `seq` e `seq` False = undefined
-
--- -----------------------------------------------------------------------------
-
-instance Eq  ByteString where
-    (==)    = eq
-
-instance Ord ByteString where
-    compare = compareBytes
-
-instance Monoid ByteString where
-    mempty  = empty
-    mappend = append
-    mconcat = concat
-
--- | /O(n)/ Equality on the 'ByteString' type.
-eq :: ByteString -> ByteString -> Bool
-eq a@(PS p s l) b@(PS p' s' l')
-    | l /= l'            = False    -- short cut on length
-    | p == p' && s == s' = True     -- short cut for the same string
-    | otherwise          = compareBytes a b == EQ
-{-# INLINE eq #-}
--- ^ still needed
-
--- | /O(n)/ 'compareBytes' provides an 'Ordering' for 'ByteStrings' supporting slices. 
-compareBytes :: ByteString -> ByteString -> Ordering
-compareBytes (PS x1 s1 l1) (PS x2 s2 l2)
-    | l1 == 0  && l2 == 0               = EQ  -- short cut for empty strings
-    | otherwise                         = inlinePerformIO $
-        withForeignPtr x1 $ \p1 ->
-        withForeignPtr x2 $ \p2 -> do
-            i <- memcmp (p1 `plusPtr` s1) (p2 `plusPtr` s2) (fromIntegral $ min l1 l2)
-            return $! case i `compare` 0 of
-                        EQ  -> l1 `compare` l2
-                        x   -> x
-
-{-
-
--- Pure Haskell version
-
-compareBytes (PS fp1 off1 len1) (PS fp2 off2 len2)
---    | len1 == 0  && len2 == 0                     = EQ  -- short cut for empty strings
---    | fp1 == fp2 && off1 == off2 && len1 == len2  = EQ  -- short cut for the same string
-    | otherwise                                   = inlinePerformIO $
-    withForeignPtr fp1 $ \p1 ->
-        withForeignPtr fp2 $ \p2 ->
-            cmp (p1 `plusPtr` off1)
-                (p2 `plusPtr` off2) 0 len1 len2
-
--- XXX todo.
-cmp :: Ptr Word8 -> Ptr Word8 -> Int -> Int -> Int-> IO Ordering
-cmp p1 p2 n len1 len2
-      | n == len1 = if n == len2 then return EQ else return LT
-      | n == len2 = return GT
-      | otherwise = do
-          a <- peekByteOff p1 n :: IO Word8
-          b <- peekByteOff p2 n
-          case a `compare` b of
-                EQ -> cmp p1 p2 (n+1) len1 len2
-                LT -> return LT
-                GT -> return GT
--}
 
 -- -----------------------------------------------------------------------------
 -- Introducing and eliminating 'ByteString's
@@ -526,9 +465,7 @@ init ps@(PS p s l)
 
 -- | /O(n)/ Append two ByteStrings
 append :: ByteString -> ByteString -> ByteString
-append xs ys | null xs   = ys
-             | null ys   = xs
-             | otherwise = concat [xs,ys]
+append = mappend
 {-# INLINE append #-}
 
 -- ---------------------------------------------------------------------
@@ -660,15 +597,7 @@ foldr1' f ps
 
 -- | /O(n)/ Concatenate a list of ByteStrings.
 concat :: [ByteString] -> ByteString
-concat []     = empty
-concat [ps]   = ps
-concat xs     = unsafeCreate len $ \ptr -> go xs ptr
-  where len = P.sum . P.map length $ xs
-        STRICT2(go)
-        go []            _   = return ()
-        go (PS p s l:ps) ptr = do
-                withForeignPtr p $ \fp -> memcpy ptr (fp `plusPtr` s) (fromIntegral l)
-                go ps (ptr `plusPtr` l)
+concat = mconcat
 
 -- | Map a function over a 'ByteString' and concatenate the results
 concatMap :: (Word8 -> ByteString) -> ByteString -> ByteString

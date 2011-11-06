@@ -60,8 +60,7 @@ library
   if impl(ghc >= 6.11)
       extensions:   NamedFieldPuns
 
-  --TODO: eliminate orphan instances:
-  ghc-options:      -Wall -fno-warn-orphans
+  ghc-options:      -Wall
                     -O2
                     -fmax-simplifier-iterations=10
                     -fdicts-cheap

@@ -242,45 +242,6 @@ import Foreign.Storable
 #define STRICT5(f) f a b c d e | a `seq` b `seq` c `seq` d `seq` e `seq` False = undefined
 
 -- -----------------------------------------------------------------------------
-
-instance Eq  ByteString
-    where (==)    = eq
-
-instance Ord ByteString
-    where compare = cmp
-
-instance Monoid ByteString where
-    mempty  = empty
-    mappend = append
-    mconcat = concat
-
-eq :: ByteString -> ByteString -> Bool
-eq Empty Empty = True
-eq Empty _     = False
-eq _     Empty = False
-eq (Chunk a as) (Chunk b bs) =
-  case compare (S.length a) (S.length b) of
-    LT -> a == (S.take (S.length a) b) && eq as (Chunk (S.drop (S.length a) b) bs)
-    EQ -> a == b                       && eq as bs
-    GT -> (S.take (S.length b) a) == b && eq (Chunk (S.drop (S.length b) a) as) bs
-
-cmp :: ByteString -> ByteString -> Ordering
-cmp Empty Empty = EQ
-cmp Empty _     = LT
-cmp _     Empty = GT
-cmp (Chunk a as) (Chunk b bs) =
-  case compare (S.length a) (S.length b) of
-    LT -> case compare a (S.take (S.length a) b) of
-            EQ     -> cmp as (Chunk (S.drop (S.length a) b) bs)
-            result -> result
-    EQ -> case compare a b of
-            EQ     -> cmp as bs
-            result -> result
-    GT -> case compare (S.take (S.length b) a) b of
-            EQ     -> cmp (Chunk (S.drop (S.length b) a) as) bs
-            result -> result
-
--- -----------------------------------------------------------------------------
 -- Introducing and eliminating 'ByteString's
 
 -- | /O(1)/ The empty 'ByteString'
@@ -415,7 +376,7 @@ init (Chunk c0 cs0) = go c0 cs0
 
 -- | /O(n\/c)/ Append two ByteStrings
 append :: ByteString -> ByteString -> ByteString
-append xs ys = foldrChunks Chunk ys xs
+append = mappend
 {-# INLINE append #-}
 
 -- ---------------------------------------------------------------------
@@ -512,12 +473,7 @@ foldr1 f (Chunk c0 cs0) = go c0 cs0
 
 -- | /O(n)/ Concatenate a list of ByteStrings.
 concat :: [ByteString] -> ByteString
-concat css0 = to css0
-  where
-    go Empty        css = to css
-    go (Chunk c cs) css = Chunk c (go cs css)
-    to []               = Empty
-    to (cs:css)         = go cs css
+concat = mconcat
 
 -- | Map a function over a 'ByteString' and concatenate the results
 concatMap :: (Word8 -> ByteString) -> ByteString -> ByteString

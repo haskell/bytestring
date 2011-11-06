@@ -40,11 +40,15 @@ module Data.ByteString.Lazy.Internal (
 
   ) where
 
+import Prelude hiding (concat)
+
 import qualified Data.ByteString.Internal as S
+import qualified Data.ByteString          as S (length, take, drop)
 
 import Data.Word        (Word8)
 import Foreign.Storable (Storable(sizeOf))
 
+import Data.Monoid      (Monoid(..))
 import Control.DeepSeq  (NFData, rnf)
 
 #if MIN_VERSION_base(3,0,0)
@@ -73,6 +77,17 @@ data ByteString = Empty | Chunk {-# UNPACK #-} !S.ByteString ByteString
 #if defined(__GLASGOW_HASKELL__)
     deriving (Typeable)
 #endif
+
+instance Eq  ByteString where
+    (==)    = eq
+
+instance Ord ByteString where
+    compare = cmp
+
+instance Monoid ByteString where
+    mempty  = Empty
+    mappend = append
+    mconcat = concat
 
 instance NFData ByteString where
     rnf Empty       = ()
@@ -194,3 +209,43 @@ smallChunkSize = 4 * k - chunkOverhead
 -- | The memory management overhead. Currently this is tuned for GHC only.
 chunkOverhead :: Int
 chunkOverhead = 2 * sizeOf (undefined :: Int)
+
+------------------------------------------------------------------------
+-- Implementations for Eq, Ord and Monoid instances
+
+eq :: ByteString -> ByteString -> Bool
+eq Empty Empty = True
+eq Empty _     = False
+eq _     Empty = False
+eq (Chunk a as) (Chunk b bs) =
+  case compare (S.length a) (S.length b) of
+    LT -> a == (S.take (S.length a) b) && eq as (Chunk (S.drop (S.length a) b) bs)
+    EQ -> a == b                       && eq as bs
+    GT -> (S.take (S.length b) a) == b && eq (Chunk (S.drop (S.length b) a) as) bs
+
+cmp :: ByteString -> ByteString -> Ordering
+cmp Empty Empty = EQ
+cmp Empty _     = LT
+cmp _     Empty = GT
+cmp (Chunk a as) (Chunk b bs) =
+  case compare (S.length a) (S.length b) of
+    LT -> case compare a (S.take (S.length a) b) of
+            EQ     -> cmp as (Chunk (S.drop (S.length a) b) bs)
+            result -> result
+    EQ -> case compare a b of
+            EQ     -> cmp as bs
+            result -> result
+    GT -> case compare (S.take (S.length b) a) b of
+            EQ     -> cmp (Chunk (S.drop (S.length b) a) as) bs
+            result -> result
+
+append :: ByteString -> ByteString -> ByteString
+append xs ys = foldrChunks Chunk ys xs
+
+concat :: [ByteString] -> ByteString
+concat css0 = to css0
+  where
+    go Empty        css = to css
+    go (Chunk c cs) css = Chunk c (go cs css)
+    to []               = Empty
+    to (cs:css)         = go cs css

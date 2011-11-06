@@ -51,8 +51,8 @@ module Data.ByteString.Internal (
         c_free_finalizer,       -- :: FunPtr (Ptr Word8 -> IO ())
 
         memchr,                 -- :: Ptr Word8 -> Word8 -> CSize -> IO Ptr Word8
-        memcmp,                 -- :: Ptr Word8 -> Ptr Word8 -> CSize -> IO CInt
-        memcpy,                 -- :: Ptr Word8 -> Ptr Word8 -> CSize -> IO ()
+        memcmp,                 -- :: Ptr Word8 -> Ptr Word8 -> Int -> IO CInt
+        memcpy,                 -- :: Ptr Word8 -> Ptr Word8 -> Int -> IO ()
         memset,                 -- :: Ptr Word8 -> Word8 -> CSize -> IO (Ptr Word8)
 
         -- * cbits functions
@@ -71,6 +71,7 @@ module Data.ByteString.Internal (
 
   ) where
 
+import Prelude hiding (concat)
 import qualified Data.List as List
 
 import Foreign.ForeignPtr       (ForeignPtr, withForeignPtr)
@@ -79,6 +80,7 @@ import Foreign.Storable         (Storable(..))
 import Foreign.C.Types          (CInt(..), CSize(..), CULong(..))
 import Foreign.C.String         (CString)
 
+import Data.Monoid              (Monoid(..))
 import Control.DeepSeq          (NFData)
 
 #if MIN_VERSION_base(3,0,0)
@@ -176,6 +178,17 @@ data ByteString = PS {-# UNPACK #-} !(ForeignPtr Word8) -- payload
 #if defined(__GLASGOW_HASKELL__)
     deriving (Typeable)
 #endif
+
+instance Eq  ByteString where
+    (==)    = eq
+
+instance Ord ByteString where
+    compare = compareBytes
+
+instance Monoid ByteString where
+    mempty  = PS nullForeignPtr 0 0
+    mappend = append
+    mconcat = concat
 
 instance NFData ByteString
 
@@ -376,7 +389,7 @@ createAndTrim l f = do
         l' <- f p
         if assert (l' <= l) $ l' >= l
             then return $! PS fp 0 l
-            else create l' $ \p' -> memcpy p' p (fromIntegral l')
+            else create l' $ \p' -> memcpy p' p l'
 {-# INLINE createAndTrim #-}
 
 createAndTrim' :: Int -> (Ptr Word8 -> IO (Int, Int, a)) -> IO (ByteString, a)
@@ -387,7 +400,7 @@ createAndTrim' l f = do
         if assert (l' <= l) $ l' >= l
             then return $! (PS fp 0 l, res)
             else do ps <- create l' $ \p' ->
-                            memcpy p' (p `plusPtr` off) (fromIntegral l')
+                            memcpy p' (p `plusPtr` off) l'
                     return $! (ps, res)
 
 -- | Wrapper of 'mallocForeignPtrBytes' with faster implementation for GHC
@@ -400,6 +413,48 @@ mallocByteString l = do
     mallocForeignPtrBytes l
 #endif
 {-# INLINE mallocByteString #-}
+
+------------------------------------------------------------------------
+-- Implementations for Eq, Ord and Monoid instances
+
+eq :: ByteString -> ByteString -> Bool
+eq a@(PS fp off len) b@(PS fp' off' len')
+  | len /= len'              = False    -- short cut on length
+  | fp == fp' && off == off' = True     -- short cut for the same string
+  | otherwise                = compareBytes a b == EQ
+{-# INLINE eq #-}
+-- ^ still needed
+
+compareBytes :: ByteString -> ByteString -> Ordering
+compareBytes (PS _   _    0)    (PS _   _    0)    = EQ  -- short cut for empty strings
+compareBytes (PS fp1 off1 len1) (PS fp2 off2 len2) =
+    inlinePerformIO $
+      withForeignPtr fp1 $ \p1 ->
+      withForeignPtr fp2 $ \p2 -> do
+        i <- memcmp (p1 `plusPtr` off1) (p2 `plusPtr` off2) (min len1 len2)
+        return $! case i `compare` 0 of
+                    EQ  -> len1 `compare` len2
+                    x   -> x
+
+append :: ByteString -> ByteString -> ByteString
+append (PS _   _    0)    b                  = b
+append a                  (PS _   _    0)    = a
+append (PS fp1 off1 len1) (PS fp2 off2 len2) =
+    unsafeCreate (len1+len2) $ \destptr1 -> do
+      let destptr2 = destptr1 `plusPtr` len1
+      withForeignPtr fp1 $ \p1 -> memcpy destptr1 (p1 `plusPtr` off1) len1
+      withForeignPtr fp2 $ \p2 -> memcpy destptr2 (p2 `plusPtr` off2) len2
+
+concat :: [ByteString] -> ByteString
+concat []     = mempty
+concat [bs]   = bs
+concat bss0   = unsafeCreate totalLen $ \ptr -> go bss0 ptr
+  where
+    totalLen = List.sum [ len | (PS _ _ len) <- bss0 ]
+    go []                  !_   = return ()
+    go (PS fp off len:bss) !ptr = do
+      withForeignPtr fp $ \p -> memcpy ptr (p `plusPtr` off) len
+      go bss (ptr `plusPtr` len)
 
 ------------------------------------------------------------------------
 
@@ -476,14 +531,17 @@ foreign import ccall unsafe "string.h memchr" c_memchr
 memchr :: Ptr Word8 -> Word8 -> CSize -> IO (Ptr Word8)
 memchr p w s = c_memchr p (fromIntegral w) s
 
-foreign import ccall unsafe "string.h memcmp" memcmp
+foreign import ccall unsafe "string.h memcmp" c_memcmp
     :: Ptr Word8 -> Ptr Word8 -> CSize -> IO CInt
+
+memcmp :: Ptr Word8 -> Ptr Word8 -> Int -> IO CInt
+memcmp p q s = c_memcmp p q (fromIntegral s)
 
 foreign import ccall unsafe "string.h memcpy" c_memcpy
     :: Ptr Word8 -> Ptr Word8 -> CSize -> IO (Ptr Word8)
 
-memcpy :: Ptr Word8 -> Ptr Word8 -> CSize -> IO ()
-memcpy p q s = c_memcpy p q s >> return ()
+memcpy :: Ptr Word8 -> Ptr Word8 -> Int -> IO ()
+memcpy p q s = c_memcpy p q (fromIntegral s) >> return ()
 
 {-
 foreign import ccall unsafe "string.h memmove" c_memmove
