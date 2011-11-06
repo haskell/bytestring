@@ -32,12 +32,17 @@ module Data.ByteString.Lazy.Internal (
         -- * Chunk allocation sizes
         defaultChunkSize,
         smallChunkSize,
-        chunkOverhead
+        chunkOverhead,
+
+        -- * Conversion with lists: packing and unpacking
+        packBytes, packChars,
+        unpackBytes, unpackChars,
 
   ) where
 
 import qualified Data.ByteString.Internal as S
 
+import Data.Word        (Word8)
 import Foreign.Storable (Storable(sizeOf))
 
 import Control.DeepSeq (NFData, rnf)
@@ -66,6 +71,33 @@ data ByteString = Empty | Chunk {-# UNPACK #-} !S.ByteString ByteString
 instance NFData ByteString where
     rnf Empty       = ()
     rnf (Chunk _ b) = rnf b
+
+------------------------------------------------------------------------
+-- Packing and unpacking from lists
+
+packBytes :: [Word8] -> ByteString
+packBytes cs0 =
+    packChunks 32 cs0
+  where
+    packChunks n cs = case S.packUptoLenBytes n cs of
+      (bs, [])  -> chunk bs Empty
+      (bs, cs') -> Chunk bs (packChunks (min (n * 2) smallChunkSize) cs')
+
+packChars :: [Char] -> ByteString
+packChars cs0 =
+    packChunks 32 cs0
+  where
+    packChunks n cs = case S.packUptoLenChars n cs of
+      (bs, [])  -> chunk bs Empty
+      (bs, cs') -> Chunk bs (packChunks (min (n * 2) smallChunkSize) cs')
+
+unpackBytes :: ByteString -> [Word8]
+unpackBytes Empty        = []
+unpackBytes (Chunk c cs) = S.unpackAppendBytesLazy c (unpackBytes cs)
+
+unpackChars :: ByteString -> [Char]
+unpackChars Empty        = []
+unpackChars (Chunk c cs) = S.unpackAppendCharsLazy c (unpackChars cs)
 
 ------------------------------------------------------------------------
 

@@ -25,6 +25,12 @@ module Data.ByteString.Internal (
         -- * The @ByteString@ type and representation
         ByteString(..),         -- instances: Eq, Ord, Show, Read, Data, Typeable
 
+        -- * Conversion with lists: packing and unpacking
+        packBytes, packUptoLenBytes, unsafePackLenBytes,
+        packChars, packUptoLenChars, unsafePackLenChars,
+        unpackBytes, unpackAppendBytesLazy, unpackAppendBytesStrict,
+        unpackChars, unpackAppendCharsLazy, unpackAppendCharsStrict,
+
         -- * Low level introduction and elimination
         create,                 -- :: Int -> (Ptr Word8 -> IO ()) -> IO ByteString
         createAndTrim,          -- :: Int -> (Ptr Word8 -> IO Int) -> IO  ByteString
@@ -64,6 +70,8 @@ module Data.ByteString.Internal (
         w2c, c2w, isSpaceWord8, isSpaceChar8
 
   ) where
+
+import qualified Data.List as List
 
 import Foreign.ForeignPtr       (ForeignPtr, withForeignPtr)
 import Foreign.Ptr              (Ptr, FunPtr, plusPtr)
@@ -162,31 +170,109 @@ data ByteString = PS {-# UNPACK #-} !(ForeignPtr Word8) -- payload
 instance NFData ByteString
 
 instance Show ByteString where
-    showsPrec p ps r = showsPrec p (unpackWith w2c ps) r
+    showsPrec p ps r = showsPrec p (unpackChars ps) r
 
 instance Read ByteString where
-    readsPrec p str = [ (packWith c2w x, y) | (x, y) <- readsPrec p str ]
+    readsPrec p str = [ (packChars x, y) | (x, y) <- readsPrec p str ]
 
--- | /O(n)/ Converts a 'ByteString' to a '[a]', using a conversion function.
-unpackWith :: (Word8 -> a) -> ByteString -> [a]
-unpackWith _ (PS _  _ 0) = []
-unpackWith k (PS ps s l) = inlinePerformIO $ withForeignPtr ps $ \p ->
-        go (p `plusPtr` s) (l - 1) []
-    where
-        STRICT3(go)
-        go p 0 acc = peek p          >>= \e -> return (k e : acc)
-        go p n acc = peekByteOff p n >>= \e -> go p (n-1) (k e : acc)
-{-# INLINE unpackWith #-}
+------------------------------------------------------------------------
+-- Packing and unpacking from lists
 
--- | /O(n)/ Convert a '[a]' into a 'ByteString' using some
--- conversion function
-packWith :: (a -> Word8) -> [a] -> ByteString
-packWith k str = unsafeCreate (length str) $ \p -> go p str
-    where
-        STRICT2(go)
-        go _ []     = return ()
-        go p (x:xs) = poke p (k x) >> go (p `plusPtr` 1) xs -- less space than pokeElemOff
-{-# INLINE packWith #-}
+packBytes :: [Word8] -> ByteString
+packBytes ws = unsafePackLenBytes (List.length ws) ws
+
+packChars :: [Char] -> ByteString
+packChars cs = unsafePackLenChars (List.length cs) cs
+
+unsafePackLenBytes :: Int -> [Word8] -> ByteString
+unsafePackLenBytes len xs0 =
+    unsafeCreate len $ \p -> go p xs0
+  where
+    go !_ []     = return ()
+    go !p (x:xs) = poke p x >> go (p `plusPtr` 1) xs
+
+unsafePackLenChars :: Int -> [Char] -> ByteString
+unsafePackLenChars len cs0 =
+    unsafeCreate len $ \p -> go p cs0
+  where
+    go !_ []     = return ()
+    go !p (c:cs) = poke p (c2w c) >> go (p `plusPtr` 1) cs
+
+packUptoLenBytes :: Int -> [Word8] -> (ByteString, [Word8])
+packUptoLenBytes len xs0 =
+    unsafeDupablePerformIO $ create' len $ \p -> go p len xs0
+  where
+    go !_ !n []     = return (len-n, [])
+    go !_ !0 xs     = return (len,   xs)
+    go !p !n (x:xs) = poke p x >> go (p `plusPtr` 1) (n-1) xs
+
+packUptoLenChars :: Int -> [Char] -> (ByteString, [Char])
+packUptoLenChars len cs0 =
+    unsafeDupablePerformIO $ create' len $ \p -> go p len cs0
+  where
+    go !_ !n []     = return (len-n, [])
+    go !_ !0 cs     = return (len,   cs)
+    go !p !n (c:cs) = poke p (c2w c) >> go (p `plusPtr` 1) (n-1) cs
+
+-- Unpacking bytestrings into lists effeciently is a tradeoff: on the one hand
+-- we would like to write a tight loop that just blats the list into memory, on
+-- the other hand we want it to be unpacked lazily so we don't end up with a
+-- massive list data structure in memory.
+--
+-- Our strategy is to combine both: we will unpack lazily in reasonable sized
+-- chunks, where each chunk is unpacked strictly.
+--
+-- unpackBytes and unpackChars do the lazy loop, while unpackAppendBytes and
+-- unpackAppendChars do the chunks strictly.
+
+unpackBytes :: ByteString -> [Word8]
+unpackBytes bs = unpackAppendBytesLazy bs []
+
+unpackChars :: ByteString -> [Char]
+unpackChars bs = unpackAppendCharsLazy bs []
+
+unpackAppendBytesLazy :: ByteString -> [Word8] -> [Word8]
+unpackAppendBytesLazy (PS fp off len) xs
+  | len <= 100 = unpackAppendBytesStrict (PS fp off len) xs
+  | otherwise  = unpackAppendBytesStrict (PS fp off 100) remainder
+  where
+    remainder  = unpackAppendBytesLazy (PS fp (off+100) (len-100)) xs
+
+  -- Why 100 bytes you ask? Because on a 64bit machine the list we allocate
+  -- takes just shy of 4k which seems like a reasonable amount.
+  -- (5 words per list element, 8 bytes per word, 100 elements = 4000 bytes)
+
+unpackAppendCharsLazy :: ByteString -> [Char] -> [Char]
+unpackAppendCharsLazy (PS fp off len) cs
+  | len <= 100 = unpackAppendCharsStrict (PS fp off len) cs
+  | otherwise  = unpackAppendCharsStrict (PS fp off 100) remainder
+  where
+    remainder  = unpackAppendCharsLazy (PS fp (off+100) (len-100)) cs
+
+-- For these unpack functions, since we're unpacking the whole list strictly we
+-- build up the result list in an accumulator. This means we have to build up
+-- the list starting at the end. So our traversal starts at the end of the
+-- buffer and loops down until we hit the sentinal:
+
+unpackAppendBytesStrict :: ByteString -> [Word8] -> [Word8]
+unpackAppendBytesStrict (PS fp off len) xs =
+    inlinePerformIO $ withForeignPtr fp $ \base -> do
+      loop (base `plusPtr` (off-1)) (base `plusPtr` (off-1+len)) xs
+  where
+    loop !sentinal !p acc
+      | p == sentinal = return acc
+      | otherwise     = do x <- peek p
+                           loop sentinal (p `plusPtr` (-1)) (x:acc)
+
+unpackAppendCharsStrict :: ByteString -> [Char] -> [Char]
+unpackAppendCharsStrict (PS fp off len) xs =
+    inlinePerformIO $ withForeignPtr fp $ \base ->
+      loop (base `plusPtr` (off-1)) (base `plusPtr` (off-1+len)) xs
+  where
+    loop !sentinal !p acc
+      | p == sentinal = return acc
+      | otherwise     = do x <- peek p
+                           loop sentinal (p `plusPtr` (-1)) (w2c x:acc)
 
 ------------------------------------------------------------------------
 
@@ -241,6 +327,14 @@ create l f = do
     withForeignPtr fp $ \p -> f p
     return $! PS fp 0 l
 {-# INLINE create #-}
+
+-- | Create ByteString of up to size @l@ and use action @f@ to fill it's contents which returns its true size.
+create' :: Int -> (Ptr Word8 -> IO (Int, a)) -> IO (ByteString, a)
+create' l f = do
+    fp <- mallocByteString l
+    (l', res) <- withForeignPtr fp $ \p -> f p
+    assert (l' <= l) $ return (PS fp 0 l', res)
+{-# INLINE create' #-}
 
 -- | Given the maximum size needed and a function to make the contents
 -- of a ByteString, createAndTrim makes the 'ByteString'. The generating

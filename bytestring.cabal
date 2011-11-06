@@ -47,7 +47,9 @@ library
                      Data.ByteString.Lazy.Char8
                      Data.ByteString.Lazy.Internal
 
-  extensions:        CPP, ForeignFunctionInterface
+  extensions:        CPP,
+                     ForeignFunctionInterface,
+                     BangPatterns
 
   if impl(ghc)
       extensions:   UnliftedFFITypes,
