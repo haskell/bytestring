@@ -81,6 +81,10 @@ import Foreign.C.String         (CString)
 
 import Control.DeepSeq          (NFData)
 
+#if MIN_VERSION_base(3,0,0)
+import Data.String              (IsString(..))
+#endif
+
 #ifndef __NHC__
 import Control.Exception        (assert)
 #endif
@@ -180,6 +184,11 @@ instance Show ByteString where
 
 instance Read ByteString where
     readsPrec p str = [ (packChars x, y) | (x, y) <- readsPrec p str ]
+
+#if MIN_VERSION_base(3,0,0)
+instance IsString ByteString where
+    fromString = packChars
+#endif
 
 instance Data ByteString where
   gfoldl f z txt = z packBytes `f` (unpackBytes txt)

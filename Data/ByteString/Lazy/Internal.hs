@@ -45,7 +45,11 @@ import qualified Data.ByteString.Internal as S
 import Data.Word        (Word8)
 import Foreign.Storable (Storable(sizeOf))
 
-import Control.DeepSeq (NFData, rnf)
+import Control.DeepSeq  (NFData, rnf)
+
+#if MIN_VERSION_base(3,0,0)
+import Data.String      (IsString(..))
+#endif
 
 import Data.Typeable            (Typeable)
 #if MIN_VERSION_base(4,1,0)
@@ -79,6 +83,11 @@ instance Show ByteString where
 
 instance Read ByteString where
     readsPrec p str = [ (packChars x, y) | (x, y) <- readsPrec p str ]
+
+#if MIN_VERSION_base(3,0,0)
+instance IsString ByteString where
+    fromString = packChars
+#endif
 
 instance Data ByteString where
   gfoldl f z txt = z packBytes `f` unpackBytes txt

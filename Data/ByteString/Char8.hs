@@ -273,10 +273,6 @@ import GHC.Ptr                  (Ptr(..))
 import GHC.ST                   (ST(..))
 #endif
 
-#if MIN_VERSION_base(3,0,0)
-import Data.String              (IsString(..))
-#endif
-
 #define STRICT1(f) f a | a `seq` False = undefined
 #define STRICT2(f) f a b | a `seq` b `seq` False = undefined
 #define STRICT3(f) f a b c | a `seq` b `seq` c `seq` False = undefined
@@ -288,12 +284,6 @@ import Data.String              (IsString(..))
 singleton :: Char -> ByteString
 singleton = B.singleton . c2w
 {-# INLINE singleton #-}
-
-#if MIN_VERSION_base(3,0,0)
-instance IsString ByteString where
-    fromString = pack
-    {-# INLINE fromString #-}
-#endif
 
 -- | /O(n)/ Convert a 'String' into a 'ByteString'
 --
