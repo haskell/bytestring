@@ -62,15 +62,20 @@ import Data.Generics    (Data)
 -- Instances of Eq, Ord, Read, Show, Data, Typeable
 --
 data ByteString = Empty | Chunk {-# UNPACK #-} !S.ByteString ByteString
-    deriving (Show, Read
+
 #if defined(__GLASGOW_HASKELL__)
-                        ,Data, Typeable
+    deriving (Data, Typeable)
 #endif
-             )
 
 instance NFData ByteString where
     rnf Empty       = ()
     rnf (Chunk _ b) = rnf b
+
+instance Show ByteString where
+    showsPrec p ps r = showsPrec p (unpackChars ps) r
+
+instance Read ByteString where
+    readsPrec p str = [ (packChars x, y) | (x, y) <- readsPrec p str ]
 
 ------------------------------------------------------------------------
 -- Packing and unpacking from lists
