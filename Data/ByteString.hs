@@ -270,7 +270,7 @@ import GHC.IO.Handle.Internals
 import GHC.IO.Handle.Types
 import GHC.IO.Buffer
 import GHC.IO.BufferedIO as Buffered
-import GHC.IO                   (stToIO, unsafePerformIO)
+import GHC.IO                   (unsafePerformIO)
 import Data.Char                (ord)
 import Foreign.Marshal.Utils    (copyBytes)
 #else
@@ -279,11 +279,9 @@ import GHC.IOBase
 import GHC.Handle
 #endif
 
-import GHC.Prim                 (Word#, (+#), writeWord8OffAddr#)
+import GHC.Prim                 (Word#)
 import GHC.Base                 (build)
 import GHC.Word hiding (Word8)
-import GHC.Ptr                  (Ptr(..))
-import GHC.ST                   (ST(..))
 
 #endif
 
@@ -412,40 +410,12 @@ singleton c = unsafeCreate 1 $ \p -> poke p c
 -- For applications with large numbers of string literals, pack can be a
 -- bottleneck. In such cases, consider using packAddress (GHC only).
 pack :: [Word8] -> ByteString
-
-#if !defined(__GLASGOW_HASKELL__)
-
-pack str = unsafeCreate (P.length str) $ \p -> go p str
-    where
-        go _ []     = return ()
-        go p (x:xs) = poke p x >> go (p `plusPtr` 1) xs -- less space than pokeElemOff
-
-#else /* hack away */
-
-pack str = unsafeCreate (P.length str) $ \(Ptr p) -> stToIO (go p 0# str)
-    where
-        go _ _ []        = return ()
-        go p i (W8# c:cs) = writeByte p i c >> go p (i +# 1#) cs
-
-        writeByte p i c = ST $ \s# ->
-            case writeWord8OffAddr# p i c s# of s2# -> (# s2#, () #)
-
-#endif
+pack = packBytes
 
 -- | /O(n)/ Converts a 'ByteString' to a '[Word8]'.
 unpack :: ByteString -> [Word8]
-
 #if !defined(__GLASGOW_HASKELL__)
-
-unpack (PS _  _ 0) = []
-unpack (PS ps s l) = inlinePerformIO $ withForeignPtr ps $ \p ->
-        go (p `plusPtr` s) (l - 1) []
-    where
-        STRICT3(go)
-        go p 0 acc = peek p          >>= \e -> return (e : acc)
-        go p n acc = peekByteOff p n >>= \e -> go p (n-1) (e : acc)
-{-# INLINE unpack #-}
-
+unpack = unpackBytes
 #else
 
 unpack ps = build (unpackFoldr ps)
@@ -469,18 +439,9 @@ unpackFoldr (PS fp off len) f ch = withPtr fp $ \p -> do
     loop (p `plusPtr` off) (len-1) ch
 {-# INLINE [0] unpackFoldr #-}
 
-unpackList :: ByteString -> [Word8]
-unpackList (PS fp off len) = withPtr fp $ \p -> do
-    let STRICT3(loop)
-        loop _ (-1) acc = return acc
-        loop q n acc = do
-           a <- peekByteOff q n
-           loop q (n-1) (a : acc)
-    loop (p `plusPtr` off) (len-1) []
-
 {-# RULES
 "ByteString unpack-list" [1]  forall p  .
-    unpackFoldr p (:) [] = unpackList p
+    unpackFoldr p (:) [] = unpackBytes p
  #-}
 
 #endif

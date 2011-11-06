@@ -247,8 +247,7 @@ import Data.ByteString (empty,null,length,tail,init,append
                        ,useAsCString,useAsCStringLen
                        )
 
-import Data.ByteString.Internal (ByteString(PS), c2w, w2c, isSpaceWord8
-                                ,inlinePerformIO)
+import Data.ByteString.Internal
 
 import Data.Char    ( isSpace )
 import qualified Data.List as List (intersperse)
@@ -260,18 +259,6 @@ import Control.Exception        (bracket)
 import IO			(bracket)
 #endif
 import Foreign
-
-#if defined(__GLASGOW_HASKELL__)
-import GHC.Base                 (Char(..),unpackCString#,ord#,int2Word#)
-#if __GLASGOW_HASKELL__ >= 611
-import GHC.IO                   (stToIO)
-#else
-import GHC.IOBase               (stToIO)
-#endif
-import GHC.Prim                 (Addr#,writeWord8OffAddr#,plusAddr#)
-import GHC.Ptr                  (Ptr(..))
-import GHC.ST                   (ST(..))
-#endif
 
 #define STRICT1(f) f a | a `seq` False = undefined
 #define STRICT2(f) f a b | a `seq` b `seq` False = undefined
@@ -290,23 +277,9 @@ singleton = B.singleton . c2w
 -- For applications with large numbers of string literals, pack can be a
 -- bottleneck.
 pack :: String -> ByteString
+pack = packChars
+
 #if !defined(__GLASGOW_HASKELL__)
-
-pack str = B.unsafeCreate (P.length str) $ \p -> go p str
-    where go _ []     = return ()
-          go p (x:xs) = poke p (c2w x) >> go (p `plusPtr` 1) xs
-
-#else /* hack away */
-
-pack str = B.unsafeCreate (P.length str) $ \(Ptr p) -> stToIO (go p str)
-  where
-    go :: Addr# -> [Char] -> ST a ()
-    go _ []        = return ()
-    go p (C# c:cs) = writeByte p (int2Word# (ord# c)) >> go (p `plusAddr#` 1#) cs
-
-    writeByte p c = ST $ \s# ->
-        case writeWord8OffAddr# p 0# c s# of s2# -> (# s2#, () #)
-    {-# INLINE writeByte #-}
 {-# INLINE [1] pack #-}
 
 {-# RULES
@@ -318,7 +291,7 @@ pack str = B.unsafeCreate (P.length str) $ \(Ptr p) -> stToIO (go p str)
 
 -- | /O(n)/ Converts a 'ByteString' to a 'String'.
 unpack :: ByteString -> [Char]
-unpack = P.map w2c . B.unpack
+unpack = B.unpackChars
 {-# INLINE unpack #-}
 
 infixr 5 `cons` --same as list (:)

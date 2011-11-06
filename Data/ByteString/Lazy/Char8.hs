@@ -232,12 +232,11 @@ singleton = L.singleton . c2w
 
 -- | /O(n)/ Convert a 'String' into a 'ByteString'. 
 pack :: [Char] -> ByteString
-pack = L.pack. List.map c2w
+pack = packChars
 
 -- | /O(n)/ Converts a 'ByteString' to a 'String'.
 unpack :: ByteString -> [Char]
-unpack = List.map w2c . L.unpack
-{-# INLINE unpack #-}
+unpack = unpackChars
 
 infixr 5 `cons`, `cons'` --same as list (:)
 infixl 5 `snoc`

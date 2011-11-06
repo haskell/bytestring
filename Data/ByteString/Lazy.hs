@@ -295,17 +295,11 @@ singleton w = Chunk (S.singleton w) Empty
 
 -- | /O(n)/ Convert a '[Word8]' into a 'ByteString'. 
 pack :: [Word8] -> ByteString
-pack ws = L.foldr (Chunk . S.pack) Empty (chunks defaultChunkSize ws)
-  where
-    chunks :: Int -> [a] -> [[a]]
-    chunks _    [] = []
-    chunks size xs = case L.splitAt size xs of
-                      (xs', xs'') -> xs' : chunks size xs''
+pack = packBytes
 
 -- | /O(n)/ Converts a 'ByteString' to a '[Word8]'.
 unpack :: ByteString -> [Word8]
-unpack cs = L.concatMap S.unpack (toChunks cs)
---TODO: we can do better here by integrating the concat with the unpack
+unpack = unpackBytes
 
 -- | /O(c)/ Convert a list of strict 'ByteString' into a lazy 'ByteString'
 fromChunks :: [P.ByteString] -> ByteString
