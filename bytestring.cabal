@@ -63,9 +63,10 @@ library
   --TODO: eliminate orphan instances:
   ghc-options:      -Wall -fno-warn-orphans
                     -O2
-                    -funbox-strict-fields 
-                    -fmax-simplifier-iterations10
+                    -fmax-simplifier-iterations=10
                     -fdicts-cheap
+  if impl(ghc >= 6.10)
+    ghc-options:    -fspec-constr-count=6
 
   c-sources:         cbits/fpstring.c
   include-dirs:      include
