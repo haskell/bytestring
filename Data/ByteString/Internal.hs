@@ -88,13 +88,19 @@ import Control.Exception        (assert)
 import Data.Char                (ord)
 import Data.Word                (Word8)
 
-#if defined(__GLASGOW_HASKELL__)
 import Data.Typeable            (Typeable)
-#if __GLASGOW_HASKELL__ >= 610
-import Data.Data                (Data)
+#if MIN_VERSION_base(4,1,0)
+import Data.Data                (Data(..))
+#if MIN_VERSION_base(4,2,0)
+import Data.Data                (mkNoRepType)
 #else
-import Data.Generics            (Data)
+import Data.Data                (mkNorepType)
 #endif
+#else
+import Data.Generics            (Data(..), mkNorepType)
+#endif
+
+#ifdef __GLASGOW_HASKELL__
 import GHC.Base                 (realWorld#,unsafeChr)
 #if __GLASGOW_HASKELL__ >= 611
 import GHC.IO                   (IO(IO))
@@ -164,7 +170,7 @@ data ByteString = PS {-# UNPACK #-} !(ForeignPtr Word8) -- payload
                      {-# UNPACK #-} !Int                -- length
 
 #if defined(__GLASGOW_HASKELL__)
-    deriving (Data, Typeable)
+    deriving (Typeable)
 #endif
 
 instance NFData ByteString
@@ -174,6 +180,16 @@ instance Show ByteString where
 
 instance Read ByteString where
     readsPrec p str = [ (packChars x, y) | (x, y) <- readsPrec p str ]
+
+instance Data ByteString where
+  gfoldl f z txt = z packBytes `f` (unpackBytes txt)
+  toConstr _     = error "Data.ByteString.ByteString.toConstr"
+  gunfold _ _    = error "Data.ByteString.ByteString.gunfold"
+#if __GLASGOW_HASKELL__ >= 612
+  dataTypeOf _   = mkNoRepType "Data.ByteString.ByteString"
+#else
+  dataTypeOf _   = mkNorepType "Data.ByteString.ByteString"
+#endif
 
 ------------------------------------------------------------------------
 -- Packing and unpacking from lists

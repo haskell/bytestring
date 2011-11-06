@@ -47,13 +47,16 @@ import Foreign.Storable (Storable(sizeOf))
 
 import Control.DeepSeq (NFData, rnf)
 
-#if defined(__GLASGOW_HASKELL__)
-import Data.Typeable    (Typeable)
-#if __GLASGOW_HASKELL__ >= 610
-import Data.Data        (Data)
+import Data.Typeable            (Typeable)
+#if MIN_VERSION_base(4,1,0)
+import Data.Data                (Data(..))
+#if MIN_VERSION_base(4,2,0)
+import Data.Data                (mkNoRepType)
 #else
-import Data.Generics    (Data)
+import Data.Data                (mkNorepType)
 #endif
+#else
+import Data.Generics            (Data(..), mkNorepType)
 #endif
 
 -- | A space-efficient representation of a Word8 vector, supporting many
@@ -64,7 +67,7 @@ import Data.Generics    (Data)
 data ByteString = Empty | Chunk {-# UNPACK #-} !S.ByteString ByteString
 
 #if defined(__GLASGOW_HASKELL__)
-    deriving (Data, Typeable)
+    deriving (Typeable)
 #endif
 
 instance NFData ByteString where
@@ -76,6 +79,16 @@ instance Show ByteString where
 
 instance Read ByteString where
     readsPrec p str = [ (packChars x, y) | (x, y) <- readsPrec p str ]
+
+instance Data ByteString where
+  gfoldl f z txt = z packBytes `f` unpackBytes txt
+  toConstr _     = error "Data.ByteString.Lazy.ByteString.toConstr"
+  gunfold _ _    = error "Data.ByteString.Lazy.ByteString.gunfold"
+#if MIN_VERSION_base(4,2,0)
+  dataTypeOf _   = mkNoRepType "Data.ByteString.Lazy.ByteString"
+#else
+  dataTypeOf _   = mkNorepType "Data.ByteString.Lazy.ByteString"
+#endif
 
 ------------------------------------------------------------------------
 -- Packing and unpacking from lists
