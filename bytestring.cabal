@@ -89,6 +89,7 @@ test-suite prop-compiled
     ghc-options:    -fno-enable-rewrite-rules
   else
     ghc-options:    -fno-rewrite-rules
+  extensions:       BangPatterns
   if impl(ghc)
       extensions:   UnliftedFFITypes,
                     MagicHash,
