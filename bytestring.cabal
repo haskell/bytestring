@@ -1,5 +1,5 @@
 Name:                bytestring
-Version:             0.9.2.0
+Version:             0.10.0.0
 Synopsis:            Fast, compact, strict and lazy byte strings with a list interface
 Description:
     An efficient compact, immutable byte string type (both strict and lazy)
