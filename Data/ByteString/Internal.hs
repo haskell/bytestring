@@ -77,7 +77,11 @@ import qualified Data.List as List
 import Foreign.ForeignPtr       (ForeignPtr, withForeignPtr)
 import Foreign.Ptr              (Ptr, FunPtr, plusPtr)
 import Foreign.Storable         (Storable(..))
+#if MIN_VERSION_base(4,5,0)
 import Foreign.C.Types          (CInt(..), CSize(..), CULong(..))
+#else
+import Foreign.C.Types          (CInt, CSize, CULong)
+#endif
 import Foreign.C.String         (CString)
 
 import Data.Monoid              (Monoid(..))
