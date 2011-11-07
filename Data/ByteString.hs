@@ -2005,7 +2005,12 @@ moduleError fun msg = error (moduleErrorMsg fun msg)
 {-# NOINLINE moduleError #-}
 
 moduleErrorIO :: String -> String -> IO a
-moduleErrorIO fun msg = throwIO (userError (moduleErrorMsg fun msg))
+moduleErrorIO fun msg =
+#if MIN_VERSION_base(4,0,0)
+    throwIO . userError $ moduleErrorMsg fun msg
+#else
+    throwIO . IOException . userError $ moduleErrorMsg fun msg
+#endif
 {-# NOINLINE moduleErrorIO #-}
 
 moduleErrorMsg :: String -> String -> String
