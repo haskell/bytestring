@@ -798,53 +798,40 @@ tokens f = L.filter (not.null) . splitWith f
 -- It is a special case of 'groupBy', which allows the programmer to
 -- supply their own equality test.
 group :: ByteString -> [ByteString]
-group Empty          = []
-group (Chunk c0 cs0) = group' [] (S.group c0) cs0
-  where 
-    group' :: [P.ByteString] -> [P.ByteString] -> ByteString -> [ByteString]
-    group' acc@(s':_) ss@(s:_) cs
-      | S.unsafeHead s'
-     /= S.unsafeHead s             = revNonEmptyChunks    acc  : group' [] ss cs
-    group' acc (s:[]) Empty        = revNonEmptyChunks (s:acc) : []
-    group' acc (s:[]) (Chunk c cs) = group' (s:acc) (S.group c) cs
-    group' acc (s:ss) cs           = revNonEmptyChunks (s:acc) : group' [] ss cs
+group = go
+  where
+    go Empty        = []
+    go (Chunk c cs)
+      | S.length c == 1  = to [c] (S.unsafeHead c) cs
+      | otherwise        = to [S.unsafeTake 1 c] (S.unsafeHead c) (Chunk (S.unsafeTail c) cs)
 
-{-
-TODO: check if something like this might be faster
-
-group :: ByteString -> [ByteString]
-group xs
-    | null xs   = []
-    | otherwise = ys : group zs
-    where
-        (ys, zs) = spanByte (unsafeHead xs) xs
--}
+    to acc !_ Empty        = revNonEmptyChunks acc : []
+    to acc !w (Chunk c cs) =
+      case findIndexOrEnd (/= w) c of
+        0                    -> revNonEmptyChunks acc
+                              : go (Chunk c cs)
+        n | n == S.length c  -> to (S.unsafeTake n c : acc) w cs
+          | otherwise        -> revNonEmptyChunks (S.unsafeTake n c : acc)
+                              : go (Chunk (S.unsafeDrop n c) cs)
 
 -- | The 'groupBy' function is the non-overloaded version of 'group'.
 --
 groupBy :: (Word8 -> Word8 -> Bool) -> ByteString -> [ByteString]
-groupBy _ Empty          = []
-groupBy k (Chunk c0 cs0) = groupBy' [] 0 (S.groupBy k c0) cs0
+groupBy k = go
   where
-    groupBy' :: [P.ByteString] -> Word8 -> [P.ByteString] -> ByteString -> [ByteString]
-    groupBy' acc@(_:_) c ss@(s:_) cs
-      | not (c `k` S.unsafeHead s)     = revNonEmptyChunks acc : groupBy' [] 0 ss cs
-    groupBy' acc _ (s:[]) Empty        = revNonEmptyChunks (s : acc) : []
-    groupBy' acc w (s:[]) (Chunk c cs) = groupBy' (s:acc) w' (S.groupBy k c) cs
-                                           where w' | L.null acc = S.unsafeHead s
-                                                    | otherwise  = w
-    groupBy' acc _ (s:ss) cs           = revNonEmptyChunks (s : acc) : groupBy' [] 0 ss cs
+    go Empty        = []
+    go (Chunk c cs)
+      | S.length c == 1  = to [c] (S.unsafeHead c) cs
+      | otherwise        = to [S.unsafeTake 1 c] (S.unsafeHead c) (Chunk (S.unsafeTail c) cs)
 
-{-
-TODO: check if something like this might be faster
-
-groupBy :: (Word8 -> Word8 -> Bool) -> ByteString -> [ByteString]
-groupBy k xs
-    | null xs   = []
-    | otherwise = take n xs : groupBy k (drop n xs)
-    where
-        n = 1 + findIndexOrEnd (not . k (head xs)) (tail xs)
--}
+    to acc !_ Empty        = revNonEmptyChunks acc : []
+    to acc !w (Chunk c cs) =
+      case findIndexOrEnd (not . k w) c of
+        0                    -> revNonEmptyChunks acc
+                              : go (Chunk c cs)
+        n | n == S.length c  -> to (S.unsafeTake n c : acc) w cs
+          | otherwise        -> revNonEmptyChunks (S.unsafeTake n c : acc)
+                              : go (Chunk (S.unsafeDrop n c) cs)
 
 -- | /O(n)/ The 'intercalate' function takes a 'ByteString' and a list of
 -- 'ByteString's and concatenates the list after interspersing the first
