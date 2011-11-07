@@ -27,15 +27,11 @@ import Data.Int (Int64)
 import Data.Monoid
 
 import Text.Printf
-import Debug.Trace
 import Data.String
 
 import System.Environment
 import System.IO
 import System.IO.Unsafe
-import System.Random
-
-import Foreign.Ptr
 
 import Data.ByteString.Lazy (ByteString(..), pack , unpack)
 import qualified Data.ByteString.Lazy as L
@@ -49,13 +45,11 @@ import qualified Data.ByteString.Char8      as C
 import qualified Data.ByteString.Lazy.Char8 as LC
 import qualified Data.ByteString.Lazy.Char8 as D
 
-import qualified Data.ByteString.Lazy.Internal as LP
+import qualified Data.ByteString.Lazy.Internal as L
 import Prelude hiding (abs)
 
 import Rules
 import QuickCheckUtils
-
-f = C.dropWhile isSpace
 
 --
 -- ByteString.Lazy.Char8 <=> ByteString.Char8
@@ -824,12 +818,12 @@ prop_splitAtSBB i xs = -- collect (i >= 0 && i < length xs) $
     let (a,b) = splitAt i xs in (P.pack a, P.pack b)
 
 prop_foldlBB f c xs = P.foldl f c (P.pack xs) == foldl f c xs
-  where types = c :: Char
+  where _ = c :: Char
 
 prop_scanlfoldlBB f z xs = not (P.null xs) ==> P.last (P.scanl f z xs) == P.foldl f z xs
 
 prop_foldrBB f c xs = P.foldl f c (P.pack xs) == foldl f c xs
-  where types = c :: Char
+  where _ = c :: Char
 
 prop_takeWhileSBB f xs = P.takeWhile f (P.pack xs) == P.pack (takeWhile f xs)
 prop_dropWhileSBB f xs = P.dropWhile f (P.pack xs) == P.pack (dropWhile f xs)
@@ -1583,7 +1577,7 @@ prop_unsafeUseAsCStringLen x = unsafePerformIO $ do
                              | i <- [0.. n-1]     ]
         return (and y)
 
-prop_internal_invariant x = LP.invariant x
+prop_internal_invariant x = L.invariant x
 
 prop_useAsCString x = unsafePerformIO $ do
         let n = P.length x
@@ -2149,8 +2143,8 @@ bb_tests =
     ,    ("map 3",          mytest prop_map3BB)
     ,    ("filter1",        mytest prop_filter1BB)
     ,    ("filter2",        mytest prop_filter2BB)
---  ,    ("map fusion",     mytest prop_mapfusionBB)
---  ,    ("filter fusion",  mytest prop_filterfusionBB)
+    ,    ("map fusion",     mytest prop_mapfusionBB)
+    ,    ("filter fusion",  mytest prop_filterfusionBB)
     ,    ("reverse 1",      mytest prop_reverse1BB)
     ,    ("reverse 2",      mytest prop_reverse2BB)
     ,    ("reverse 3",      mytest prop_reverse3BB)

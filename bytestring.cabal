@@ -85,6 +85,7 @@ test-suite prop-compiled
     build-depends:  ghc-prim
   c-sources:        cbits/fpstring.c
   include-dirs:     include
+  ghc-options:      -fwarn-unused-binds
   if impl(ghc >= 6.10)
     ghc-options:    -fno-enable-rewrite-rules
   else
