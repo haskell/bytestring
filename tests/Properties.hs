@@ -1459,9 +1459,93 @@ prop_length_loop_fusion_4 f1 acc1 xs =
 
 ------------------------------------------------------------------------
 
--- Test IsString
+-- Test IsString, Show, Read, pack, unpack
 prop_isstring x = C.unpack (fromString x :: C.ByteString) == x
 prop_isstring_lc x = LC.unpack (fromString x :: LC.ByteString) == x
+
+prop_showP1 x = show x == show (C.unpack x)
+prop_showL1 x = show x == show (LC.unpack x)
+
+prop_readP1 x = read (show x) == (x :: P.ByteString)
+prop_readP2 x = read (show x) == C.pack (x :: String)
+
+prop_readL1 x = read (show x) == (x :: L.ByteString)
+prop_readL2 x = read (show x) == LC.pack (x :: String)
+
+prop_packunpack_s x = (P.unpack . P.pack) x == x
+prop_unpackpack_s x = (P.pack . P.unpack) x == x
+
+prop_packunpack_c x = (C.unpack . C.pack) x == x
+prop_unpackpack_c x = (C.pack . C.unpack) x == x
+
+prop_packunpack_l x = (L.unpack . L.pack) x == x
+prop_unpackpack_l x = (L.pack . L.unpack) x == x
+
+prop_packunpack_lc x = (LC.unpack . LC.pack) x == x
+prop_unpackpack_lc x = (LC.pack . LC.unpack) x == x
+
+prop_packUptoLenBytes cs =
+    forAll (choose (0, length cs + 1)) $ \n ->
+      let (bs, cs') = P.packUptoLenBytes n cs
+       in P.length bs == min n (length cs)
+       && take n cs == P.unpack bs
+       && P.pack (take n cs) == bs
+       && drop n cs == cs'
+
+prop_packUptoLenChars cs =
+    forAll (choose (0, length cs + 1)) $ \n ->
+      let (bs, cs') = P.packUptoLenChars n cs
+       in P.length bs == min n (length cs)
+       && take n cs == C.unpack bs
+       && C.pack (take n cs) == bs
+       && drop n cs == cs'
+
+prop_unpack_s cs =
+    forAll (choose (0, length cs)) $ \n ->
+      P.unpack (P.drop n $ P.pack cs) == drop n cs
+prop_unpack_c cs =
+    forAll (choose (0, length cs)) $ \n ->
+      C.unpack (C.drop n $ C.pack cs) == drop n cs
+
+prop_unpack_l  cs =
+    forAll (choose (0, length cs)) $ \n ->
+      L.unpack (L.drop (fromIntegral n) $ L.pack cs) == drop n cs
+prop_unpack_lc cs =
+    forAll (choose (0, length cs)) $ \n ->
+      LC.unpack (L.drop (fromIntegral n) $ LC.pack cs) == drop n cs
+
+prop_unpackBytes cs =
+    forAll (choose (0, length cs)) $ \n ->
+      P.unpackBytes (P.drop n $ P.pack cs) == drop n cs
+prop_unpackChars cs =
+    forAll (choose (0, length cs)) $ \n ->
+      P.unpackChars (P.drop n $ C.pack cs) == drop n cs
+
+prop_unpackBytes_l =
+    forAll (sized $ \n -> resize (n * 10) arbitrary) $ \cs ->
+    forAll (choose (0, length cs)) $ \n ->
+      L.unpackBytes (L.drop (fromIntegral n) $ L.pack cs) == drop n cs
+prop_unpackChars_l =
+    forAll (sized $ \n -> resize (n * 10) arbitrary) $ \cs ->
+    forAll (choose (0, length cs)) $ \n ->
+      L.unpackChars (L.drop (fromIntegral n) $ LC.pack cs) == drop n cs
+
+prop_unpackAppendBytesLazy cs' =
+    forAll (sized $ \n -> resize (n * 10) arbitrary) $ \cs ->
+    forAll (choose (0, 2)) $ \n ->
+      P.unpackAppendBytesLazy (P.drop n $ P.pack cs) cs' == drop n cs ++ cs'
+prop_unpackAppendCharsLazy cs' =
+    forAll (sized $ \n -> resize (n * 10) arbitrary) $ \cs ->
+    forAll (choose (0, 2)) $ \n ->
+      P.unpackAppendCharsLazy (P.drop n $ C.pack cs) cs' == drop n cs ++ cs'
+
+prop_unpackAppendBytesStrict cs cs' =
+    forAll (choose (0, length cs)) $ \n ->
+      P.unpackAppendBytesStrict (P.drop n $ P.pack cs) cs' == drop n cs ++ cs'
+
+prop_unpackAppendCharsStrict cs cs' =
+    forAll (choose (0, length cs)) $ \n ->
+      P.unpackAppendCharsStrict (P.drop n $ C.pack cs) cs' == drop n cs ++ cs'
 
 ------------------------------------------------------------------------
 -- Unsafe functions
@@ -1546,8 +1630,6 @@ prop_unsafeFinalize    x =
 prop_packCStringFinaliser x = unsafePerformIO $ do
         y <- P.useAsCString x $ \cstr -> P.unsafePackCStringFinalizer (castPtr cstr) (P.length x) (return ())
         return (y == x)
-
-prop_show x = show x == show (C.unpack x)
 
 prop_fromForeignPtr x = (let (a,b,c) = (P.toForeignPtr x)
                                 in P.fromForeignPtr a b c) == x
@@ -1688,7 +1770,29 @@ io_tests =
     ]
 
 misc_tests =
-    [("invariant",              mytest prop_invariant)
+    [("packunpack",             mytest prop_packunpack_s)
+    ,("unpackpack",             mytest prop_unpackpack_s)
+    ,("packunpack",             mytest prop_packunpack_c)
+    ,("unpackpack",             mytest prop_unpackpack_c)
+    ,("packunpack",             mytest prop_packunpack_l)
+    ,("unpackpack",             mytest prop_unpackpack_l)
+    ,("packunpack",             mytest prop_packunpack_lc)
+    ,("unpackpack",             mytest prop_unpackpack_lc)
+    ,("unpack",                 mytest prop_unpack_s)
+    ,("unpack",                 mytest prop_unpack_c)
+    ,("unpack",                 mytest prop_unpack_l)
+    ,("unpack",                 mytest prop_unpack_lc)
+    ,("packUptoLenBytes",       mytest prop_packUptoLenBytes)
+    ,("packUptoLenChars",       mytest prop_packUptoLenChars)
+    ,("unpackBytes",            mytest prop_unpackBytes)
+    ,("unpackChars",            mytest prop_unpackChars)
+    ,("unpackBytes",            mytest prop_unpackBytes_l)
+    ,("unpackChars",            mytest prop_unpackChars_l)
+    ,("unpackAppendBytesLazy",  mytest prop_unpackAppendBytesLazy)
+    ,("unpackAppendCharsLazy",  mytest prop_unpackAppendCharsLazy)
+    ,("unpackAppendBytesStrict",mytest prop_unpackAppendBytesStrict)
+    ,("unpackAppendCharsStrict",mytest prop_unpackAppendCharsStrict)
+    ,("invariant",              mytest prop_invariant)
     ,("unsafe pack address",    mytest prop_unsafePackAddress)
     ,("unsafe pack address len",mytest prop_unsafePackAddressLen)
     ,("unsafeUseAsCString",     mytest prop_unsafeUseAsCString)
@@ -1702,7 +1806,12 @@ misc_tests =
     ,("packMallocString",       mytest prop_packMallocCString)
     ,("unsafeFinalise",         mytest prop_unsafeFinalize)
     ,("invariant",              mytest prop_internal_invariant)
-    ,("show",                   mytest prop_show)
+    ,("show 1",                 mytest prop_showP1)
+    ,("show 2",                 mytest prop_showL1)
+    ,("read 1",                 mytest prop_readP1)
+    ,("read 2",                 mytest prop_readP2)
+    ,("read 3",                 mytest prop_readL1)
+    ,("read 4",                 mytest prop_readL2)
     ,("fromForeignPtr",         mytest prop_fromForeignPtr)
     ]
 
