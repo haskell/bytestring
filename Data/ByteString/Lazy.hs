@@ -267,7 +267,7 @@ unpack = unpackBytes
 fromChunks :: [P.ByteString] -> ByteString
 fromChunks cs = L.foldr chunk Empty cs
 
--- | /O(n)/ Convert a lazy 'ByteString' into a list of strict 'ByteString'
+-- | /O(c)/ Convert a lazy 'ByteString' into a list of strict 'ByteString'
 toChunks :: ByteString -> [P.ByteString]
 toChunks cs = foldrChunks (:) [] cs
 
