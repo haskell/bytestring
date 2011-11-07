@@ -8,11 +8,11 @@
 -- |
 -- Module      : Data.ByteString.Lazy
 -- Copyright   : (c) Don Stewart 2006
---               (c) Duncan Coutts 2006
+--               (c) Duncan Coutts 2006-2011
 -- License     : BSD-style
 --
--- Maintainer  : dons@galois.com
--- Stability   : experimental
+-- Maintainer  : dons00@gmail.com, duncan@community.haskell.org
+-- Stability   : stable
 -- Portability : portable
 -- 
 -- A time and space-efficient implementation of lazy byte vectors
@@ -42,7 +42,7 @@
 -- Rewritten to use 'Data.Array.Unboxed.UArray' by Simon Marlow.
 -- Rewritten to support slices and use 'Foreign.ForeignPtr.ForeignPtr'
 -- by David Roundy.
--- Polished and extended by Don Stewart.
+-- Rewritten again and extended by Don Stewart and Duncan Coutts.
 -- Lazy variant by Duncan Coutts and Don Stewart.
 --
 

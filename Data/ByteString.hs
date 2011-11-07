@@ -12,14 +12,14 @@
 -- Module      : Data.ByteString
 -- Copyright   : (c) The University of Glasgow 2001,
 --               (c) David Roundy 2003-2005,
---               (c) Simon Marlow 2005
---               (c) Bjorn Bringert 2006
---               (c) Don Stewart 2005-2008
---
+--               (c) Simon Marlow 2005,
+--               (c) Bjorn Bringert 2006,
+--               (c) Don Stewart 2005-2008,
+--               (c) Duncan Coutts 2006-2011
 -- License     : BSD-style
 --
--- Maintainer  : dons@cse.unsw.edu.au
--- Stability   : experimental
+-- Maintainer  : dons00@gmail.com, duncan@community.haskell.org
+-- Stability   : stable
 -- Portability : portable
 -- 
 -- A time and space-efficient implementation of byte vectors using
@@ -36,7 +36,7 @@
 -- Original GHC implementation by Bryan O\'Sullivan.
 -- Rewritten to use 'Data.Array.Unboxed.UArray' by Simon Marlow.
 -- Rewritten to support slices and use 'ForeignPtr' by David Roundy.
--- Polished and extended by Don Stewart.
+-- Rewritten again and extended by Don Stewart and Duncan Coutts.
 --
 
 module Data.ByteString (

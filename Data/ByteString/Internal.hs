@@ -7,10 +7,12 @@
 
 -- |
 -- Module      : Data.ByteString.Internal
+-- Copyright   : (c) Don Stewart 2006-2008
+--               (c) Duncan Coutts 2006-2011
 -- License     : BSD-style
--- Maintainer  : Don Stewart <dons@galois.com>
--- Stability   : experimental
--- Portability : portable
+-- Maintainer  : dons00@gmail.com, duncan@community.haskell.org
+-- Stability   : unstable
+-- Portability : non-portable
 --
 -- A module containing semi-public 'ByteString' internals. This exposes the
 -- 'ByteString' representation and low level construction functions. As such

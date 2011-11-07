@@ -6,12 +6,13 @@
 
 -- |
 -- Module      : Data.ByteString.Lazy.Char8
--- Copyright   : (c) Don Stewart 2006
+-- Copyright   : (c) Don Stewart 2006-2008
+--               (c) Duncan Coutts 2006-2011
 -- License     : BSD-style
 --
--- Maintainer  : dons@cse.unsw.edu.au
--- Stability   : experimental
--- Portability : non-portable (imports Data.ByteString.Lazy)
+-- Maintainer  : dons00@gmail.com, duncan@community.haskell.org
+-- Stability   : stable
+-- Portability : portable
 --
 -- Manipulate /lazy/ 'ByteString's using 'Char' operations. All Chars will
 -- be truncated to 8 bits. It can be expected that these functions will
