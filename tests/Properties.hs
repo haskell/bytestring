@@ -66,6 +66,7 @@ prop_nullCC         = D.null        `eq1`  C.null
 prop_reverseCC      = D.reverse     `eq1`  C.reverse
 prop_transposeCC    = D.transpose   `eq1`  C.transpose
 prop_groupCC        = D.group       `eq1`  C.group
+prop_groupByCC      = D.groupBy     `eq2`  C.groupBy
 prop_initsCC        = D.inits       `eq1`  C.inits
 prop_tailsCC        = D.tails       `eq1`  C.tails
 prop_allCC          = D.all         `eq2`  C.all
@@ -147,6 +148,7 @@ prop_reverseBP      = L.reverse     `eq1`  P.reverse
 
 prop_transposeBP    = L.transpose   `eq1`  P.transpose
 prop_groupBP        = L.group       `eq1`  P.group
+prop_groupByBP      = L.groupBy     `eq2`  P.groupBy
 prop_initsBP        = L.inits       `eq1`  P.inits
 prop_tailsBP        = L.tails       `eq1`  P.tails
 prop_allBP          = L.all         `eq2`  P.all
@@ -331,6 +333,7 @@ prop_nullBL         = L.null        `eq1` (null      :: [W] -> Bool)
 prop_reverseBL      = L.reverse     `eq1` (reverse   :: [W] -> [W])
 prop_transposeBL    = L.transpose   `eq1` (transpose :: [[W]] -> [[W]])
 prop_groupBL        = L.group       `eq1` (group     :: [W] -> [[W]])
+prop_groupByBL      = L.groupBy     `eq2` (groupBy   :: (W -> W -> Bool) -> [W] -> [[W]])
 prop_initsBL        = L.inits       `eq1` (inits     :: [W] -> [[W]])
 prop_tailsBL        = L.tails       `eq1` (tails     :: [W] -> [[W]])
 prop_allBL          = L.all         `eq2` (all       :: (W -> Bool) -> [W] -> Bool)
@@ -419,6 +422,7 @@ prop_nullPL       = P.null      `eq1` (null      :: [W] -> Bool)
 prop_reversePL    = P.reverse   `eq1` (reverse   :: [W] -> [W])
 prop_transposePL  = P.transpose `eq1` (transpose :: [[W]] -> [[W]])
 prop_groupPL      = P.group     `eq1` (group     :: [W] -> [[W]])
+prop_groupByPL    = P.groupBy   `eq2` (groupBy   :: (W -> W -> Bool) -> [W] -> [[W]])
 prop_initsPL      = P.inits     `eq1` (inits     :: [W] -> [[W]])
 prop_tailsPL      = P.tails     `eq1` (tails     :: [W] -> [[W]])
 prop_concatPL     = adjustSize (`div` 2) $
@@ -1049,9 +1053,9 @@ prop_unwordsBB xs =
 prop_groupBB xs   = group xs == (map P.unpack . P.group . P.pack) xs
 
 prop_groupByBB  xs = groupBy (==) xs == (map P.unpack . P.groupBy (==) . P.pack) xs
-prop_groupByCC  xs = groupBy (==) xs == (map C.unpack . C.groupBy (==) . C.pack) xs
+prop_groupBy1CC xs = groupBy (==) xs == (map C.unpack . C.groupBy (==) . C.pack) xs
 prop_groupBy1BB xs = groupBy (/=) xs == (map P.unpack . P.groupBy (/=) . P.pack) xs
-prop_groupBy1CC xs = groupBy (/=) xs == (map C.unpack . C.groupBy (/=) . C.pack) xs
+prop_groupBy2CC xs = groupBy (/=) xs == (map C.unpack . C.groupBy (/=) . C.pack) xs
 
 prop_joinBB xs ys = (concat . (intersperse ys) . lines) xs ==
                (C.unpack $ C.intercalate (C.pack ys) (C.lines (C.pack xs)))
@@ -1755,6 +1759,7 @@ bl_tests =
     ,("break",       mytest prop_breakBL)
     ,("span",        mytest prop_spanBL)
     ,("group",       mytest prop_groupBL)
+    ,("groupBy",     mytest prop_groupByBL)
     ,("inits",       mytest prop_initsBL)
     ,("tails",       mytest prop_tailsBL)
     ,("elem",        mytest prop_elemBL)
@@ -1774,6 +1779,7 @@ cc_tests =
     ,("prop_reverseCC", mytest prop_reverseCC)
     ,("prop_transposeCC", mytest prop_transposeCC)
     ,("prop_groupCC", mytest prop_groupCC)
+    ,("prop_groupByCC", mytest prop_groupByCC)
     ,("prop_initsCC", mytest prop_initsCC)
     ,("prop_tailsCC", mytest prop_tailsCC)
     ,("prop_allCC", mytest prop_allCC)
@@ -1883,6 +1889,7 @@ bp_tests =
     ,("split",       mytest prop_splitBP)
     ,("count",       mytest prop_countBP)
     ,("group",       mytest prop_groupBP)
+    ,("groupBy",     mytest prop_groupByBP)
     ,("inits",       mytest prop_initsBP)
     ,("tails",       mytest prop_tailsBP)
     ,("elem",        mytest prop_elemBP)
@@ -1962,6 +1969,7 @@ pl_tests =
     ,("break",       mytest prop_breakPL)
     ,("span",        mytest prop_spanPL)
     ,("group",       mytest prop_groupPL)
+    ,("groupBy",     mytest prop_groupByPL)
     ,("inits",       mytest prop_initsPL)
     ,("tails",       mytest prop_tailsPL)
     ,("elem",        mytest prop_elemPL)
@@ -2077,10 +2085,10 @@ bb_tests =
     ,    ("words",          mytest prop_wordsLC)
     ,    ("unwords",        mytest prop_unwordsBB)
     ,    ("group",          mytest prop_groupBB)
-    ,    ("groupBy",        mytest prop_groupByBB)
-    ,    ("groupBy",        mytest prop_groupByCC)
-    ,    ("groupBy 1",      mytest prop_groupBy1BB)
+    ,    ("groupBy 0",      mytest prop_groupByBB)
     ,    ("groupBy 1",      mytest prop_groupBy1CC)
+    ,    ("groupBy 2",      mytest prop_groupBy1BB)
+    ,    ("groupBy 3",      mytest prop_groupBy2CC)
     ,    ("join",           mytest prop_joinBB)
     ,    ("elemIndex 1",    mytest prop_elemIndex1BB)
     ,    ("elemIndex 2",    mytest prop_elemIndex2BB)
