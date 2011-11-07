@@ -60,6 +60,8 @@ module Data.ByteString.Lazy (
         toStrict,               -- :: ByteString -> Strict.ByteString
         fromChunks,             -- :: [Strict.ByteString] -> ByteString
         toChunks,               -- :: ByteString -> [Strict.ByteString]
+        foldrChunks,            -- :: (S.ByteString -> a -> a) -> a -> ByteString -> a
+        foldlChunks,            -- :: (a -> S.ByteString -> a) -> a -> ByteString -> a
 
         -- * Basic interface
         cons,                   -- :: Word8 -> ByteString -> ByteString
