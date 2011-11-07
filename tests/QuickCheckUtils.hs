@@ -89,7 +89,10 @@ instance CoArbitrary L.ByteString where
   coarbitrary s = coarbitrary (L.unpack s)
 
 instance Arbitrary P.ByteString where
-  arbitrary = P.pack `fmap` arbitrary
+  arbitrary = do
+    bs <- P.pack `fmap` arbitrary
+    n  <- choose (0, 2)
+    return (P.drop n bs) -- to give us some with non-0 offset
 
 instance CoArbitrary P.ByteString where
   coarbitrary s = coarbitrary (P.unpack s)

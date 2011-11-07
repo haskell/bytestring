@@ -1537,7 +1537,9 @@ prop_packMallocCString (CByteString x) = unsafePerformIO $ do
          let !z = y == x
          free ptr `seq` return z
 
-prop_unsafeFinalize    x = unsafePerformIO $ do
+prop_unsafeFinalize    x =
+    P.length x > 0 ==>
+      unsafePerformIO $ do
         x <- P.unsafeFinalize x
         return (x == ())
 
