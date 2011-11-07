@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP #-}
--- We cannot actually specify all the language pragmas, see ghc ticket #
--- If we could, these are what they would be:
-{- LANGUAGE MagicHash -}
+#if __GLASGOW_HASKELL__
+{-# LANGUAGE MagicHash #-}
+#endif
 
 -- |
 -- Module      : Data.ByteString.Unsafe

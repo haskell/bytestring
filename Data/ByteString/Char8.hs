@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP #-}
--- We cannot actually specify all the language pragmas, see ghc ticket #
--- If we could, these are what they would be:
-{- LANGUAGE MagicHash, UnboxedTuples -}
+#if __GLASGOW_HASKELL__
+{-# LANGUAGE MagicHash, UnboxedTuples #-}
+#endif
 {-# OPTIONS_HADDOCK prune #-}
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE Trustworthy #-}

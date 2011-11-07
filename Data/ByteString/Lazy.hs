@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP, BangPatterns #-}
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
 {-# OPTIONS_HADDOCK prune #-}
 #if __GLASGOW_HASKELL__ >= 701

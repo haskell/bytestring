@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP, ForeignFunctionInterface, BangPatterns #-}
--- We cannot actually specify all the language pragmas, see ghc ticket #
--- If we could, these are what they would be:
-{- LANGUAGE DeriveDataTypeable -}
+#if __GLASGOW_HASKELL__
+{-# LANGUAGE DeriveDataTypeable #-}
+#endif
 {-# OPTIONS_HADDOCK hide #-}
 
 -- |
