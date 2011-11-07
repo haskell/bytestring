@@ -1,16 +1,36 @@
 Name:                bytestring
 Version:             0.9.2.0
-Synopsis:            Fast, packed, strict and lazy byte arrays with a list interface
+Synopsis:            Fast, compact, strict and lazy byte strings with a list interface
 Description:
-    A time and space-efficient implementation of byte vectors using
-    packed Word8 arrays, suitable for high performance use, both in terms
-    of large data quantities, or high speed requirements. Byte vectors
-    are encoded as strict 'Word8' arrays of bytes, and lazy lists of
-    strict chunks, held in a 'ForeignPtr', and can be passed between C
-    and Haskell with little effort.
+    An efficient compact, immutable byte string type (both strict and lazy)
+    suitable for binary or 8-bit character data.
     .
-    Test coverage data for this library is available at:
-        <http://code.haskell.org/~dons/tests/bytestring/hpc_index.html>
+    The 'ByteString' type represents sequences of bytes or 8-bit characters.
+    It is suitable for high performance use, both in terms of large data
+    quantities, or high speed requirements. The 'ByteStrin'g functions follow
+    the same style as Haskell\'s ordinary lists, so it is easy to convert code
+    from using 'String' to 'ByteString'.
+    .
+    Two 'ByteString' variants are provided:
+    .
+      * Strict 'ByteString's keep the string as a single large array. This
+        makes them convenient for passing data between C and Haskell.
+    .
+      * Lazy 'ByteStrings' use a lazy list of strict chunks which makes it
+        suitable for I\/O streaming tasks.
+    .
+    The @Char8@ modules provide a character-based view of the same
+    underlying 'ByteString' types. This makes it convenient to handle mixed
+    binary and 8-bit character content (which is common in many file formats
+    and network protocols).
+    .
+    'ByteString's are not designed for Unicode. For Unicode strings you should
+    use the 'Text' type from the @text@ package.
+    .
+    These modules are intended to be imported qualified, to avoid name clashes
+    with "Prelude" functions, e.g.
+    .
+    > import qualified Data.ByteString as BS
 
 License:             BSD3
 License-file:        LICENSE
@@ -24,7 +44,8 @@ Maintainer:          Don Stewart <dons00@gmail.com>,
                      Duncan Coutts <duncan@community.haskell.org>
 Bug-reports:         dons00@gmail.com,
                      duncan@community.haskell.org
-Tested-With:         GHC==7.0.2, GHC==6.12.3, GHC==6.10.4, GHC ==6.8.2
+Tested-With:         GHC==7.2.1, GHC==7.0.2, GHC==6.12.3,
+                     GHC==6.10.4, GHC ==6.8.2
 Build-Type:          Simple
 Cabal-Version:       >= 1.8
 extra-source-files:  README TODO
