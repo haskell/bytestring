@@ -18,19 +18,20 @@
 -- A time and space-efficient implementation of lazy byte vectors
 -- using lists of packed 'Word8' arrays, suitable for high performance
 -- use, both in terms of large data quantities, or high speed
--- requirements. Byte vectors are encoded as lazy lists of strict 'Word8'
--- arrays of bytes. They provide a means to manipulate large byte vectors
--- without requiring the entire vector be resident in memory.
+-- requirements. Lazy ByteStrings are encoded as lazy lists of strict chunks
+-- of bytes.
 --
--- Some operations, such as concat, append, reverse and cons, have
+-- A key feature of lazy ByteStrings is the means to manipulate large or
+-- unbounded streams of data without requiring the entire sequence to be
+-- resident in memory. To take advantage of this you have to write your
+-- functions in a lazy streaming style, e.g. classic pipeline composition. The
+-- default I\/O chunk size is 32k, which should be good in most circumstances.
+--
+-- Some operations, such as 'concat', 'append', 'reverse' and 'cons', have
 -- better complexity than their "Data.ByteString" equivalents, due to
--- optimisations resulting from the list spine structure. And for other
+-- optimisations resulting from the list spine structure. For other
 -- operations lazy ByteStrings are usually within a few percent of
--- strict ones, but with better heap usage. For data larger than the
--- available memory, or if you have tight memory constraints, this
--- module will be the only option. The default chunk size is 64k, which
--- should be good in most circumstances. For people with large L2
--- caches, you may want to increase this to fit your cache.
+-- strict ones.
 --
 -- This module is intended to be imported @qualified@, to avoid name
 -- clashes with "Prelude" functions.  eg.

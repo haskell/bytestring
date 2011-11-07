@@ -23,6 +23,11 @@
 --
 -- > import qualified Data.ByteString.Lazy.Char8 as C
 --
+-- The Char8 interface to bytestrings provides an instance of IsString
+-- for the ByteString type, enabling you to use string literals, and
+-- have them implicitly packed to ByteStrings.
+-- Use @{-\# LANGUAGE OverloadedStrings \#-}@ to enable this.
+--
 
 module Data.ByteString.Lazy.Char8 (
 
