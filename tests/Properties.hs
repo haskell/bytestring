@@ -1478,6 +1478,12 @@ prop_unpackpack_l x = (L.pack . L.unpack) x == x
 prop_packunpack_lc x = (LC.unpack . LC.pack) x == x
 prop_unpackpack_lc x = (LC.pack . LC.unpack) x == x
 
+prop_toFromChunks x = (L.fromChunks . L.toChunks) x == x
+prop_fromToChunks x = (L.toChunks . L.fromChunks) x == filter (not . P.null) x
+
+prop_toFromStrict x = (L.fromStrict . L.toStrict) x == x
+prop_fromToStrict x = (L.toStrict . L.fromStrict) x == x
+
 prop_packUptoLenBytes cs =
     forAll (choose (0, length cs + 1)) $ \n ->
       let (bs, cs') = P.packUptoLenBytes n cs
@@ -1786,6 +1792,11 @@ misc_tests =
     ,("unpackAppendCharsLazy",  mytest prop_unpackAppendCharsLazy)
     ,("unpackAppendBytesStrict",mytest prop_unpackAppendBytesStrict)
     ,("unpackAppendCharsStrict",mytest prop_unpackAppendCharsStrict)
+    ,("toFromChunks",           mytest prop_toFromChunks)
+    ,("fromToChunks",           mytest prop_fromToChunks)
+    ,("toFromStrict",           mytest prop_toFromStrict)
+    ,("fromToStrict",           mytest prop_fromToStrict)
+
     ,("invariant",              mytest prop_invariant)
     ,("unsafe pack address",    mytest prop_unsafePackAddress)
     ,("unsafe pack address len",mytest prop_unsafePackAddressLen)
