@@ -42,6 +42,8 @@ module Data.ByteString.Lazy.Char8 (
         unpack,                 -- :: ByteString -> String
         fromChunks,             -- :: [Strict.ByteString] -> ByteString
         toChunks,               -- :: ByteString -> [Strict.ByteString]
+        fromStrict,             -- :: Strict.ByteString -> ByteString
+        toStrict,               -- :: ByteString -> Strict.ByteString
 
         -- * Basic interface
         cons,                   -- :: Char -> ByteString -> ByteString
@@ -189,7 +191,7 @@ module Data.ByteString.Lazy.Char8 (
 
 -- Functions transparently exported
 import Data.ByteString.Lazy 
-        (fromChunks, toChunks
+        (fromChunks, toChunks, fromStrict, toStrict
         ,empty,null,length,tail,init,append,reverse,transpose,cycle
         ,concat,take,drop,splitAt,intercalate,isPrefixOf,group,inits,tails,copy
         ,hGetContents, hGet, hPut, getContents

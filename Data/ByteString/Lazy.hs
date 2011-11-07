@@ -56,6 +56,8 @@ module Data.ByteString.Lazy (
         singleton,              -- :: Word8   -> ByteString
         pack,                   -- :: [Word8] -> ByteString
         unpack,                 -- :: ByteString -> [Word8]
+        fromStrict,             -- :: Strict.ByteString -> ByteString
+        toStrict,               -- :: ByteString -> Strict.ByteString
         fromChunks,             -- :: [Strict.ByteString] -> ByteString
         toChunks,               -- :: ByteString -> [Strict.ByteString]
 
@@ -270,6 +272,30 @@ fromChunks cs = L.foldr chunk Empty cs
 -- | /O(c)/ Convert a lazy 'ByteString' into a list of strict 'ByteString'
 toChunks :: ByteString -> [P.ByteString]
 toChunks cs = foldrChunks (:) [] cs
+
+-- |/O(1)/ Convert a strict 'ByteString' into a lazy 'ByteString'.
+fromStrict :: P.ByteString -> ByteString
+fromStrict bs | S.null bs = Empty
+              | otherwise = Chunk bs Empty
+
+-- |/O(n)/ Convert a lazy 'ByteString' into a strict 'ByteString'.
+--
+-- Note that this is an /expensive/ operation that forces the whole lazy
+-- ByteString into memory and then copies all the data. If possible, try to
+-- avoid converting back and forth between strict and lazy bytestrings.
+--
+toStrict :: ByteString -> S.ByteString
+toStrict Empty           = S.empty
+toStrict (Chunk c Empty) = c
+toStrict cs0 = S.unsafeCreate totalLen $ \ptr -> go cs0 ptr
+  where
+    totalLen = foldlChunks (\a c -> a + S.length c) 0 cs0
+
+    go Empty                        !_       = return ()
+    go (Chunk (S.PS fp off len) cs) !destptr =
+      withForeignPtr fp $ \p -> do
+        S.memcpy destptr (p `plusPtr` off) len
+        go cs (destptr `plusPtr` len)
 
 ------------------------------------------------------------------------
 
