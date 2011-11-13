@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, BangPatterns, MonoPatBinds #-}
+{-# LANGUAGE CPP, BangPatterns, MonoPatBinds, ScopedTypeVariables #-}
 -- |
 -- Module      : Data.ByteString.Lazy.Builder.BasicEncoding
 -- Copyright   : (c) 2010-2011 Simon Meier
