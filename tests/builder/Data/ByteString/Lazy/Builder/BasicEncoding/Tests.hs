@@ -24,7 +24,8 @@ import           Numeric (showHex)
 
 import           Foreign
 
-import           Test.Framework
+import           TestFramework
+--import           Test.Framework
 import           Test.QuickCheck (Arbitrary)
 
 

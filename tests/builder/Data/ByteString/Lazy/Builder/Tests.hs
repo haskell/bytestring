@@ -41,8 +41,9 @@ import           Control.Exception (evaluate)
 import           System.IO
 import           System.Directory
 
-import           Test.Framework
-import           Test.Framework.Providers.QuickCheck2
+import           TestFramework
+--import           Test.Framework
+--import           Test.Framework.Providers.QuickCheck2
 import           Test.QuickCheck
                    ( Arbitrary(..), oneof, choose, listOf, elements )
 import           Test.QuickCheck.Property (printTestCase)

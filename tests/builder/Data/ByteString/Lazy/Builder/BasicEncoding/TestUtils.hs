@@ -55,7 +55,6 @@ module Data.ByteString.Lazy.Builder.BasicEncoding.TestUtils (
   ) where
 
 import           Control.Arrow (first)
-import           Control.Monad
 
 import           Data.ByteString.Lazy.Builder.BasicEncoding
 import           Data.Char (chr, ord)
@@ -67,11 +66,9 @@ import           Foreign
 import           System.ByteOrder
 import           Unsafe.Coerce (unsafeCoerce)
 
-import           Test.Framework
-import           Test.Framework.Providers.QuickCheck2
-import           Test.Framework.Providers.HUnit
-import           Test.HUnit.Lang (assertFailure)
 import           Test.QuickCheck (Arbitrary(..))
+import           TestFramework
+
 
 -- Helper functions
 -------------------
@@ -82,9 +79,8 @@ testBoundedProperty :: forall a. (Arbitrary a, Show a, Bounded a)
                     => String -> (a -> Bool) -> Test
 testBoundedProperty name p = testGroup name
   [ testProperty "arbitrary" p
-  , testCase "bounds" $ do
-      unless (p (minBound :: a)) $ assertFailure "minBound"
-      unless (p (maxBound :: a)) $ assertFailure "maxBound"
+  , testCase "bounds" $ p (minBound :: a)
+                     && p (maxBound :: a)
   ]
 
 -- | Quote a 'String' nicely.

@@ -142,3 +142,34 @@ test-suite prop-compiled
                     ScopedTypeVariables
   if impl(ghc >= 6.11)
       extensions:   NamedFieldPuns
+
+test-suite test-builder
+  type:             exitcode-stdio-1.0
+  hs-source-dirs:   . tests tests/builder
+  main-is:          TestSuite.hs
+
+  build-depends:    base, ghc-prim,
+                    deepseq,
+                    QuickCheck                 >= 2.4 && < 3,
+                    byteorder                  == 1.0.*,
+                    dlist                      == 0.5.*,
+                    directory                  == 1.1.*,
+                    mtl                        == 2.0.*
+
+  ghc-options:      -Wall -fwarn-tabs
+
+  extensions:       CPP, ForeignFunctionInterface
+                    UnliftedFFITypes,
+                    MagicHash,
+                    UnboxedTuples,
+                    DeriveDataTypeable
+                    ScopedTypeVariables
+                    Rank2Types
+                    BangPatterns
+                    NamedFieldPuns
+
+  c-sources:        cbits/fpstring.c
+                    cbits/itoa.c
+  include-dirs:     include
+  includes:         fpstring.h
+  install-includes: fpstring.h

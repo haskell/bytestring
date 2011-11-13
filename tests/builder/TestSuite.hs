@@ -1,9 +1,10 @@
 module Main where
 
-import           Test.Framework (defaultMain, Test, testGroup)
+--import           Test.Framework (defaultMain, Test, testGroup)
 
 import qualified Data.ByteString.Lazy.Builder.BasicEncoding.Tests
 import qualified Data.ByteString.Lazy.Builder.Tests
+import           TestFramework
 
 
 main :: IO ()
