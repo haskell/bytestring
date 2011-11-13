@@ -35,9 +35,12 @@ Description:
 License:             BSD3
 License-file:        LICENSE
 Category:            Data
-Copyright:           Copyright (c) Don Stewart   2005-2009,
-                               (c) Duncan Coutts 2006-2011,
-                               (c) David Roundy  2003-2005.
+Copyright:           Copyright (c) Don Stewart          2005-2009,
+                               (c) Duncan Coutts        2006-2011,
+                               (c) David Roundy         2003-2005,
+                               (c) Jasper Van der Jeugt 2010,
+                               (c) Simon Meier          2010-2011.
+
 Author:              Don Stewart,
                      Duncan Coutts
 Maintainer:          Don Stewart <dons00@gmail.com>,
@@ -68,6 +71,23 @@ library
                      Data.ByteString.Lazy.Char8
                      Data.ByteString.Lazy.Internal
 
+                     Data.ByteString.Lazy.Builder
+                     Data.ByteString.Lazy.Builder.Extras
+                     Data.ByteString.Lazy.Builder.ASCII
+
+  other-modules:
+                     -- these three modules should be exposed in a future
+                     -- release once we're confident the API is stable.
+                     Data.ByteString.Lazy.Builder.Internal
+                     Data.ByteString.Lazy.Builder.BasicEncoding
+                     Data.ByteString.Lazy.Builder.BasicEncoding.Internal
+
+                     Data.ByteString.Lazy.Builder.BasicEncoding.Binary
+                     Data.ByteString.Lazy.Builder.BasicEncoding.ASCII
+                     Data.ByteString.Lazy.Builder.BasicEncoding.Internal.Floating
+                     Data.ByteString.Lazy.Builder.BasicEncoding.Internal.UncheckedShifts
+                     Data.ByteString.Lazy.Builder.BasicEncoding.Internal.Base16
+
   extensions:        CPP,
                      ForeignFunctionInterface,
                      BangPatterns
@@ -78,6 +98,7 @@ library
                     UnboxedTuples,
                     DeriveDataTypeable
                     ScopedTypeVariables
+                    Rank2Types
   if impl(ghc >= 6.11)
       extensions:   NamedFieldPuns
 
@@ -89,6 +110,7 @@ library
     ghc-options:    -fspec-constr-count=6
 
   c-sources:         cbits/fpstring.c
+                     cbits/itoa.c
   include-dirs:      include
   includes:          fpstring.h
   install-includes:  fpstring.h

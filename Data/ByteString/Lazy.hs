@@ -33,6 +33,9 @@
 -- operations lazy ByteStrings are usually within a few percent of
 -- strict ones.
 --
+-- The recomended way to assemble lazy ByteStrings from smaller parts
+-- is to use the builder monoid from "Data.ByteString.Lazy.Builder".
+--
 -- This module is intended to be imported @qualified@, to avoid name
 -- clashes with "Prelude" functions.  eg.
 --
