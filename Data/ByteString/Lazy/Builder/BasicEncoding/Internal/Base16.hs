@@ -4,7 +4,7 @@
 --
 -- Maintainer  : Simon Meier <iridcode@gmail.com>
 -- Stability   : experimental
--- Portability : tested on GHC only
+-- Portability : GHC
 --
 -- Hexadecimal encoding of nibbles (4-bit) and octets (8-bit) as ASCII
 -- characters.

@@ -5,8 +5,7 @@
 -- License     : BSD3-style (see LICENSE)
 --
 -- Maintainer  : Simon Meier <iridcode@gmail.com>
--- Stability   : experimental
--- Portability : tested on GHC only
+-- Portability : GHC
 --
 -- Extra functions for creating and executing 'Builder's. They are intended
 -- for application-specific fine-tuning the performance of 'Builder's.

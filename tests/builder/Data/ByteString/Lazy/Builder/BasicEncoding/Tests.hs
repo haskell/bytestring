@@ -18,6 +18,7 @@ import           Data.Char  (ord)
 import qualified Data.ByteString.Lazy                                 as L
 import           Data.ByteString.Lazy.Builder
 import qualified Data.ByteString.Lazy.Builder.BasicEncoding           as BE
+import qualified Data.ByteString.Lazy.Builder.BasicEncoding.Extras    as BE
 import           Data.ByteString.Lazy.Builder.BasicEncoding.TestUtils
 
 import           Numeric (showHex)
@@ -25,7 +26,6 @@ import           Numeric (showHex)
 import           Foreign
 
 import           TestFramework
---import           Test.Framework
 import           Test.QuickCheck (Arbitrary)
 
 
@@ -221,7 +221,7 @@ testsChar8 =
 
 testsASCII :: [Test]
 testsASCII =
-  [ testBoundedF "charASCII" charASCII_list BE.charASCII
+  [ testBoundedF "char7" char7_list BE.char7
 
   , testBoundedB "int8Dec"   dec_list BE.int8Dec
   , testBoundedB "int16Dec"  dec_list BE.int16Dec

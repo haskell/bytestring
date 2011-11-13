@@ -30,7 +30,7 @@ module Data.ByteString.Lazy.Builder.BasicEncoding.TestUtils (
   -- ** ASCII-based encodings
   , encodeASCII
   , encodeForcedASCII
-  , charASCII_list
+  , char7_list
   , dec_list
   , hex_list
   , wordHexFixed_list
@@ -66,9 +66,8 @@ import           Foreign
 import           System.ByteOrder
 import           Unsafe.Coerce (unsafeCoerce)
 
-import           Test.QuickCheck (Arbitrary(..))
 import           TestFramework
-
+import           Test.QuickCheck (Arbitrary(..))
 
 -- Helper functions
 -------------------
@@ -246,8 +245,8 @@ encodeASCII =
 encodeForcedASCII :: String -> [Word8]
 encodeForcedASCII = map ((.&. 0x7f) . fromIntegral . ord)
 
-charASCII_list :: Char -> [Word8]
-charASCII_list = encodeForcedASCII . return
+char7_list :: Char -> [Word8]
+char7_list = encodeForcedASCII . return
 
 dec_list :: Show a =>  a -> [Word8]
 dec_list = encodeASCII . show

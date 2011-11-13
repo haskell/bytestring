@@ -1,12 +1,9 @@
-{-# LANGUAGE CPP, BangPatterns, MonoPatBinds, ScopedTypeVariables #-}
--- |
--- Module      : Data.ByteString.Lazy.Builder.BasicEncoding
--- Copyright   : (c) 2010-2011 Simon Meier
--- License     : BSD3-style (see LICENSE)
+{-# LANGUAGE CPP, BangPatterns, MonoPatBinds #-}
+-- | Copyright   : (c) 2010-2011 Simon Meier
+-- License       : BSD3-style (see LICENSE)
 --
--- Maintainer  : Simon Meier <iridcode@gmail.com>
--- Stability   : experimental
--- Portability : tested on GHC only
+-- Maintainer    : Simon Meier <iridcode@gmail.com>
+-- Portability   : GHC
 --
 module Data.ByteString.Lazy.Builder.BasicEncoding.Binary (
 
@@ -37,81 +34,6 @@ module Data.ByteString.Lazy.Builder.BasicEncoding.Binary (
 
   , floatLE
   , doubleLE
-
-  -- *** Base-128, variable-length
-  {- |
-There are many options for implementing a base-128 (i.e, 7-bit),
-variable-length encoding. The encoding implemented here is the one used by
-Google's protocol buffer library
-<http://code.google.com/apis/protocolbuffers/docs/encoding.html#varints>.  This
-encoding can be implemented efficiently and provides the desired property that
-small positive integers result in short sequences of bytes. It is intended to
-be used for the new default binary serialization format of the differently
-sized 'Word' types. It works as follows.
-
-The most-significant bit (MSB) of each output byte indicates whether
-there is a following byte (MSB set to 1) or it is the last byte (MSB set to 0).
-The remaining 7-bits are used to encode the input starting with the least
-significant 7-bit group of the input (i.e., a little-endian ordering of the
-7-bit groups is used).
-
-For example, the value @1 :: Int@ is encoded as @[0x01]@. The value
-@128 :: Int@, whose binary representation is @1000 0000@, is encoded as
-@[0x80, 0x01]@; i.e., the first byte has its MSB set and the least significant
-7-bit group is @000 0000@, the second byte has its MSB not set (it is the last
-byte) and its 7-bit group is @000 0001@.
--}
-  , word8Var
-  , word16Var
-  , word32Var
-  , word64Var
-  , wordVar
-
-{- |
-The following encodings work by casting the signed integer to the equally sized
-unsigned integer. This works well for positive integers, but for negative
-integers it always results in the longest possible sequence of bytes,
-as their MSB is (by definition) always set.
--}
-
-  , int8Var
-  , int16Var
-  , int32Var
-  , int64Var
-  , intVar
-
-{- |
-Positive and negative integers of small magnitude can be encoded compactly
-  using the so-called ZigZag encoding
-  (<http://code.google.com/apis/protocolbuffers/docs/encoding.html#types>).
-The /ZigZag encoding/ uses
-  even numbers to encode the postive integers and
-  odd numbers to encode the negative integers.
-For example,
-  @0@ is encoded as @0@, @-1@ as @1@, @1@ as @2@, @-2@ as @3@, @2@ as @4@, and
-  so on.
-Its efficient implementation uses some bit-level magic.
-For example
-
-@
-zigZag32 :: 'Int32' -> 'Word32'
-zigZag32 n = fromIntegral ((n \`shiftL\` 1) \`xor\` (n \`shiftR\` 31))
-@
-
-Note that the 'shiftR' is an arithmetic shift that performs sign extension.
-The ZigZag encoding essentially swaps the LSB with the MSB and additionally
-inverts all bits if the MSB is set.
-
-The following encodings implement the combintion of ZigZag encoding
-  together with the above base-128, variable length encodings.
-They are intended to become the the new default binary serialization format of
-  the differently sized 'Int' types.
--}
-  , int8VarSigned
-  , int16VarSigned
-  , int32VarSigned
-  , int64VarSigned
-  , intVarSigned
 
   -- *** Non-portable, host-dependent
   , intHost
@@ -381,22 +303,22 @@ int64Host = storableToF
 -- | Encode a 'Float' in big endian format.
 {-# INLINE floatBE #-}
 floatBE :: FixedEncoding Float
-floatBE = coerceFloatToWord32 >$< word32BE
+floatBE = encodeFloatViaWord32F word32BE
 
 -- | Encode a 'Float' in little endian format.
 {-# INLINE floatLE #-}
 floatLE :: FixedEncoding Float
-floatLE = coerceFloatToWord32 >$< word32LE
+floatLE = encodeFloatViaWord32F word32LE
 
 -- | Encode a 'Double' in big endian format.
 {-# INLINE doubleBE #-}
 doubleBE :: FixedEncoding Double
-doubleBE = coerceDoubleToWord64 >$< word64BE
+doubleBE = encodeDoubleViaWord64F word64BE
 
 -- | Encode a 'Double' in little endian format.
 {-# INLINE doubleLE #-}
 doubleLE :: FixedEncoding Double
-doubleLE = coerceDoubleToWord64 >$< word64LE
+doubleLE = encodeDoubleViaWord64F word64LE
 
 
 -- | Encode a 'Float' in native host order and host endianness. Values written
@@ -410,112 +332,5 @@ floatHost = storableToF
 {-# INLINE doubleHost #-}
 doubleHost :: FixedEncoding Double
 doubleHost = storableToF
-
-
-------------------------------------------------------------------------------
--- Base-128 Variable-Length Encodings
-------------------------------------------------------------------------------
-
-{-# INLINE encodeBase128 #-}
-encodeBase128
-    :: forall a b. (Integral a, Bits a, Storable b, Integral b, Num b)
-    => (a -> Int -> a) -> BoundedEncoding b
-encodeBase128 shiftr =
-    -- We add 6 because we require the result of (`div` 7) to be rounded up.
-    boundedEncoding ((8 * sizeOf (undefined :: b) + 6) `div` 7) (io . fromIntegral)
-  where
-    io !x !op
-      | x' == 0   = do poke8 (x .&. 0x7f)
-                       return $! op `plusPtr` 1
-      | otherwise = do poke8 ((x .&. 0x7f) .|. 0x80)
-                       io x' (op `plusPtr` 1)
-      where
-        x'    = x `shiftr` 7
-        poke8 = poke op . fromIntegral
-
--- | Base-128, variable length encoding of a 'Word8'.
-{-# INLINE word8Var #-}
-word8Var :: BoundedEncoding Word8
-word8Var = encodeBase128 shiftr_w
-
--- | Base-128, variable length encoding of a 'Word16'.
-{-# INLINE word16Var #-}
-word16Var :: BoundedEncoding Word16
-word16Var = encodeBase128 shiftr_w
-
--- | Base-128, variable length encoding of a 'Word32'.
-{-# INLINE word32Var #-}
-word32Var :: BoundedEncoding Word32
-word32Var = encodeBase128 shiftr_w32
-
--- | Base-128, variable length encoding of a 'Word64'.
-{-# INLINE word64Var #-}
-word64Var :: BoundedEncoding Word64
-word64Var = encodeBase128 shiftr_w64
-
--- | Base-128, variable length encoding of a 'Word'.
-{-# INLINE wordVar #-}
-wordVar :: BoundedEncoding Word
-wordVar = encodeBase128 shiftr_w
-
-
--- | Base-128, variable length encoding of an 'Int8'.
--- Use 'int8VarSigned' for encoding negative numbers.
-{-# INLINE int8Var #-}
-int8Var :: BoundedEncoding Int8
-int8Var = fromIntegral >$< word8Var
-
--- | Base-128, variable length encoding of an 'Int16'.
--- Use 'int16VarSigned' for encoding negative numbers.
-{-# INLINE int16Var #-}
-int16Var :: BoundedEncoding Int16
-int16Var = fromIntegral >$< word16Var
-
--- | Base-128, variable length encoding of an 'Int32'.
--- Use 'int32VarSigned' for encoding negative numbers.
-{-# INLINE int32Var #-}
-int32Var :: BoundedEncoding Int32
-int32Var = fromIntegral >$< word32Var
-
--- | Base-128, variable length encoding of an 'Int64'.
--- Use 'int64VarSigned' for encoding negative numbers.
-{-# INLINE int64Var #-}
-int64Var :: BoundedEncoding Int64
-int64Var = fromIntegral >$< word64Var
-
--- | Base-128, variable length encoding of an 'Int'.
--- Use 'intVarSigned' for encoding negative numbers.
-{-# INLINE intVar #-}
-intVar :: BoundedEncoding Int
-intVar = fromIntegral >$< wordVar
-
-{-# INLINE zigZag #-}
-zigZag :: (Storable a, Bits a) => a -> a
-zigZag x = (x `shiftL` 1) `xor` (x `shiftR` (8 * sizeOf x - 1))
-
--- | Base-128, variable length, ZigZag encoding of an 'Int'.
-{-# INLINE int8VarSigned #-}
-int8VarSigned :: BoundedEncoding Int8
-int8VarSigned = zigZag >$< int8Var
-
--- | Base-128, variable length, ZigZag encoding of an 'Int16'.
-{-# INLINE int16VarSigned #-}
-int16VarSigned :: BoundedEncoding Int16
-int16VarSigned = zigZag >$< int16Var
-
--- | Base-128, variable length, ZigZag encoding of an 'Int32'.
-{-# INLINE int32VarSigned #-}
-int32VarSigned :: BoundedEncoding Int32
-int32VarSigned = zigZag >$< int32Var
-
--- | Base-128, variable length, ZigZag encoding of an 'Int64'.
-{-# INLINE int64VarSigned #-}
-int64VarSigned :: BoundedEncoding Int64
-int64VarSigned = zigZag >$< int64Var
-
--- | Base-128, variable length, ZigZag encoding of an 'Int'.
-{-# INLINE intVarSigned #-}
-intVarSigned :: BoundedEncoding Int
-intVarSigned = zigZag >$< intVar
 
 

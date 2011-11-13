@@ -8,8 +8,7 @@
 -- License     : BSD3-style (see LICENSE)
 --
 -- Maintainer  : Simon Meier <iridcode@gmail.com>
--- Stability   : experimental
--- Portability : tested on GHC only
+-- Portability : GHC
 --
 -- Utilty module defining unchecked shifts.
 --
@@ -103,3 +102,5 @@ caseWordSize_32_64 f32 f64 = case bitSize (undefined :: Word) of
     32 -> f32
     64 -> f64
     s  -> error $ "caseWordSize_32_64: unsupported Word bit-size " ++ show s
+
+

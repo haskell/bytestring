@@ -1,11 +1,10 @@
 {-# LANGUAGE ScopedTypeVariables, CPP, ForeignFunctionInterface #-}
 -- | Copyright   : (c) 2010 Jasper Van der Jeugt
---               (c) 2010 - 2011 Simon Meier
--- License     : BSD3-style (see LICENSE)
+--                 (c) 2010 - 2011 Simon Meier
+-- License       : BSD3-style (see LICENSE)
 --
--- Maintainer  : Simon Meier <iridcode@gmail.com>
--- Stability   : experimental
--- Portability : tested on GHC only
+-- Maintainer    : Simon Meier <iridcode@gmail.com>
+-- Portability   : GHC
 --
 -- Encodings using ASCII encoded Unicode characters.
 --
@@ -13,7 +12,7 @@ module Data.ByteString.Lazy.Builder.BasicEncoding.ASCII
     (
 
      -- *** ASCII
-     charASCII
+     char7
 
       -- **** Decimal numbers
       -- | Decimal encoding of numbers using ASCII encoded characters.
@@ -89,9 +88,9 @@ import Foreign
 import Foreign.C.Types
 
 -- | Encode the least 7-bits of a 'Char' using the ASCII encoding.
-{-# INLINE charASCII #-}
-charASCII :: FixedEncoding Char
-charASCII = (\c -> fromIntegral $ ord c .&. 0x7f) >$< word8
+{-# INLINE char7 #-}
+char7 :: FixedEncoding Char
+char7 = (\c -> fromIntegral $ ord c .&. 0x7f) >$< word8
 
 
 ------------------------------------------------------------------------------
@@ -278,11 +277,11 @@ int64HexFixed = fromIntegral >$< word64HexFixed
 -- | Encode an IEEE 'Float' using 8 nibbles.
 {-# INLINE floatHexFixed #-}
 floatHexFixed :: FixedEncoding Float
-floatHexFixed = coerceFloatToWord32 >$< word32HexFixed
+floatHexFixed = encodeFloatViaWord32F word32HexFixed
 
 -- | Encode an IEEE 'Double' using 16 nibbles.
 {-# INLINE doubleHexFixed #-}
 doubleHexFixed :: FixedEncoding Double
-doubleHexFixed = coerceDoubleToWord64 >$< word64HexFixed
+doubleHexFixed = encodeDoubleViaWord64F word64HexFixed
 
 

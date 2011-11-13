@@ -6,64 +6,51 @@
 --
 -- Maintainer  : Simon Meier <iridcode@gmail.com>
 -- Stability   : experimental
--- Portability : non-portable (uses unsafeCoerce)
+-- Portability : GHC
 --
 -- Conversion of 'Float's and 'Double's to 'Word32's and 'Word64's.
 --
 module Data.ByteString.Lazy.Builder.BasicEncoding.Internal.Floating
     (
-      coerceFloatToWord32
-    , coerceDoubleToWord64
-    ) where
+      -- coerceFloatToWord32
+    -- , coerceDoubleToWord64
+    encodeFloatViaWord32F
+  , encodeDoubleViaWord64F
+  ) where
 
 
 import Foreign
+import Data.ByteString.Lazy.Builder.BasicEncoding.Internal
 
--- | Coerce a 'Float' to a 'Word32' as-is.
-{-# INLINE coerceFloatToWord32 #-}
-coerceFloatToWord32 :: Float -> Word32
-coerceFloatToWord32 = fromFloat
-
--- | Coerce a 'Double' to a 'Word64' as-is.
-{-# INLINE coerceDoubleToWord64 #-}
-coerceDoubleToWord64 :: Double -> Word64
-coerceDoubleToWord64 = fromFloat
-
--- The implementation of the following function is based on
---
--- http://hackage.haskell.org/package/data-binary-ieee754-0.4.2.1
---
--- Module: Data.Binary.IEEE754
--- Copyright: 2010 John Millikin <jmillikin@gmail.com>
--- License: MIT
---
-fromFloat :: forall w f. (Storable w, Storable f, RealFloat f) => f -> w
-fromFloat x
-  | isIEEE x && sizeOf (undefined :: f) == sizeOf (undefined :: w) =
-      unsafePerformIO $ alloca $ \buf -> do
-        poke (castPtr buf) x
-        peek buf
-  | otherwise = error
-      "Coded.Bounded.Encoding.Floating: missing support for encoding floating point numbers on your platform!"
-
-{- The speed of the above implementation is not great. The plan is to use the
-   implementations below for real speed once the following ticket is solved:
-
-   See http://hackage.haskell.org/trac/ghc/ticket/4092
-
--- | Coerce a 'Float' to a 'Word32'; i.e., interpret the 32-bit 'Float' value
--- as an unsigned 32-bit 'Int.
---
--- FIXME: Check with GHC developers if this is really safe. Does the register
--- allocater handle such a case correctly, if the 'Float' is in an FPU
--- register?
-{-# INLINE coerceFloatToWord32 #-}
-coerceFloatToWord32 :: Float -> Word32
-coerceFloatToWord32 = unsafeCoerce
-
--- | Coerce a 'Double' to a 'Word64'.
-{-# INLINE coerceDoubleToWord64 #-}
-coerceDoubleToWord64 :: Double -> Word64
-coerceDoubleToWord64 = unsafeCoerce
+{-
+We work around ticket http://hackage.haskell.org/trac/ghc/ticket/4092 using the
+FFI to store the Float/Double in the buffer and peek it out again from there.
 -}
+
+
+-- | Encode a 'Float' using a 'Word32' encoding.
+--
+-- PRE: The 'Word32' encoding must have a size of at least 4 bytes.
+{-# INLINE encodeFloatViaWord32F #-}
+encodeFloatViaWord32F :: FixedEncoding Word32 -> FixedEncoding Float
+encodeFloatViaWord32F w32fe
+  | size w32fe < sizeOf (undefined :: Float) =
+      error $ "encodeFloatViaWord32F: encoding not wide enough"
+  | otherwise = fixedEncoding (size w32fe) $ \x op -> do
+      poke (castPtr op) x
+      x' <- peek (castPtr op)
+      runF w32fe x' op
+
+-- | Encode a 'Double' using a 'Word64' encoding.
+--
+-- PRE: The 'Word64' encoding must have a size of at least 8 bytes.
+{-# INLINE encodeDoubleViaWord64F #-}
+encodeDoubleViaWord64F :: FixedEncoding Word64 -> FixedEncoding Double
+encodeDoubleViaWord64F w64fe
+  | size w64fe < sizeOf (undefined :: Float) =
+      error $ "encodeDoubleViaWord64F: encoding not wide enough"
+  | otherwise = fixedEncoding (size w64fe) $ \x op -> do
+      poke (castPtr op) x
+      x' <- peek (castPtr op)
+      runF w64fe x' op
 

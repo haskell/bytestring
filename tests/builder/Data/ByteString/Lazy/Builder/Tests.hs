@@ -31,8 +31,9 @@ import           Data.ByteString.Lazy.Builder
 import           Data.ByteString.Lazy.Builder.Extras
 import           Data.ByteString.Lazy.Builder.ASCII
 import           Data.ByteString.Lazy.Builder.Internal (Put, putBuilder, fromPut)
-import qualified Data.ByteString.Lazy.Builder.Internal           as BI
-import qualified Data.ByteString.Lazy.Builder.BasicEncoding      as BE
+import qualified Data.ByteString.Lazy.Builder.Internal             as BI
+import qualified Data.ByteString.Lazy.Builder.BasicEncoding        as BE
+import qualified Data.ByteString.Lazy.Builder.BasicEncoding.Extras as BE
 import           Data.ByteString.Lazy.Builder.BasicEncoding.TestUtils
 
 import           Numeric (readHex)
@@ -42,8 +43,6 @@ import           System.IO
 import           System.Directory
 
 import           TestFramework
---import           Test.Framework
---import           Test.Framework.Providers.QuickCheck2
 import           Test.QuickCheck
                    ( Arbitrary(..), oneof, choose, listOf, elements )
 import           Test.QuickCheck.Property (printTestCase)
@@ -306,17 +305,21 @@ testsEncodingToBuilder =
   [ test_encodeUnfoldrF
   , test_encodeUnfoldrB
 
-  , compareImpls "encodeChunked [base-128, variable-length] (recipe)"
+  , compareImpls "encodeSize/Chunked/Size/Chunked (recipe)"
         (testBuilder id)
-        (parseChunks parseVar . testBuilder encodeVar)
+        (
+          parseChunks parseHexLen .
+          parseSizePrefix parseHexLen .
+          parseChunks parseVar .
+          parseSizePrefix parseHexLen .
+          testBuilder (
+            prefixHexSize .
+            encodeVar .
+            prefixHexSize .
+            encodeHex
+          )
+        )
 
-  , compareImpls "encodeChunked [hex] (recipe)"
-        (testBuilder id)
-        (parseChunks parseHexLen . testBuilder encodeHex)
-
-  , compareImpls "encodeWithSize [hex] (recipe)"
-        (testBuilder id)
-        (parseSizePrefix parseHexLen . testBuilder prefixHexSize)
   ]
 
 
@@ -536,8 +539,8 @@ testsBinary =
 
 testsASCII :: [Test]
 testsASCII =
-  [ testBuilderConstr "charASCII" charASCII_list charASCII
-  , testBuilderConstr "stringASCII" (concatMap charASCII_list) stringASCII
+  [ testBuilderConstr "char7" char7_list char7
+  , testBuilderConstr "string7" (concatMap char7_list) string7
 
   , testBuilderConstr "int8Dec"   dec_list int8Dec
   , testBuilderConstr "int16Dec"  dec_list int16Dec

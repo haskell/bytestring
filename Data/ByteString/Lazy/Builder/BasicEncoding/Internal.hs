@@ -1,12 +1,12 @@
 {-# LANGUAGE ScopedTypeVariables, CPP, BangPatterns, MonoPatBinds #-}
 {-# OPTIONS_HADDOCK hide #-}
 -- |
--- Copyright   : 2010, 2011 Simon Meier, 2010 Jasper van der Jeugt
+-- Copyright   : 2010-2011 Simon Meier, 2010 Jasper van der Jeugt
 -- License     : BSD3-style (see LICENSE)
 --
 -- Maintainer  : Simon Meier <iridcode@gmail.com>
 -- Stability   : experimental
--- Portability : tested on GHC only
+-- Portability : GHC
 --
 -- This module is internal. It is only intended to be used by the 'bytestring'
 -- and the 'text' library. Please contact the maintainer, if you need to use
@@ -78,9 +78,9 @@ infixl 4 >$<
 -- We can use it for example to prepend and/or append fixed values to an
 -- encoding.
 --
--- >showEncoding ((\x -> ('\'', (x, '\''))) >$< charASCII3) 'x' = "'x'"
+-- >showEncoding ((\x -> ('\'', (x, '\''))) >$< fixed3) 'x' = "'x'"
 -- >  where
--- >    charASCII3 = charASCII >*< charASCII >*< charASCII
+-- >    fixed3 = char7 >*< char7 >*< char7
 --
 -- Note that the rather verbose syntax for composition stems from the
 -- requirement to be able to compute the 'size's and 'sizeBound's at
@@ -112,11 +112,11 @@ infixr 5 >*<
 -- | An overloaded infix operator for 'pairF' and 'pairB'.
 -- For example,
 --
--- >showF (charASCII >*< charASCII) ('x','y') = "xy"
+-- >showF (char7 >*< char7) ('x','y') = "xy"
 --
 -- We can combine multiple encodings using '>*<' multiple times.
 --
--- >showEncoding (charASCII >*< charASCII >*< charASCII) ('x',('y','z')) = "xyz"
+-- >showEncoding (char7 >*< char7 >*< char7) ('x',('y','z')) = "xyz"
 --
 (>*<) :: Monoidal f => f a -> f b -> f (a, b)
 (>*<) = pair
@@ -256,7 +256,7 @@ eitherB (BE b1 io1) (BE b2 io2) =
 -- Unicode codepoints above 127 as follows.
 --
 -- @
---charASCIIDrop = 'ifB' (< '\128') ('fromF' 'charASCII') 'emptyB'
+--charASCIIDrop = 'ifB' (< '\128') ('fromF' 'char7') 'emptyB'
 -- @
 {-# INLINE CONLIKE ifB #-}
 ifB :: (a -> Bool) -> BoundedEncoding a -> BoundedEncoding a -> BoundedEncoding a

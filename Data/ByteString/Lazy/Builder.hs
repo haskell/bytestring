@@ -2,11 +2,9 @@
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 {- | Copyright   : (c) 2010 Jasper Van der Jeugt
                    (c) 2010 - 2011 Simon Meier
-     License     : BSD3-style (see LICENSE)
-
-     Maintainer  : Simon Meier <iridcode@gmail.com>
-     Stability   : experimental
-     Portability : tested on GHC only
+License     : BSD3-style (see LICENSE)
+Maintainer  : Simon Meier <iridcode@gmail.com>
+Portability : GHC
 
 'Builder's are used to efficiently construct sequences of bytes from
   smaller parts.
@@ -54,11 +52,12 @@ As a simple example of an encoding implementation,
 We use the following imports and abbreviate 'mappend' to simplify reading.
 
 @
-import qualified "Data.ByteString.Lazy"         as L
+import qualified "Data.ByteString.Lazy"               as L
 import           "Data.ByteString.Lazy.Builder"
+import           "Data.ByteString.Lazy.Builder.ASCII" ('intDec')
 import           Data.Monoid
-import           Data.Foldable                ('foldMap')
-import           Data.List                    ('intersperse')
+import           Data.Foldable                        ('foldMap')
+import           Data.List                            ('intersperse')
 
 infixr 4 \<\>
 (\<\>) :: 'Monoid' m => m -> m -> m
@@ -88,7 +87,7 @@ renderRow (c:cs) =
 
 renderCell :: Cell -> Builder
 renderCell (StringC cs) = renderString cs
-renderCell (IntC i)     = 'stringUtf8' $ show i
+renderCell (IntC i)     = 'intDec' i
 
 renderString :: String -> Builder
 renderString cs = charUtf8 \'\"\' \<\> foldMap escape cs \<\> charUtf8 \'\"\'
@@ -97,6 +96,17 @@ renderString cs = charUtf8 \'\"\' \<\> foldMap escape cs \<\> charUtf8 \'\"\'
     escape \'\\\"\' = charUtf8 \'\\\\\' \<\> charUtf8 \'\\\"\'
     escape c    = charUtf8 c
 @
+
+Note that the ASCII encoding is a subset of the UTF-8 encoding,
+  which is why we can use the optimized function 'intDec' to
+  encode an 'Int' as a decimal number with UTF-8 encoded digits.
+Using 'intDec' is more efficient than @'stringUtf8' . 'show'@,
+  as it avoids constructing an intermediate 'String'.
+Avoiding this intermediate data structure significantly improves
+  performance because encoding 'Cell's is the core operation
+  for rendering CSV-tables.
+See "Data.ByteString.Lazy.Builder.BasicEncoding" for further
+  information on how to improve the performance of 'renderString'.
 
 We demonstrate our UTF-8 CSV encoding function on the following table.
 
@@ -155,7 +165,9 @@ The following definition of 'renderString' is also about 20% slower.
 
 Apart from removing intermediate data-structures,
   encodings can be optimized further by fine-tuning their execution
-  parameters using the functions in "Data.ByteString.Lazy.Builder.Extras".
+  parameters using the functions in "Data.ByteString.Lazy.Builder.Extras" and
+  their \"inner loops\" using the functions in
+  "Data.ByteString.Lazy.Builder.BasicEncoding".
 -}
 
 
@@ -212,16 +224,16 @@ module Data.ByteString.Lazy.Builder
 
     -- ** Character encodings
 
-    -- *** ASCII
-    -- | The ASCII encoding is a 7-bit encoding. The implementation provided
-    -- here works by truncating the Unicode codepoint to 7-bits, prefixing it
+    -- *** ASCII (Char7)
+    -- | The ASCII encoding is a 7-bit encoding. The /Char7/ encoding implemented here
+    -- works by truncating the Unicode codepoint to 7-bits, prefixing it
     -- with a leading 0, and encoding the resulting 8-bits as a single byte.
-    -- For the codepoints 0-127 this corresponds the the ASCII encoding. In
+    -- For the codepoints 0-127 this corresponds the ASCII encoding. In
     -- "Data.ByteString.Lazy.Builder.ASCII", we also provide efficient
     -- implementations of ASCII-based encodings of numbers (e.g., decimal and
     -- hexadecimal encodings).
-    , charASCII
-    , stringASCII
+    , char7
+    , string7
 
     -- *** ISO/IEC 8859-1 (Char8)
     -- | The ISO/IEC 8859-1 encoding is an 8-bit encoding often known as Latin-1.
@@ -243,6 +255,7 @@ module Data.ByteString.Lazy.Builder
     , charUtf8
     , stringUtf8
 
+
     ) where
 
 import           Data.ByteString.Lazy.Builder.Internal
@@ -253,6 +266,7 @@ import           System.IO
 import           Foreign
 
 -- HADDOCK only imports
+import           Data.ByteString.Lazy.Builder.ASCII (intDec)
 import qualified Data.ByteString               as S (concat)
 import           Data.Monoid
 import           Data.Foldable                      (foldMap)
@@ -397,15 +411,15 @@ doubleBE = E.encodeWithF E.doubleBE
 -- ASCII encoding
 ------------------------------------------------------------------------------
 
--- | ASCII encode a 'Char'.
-{-# INLINE charASCII #-}
-charASCII :: Char -> Builder
-charASCII = E.encodeWithF E.charASCII
+-- | Char7 encode a 'Char'.
+{-# INLINE char7 #-}
+char7 :: Char -> Builder
+char7 = E.encodeWithF E.char7
 
--- | ASCII encode a 'String'.
-{-# INLINE stringASCII #-}
-stringASCII :: String -> Builder
-stringASCII = E.encodeListWithF E.charASCII
+-- | Char7 encode a 'String'.
+{-# INLINE string7 #-}
+string7 :: String -> Builder
+string7 = E.encodeListWithF E.char7
 
 ------------------------------------------------------------------------------
 -- ISO/IEC 8859-1 encoding

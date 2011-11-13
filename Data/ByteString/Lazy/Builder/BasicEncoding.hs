@@ -1,108 +1,186 @@
 {-# LANGUAGE CPP, BangPatterns, MonoPatBinds, ScopedTypeVariables #-}
-{-# OPTIONS_HADDOCK hide #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
-{- |
-Module      : Data.ByteString.Lazy.Builder.BasicEncoding
-Copyright   : (c) 2010-2011 Simon Meier
-            . (c) 2010      Jasper van der Jeugt
-License     : BSD3-style (see LICENSE)
+{- | Copyright : (c) 2010-2011 Simon Meier
+                   (c) 2010      Jasper van der Jeugt
+License        : BSD3-style (see LICENSE)
+Maintainer     : Simon Meier <iridcode@gmail.com>
+Portability    : GHC
 
-Maintainer  : Simon Meier <iridcode@gmail.com>
-Stability   : experimental
-Portability : tested on GHC only
+This module provides the types of fixed-size and bounded-size encodings,
+  which are the basic building blocks for constructing 'Builder's.
+These types are used to achieve
+  application-specific performance improvements of 'Builder's.
 
-An /encoding/ is a conversion function of Haskell values to sequences of bytes.
-A /fixed(-size) encoding/ is an encoding that always results in sequence of bytes
-  of a pre-determined, fixed length.
+/Fixed(-size) encodings/ are encodings that always result in a sequence of bytes
+  of a predetermined, fixed length.
 An example for a fixed encoding is the big-endian encoding of a 'Word64',
   which always results in exactly 8 bytes.
-A /bounded(-size) encoding/ is an encoding that always results in sequence
-  of bytes that is no larger than a pre-determined bound.
+/Bounded(-size) encodings/ are encodings that always result in a sequence
+  of bytes that is no larger than a predetermined bound.
 An example for a bounded encoding is the UTF-8 encoding of a 'Char',
   which results always in less or equal to 4 bytes.
 Note that every fixed encoding is also a bounded encoding.
-We explicitly identify fixed encodings because they allow some optimizations
-  that are impossible with bounded encodings.
-In the following,
-  we first motivate the use of bounded encodings
-  and then give examples of optimizations
-  that are only possible with fixed encodings.
+In the following, we therefore only refer to fixed encodings,
+  where it matters that the resulting sequence of bytes is of a
+  of a predetermined, fixed length.
+Otherwise, we just refer to bounded encodings.
 
-Typicall, encodings are implemented efficiently by allocating a buffer
-  (a mutable array of bytes)
-  and repeatedly executing the following two steps:
-  (1) writing to the buffer until it is full and
-  (2) handing over the filled part to the consumer of the encoded value.
-Step (1) is where bounded encodings are used.
-We must use a bounded encoding,
-  as we must check that there is enough free space
-  /before/ actually writing to the buffer.
+As said,
+  the goal of bounded encodings is to improve the performance of 'Builder's.
+These improvements stem from making the two
+  most common steps performed by a 'Builder' more efficient.
+We explain these two steps in turn.
 
-In term of expressivity,
-  it would be sufficient to construct all encodings
-  from the single fixed encoding that encodes a 'Word8' as-is.
+The first most common step is the concatentation of two 'Builder's.
+Internally,
+  concatentation corresponds to function composition.
+(Note that 'Builder's can be seen as difference-lists
+  of buffer-filling functions;
+  cf.  <http://hackage.haskell.org/cgi-bin/hackage-scripts/package/dlist>.
+)
+Function composition is a fast /O(1)/ operation.
 However,
-  this is not sufficient in terms of efficiency.
-It results in unnecessary buffer-full checks and
-  it complicates the program-flow for writing to the buffer,
-  as buffer-full checks are interleaved with analyzing the value to be
-  encoded (e.g., think about the program-flow for UTF-8 encoding).
-This has a significant effect on overall encoding performance,
-  as encoding primitive Haskell values such as 'Word8's or 'Char's
-  lies at the heart of every encoding implementation.
+  we can use bounded encodings to
+  remove some of these function compositions altoghether,
+  which is obviously more efficient.
 
-The 'BoundedEncoding's provided by this module remove this performance problem.
-Intuitively,
-  they consist of a tuple of the bound on the maximal number of bytes written
-  and the actual implementation of the encoding as
-  a function that modifies a mutable buffer.
-Hence when executing a 'BoundedEncoding',
- the buffer-full check can be done once before the actual writing to the buffer.
-The provided 'BoundedEncoding's also take care to implement the
-  actual writing to the buffer efficiently.
-Moreover, combinators are provided to construct new bounded encodings
-  from the provided ones.
+The second most common step performed by a 'Builder' is to fill a buffer
+  using a bounded encoding,
+  which works as follows.
+The 'Builder' checks whether there is enough space left to
+  execute the bounded encoding.
+If there is, then the 'Builder' executes the bounded encoding
+  and calls the next 'Builder' with the updated buffer.
+Otherwise,
+  the 'Builder' signals its driver that it requires a new buffer.
+This buffer must be at least as large as the bound of the encoding.
+We can use bounded encodings to reduce the number of buffer-free
+  checks by fusing the buffer-free checks of consecutive
+  'Builder's.
+We can also use bounded encodings to simplify the control flow
+  for signalling that a buffer is full by
+  ensuring that we check first that there is enough space left
+  and only then decide on how to encode a given value.
 
+Let us illustrate these improvements on the
+  CSV-table rendering example from "Data.ByteString.Lazy.Builder".
+Its \"hot code\" is the rendering of a table's cells,
+  which we implement as follows using only the functions from the
+  'Builder' API.
 
+@
+import           "Data.ByteString.Lazy.Builder"         as B
+import           "Data.ByteString.Lazy.Builder.ASCII"   as B
 
-The result of an encoding can be consumed efficiently,
-  if it is represented as a sequence of large enough
-  /chunks/ of consecutive memory (i.e., C @char@ arrays).
-The precise meaning of /large enough/ is application dependent.
-Typically, an average chunk size between 4kb and 32kb is suitable
-  for writing the result to disk or sending it over the network.
-We desire large enough chunk sizes because each chunk boundary
-  incurs extra work that we must be able to amortize.
+renderCell :: Cell -> Builder
+renderCell (StringC cs) = renderString cs
+renderCell (IntC i)     = B.intDec i
 
+renderString :: String -> Builder
+renderString cs = B.charUtf8 \'\"\' \<\> foldMap escape cs \<\> B.charUtf8 \'\"\'
+  where
+    escape \'\\\\\' = B.charUtf8 \'\\\\\' \<\> B.charUtf8 \'\\\\\'
+    escape \'\\\"\' = B.charUtf8 \'\\\\\' \<\> B.charUtf8 \'\\\"\'
+    escape c    = B.charUtf8 c
+@
 
-The need for fixed-size encodings arises when considering
-  the efficient implementation of encodings that require the encoding of a
-  value to be prefixed with the size of the resulting sequence of bytes.
-An efficient implementation avoids unnecessary buffer
-We can implement this efficiently as follows.
-We first reserve the space for the encoding of the size.
-Then, we encode the value.
-Finally, we encode the size of the resulting sequence of bytes into
-  the reserved space.
-For this to work
+Efficient encoding of 'Int's as decimal numbers is performed by @intDec@
+  from "Data.ByteString.Lazy.Builder.ASCII".
+Optimization potential exists for the escaping of 'String's.
+The above implementation has two optimization opportunities.
+First,
+  the buffer-free checks of the 'Builder's for escaping doublequotes
+  and backslashes can be fused.
+Second,
+  the concatenations performed by 'foldMap' can be eliminated.
+The following implementation exploits these optimizations.
 
-This works only if the encoding resulting size fits
+@
+import qualified Data.ByteString.Lazy.Builder.BasicEncoding  as E
+import           Data.ByteString.Lazy.Builder.BasicEncoding
+                 ( 'ifB', 'fromF', ('>*<'), ('>$<') )
 
-by first, reserving the space for the encoding
-  of the size, then performing the
+renderString :: String -\> Builder
+renderString cs =
+    B.charUtf8 \'\"\' \<\> E.'encodeListWithB' escape cs \<\> B.charUtf8 \'\"\'
+  where
+    escape :: E.'BoundedEncoding' Char
+    escape =
+      'ifB' (== \'\\\\\') (fixed2 (\'\\\\\', \'\\\\\')) $
+      'ifB' (== \'\\\"\') (fixed2 (\'\\\\\', \'\\\"\')) $
+      E.'charUtf8'
+    &#160;
+    {&#45;\# INLINE fixed2 \#&#45;}
+    fixed2 x = 'fromF' $ const x '>$<' E.'char7' '>*<' E.'char7'
+@
 
-For efficiency,
-  we want to avoid unnecessary copying.
+The code should be mostly self-explanatory.
+The slightly awkward syntax is because the combinators
+  are written such that the size-bound of the resulting 'BoundedEncoding'
+  can be computed at compile time.
+We also explicitly inline the 'fixed2' encoding,
+  which encodes a fixed tuple of characters,
+  to ensure that the bound compuation happens at compile time.
+When encoding the following list of 'String's,
+  the optimized implementation of 'renderString' is two times faster.
 
+@
+maxiStrings :: [String]
+maxiStrings = take 1000 $ cycle [\"hello\", \"\\\"1\\\"\", \"&#955;-w&#246;rld\"]
+@
 
-For example, the HTTP/1.0 requires the size of the body to be given in
-  the Content-Length field.
+Most of the performance gain stems from using 'encodeListWithB',
+  which encodes a list of values from left-to-right with a
+  'BoundedEncoding'.
+It exploits the 'Builder' internals to avoid unnecessary function
+  compositions (i.e., concatentations).
+In the future,
+  we would expect the compiler to perform the optimizations
+  implemented in 'encodeListWithB'.
+However,
+  it seems that the code is currently to complicated for the
+  compiler to see through.
+Therefore,
+  we provide the 'BoundedEncoding' escape hatch,
+  which allows data structures to provide very efficient encoding traversals,
+  like 'encodeListWithB' for lists.
 
-chunked-transfer encoding requires each chunk to
-  be prefixed with the hexadecimal encoding of the chunk size.
+Note that 'BoundedEncoding's are a bit verbose, but quite versatile.
+Here is an example of a 'BoundedEncoding' for combined HTML escapng and
+UTF-8 encoding.
+It exploits that the escaped character with the maximal Unicode
+  codepoint is \'>\'.
 
+@
+{&#45;\# INLINE charUtf8HtmlEscaped \#&#45;}
+charUtf8HtmlEscaped :: E.BoundedEncoding Char
+charUtf8HtmlEscaped =
+    'ifB' (>  \'\>\' ) E.'charUtf8' $
+    'ifB' (== \'\<\' ) (fixed4 (\'&\',(\'l\',(\'t\',\';\')))) $        -- &lt;
+    'ifB' (== \'\>\' ) (fixed4 (\'&\',(\'g\',(\'t\',\';\')))) $        -- &gt;
+    'ifB' (== \'&\' ) (fixed5 (\'&\',(\'a\',(\'m\',(\'p\',\';\'))))) $  -- &amp;
+    'ifB' (== \'\"\' ) (fixed5 (\'&\',(\'\#\',(\'3\',(\'4\',\';\'))))) $  -- &\#34;
+    'ifB' (== \'\\\'\') (fixed5 (\'&\',(\'\#\',(\'3\',(\'9\',\';\'))))) $  -- &\#39;
+    ('fromF' E.'char7')         -- fallback for 'Char's smaller than \'\>\'
+  where
+    {&#45;\# INLINE fixed4 \#&#45;}
+    fixed4 x = 'fromF' $ const x '>$<'
+      E.char7 '>*<' E.char7 '>*<' E.char7 '>*<' E.char7
+    &#160;
+    {&#45;\# INLINE fixed5 \#&#45;}
+    fixed5 x = 'fromF' $ const x '>$<'
+      E.char7 '>*<' E.char7 '>*<' E.char7 '>*<' E.char7 '>*<' E.char7
+@
 
+This module currently does not expose functions that require the special
+  properties of fixed-size encodings.
+They are useful for prefixing 'Builder's with their size or for
+  implementing chunked encodings.
+We will expose the corresponding functions in future releases of this
+  library.
 -}
+
+
 
 {-
 --
@@ -291,7 +369,6 @@ module Data.ByteString.Lazy.Builder.BasicEncoding (
 
   -- * Fixed-size encodings
     FixedEncoding
-  , size
 
   -- ** Combinators
   -- | The combinators for 'FixedEncoding's are implemented such that the 'size'
@@ -331,7 +408,6 @@ module Data.ByteString.Lazy.Builder.BasicEncoding (
   -- * Bounded-size encodings
 
   , BoundedEncoding
-  , sizeBound
 
   -- ** Combinators
   -- | The combinators for 'BoundedEncoding's are implemented such that the
@@ -384,30 +460,6 @@ module Data.ByteString.Lazy.Builder.BasicEncoding (
   -- a decimal number with UTF-8 encoded characters.
   , charUtf8
 
-  -- * Chunked / size-prefixed encodings
-{- |
-Some encodings like ASN.1 BER <http://en.wikipedia.org/wiki/Basic_Encoding_Rules>
-or Google's protocol buffers <http://code.google.com/p/protobuf/> require
-encoded data to be prefixed with its length. The simple method to achieve this
-is to encode the data first into a separate buffer, compute the length of the
-encoded data, write it to the current output buffer, and append the separate
-buffers. The drawback of this method is that it requires a ...
--}
-  -- , withSizeFB
-  -- , withSizeBB
-  , encodeWithSize
-
-  , encodeChunked
-
-  , wordVarFixedBound
-  , wordHexFixedBound
-  , wordDecFixedBound
-
-  , word64VarFixedBound
-  , word64HexFixedBound
-  , word64DecFixedBound
-
-
   -- * Testing support
   -- | The following four functions are intended for testing use
   -- only. They are /not/ efficient. Basic encodings are efficently executed by
@@ -435,28 +487,12 @@ import           Data.List (unfoldr)  -- HADDOCK ONLY
 import           Data.Char (chr, ord)
 import           Control.Monad ((<=<), unless)
 
--- import Codec.Bounded.Encoding.Internal.Test
--- import Codec.Bounded.Encoding.Bench
 import           Data.ByteString.Lazy.Builder.BasicEncoding.Internal hiding (size, sizeBound)
 import qualified Data.ByteString.Lazy.Builder.BasicEncoding.Internal as I (size, sizeBound)
 import           Data.ByteString.Lazy.Builder.BasicEncoding.Binary
 import           Data.ByteString.Lazy.Builder.BasicEncoding.ASCII
 
 import           Foreign
-
-
-------------------------------------------------------------------------------
--- Adapting 'size' for the public interface.
-------------------------------------------------------------------------------
-
--- | The size of the sequence of bytes generated by this 'FixedEncoding'.
-size :: FixedEncoding a -> Word
-size = fromIntegral . I.size
-
--- | The bound on the size of the sequence of bytes generated by this
--- 'BoundedEncoding'.
-sizeBound :: BoundedEncoding a -> Word
-sizeBound = fromIntegral . I.sizeBound
 
 
 ------------------------------------------------------------------------------
@@ -666,354 +702,6 @@ encodeLazyByteStringWithB :: BoundedEncoding Word8 -> L.ByteString -> Builder
 encodeLazyByteStringWithB w =
     L.foldrChunks (\x b -> encodeByteStringWithB w x `mappend` b) mempty
 
-------------------------------------------------------------------------------
--- Chunked Encoding Transformer
-------------------------------------------------------------------------------
-
--- | /Heavy inlining./
-{-# INLINE encodeChunked #-}
-encodeChunked
-    :: Word                           -- ^ Minimal free-size
-    -> (Word64 -> FixedEncoding Word64)
-    -- ^ Given a sizeBound on the maximal encodable size this function must return
-    -- a fixed-size encoding for encoding all smaller size.
-    -> (BoundedEncoding Word64)
-    -- ^ An encoding for terminating a chunk of the given size.
-    -> Builder
-    -- ^ Inner Builder to transform
-    -> Builder
-    -- ^ 'Put' with chunked encoding.
-encodeChunked minFree mkBeforeFE afterBE =
-    fromPut . putChunked minFree mkBeforeFE afterBE . putBuilder
-
--- | /Heavy inlining./
-{-# INLINE putChunked #-}
-putChunked
-    :: Word                         -- ^ Minimal free-size
-    -> (Word64 -> FixedEncoding Word64)
-    -- ^ Given a sizeBound on the maximal encodable size this function must return
-    -- a fixed-size encoding for encoding all smaller size.
-    -> (BoundedEncoding Word64)
-    -- ^ Encoding a directly inserted chunk.
-    -> Put a
-    -- ^ Inner Put to transform
-    -> Put a
-    -- ^ 'Put' with chunked encoding.
-putChunked minFree0 mkBeforeFE afterBE p =
-    put encodingStep
-  where
-    minFree, reservedAfter, maxReserved, minBufferSize :: Int
-    minFree       = fromIntegral $ max 1 minFree0   -- sanitize and convert to Int
-
-    -- reserved space must be computed for maximum buffer size to cover for all
-    -- sizes of the actually returned buffer.
-    reservedAfter = I.sizeBound afterBE
-    maxReserved   = I.size (mkBeforeFE maxBound) + reservedAfter
-    minBufferSize = minFree + maxReserved
-
-    encodingStep k =
-        fill (runPut p)
-      where
-        fill innerStep !(BufferRange op ope)
-          | outRemaining < minBufferSize =
-              return $! bufferFull minBufferSize op (fill innerStep)
-          | otherwise = do
-              fillWithBuildStep innerStep doneH fullH insertChunksH brInner
-          where
-            outRemaining   = ope `minusPtr` op
-            beforeFE       = mkBeforeFE $ fromIntegral outRemaining
-            reservedBefore = I.size beforeFE
-
-            opInner        = op  `plusPtr` reservedBefore
-            opeInner       = ope `plusPtr` (-reservedAfter)
-            brInner        = BufferRange opInner opeInner
-
-            wrapChunk :: Ptr Word8 -> IO (Ptr Word8)
-            wrapChunk !opInner'
-              | innerSize == 0 = return op -- no data written => no chunk to wrap
-              | otherwise      = do
-                  runF beforeFE innerSize op
-                  runB afterBE innerSize opInner'
-              where
-                innerSize = fromIntegral $ opInner' `minusPtr` opInner
-
-            doneH opInner' x = do
-                op' <- wrapChunk opInner'
-                let !br' = BufferRange op' ope
-                k x br'
-
-            fullH opInner' minSize nextInnerStep = do
-                op' <- wrapChunk opInner'
-                return $! bufferFull
-                  (max minBufferSize (minSize + maxReserved))
-                  op'
-                  (fill nextInnerStep)
-
-            insertChunksH opInner' n lbsC nextInnerStep
-              | n == 0 = do                      -- flush
-                  op' <- wrapChunk opInner'
-                  return $! insertChunks op' 0 id (fill nextInnerStep)
-
-              | otherwise = do                   -- insert non-empty bytestring
-                  op' <- wrapChunk opInner'
-                  let !br' = BufferRange op' ope
-                  runBuilderWith chunkB (fill nextInnerStep) br'
-              where
-                nU = fromIntegral n
-                chunkB =
-                  encodeWithF (mkBeforeFE nU) nU `mappend`
-                  lazyByteStringC n lbsC         `mappend`
-                  encodeWithB afterBE nU
-
-
--- | /Heavy inlining./ Prefix a 'Builder' with the size of the
--- sequence of bytes that it denotes.
---
--- This function is optimized for streaming use. It tries to prefix the size
--- without copying the output. This is achieved by reserving space for the
--- maximum size to be encoded. This succeeds if the output is smaller than
--- the current free buffer size, which is guaranteed to be at least @8kb@.
---
--- If the output does not fit into the current free buffer size,
--- the method falls back to encoding the data to a separate lazy bytestring,
--- computing the size, and encoding the size before inserting the chunks of
--- the separate lazy bytestring.
-{-# INLINE encodeWithSize #-}
-encodeWithSize
-    ::
-       Word
-    -- ^ Inner buffer-size.
-    -> (Word64 -> FixedEncoding Word64)
-    -- ^ Given a bound on the maximal size to encode, this function must return
-    -- a fixed-size encoding for all smaller sizes.
-    -> Builder
-    -- ^ 'Put' to prefix with the length of its sequence of bytes.
-    -> Builder
-encodeWithSize innerBufSize mkSizeFE =
-    fromPut . putWithSize innerBufSize mkSizeFE . putBuilder
-
--- | Prefix a 'Put' with the size of its written data.
-{-# INLINE putWithSize #-}
-putWithSize
-    :: forall a.
-       Word
-    -- ^ Buffer-size for inner driver.
-    -> (Word64 -> FixedEncoding Word64)
-    -- ^ Encoding the size for the fallback case.
-    -> Put a
-    -- ^ 'Put' to prefix with the length of its sequence of bytes.
-    -> Put a
-putWithSize innerBufSize mkSizeFE innerP =
-    put $ encodingStep
-  where
-    -- | The minimal free size is such that we can encode any size.
-    minFree = I.size $ mkSizeFE maxBound
-
-    encodingStep :: (forall r. (a -> BuildStep r) -> BuildStep r)
-    encodingStep k =
-        fill (runPut innerP)
-      where
-        fill :: BuildStep a -> BufferRange -> IO (BuildSignal r)
-        fill innerStep !(BufferRange op ope)
-          | outRemaining < minFree =
-              return $! bufferFull minFree op (fill innerStep)
-          | otherwise = do
-              fillWithBuildStep innerStep doneH fullH insertChunksH brInner
-          where
-            outRemaining   = ope `minusPtr` op
-            sizeFE         = mkSizeFE $ fromIntegral outRemaining
-            reservedBefore = I.size sizeFE
-            reservedAfter  = minFree - reservedBefore
-
-            -- leave enough free space such that all sizes can be encodded.
-            startInner    = op  `plusPtr` reservedBefore
-            opeInner      = ope `plusPtr` (negate reservedAfter)
-            brInner       = BufferRange startInner opeInner
-
-            fastPrefixSize :: Ptr Word8 -> IO (Ptr Word8)
-            fastPrefixSize !opInner'
-              | innerSize == 0 = do runB (toB $ mkSizeFE 0) 0         op
-              | otherwise      = do runF (sizeFE)           innerSize op
-                                    return opInner'
-              where
-                innerSize = fromIntegral $ opInner' `minusPtr` startInner
-
-            slowPrefixSize :: Ptr Word8 -> Builder -> BuildStep a -> IO (BuildSignal r)
-            slowPrefixSize opInner' bInner nextStep = do
-                (x, lbsC, lenAfter) <- toLBS $ runBuilderWith bInner nextStep
-
-                let curBufLen   = opInner' `minusPtr` startInner
-                    lenAll      = fromIntegral lenAfter + fromIntegral curBufLen
-                    sizeFE'     = mkSizeFE lenAll
-                    startInner' = op `plusPtr` I.size sizeFE'
-                -- move data in current buffer out of the way, if required
-                unless (startInner == startInner') $
-                    moveBytes startInner' startInner curBufLen
-                runF sizeFE' lenAll op
-                -- TODO: If we were to change the CIOS definition such that it also
-                -- returns the last buffer for writing, we could also fill the
-                -- last buffer with 'k' and return the signal, once it is
-                -- filled, therefore avoiding unfilled space.
-                return $ insertChunks (startInner' `plusPtr` curBufLen)
-                                      (fromIntegral lenAll)
-                                      lbsC
-                                      (k x)
-              where
-                toLBS = runCIOSWithLength <=<
-                    buildStepToCIOSUntrimmedWith (fromIntegral innerBufSize)
-
-            doneH :: Ptr Word8 -> a -> IO (BuildSignal r)
-            doneH opInner' x = do
-                op' <- fastPrefixSize opInner'
-                let !br' = BufferRange op' ope
-                k x br'
-
-            fullH :: Ptr Word8 -> Int -> BuildStep a -> IO (BuildSignal r)
-            fullH opInner' minSize nextInnerStep =
-                slowPrefixSize opInner' (ensureFree minSize) nextInnerStep
-
-            insertChunksH :: Ptr Word8 -> Int64 -> LazyByteStringC
-                          -> BuildStep a -> IO (BuildSignal r)
-            insertChunksH opInner' n lbsC nextInnerStep =
-                slowPrefixSize opInner' (lazyByteStringC n lbsC) nextInnerStep
-
-
--- | Run a 'ChunkIOStream' and gather its results and their length.
-runCIOSWithLength :: ChunkIOStream a -> IO (a, LazyByteStringC, Int64)
-runCIOSWithLength =
-    go 0 id
-  where
-    go !l lbsC (Finished x)        = return (x, lbsC, l)
-    go !l lbsC (YieldC n lbsC' io) = io >>= go (l + n) (lbsC . lbsC')
-    go !l lbsC (Yield1 bs io)      =
-        io >>= go (l + fromIntegral (S.length bs)) (lbsC . L.Chunk bs)
-
--- | Run a 'BuildStep' using the untrimmed strategy.
-buildStepToCIOSUntrimmedWith :: Int -> BuildStep a -> IO (ChunkIOStream a)
-buildStepToCIOSUntrimmedWith bufSize =
-    buildStepToCIOS (untrimmedStrategy bufSize bufSize)
-                    (return . Finished)
-
-
-----------------------------------------------------------------------
--- Padded versions of encodings for streamed prefixing of output sizes
-----------------------------------------------------------------------
-
-{-# INLINE appsUntilZero #-}
-appsUntilZero :: Num a => (a -> a) -> a -> Int
-appsUntilZero f x0 =
-    count 0 x0
-  where
-    count !n 0 = n
-    count !n x = count (succ n) (f x)
-
-
-{-# INLINE genericVarFixedBound #-}
-genericVarFixedBound :: (Bits b, Num a, Integral b)
-                => (b -> a -> b) -> b -> FixedEncoding b
-genericVarFixedBound shiftRight bound =
-    fixedEncoding n0 io
-  where
-    n0 = max 1 $ appsUntilZero (`shiftRight` 7) bound
-
-    io !x0 !op
-      | x0 > bound = error err
-      | otherwise  = loop 0 x0
-      where
-        err = "genericVarFixedBound: value " ++ show x0 ++ " > bound " ++ show bound
-        loop !n !x
-          | n0 <= n + 1 = do poke8 (x .&. 0x7f)
-          | otherwise   = do poke8 ((x .&. 0x7f) .|. 0x80)
-                             loop (n + 1) (x `shiftRight` 7)
-          where
-            poke8 = pokeElemOff op n . fromIntegral
-
-{-# INLINE wordVarFixedBound #-}
-wordVarFixedBound :: Word -> FixedEncoding Word
-wordVarFixedBound = genericVarFixedBound shiftr_w
-
-{-# INLINE word64VarFixedBound #-}
-word64VarFixedBound :: Word64 -> FixedEncoding Word64
-word64VarFixedBound = genericVarFixedBound shiftr_w64
-
-
--- Somehow this function doesn't really make sense, as the bound must be
--- greater when interpreted as an unsigned integer. These conversions and
--- decisions should be left to the user.
---
---{-# INLINE intVarFixed #-}
---intVarFixed :: Size -> FixedEncoding Size
---intVarFixed bound = fromIntegral >$< wordVarFixed (fromIntegral bound)
-
-{-# INLINE genHexFixedBound #-}
-genHexFixedBound :: (Num a, Bits a, Integral a)
-                 => (a -> Int -> a) -> Char -> a -> FixedEncoding a
-genHexFixedBound shiftr padding0 bound =
-    fixedEncoding n0 io
-  where
-    n0 = max 1 $ appsUntilZero (`shiftr` 4) bound
-
-    padding = fromIntegral (ord padding0) :: Word8
-
-    io !x0 !op0 =
-        loop (op0 `plusPtr` n0) x0
-      where
-        loop !op !x = do
-           let !op' = op `plusPtr` (-1)
-           poke op' =<< encode4_as_8 lowerTable (fromIntegral $ x .&. 0xf)
-           let !x' = x `shiftr` 4
-           unless (op' <= op0) $
-             if x' == 0
-               then pad (op' `plusPtr` (-1))
-               else loop op' x'
-
-        pad !op
-          | op < op0  = return ()
-          | otherwise = poke op padding >> pad (op `plusPtr` (-1))
-
-
-{-# INLINE wordHexFixedBound #-}
-wordHexFixedBound :: Char -> Word -> FixedEncoding Word
-wordHexFixedBound = genHexFixedBound shiftr_w
-
-{-# INLINE word64HexFixedBound #-}
-word64HexFixedBound :: Char -> Word64 -> FixedEncoding Word64
-word64HexFixedBound = genHexFixedBound shiftr_w64
-
--- | Note: Works only for positive numbers.
-{-# INLINE genDecFixedBound #-}
-genDecFixedBound :: (Num a, Bits a, Integral a)
-                 => Char -> a -> FixedEncoding a
-genDecFixedBound padding0 bound =
-    fixedEncoding n0 io
-  where
-    n0 = max 1 $ appsUntilZero (`div` 10) bound
-
-    padding = fromIntegral (ord padding0) :: Word8
-
-    io !x0 !op0 =
-        loop (op0 `plusPtr` n0) x0
-      where
-        loop !op !x = do
-           let !op' = op `plusPtr` (-1)
-               !x'  = x `div` 10
-           poke op' ((fromIntegral $ (x - x' * 10) + 48) :: Word8)
-           unless (op' <= op0) $
-             if x' == 0
-               then pad (op' `plusPtr` (-1))
-               else loop op' x'
-
-        pad !op
-          | op < op0  = return ()
-          | otherwise = poke op padding >> pad (op `plusPtr` (-1))
-
-{-# INLINE wordDecFixedBound #-}
-wordDecFixedBound :: Char -> Word -> FixedEncoding Word
-wordDecFixedBound = genDecFixedBound
-
-{-# INLINE word64DecFixedBound #-}
-word64DecFixedBound :: Char -> Word64 -> FixedEncoding Word64
-word64DecFixedBound = genDecFixedBound
 
 ------------------------------------------------------------------------------
 -- Char8 encoding

@@ -74,14 +74,14 @@ library
                      Data.ByteString.Lazy.Builder
                      Data.ByteString.Lazy.Builder.Extras
                      Data.ByteString.Lazy.Builder.ASCII
-
-  other-modules:
-                     -- these three modules should be exposed in a future
-                     -- release once we're confident the API is stable.
-                     Data.ByteString.Lazy.Builder.Internal
                      Data.ByteString.Lazy.Builder.BasicEncoding
+
+                     -- exposed but not haddocked
+                     Data.ByteString.Lazy.Builder.BasicEncoding.Extras
+                     Data.ByteString.Lazy.Builder.Internal
                      Data.ByteString.Lazy.Builder.BasicEncoding.Internal
 
+  other-modules:
                      Data.ByteString.Lazy.Builder.BasicEncoding.Binary
                      Data.ByteString.Lazy.Builder.BasicEncoding.ASCII
                      Data.ByteString.Lazy.Builder.BasicEncoding.Internal.Floating

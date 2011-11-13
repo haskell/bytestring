@@ -3,8 +3,7 @@
 -- License     : BSD3-style (see LICENSE)
 --
 -- Maintainer  : Simon Meier <iridcode@gmail.com>
--- Stability   : experimental
--- Portability : tested on GHC only
+-- Portability : GHC
 --
 -- Constructing 'Builder's using ASCII-based encodings.
 --
@@ -66,24 +65,22 @@ module Data.ByteString.Lazy.Builder.ASCII
 
     ) where
 
-import Foreign
+import           Data.ByteString                                  as S
+import           Data.ByteString.Lazy.Internal                    as L
+import           Data.ByteString.Lazy.Builder.Internal (Builder)
+import qualified Data.ByteString.Lazy.Builder.BasicEncoding       as E
 
-import Data.ByteString               as S
-import Data.ByteString.Lazy.Internal as L
-
-import Data.ByteString.Lazy.Builder (Builder)
-
-import qualified Data.ByteString.Lazy.Builder.BasicEncoding     as E
+import           Foreign
 
 ------------------------------------------------------------------------------
 -- Decimal Encoding
 ------------------------------------------------------------------------------
 
 
--- | Encode a 'String' using 'E.charASCII'.
-{-# INLINE stringASCII #-}
-stringASCII :: String -> Builder
-stringASCII = E.encodeListWithF E.charASCII
+-- | Encode a 'String' using 'E.char7'.
+{-# INLINE string7 #-}
+string7 :: String -> Builder
+string7 = E.encodeListWithF E.char7
 
 ------------------------------------------------------------------------------
 -- Decimal Encoding
@@ -120,7 +117,7 @@ intDec = E.encodeWithB E.intDec
 -- | /Currently slow./ Decimal encoding of an 'Integer' using the ASCII digits.
 {-# INLINE integerDec #-}
 integerDec :: Integer -> Builder
-integerDec =  stringASCII . show
+integerDec =  string7 . show
 
 
 -- Unsigned integers
@@ -160,12 +157,12 @@ wordDec = E.encodeWithB E.wordDec
 -- | /Currently slow./ Decimal encoding of an IEEE 'Float'.
 {-# INLINE floatDec #-}
 floatDec :: Float -> Builder
-floatDec = stringASCII . show
+floatDec = string7 . show
 
 -- | /Currently slow./ Decimal encoding of an IEEE 'Double'.
 {-# INLINE doubleDec #-}
 doubleDec :: Double -> Builder
-doubleDec = stringASCII . show
+doubleDec = string7 . show
 
 
 ------------------------------------------------------------------------------

@@ -157,7 +157,7 @@ main = do
       ]
 
     , bgroup "Data.ByteString.Lazy.Builder.BasicEncoding"
-      [ benchFE "charASCII"  $ toEnum       >$< E.charASCII
+      [ benchFE "char7"      $ toEnum       >$< E.char7
       , benchFE "char8"      $ toEnum       >$< E.char8
       , benchBE "charUtf8"   $ toEnum       >$< E.charUtf8
 

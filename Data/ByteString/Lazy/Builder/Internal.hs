@@ -1,12 +1,11 @@
 {-# LANGUAGE ScopedTypeVariables, CPP, BangPatterns, Rank2Types, MonoPatBinds #-}
 {-# OPTIONS_HADDOCK hide #-}
--- |
--- Copyright   : (c) 2010 Simon Meier
+-- | Copyright : (c) 2010 - 2011 Simon Meier
 -- License     : BSD3-style (see LICENSE)
 --
 -- Maintainer  : Simon Meier <iridcode@gmail.com>
 -- Stability   : experimental
--- Portability : tested on GHC only
+-- Portability : GHC
 --
 -- Core types and functions for the 'Builder' monoid and its generalization,
 -- the 'Put' monad.
@@ -222,6 +221,7 @@ fillWithBuildStep step fDone fFull fChunk !br = do
         Done op x                         -> fDone op x
         BufferFull minSize op nextStep    -> fFull op minSize nextStep
         InsertChunks op len lbsC nextStep -> fChunk op len lbsC nextStep
+
 
 
 ------------------------------------------------------------------------------
