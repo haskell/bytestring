@@ -9,7 +9,9 @@ import qualified Data.ByteString.Lazy        as L
 import qualified Data.ByteString.Lazy.Char8  as D
 import Data.List
 import Data.Char
+
 import QuickCheckUtils
+import TestFramework
 
 
 prop_break_C x = C.break ((==) x) `eq1` break ((==) x)
@@ -22,11 +24,9 @@ prop_break_isSpace_C = C.break isSpace `eq1` break isSpace
 prop_dropWhile_isSpace_C = C.dropWhile isSpace `eq1` dropWhile isSpace
 
 rules =
-    [("break (==)" ,         mytest prop_break_C)
-    ,("break (==)" ,         mytest prop_break_P)
-    ,("break isSpace" ,      mytest prop_break_isSpace_C)
-
-    ,("dropWhile isSpace" ,  mytest prop_dropWhile_isSpace_C)
-
-    ,("intercalate      " ,  mytest prop_intercalate_P)
+    [ testProperty "break (==)"        prop_break_C
+    , testProperty "break (==)"        prop_break_P
+    , testProperty "break isSpace"     prop_break_isSpace_C
+    , testProperty "dropWhile isSpace" prop_dropWhile_isSpace_C
+    , testProperty "intercalate"       prop_intercalate_P
     ]

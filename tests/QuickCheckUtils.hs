@@ -60,18 +60,6 @@ instance Functor (Either a) where
 
 -}
 
-mytest :: Testable a => a -> Int -> IO (Bool, Int)
-mytest p n = do
-    result <- quickCheckWithResult testArgs p
-    case result of
-      Success {} -> return (True,  numTests result)
-      _          -> return (False, numTests result)
-  where
-    testArgs = stdArgs {
-                 maxSuccess = n
-                 --chatty   = ... if we want to increase verbosity
-               }
-
 ------------------------------------------------------------------------
 
 integralRandomR :: (Integral a, RandomGen g) => (a,a) -> g -> (a,g)
