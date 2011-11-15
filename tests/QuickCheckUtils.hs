@@ -137,7 +137,6 @@ instance Model Int   Int          where model = id
 instance Model P     P            where model = id
 instance Model B     B            where model = id
 instance Model Int64 Int64        where model = id
-instance Model Int64 Int          where model = fromIntegral
 instance Model Word8 Word8        where model = id
 instance Model Ordering Ordering  where model = id
 instance Model Char Char  where model = id
@@ -190,10 +189,6 @@ eq2 f g = \a b       ->
     model (f a b)       == g (model a) (model b)
 eq3 f g = \a b c     ->
     model (f a b c)     == g (model a) (model b) (model c)
-eq4 f g = \a b c d   ->
-    model (f a b c d)   == g (model a) (model b) (model c) (model d)
-eq5 f g = \a b c d e ->
-    model (f a b c d e) == g (model a) (model b) (model c) (model d) (model e)
 
 --
 -- And for functions that take non-null input

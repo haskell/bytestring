@@ -52,48 +52,52 @@ import Rules
 import QuickCheckUtils
 import TestFramework
 
+toInt64 :: Int -> Int64
+toInt64 = fromIntegral
+
 --
 -- ByteString.Lazy.Char8 <=> ByteString.Char8
 --
 
-prop_concatCC       = D.concat      `eq1`  C.concat
-prop_nullCC         = D.null        `eq1`  C.null
-prop_reverseCC      = D.reverse     `eq1`  C.reverse
-prop_transposeCC    = D.transpose   `eq1`  C.transpose
-prop_groupCC        = D.group       `eq1`  C.group
-prop_groupByCC      = D.groupBy     `eq2`  C.groupBy
-prop_initsCC        = D.inits       `eq1`  C.inits
-prop_tailsCC        = D.tails       `eq1`  C.tails
-prop_allCC          = D.all         `eq2`  C.all
-prop_anyCC          = D.any         `eq2`  C.any
-prop_appendCC       = D.append      `eq2`  C.append
-prop_breakCC        = D.break       `eq2`  C.break
+prop_concatCC       = D.concat                `eq1`  C.concat
+prop_nullCC         = D.null                  `eq1`  C.null
+prop_reverseCC      = D.reverse               `eq1`  C.reverse
+prop_transposeCC    = D.transpose             `eq1`  C.transpose
+prop_groupCC        = D.group                 `eq1`  C.group
+prop_groupByCC      = D.groupBy               `eq2`  C.groupBy
+prop_initsCC        = D.inits                 `eq1`  C.inits
+prop_tailsCC        = D.tails                 `eq1`  C.tails
+prop_allCC          = D.all                   `eq2`  C.all
+prop_anyCC          = D.any                   `eq2`  C.any
+prop_appendCC       = D.append                `eq2`  C.append
+prop_breakCC        = D.break                 `eq2`  C.break
 prop_concatMapCC    = adjustSize (min 50) $
-                      D.concatMap   `eq2`  C.concatMap
-prop_consCC         = D.cons        `eq2`  C.cons
-prop_unconsCC       = D.uncons      `eq1`  C.uncons
-prop_countCC        = D.count       `eq2`  C.count
-prop_dropCC         = D.drop        `eq2`  C.drop
-prop_dropWhileCC    = D.dropWhile   `eq2`  C.dropWhile
-prop_filterCC       = D.filter      `eq2`  C.filter
-prop_findCC         = D.find        `eq2`  C.find
-prop_findIndexCC    = D.findIndex   `eq2`  C.findIndex
-prop_findIndicesCC  = D.findIndices `eq2`  C.findIndices
-prop_isPrefixOfCC   = D.isPrefixOf  `eq2`  C.isPrefixOf
-prop_mapCC          = D.map         `eq2`  C.map
+                      D.concatMap             `eq2`  C.concatMap
+prop_consCC         = D.cons                  `eq2`  C.cons
+prop_consCC'        = D.cons'                 `eq2`  C.cons
+prop_unconsCC       = D.uncons                `eq1`  C.uncons
+prop_countCC        = D.count                 `eq2`  ((toInt64 .) . C.count)
+prop_dropCC         = (D.drop . toInt64)      `eq2`  C.drop
+prop_dropWhileCC    = D.dropWhile             `eq2`  C.dropWhile
+prop_filterCC       = D.filter                `eq2`  C.filter
+prop_findCC         = D.find                  `eq2`  C.find
+prop_findIndexCC    = D.findIndex             `eq2`  ((fmap toInt64 .) . C.findIndex)
+prop_findIndicesCC  = D.findIndices           `eq2`  ((fmap toInt64 .) . C.findIndices)
+prop_isPrefixOfCC   = D.isPrefixOf            `eq2`  C.isPrefixOf
+prop_mapCC          = D.map                   `eq2`  C.map
 prop_replicateCC    = forAll arbitrarySizedIntegral $
-                      D.replicate   `eq2`  C.replicate
-prop_snocCC         = D.snoc        `eq2`  C.snoc
-prop_spanCC         = D.span        `eq2`  C.span
-prop_splitCC        = D.split       `eq2`  C.split
-prop_splitAtCC      = D.splitAt     `eq2`  C.splitAt
-prop_takeCC         = D.take        `eq2`  C.take
-prop_takeWhileCC    = D.takeWhile   `eq2`  C.takeWhile
-prop_elemCC         = D.elem        `eq2`  C.elem
-prop_notElemCC      = D.notElem     `eq2`  C.notElem
-prop_elemIndexCC    = D.elemIndex   `eq2`  C.elemIndex
-prop_elemIndicesCC  = D.elemIndices `eq2`  C.elemIndices
-prop_lengthCC       = D.length      `eq1`  (fromIntegral . C.length :: C.ByteString -> Int64)
+                      (D.replicate . toInt64) `eq2`  C.replicate
+prop_snocCC         = D.snoc                  `eq2`  C.snoc
+prop_spanCC         = D.span                  `eq2`  C.span
+prop_splitCC        = D.split                 `eq2`  C.split
+prop_splitAtCC      = (D.splitAt . toInt64)   `eq2`  C.splitAt
+prop_takeCC         = (D.take    . toInt64)   `eq2`  C.take
+prop_takeWhileCC    = D.takeWhile             `eq2`  C.takeWhile
+prop_elemCC         = D.elem                  `eq2`  C.elem
+prop_notElemCC      = D.notElem               `eq2`  C.notElem
+prop_elemIndexCC    = D.elemIndex             `eq2`  ((fmap toInt64 .) . C.elemIndex)
+prop_elemIndicesCC  = D.elemIndices           `eq2`  ((fmap toInt64 .) . C.elemIndices)
+prop_lengthCC       = D.length                `eq1`  (toInt64 . C.length)
 
 prop_headCC         = D.head        `eqnotnull1` C.head
 prop_initCC         = D.init        `eqnotnull1` C.init
@@ -137,50 +141,49 @@ prop_mapAccumLCC = eq3
 --
 
 prop_concatBP       = adjustSize (`div` 2) $
-                      L.concat      `eq1`  P.concat
-prop_nullBP         = L.null        `eq1`  P.null
-prop_reverseBP      = L.reverse     `eq1`  P.reverse
+                      L.concat               `eq1`  P.concat
+prop_nullBP         = L.null                 `eq1`  P.null
+prop_reverseBP      = L.reverse              `eq1`  P.reverse
 
-prop_transposeBP    = L.transpose   `eq1`  P.transpose
-prop_groupBP        = L.group       `eq1`  P.group
-prop_groupByBP      = L.groupBy     `eq2`  P.groupBy
-prop_initsBP        = L.inits       `eq1`  P.inits
-prop_tailsBP        = L.tails       `eq1`  P.tails
-prop_allBP          = L.all         `eq2`  P.all
-prop_anyBP          = L.any         `eq2`  P.any
-prop_appendBP       = L.append      `eq2`  P.append
-prop_breakBP        = L.break       `eq2`  P.break
+prop_transposeBP    = L.transpose            `eq1`  P.transpose
+prop_groupBP        = L.group                `eq1`  P.group
+prop_groupByBP      = L.groupBy              `eq2`  P.groupBy
+prop_initsBP        = L.inits                `eq1`  P.inits
+prop_tailsBP        = L.tails                `eq1`  P.tails
+prop_allBP          = L.all                  `eq2`  P.all
+prop_anyBP          = L.any                  `eq2`  P.any
+prop_appendBP       = L.append               `eq2`  P.append
+prop_breakBP        = L.break                `eq2`  P.break
 prop_concatMapBP    = adjustSize (`div` 4) $
-                      L.concatMap   `eq2`  P.concatMap
-prop_consBP         = L.cons        `eq2`  P.cons
-prop_consBP'        = L.cons'       `eq2`  P.cons
-prop_consLP'        = LC.cons'      `eq2`  P.cons
-prop_unconsBP       = L.uncons      `eq1`  P.uncons
-prop_countBP        = L.count       `eq2`  P.count
-prop_dropBP         = L.drop        `eq2`  P.drop
-prop_dropWhileBP    = L.dropWhile   `eq2`  P.dropWhile
-prop_filterBP       = L.filter      `eq2`  P.filter
-prop_findBP         = L.find        `eq2`  P.find
-prop_findIndexBP    = L.findIndex   `eq2`  P.findIndex
-prop_findIndicesBP  = L.findIndices `eq2`  P.findIndices
-prop_isPrefixOfBP   = L.isPrefixOf  `eq2`  P.isPrefixOf
-prop_mapBP          = L.map         `eq2`  P.map
+                      L.concatMap            `eq2`  P.concatMap
+prop_consBP         = L.cons                 `eq2`  P.cons
+prop_consBP'        = L.cons'                `eq2`  P.cons
+prop_unconsBP       = L.uncons               `eq1`  P.uncons
+prop_countBP        = L.count                `eq2`  ((toInt64 .) . P.count)
+prop_dropBP         = (L.drop. toInt64)      `eq2`  P.drop
+prop_dropWhileBP    = L.dropWhile            `eq2`  P.dropWhile
+prop_filterBP       = L.filter               `eq2`  P.filter
+prop_findBP         = L.find                 `eq2`  P.find
+prop_findIndexBP    = L.findIndex            `eq2`  ((fmap toInt64 .) . P.findIndex)
+prop_findIndicesBP  = L.findIndices          `eq2`  ((fmap toInt64 .) . P.findIndices)
+prop_isPrefixOfBP   = L.isPrefixOf           `eq2`  P.isPrefixOf
+prop_mapBP          = L.map                  `eq2`  P.map
 prop_replicateBP    = forAll arbitrarySizedIntegral $
-                      L.replicate   `eq2`  P.replicate
-prop_snocBP         = L.snoc        `eq2`  P.snoc
-prop_spanBP         = L.span        `eq2`  P.span
-prop_splitBP        = L.split       `eq2`  P.split
-prop_splitAtBP      = L.splitAt     `eq2`  P.splitAt
-prop_takeBP         = L.take        `eq2`  P.take
-prop_takeWhileBP    = L.takeWhile   `eq2`  P.takeWhile
-prop_elemBP         = L.elem        `eq2`  P.elem
-prop_notElemBP      = L.notElem     `eq2`  P.notElem
-prop_elemIndexBP    = L.elemIndex   `eq2`  P.elemIndex
-prop_elemIndicesBP  = L.elemIndices `eq2`  P.elemIndices
-prop_intersperseBP  = L.intersperse  `eq2` P.intersperse
-prop_lengthBP       = L.length      `eq1`  (fromIntegral . P.length :: P.ByteString -> Int64)
-prop_readIntBP      = D.readInt     `eq1`  C.readInt
-prop_linesBP        = D.lines       `eq1`  C.lines
+                      (L.replicate. toInt64) `eq2`  P.replicate
+prop_snocBP         = L.snoc                 `eq2`  P.snoc
+prop_spanBP         = L.span                 `eq2`  P.span
+prop_splitBP        = L.split                `eq2`  P.split
+prop_splitAtBP      = (L.splitAt. toInt64)   `eq2`  P.splitAt
+prop_takeBP         = (L.take   . toInt64)   `eq2`  P.take
+prop_takeWhileBP    = L.takeWhile            `eq2`  P.takeWhile
+prop_elemBP         = L.elem                 `eq2`  P.elem
+prop_notElemBP      = L.notElem              `eq2`  P.notElem
+prop_elemIndexBP    = L.elemIndex            `eq2`  ((fmap toInt64 .) . P.elemIndex)
+prop_elemIndicesBP  = L.elemIndices          `eq2`  ((fmap toInt64 .) . P.elemIndices)
+prop_intersperseBP  = L.intersperse          `eq2`  P.intersperse
+prop_lengthBP       = L.length               `eq1`  (toInt64 . P.length)
+prop_readIntBP      = D.readInt              `eq1`  C.readInt
+prop_linesBP        = D.lines                `eq1`  C.lines
 
 -- double check:
 -- Currently there's a bug in the lazy bytestring version of lines, this
@@ -322,42 +325,42 @@ prop_repeatL   =
 --
 
 prop_concatBL       = adjustSize (`div` 2) $
-                      L.concat      `eq1` (concat    :: [[W]] -> [W])
-prop_lengthBL       = L.length      `eq1` (length    :: [W] -> Int)
-prop_nullBL         = L.null        `eq1` (null      :: [W] -> Bool)
-prop_reverseBL      = L.reverse     `eq1` (reverse   :: [W] -> [W])
-prop_transposeBL    = L.transpose   `eq1` (transpose :: [[W]] -> [[W]])
-prop_groupBL        = L.group       `eq1` (group     :: [W] -> [[W]])
-prop_groupByBL      = L.groupBy     `eq2` (groupBy   :: (W -> W -> Bool) -> [W] -> [[W]])
-prop_initsBL        = L.inits       `eq1` (inits     :: [W] -> [[W]])
-prop_tailsBL        = L.tails       `eq1` (tails     :: [W] -> [[W]])
-prop_allBL          = L.all         `eq2` (all       :: (W -> Bool) -> [W] -> Bool)
-prop_anyBL          = L.any         `eq2` (any       :: (W -> Bool) -> [W] -> Bool)
-prop_appendBL       = L.append      `eq2` ((++)      :: [W] -> [W] -> [W])
-prop_breakBL        = L.break       `eq2` (break     :: (W -> Bool) -> [W] -> ([W],[W]))
+                      L.concat                `eq1` (concat    :: [[W]] -> [W])
+prop_lengthBL       = L.length                `eq1` (toInt64 . length    :: [W] -> Int64)
+prop_nullBL         = L.null                  `eq1` (null      :: [W] -> Bool)
+prop_reverseBL      = L.reverse               `eq1` (reverse   :: [W] -> [W])
+prop_transposeBL    = L.transpose             `eq1` (transpose :: [[W]] -> [[W]])
+prop_groupBL        = L.group                 `eq1` (group     :: [W] -> [[W]])
+prop_groupByBL      = L.groupBy               `eq2` (groupBy   :: (W -> W -> Bool) -> [W] -> [[W]])
+prop_initsBL        = L.inits                 `eq1` (inits     :: [W] -> [[W]])
+prop_tailsBL        = L.tails                 `eq1` (tails     :: [W] -> [[W]])
+prop_allBL          = L.all                   `eq2` (all       :: (W -> Bool) -> [W] -> Bool)
+prop_anyBL          = L.any                   `eq2` (any       :: (W -> Bool) -> [W] -> Bool)
+prop_appendBL       = L.append                `eq2` ((++)      :: [W] -> [W] -> [W])
+prop_breakBL        = L.break                 `eq2` (break     :: (W -> Bool) -> [W] -> ([W],[W]))
 prop_concatMapBL    = adjustSize (`div` 2) $
-                      L.concatMap   `eq2` (concatMap :: (W -> [W]) -> [W] -> [W])
-prop_consBL         = L.cons        `eq2` ((:)       :: W -> [W] -> [W])
-prop_dropBL         = L.drop        `eq2` (drop      :: Int -> [W] -> [W])
-prop_dropWhileBL    = L.dropWhile   `eq2` (dropWhile :: (W -> Bool) -> [W] -> [W])
-prop_filterBL       = L.filter      `eq2` (filter    :: (W -> Bool ) -> [W] -> [W])
-prop_findBL         = L.find        `eq2` (find      :: (W -> Bool) -> [W] -> Maybe W)
-prop_findIndicesBL  = L.findIndices `eq2` (findIndices:: (W -> Bool) -> [W] -> [Int])
-prop_findIndexBL    = L.findIndex   `eq2` (findIndex :: (W -> Bool) -> [W] -> Maybe Int)
-prop_isPrefixOfBL   = L.isPrefixOf  `eq2` (isPrefixOf:: [W] -> [W] -> Bool)
-prop_mapBL          = L.map         `eq2` (map       :: (W -> W) -> [W] -> [W])
+                      L.concatMap             `eq2` (concatMap :: (W -> [W]) -> [W] -> [W])
+prop_consBL         = L.cons                  `eq2` ((:)       :: W -> [W] -> [W])
+prop_dropBL         = (L.drop . toInt64)      `eq2` (drop      :: Int -> [W] -> [W])
+prop_dropWhileBL    = L.dropWhile             `eq2` (dropWhile :: (W -> Bool) -> [W] -> [W])
+prop_filterBL       = L.filter                `eq2` (filter    :: (W -> Bool ) -> [W] -> [W])
+prop_findBL         = L.find                  `eq2` (find      :: (W -> Bool) -> [W] -> Maybe W)
+prop_findIndicesBL  = L.findIndices           `eq2` ((fmap toInt64 .) . findIndices:: (W -> Bool) -> [W] -> [Int64])
+prop_findIndexBL    = L.findIndex             `eq2` ((fmap toInt64 .) . findIndex :: (W -> Bool) -> [W] -> Maybe Int64)
+prop_isPrefixOfBL   = L.isPrefixOf            `eq2` (isPrefixOf:: [W] -> [W] -> Bool)
+prop_mapBL          = L.map                   `eq2` (map       :: (W -> W) -> [W] -> [W])
 prop_replicateBL    = forAll arbitrarySizedIntegral $
-                      L.replicate   `eq2` (replicate :: Int -> W -> [W])
-prop_snocBL         = L.snoc        `eq2` ((\xs x -> xs ++ [x]) :: [W] -> W -> [W])
-prop_spanBL         = L.span        `eq2` (span      :: (W -> Bool) -> [W] -> ([W],[W]))
-prop_splitAtBL      = L.splitAt     `eq2` (splitAt   :: Int -> [W] -> ([W],[W]))
-prop_takeBL         = L.take        `eq2` (take      :: Int -> [W] -> [W])
-prop_takeWhileBL    = L.takeWhile   `eq2` (takeWhile :: (W -> Bool) -> [W] -> [W])
-prop_elemBL         = L.elem        `eq2` (elem      :: W -> [W] -> Bool)
-prop_notElemBL      = L.notElem     `eq2` (notElem   :: W -> [W] -> Bool)
-prop_elemIndexBL    = L.elemIndex   `eq2` (elemIndex :: W -> [W] -> Maybe Int)
-prop_elemIndicesBL  = L.elemIndices `eq2` (elemIndices:: W -> [W] -> [Int])
-prop_linesBL        = D.lines       `eq1` (lines     :: String -> [String])
+                      (L.replicate . toInt64) `eq2` (replicate :: Int -> W -> [W])
+prop_snocBL         = L.snoc                  `eq2` ((\xs x -> xs ++ [x]) :: [W] -> W -> [W])
+prop_spanBL         = L.span                  `eq2` (span      :: (W -> Bool) -> [W] -> ([W],[W]))
+prop_splitAtBL      = (L.splitAt . toInt64)   `eq2` (splitAt :: Int -> [W] -> ([W],[W]))
+prop_takeBL         = (L.take    . toInt64)   `eq2` (take    :: Int -> [W] -> [W])
+prop_takeWhileBL    = L.takeWhile             `eq2` (takeWhile :: (W -> Bool) -> [W] -> [W])
+prop_elemBL         = L.elem                  `eq2` (elem      :: W -> [W] -> Bool)
+prop_notElemBL      = L.notElem               `eq2` (notElem   :: W -> [W] -> Bool)
+prop_elemIndexBL    = L.elemIndex             `eq2` ((fmap toInt64 .) . elemIndex   :: W -> [W] -> Maybe Int64)
+prop_elemIndicesBL  = L.elemIndices           `eq2` ((fmap toInt64 .) . elemIndices :: W -> [W] -> [Int64])
+prop_linesBL        = D.lines                 `eq1` (lines     :: String -> [String])
 
 prop_foldl1BL       = L.foldl1  `eqnotnull2` (foldl1    :: (W -> W -> W) -> [W] -> W)
 prop_foldl1BL'      = L.foldl1' `eqnotnull2` (foldl1'   :: (W -> W -> W) -> [W] -> W)
@@ -1897,6 +1900,7 @@ cc_tests =
     , testProperty "prop_breakCC"       prop_breakCC
     , testProperty "prop_concatMapCC"   prop_concatMapCC
     , testProperty "prop_consCC"        prop_consCC
+    , testProperty "prop_consCC'"       prop_consCC'
     , testProperty "prop_unconsCC"      prop_unconsCC
     , testProperty "prop_countCC"       prop_countCC
     , testProperty "prop_dropCC"        prop_dropCC
@@ -1949,7 +1953,6 @@ bp_tests =
     , testProperty "concat"      prop_concatBP
     , testProperty "cons"        prop_consBP
     , testProperty "cons'"       prop_consBP'
-    , testProperty "cons'"       prop_consLP'
     , testProperty "uncons"      prop_unconsBP
     , testProperty "eq"          prop_eqBP
     , testProperty "filter"      prop_filterBP
