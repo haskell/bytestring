@@ -18,12 +18,7 @@ module Data.ByteString.Lazy.Builder.BasicEncoding.Internal.Floating
   , encodeDoubleViaWord64F
   ) where
 
-#if MIN_VERSION_base(4,4,0)
-import Foreign hiding (unsafePerformIO)
-import System.IO.Unsafe (unsafePerformIO)
-#else
 import Foreign
-#endif
 import Data.ByteString.Lazy.Builder.BasicEncoding.Internal
 
 {-

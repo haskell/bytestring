@@ -213,7 +213,7 @@ instance Data ByteString where
   gfoldl f z txt = z packBytes `f` (unpackBytes txt)
   toConstr _     = error "Data.ByteString.ByteString.toConstr"
   gunfold _ _    = error "Data.ByteString.ByteString.gunfold"
-#if __GLASGOW_HASKELL__ >= 612
+#if MIN_VERSION_base(4,2,0)
   dataTypeOf _   = mkNoRepType "Data.ByteString.ByteString"
 #else
   dataTypeOf _   = mkNorepType "Data.ByteString.ByteString"

@@ -109,12 +109,7 @@ module Data.ByteString.Lazy.Builder.Internal (
 
 ) where
 
--- TODO: Check if we still require conditional compilation for Applicative
-
--- #ifdef APPLICATIVE_IN_BASE
-import Control.Applicative (Applicative(..))
--- #endif
-import Control.Applicative ((<$>))
+import Control.Applicative (Applicative(..), (<$>))
 
 import Data.Monoid
 import qualified Data.ByteString               as S
@@ -363,17 +358,17 @@ instance Functor Put where
   fmap f p = Put $ \k -> unPut p (\x -> k (f x))
   {-# INLINE fmap #-}
 
--- #ifdef APPLICATIVE_IN_BASE
 instance Applicative Put where
   {-# INLINE pure #-}
   pure x = Put $ \k -> k x
   {-# INLINE (<*>) #-}
   Put f <*> Put a = Put $ \k -> f (\f' -> a (\a' -> k (f' a')))
+#if MIN_VERSION_base(4,2,0)
   {-# INLINE (<*) #-}
   Put a <* Put b = Put $ \k -> a (\a' -> b (\_ -> k a'))
   {-# INLINE (*>) #-}
   Put a *> Put b = Put $ \k -> a (\_ -> b k)
--- #endif
+#endif
 
 instance Monad Put where
   {-# INLINE return #-}
