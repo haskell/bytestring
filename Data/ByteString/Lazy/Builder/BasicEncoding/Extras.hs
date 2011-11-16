@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, BangPatterns, MonoPatBinds, ScopedTypeVariables #-}
+{-# LANGUAGE CPP, BangPatterns, ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 {-# OPTIONS_HADDOCK hide #-}
 {- | Copyright : (c) 2010-2011 Simon Meier
@@ -773,7 +773,7 @@ buildStepToCIOSUntrimmedWith bufSize =
 ----------------------------------------------------------------------
 
 {-# INLINE appsUntilZero #-}
-appsUntilZero :: Num a => (a -> a) -> a -> Int
+appsUntilZero :: (Eq a, Num a) => (a -> a) -> a -> Int
 appsUntilZero f x0 =
     count 0 x0
   where
@@ -782,7 +782,7 @@ appsUntilZero f x0 =
 
 
 {-# INLINE genericVarFixedBound #-}
-genericVarFixedBound :: (Bits b, Num a, Integral b)
+genericVarFixedBound :: (Eq b, Show b, Bits b, Num a, Integral b)
                 => (b -> a -> b) -> b -> FixedEncoding b
 genericVarFixedBound shiftRight bound =
     fixedEncoding n0 io

@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, BangPatterns, MonoPatBinds #-}
+{-# LANGUAGE CPP, BangPatterns #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 {- | Copyright   : (c) 2010 Jasper Van der Jeugt
                    (c) 2010 - 2011 Simon Meier
@@ -262,7 +262,7 @@ import           Data.ByteString.Lazy.Builder.Internal
 import qualified Data.ByteString.Lazy.Builder.BasicEncoding as E
 import qualified Data.ByteString.Lazy.Internal as L
 
-import           System.IO
+import           System.IO (Handle)
 import           Foreign
 
 -- HADDOCK only imports

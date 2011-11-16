@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables, CPP, BangPatterns, Rank2Types, MonoPatBinds #-}
+{-# LANGUAGE ScopedTypeVariables, CPP, BangPatterns, Rank2Types #-}
 {-# OPTIONS_HADDOCK hide #-}
 -- | Copyright : (c) 2010 - 2011 Simon Meier
 -- License     : BSD3-style (see LICENSE)
@@ -128,8 +128,13 @@ import GHC.IORef
 
 import System.IO (Handle, hFlush, BufferMode(..))
 
+#if MIN_VERSION_base(4,4,0)
+import Foreign hiding (unsafePerformIO, unsafeForeignPtrToPtr)
+import Foreign.ForeignPtr.Unsafe (unsafeForeignPtrToPtr)
+import System.IO.Unsafe (unsafePerformIO)
+#else
 import Foreign
-
+#endif
 
 
 type LazyByteStringC = L.ByteString -> L.ByteString

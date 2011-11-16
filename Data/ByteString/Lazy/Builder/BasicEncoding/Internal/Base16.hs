@@ -26,8 +26,13 @@ module Data.ByteString.Lazy.Builder.BasicEncoding.Internal.Base16 (
 import qualified Data.ByteString          as S
 import qualified Data.ByteString.Internal as S
 
-import Foreign
-
+#if MIN_VERSION_base(4,4,0)
+import           Foreign hiding (unsafePerformIO, unsafeForeignPtrToPtr)
+import           Foreign.ForeignPtr.Unsafe (unsafeForeignPtrToPtr)
+import           System.IO.Unsafe (unsafePerformIO)
+#else
+import           Foreign
+#endif
 
 -- Creating the encoding tables
 -------------------------------

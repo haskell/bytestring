@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, BangPatterns, MonoPatBinds, ScopedTypeVariables #-}
+{-# LANGUAGE CPP, BangPatterns, ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 {- | Copyright : (c) 2010-2011 Simon Meier
                    (c) 2010      Jasper van der Jeugt
@@ -492,8 +492,13 @@ import qualified Data.ByteString.Lazy.Builder.BasicEncoding.Internal as I (size,
 import           Data.ByteString.Lazy.Builder.BasicEncoding.Binary
 import           Data.ByteString.Lazy.Builder.BasicEncoding.ASCII
 
+#if MIN_VERSION_base(4,4,0)
+import           Foreign hiding (unsafePerformIO, unsafeForeignPtrToPtr)
+import           Foreign.ForeignPtr.Unsafe (unsafeForeignPtrToPtr)
+import           System.IO.Unsafe (unsafePerformIO)
+#else
 import           Foreign
-
+#endif
 
 ------------------------------------------------------------------------------
 -- Creating Builders from bounded encodings

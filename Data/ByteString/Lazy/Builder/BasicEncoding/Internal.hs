@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables, CPP, BangPatterns, MonoPatBinds #-}
+{-# LANGUAGE ScopedTypeVariables, CPP, BangPatterns #-}
 {-# OPTIONS_HADDOCK hide #-}
 -- |
 -- Copyright   : 2010-2011 Simon Meier, 2010 Jasper van der Jeugt

@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, MagicHash, MonoPatBinds #-}
+{-# LANGUAGE CPP, MagicHash #-}
 -- |
 -- Copyright   : (c) 2010 Simon Meier
 --
