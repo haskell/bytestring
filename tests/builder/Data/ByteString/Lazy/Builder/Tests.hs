@@ -51,7 +51,10 @@ import           Test.QuickCheck.Property (printTestCase)
 tests :: [Test]
 tests =
   [ testBuilderRecipe
+#if MIN_VERSION_base(4,2,0)
   , testHandlePutBuilder
+#endif
+  , testHandlePutBuilderChar8
   , testPut
   ] ++
   testsEncodingToBuilder ++
@@ -82,6 +85,7 @@ testBuilderRecipe =
           , "diff  : " ++ show (dropWhile (uncurry (==)) $ zip x1 x2)
           ]
 
+#if MIN_VERSION_base(4,2,0)
 testHandlePutBuilder :: Test
 testHandlePutBuilder =
     testProperty "hPutBuilder" testRecipe
@@ -107,6 +111,43 @@ testHandlePutBuilder =
         -- compare to pure builder implementation
         let lbsRef = toLazyByteString $ mconcat
               [stringUtf8 before, b, stringUtf8 between, b, stringUtf8 after]
+        -- report
+        let msg = unlines
+              [ "task:     " ++ show args
+              , "via file: " ++ show lbs
+              , "direct :  " ++ show lbsRef
+              -- , "diff  : " ++ show (dropWhile (uncurry (==)) $ zip x1 x2)
+              ]
+            success = lbs == lbsRef
+        unless success (error msg)
+        return success
+#endif
+
+testHandlePutBuilderChar8 :: Test
+testHandlePutBuilderChar8 =
+    testProperty "char8 hPutBuilder" testRecipe
+  where
+    testRecipe :: (String, String, String, Recipe) -> Bool
+    testRecipe args@(before, between, after, recipe) = unsafePerformIO $ do
+        tempDir <- getTemporaryDirectory
+        (tempFile, tempH) <- openTempFile tempDir "TestBuilder"
+        -- switch to binary / latin1 encoding
+        hSetBinaryMode tempH True
+        -- output recipe with intermediate direct writing to handle
+        let b = fst $ recipeComponents recipe
+        hPutStr tempH before
+        hPutBuilder tempH b
+        hPutStr tempH between
+        hPutBuilder tempH b
+        hPutStr tempH after
+        hClose tempH
+        -- read file
+        lbs <- L.readFile tempFile
+        _ <- evaluate (L.length $ lbs)
+        removeFile tempFile
+        -- compare to pure builder implementation
+        let lbsRef = toLazyByteString $ mconcat
+              [string8 before, b, string8 between, b, string8 after]
         -- report
         let msg = unlines
               [ "task:     " ++ show args
