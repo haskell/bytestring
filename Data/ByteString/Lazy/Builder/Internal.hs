@@ -121,12 +121,16 @@ import qualified Data.ByteString               as S
 import qualified Data.ByteString.Internal      as S
 import qualified Data.ByteString.Lazy.Internal as L
 
+#if __GLASGOW_HASKELL__ >= 611
 import GHC.IO.Buffer (Buffer(..), newByteBuffer)
 import GHC.IO.Handle.Internals (wantWritableHandle, flushWriteBuffer)
 import GHC.IO.Handle.Types (Handle__, haByteBuffer, haBufferMode)
-import GHC.IORef
-
-import System.IO (Handle, hFlush, BufferMode(..))
+import System.IO (hFlush, BufferMode(..))
+import Data.IORef
+#else
+import qualified Data.ByteString.Lazy as L
+#endif
+import System.IO (Handle)
 
 #if MIN_VERSION_base(4,4,0)
 import Foreign hiding (unsafePerformIO, unsafeForeignPtrToPtr)
@@ -415,6 +419,7 @@ putLiftIO io = put $ \k br -> io >>= (`k` br)
 -- buffer is too small to execute one step of the 'Put' action, then
 -- it is replaced with a large enough buffer.
 hPut :: forall a. Handle -> Put a -> IO a
+#if __GLASGOW_HASKELL__ >= 611
 hPut h p = do
     fillHandle 1 (runPut p)
   where
@@ -504,7 +509,15 @@ hPut h p = do
                         L.foldrChunks (\c rest -> S.hPut h c >> rest) (return ())
                                       (lbsC L.Empty)
                         fillHandle 1 nextStep
-
+#else
+hPut h p =
+    go =<< buildStepToCIOS strategy (return . Finished) (runPut p)
+  where
+    go (Finished k)       = return k
+    go (Yield1 bs io)     = S.hPut h bs >> io >>= go
+    go (YieldC _ lbsC io) = L.hPut h (lbsC L.Empty) >> io >>= go
+    strategy = untrimmedStrategy L.smallChunkSize L.defaultChunkSize
+#endif
 
 ------------------------------------------------------------------------------
 -- ByteString insertion / controlling chunk boundaries
