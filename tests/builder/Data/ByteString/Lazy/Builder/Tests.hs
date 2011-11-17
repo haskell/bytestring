@@ -18,7 +18,8 @@ import           Control.Applicative
 import           Control.Monad.State
 import           Control.Monad.Writer
 
-import           Foreign
+import           Foreign (Word, Word8, Word64, minusPtr)
+import           System.IO.Unsafe (unsafePerformIO)
 
 import           Data.Char (ord, chr)
 import qualified Data.DList      as D
@@ -39,7 +40,10 @@ import           Data.ByteString.Lazy.Builder.BasicEncoding.TestUtils
 import           Numeric (readHex)
 
 import           Control.Exception (evaluate)
-import           System.IO
+import           System.IO (openTempFile, hPutStr, hClose, hSetBinaryMode)
+#if MIN_VERSION_base(4,2,0)
+import           System.IO (hSetEncoding, utf8)
+#endif
 import           System.Directory
 
 import           TestFramework
