@@ -96,7 +96,8 @@ instance Arbitrary CByteString where
       fromCChar = fromIntegral
 
 instance Arbitrary CChar where
-  arbitrary = oneof [choose (-128,-1), choose (1,127)]
+  arbitrary = fmap (fromIntegral :: Int -> CChar)
+            $ oneof [choose (-128,-1), choose (1,127)]
 
 ------------------------------------------------------------------------
 --
