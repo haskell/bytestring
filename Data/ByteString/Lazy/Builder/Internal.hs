@@ -454,7 +454,13 @@ hPut h p = do
                   newByteBuffer minFree s >>= writeIORef refBuf
 
               | freeSpace buf < minFree = flushWriteBuffer h_
-              | otherwise               = return ()
+              | otherwise               =
+#if __GLASGOW_HASKELL__ >= 613
+                                          return ()
+#else
+                                          -- required for ghc-6.12
+                                          flushWriteBuffer h_
+#endif
 
             fillBuffer buf
               | freeSpace buf < minFree =
