@@ -73,6 +73,7 @@ module Data.ByteString.Lazy (
         append,                 -- :: ByteString -> ByteString -> ByteString
         head,                   -- :: ByteString -> Word8
         uncons,                 -- :: ByteString -> Maybe (Word8, ByteString)
+        unsnoc,                 -- :: ByteString -> Maybe (ByteString, Word8)
         last,                   -- :: ByteString -> Word8
         tail,                   -- :: ByteString -> ByteString
         init,                   -- :: ByteString -> ByteString
@@ -394,7 +395,7 @@ tail (Chunk c cs)
 last :: ByteString -> Word8
 last Empty          = errorEmptyList "last"
 last (Chunk c0 cs0) = go c0 cs0
-  where go c Empty        = S.last c
+  where go c Empty        = S.unsafeLast c
         go _ (Chunk c cs) = go c cs
 -- XXX Don't inline this. Something breaks with 6.8.2 (haven't investigated yet)
 
@@ -403,8 +404,18 @@ init :: ByteString -> ByteString
 init Empty          = errorEmptyList "init"
 init (Chunk c0 cs0) = go c0 cs0
   where go c Empty | S.length c == 1 = Empty
-                   | otherwise       = Chunk (S.init c) Empty
+                   | otherwise       = Chunk (S.unsafeInit c) Empty
         go c (Chunk c' cs)           = Chunk c (go c' cs)
+
+-- | /O(n\/c)/ Extract the 'init' and 'last' of a ByteString, returning Nothing
+-- if it is empty.
+unsnoc :: ByteString -> Maybe (ByteString, Word8)
+unsnoc Empty = Nothing
+unsnoc (Chunk c0 cs0) = Just (go id c0 cs0)
+  where go r c Empty = (r $ if S.null i then Empty else Chunk i Empty, l)
+          where i = S.unsafeInit c
+                l = S.unsafeLast c
+        go r c (Chunk c' cs) = go (r . Chunk c) c' cs
 
 -- | /O(n\/c)/ Append two ByteStrings
 append :: ByteString -> ByteString -> ByteString

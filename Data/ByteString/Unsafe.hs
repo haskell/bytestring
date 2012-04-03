@@ -23,6 +23,8 @@ module Data.ByteString.Unsafe (
         -- * Unchecked access
         unsafeHead,             -- :: ByteString -> Word8
         unsafeTail,             -- :: ByteString -> ByteString
+        unsafeInit,             -- :: ByteString -> ByteString
+        unsafeLast,             -- :: ByteString -> Word8
         unsafeIndex,            -- :: ByteString -> Int -> Word8
         unsafeTake,             -- :: Int -> ByteString -> ByteString
         unsafeDrop,             -- :: Int -> ByteString -> ByteString
@@ -109,6 +111,21 @@ unsafeHead (PS x s l) = assert (l > 0) $
 unsafeTail :: ByteString -> ByteString
 unsafeTail (PS ps s l) = assert (l > 0) $ PS ps (s+1) (l-1)
 {-# INLINE unsafeTail #-}
+
+-- | A variety of 'init' for non-empty ByteStrings. 'unsafeInit' omits the
+-- check for the empty case. As with 'unsafeHead', the programmer must
+-- provide a separate proof that the ByteString is non-empty.
+unsafeInit :: ByteString -> ByteString
+unsafeInit (PS ps s l) = assert (l > 0) $ PS ps s (l-1)
+{-# INLINE unsafeInit #-}
+
+-- | A variety of 'last' for non-empty ByteStrings. 'unsafeLast' omits the
+-- check for the empty case. As with 'unsafeHead', the programmer must
+-- provide a separate proof that the ByteString is non-empty.
+unsafeLast :: ByteString -> Word8
+unsafeLast (PS x s l) = assert (l > 0) $
+    inlinePerformIO $ withForeignPtr x $ \p -> peekByteOff p (s+l-1)
+{-# INLINE unsafeLast #-}
 
 -- | Unsafe 'ByteString' index (subscript) operator, starting from 0, returning a 'Word8'
 -- This omits the bounds check, which means there is an accompanying

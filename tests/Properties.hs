@@ -76,6 +76,7 @@ prop_concatMapCC    = adjustSize (min 50) $
 prop_consCC         = D.cons                  `eq2`  C.cons
 prop_consCC'        = D.cons'                 `eq2`  C.cons
 prop_unconsCC       = D.uncons                `eq1`  C.uncons
+prop_unsnocCC       = D.unsnoc                `eq1`  C.unsnoc
 prop_countCC        = D.count                 `eq2`  ((toInt64 .) . C.count)
 prop_dropCC         = (D.drop . toInt64)      `eq2`  C.drop
 prop_dropWhileCC    = D.dropWhile             `eq2`  C.dropWhile
@@ -159,6 +160,7 @@ prop_concatMapBP    = adjustSize (`div` 4) $
 prop_consBP         = L.cons                 `eq2`  P.cons
 prop_consBP'        = L.cons'                `eq2`  P.cons
 prop_unconsBP       = L.uncons               `eq1`  P.uncons
+prop_unsnocBP       = L.unsnoc               `eq1`  P.unsnoc
 prop_countBP        = L.count                `eq2`  ((toInt64 .) . P.count)
 prop_dropBP         = (L.drop. toInt64)      `eq2`  P.drop
 prop_dropWhileBP    = L.dropWhile            `eq2`  P.dropWhile
@@ -918,10 +920,14 @@ prop_tailBB xs     = (not (null xs)) ==> tail xs    == (P.unpack . P.tail . P.pa
 prop_tail1BB xs    = (not (null xs)) ==> tail xs    == (P.unpack . P.unsafeTail. P.pack) xs
 
 prop_lastBB xs     = (not (null xs)) ==> last xs    == (P.last . P.pack) xs
+prop_last1BB xs    = (not (null xs)) ==> last xs    == (P.unsafeLast . P.pack) xs
 
 prop_initBB xs     =
     (not (null xs)) ==>
     init xs    == (P.unpack . P.init . P.pack) xs
+prop_init1BB xs     =
+    (not (null xs)) ==>
+    init xs    == (P.unpack . P.unsafeInit . P.pack) xs
 
 -- prop_null xs = (null xs) ==> null xs == (nullPS (pack xs))
 
@@ -1902,6 +1908,7 @@ cc_tests =
     , testProperty "prop_consCC"        prop_consCC
     , testProperty "prop_consCC'"       prop_consCC'
     , testProperty "prop_unconsCC"      prop_unconsCC
+    , testProperty "prop_unsnocCC"      prop_unsnocCC
     , testProperty "prop_countCC"       prop_countCC
     , testProperty "prop_dropCC"        prop_dropCC
     , testProperty "prop_dropWhileCC"   prop_dropWhileCC
@@ -1954,6 +1961,7 @@ bp_tests =
     , testProperty "cons"        prop_consBP
     , testProperty "cons'"       prop_consBP'
     , testProperty "uncons"      prop_unconsBP
+    , testProperty "unsnoc"      prop_unsnocBP
     , testProperty "eq"          prop_eqBP
     , testProperty "filter"      prop_filterBP
     , testProperty "find"        prop_findBP
@@ -2136,7 +2144,9 @@ bb_tests =
     , testProperty "tail"           prop_tailBB
     , testProperty "tail 1"         prop_tail1BB
     , testProperty "last"           prop_lastBB
+    , testProperty "last 1"         prop_last1BB
     , testProperty "init"           prop_initBB
+    , testProperty "init 1"         prop_init1BB
     , testProperty "append 1"       prop_append1BB
     , testProperty "append 2"       prop_append2BB
     , testProperty "append 3"       prop_append3BB

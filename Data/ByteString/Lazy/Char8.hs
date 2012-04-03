@@ -54,6 +54,7 @@ module Data.ByteString.Lazy.Char8 (
         uncons,                 -- :: ByteString -> Maybe (Char, ByteString)
         last,                   -- :: ByteString -> Char
         tail,                   -- :: ByteString -> ByteString
+        unsnoc,                 -- :: ByteString -> Maybe (ByteString, Char)
         init,                   -- :: ByteString -> ByteString
         null,                   -- :: ByteString -> Bool
         length,                 -- :: ByteString -> Int64
@@ -289,6 +290,14 @@ uncons bs = case L.uncons bs of
                   Nothing -> Nothing
                   Just (w, bs') -> Just (w2c w, bs')
 {-# INLINE uncons #-}
+
+-- | /O(n\/c)/ Extract the 'init' and 'last' of a ByteString, returning Nothing
+-- if it is empty.
+unsnoc :: ByteString -> Maybe (ByteString, Char)
+unsnoc bs = case L.unsnoc bs of
+                  Nothing -> Nothing
+                  Just (bs', w) -> Just (bs', w2c w)
+{-# INLINE unsnoc #-}
 
 -- | /O(1)/ Extract the last element of a packed string, which must be non-empty.
 last :: ByteString -> Char

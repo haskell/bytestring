@@ -61,6 +61,7 @@ module Data.ByteString.Char8 (
         append,                 -- :: ByteString -> ByteString -> ByteString
         head,                   -- :: ByteString -> Char
         uncons,                 -- :: ByteString -> Maybe (Char, ByteString)
+        unsnoc,                 -- :: ByteString -> Maybe (ByteString, Char)
         last,                   -- :: ByteString -> Char
         tail,                   -- :: ByteString -> ByteString
         init,                   -- :: ByteString -> ByteString
@@ -317,6 +318,14 @@ uncons bs = case B.uncons bs of
                   Nothing -> Nothing
                   Just (w, bs') -> Just (w2c w, bs')
 {-# INLINE uncons #-}
+
+-- | /O(1)/ Extract the 'init' and 'last' of a ByteString, returning Nothing
+-- if it is empty.
+unsnoc :: ByteString -> Maybe (ByteString, Char)
+unsnoc bs = case B.unsnoc bs of
+                  Nothing -> Nothing
+                  Just (bs', w) -> Just (bs', w2c w)
+{-# INLINE unsnoc #-}
 
 -- | /O(1)/ Extract the first element of a ByteString, which must be non-empty.
 head :: ByteString -> Char

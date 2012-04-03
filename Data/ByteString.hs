@@ -56,6 +56,7 @@ module Data.ByteString (
         append,                 -- :: ByteString -> ByteString -> ByteString
         head,                   -- :: ByteString -> Word8
         uncons,                 -- :: ByteString -> Maybe (Word8, ByteString)
+        unsnoc,                 -- :: ByteString -> Maybe (ByteString, Word8)
         last,                   -- :: ByteString -> Word8
         tail,                   -- :: ByteString -> ByteString
         init,                   -- :: ByteString -> ByteString
@@ -463,6 +464,16 @@ init ps@(PS p s l)
     | otherwise = PS p s (l-1)
 {-# INLINE init #-}
 
+-- | /O(1)/ Extract the 'init' and 'last' of a ByteString, returning Nothing
+-- if it is empty.
+unsnoc :: ByteString -> Maybe (ByteString, Word8)
+unsnoc (PS x s l)
+    | l <= 0    = Nothing
+    | otherwise = Just (PS x s (l-1),
+                        inlinePerformIO $ withForeignPtr x
+                                        $ \p -> peekByteOff p (s+l-1))
+{-# INLINE unsnoc #-}
+
 -- | /O(n)/ Append two ByteStrings
 append :: ByteString -> ByteString -> ByteString
 append = mappend
@@ -581,7 +592,7 @@ foldl1' f ps
 foldr1 :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldr1 f ps
     | null ps        = errorEmptyList "foldr1"
-    | otherwise      = foldr f (last ps) (init ps)
+    | otherwise      = foldr f (unsafeLast ps) (unsafeInit ps)
 {-# INLINE foldr1 #-}
 
 -- | 'foldr1\'' is a variant of 'foldr1', but is strict in the
@@ -589,7 +600,7 @@ foldr1 f ps
 foldr1' :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldr1' f ps
     | null ps        = errorEmptyList "foldr1"
-    | otherwise      = foldr' f (last ps) (init ps)
+    | otherwise      = foldr' f (unsafeLast ps) (unsafeInit ps)
 {-# INLINE foldr1' #-}
 
 -- ---------------------------------------------------------------------
@@ -764,7 +775,7 @@ scanr f v (PS fp s len) = inlinePerformIO $ withForeignPtr fp $ \a ->
 scanr1 :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString
 scanr1 f ps
     | null ps   = empty
-    | otherwise = scanr f (last ps) (init ps) -- todo, unsafe versions
+    | otherwise = scanr f (unsafeLast ps) (unsafeInit ps)
 {-# INLINE scanr1 #-}
 
 -- ---------------------------------------------------------------------
@@ -2022,5 +2033,5 @@ findFromEndUntil :: (Word8 -> Bool) -> ByteString -> Int
 STRICT2(findFromEndUntil)
 findFromEndUntil f ps@(PS x s l) =
     if null ps then 0
-    else if f (last ps) then l
+    else if f (unsafeLast ps) then l
          else findFromEndUntil f (PS x s (l-1))
