@@ -36,6 +36,7 @@ module Data.ByteString.Unsafe (
         unsafePackCString,      -- :: CString -> IO ByteString
         unsafePackCStringLen,   -- :: CStringLen -> IO ByteString
         unsafePackMallocCString,-- :: CString -> IO ByteString
+        unsafePackMallocCStringLen, -- :: CStringLen -> IO ByteString
 
 #if defined(__GLASGOW_HASKELL__)
         unsafePackAddress,          -- :: Addr# -> IO ByteString
@@ -262,6 +263,22 @@ unsafePackMallocCString cstr = do
     fp <- newForeignPtr c_free_finalizer (castPtr cstr)
     len <- c_strlen cstr
     return $! PS fp 0 (fromIntegral len)
+
+-- | /O(n)/ Build a @ByteString@ from a malloced @CStringLen@. This
+-- value will have a @free(3)@ finalizer associated to it.
+--
+-- This funtion is /unsafe/. If the original @CString@ is later
+-- modified, this change will be reflected in the resulting @ByteString@,
+-- breaking referential transparency.
+--
+-- This function is also unsafe if you call its finalizer twice,
+-- which will result in a /double free/ error, or if you pass it
+-- a CString not allocated with 'malloc'.
+--
+unsafePackMallocCStringLen :: CStringLen -> IO ByteString
+unsafePackMallocCStringLen (cstr, len) = do
+    fp <- newForeignPtr c_free_finalizer (castPtr cstr)
+    return $! PS fp 0 len
 
 -- ---------------------------------------------------------------------
 
