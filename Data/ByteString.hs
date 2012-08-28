@@ -1808,13 +1808,12 @@ hPut h (PS ps s l) = withForeignPtr ps $ \p-> hPutBuf h (p `plusPtr` s) l
 -- Note: on Windows and with Haskell implementation other than GHC, this
 -- function does not work correctly; it behaves identically to 'hPut'.
 --
-#if defined(__GLASGOW_HASKELL__)
 hPutNonBlocking :: Handle -> ByteString -> IO ByteString
+#if defined(__GLASGOW_HASKELL__)
 hPutNonBlocking h bs@(PS ps s l) = do
   bytesWritten <- withForeignPtr ps $ \p-> hPutBufNonBlocking h (p `plusPtr` s) l
   return $! drop bytesWritten bs
 #else
-hPutNonBlocking :: Handle -> B.ByteString -> IO Int
 hPutNonBlocking h bs = hPut h bs >> return empty
 #endif
 
