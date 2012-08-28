@@ -820,7 +820,7 @@ unfoldr f = concat . unfoldChunk 32 64
 --
 -- The following equation relates 'unfoldrN' and 'unfoldr':
 --
--- > snd (unfoldrN n f s) == take n (unfoldr f s)
+-- > fst (unfoldrN n f s) == take n (unfoldr f s)
 --
 unfoldrN :: Int -> (a -> Maybe (Word8, a)) -> a -> (ByteString, Maybe a)
 unfoldrN i f x0
