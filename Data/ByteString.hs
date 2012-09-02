@@ -1786,6 +1786,7 @@ mkPS buf start end =
         memcpy_ptr_baoff p buf (fromIntegral start) (fromIntegral len)
         return ()
 
+memcpy_ptr_baoff dst src src_off sz = memcpy dst (src+src_off) sz
 #endif
 
 mkBigPS :: Int -> [ByteString] -> IO ByteString

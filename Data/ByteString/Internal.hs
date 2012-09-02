@@ -63,10 +63,6 @@ module Data.ByteString.Internal (
         c_maximum,              -- :: Ptr Word8 -> CInt -> IO Word8
         c_minimum,              -- :: Ptr Word8 -> CInt -> IO Word8
         c_count,                -- :: Ptr Word8 -> CInt -> Word8 -> IO CInt
-#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ < 611
-        -- * Internal GHC magic
-        memcpy_ptr_baoff,       -- :: Ptr a -> RawBuffer -> CInt -> CSize -> IO (Ptr ())
-#endif
 
         -- * Chars
         w2c, c2w, isSpaceWord8, isSpaceChar8
@@ -584,10 +580,3 @@ foreign import ccall unsafe "static fpstring.h fps_minimum" c_minimum
 foreign import ccall unsafe "static fpstring.h fps_count" c_count
     :: Ptr Word8 -> CULong -> Word8 -> IO CULong
 
--- ---------------------------------------------------------------------
--- Internal GHC Haskell magic
-
-#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ < 611
-foreign import ccall unsafe "__hscore_memcpy_src_off"
-   memcpy_ptr_baoff :: Ptr a -> RawBuffer -> CInt -> CSize -> IO (Ptr ())
-#endif
