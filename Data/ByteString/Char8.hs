@@ -255,7 +255,7 @@ import Data.ByteString.Internal
 import Data.Char    ( isSpace )
 import qualified Data.List as List (intersperse)
 
-import System.IO                (Handle,stdout,openFile,hClose,hFileSize,IOMode(..))
+import System.IO    (Handle,stdout,openBinaryFile,hClose,hFileSize,IOMode(..))
 #ifndef __NHC__
 import Control.Exception        (bracket)
 #else
@@ -1004,17 +1004,17 @@ readInteger as
 -- 'pack'.  It also may be more efficient than opening the file and
 -- reading it using hGet.
 readFile :: FilePath -> IO ByteString
-readFile f = bracket (openFile f ReadMode) hClose
+readFile f = bracket (openBinaryFile f ReadMode) hClose
     (\h -> hFileSize h >>= hGet h . fromIntegral)
 
 -- | Write a 'ByteString' to a file.
 writeFile :: FilePath -> ByteString -> IO ()
-writeFile f txt = bracket (openFile f WriteMode) hClose
+writeFile f txt = bracket (openBinaryFile f WriteMode) hClose
     (\h -> hPut h txt)
 
 -- | Append a 'ByteString' to a file.
 appendFile :: FilePath -> ByteString -> IO ()
-appendFile f txt = bracket (openFile f AppendMode) hClose
+appendFile f txt = bracket (openBinaryFile f AppendMode) hClose
     (\h -> hPut h txt)
 
 

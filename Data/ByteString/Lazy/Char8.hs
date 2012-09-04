@@ -218,7 +218,7 @@ import Prelude hiding
         ,readFile,writeFile,appendFile,replicate,getContents,getLine,putStr,putStrLn
         ,zip,zipWith,unzip,notElem,repeat,iterate,interact,cycle)
 
-import System.IO            (Handle,stdout,hClose,openFile,IOMode(..))
+import System.IO            (Handle,stdout,hClose,openBinaryFile,IOMode(..))
 #ifndef __NHC__
 import Control.Exception    (bracket)
 #else
@@ -856,16 +856,16 @@ readInteger (Chunk c0 cs0) =
 -- | Read an entire file /lazily/ into a 'ByteString'. Use 'text mode'
 -- on Windows to interpret newlines
 readFile :: FilePath -> IO ByteString
-readFile f = openFile f ReadMode >>= hGetContents
+readFile f = openBinaryFile f ReadMode >>= hGetContents
 
 -- | Write a 'ByteString' to a file.
 writeFile :: FilePath -> ByteString -> IO ()
-writeFile f txt = bracket (openFile f WriteMode) hClose
+writeFile f txt = bracket (openBinaryFile f WriteMode) hClose
     (\hdl -> hPut hdl txt)
 
 -- | Append a 'ByteString' to a file.
 appendFile :: FilePath -> ByteString -> IO ()
-appendFile f txt = bracket (openFile f AppendMode) hClose
+appendFile f txt = bracket (openBinaryFile f AppendMode) hClose
     (\hdl -> hPut hdl txt)
 
 
