@@ -255,6 +255,7 @@ module Data.ByteString.Builder
     , charUtf8
     , stringUtf8
 
+    , module Data.ByteString.Builder.ASCII
 
     ) where
 

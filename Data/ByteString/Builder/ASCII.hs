@@ -1,4 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables, CPP, ForeignFunctionInterface #-}
+{-# OPTIONS_HADDOCK hide #-}
 -- | Copyright : (c) 2010 - 2011 Simon Meier
 -- License     : BSD3-style (see LICENSE)
 --
@@ -9,7 +10,8 @@
 --
 module Data.ByteString.Builder.ASCII
     (
-      -- * Decimal numbers
+      -- ** ASCII text
+      -- *** Decimal numbers
       -- | Decimal encoding of numbers using ASCII encoded characters.
       int8Dec
     , int16Dec
@@ -27,7 +29,7 @@ module Data.ByteString.Builder.ASCII
     , floatDec
     , doubleDec
 
-      -- * Hexadecimal numbers
+      -- *** Hexadecimal numbers
 
       -- | Encoding positive integers as hexadecimal numbers using lower-case
       -- ASCII characters. The shortest
@@ -46,7 +48,7 @@ module Data.ByteString.Builder.ASCII
     , word64Hex
     , wordHex
 
-      -- * Fixed-width hexadecimal numbers
+      -- *** Fixed-width hexadecimal numbers
       --
     , int8HexFixed
     , int16HexFixed

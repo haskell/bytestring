@@ -69,8 +69,7 @@ Its \"hot code\" is the rendering of a table's cells,
   'Builder' API.
 
 @
-import "Data.ByteString.Builder"       as B
-import "Data.ByteString.Builder.ASCII" as B
+import "Data.ByteString.Builder" as B
 
 renderCell :: Cell -> Builder
 renderCell (StringC cs) = renderString cs
@@ -84,8 +83,7 @@ renderString cs = B.charUtf8 \'\"\' \<\> foldMap escape cs \<\> B.charUtf8 \'\"\
     escape c    = B.charUtf8 c
 @
 
-Efficient encoding of 'Int's as decimal numbers is performed by @intDec@
-  from "Data.ByteString.Builder.ASCII".
+Efficient encoding of 'Int's as decimal numbers is performed by @intDec@.
 Optimization potential exists for the escaping of 'String's.
 The above implementation has two optimization opportunities.
 First,

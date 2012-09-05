@@ -73,9 +73,9 @@ library
 
                      Data.ByteString.Builder
                      Data.ByteString.Builder.Extra
-                     Data.ByteString.Builder.ASCII
 
   other-modules:
+                     Data.ByteString.Builder.ASCII
                      -- these three modules should be exposed in a future
                      -- release once we're confident the API is stable.
                      Data.ByteString.Builder.Internal
