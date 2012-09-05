@@ -9,17 +9,24 @@
 -- Testing utilities for comparing
 -- for an example on how to use the functions provided here.
 --
-module Data.ByteString.Lazy.Builder.BasicEncoding.TestUtils (
+module Data.ByteString.Builder.Prim.TestUtils (
 
-  -- * Testing 'FixedEncoding's
-    testF
+  -- * Showing
+    evalF
+  , evalB
+
+  , showF
+  , showB
+
+  -- * Testing 'FixedPrim's
+  , testF
   , testBoundedF
 
   , testFixedBoundF
 
   , compareImpls
 
-  -- * Testing 'BoundedEncoding's
+  -- * Testing 'BoundedPrim's
   , testBoundedB
 
   -- * Encoding reference implementations
@@ -56,7 +63,12 @@ module Data.ByteString.Lazy.Builder.BasicEncoding.TestUtils (
 
 import           Control.Arrow (first)
 
-import           Data.ByteString.Lazy.Builder.BasicEncoding
+import           Data.ByteString.Builder.Prim
+
+import qualified Data.ByteString               as S
+import qualified Data.ByteString.Internal      as S
+import qualified Data.ByteString.Builder.Prim.Internal as I
+
 import           Data.Char (chr, ord)
 
 import           Numeric (showHex)
@@ -91,17 +103,45 @@ quoteWord8s :: [Word8] -> String
 quoteWord8s = quote . map (chr . fromIntegral)
 
 
--- FixedEncoding
+------------------------------------------------------------------------------
+-- Testing encodings
+------------------------------------------------------------------------------
+
+-- | /For testing use only./ Evaluate a 'FixedPrim' on a given value.
+evalF :: FixedPrim a -> a -> [Word8]
+evalF fe = S.unpack . S.unsafeCreate (I.size fe) . I.runF fe
+
+-- | /For testing use only./ Evaluate a 'BoundedPrim' on a given value.
+evalB :: BoundedPrim a -> a -> [Word8]
+evalB be x = S.unpack $ unsafePerformIO $
+    S.createAndTrim (I.sizeBound be) $ \op -> do
+        op' <- I.runB be x op
+        return (op' `minusPtr` op)
+
+-- | /For testing use only./ Show the result of a 'FixedPrim' of a given
+-- value as a 'String' by interpreting the resulting bytes as Unicode
+-- codepoints.
+showF :: FixedPrim a -> a -> String
+showF fe = map (chr . fromIntegral) . evalF fe
+
+-- | /For testing use only./ Show the result of a 'BoundedPrim' of a given
+-- value as a 'String' by interpreting the resulting bytes as Unicode
+-- codepoints.
+showB :: BoundedPrim a -> a -> String
+showB be = map (chr . fromIntegral) . evalB be
+
+
+-- FixedPrim
 ----------------
 
 -- TODO: Port code that checks for low-level properties of basic encodings (no
 -- overwrites, all bytes written, etc.) from old 'system-io-write' library
 
--- | Test a 'FixedEncoding' against a reference implementation.
+-- | Test a 'FixedPrim' against a reference implementation.
 testF :: (Arbitrary a, Show a)
       => String
       -> (a -> [Word8])
-      -> FixedEncoding a
+      -> FixedPrim a
       -> Test
 testF name ref fe =
     testProperty name prop
@@ -117,22 +157,22 @@ testF name ref fe =
         y  = evalF fe x
         y' = ref x
 
--- | Test a 'FixedEncoding' of a bounded value against a reference implementation
+-- | Test a 'FixedPrim' of a bounded value against a reference implementation
 -- and ensure that the bounds are always included as testcases.
 testBoundedF :: (Arbitrary a, Bounded a, Show a)
              => String
              -> (a -> [Word8])
-             -> FixedEncoding a
+             -> FixedPrim a
              -> Test
 testBoundedF name ref fe =
     testBoundedProperty name $ \x -> evalF fe x == ref x
 
--- FixedEncoding derived from a bound on a given value.
+-- FixedPrim derived from a bound on a given value.
 
 testFixedBoundF :: (Arbitrary a, Show a, Integral a)
                 => String
                 -> (a -> a -> [Word8])
-                -> (a -> FixedEncoding a)
+                -> (a -> FixedPrim a)
                 -> Test
 testFixedBoundF name ref bfe =
     testProperty name prop
@@ -151,15 +191,15 @@ testFixedBoundF name ref bfe =
         y' = ref b x
 
 
--- BoundedEncoding
+-- BoundedPrim
 ------------------
 
--- | Test a 'BoundedEncoding' of a bounded value against a reference implementation
+-- | Test a 'BoundedPrim' of a bounded value against a reference implementation
 -- and ensure that the bounds are always included as testcases.
 testBoundedB :: (Arbitrary a, Bounded a, Show a)
              => String
              -> (a -> [Word8])
-             -> BoundedEncoding a
+             -> BoundedPrim a
              -> Test
 testBoundedB name ref fe =
     testBoundedProperty name check

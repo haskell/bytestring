@@ -11,7 +11,7 @@
 --
 -- Testing composition of 'Builders'.
 
-module Data.ByteString.Lazy.Builder.Tests (tests) where
+module Data.ByteString.Builder.Tests (tests) where
 
 
 import           Control.Applicative
@@ -28,14 +28,14 @@ import           Data.Foldable (asum, foldMap)
 import qualified Data.ByteString      as S
 import qualified Data.ByteString.Lazy as L
 
-import           Data.ByteString.Lazy.Builder
-import           Data.ByteString.Lazy.Builder.Extras
-import           Data.ByteString.Lazy.Builder.ASCII
-import           Data.ByteString.Lazy.Builder.Internal (Put, putBuilder, fromPut)
-import qualified Data.ByteString.Lazy.Builder.Internal             as BI
-import qualified Data.ByteString.Lazy.Builder.BasicEncoding        as BE
-import qualified Data.ByteString.Lazy.Builder.BasicEncoding.Extras as BE
-import           Data.ByteString.Lazy.Builder.BasicEncoding.TestUtils
+import           Data.ByteString.Builder
+import           Data.ByteString.Builder.Extra
+import           Data.ByteString.Builder.ASCII
+import           Data.ByteString.Builder.Internal (Put, putBuilder, fromPut)
+import qualified Data.ByteString.Builder.Internal   as BI
+import qualified Data.ByteString.Builder.Prim       as BP
+import qualified Data.ByteString.Builder.Prim.Extra as BP
+import           Data.ByteString.Builder.Prim.TestUtils
 
 import           Numeric (readHex)
 
@@ -220,18 +220,18 @@ renderRecipe (Recipe _ firstSize _ cont as) =
     hexWord8  = D.fromList . wordHexFixed_list
 
 buildAction :: Action -> StateT Int Put ()
-buildAction (SBS Hex bs)            = lift $ putBuilder $ byteStringHexFixed bs
+buildAction (SBS Hex bs)            = lift $ putBuilder $ byteStringHex bs
 buildAction (SBS Smart bs)          = lift $ putBuilder $ byteString bs
 buildAction (SBS Copy bs)           = lift $ putBuilder $ byteStringCopy bs
 buildAction (SBS Insert bs)         = lift $ putBuilder $ byteStringInsert bs
 buildAction (SBS (Threshold i) bs)  = lift $ putBuilder $ byteStringThreshold i bs
-buildAction (LBS Hex lbs)           = lift $ putBuilder $ lazyByteStringHexFixed lbs
+buildAction (LBS Hex lbs)           = lift $ putBuilder $ lazyByteStringHex lbs
 buildAction (LBS Smart lbs)         = lift $ putBuilder $ lazyByteString lbs
 buildAction (LBS Copy lbs)          = lift $ putBuilder $ lazyByteStringCopy lbs
 buildAction (LBS Insert lbs)        = lift $ putBuilder $ lazyByteStringInsert lbs
 buildAction (LBS (Threshold i) lbs) = lift $ putBuilder $ lazyByteStringThreshold i lbs
 buildAction (W8 w)                  = lift $ putBuilder $ word8 w
-buildAction (W8S ws)                = lift $ putBuilder $ BE.encodeListWithF BE.word8 ws
+buildAction (W8S ws)                = lift $ putBuilder $ BP.primMapListFixed BP.word8 ws
 buildAction (String cs)             = lift $ putBuilder $ stringUtf8 cs
 buildAction (FDec f)                = lift $ putBuilder $ floatDec f
 buildAction (DDec d)                = lift $ putBuilder $ doubleDec d
@@ -377,7 +377,7 @@ test_encodeUnfoldrF =
   where
     toLBS = toLazyByteStringWith (safeStrategy 23 101) L.empty
     encode =
-        L.unpack . toLBS . BE.encodeUnfoldrWithF BE.word8 go
+        L.unpack . toLBS . BP.primUnfoldrFixed BP.word8 go
       where
         go []     = Nothing
         go (w:ws) = Just (w, ws)
@@ -389,7 +389,7 @@ test_encodeUnfoldrB =
   where
     toLBS = toLazyByteStringWith (safeStrategy 23 101) L.empty
     encode =
-        L.unpack . toLBS . BE.encodeUnfoldrWithB BE.charUtf8 go
+        L.unpack . toLBS . BP.primUnfoldrBounded BP.charUtf8 go
       where
         go []     = Nothing
         go (c:cs) = Just (c, cs)
@@ -412,19 +412,19 @@ testBuilder f recipe =
 -- chunk-size.
 encodeVar :: Builder -> Builder
 encodeVar =
-    (`mappend` BE.encodeWithF BE.word8 0)
-  . (BE.encodeChunked 5 BE.word64VarFixedBound BE.emptyB)
+    (`mappend` BP.primFixed BP.word8 0)
+  . (BP.encodeChunked 5 BP.word64VarFixedBound BP.emptyB)
 
 -- | Chunked encoding using 0-padded, space-terminated hexadecimal numbers
 -- for encoding the chunk-size.
 encodeHex :: Builder -> Builder
 encodeHex =
-    (`mappend` BE.encodeWithF (hexLen 0) 0)
-  . (BE.encodeChunked 7 hexLen BE.emptyB)
+    (`mappend` BP.primFixed (hexLen 0) 0)
+  . (BP.encodeChunked 7 hexLen BP.emptyB)
 
-hexLen :: Word64 -> BE.FixedEncoding Word64
+hexLen :: Word64 -> BP.FixedPrim Word64
 hexLen bound =
-  (\x -> (x, ' ')) BE.>$< (BE.word64HexFixedBound '0' bound BE.>*< BE.char8)
+  (\x -> (x, ' ')) BP.>$< (BP.word64HexFixedBound '0' bound BP.>*< BP.char8)
 
 parseHexLen :: [Word8] -> (Int, [Word8])
 parseHexLen ws = case span (/= 32) ws of
@@ -449,7 +449,7 @@ parseChunks parseLen =
 -- | Prefix with size. We use an inner buffer size of 77 (almost primes are good) to
 -- get several buffer full signals.
 prefixHexSize :: Builder -> Builder
-prefixHexSize = BE.encodeWithSize 77 hexLen
+prefixHexSize = BP.encodeWithSize 77 hexLen
 
 parseSizePrefix :: ([Word8] -> (Int, [Word8])) -> L.ByteString -> L.ByteString
 parseSizePrefix parseLen =
@@ -520,6 +520,35 @@ ensureFree minFree =
           | otherwise = k br'
           where
             freeSpace = ope' `minusPtr` op'
+
+
+{-
+testBuilderRun :: BuilderRun -> IO ()
+testBuilderRun brun = do
+    buf <- S.mallocByteString 1024
+    go buf 1024 brun
+  where
+    go :: ForeignPtr Word8 -> Int -> BuilderRun -> IO ()
+    go !buf !len brun = do
+      (wc, next) <- withForeignPtr buf $ \ptr -> brun ptr len
+
+      bs <- getBuffer buf wc
+      print ("got bytes", wc, bs)
+
+      case next of
+        BuilderDone -> print "builder done"
+        
+        BuilderMore m brun' | m <= len -> do
+          print ("more to go", m)
+          go buf len brun'
+        
+        BuilderChunk c brun' -> do
+          print ("chunk", c)
+          go buf len brun'
+
+getBuffer :: ForeignPtr Word8 -> Int -> IO S.ByteString
+getBuffer buf len = withForeignPtr buf $ \ptr -> S.packCStringLen (castPtr ptr, len)
+-}
 
 
 ------------------------------------------------------------------------------
