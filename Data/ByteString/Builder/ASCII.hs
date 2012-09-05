@@ -92,6 +92,12 @@ string7 = P.primMapListFixed P.char7
 ------------------
 
 -- | Decimal encoding of an 'Int8' using the ASCII digits.
+--
+-- e.g.
+--
+-- > toLazyByteString (int8Dec 42)   = "42"
+-- > toLazyByteString (int8Dec (-1)) = "-1"
+--
 {-# INLINE int8Dec #-}
 int8Dec :: Int8 -> Builder
 int8Dec = P.primBounded P.int8Dec

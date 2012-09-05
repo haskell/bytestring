@@ -27,7 +27,7 @@
 -- We achieve (2) by requiring that every 'Builder' is implemented by a
 -- 'BuildStep' that takes a continuation 'BuildStep', which it calls with the
 -- updated 'BufferRange' after it is done. Therefore, only two pointers have
--- to be passed in a function call to implement concatentation of 'Builder's.
+-- to be passed in a function call to implement concatenation of 'Builder's.
 -- Moreover, many 'Builder's are completely inlined, which enables the compiler
 -- to sequence them without a function call and with no boxing at all.
 --
@@ -38,7 +38,7 @@
 -- comments of the 'builder' and 'put' functions for further information.
 -- Note that there are /no safety belts/ at all, when implementing a 'Builder'
 -- using an 'IO' action: you are writing code that might enable the next
--- buffer-overlow attack on a Haskell server!
+-- buffer-overflow attack on a Haskell server!
 --
 module Data.ByteString.Builder.Internal (
 
@@ -428,7 +428,7 @@ hPut h p = do
         --
         --   1. GHC.IO.Handle.Internals mentions in "Note [async]" that
         --      we should never do any side-effecting operations before
-        --      an interuptible operation that may raise an async. exception
+        --      an interruptible operation that may raise an async. exception
         --      as long as we are inside 'wantWritableHandle' and the like.
         --      We possibly run the interuptible 'flushWriteBuffer' right at
         --      the start of 'fillHandle', hence entering it a second time is
