@@ -73,16 +73,12 @@ library
 
                      Data.ByteString.Builder
                      Data.ByteString.Builder.Extra
+                     Data.ByteString.Builder.Prim
 
   other-modules:
                      Data.ByteString.Builder.ASCII
-                     -- these three modules should be exposed in a future
-                     -- release once we're confident the API is stable.
                      Data.ByteString.Builder.Internal
-                     Data.ByteString.Builder.Prim
-                     Data.ByteString.Builder.Prim.Extra
                      Data.ByteString.Builder.Prim.Internal
-
                      Data.ByteString.Builder.Prim.Binary
                      Data.ByteString.Builder.Prim.ASCII
                      Data.ByteString.Builder.Prim.Internal.Floating
