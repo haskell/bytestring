@@ -409,13 +409,11 @@ init (Chunk c0 cs0) = go c0 cs0
 
 -- | /O(n\/c)/ Extract the 'init' and 'last' of a ByteString, returning Nothing
 -- if it is empty.
+--
+-- * It is no faster than using 'init' and 'last'
 unsnoc :: ByteString -> Maybe (ByteString, Word8)
-unsnoc Empty = Nothing
-unsnoc (Chunk c0 cs0) = Just (go id c0 cs0)
-  where go r c Empty = (r $ if S.null i then Empty else Chunk i Empty, l)
-          where i = S.unsafeInit c
-                l = S.unsafeLast c
-        go r c (Chunk c' cs) = go (r . Chunk c) c' cs
+unsnoc Empty        = Nothing
+unsnoc (Chunk c cs) = Just (init (Chunk c cs), last (Chunk c cs))
 
 -- | /O(n\/c)/ Append two ByteStrings
 append :: ByteString -> ByteString -> ByteString
