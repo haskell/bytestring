@@ -240,7 +240,7 @@ unsafePackLenChars len cs0 =
 
 packUptoLenBytes :: Int -> [Word8] -> (ByteString, [Word8])
 packUptoLenBytes len xs0 =
-    unsafeDupablePerformIO $ create' len $ \p -> go p len xs0
+    unsafeCreateUptoN' len $ \p -> go p len xs0
   where
     go !_ !n []     = return (len-n, [])
     go !_ !0 xs     = return (len,   xs)
@@ -248,7 +248,7 @@ packUptoLenBytes len xs0 =
 
 packUptoLenChars :: Int -> [Char] -> (ByteString, [Char])
 packUptoLenChars len cs0 =
-    unsafeDupablePerformIO $ create' len $ \p -> go p len cs0
+    unsafeCreateUptoN' len $ \p -> go p len cs0
   where
     go !_ !n []     = return (len-n, [])
     go !_ !0 cs     = return (len,   cs)
@@ -354,6 +354,18 @@ unsafeCreate :: Int -> (Ptr Word8 -> IO ()) -> ByteString
 unsafeCreate l f = unsafeDupablePerformIO (create l f)
 {-# INLINE unsafeCreate #-}
 
+-- | Like 'unsafeCreate' but instead of giving the final size of the
+-- ByteString, it is just an upper bound. The inner action returns
+-- the actual size. Unlike 'createAndTrim' the ByteString is not
+-- reallocated if the final size is less than the estimated size.
+unsafeCreateUptoN :: Int -> (Ptr Word8 -> IO Int) -> ByteString
+unsafeCreateUptoN l f = unsafeDupablePerformIO (createUptoN l f)
+{-# INLINE unsafeCreateUptoN #-}
+
+unsafeCreateUptoN' :: Int -> (Ptr Word8 -> IO (Int, a)) -> (ByteString, a)
+unsafeCreateUptoN' l f = unsafeDupablePerformIO (createUptoN' l f)
+{-# INLINE unsafeCreateUptoN' #-}
+
 #ifndef __GLASGOW_HASKELL__
 -- for Hugs, NHC etc
 unsafeDupablePerformIO :: IO a -> a
@@ -368,13 +380,22 @@ create l f = do
     return $! PS fp 0 l
 {-# INLINE create #-}
 
+-- | Create ByteString of up to size size @l@ and use action @f@ to fill it's
+-- contents which returns its true size.
+createUptoN :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
+createUptoN l f = do
+    fp <- mallocByteString l
+    l' <- withForeignPtr fp $ \p -> f p
+    assert (l' <= l) $ return $! PS fp 0 l'
+{-# INLINE createUptoN #-}
+
 -- | Create ByteString of up to size @l@ and use action @f@ to fill it's contents which returns its true size.
-create' :: Int -> (Ptr Word8 -> IO (Int, a)) -> IO (ByteString, a)
-create' l f = do
+createUptoN' :: Int -> (Ptr Word8 -> IO (Int, a)) -> IO (ByteString, a)
+createUptoN' l f = do
     fp <- mallocByteString l
     (l', res) <- withForeignPtr fp $ \p -> f p
     assert (l' <= l) $ return (PS fp 0 l', res)
-{-# INLINE create' #-}
+{-# INLINE createUptoN' #-}
 
 -- | Given the maximum size needed and a function to make the contents
 -- of a ByteString, createAndTrim makes the 'ByteString'. The generating
