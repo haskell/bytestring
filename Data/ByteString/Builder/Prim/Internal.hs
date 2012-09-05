@@ -5,12 +5,15 @@
 -- License     : BSD3-style (see LICENSE)
 --
 -- Maintainer  : Simon Meier <iridcode@gmail.com>
--- Stability   : experimental
+-- Stability   : unstable, private
 -- Portability : GHC
 --
--- This module is internal. It is only intended to be used by the 'bytestring'
--- and the 'text' library. Please contact the maintainer, if you need to use
--- this module in your library. We are glad to accept patches for further
+-- *Warning:* this module is internal. If you find that you need it please
+-- contact the maintainers and explain what you are trying to do and discuss
+-- what you would need in the public API. It is important that you do this as
+-- the module may not be exposed at all in future releases.
+--
+-- The maintainers are glad to accept patches for further
 -- standard encodings of standard Haskell values.
 --
 -- If you need to write your own builder primitives, then be aware that you are

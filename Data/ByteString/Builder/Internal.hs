@@ -4,8 +4,13 @@
 -- License     : BSD3-style (see LICENSE)
 --
 -- Maintainer  : Simon Meier <iridcode@gmail.com>
--- Stability   : experimental
+-- Stability   : unstable, private
 -- Portability : GHC
+--
+-- *Warning:* this module is internal. If you find that you need it then please
+-- contact the maintainers and explain what you are trying to do and discuss
+-- what you would need in the public API. It is important that you do this as
+-- the module may not be exposed at all in future releases.
 --
 -- Core types and functions for the 'Builder' monoid and its generalization,
 -- the 'Put' monad.
