@@ -411,12 +411,12 @@ module Data.ByteString.Builder.Prim (
   -- but are rather heavy in terms of code size. We recommend to define a
   -- top-level function for every concrete instantiation of such a function in
   -- order to share its code. A typical example is the function
-  -- 'byteStringHexFixed' from "Data.ByteString.Lazy.Builder.ASCII", which is
+  -- 'byteStringHex' from "Data.ByteString.Builder.ASCII", which is
   -- implemented as follows.
   --
   -- @
-  -- byteStringHexFixed :: S.ByteString -> Builder
-  -- byteStringHexFixed = 'encodeByteStringWithF' 'word8HexFixed'
+  -- byteStringHex :: S.ByteString -> Builder
+  -- byteStringHex = 'encodeByteStringWithF' 'word8HexFixed'
   -- @
   --
   , primFixed
@@ -519,7 +519,7 @@ primUnfoldrFixed = primUnfoldrBounded . toB
 -- > mapToBuilder f = encodeByteStringWithF (contramapF f word8)
 --
 -- We can also use it to hex-encode a strict 'S.ByteString' as shown by the
--- 'byteStringHexFixed' example above.
+-- 'byteStringHex' example above.
 {-# INLINE primMapByteStringFixed #-}
 primMapByteStringFixed :: FixedPrim Word8 -> (S.ByteString -> Builder)
 primMapByteStringFixed = primMapByteStringBounded . toB

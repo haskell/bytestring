@@ -62,8 +62,8 @@ module Data.ByteString.Builder.ASCII
     , floatHexFixed
     , doubleHexFixed
 
-    , byteStringHexFixed
-    , lazyByteStringHexFixed
+    , byteStringHex
+    , lazyByteStringHex
 
     ) where
 
@@ -254,11 +254,11 @@ doubleHexFixed :: Double -> Builder
 doubleHexFixed = P.primFixed P.doubleHexFixed
 
 -- | Encode each byte of a 'S.ByteString' using its fixed-width hex encoding.
-{-# NOINLINE byteStringHexFixed #-} -- share code
-byteStringHexFixed :: S.ByteString -> Builder
-byteStringHexFixed = P.primMapByteStringFixed P.word8HexFixed
+{-# NOINLINE byteStringHex #-} -- share code
+byteStringHex :: S.ByteString -> Builder
+byteStringHex = P.primMapByteStringFixed P.word8HexFixed
 
 -- | Encode each byte of a lazy 'L.ByteString' using its fixed-width hex encoding.
-{-# NOINLINE lazyByteStringHexFixed #-} -- share code
-lazyByteStringHexFixed :: L.ByteString -> Builder
-lazyByteStringHexFixed = P.primMapLazyByteStringFixed P.word8HexFixed
+{-# NOINLINE lazyByteStringHex #-} -- share code
+lazyByteStringHex :: L.ByteString -> Builder
+lazyByteStringHex = P.primMapLazyByteStringFixed P.word8HexFixed
