@@ -31,7 +31,7 @@ FFI to store the Float/Double in the buffer and peek it out again from there.
 --
 -- PRE: The 'Word32' encoding must have a size of at least 4 bytes.
 {-# INLINE encodeFloatViaWord32F #-}
-encodeFloatViaWord32F :: FixedEncoding Word32 -> FixedEncoding Float
+encodeFloatViaWord32F :: FixedPrim Word32 -> FixedPrim Float
 encodeFloatViaWord32F w32fe
   | size w32fe < sizeOf (undefined :: Float) =
       error $ "encodeFloatViaWord32F: encoding not wide enough"
@@ -44,7 +44,7 @@ encodeFloatViaWord32F w32fe
 --
 -- PRE: The 'Word64' encoding must have a size of at least 8 bytes.
 {-# INLINE encodeDoubleViaWord64F #-}
-encodeDoubleViaWord64F :: FixedEncoding Word64 -> FixedEncoding Double
+encodeDoubleViaWord64F :: FixedPrim Word64 -> FixedPrim Double
 encodeDoubleViaWord64F w64fe
   | size w64fe < sizeOf (undefined :: Float) =
       error $ "encodeDoubleViaWord64F: encoding not wide enough"

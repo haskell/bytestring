@@ -259,7 +259,7 @@ module Data.ByteString.Builder
     ) where
 
 import           Data.ByteString.Builder.Internal
-import qualified Data.ByteString.Builder.Prim  as E
+import qualified Data.ByteString.Builder.Prim  as P
 import qualified Data.ByteString.Lazy.Internal as L
 
 import           System.IO (Handle)
@@ -309,13 +309,13 @@ hPutBuilder h = hPut h . putBuilder
 --
 {-# INLINE int8 #-}
 int8 :: Int8 -> Builder
-int8 = E.encodeWithF E.int8
+int8 = P.primFixed P.int8
 
 -- | Encode a single unsigned byte as-is.
 --
 {-# INLINE word8 #-}
 word8 :: Word8 -> Builder
-word8 = E.encodeWithF E.word8
+word8 = P.primFixed P.word8
 
 
 ------------------------------------------------------------------------------
@@ -325,42 +325,42 @@ word8 = E.encodeWithF E.word8
 -- | Encode an 'Int16' in little endian format.
 {-# INLINE int16LE #-}
 int16LE :: Int16 -> Builder
-int16LE = E.encodeWithF E.int16LE
+int16LE = P.primFixed P.int16LE
 
 -- | Encode an 'Int32' in little endian format.
 {-# INLINE int32LE #-}
 int32LE :: Int32 -> Builder
-int32LE = E.encodeWithF E.int32LE
+int32LE = P.primFixed P.int32LE
 
 -- | Encode an 'Int64' in little endian format.
 {-# INLINE int64LE #-}
 int64LE :: Int64 -> Builder
-int64LE = E.encodeWithF E.int64LE
+int64LE = P.primFixed P.int64LE
 
 -- | Encode a 'Word16' in little endian format.
 {-# INLINE word16LE #-}
 word16LE :: Word16 -> Builder
-word16LE = E.encodeWithF E.word16LE
+word16LE = P.primFixed P.word16LE
 
 -- | Encode a 'Word32' in little endian format.
 {-# INLINE word32LE #-}
 word32LE :: Word32 -> Builder
-word32LE = E.encodeWithF E.word32LE
+word32LE = P.primFixed P.word32LE
 
 -- | Encode a 'Word64' in little endian format.
 {-# INLINE word64LE #-}
 word64LE :: Word64 -> Builder
-word64LE = E.encodeWithF E.word64LE
+word64LE = P.primFixed P.word64LE
 
 -- | Encode a 'Float' in little endian format.
 {-# INLINE floatLE #-}
 floatLE :: Float -> Builder
-floatLE = E.encodeWithF E.floatLE
+floatLE = P.primFixed P.floatLE
 
 -- | Encode a 'Double' in little endian format.
 {-# INLINE doubleLE #-}
 doubleLE :: Double -> Builder
-doubleLE = E.encodeWithF E.doubleLE
+doubleLE = P.primFixed P.doubleLE
 
 
 ------------------------------------------------------------------------------
@@ -370,42 +370,42 @@ doubleLE = E.encodeWithF E.doubleLE
 -- | Encode an 'Int16' in big endian format.
 {-# INLINE int16BE #-}
 int16BE :: Int16 -> Builder
-int16BE = E.encodeWithF E.int16BE
+int16BE = P.primFixed P.int16BE
 
 -- | Encode an 'Int32' in big endian format.
 {-# INLINE int32BE #-}
 int32BE :: Int32 -> Builder
-int32BE = E.encodeWithF E.int32BE
+int32BE = P.primFixed P.int32BE
 
 -- | Encode an 'Int64' in big endian format.
 {-# INLINE int64BE #-}
 int64BE :: Int64 -> Builder
-int64BE = E.encodeWithF E.int64BE
+int64BE = P.primFixed P.int64BE
 
 -- | Encode a 'Word16' in big endian format.
 {-# INLINE word16BE #-}
 word16BE :: Word16 -> Builder
-word16BE = E.encodeWithF E.word16BE
+word16BE = P.primFixed P.word16BE
 
 -- | Encode a 'Word32' in big endian format.
 {-# INLINE word32BE #-}
 word32BE :: Word32 -> Builder
-word32BE = E.encodeWithF E.word32BE
+word32BE = P.primFixed P.word32BE
 
 -- | Encode a 'Word64' in big endian format.
 {-# INLINE word64BE #-}
 word64BE :: Word64 -> Builder
-word64BE = E.encodeWithF E.word64BE
+word64BE = P.primFixed P.word64BE
 
 -- | Encode a 'Float' in big endian format.
 {-# INLINE floatBE #-}
 floatBE :: Float -> Builder
-floatBE = E.encodeWithF E.floatBE
+floatBE = P.primFixed P.floatBE
 
 -- | Encode a 'Double' in big endian format.
 {-# INLINE doubleBE #-}
 doubleBE :: Double -> Builder
-doubleBE = E.encodeWithF E.doubleBE
+doubleBE = P.primFixed P.doubleBE
 
 ------------------------------------------------------------------------------
 -- ASCII encoding
@@ -414,12 +414,12 @@ doubleBE = E.encodeWithF E.doubleBE
 -- | Char7 encode a 'Char'.
 {-# INLINE char7 #-}
 char7 :: Char -> Builder
-char7 = E.encodeWithF E.char7
+char7 = P.primFixed P.char7
 
 -- | Char7 encode a 'String'.
 {-# INLINE string7 #-}
 string7 :: String -> Builder
-string7 = E.encodeListWithF E.char7
+string7 = P.primMapListFixed P.char7
 
 ------------------------------------------------------------------------------
 -- ISO/IEC 8859-1 encoding
@@ -428,12 +428,12 @@ string7 = E.encodeListWithF E.char7
 -- | Char8 encode a 'Char'.
 {-# INLINE char8 #-}
 char8 :: Char -> Builder
-char8 = E.encodeWithF E.char8
+char8 = P.primFixed P.char8
 
 -- | Char8 encode a 'String'.
 {-# INLINE string8 #-}
 string8 :: String -> Builder
-string8 = E.encodeListWithF E.char8
+string8 = P.primMapListFixed P.char8
 
 ------------------------------------------------------------------------------
 -- UTF-8 encoding
@@ -442,10 +442,10 @@ string8 = E.encodeListWithF E.char8
 -- | UTF-8 encode a 'Char'.
 {-# INLINE charUtf8 #-}
 charUtf8 :: Char -> Builder
-charUtf8 = E.encodeWithB E.charUtf8
+charUtf8 = P.primBounded P.charUtf8
 
 -- | UTF-8 encode a 'String'.
 {-# INLINE stringUtf8 #-}
 stringUtf8 :: String -> Builder
-stringUtf8 = E.encodeListWithB E.charUtf8
+stringUtf8 = P.primMapListBounded P.charUtf8
 

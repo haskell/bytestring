@@ -89,7 +89,7 @@ import Foreign.C.Types
 
 -- | Encode the least 7-bits of a 'Char' using the ASCII encoding.
 {-# INLINE char7 #-}
-char7 :: FixedEncoding Char
+char7 :: FixedPrim Char
 char7 = (\c -> fromIntegral $ ord c .&. 0x7f) >$< word8
 
 
@@ -107,33 +107,33 @@ foreign import ccall unsafe "static _hs_bytestring_long_long_int_dec" c_long_lon
     :: CLLong -> Ptr Word8 -> IO (Ptr Word8)
 
 {-# INLINE encodeIntDecimal #-}
-encodeIntDecimal :: Integral a => Int -> BoundedEncoding a
+encodeIntDecimal :: Integral a => Int -> BoundedPrim a
 encodeIntDecimal bound = boundedEncoding bound $ c_int_dec . fromIntegral
 
 -- | Decimal encoding of an 'Int8'.
 {-# INLINE int8Dec #-}
-int8Dec :: BoundedEncoding Int8
+int8Dec :: BoundedPrim Int8
 int8Dec = encodeIntDecimal 4
 
 -- | Decimal encoding of an 'Int16'.
 {-# INLINE int16Dec #-}
-int16Dec :: BoundedEncoding Int16
+int16Dec :: BoundedPrim Int16
 int16Dec = encodeIntDecimal 6
 
 
 -- | Decimal encoding of an 'Int32'.
 {-# INLINE int32Dec #-}
-int32Dec :: BoundedEncoding Int32
+int32Dec :: BoundedPrim Int32
 int32Dec = encodeIntDecimal 11
 
 -- | Decimal encoding of an 'Int64'.
 {-# INLINE int64Dec #-}
-int64Dec :: BoundedEncoding Int64
+int64Dec :: BoundedPrim Int64
 int64Dec = boundedEncoding 20 $ c_long_long_int_dec . fromIntegral
 
 -- | Decimal encoding of an 'Int'.
 {-# INLINE intDec #-}
-intDec :: BoundedEncoding Int
+intDec :: BoundedPrim Int
 intDec = caseWordSize_32_64
     (fromIntegral >$< int32Dec)
     (fromIntegral >$< int64Dec)
@@ -149,32 +149,32 @@ foreign import ccall unsafe "static _hs_bytestring_long_long_uint_dec" c_long_lo
     :: CULLong -> Ptr Word8 -> IO (Ptr Word8)
 
 {-# INLINE encodeWordDecimal #-}
-encodeWordDecimal :: Integral a => Int -> BoundedEncoding a
+encodeWordDecimal :: Integral a => Int -> BoundedPrim a
 encodeWordDecimal bound = boundedEncoding bound $ c_uint_dec . fromIntegral
 
 -- | Decimal encoding of a 'Word8'.
 {-# INLINE word8Dec #-}
-word8Dec :: BoundedEncoding Word8
+word8Dec :: BoundedPrim Word8
 word8Dec = encodeWordDecimal 3
 
 -- | Decimal encoding of a 'Word16'.
 {-# INLINE word16Dec #-}
-word16Dec :: BoundedEncoding Word16
+word16Dec :: BoundedPrim Word16
 word16Dec = encodeWordDecimal 5
 
 -- | Decimal encoding of a 'Word32'.
 {-# INLINE word32Dec #-}
-word32Dec :: BoundedEncoding Word32
+word32Dec :: BoundedPrim Word32
 word32Dec = encodeWordDecimal 10
 
 -- | Decimal encoding of a 'Word64'.
 {-# INLINE word64Dec #-}
-word64Dec :: BoundedEncoding Word64
+word64Dec :: BoundedPrim Word64
 word64Dec = boundedEncoding 20 $ c_long_long_uint_dec . fromIntegral
 
 -- | Decimal encoding of a 'Word'.
 {-# INLINE wordDec #-}
-wordDec :: BoundedEncoding Word
+wordDec :: BoundedPrim Word
 wordDec = caseWordSize_32_64
     (fromIntegral >$< word32Dec)
     (fromIntegral >$< word64Dec)
@@ -193,33 +193,33 @@ foreign import ccall unsafe "static _hs_bytestring_long_long_uint_hex" c_long_lo
     :: CULLong -> Ptr Word8 -> IO (Ptr Word8)
 
 {-# INLINE encodeWordHex #-}
-encodeWordHex :: forall a. (Storable a, Integral a) => BoundedEncoding a
+encodeWordHex :: forall a. (Storable a, Integral a) => BoundedPrim a
 encodeWordHex =
     boundedEncoding (2 * sizeOf (undefined :: a)) $ c_uint_hex  . fromIntegral
 
 -- | Hexadecimal encoding of a 'Word8'.
 {-# INLINE word8Hex #-}
-word8Hex :: BoundedEncoding Word8
+word8Hex :: BoundedPrim Word8
 word8Hex = encodeWordHex
 
 -- | Hexadecimal encoding of a 'Word16'.
 {-# INLINE word16Hex #-}
-word16Hex :: BoundedEncoding Word16
+word16Hex :: BoundedPrim Word16
 word16Hex = encodeWordHex
 
 -- | Hexadecimal encoding of a 'Word32'.
 {-# INLINE word32Hex #-}
-word32Hex :: BoundedEncoding Word32
+word32Hex :: BoundedPrim Word32
 word32Hex = encodeWordHex
 
 -- | Hexadecimal encoding of a 'Word64'.
 {-# INLINE word64Hex #-}
-word64Hex :: BoundedEncoding Word64
+word64Hex :: BoundedPrim Word64
 word64Hex = boundedEncoding 16 $ c_long_long_uint_hex . fromIntegral
 
 -- | Hexadecimal encoding of a 'Word'.
 {-# INLINE wordHex #-}
-wordHex :: BoundedEncoding Word
+wordHex :: BoundedPrim Word
 wordHex = caseWordSize_32_64
     (fromIntegral >$< word32Hex)
     (fromIntegral >$< word64Hex)
@@ -230,58 +230,58 @@ wordHex = caseWordSize_32_64
 
 -- | Encode a 'Word8' using 2 nibbles (hexadecimal digits).
 {-# INLINE word8HexFixed #-}
-word8HexFixed :: FixedEncoding Word8
+word8HexFixed :: FixedPrim Word8
 word8HexFixed = fixedEncoding 2 $
     \x op -> poke (castPtr op) =<< encode8_as_16h lowerTable x
 
 -- | Encode a 'Word16' using 4 nibbles.
 {-# INLINE word16HexFixed #-}
-word16HexFixed :: FixedEncoding Word16
+word16HexFixed :: FixedPrim Word16
 word16HexFixed =
     (\x -> (fromIntegral $ x `shiftr_w16` 8, fromIntegral x))
       >$< pairF word8HexFixed word8HexFixed
 
 -- | Encode a 'Word32' using 8 nibbles.
 {-# INLINE word32HexFixed #-}
-word32HexFixed :: FixedEncoding Word32
+word32HexFixed :: FixedPrim Word32
 word32HexFixed =
     (\x -> (fromIntegral $ x `shiftr_w32` 16, fromIntegral x))
       >$< pairF word16HexFixed word16HexFixed
 -- | Encode a 'Word64' using 16 nibbles.
 {-# INLINE word64HexFixed #-}
-word64HexFixed :: FixedEncoding Word64
+word64HexFixed :: FixedPrim Word64
 word64HexFixed =
     (\x -> (fromIntegral $ x `shiftr_w64` 32, fromIntegral x))
       >$< pairF word32HexFixed word32HexFixed
 
 -- | Encode a 'Int8' using 2 nibbles (hexadecimal digits).
 {-# INLINE int8HexFixed #-}
-int8HexFixed :: FixedEncoding Int8
+int8HexFixed :: FixedPrim Int8
 int8HexFixed = fromIntegral >$< word8HexFixed
 
 -- | Encode a 'Int16' using 4 nibbles.
 {-# INLINE int16HexFixed #-}
-int16HexFixed :: FixedEncoding Int16
+int16HexFixed :: FixedPrim Int16
 int16HexFixed = fromIntegral >$< word16HexFixed
 
 -- | Encode a 'Int32' using 8 nibbles.
 {-# INLINE int32HexFixed #-}
-int32HexFixed :: FixedEncoding Int32
+int32HexFixed :: FixedPrim Int32
 int32HexFixed = fromIntegral >$< word32HexFixed
 
 -- | Encode a 'Int64' using 16 nibbles.
 {-# INLINE int64HexFixed #-}
-int64HexFixed :: FixedEncoding Int64
+int64HexFixed :: FixedPrim Int64
 int64HexFixed = fromIntegral >$< word64HexFixed
 
 -- | Encode an IEEE 'Float' using 8 nibbles.
 {-# INLINE floatHexFixed #-}
-floatHexFixed :: FixedEncoding Float
+floatHexFixed :: FixedPrim Float
 floatHexFixed = encodeFloatViaWord32F word32HexFixed
 
 -- | Encode an IEEE 'Double' using 16 nibbles.
 {-# INLINE doubleHexFixed #-}
-doubleHexFixed :: FixedEncoding Double
+doubleHexFixed :: FixedPrim Double
 doubleHexFixed = encodeDoubleViaWord64F word64HexFixed
 
 

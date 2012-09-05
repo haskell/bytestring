@@ -104,7 +104,7 @@ renderString :: String -\> Builder
 renderString cs =
     B.charUtf8 \'\"\' \<\> E.'encodeListWithB' escape cs \<\> B.charUtf8 \'\"\'
   where
-    escape :: E.'BoundedEncoding' Char
+    escape :: E.'BoundedPrim' Char
     escape =
       'ifB' (== \'\\\\\') (fixed2 (\'\\\\\', \'\\\\\')) $
       'ifB' (== \'\\\"\') (fixed2 (\'\\\\\', \'\\\"\')) $
@@ -116,7 +116,7 @@ renderString cs =
 
 The code should be mostly self-explanatory.
 The slightly awkward syntax is because the combinators
-  are written such that the size-bound of the resulting 'BoundedEncoding'
+  are written such that the size-bound of the resulting 'BoundedPrim'
   can be computed at compile time.
 We also explicitly inline the 'fixed2' encoding,
   which encodes a fixed tuple of characters,
@@ -131,7 +131,7 @@ maxiStrings = take 1000 $ cycle [\"hello\", \"\\\"1\\\"\", \"&#955;-w&#246;rld\"
 
 Most of the performance gain stems from using 'encodeListWithB',
   which encodes a list of values from left-to-right with a
-  'BoundedEncoding'.
+  'BoundedPrim'.
 It exploits the 'Builder' internals to avoid unnecessary function
   compositions (i.e., concatentations).
 In the future,
@@ -141,19 +141,19 @@ However,
   it seems that the code is currently to complicated for the
   compiler to see through.
 Therefore,
-  we provide the 'BoundedEncoding' escape hatch,
+  we provide the 'BoundedPrim' escape hatch,
   which allows data structures to provide very efficient encoding traversals,
   like 'encodeListWithB' for lists.
 
-Note that 'BoundedEncoding's are a bit verbose, but quite versatile.
-Here is an example of a 'BoundedEncoding' for combined HTML escapng and
+Note that 'BoundedPrim's are a bit verbose, but quite versatile.
+Here is an example of a 'BoundedPrim' for combined HTML escapng and
 UTF-8 encoding.
 It exploits that the escaped character with the maximal Unicode
   codepoint is \'>\'.
 
 @
 {&#45;\# INLINE charUtf8HtmlEscaped \#&#45;}
-charUtf8HtmlEscaped :: E.BoundedEncoding Char
+charUtf8HtmlEscaped :: E.BoundedPrim Char
 charUtf8HtmlEscaped =
     'ifB' (>  \'\>\' ) E.'charUtf8' $
     'ifB' (== \'\<\' ) (fixed4 (\'&\',(\'l\',(\'t\',\';\')))) $        -- &lt;
@@ -234,7 +234,7 @@ We will expose the corresponding functions in future releases of this
 -- > import Data.ByteString.Builder.Prim.Utf8 (char)
 -- >
 -- > {-# INLINE escapeChar #-}
--- > escapeUtf8 :: BoundedEncoding Char
+-- > escapeUtf8 :: BoundedPrim Char
 -- > escapeUtf8 =
 -- >     encodeIf ('\'' ==) (char <#> char #. const ('\\','\'')) $
 -- >     encodeIf ('\\' ==) (char <#> char #. const ('\\','\\')) $
@@ -311,14 +311,14 @@ We will expose the corresponding functions in future releases of this
 --
 -- > import Data.ByteString.Builder.Extra     -- assume these
 -- > import Data.ByteString.Builder.Prim      -- imports are present
--- >        ( BoundedEncoding, encodeIf, (<#>), (#.) )
+-- >        ( BoundedPrim, encodeIf, (<#>), (#.) )
 -- > import Data.ByteString.Builder.Prim.Utf8 (char)
 -- >
 -- > renderString :: String -> Builder
 -- > renderString cs =
 -- >     charUtf8 '"' <> encodeListWithB escapedUtf8 cs <> charUtf8 '"'
 -- >   where
--- >     escapedUtf8 :: BoundedEncoding Char
+-- >     escapedUtf8 :: BoundedPrim Char
 -- >     escapedUtf8 =
 -- >       encodeIf (== '\\') (char <#> char #. const ('\\', '\\')) $
 -- >       encodeIf (== '\"') (char <#> char #. const ('\\', '\"')) $
@@ -367,19 +367,39 @@ patches to this library are very welcome.
 -}
 module Data.ByteString.Builder.Prim (
 
-  -- * Fixed-size encodings
-    FixedEncoding
+  -- * Bounded-size primitives
+
+    BoundedPrim
 
   -- ** Combinators
-  -- | The combinators for 'FixedEncoding's are implemented such that the 'size'
-  -- of the resulting 'FixedEncoding' is computed at compile time.
-  , emptyF
-  , pairF
-  , contramapF
+  -- | The combinators for 'BoundedPrim's are implemented such that the
+  -- 'sizeBound' of the resulting 'BoundedPrim' is computed at compile time.
+  , emptyBounded
+  , (>*<)
+  , (>$<)
+  , eitherBounded
+  , condBounded
 
   -- ** Builder construction
-  -- | In terms of expressivity, the function 'encodeWithF' would be sufficient
-  -- for constructing 'Builder's from 'FixedEncoding's. The fused variants of
+  , primBounded
+  , primMapListBounded
+  , primUnfoldrBounded
+
+  , primMapByteStringBounded
+  , primMapLazyByteStringBounded
+
+  -- * Fixed-size primitives
+  , FixedPrim
+
+  -- ** Combinators
+  -- | The combinators for 'FixedPrim's are implemented such that the 'size'
+  -- of the resulting 'FixedPrim' is computed at compile time.
+  , emptyFixed
+  , liftFixedToBounded
+
+  -- ** Builder construction
+  -- | In terms of expressivity, the function 'fixedPrim' would be sufficient
+  -- for constructing 'Builder's from 'FixedPrim's. The fused variants of
   -- this function are provided because they allow for more efficient
   -- implementations. Our compilers are just not smart enough yet; and for some
   -- of the employed optimizations (see the code of 'encodeByteStringWithF')
@@ -398,43 +418,12 @@ module Data.ByteString.Builder.Prim (
   -- byteStringHexFixed = 'encodeByteStringWithF' 'word8HexFixed'
   -- @
   --
-  , encodeWithF
-  , encodeListWithF
-  , encodeUnfoldrWithF
+  , primFixed
+  , primMapListFixed
+  , primUnfoldrFixed
 
-  , encodeByteStringWithF
-  , encodeLazyByteStringWithF
-
-  -- * Bounded-size encodings
-
-  , BoundedEncoding
-
-  -- ** Combinators
-  -- | The combinators for 'BoundedEncoding's are implemented such that the
-  -- 'sizeBound' of the resulting 'BoundedEncoding' is computed at compile time.
-  , fromF
-  , emptyB
-  , pairB
-  , eitherB
-  , ifB
-  , contramapB
-
-  -- | We provide overloaded operators for some of the above combinators to
-  -- allow for a more convenient syntax. We do not export their corresponding,
-  -- as we they are used for overloading only and should not be extended by
-  -- the user of this library. We plan to use the @contravariant@ library
-  -- <http://hackage.haskell.org/package/contravariant> once it is part of the
-  -- Haskell platform.
-  , (>*<)
-  , (>$<)
-
-  -- ** Builder construction
-  , encodeWithB
-  , encodeListWithB
-  , encodeUnfoldrWithB
-
-  , encodeByteStringWithB
-  , encodeLazyByteStringWithB
+  , primMapByteStringFixed
+  , primMapLazyByteStringFixed
 
   -- * Standard encodings of Haskell values
 
@@ -504,23 +493,23 @@ import           Foreign
 -- Creating Builders from bounded encodings
 ------------------------------------------------------------------------------
 
--- | Encode a value with a 'FixedEncoding'.
-{-# INLINE encodeWithF #-}
-encodeWithF :: FixedEncoding a -> (a -> Builder)
-encodeWithF = encodeWithB . toB
+-- | Encode a value with a 'FixedPrim'.
+{-# INLINE primFixed #-}
+primFixed :: FixedPrim a -> (a -> Builder)
+primFixed = primBounded . toB
 
--- | Encode a list of values from left-to-right with a 'FixedEncoding'.
-{-# INLINE encodeListWithF #-}
-encodeListWithF :: FixedEncoding a -> ([a] -> Builder)
-encodeListWithF = encodeListWithB . toB
+-- | Encode a list of values from left-to-right with a 'FixedPrim'.
+{-# INLINE primMapListFixed #-}
+primMapListFixed :: FixedPrim a -> ([a] -> Builder)
+primMapListFixed = primMapListBounded . toB
 
--- | Encode a list of values represented as an 'unfoldr' with a 'FixedEncoding'.
-{-# INLINE encodeUnfoldrWithF #-}
-encodeUnfoldrWithF :: FixedEncoding b -> (a -> Maybe (b, a)) -> a -> Builder
-encodeUnfoldrWithF = encodeUnfoldrWithB . toB
+-- | Encode a list of values represented as an 'unfoldr' with a 'FixedPrim'.
+{-# INLINE primUnfoldrFixed #-}
+primUnfoldrFixed :: FixedPrim b -> (a -> Maybe (b, a)) -> a -> Builder
+primUnfoldrFixed = primUnfoldrBounded . toB
 
 -- | /Heavy inlining./ Encode all bytes of a strict 'S.ByteString' from
--- left-to-right with a 'FixedEncoding'. This function is quite versatile. For
+-- left-to-right with a 'FixedPrim'. This function is quite versatile. For
 -- example, we can use it to construct a 'Builder' that maps every byte before
 -- copying it to the buffer to be filled.
 --
@@ -529,15 +518,15 @@ encodeUnfoldrWithF = encodeUnfoldrWithB . toB
 --
 -- We can also use it to hex-encode a strict 'S.ByteString' as shown by the
 -- 'byteStringHexFixed' example above.
-{-# INLINE encodeByteStringWithF #-}
-encodeByteStringWithF :: FixedEncoding Word8 -> (S.ByteString -> Builder)
-encodeByteStringWithF = encodeByteStringWithB . toB
+{-# INLINE primMapByteStringFixed #-}
+primMapByteStringFixed :: FixedPrim Word8 -> (S.ByteString -> Builder)
+primMapByteStringFixed = primMapByteStringBounded . toB
 
 -- | /Heavy inlining./ Encode all bytes of a lazy 'L.ByteString' from
--- left-to-right with a 'FixedEncoding'.
-{-# INLINE encodeLazyByteStringWithF #-}
-encodeLazyByteStringWithF :: FixedEncoding Word8 -> (L.ByteString -> Builder)
-encodeLazyByteStringWithF = encodeLazyByteStringWithB . toB
+-- left-to-right with a 'FixedPrim'.
+{-# INLINE primMapLazyByteStringFixed #-}
+primMapLazyByteStringFixed :: FixedPrim Word8 -> (L.ByteString -> Builder)
+primMapLazyByteStringFixed = primMapLazyByteStringBounded . toB
 
 -- IMPLEMENTATION NOTE: Sadly, 'encodeListWith' cannot be used for foldr/build
 -- fusion. Its performance relies on hoisting several variables out of the
@@ -548,10 +537,10 @@ encodeLazyByteStringWithF = encodeLazyByteStringWithB . toB
 
 -- | Create a 'Builder' that encodes values with the given 'Encoding'.
 --
--- We rewrite consecutive uses of 'encodeWith' such that the bound-checks are
+-- We rewrite consecutive uses of 'primBounded' such that the bound-checks are
 -- fused. For example,
 --
--- > encodeWithB (word32 c1) `mappend` encodeWithB (word32 c2)
+-- > primBounded (word32 c1) `mappend` primBounded (word32 c2)
 --
 -- is rewritten such that the resulting 'Builder' checks only once, if ther are
 -- at 8 free bytes, instead of checking twice, if there are 4 free bytes. This
@@ -564,9 +553,9 @@ encodeLazyByteStringWithF = encodeLazyByteStringWithB . toB
 -- memory spilled due to the more agressive buffer wrapping introduced by this
 -- optimization.
 --
-{-# INLINE[1] encodeWithB #-}
-encodeWithB :: BoundedEncoding a -> (a -> Builder)
-encodeWithB w =
+{-# INLINE[1] primBounded #-}
+primBounded :: BoundedPrim a -> (a -> Builder)
+primBounded w =
     mkBuilder
   where
     bound = I.sizeBound w
@@ -581,17 +570,17 @@ encodeWithB w =
 
 {-# RULES
 
-"append/encodeWithB" forall w1 w2 x1 x2.
-       append (encodeWithB w1 x1) (encodeWithB w2 x2)
-     = encodeWithB (pairB w1 w2) (x1, x2)
+"append/primBounded" forall w1 w2 x1 x2.
+       append (primBounded w1 x1) (primBounded w2 x2)
+     = primBounded (pairB w1 w2) (x1, x2)
 
-"append/encodeWithB/assoc_r" forall w1 w2 x1 x2 b.
-       append (encodeWithB w1 x1) (append (encodeWithB w2 x2) b)
-     = append (encodeWithB (pairB w1 w2) (x1, x2)) b
+"append/primBounded/assoc_r" forall w1 w2 x1 x2 b.
+       append (primBounded w1 x1) (append (primBounded w2 x2) b)
+     = append (primBounded (pairB w1 w2) (x1, x2)) b
 
-"append/encodeWithB/assoc_l" forall w1 w2 x1 x2 b.
-       append (append b (encodeWithB w1 x1)) (encodeWithB w2 x2)
-     = append b (encodeWithB (pairB w1 w2) (x1, x2))
+"append/primBounded/assoc_l" forall w1 w2 x1 x2 b.
+       append (append b (primBounded w1 x1)) (primBounded w2 x2)
+     = append b (primBounded (pairB w1 w2) (x1, x2))
   #-}
 
 -- TODO: The same rules for 'putBuilder (..) >> putBuilder (..)'
@@ -604,16 +593,16 @@ encodeWithB w =
 -- >  E.encodeLazyByteStringWithF (E.ifF p E.word8) E.emptyF)
 -- >
 --
--- > mconcat . map (encodeWithB w)
+-- > mconcat . map (primBounded w)
 --
 -- or
 --
--- > foldMap (encodeWithB w)
+-- > foldMap (primBounded w)
 --
 -- because it moves several variables out of the inner loop.
-{-# INLINE encodeListWithB #-}
-encodeListWithB :: BoundedEncoding a -> [a] -> Builder
-encodeListWithB w =
+{-# INLINE primMapListBounded #-}
+primMapListBounded :: BoundedPrim a -> [a] -> Builder
+primMapListBounded w =
     makeBuilder
   where
     bound = I.sizeBound w
@@ -632,13 +621,13 @@ encodeListWithB w =
              | otherwise = return $ bufferFull bound op (step xs k)
 
 -- TODO: Add 'foldMap/encodeWith' its variants
--- TODO: Ensure rewriting 'encodeWithB w . f = encodeWithB (w #. f)'
+-- TODO: Ensure rewriting 'primBounded w . f = primBounded (w #. f)'
 
 -- | Create a 'Builder' that encodes a sequence generated from a seed value
 -- using an 'Encoding'.
-{-# INLINE encodeUnfoldrWithB #-}
-encodeUnfoldrWithB :: BoundedEncoding b -> (a -> Maybe (b, a)) -> a -> Builder
-encodeUnfoldrWithB w =
+{-# INLINE primUnfoldrBounded #-}
+primUnfoldrBounded :: BoundedPrim b -> (a -> Maybe (b, a)) -> a -> Builder
+primUnfoldrBounded w =
     makeBuilder
   where
     bound = I.sizeBound w
@@ -668,9 +657,9 @@ encodeUnfoldrWithB w =
 --
 -- > filterBS p = E.encodeIf p E.word8 E.encodeNothing
 --
-{-# INLINE encodeByteStringWithB #-}
-encodeByteStringWithB :: BoundedEncoding Word8 -> S.ByteString -> Builder
-encodeByteStringWithB w =
+{-# INLINE primMapByteStringBounded #-}
+primMapByteStringBounded :: BoundedPrim Word8 -> S.ByteString -> Builder
+primMapByteStringBounded w =
     \bs -> builder $ step bs
   where
     bound = I.sizeBound w
@@ -701,11 +690,11 @@ encodeByteStringWithB w =
                   | otherwise =
                       goBS ip (BufferRange op ope)
 
--- | Chunk-wise application of 'encodeByteStringWith'.
-{-# INLINE encodeLazyByteStringWithB #-}
-encodeLazyByteStringWithB :: BoundedEncoding Word8 -> L.ByteString -> Builder
-encodeLazyByteStringWithB w =
-    L.foldrChunks (\x b -> encodeByteStringWithB w x `mappend` b) mempty
+-- | Chunk-wise application of 'primMapByteStringBounded'.
+{-# INLINE primMapLazyByteStringBounded #-}
+primMapLazyByteStringBounded :: BoundedPrim Word8 -> L.ByteString -> Builder
+primMapLazyByteStringBounded w =
+    L.foldrChunks (\x b -> primMapByteStringBounded w x `mappend` b) mempty
 
 
 ------------------------------------------------------------------------------
@@ -714,7 +703,7 @@ encodeLazyByteStringWithB w =
 
 -- | Char8 encode a 'Char'.
 {-# INLINE char8 #-}
-char8 :: FixedEncoding Char
+char8 :: FixedPrim Char
 char8 = (fromIntegral . ord) >$< word8
 
 
@@ -724,7 +713,7 @@ char8 = (fromIntegral . ord) >$< word8
 
 -- | UTF-8 encode a 'Char'.
 {-# INLINE charUtf8 #-}
-charUtf8 :: BoundedEncoding Char
+charUtf8 :: BoundedPrim Char
 charUtf8 = boundedEncoding 4 (encodeCharUtf8 f1 f2 f3 f4)
   where
     pokeN n io op  = io op >> return (op `plusPtr` n)
@@ -778,27 +767,27 @@ encodeCharUtf8 f1 f2 f3 f4 c = case ord c of
 -- Testing encodings
 ------------------------------------------------------------------------------
 
--- | /For testing use only./ Evaluate a 'FixedEncoding' on a given value.
-evalF :: FixedEncoding a -> a -> [Word8]
+-- | /For testing use only./ Evaluate a 'FixedPrim' on a given value.
+evalF :: FixedPrim a -> a -> [Word8]
 evalF fe = S.unpack . S.unsafeCreate (I.size fe) . runF fe
 
--- | /For testing use only./ Evaluate a 'BoundedEncoding' on a given value.
-evalB :: BoundedEncoding a -> a -> [Word8]
+-- | /For testing use only./ Evaluate a 'BoundedPrim' on a given value.
+evalB :: BoundedPrim a -> a -> [Word8]
 evalB be x = S.unpack $ unsafePerformIO $
     S.createAndTrim (I.sizeBound be) $ \op -> do
         op' <- runB be x op
         return (op' `minusPtr` op)
 
--- | /For testing use only./ Show the result of a 'FixedEncoding' of a given
+-- | /For testing use only./ Show the result of a 'FixedPrim' of a given
 -- value as a 'String' by interpreting the resulting bytes as Unicode
 -- codepoints.
-showF :: FixedEncoding a -> a -> String
+showF :: FixedPrim a -> a -> String
 showF fe = map (chr . fromIntegral) . evalF fe
 
--- | /For testing use only./ Show the result of a 'BoundedEncoding' of a given
+-- | /For testing use only./ Show the result of a 'BoundedPrim' of a given
 -- value as a 'String' by interpreting the resulting bytes as Unicode
 -- codepoints.
-showB :: BoundedEncoding a -> a -> String
+showB :: BoundedPrim a -> a -> String
 showB be = map (chr . fromIntegral) . evalB be
 
 
