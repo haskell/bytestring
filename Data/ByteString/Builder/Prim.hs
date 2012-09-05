@@ -447,6 +447,7 @@ module Data.ByteString.Builder.Prim (
   -- a decimal number with UTF-8 encoded characters.
   , charUtf8
 
+{-
   -- * Testing support
   -- | The following four functions are intended for testing use
   -- only. They are /not/ efficient. Basic encodings are efficently executed by
@@ -458,7 +459,7 @@ module Data.ByteString.Builder.Prim (
 
   , showF
   , showB
-
+-}
   ) where
 
 import           Data.ByteString.Builder.Internal
@@ -764,7 +765,7 @@ encodeCharUtf8 f1 f2 f3 f4 c = case ord c of
 ------------------------------------------------------------------------------
 -- Testing encodings
 ------------------------------------------------------------------------------
-
+{-
 -- | /For testing use only./ Evaluate a 'FixedPrim' on a given value.
 evalF :: FixedPrim a -> a -> [Word8]
 evalF fe = S.unpack . S.unsafeCreate (I.size fe) . runF fe
@@ -787,5 +788,5 @@ showF fe = map (chr . fromIntegral) . evalF fe
 -- codepoints.
 showB :: BoundedPrim a -> a -> String
 showB be = map (chr . fromIntegral) . evalB be
-
+-}
 
