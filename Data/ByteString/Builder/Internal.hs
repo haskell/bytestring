@@ -46,7 +46,7 @@ module Data.ByteString.Builder.Internal (
     BufferRange(..)
   , LazyByteStringC
 
-  , BuildSignal
+  , BuildSignal(..)
   , BuildStep
 
   , done

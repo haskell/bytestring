@@ -32,6 +32,11 @@ module Data.ByteString.Builder.Extra
 
     , flush
 
+    -- * Low level execution
+    , BufferWriter
+    , Next(..)
+    , runBuilder
+
     -- * Host-specific binary encodings
     , intHost
     , int16Host
@@ -50,12 +55,100 @@ module Data.ByteString.Builder.Extra
 
 
 import Data.ByteString.Builder.Internal
+         ( Builder, toLazyByteStringWith
+         , AllocationStrategy, safeStrategy, untrimmedStrategy
+         , smallChunkSize, defaultChunkSize, flush
+         , byteStringCopy, byteStringInsert, byteStringThreshold
+         , lazyByteStringCopy, lazyByteStringInsert, lazyByteStringThreshold )
 
-import qualified Data.ByteString.Builder.Prim as P
+import qualified Data.ByteString.Builder.Internal as I
+import qualified Data.ByteString.Builder.Prim  as P
+import qualified Data.ByteString.Internal      as S
+import qualified Data.ByteString.Lazy.Internal as L
 
 
 import Foreign
 
+------------------------------------------------------------------------------
+-- Builder execution public API
+------------------------------------------------------------------------------
+
+-- | A 'BufferWriter' represents the result of running a 'Builder'.
+-- It unfolds as a sequence of chunks of data. These chunks come in two forms:
+--
+--  * an IO action for writing the Builder's data into a user-supplied memory
+--    buffer.
+--
+--  * a pre-existing chunks of data represented by a strict 'ByteString'
+--
+-- While this is rather low level, it provides you with full flexibility in
+-- how the data is written out.
+--
+-- The 'BufferWriter' itself is an IO action: you supply it with a buffer
+-- (as a pointer and length) and it will write data into the buffer.
+-- It returns a number indicating how many bytes were actually written
+-- (which can be @0@). It also returns a 'Next' which describes what
+-- comes next.
+--
+type BufferWriter = Ptr Word8 -> Int -> IO (Int, Next)
+
+-- | After running a 'BufferWriter' action there are three possibilities for
+-- what comes next:
+--
+data Next =
+     -- | This means we're all done. All the builder data has now been written.
+     Done
+
+     -- | This indicates that there may be more data to write. It
+     -- gives you the next 'BufferWriter' action. You should call that action
+     -- with an appropriate buffer. The int indicates the /minimum/ buffer size
+     -- required by the next 'BufferWriter' action. That is, if you call the next
+     -- action you /must/ supply it with a buffer length of at least this size.
+   | More   !Int          BufferWriter
+
+     -- | In addition to the data that has just been written into your buffer
+     -- by the 'BufferWriter' action, it gives you a pre-existing chunk
+     -- of data as a 'S.ByteString'. It also gives you the following 'BufferWriter'
+     -- action. It is safe to run this following action using a buffer with as
+     -- much free space as was left by the previous run action.
+   | Chunk  !S.ByteString BufferWriter
+
+-- | Turn a 'Builder' into its initial 'BufferWriter' action.
+--
+runBuilder :: Builder -> BufferWriter
+runBuilder = run . I.runBuilder
+  where
+    run :: I.BuildStep () -> BufferWriter
+    run step = \buf len -> do
+      sig <- step (I.BufferRange buf (buf `plusPtr` len))
+      case sig of
+        I.Done endPtr () ->
+          let !wc  = bytesWritten buf endPtr
+              next = Done
+           in return (wc, next)
+
+        I.BufferFull minReq endPtr step' ->
+          let !wc  = bytesWritten buf endPtr
+              next = More minReq (run step')
+           in return (wc, next)
+
+        I.InsertChunks endPtr _ lbsc step' ->
+          let !wc  = bytesWritten buf endPtr
+              next = case lbsc L.Empty of
+                       L.Empty      -> More  (len - wc) (run step')
+                       L.Chunk c cs -> Chunk c          (yieldChunks step' cs)
+           in return (wc, next)
+
+    yieldChunks :: I.BuildStep () -> L.ByteString -> BufferWriter
+    yieldChunks step' cs = \buf len ->
+      case cs of
+        L.Empty       -> run step' buf len
+        L.Chunk c cs' ->
+          let wc   = 0
+              next = Chunk c (yieldChunks step' cs')
+           in return (wc, next)
+
+    bytesWritten startPtr endPtr = endPtr `minusPtr` startPtr
 
 
 ------------------------------------------------------------------------------
