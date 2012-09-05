@@ -198,12 +198,12 @@ chunked-transfer encoding requires each chunk to
 -- loop. Its efficiency is exploited for implementing the @filter@ and @map@
 -- functions in "Data.ByteString.Lazy" as
 --
--- > import qualified Codec.Bounded.Encoding as E
+-- > import qualified Data.ByteString.Builder.Prim as P
 -- >
 -- > filter :: (Word8 -> Bool) -> ByteString -> ByteString
 -- > filter p = toLazyByteString . encodeLazyByteStringWithB write
 -- >   where
--- >     write = E.encodeIf p E.word8 E.emptyEncoding
+-- >     write = P.condB p P.word8 P.emptyB
 -- >
 -- > map :: (Word8 -> Word8) -> ByteString -> ByteString
 -- > map f = toLazyByteString . encodeLazyByteStringWithB (E.word8 E.#. f)

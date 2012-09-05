@@ -13,14 +13,14 @@
 -- this module in your library. We are glad to accept patches for further
 -- standard encodings of standard Haskell values.
 --
--- If you need to write your own primitive encoding, then be aware that you are
+-- If you need to write your own builder primitives, then be aware that you are
 -- writing code with /all saftey belts off/; i.e.,
 -- *this is the code that might make your application vulnerable to buffer-overflow attacks!*
--- The "Codec.Bounded.Encoding.Internal.Test" module provides you with
+-- The "Data.ByteString.Builder.Prim.Tests" module provides you with
 -- utilities for testing your encodings thoroughly.
 --
 module Data.ByteString.Builder.Prim.Internal (
-  -- * Fixed-size Encodings
+  -- * Fixed-size builder primitives
     Size
   , FixedPrim
   , fixedEncoding
@@ -34,7 +34,7 @@ module Data.ByteString.Builder.Prim.Internal (
 
   , storableToF
 
-  -- * Bounded-size Encodings
+  -- * Bounded-size builder primitives
   , BoundedPrim
   , boundedEncoding
   , sizeBound
@@ -72,24 +72,27 @@ import Prelude hiding (maxBound)
 -- Supporting infrastructure
 ------------------------------------------------------------------------------
 
--- | Contravariant functors as in the 'contravariant' package.
+-- | Contravariant functors as in the @contravariant@ package.
 class Contravariant f where
     contramap :: (b -> a) -> f a -> f b
 
 infixl 4 >$<
 
--- | An overloaded infix operator for 'contramapF' and 'contramapB'.
+-- | A fmap-like operator for builder primitives, both bounded and fixed size.
+--
+-- Builder primitives are contravariant so it's like the normal fmap, but
+-- backwards (look at the type). (If it helps to remember, the operator symbol
+-- is like (<$>) but backwards.)
 --
 -- We can use it for example to prepend and/or append fixed values to an
--- encoding.
+-- primitive.
 --
 -- >showEncoding ((\x -> ('\'', (x, '\''))) >$< fixed3) 'x' = "'x'"
 -- >  where
 -- >    fixed3 = char7 >*< char7 >*< char7
 --
 -- Note that the rather verbose syntax for composition stems from the
--- requirement to be able to compute the 'size's and 'sizeBound's at
--- compile time.
+-- requirement to be able to compute the size / size bound at compile time.
 --
 (>$<) :: Contravariant f => (b -> a) -> f a -> f b
 (>$<) = contramap
@@ -114,14 +117,16 @@ instance Monoidal BoundedPrim where
 
 infixr 5 >*<
 
--- | An overloaded infix operator for 'pairF' and 'pairB'.
+-- | A pairing/concatenation operator for builder primitives, both bounded and
+-- fixed size.
+--
 -- For example,
 --
--- >showF (char7 >*< char7) ('x','y') = "xy"
+-- > showF (char7 >*< char7) ('x','y') = "xy"
 --
--- We can combine multiple encodings using '>*<' multiple times.
+-- We can combine multiple primitives using '>*<' multiple times.
 --
--- >showEncoding (char7 >*< char7 >*< char7) ('x',('y','z')) = "xyz"
+-- > showEncoding (char7 >*< char7 >*< char7) ('x',('y','z')) = "xyz"
 --
 (>*<) :: Monoidal f => f a -> f b -> f (a, b)
 (>*<) = pair
@@ -132,10 +137,10 @@ type Size = Int
 
 
 ------------------------------------------------------------------------------
--- Fixed-size Encodings
+-- Fixed-size builder primitives
 ------------------------------------------------------------------------------
 
--- | An encoding that always results in a sequence of bytes of a
+-- | A builder primitive that always results in a sequence of bytes of a
 -- pre-determined, fixed size.
 data FixedPrim a = FE {-# UNPACK #-} !Int (a -> Ptr Word8 -> IO ())
 
@@ -162,10 +167,10 @@ pairF :: FixedPrim a -> FixedPrim b -> FixedPrim (a, b)
 pairF (FE l1 io1) (FE l2 io2) =
     FE (l1 + l2) (\(x1,x2) op -> io1 x1 op >> io2 x2 (op `plusPtr` l1))
 
--- | Change an encoding such that it first applies a function to the value
+-- | Change a primitives such that it first applies a function to the value
 -- to be encoded.
 --
--- Note that encodings are 'Contrafunctors'
+-- Note that primitives are 'Contrafunctors'
 -- <http://hackage.haskell.org/package/contravariant>. Hence, the following
 -- laws hold.
 --
@@ -196,10 +201,10 @@ liftIOF (FE l io) = FE l (\xWrapped op -> do x <- xWrapped; io x op)
 -}
 
 ------------------------------------------------------------------------------
--- Bounded-size Encodings
+-- Bounded-size builder primitives
 ------------------------------------------------------------------------------
 
--- | An encoding that always results in sequence of bytes that is no longer
+-- | A builder primitive that always results in sequence of bytes that is no longer
 -- than a pre-determined bound.
 data BoundedPrim a = BE {-# UNPACK #-} !Int (a -> Ptr Word8 -> IO (Ptr Word8))
 
@@ -257,7 +262,7 @@ eitherB (BE b1 io1) (BE b2 io2) =
         (\x op -> case x of Left x1 -> io1 x1 op; Right x2 -> io2 x2 op)
 
 -- | Conditionally select a 'BoundedPrim'.
--- For example, we can implement the ASCII encoding that drops characters with
+-- For example, we can implement the ASCII primitive that drops characters with
 -- Unicode codepoints above 127 as follows.
 --
 -- @
@@ -299,12 +304,12 @@ liftIOB (BE l io) = BE l (\xWrapped op -> do x <- xWrapped; io x op)
 -}
 
 ------------------------------------------------------------------------------
--- Encodings from 'ByteString's.
+-- Builder primitives from 'ByteString's.
 ------------------------------------------------------------------------------
 
 {-
 -- | A 'FixedPrim' that always results in the same byte sequence given as a
--- strict 'S.ByteString'. We can use this encoding to insert fixed ...
+-- strict 'S.ByteString'. We can use this primitive to insert fixed ...
 {-# INLINE CONLIKE constByteStringF #-}
 constByteStringF :: S.ByteString -> FixedPrim ()
 constByteStringF bs =

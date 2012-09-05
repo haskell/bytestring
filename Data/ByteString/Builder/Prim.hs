@@ -1,72 +1,68 @@
 {-# LANGUAGE CPP, BangPatterns, ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 {- | Copyright : (c) 2010-2011 Simon Meier
-                   (c) 2010      Jasper van der Jeugt
+                 (c) 2010      Jasper van der Jeugt
 License        : BSD3-style (see LICENSE)
 Maintainer     : Simon Meier <iridcode@gmail.com>
 Portability    : GHC
 
-This module provides the types of fixed-size and bounded-size encodings,
-  which are the basic building blocks for constructing 'Builder's.
-These types are used to achieve
-  application-specific performance improvements of 'Builder's.
+This module provides 'Builder' /primitives/, which are lower level building
+blocks for constructing 'Builder's. You don't need to go down to this level but
+it can be slightly faster.
 
-/Fixed(-size) encodings/ are encodings that always result in a sequence of bytes
-  of a predetermined, fixed length.
-An example for a fixed encoding is the big-endian encoding of a 'Word64',
-  which always results in exactly 8 bytes.
-/Bounded(-size) encodings/ are encodings that always result in a sequence
-  of bytes that is no larger than a predetermined bound.
-An example for a bounded encoding is the UTF-8 encoding of a 'Char',
-  which results always in less or equal to 4 bytes.
-Note that every fixed encoding is also a bounded encoding.
-In the following, we therefore only refer to fixed encodings,
-  where it matters that the resulting sequence of bytes is of a
-  of a predetermined, fixed length.
-Otherwise, we just refer to bounded encodings.
+Morally, builder primitives are like functions @a -> Builder@, that is they
+take a value and encode it as a sequence of bytes, represented as a 'Builder'.
+Of course their implementation is a bit more specialised.
 
-As said,
-  the goal of bounded encodings is to improve the performance of 'Builder's.
-These improvements stem from making the two
-  most common steps performed by a 'Builder' more efficient.
-We explain these two steps in turn.
+Builder primitives come in two forms: fixed-size and bounded-size.
 
-The first most common step is the concatentation of two 'Builder's.
-Internally,
-  concatentation corresponds to function composition.
-(Note that 'Builder's can be seen as difference-lists
-  of buffer-filling functions;
-  cf.  <http://hackage.haskell.org/cgi-bin/hackage-scripts/package/dlist>.
-)
-Function composition is a fast /O(1)/ operation.
-However,
-  we can use bounded encodings to
-  remove some of these function compositions altoghether,
-  which is obviously more efficient.
+* /Fixed(-size) primitives/ are builder primitives that always result in a
+  sequence of bytes of a fixed length. That is, the length is independent of
+  the value that is encoded. An example of a fixed size primitive is the
+  big-endian encoding of a 'Word64', which always results in exactly 8 bytes.
 
-The second most common step performed by a 'Builder' is to fill a buffer
-  using a bounded encoding,
-  which works as follows.
-The 'Builder' checks whether there is enough space left to
-  execute the bounded encoding.
-If there is, then the 'Builder' executes the bounded encoding
-  and calls the next 'Builder' with the updated buffer.
-Otherwise,
-  the 'Builder' signals its driver that it requires a new buffer.
-This buffer must be at least as large as the bound of the encoding.
-We can use bounded encodings to reduce the number of buffer-free
-  checks by fusing the buffer-free checks of consecutive
-  'Builder's.
-We can also use bounded encodings to simplify the control flow
-  for signalling that a buffer is full by
-  ensuring that we check first that there is enough space left
-  and only then decide on how to encode a given value.
+* /Bounded(-size) primitives/ are builder primitives that always result in a
+  sequence of bytes that is no larger than a predetermined bound. That is, the
+  bound is independent of the value that is encoded but the actual length will
+  depend on the value. An example for a bounded primitive is the UTF-8 encoding
+  of a 'Char', which can be 1,2,3 or 4 bytes long, so the bound is 4 bytes.
 
-Let us illustrate these improvements on the
-  CSV-table rendering example from "Data.ByteString.Builder".
-Its \"hot code\" is the rendering of a table's cells,
-  which we implement as follows using only the functions from the
-  'Builder' API.
+Note that fixed primitives can be considered as a special case of bounded
+primitives, and we can lift from fixed to bounded.
+
+Because bounded primitives are the more general case, in this documentation we
+only refer to fixed size primitives where it matters that the resulting
+sequence of bytes is of a fixed length. Otherwise, we just refer to bounded
+size primitives.
+
+The purpose of using builder primitives is to improve the performance of
+'Builder's. These improvements stem from making the two most common steps
+performed by a 'Builder' more efficient. We explain these two steps in turn.
+
+The first most common step is the concatenation of two 'Builder's. Internally,
+concatenation corresponds to function composition. (Note that 'Builder's can
+be seen as difference-lists of buffer-filling functions; cf. 
+<http://hackage.haskell.org/cgi-bin/hackage-scripts/package/dlist>. )
+Function composition is a fast /O(1)/ operation. However, we can use bounded
+primitives to remove some of these function compositions altogether, which is
+more efficient.
+
+The second most common step performed by a 'Builder' is to fill a buffer using
+a bounded primitives, which works as follows. The 'Builder' checks whether
+there is enough space left to execute the bounded primitive. If there is, then
+the 'Builder' executes the bounded primitive and calls the next 'Builder' with
+the updated buffer. Otherwise, the 'Builder' signals its driver that it
+requires a new buffer. This buffer must be at least as large as the bound of
+the primitive. We can use bounded primitives to reduce the number of
+buffer-free checks by fusing the buffer-free checks of consecutive 'Builder's.
+We can also use bounded primitives to simplify the control flow for signalling
+that a buffer is full by ensuring that we check first that there is enough
+space left and only then decide on how to encode a given value.
+
+Let us illustrate these improvements on the CSV-table rendering example from
+"Data.ByteString.Builder". Its \"hot code\" is the rendering of a table's
+cells, which we implement as follows using only the functions from the
+'Builder' API.
 
 @
 import "Data.ByteString.Builder" as B
@@ -84,19 +80,16 @@ renderString cs = B.charUtf8 \'\"\' \<\> foldMap escape cs \<\> B.charUtf8 \'\"\
 @
 
 Efficient encoding of 'Int's as decimal numbers is performed by @intDec@.
-Optimization potential exists for the escaping of 'String's.
-The above implementation has two optimization opportunities.
-First,
-  the buffer-free checks of the 'Builder's for escaping doublequotes
-  and backslashes can be fused.
-Second,
-  the concatenations performed by 'foldMap' can be eliminated.
+Optimization potential exists for the escaping of 'String's. The above
+implementation has two optimization opportunities. First, the buffer-free
+checks of the 'Builder's for escaping double quotes and backslashes can be
+fused. Second, the concatenations performed by 'foldMap' can be eliminated.
 The following implementation exploits these optimizations.
 
 @
-import qualified Data.ByteString.Builder.Prim  as E
+import qualified Data.ByteString.Builder.Prim  as P
 import           Data.ByteString.Builder.Prim
-                 ( 'ifB', 'fromF', ('>*<'), ('>$<') )
+                 ( 'condB', 'liftFixedToBounded', ('>*<'), ('>$<') )
 
 renderString :: String -\> Builder
 renderString cs =
@@ -104,78 +97,65 @@ renderString cs =
   where
     escape :: E.'BoundedPrim' Char
     escape =
-      'ifB' (== \'\\\\\') (fixed2 (\'\\\\\', \'\\\\\')) $
-      'ifB' (== \'\\\"\') (fixed2 (\'\\\\\', \'\\\"\')) $
+      'condB' (== \'\\\\\') (fixed2 (\'\\\\\', \'\\\\\')) $
+      'condB' (== \'\\\"\') (fixed2 (\'\\\\\', \'\\\"\')) $
       E.'charUtf8'
     &#160;
     {&#45;\# INLINE fixed2 \#&#45;}
-    fixed2 x = 'fromF' $ const x '>$<' E.'char7' '>*<' E.'char7'
+    fixed2 x = 'liftFixedToBounded' $ const x '>$<' E.'char7' '>*<' E.'char7'
 @
 
-The code should be mostly self-explanatory.
-The slightly awkward syntax is because the combinators
-  are written such that the size-bound of the resulting 'BoundedPrim'
-  can be computed at compile time.
-We also explicitly inline the 'fixed2' encoding,
-  which encodes a fixed tuple of characters,
-  to ensure that the bound compuation happens at compile time.
-When encoding the following list of 'String's,
-  the optimized implementation of 'renderString' is two times faster.
+The code should be mostly self-explanatory. The slightly awkward syntax is
+because the combinators are written such that the size-bound of the resulting
+'BoundedPrim' can be computed at compile time. We also explicitly inline the
+'fixed2' primitive, which encodes a fixed tuple of characters, to ensure that
+the bound computation happens at compile time. When encoding the following list
+of 'String's, the optimized implementation of 'renderString' is two times
+faster.
 
 @
 maxiStrings :: [String]
 maxiStrings = take 1000 $ cycle [\"hello\", \"\\\"1\\\"\", \"&#955;-w&#246;rld\"]
 @
 
-Most of the performance gain stems from using 'encodeListWithB',
-  which encodes a list of values from left-to-right with a
-  'BoundedPrim'.
-It exploits the 'Builder' internals to avoid unnecessary function
-  compositions (i.e., concatentations).
-In the future,
-  we would expect the compiler to perform the optimizations
-  implemented in 'encodeListWithB'.
-However,
-  it seems that the code is currently to complicated for the
-  compiler to see through.
-Therefore,
-  we provide the 'BoundedPrim' escape hatch,
-  which allows data structures to provide very efficient encoding traversals,
-  like 'encodeListWithB' for lists.
+Most of the performance gain stems from using 'primMapListBounded', which
+encodes a list of values from left-to-right with a 'BoundedPrim'. It exploits
+the 'Builder' internals to avoid unnecessary function compositions (i.e.,
+concatenations). In the future, we might expect the compiler to perform the
+optimizations implemented in 'primMapListBounded'. However, it seems that the
+code is currently to complicated for the compiler to see through. Therefore, we
+provide the 'BoundedPrim' escape hatch, which allows data structures to provide
+very efficient encoding traversals, like 'primMapListBounded' for lists.
 
-Note that 'BoundedPrim's are a bit verbose, but quite versatile.
-Here is an example of a 'BoundedPrim' for combined HTML escapng and
-UTF-8 encoding.
-It exploits that the escaped character with the maximal Unicode
-  codepoint is \'>\'.
+Note that 'BoundedPrim's are a bit verbose, but quite versatile. Here is an
+example of a 'BoundedPrim' for combined HTML escaping and UTF-8 encoding. It
+exploits that the escaped character with the maximal Unicode codepoint is \'>\'.
 
 @
 {&#45;\# INLINE charUtf8HtmlEscaped \#&#45;}
 charUtf8HtmlEscaped :: E.BoundedPrim Char
 charUtf8HtmlEscaped =
-    'ifB' (>  \'\>\' ) E.'charUtf8' $
-    'ifB' (== \'\<\' ) (fixed4 (\'&\',(\'l\',(\'t\',\';\')))) $        -- &lt;
-    'ifB' (== \'\>\' ) (fixed4 (\'&\',(\'g\',(\'t\',\';\')))) $        -- &gt;
-    'ifB' (== \'&\' ) (fixed5 (\'&\',(\'a\',(\'m\',(\'p\',\';\'))))) $  -- &amp;
-    'ifB' (== \'\"\' ) (fixed5 (\'&\',(\'\#\',(\'3\',(\'4\',\';\'))))) $  -- &\#34;
-    'ifB' (== \'\\\'\') (fixed5 (\'&\',(\'\#\',(\'3\',(\'9\',\';\'))))) $  -- &\#39;
-    ('fromF' E.'char7')         -- fallback for 'Char's smaller than \'\>\'
+    'condB' (>  \'\>\' ) E.'charUtf8' $
+    'condB' (== \'\<\' ) (fixed4 (\'&\',(\'l\',(\'t\',\';\')))) $        -- &lt;
+    'condB' (== \'\>\' ) (fixed4 (\'&\',(\'g\',(\'t\',\';\')))) $        -- &gt;
+    'condB' (== \'&\' ) (fixed5 (\'&\',(\'a\',(\'m\',(\'p\',\';\'))))) $  -- &amp;
+    'condB' (== \'\"\' ) (fixed5 (\'&\',(\'\#\',(\'3\',(\'4\',\';\'))))) $  -- &\#34;
+    'condB' (== \'\\\'\') (fixed5 (\'&\',(\'\#\',(\'3\',(\'9\',\';\'))))) $  -- &\#39;
+    ('liftFixedToBounded' E.'char7')         -- fallback for 'Char's smaller than \'\>\'
   where
     {&#45;\# INLINE fixed4 \#&#45;}
-    fixed4 x = 'fromF' $ const x '>$<'
+    fixed4 x = 'liftFixedToBounded' $ const x '>$<'
       E.char7 '>*<' E.char7 '>*<' E.char7 '>*<' E.char7
     &#160;
     {&#45;\# INLINE fixed5 \#&#45;}
-    fixed5 x = 'fromF' $ const x '>$<'
+    fixed5 x = 'liftFixedToBounded' $ const x '>$<'
       E.char7 '>*<' E.char7 '>*<' E.char7 '>*<' E.char7 '>*<' E.char7
 @
 
 This module currently does not expose functions that require the special
-  properties of fixed-size encodings.
-They are useful for prefixing 'Builder's with their size or for
-  implementing chunked encodings.
-We will expose the corresponding functions in future releases of this
-  library.
+properties of fixed-size primitives. They are useful for prefixing 'Builder's
+with their size or for implementing chunked encodings. We will expose the
+corresponding functions in future releases of this library.
 -}
 
 
@@ -183,25 +163,25 @@ We will expose the corresponding functions in future releases of this
 {-
 --
 --
--- A /bounded encoding/ is an encoding that never results in a sequence
+-- A /bounded primitive/ is a builder primitive that never results in a sequence
 -- longer than some fixed number of bytes. This number of bytes must be
 -- independent of the value being encoded. Typical examples of bounded
--- encodings are the big-endian encoding of a 'Word64', which results always
+-- primitives are the big-endian encoding of a 'Word64', which results always
 -- in exactly 8 bytes, or the UTF-8 encoding of a 'Char', which results always
 -- in less or equal to 4 bytes.
 --
--- Typically, encodings are implemented efficiently by allocating a buffer (an
+-- Typically, primitives are implemented efficiently by allocating a buffer (an
 -- array of bytes) and repeatedly executing the following two steps: (1)
 -- writing to the buffer until it is full and (2) handing over the filled part
--- to the consumer of the encoded value. Step (1) is where bounded encodings
--- are used. We must use a bounded encoding, as we must check that there is
+-- to the consumer of the encoded value. Step (1) is where bounded primitives
+-- are used. We must use a bounded primitive, as we must check that there is
 -- enough free space /before/ actually writing to the buffer.
 --
--- In term of expressivity, it would be sufficient to construct all encodings
+-- In term of expressiveness, it would be sufficient to construct all encodings
 -- from the single bounded encoding that encodes a 'Word8' as-is. However,
 -- this is not sufficient in terms of efficiency. It results in unnecessary
 -- buffer-full checks and it complicates the program-flow for writing to the
--- buffer, as buffer-full checks are interleaved with analyzing the value to be
+-- buffer, as buffer-full checks are interleaved with analysing the value to be
 -- encoded (e.g., think about the program-flow for UTF-8 encoding). This has a
 -- significant effect on overall encoding performance, as encoding primitive
 -- Haskell values such as 'Word8's or 'Char's lies at the heart of every
@@ -360,7 +340,7 @@ The first two cost reductions are supported for user code through functions
 in "Data.ByteString.Builder.Extra". There, we continue the above example
 and drop the generation time to 0.8ms by implementing 'renderString' more
 cleverly. The third reduction requires meddling with the internals of
-'Builder's and is not recomended in code outside of this library. However,
+'Builder's and is not recommended in code outside of this library. However,
 patches to this library are very welcome.
 -}
 module Data.ByteString.Builder.Prim (
@@ -371,7 +351,7 @@ module Data.ByteString.Builder.Prim (
 
   -- ** Combinators
   -- | The combinators for 'BoundedPrim's are implemented such that the
-  -- 'sizeBound' of the resulting 'BoundedPrim' is computed at compile time.
+  -- size of the resulting 'BoundedPrim' can be computed at compile time.
   , emptyB
   , (>*<)
   , (>$<)
@@ -492,7 +472,7 @@ import           Foreign
 #endif
 
 ------------------------------------------------------------------------------
--- Creating Builders from bounded encodings
+-- Creating Builders from bounded primitives
 ------------------------------------------------------------------------------
 
 -- | Encode a value with a 'FixedPrim'.
@@ -537,7 +517,7 @@ primMapLazyByteStringFixed = primMapLazyByteStringBounded . toB
 -- 'encodeWithStream' can keep control over the execution.
 
 
--- | Create a 'Builder' that encodes values with the given 'Encoding'.
+-- | Create a 'Builder' that encodes values with the given 'BoundedPrim'.
 --
 -- We rewrite consecutive uses of 'primBounded' such that the bound-checks are
 -- fused. For example,
@@ -550,7 +530,7 @@ primMapLazyByteStringFixed = primMapLazyByteStringBounded . toB
 -- influences the boundaries of the generated chunks. However, for a user of
 -- this library it is observationally equivalent, as chunk boundaries of a lazy
 -- 'L.ByteString' can only be observed through the internal interface.
--- Morevoer, we expect that all 'Encoding's write much fewer than 4kb (the
+-- Morevoer, we expect that all primitives write much fewer than 4kb (the
 -- default short buffer size). Hence, it is safe to ignore the additional
 -- memory spilled due to the more agressive buffer wrapping introduced by this
 -- optimization.
@@ -587,8 +567,9 @@ primBounded w =
 
 -- TODO: The same rules for 'putBuilder (..) >> putBuilder (..)'
 
--- | Create a 'Builder' that encodes a list of values consecutively using an
--- 'Encoding'. This function is more efficient than the canonical
+-- | Create a 'Builder' that encodes a list of values consecutively using a
+-- 'BoundedPrim' for each element. This function is more efficient than the
+-- canonical
 --
 -- > filter p =
 -- >  B.toLazyByteString .
@@ -626,7 +607,7 @@ primMapListBounded w =
 -- TODO: Ensure rewriting 'primBounded w . f = primBounded (w #. f)'
 
 -- | Create a 'Builder' that encodes a sequence generated from a seed value
--- using an 'Encoding'.
+-- using a 'BoundedPrim' for each sequence element.
 {-# INLINE primUnfoldrBounded #-}
 primUnfoldrBounded :: BoundedPrim b -> (a -> Maybe (b, a)) -> a -> Builder
 primUnfoldrBounded w =
@@ -652,12 +633,12 @@ primUnfoldrBounded w =
                           fill x' (BufferRange pfNew' peNew)
 
 -- | Create a 'Builder' that encodes each 'Word8' of a strict 'S.ByteString'
--- using an 'Encoding'. For example, we can write a 'Builder' that filters
+-- using a 'BoundedPrim'. For example, we can write a 'Builder' that filters
 -- a strict 'S.ByteString' as follows.
 --
--- > import Codec.Bounded.Encoding as E (encodeIf, word8, encodeNothing)
+-- > import Data.ByteString.Builder.Primas P (word8, condB, emptyB)
 --
--- > filterBS p = E.encodeIf p E.word8 E.encodeNothing
+-- > filterBS p = P.condB p P.word8 P.emptyB
 --
 {-# INLINE primMapByteStringBounded #-}
 primMapByteStringBounded :: BoundedPrim Word8 -> S.ByteString -> Builder
