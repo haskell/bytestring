@@ -63,14 +63,14 @@ We can also use bounded encodings to simplify the control flow
   and only then decide on how to encode a given value.
 
 Let us illustrate these improvements on the
-  CSV-table rendering example from "Data.ByteString.Lazy.Builder".
+  CSV-table rendering example from "Data.ByteString.Builder".
 Its \"hot code\" is the rendering of a table's cells,
   which we implement as follows using only the functions from the
   'Builder' API.
 
 @
-import           "Data.ByteString.Lazy.Builder"         as B
-import           "Data.ByteString.Lazy.Builder.ASCII"   as B
+import "Data.ByteString.Builder"       as B
+import "Data.ByteString.Builder.ASCII" as B
 
 renderCell :: Cell -> Builder
 renderCell (StringC cs) = renderString cs
@@ -85,7 +85,7 @@ renderString cs = B.charUtf8 \'\"\' \<\> foldMap escape cs \<\> B.charUtf8 \'\"\
 @
 
 Efficient encoding of 'Int's as decimal numbers is performed by @intDec@
-  from "Data.ByteString.Lazy.Builder.ASCII".
+  from "Data.ByteString.Builder.ASCII".
 Optimization potential exists for the escaping of 'String's.
 The above implementation has two optimization opportunities.
 First,
@@ -96,8 +96,8 @@ Second,
 The following implementation exploits these optimizations.
 
 @
-import qualified Data.ByteString.Lazy.Builder.BasicEncoding  as E
-import           Data.ByteString.Lazy.Builder.BasicEncoding
+import qualified Data.ByteString.Builder.Prim  as E
+import           Data.ByteString.Builder.Prim
                  ( 'ifB', 'fromF', ('>*<'), ('>$<') )
 
 renderString :: String -\> Builder
@@ -231,7 +231,7 @@ We will expose the corresponding functions in future releases of this
 -- The bounded 'Encoding' that combines this escaping with UTF-8 encoding is
 -- the following.
 --
--- > import Data.ByteString.Lazy.Builder.BasicEncoding.Utf8 (char)
+-- > import Data.ByteString.Builder.Prim.Utf8 (char)
 -- >
 -- > {-# INLINE escapeChar #-}
 -- > escapeUtf8 :: BoundedEncoding Char
@@ -296,7 +296,7 @@ We will expose the corresponding functions in future releases of this
 --
 -- We can also use 'E.Encoding's to improve the efficiency of the following
 -- 'renderString' function from our UTF-8 CSV table encoding example in
--- "Data.ByteString.Lazy.Builder".
+-- "Data.ByteString.Builder".
 --
 -- > renderString :: String -> Builder
 -- > renderString cs = charUtf8 '"' <> foldMap escape cs <> charUtf8 '"'
@@ -309,10 +309,10 @@ We will expose the corresponding functions in future releases of this
 -- characters and using 'encodeListWith', which implements writing a list of
 -- values with a tighter inner loop and no 'mappend'.
 --
--- > import Data.ByteString.Lazy.Builder.Extras     -- assume these three
--- > import Codec.Bounded.Encoding                  -- imports are present
+-- > import Data.ByteString.Builder.Extra     -- assume these
+-- > import Data.ByteString.Builder.Prim      -- imports are present
 -- >        ( BoundedEncoding, encodeIf, (<#>), (#.) )
--- > import Data.ByteString.Lazy.Builder.BasicEncoding.Utf8 (char)
+-- > import Data.ByteString.Builder.Prim.Utf8 (char)
 -- >
 -- > renderString :: String -> Builder
 -- > renderString cs =
@@ -359,13 +359,13 @@ to memory would be more efficient, as it requires fewer buffer-size checks
 and less allocation. It is also a planned extension of this library.
 
 The first two cost reductions are supported for user code through functions
-in "Data.ByteString.Lazy.Builder.Extras". There, we continue the above example
+in "Data.ByteString.Builder.Extra". There, we continue the above example
 and drop the generation time to 0.8ms by implementing 'renderString' more
 cleverly. The third reduction requires meddling with the internals of
 'Builder's and is not recomended in code outside of this library. However,
 patches to this library are very welcome.
 -}
-module Data.ByteString.Lazy.Builder.BasicEncoding (
+module Data.ByteString.Builder.Prim (
 
   -- * Fixed-size encodings
     FixedEncoding
@@ -438,10 +438,10 @@ module Data.ByteString.Lazy.Builder.BasicEncoding (
 
   -- * Standard encodings of Haskell values
 
-  , module Data.ByteString.Lazy.Builder.BasicEncoding.Binary
+  , module Data.ByteString.Builder.Prim.Binary
 
   -- ** Character encodings
-  , module Data.ByteString.Lazy.Builder.BasicEncoding.ASCII
+  , module Data.ByteString.Builder.Prim.ASCII
 
   -- *** ISO/IEC 8859-1 (Char8)
   -- | The ISO/IEC 8859-1 encoding is an 8-bit encoding often known as Latin-1.
@@ -474,9 +474,9 @@ module Data.ByteString.Lazy.Builder.BasicEncoding (
 
   ) where
 
-import           Data.ByteString.Lazy.Builder.Internal
-import           Data.ByteString.Lazy.Builder.BasicEncoding.Internal.UncheckedShifts
-import           Data.ByteString.Lazy.Builder.BasicEncoding.Internal.Base16 (lowerTable, encode4_as_8)
+import           Data.ByteString.Builder.Internal
+import           Data.ByteString.Builder.Prim.Internal.UncheckedShifts
+import           Data.ByteString.Builder.Prim.Internal.Base16 (lowerTable, encode4_as_8)
 
 import qualified Data.ByteString               as S
 import qualified Data.ByteString.Internal      as S
@@ -487,10 +487,10 @@ import           Data.List (unfoldr)  -- HADDOCK ONLY
 import           Data.Char (chr, ord)
 import           Control.Monad ((<=<), unless)
 
-import           Data.ByteString.Lazy.Builder.BasicEncoding.Internal hiding (size, sizeBound)
-import qualified Data.ByteString.Lazy.Builder.BasicEncoding.Internal as I (size, sizeBound)
-import           Data.ByteString.Lazy.Builder.BasicEncoding.Binary
-import           Data.ByteString.Lazy.Builder.BasicEncoding.ASCII
+import           Data.ByteString.Builder.Prim.Internal hiding (size, sizeBound)
+import qualified Data.ByteString.Builder.Prim.Internal as I (size, sizeBound)
+import           Data.ByteString.Builder.Prim.Binary
+import           Data.ByteString.Builder.Prim.ASCII
 
 #if MIN_VERSION_base(4,4,0)
 import           Foreign hiding (unsafePerformIO, unsafeForeignPtrToPtr)

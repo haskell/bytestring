@@ -15,7 +15,7 @@
 -- benchmarks on a 32-bit machine it turned out to be the fastest
 -- implementation option.
 --
-module Data.ByteString.Lazy.Builder.BasicEncoding.Internal.Base16 (
+module Data.ByteString.Builder.Prim.Internal.Base16 (
     EncodingTable
   -- , upperTable
   , lowerTable

@@ -19,7 +19,7 @@
 -- The "Codec.Bounded.Encoding.Internal.Test" module provides you with
 -- utilities for testing your encodings thoroughly.
 --
-module Data.ByteString.Lazy.Builder.BasicEncoding.Internal (
+module Data.ByteString.Builder.Prim.Internal (
   -- * Fixed-size Encodings
     Size
   , FixedEncoding

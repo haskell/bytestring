@@ -71,23 +71,23 @@ library
                      Data.ByteString.Lazy.Char8
                      Data.ByteString.Lazy.Internal
 
-                     Data.ByteString.Lazy.Builder
-                     Data.ByteString.Lazy.Builder.Extras
-                     Data.ByteString.Lazy.Builder.ASCII
+                     Data.ByteString.Builder
+                     Data.ByteString.Builder.Extra
+                     Data.ByteString.Builder.ASCII
 
   other-modules:
                      -- these three modules should be exposed in a future
                      -- release once we're confident the API is stable.
-                     Data.ByteString.Lazy.Builder.Internal
-                     Data.ByteString.Lazy.Builder.BasicEncoding
-                     Data.ByteString.Lazy.Builder.BasicEncoding.Extras
-                     Data.ByteString.Lazy.Builder.BasicEncoding.Internal
+                     Data.ByteString.Builder.Internal
+                     Data.ByteString.Builder.Prim
+                     Data.ByteString.Builder.Prim.Extra
+                     Data.ByteString.Builder.Prim.Internal
 
-                     Data.ByteString.Lazy.Builder.BasicEncoding.Binary
-                     Data.ByteString.Lazy.Builder.BasicEncoding.ASCII
-                     Data.ByteString.Lazy.Builder.BasicEncoding.Internal.Floating
-                     Data.ByteString.Lazy.Builder.BasicEncoding.Internal.UncheckedShifts
-                     Data.ByteString.Lazy.Builder.BasicEncoding.Internal.Base16
+                     Data.ByteString.Builder.Prim.Binary
+                     Data.ByteString.Builder.Prim.ASCII
+                     Data.ByteString.Builder.Prim.Internal.Floating
+                     Data.ByteString.Builder.Prim.Internal.UncheckedShifts
+                     Data.ByteString.Builder.Prim.Internal.Base16
 
   extensions:        CPP,
                      ForeignFunctionInterface,

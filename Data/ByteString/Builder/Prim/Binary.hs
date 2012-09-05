@@ -5,7 +5,7 @@
 -- Maintainer    : Simon Meier <iridcode@gmail.com>
 -- Portability   : GHC
 --
-module Data.ByteString.Lazy.Builder.BasicEncoding.Binary (
+module Data.ByteString.Builder.Prim.Binary (
 
   -- ** Binary encodings
     int8
@@ -51,9 +51,9 @@ module Data.ByteString.Lazy.Builder.BasicEncoding.Binary (
 
   ) where
 
-import Data.ByteString.Lazy.Builder.BasicEncoding.Internal
-import Data.ByteString.Lazy.Builder.BasicEncoding.Internal.UncheckedShifts
-import Data.ByteString.Lazy.Builder.BasicEncoding.Internal.Floating
+import Data.ByteString.Builder.Prim.Internal
+import Data.ByteString.Builder.Prim.Internal.UncheckedShifts
+import Data.ByteString.Builder.Prim.Internal.Floating
 
 import Foreign
 

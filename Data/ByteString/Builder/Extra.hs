@@ -11,7 +11,7 @@
 -- for application-specific fine-tuning the performance of 'Builder's.
 --
 -----------------------------------------------------------------------------
-module Data.ByteString.Lazy.Builder.Extras
+module Data.ByteString.Builder.Extra
     (
     -- * Execution strategies
       toLazyByteStringWith
@@ -49,9 +49,9 @@ module Data.ByteString.Lazy.Builder.Extras
     ) where
 
 
-import Data.ByteString.Lazy.Builder.Internal
+import Data.ByteString.Builder.Internal
 
-import qualified Data.ByteString.Lazy.Builder.BasicEncoding as E
+import qualified Data.ByteString.Builder.Prim as E
 
 
 import Foreign

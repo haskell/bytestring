@@ -7,7 +7,7 @@
 --
 -- Constructing 'Builder's using ASCII-based encodings.
 --
-module Data.ByteString.Lazy.Builder.ASCII
+module Data.ByteString.Builder.ASCII
     (
       -- * Decimal numbers
       -- | Decimal encoding of numbers using ASCII encoded characters.
@@ -65,10 +65,10 @@ module Data.ByteString.Lazy.Builder.ASCII
 
     ) where
 
-import           Data.ByteString                                  as S
-import           Data.ByteString.Lazy.Internal                    as L
-import           Data.ByteString.Lazy.Builder.Internal (Builder)
-import qualified Data.ByteString.Lazy.Builder.BasicEncoding       as E
+import           Data.ByteString                             as S
+import           Data.ByteString.Lazy.Internal               as L
+import           Data.ByteString.Builder.Internal (Builder)
+import qualified Data.ByteString.Builder.Prim                as E
 
 import           Foreign
 

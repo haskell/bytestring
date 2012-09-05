@@ -40,7 +40,7 @@
 -- using an 'IO' action: you are writing code that might enable the next
 -- buffer-overlow attack on a Haskell server!
 --
-module Data.ByteString.Lazy.Builder.Internal (
+module Data.ByteString.Builder.Internal (
 
   -- * Build signals and steps
     BufferRange(..)
@@ -465,7 +465,7 @@ hPut h p = do
             fillBuffer buf
               | freeSpace buf < minFree =
                   error $ unlines
-                    [ "Data.ByteString.Lazy.Builder.Internal.hPut: internal error."
+                    [ "Data.ByteString.Builder.Internal.hPut: internal error."
                     , "  Not enough space after flush."
                     , "    required: " ++ show minFree
                     , "    free: "     ++ show (freeSpace buf)

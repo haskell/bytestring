@@ -10,7 +10,7 @@
 --
 -- Conversion of 'Float's and 'Double's to 'Word32's and 'Word64's.
 --
-module Data.ByteString.Lazy.Builder.BasicEncoding.Internal.Floating
+module Data.ByteString.Builder.Prim.Internal.Floating
     (
       -- coerceFloatToWord32
     -- , coerceDoubleToWord64
@@ -19,7 +19,7 @@ module Data.ByteString.Lazy.Builder.BasicEncoding.Internal.Floating
   ) where
 
 import Foreign
-import Data.ByteString.Lazy.Builder.BasicEncoding.Internal
+import Data.ByteString.Builder.Prim.Internal
 
 {-
 We work around ticket http://hackage.haskell.org/trac/ghc/ticket/4092 using the

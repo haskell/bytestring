@@ -19,7 +19,7 @@
 #include "MachDeps.h"
 #endif
 
-module Data.ByteString.Lazy.Builder.BasicEncoding.Internal.UncheckedShifts (
+module Data.ByteString.Builder.Prim.Internal.UncheckedShifts (
     shiftr_w16
   , shiftr_w32
   , shiftr_w64

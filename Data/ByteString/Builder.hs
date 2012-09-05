@@ -53,8 +53,8 @@ We use the following imports and abbreviate 'mappend' to simplify reading.
 
 @
 import qualified "Data.ByteString.Lazy"               as L
-import           "Data.ByteString.Lazy.Builder"
-import           "Data.ByteString.Lazy.Builder.ASCII" ('intDec')
+import           "Data.ByteString.Builder"
+import           "Data.ByteString.Builder.ASCII" ('intDec')
 import           Data.Monoid
 import           Data.Foldable                        ('foldMap')
 import           Data.List                            ('intersperse')
@@ -105,7 +105,7 @@ Using 'intDec' is more efficient than @'stringUtf8' . 'show'@,
 Avoiding this intermediate data structure significantly improves
   performance because encoding 'Cell's is the core operation
   for rendering CSV-tables.
-See "Data.ByteString.Lazy.Builder.BasicEncoding" for further
+See "Data.ByteString.Builder.Prim" for further
   information on how to improve the performance of 'renderString'.
 
 We demonstrate our UTF-8 CSV encoding function on the following table.
@@ -165,13 +165,13 @@ The following definition of 'renderString' is also about 20% slower.
 
 Apart from removing intermediate data-structures,
   encodings can be optimized further by fine-tuning their execution
-  parameters using the functions in "Data.ByteString.Lazy.Builder.Extras" and
+  parameters using the functions in "Data.ByteString.Builder.Extra" and
   their \"inner loops\" using the functions in
-  "Data.ByteString.Lazy.Builder.BasicEncoding".
+  "Data.ByteString.Builder.Prim".
 -}
 
 
-module Data.ByteString.Lazy.Builder
+module Data.ByteString.Builder
     (
       -- * The Builder type
       Builder
@@ -185,7 +185,7 @@ module Data.ByteString.Lazy.Builder
       -- memory. In the last two cases, the 'Builder' also returns a
       -- continutation 'Builder' that the driver can call to fill the next
       -- buffer. Here, we provide the two drivers that satisfy almost all use
-      -- cases. See "Data.ByteString.Lazy.Builder.Extras", for information
+      -- cases. See "Data.ByteString.Builder.Extra", for information
       -- about fine-tuning them.
     , toLazyByteString
     , hPutBuilder
@@ -229,7 +229,7 @@ module Data.ByteString.Lazy.Builder
     -- works by truncating the Unicode codepoint to 7-bits, prefixing it
     -- with a leading 0, and encoding the resulting 8-bits as a single byte.
     -- For the codepoints 0-127 this corresponds the ASCII encoding. In
-    -- "Data.ByteString.Lazy.Builder.ASCII", we also provide efficient
+    -- "Data.ByteString.Builder.ASCII", we also provide efficient
     -- implementations of ASCII-based encodings of numbers (e.g., decimal and
     -- hexadecimal encodings).
     , char7
@@ -240,7 +240,7 @@ module Data.ByteString.Lazy.Builder
     -- The /Char8/ encoding implemented here works by truncating the Unicode codepoint
     -- to 8-bits and encoding them as a single byte. For the codepoints 0-255 this corresponds
     -- to the ISO/IEC 8859-1 encoding. Note that you can also use
-    -- the functions from "Data.ByteString.Lazy.Builder.ASCII", as the ASCII encoding
+    -- the functions from "Data.ByteString.Builder.ASCII", as the ASCII encoding
     -- and ISO/IEC 8859-1 are equivalent on the codepoints 0-127.
     , char8
     , string8
@@ -249,7 +249,7 @@ module Data.ByteString.Lazy.Builder
     -- | The UTF-8 encoding can encode /all/ Unicode codepoints. We recommend
     -- using it always for encoding 'Char's and 'String's unless an application
     -- really requires another encoding. Note that you can also use the
-    -- functions from "Data.ByteString.Lazy.Builder.ASCII" for UTF-8 encoding,
+    -- functions from "Data.ByteString.Builder.ASCII" for UTF-8 encoding,
     -- as the ASCII encoding is equivalent to the UTF-8 encoding on the Unicode
     -- codepoints 0-127.
     , charUtf8
@@ -258,15 +258,15 @@ module Data.ByteString.Lazy.Builder
 
     ) where
 
-import           Data.ByteString.Lazy.Builder.Internal
-import qualified Data.ByteString.Lazy.Builder.BasicEncoding as E
+import           Data.ByteString.Builder.Internal
+import qualified Data.ByteString.Builder.Prim  as E
 import qualified Data.ByteString.Lazy.Internal as L
 
 import           System.IO (Handle)
 import           Foreign
 
 -- HADDOCK only imports
-import           Data.ByteString.Lazy.Builder.ASCII (intDec)
+import           Data.ByteString.Builder.ASCII (intDec)
 import qualified Data.ByteString               as S (concat)
 import           Data.Monoid
 import           Data.Foldable                      (foldMap)
@@ -282,7 +282,7 @@ toLazyByteString = toLazyByteStringWith
     (safeStrategy L.smallChunkSize L.defaultChunkSize) L.Empty
 
 {- Not yet stable enough.
-   See note on 'hPut' in Data.ByteString.Lazy.Builder.Internal
+   See note on 'hPut' in Data.ByteString.Builder.Internal
 -}
 
 -- | Output a 'Builder' to a 'Handle'.

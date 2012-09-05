@@ -8,7 +8,7 @@
 --
 -- Encodings using ASCII encoded Unicode characters.
 --
-module Data.ByteString.Lazy.Builder.BasicEncoding.ASCII
+module Data.ByteString.Builder.Prim.ASCII
     (
 
      -- *** ASCII
@@ -76,11 +76,11 @@ module Data.ByteString.Lazy.Builder.BasicEncoding.ASCII
 
     ) where
 
-import Data.ByteString.Lazy.Builder.BasicEncoding.Binary
-import Data.ByteString.Lazy.Builder.BasicEncoding.Internal
-import Data.ByteString.Lazy.Builder.BasicEncoding.Internal.Floating
-import Data.ByteString.Lazy.Builder.BasicEncoding.Internal.Base16
-import Data.ByteString.Lazy.Builder.BasicEncoding.Internal.UncheckedShifts
+import Data.ByteString.Builder.Prim.Binary
+import Data.ByteString.Builder.Prim.Internal
+import Data.ByteString.Builder.Prim.Internal.Floating
+import Data.ByteString.Builder.Prim.Internal.Base16
+import Data.ByteString.Builder.Prim.Internal.UncheckedShifts
 
 import Data.Char (ord)
 
