@@ -372,11 +372,11 @@ module Data.ByteString.Builder.Prim (
   -- ** Combinators
   -- | The combinators for 'BoundedPrim's are implemented such that the
   -- 'sizeBound' of the resulting 'BoundedPrim' is computed at compile time.
-  , emptyBounded
+  , emptyB
   , (>*<)
   , (>$<)
-  , eitherBounded
-  , condBounded
+  , eitherB
+  , condB
 
   -- ** Builder construction
   , primBounded
@@ -392,7 +392,10 @@ module Data.ByteString.Builder.Prim (
   -- ** Combinators
   -- | The combinators for 'FixedPrim's are implemented such that the 'size'
   -- of the resulting 'FixedPrim' is computed at compile time.
-  , emptyFixed
+  --
+  -- The '(>*<)' and '(>$<)' pairing and mapping operators can be used
+  -- with 'FixedPrim'.
+  , emptyF
   , liftFixedToBounded
 
   -- ** Builder construction

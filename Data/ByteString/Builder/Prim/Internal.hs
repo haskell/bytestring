@@ -27,7 +27,7 @@ module Data.ByteString.Builder.Prim.Internal (
   , size
   , runF
 
-  , emptyFixed
+  , emptyF
   , contramapF
   , pairF
   -- , liftIOF
@@ -40,11 +40,11 @@ module Data.ByteString.Builder.Prim.Internal (
   , sizeBound
   , runB
 
-  , emptyBounded
+  , emptyB
   , contramapB
   , pairB
-  , eitherBounded
-  , condBounded
+  , eitherB
+  , condB
 
   -- , liftIOB
 
@@ -152,9 +152,9 @@ runF :: FixedPrim a -> a -> Ptr Word8 -> IO ()
 runF (FE _ io) = io
 
 -- | The 'FixedPrim' that always results in the zero-length sequence.
-{-# INLINE CONLIKE emptyFixed #-}
-emptyFixed :: FixedPrim a
-emptyFixed = FE 0 (\_ _ -> return ())
+{-# INLINE CONLIKE emptyF #-}
+emptyF :: FixedPrim a
+emptyF = FE 0 (\_ _ -> return ())
 
 -- | Encode a pair by encoding its first component and then its second component.
 {-# INLINE CONLIKE pairF #-}
@@ -229,9 +229,9 @@ contramapB :: (b -> a) -> BoundedPrim a -> BoundedPrim b
 contramapB f (BE b io) = BE b (\x op -> io (f x) op)
 
 -- | The 'BoundedPrim' that always results in the zero-length sequence.
-{-# INLINE CONLIKE emptyBounded #-}
-emptyBounded :: BoundedPrim a
-emptyBounded = BE 0 (\_ op -> return op)
+{-# INLINE CONLIKE emptyB #-}
+emptyB :: BoundedPrim a
+emptyB = BE 0 (\_ op -> return op)
 
 -- | Encode a pair by encoding its first component and then its second component.
 {-# INLINE CONLIKE pairB #-}
@@ -248,11 +248,11 @@ pairB (BE b1 io1) (BE b2 io2) =
 --
 -- @
 --maybeB :: BoundedPrim () -> BoundedPrim a -> BoundedPrim (Maybe a)
---maybeB nothing just = 'maybe' (Left ()) Right '>$<' eitherBounded nothing just
+--maybeB nothing just = 'maybe' (Left ()) Right '>$<' eitherB nothing just
 -- @
-{-# INLINE CONLIKE eitherBounded #-}
-eitherBounded :: BoundedPrim a -> BoundedPrim b -> BoundedPrim (Either a b)
-eitherBounded (BE b1 io1) (BE b2 io2) =
+{-# INLINE CONLIKE eitherB #-}
+eitherB :: BoundedPrim a -> BoundedPrim b -> BoundedPrim (Either a b)
+eitherB (BE b1 io1) (BE b2 io2) =
     BE (max b1 b2)
         (\x op -> case x of Left x1 -> io1 x1 op; Right x2 -> io2 x2 op)
 
@@ -261,12 +261,12 @@ eitherBounded (BE b1 io1) (BE b2 io2) =
 -- Unicode codepoints above 127 as follows.
 --
 -- @
---charASCIIDrop = 'condBounded' (< '\128') ('fromF' 'char7') 'emptyB'
+--charASCIIDrop = 'condB' (< '\128') ('fromF' 'char7') 'emptyB'
 -- @
-{-# INLINE CONLIKE condBounded #-}
-condBounded :: (a -> Bool) -> BoundedPrim a -> BoundedPrim a -> BoundedPrim a
-condBounded p be1 be2 =
-    contramapB (\x -> if p x then Left x else Right x) (eitherBounded be1 be2)
+{-# INLINE CONLIKE condB #-}
+condB :: (a -> Bool) -> BoundedPrim a -> BoundedPrim a -> BoundedPrim a
+condB p be1 be2 =
+    contramapB (\x -> if p x then Left x else Right x) (eitherB be1 be2)
 
 
 {-
