@@ -16,13 +16,17 @@ Description:
       * Strict 'ByteString's keep the string as a single large array. This
         makes them convenient for passing data between C and Haskell.
     .
-      * Lazy 'ByteStrings' use a lazy list of strict chunks which makes it
+      * Lazy 'ByteString's use a lazy list of strict chunks which makes it
         suitable for I\/O streaming tasks.
     .
     The @Char8@ modules provide a character-based view of the same
     underlying 'ByteString' types. This makes it convenient to handle mixed
     binary and 8-bit character content (which is common in many file formats
     and network protocols).
+    .
+    The 'Builder' module provides an efficient way to build up 'ByteString's
+    in an ad-hoc way by repeated concatenation. This is ideal for fast
+    serialisation or pretty printing.
     .
     'ByteString's are not designed for Unicode. For Unicode strings you should
     use the 'Text' type from the @text@ package.
