@@ -193,6 +193,9 @@ module Data.ByteString.Char8 (
         useAsCStringLen,        -- :: ByteString -> (CStringLen -> IO a) -> IO a
 
         -- * I\/O with 'ByteString's
+        -- | ByteString I/O uses binary mode, without any character decoding
+        -- or newline conversion. The fact that it does not respect the Handle
+        -- newline mode is considered a flaw and may be changed in a future version.
 
         -- ** Standard input and output
         getLine,                -- :: IO ByteString

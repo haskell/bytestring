@@ -167,6 +167,9 @@ module Data.ByteString.Lazy.Char8 (
         readInteger,
 
         -- * I\/O with 'ByteString's
+        -- | ByteString I/O uses binary mode, without any character decoding
+        -- or newline conversion. The fact that it does not respect the Handle
+        -- newline mode is considered a flaw and may be changed in a future version.
 
         -- ** Standard input and output
         getContents,            -- :: IO ByteString
@@ -853,8 +856,7 @@ readInteger (Chunk c0 cs0) =
           end n c cs = let c' = chunk c cs
                         in c' `seq` (n, c')
 
--- | Read an entire file /lazily/ into a 'ByteString'. Use 'text mode'
--- on Windows to interpret newlines
+-- | Read an entire file /lazily/ into a 'ByteString'.
 readFile :: FilePath -> IO ByteString
 readFile f = openBinaryFile f ReadMode >>= hGetContents
 

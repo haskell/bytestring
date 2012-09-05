@@ -1968,8 +1968,7 @@ interact transformer = putStr . transformer =<< getContents
 -- | Read an entire file strictly into a 'ByteString'.  This is far more
 -- efficient than reading the characters into a 'String' and then using
 -- 'pack'.  It also may be more efficient than opening the file and
--- reading it using hGet. Files are read using 'binary mode' on Windows,
--- for 'text mode' use the Char8 version of this function.
+-- reading it using 'hGet'.
 --
 readFile :: FilePath -> IO ByteString
 readFile f = bracket (openBinaryFile f ReadMode) hClose
