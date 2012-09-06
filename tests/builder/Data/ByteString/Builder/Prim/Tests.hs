@@ -159,7 +159,7 @@ zigZag x = (x `shiftL` 1) `xor` (x `shiftR` (8 * sizeOf x - 1))
 -- forall x. fromIntegral x ==
 --           unZigZag ((fromIntegral :: IntX -> WordX) (zigZag x))
 --
-unZigZag :: (Storable a, Bits a) => a -> a
+unZigZag :: (Storable a, Num a, Bits a) => a -> a
 unZigZag x = (x `shiftR` 1) `xor` negate (x .&. 1)
 
 unZigZagInt8 :: Int8 -> Int8
@@ -178,7 +178,7 @@ unZigZagInt :: Int -> Int
 unZigZagInt = (fromIntegral :: Word -> Int) . unZigZag . fromIntegral
 
 -- | Check that the 'intVarSigned' encodings are parseable.
-prop_zigZag_parseable :: (Arbitrary t, Bits b, Show t, Eq t)
+prop_zigZag_parseable :: (Arbitrary t, Num b, Bits b, Show t, Eq t)
     => String -> (b -> t) -> BP.BoundedPrim t -> Test
 prop_zigZag_parseable name unZig be =
   compareImpls name (\x -> (x, [])) (first unZig . parseVar . evalB be)
