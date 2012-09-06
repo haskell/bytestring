@@ -35,9 +35,11 @@ module Data.ByteString.Internal (
 
         -- * Low level imperative construction
         create,                 -- :: Int -> (Ptr Word8 -> IO ()) -> IO ByteString
+        createUptoN,            -- :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
         createAndTrim,          -- :: Int -> (Ptr Word8 -> IO Int) -> IO  ByteString
         createAndTrim',         -- :: Int -> (Ptr Word8 -> IO (Int, Int, a)) -> IO (ByteString, a)
         unsafeCreate,           -- :: Int -> (Ptr Word8 -> IO ()) ->  ByteString
+        unsafeCreateUptoN,      -- :: Int -> (Ptr Word8 -> IO Int) ->  ByteString
         mallocByteString,       -- :: Int -> IO (ForeignPtr a)
 
         -- * Conversion to and from ForeignPtrs
@@ -347,9 +349,7 @@ toForeignPtr (PS ps s l) = (ps, s, l)
 {-# INLINE toForeignPtr #-}
 
 -- | A way of creating ByteStrings outside the IO monad. The @Int@
--- argument gives the final size of the ByteString. Unlike
--- 'createAndTrim' the ByteString is not reallocated if the final size
--- is less than the estimated size.
+-- argument gives the final size of the ByteString.
 unsafeCreate :: Int -> (Ptr Word8 -> IO ()) -> ByteString
 unsafeCreate l f = unsafeDupablePerformIO (create l f)
 {-# INLINE unsafeCreate #-}
