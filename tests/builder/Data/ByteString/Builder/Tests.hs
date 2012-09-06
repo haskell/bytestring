@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE CPP, ScopedTypeVariables, BangPatterns #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
@@ -25,8 +25,9 @@ import           Data.Char (ord, chr)
 import qualified Data.DList      as D
 import           Data.Foldable (asum, foldMap)
 
-import qualified Data.ByteString      as S
-import qualified Data.ByteString.Lazy as L
+import qualified Data.ByteString          as S
+import qualified Data.ByteString.Internal as S
+import qualified Data.ByteString.Lazy     as L
 
 import           Data.ByteString.Builder
 import           Data.ByteString.Builder.Extra
@@ -45,11 +46,13 @@ import           System.IO (openTempFile, hPutStr, hClose, hSetBinaryMode)
 import           System.IO (hSetEncoding, utf8)
 #endif
 import           System.Directory
+import           Foreign (ForeignPtr, withForeignPtr, castPtr)
 
 import           TestFramework
 import           Test.QuickCheck
                    ( Arbitrary(..), oneof, choose, listOf, elements )
-import           Test.QuickCheck.Property (printTestCase)
+import           Test.QuickCheck.Property
+                   ( printTestCase, morallyDubiousIOProperty )
 
 
 tests :: [Test]
@@ -60,6 +63,7 @@ tests =
 #endif
   , testHandlePutBuilderChar8
   , testPut
+  , testRunBuilder
   ] ++
   testsEncodingToBuilder ++
   testsBinary ++
@@ -522,33 +526,45 @@ ensureFree minFree =
             freeSpace = ope' `minusPtr` op'
 
 
-{-
-testBuilderRun :: BuilderRun -> IO ()
-testBuilderRun brun = do
-    buf <- S.mallocByteString 1024
-    go buf 1024 brun
+------------------------------------------------------------------------------
+-- Testing the Builder runner
+------------------------------------------------------------------------------
+
+testRunBuilder :: Test
+testRunBuilder =
+    testProperty "runBuilder" prop
   where
-    go :: ForeignPtr Word8 -> Int -> BuilderRun -> IO ()
-    go !buf !len brun = do
-      (wc, next) <- withForeignPtr buf $ \ptr -> brun ptr len
+    prop actions =
+        morallyDubiousIOProperty $ do
+          let (builder, _) = recipeComponents recipe
+              expected     = renderRecipe recipe
+          actual <- bufferWriterOutput (runBuilder builder)
+          return (S.unpack actual == expected)
+      where
+        recipe = Recipe Safe 0 0 mempty actions
 
+bufferWriterOutput :: BufferWriter -> IO S.ByteString
+bufferWriterOutput bwrite0 = do
+    let len0 = 8
+    buf <- S.mallocByteString len0
+    bss <- go [] buf len0 bwrite0
+    return (S.concat (reverse bss))
+  where
+    go :: [S.ByteString] -> ForeignPtr Word8 -> Int -> BufferWriter -> IO [S.ByteString]
+    go bss !buf !len bwrite = do
+      (wc, next) <- withForeignPtr buf $ \ptr -> bwrite ptr len
       bs <- getBuffer buf wc
-      print ("got bytes", wc, bs)
-
       case next of
-        BuilderDone -> print "builder done"
-        
-        BuilderMore m brun' | m <= len -> do
-          print ("more to go", m)
-          go buf len brun'
-        
-        BuilderChunk c brun' -> do
-          print ("chunk", c)
-          go buf len brun'
+        Done                        -> return (bs:bss)
+        More  m bwrite' | m <= len  -> go (bs:bss)   buf len bwrite'
+                        | otherwise -> do let len' = m
+                                          buf' <- S.mallocByteString len'
+                                          go (bs:bss) buf' len' bwrite'
+        Chunk c bwrite'             -> go (c:bs:bss) buf len bwrite'
 
-getBuffer :: ForeignPtr Word8 -> Int -> IO S.ByteString
-getBuffer buf len = withForeignPtr buf $ \ptr -> S.packCStringLen (castPtr ptr, len)
--}
+    getBuffer :: ForeignPtr Word8 -> Int -> IO S.ByteString
+    getBuffer buf len = withForeignPtr buf $ \ptr ->
+                          S.packCStringLen (castPtr ptr, len)
 
 
 ------------------------------------------------------------------------------
