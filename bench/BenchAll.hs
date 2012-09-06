@@ -17,12 +17,12 @@ import Data.Foldable (foldMap)
 import qualified Data.ByteString                  as S
 import qualified Data.ByteString.Lazy             as L
 
-import           Data.ByteString.Lazy.Builder
-import           Data.ByteString.Lazy.Builder.ASCII
-import           Data.ByteString.Lazy.Builder.BasicEncoding
-                   ( FixedEncoding, BoundedEncoding, (>$<) )
-import qualified Data.ByteString.Lazy.Builder.BasicEncoding          as E
-import qualified Data.ByteString.Lazy.Builder.BasicEncoding.Internal as EI
+import           Data.ByteString.Builder
+import           Data.ByteString.Builder.ASCII
+import           Data.ByteString.Builder.Prim
+                   ( FixedPrim, BoundedPrim, (>$<) )
+import qualified Data.ByteString.Builder.Prim          as P
+import qualified Data.ByteString.Builder.Prim.Internal as PI
 
 import Foreign
 
@@ -86,14 +86,14 @@ benchB name x b =
 benchBInts :: String -> ([Int] -> Builder) -> Benchmark
 benchBInts name = benchB name intData
 
--- | Benchmark a 'FixedEncoding'. Full inlining to enable specialization.
+-- | Benchmark a 'FixedPrim'. Full inlining to enable specialization.
 {-# INLINE benchFE #-}
-benchFE :: String -> FixedEncoding Int -> Benchmark
-benchFE name = benchBE name . E.fromF
+benchFE :: String -> FixedPrim Int -> Benchmark
+benchFE name = benchBE name . P.liftFixedToBounded
 
--- | Benchmark a 'BoundedEncoding'. Full inlining to enable specialization.
+-- | Benchmark a 'BoundedPrim'. Full inlining to enable specialization.
 {-# INLINE benchBE #-}
-benchBE :: String -> BoundedEncoding Int -> Benchmark
+benchBE :: String -> BoundedPrim Int -> Benchmark
 benchBE name e =
   bench (name ++" (" ++ show nRepl ++ ")") $ benchIntEncodingB nRepl e
 
@@ -101,18 +101,18 @@ benchBE name e =
 -- we measure the speed of the encoding and not the speed of generating the
 -- values to be encoded.
 {-# INLINE benchIntEncodingB #-}
-benchIntEncodingB :: Int                  -- ^ Maximal 'Int' to write
-                  -> BoundedEncoding Int  -- ^ 'BoundedEncoding' to execute
-                  -> IO ()                -- ^ 'IO' action to benchmark
+benchIntEncodingB :: Int              -- ^ Maximal 'Int' to write
+                  -> BoundedPrim Int  -- ^ 'BoundedPrim' to execute
+                  -> IO ()            -- ^ 'IO' action to benchmark
 benchIntEncodingB n0 w
   | n0 <= 0   = return ()
   | otherwise = do
-      fpbuf <- mallocForeignPtrBytes (n0 * EI.sizeBound w)
+      fpbuf <- mallocForeignPtrBytes (n0 * PI.sizeBound w)
       withForeignPtr fpbuf (loop n0) >> return ()
   where
     loop !n !op
       | n <= 0    = return op
-      | otherwise = EI.runB w n op >>= loop (n - 1)
+      | otherwise = PI.runB w n op >>= loop (n - 1)
 
 
 
@@ -133,111 +133,111 @@ main = do
   mapM_ putStrLn sanityCheckInfo
   putStrLn ""
   Criterion.Main.defaultMain
-    [ bgroup "Data.ByteString.Lazy.Builder"
+    [ bgroup "Data.ByteString.Builder"
       [ bgroup "Encoding wrappers"
         [ benchBInts "foldMap word8" $
             foldMap (word8 . fromIntegral)
-        , benchBInts "encodeListWithF word8" $
-            E.encodeListWithF (fromIntegral >$< E.word8)
-        , benchB     "encodeUnfoldrWithF word8" nRepl $
-            E.encodeUnfoldrWithF (fromIntegral >$< E.word8) countToZero
-        , benchB     "encodeByteStringWithF word8" byteStringData $
-            E.encodeByteStringWithF E.word8
-        , benchB     "encodeLazyByteStringWithF word8" lazyByteStringData $
-            E.encodeLazyByteStringWithF E.word8
+        , benchBInts "primMapListFixed word8" $
+            P.primMapListFixed (fromIntegral >$< P.word8)
+        , benchB     "primUnfoldrFixed word8" nRepl $
+            P.primUnfoldrFixed (fromIntegral >$< P.word8) countToZero
+        , benchB     "primMapByteStringFixed word8" byteStringData $
+            P.primMapByteStringFixed P.word8
+        , benchB     "primMapLazyByteStringFixed word8" lazyByteStringData $
+            P.primMapLazyByteStringFixed P.word8
         ]
 
       , bgroup "Non-bounded encodings"
         [ benchB "foldMap floatDec"        floatData          $ foldMap floatDec
         , benchB "foldMap doubleDec"       doubleData         $ foldMap doubleDec
         , benchB "foldMap integerDec"      integerData        $ foldMap integerDec
-        , benchB "byteStringHexFixed"      byteStringData     $ byteStringHexFixed
-        , benchB "lazyByteStringHexFixed"  lazyByteStringData $ lazyByteStringHexFixed
+        , benchB "byteStringHex"           byteStringData     $ byteStringHex
+        , benchB "lazyByteStringHex"       lazyByteStringData $ lazyByteStringHex
         ]
       ]
 
-    , bgroup "Data.ByteString.Lazy.Builder.BasicEncoding"
-      [ benchFE "char7"      $ toEnum       >$< E.char7
-      , benchFE "char8"      $ toEnum       >$< E.char8
-      , benchBE "charUtf8"   $ toEnum       >$< E.charUtf8
+    , bgroup "Data.ByteString.Builder.Prim"
+      [ benchFE "char7"      $ toEnum       >$< P.char7
+      , benchFE "char8"      $ toEnum       >$< P.char8
+      , benchBE "charUtf8"   $ toEnum       >$< P.charUtf8
 
       -- binary encoding
-      , benchFE "int8"       $ fromIntegral >$< E.int8
-      , benchFE "word8"      $ fromIntegral >$< E.word8
+      , benchFE "int8"       $ fromIntegral >$< P.int8
+      , benchFE "word8"      $ fromIntegral >$< P.word8
 
       -- big-endian
-      , benchFE "int16BE"    $ fromIntegral >$< E.int16BE
-      , benchFE "int32BE"    $ fromIntegral >$< E.int32BE
-      , benchFE "int64BE"    $ fromIntegral >$< E.int64BE
+      , benchFE "int16BE"    $ fromIntegral >$< P.int16BE
+      , benchFE "int32BE"    $ fromIntegral >$< P.int32BE
+      , benchFE "int64BE"    $ fromIntegral >$< P.int64BE
 
-      , benchFE "word16BE"   $ fromIntegral >$< E.word16BE
-      , benchFE "word32BE"   $ fromIntegral >$< E.word32BE
-      , benchFE "word64BE"   $ fromIntegral >$< E.word64BE
+      , benchFE "word16BE"   $ fromIntegral >$< P.word16BE
+      , benchFE "word32BE"   $ fromIntegral >$< P.word32BE
+      , benchFE "word64BE"   $ fromIntegral >$< P.word64BE
 
-      , benchFE "floatBE"    $ fromIntegral >$< E.floatBE
-      , benchFE "doubleBE"   $ fromIntegral >$< E.doubleBE
+      , benchFE "floatBE"    $ fromIntegral >$< P.floatBE
+      , benchFE "doubleBE"   $ fromIntegral >$< P.doubleBE
 
       -- little-endian
-      , benchFE "int16LE"    $ fromIntegral >$< E.int16LE
-      , benchFE "int32LE"    $ fromIntegral >$< E.int32LE
-      , benchFE "int64LE"    $ fromIntegral >$< E.int64LE
+      , benchFE "int16LE"    $ fromIntegral >$< P.int16LE
+      , benchFE "int32LE"    $ fromIntegral >$< P.int32LE
+      , benchFE "int64LE"    $ fromIntegral >$< P.int64LE
 
-      , benchFE "word16LE"   $ fromIntegral >$< E.word16LE
-      , benchFE "word32LE"   $ fromIntegral >$< E.word32LE
-      , benchFE "word64LE"   $ fromIntegral >$< E.word64LE
+      , benchFE "word16LE"   $ fromIntegral >$< P.word16LE
+      , benchFE "word32LE"   $ fromIntegral >$< P.word32LE
+      , benchFE "word64LE"   $ fromIntegral >$< P.word64LE
 
-      , benchFE "floatLE"    $ fromIntegral >$< E.floatLE
-      , benchFE "doubleLE"   $ fromIntegral >$< E.doubleLE
+      , benchFE "floatLE"    $ fromIntegral >$< P.floatLE
+      , benchFE "doubleLE"   $ fromIntegral >$< P.doubleLE
 
       -- host-dependent
-      , benchFE "int16Host"  $ fromIntegral >$< E.int16Host
-      , benchFE "int32Host"  $ fromIntegral >$< E.int32Host
-      , benchFE "int64Host"  $ fromIntegral >$< E.int64Host
-      , benchFE "intHost"    $ fromIntegral >$< E.intHost
+      , benchFE "int16Host"  $ fromIntegral >$< P.int16Host
+      , benchFE "int32Host"  $ fromIntegral >$< P.int32Host
+      , benchFE "int64Host"  $ fromIntegral >$< P.int64Host
+      , benchFE "intHost"    $ fromIntegral >$< P.intHost
 
-      , benchFE "word16Host" $ fromIntegral >$< E.word16Host
-      , benchFE "word32Host" $ fromIntegral >$< E.word32Host
-      , benchFE "word64Host" $ fromIntegral >$< E.word64Host
-      , benchFE "wordHost"   $ fromIntegral >$< E.wordHost
+      , benchFE "word16Host" $ fromIntegral >$< P.word16Host
+      , benchFE "word32Host" $ fromIntegral >$< P.word32Host
+      , benchFE "word64Host" $ fromIntegral >$< P.word64Host
+      , benchFE "wordHost"   $ fromIntegral >$< P.wordHost
 
-      , benchFE "floatHost"  $ fromIntegral >$< E.floatHost
-      , benchFE "doubleHost" $ fromIntegral >$< E.doubleHost
+      , benchFE "floatHost"  $ fromIntegral >$< P.floatHost
+      , benchFE "doubleHost" $ fromIntegral >$< P.doubleHost
       ]
 
-    , bgroup "Data.ByteString.Lazy.Builder.BoundedEncoding.ASCII"
+    , bgroup "Data.ByteString.Builder.Prim.ASCII"
       [
       -- decimal number
-        benchBE "int8Dec"     $ fromIntegral >$< E.int8Dec
-      , benchBE "int16Dec"    $ fromIntegral >$< E.int16Dec
-      , benchBE "int32Dec"    $ fromIntegral >$< E.int32Dec
-      , benchBE "int64Dec"    $ fromIntegral >$< E.int64Dec
-      , benchBE "intDec"      $ fromIntegral >$< E.intDec
+        benchBE "int8Dec"     $ fromIntegral >$< P.int8Dec
+      , benchBE "int16Dec"    $ fromIntegral >$< P.int16Dec
+      , benchBE "int32Dec"    $ fromIntegral >$< P.int32Dec
+      , benchBE "int64Dec"    $ fromIntegral >$< P.int64Dec
+      , benchBE "intDec"      $ fromIntegral >$< P.intDec
 
-      , benchBE "word8Dec"    $ fromIntegral >$< E.word8Dec
-      , benchBE "word16Dec"   $ fromIntegral >$< E.word16Dec
-      , benchBE "word32Dec"   $ fromIntegral >$< E.word32Dec
-      , benchBE "word64Dec"   $ fromIntegral >$< E.word64Dec
-      , benchBE "wordDec"     $ fromIntegral >$< E.wordDec
+      , benchBE "word8Dec"    $ fromIntegral >$< P.word8Dec
+      , benchBE "word16Dec"   $ fromIntegral >$< P.word16Dec
+      , benchBE "word32Dec"   $ fromIntegral >$< P.word32Dec
+      , benchBE "word64Dec"   $ fromIntegral >$< P.word64Dec
+      , benchBE "wordDec"     $ fromIntegral >$< P.wordDec
 
       -- hexadecimal number
-      , benchBE "word8Hex"    $ fromIntegral >$< E.word8Hex
-      , benchBE "word16Hex"   $ fromIntegral >$< E.word16Hex
-      , benchBE "word32Hex"   $ fromIntegral >$< E.word32Hex
-      , benchBE "word64Hex"   $ fromIntegral >$< E.word64Hex
-      , benchBE "wordHex"     $ fromIntegral >$< E.wordHex
+      , benchBE "word8Hex"    $ fromIntegral >$< P.word8Hex
+      , benchBE "word16Hex"   $ fromIntegral >$< P.word16Hex
+      , benchBE "word32Hex"   $ fromIntegral >$< P.word32Hex
+      , benchBE "word64Hex"   $ fromIntegral >$< P.word64Hex
+      , benchBE "wordHex"     $ fromIntegral >$< P.wordHex
 
       -- fixed-width hexadecimal numbers
-      , benchFE "int8HexFixed"     $ fromIntegral >$< E.int8HexFixed
-      , benchFE "int16HexFixed"    $ fromIntegral >$< E.int16HexFixed
-      , benchFE "int32HexFixed"    $ fromIntegral >$< E.int32HexFixed
-      , benchFE "int64HexFixed"    $ fromIntegral >$< E.int64HexFixed
+      , benchFE "int8HexFixed"     $ fromIntegral >$< P.int8HexFixed
+      , benchFE "int16HexFixed"    $ fromIntegral >$< P.int16HexFixed
+      , benchFE "int32HexFixed"    $ fromIntegral >$< P.int32HexFixed
+      , benchFE "int64HexFixed"    $ fromIntegral >$< P.int64HexFixed
 
-      , benchFE "word8HexFixed"    $ fromIntegral >$< E.word8HexFixed
-      , benchFE "word16HexFixed"   $ fromIntegral >$< E.word16HexFixed
-      , benchFE "word32HexFixed"   $ fromIntegral >$< E.word32HexFixed
-      , benchFE "word64HexFixed"   $ fromIntegral >$< E.word64HexFixed
+      , benchFE "word8HexFixed"    $ fromIntegral >$< P.word8HexFixed
+      , benchFE "word16HexFixed"   $ fromIntegral >$< P.word16HexFixed
+      , benchFE "word32HexFixed"   $ fromIntegral >$< P.word32HexFixed
+      , benchFE "word64HexFixed"   $ fromIntegral >$< P.word64HexFixed
 
-      , benchFE "floatHexFixed"    $ fromIntegral >$< E.floatHexFixed
-      , benchFE "doubleHexFixed"   $ fromIntegral >$< E.doubleHexFixed
+      , benchFE "floatHexFixed"    $ fromIntegral >$< P.floatHexFixed
+      , benchFE "doubleHexFixed"   $ fromIntegral >$< P.doubleHexFixed
       ]
     ]
