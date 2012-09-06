@@ -627,9 +627,9 @@ putChunked minFree0 mkBeforeFE afterBE p =
               where
                 nU     = fromIntegral n
                 chunkB =
-                  encodeWithF (mkBeforeFE nU) nU `mappend`
+                  primFixed (mkBeforeFE nU) nU `mappend`
                   lazyByteStringC n lbsC         `mappend`
-                  encodeWithB afterBE nU
+                  primBounded afterBE nU
 
 
 -- | /Heavy inlining./ Prefix a 'Builder' with the size of the
