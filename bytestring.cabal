@@ -114,6 +114,9 @@ library
 test-suite prop-compiled
   type:             exitcode-stdio-1.0
   main-is:          Properties.hs
+  other-modules:    Rules
+                    QuickCheckUtils
+                    TestFramework
   hs-source-dirs:   . tests
   build-depends:    base, ghc-prim, deepseq, random, directory,
                     QuickCheck >= 2.3 && < 3
@@ -133,6 +136,11 @@ test-suite test-builder
   type:             exitcode-stdio-1.0
   hs-source-dirs:   . tests tests/builder
   main-is:          TestSuite.hs
+  other-modules:    Data.ByteString.Builder.Tests
+                    Data.ByteString.Builder.Prim.Tests
+                    Data.ByteString.Builder.Prim.TestUtils
+                    Data.ByteString.Builder.Prim.Extra
+                    TestFramework
 
   build-depends:    base, ghc-prim,
                     deepseq,
