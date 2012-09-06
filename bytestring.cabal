@@ -40,7 +40,7 @@ License:             BSD3
 License-file:        LICENSE
 Category:            Data
 Copyright:           Copyright (c) Don Stewart          2005-2009,
-                               (c) Duncan Coutts        2006-2011,
+                               (c) Duncan Coutts        2006-2012,
                                (c) David Roundy         2003-2005,
                                (c) Jasper Van der Jeugt 2010,
                                (c) Simon Meier          2010-2011.
@@ -51,8 +51,7 @@ Maintainer:          Don Stewart <dons00@gmail.com>,
                      Duncan Coutts <duncan@community.haskell.org>
 Bug-reports:         dons00@gmail.com,
                      duncan@community.haskell.org
-Tested-With:         GHC==7.2.1, GHC==7.0.2, GHC==6.12.3,
-                     GHC==6.10.4, GHC ==6.8.2
+Tested-With:         GHC==7.6.1, GHC==7.4.1, GHC==7.0.4, GHC==6.12.3
 Build-Type:          Simple
 Cabal-Version:       >= 1.8
 extra-source-files:  README TODO
@@ -62,10 +61,7 @@ source-repository head
   location: http://darcs.haskell.org/bytestring/
 
 library
-  build-depends:     base >= 3 && < 5, deepseq
-
-  if impl(ghc >= 6.10)
-    build-depends:   ghc-prim, base >= 4
+  build-depends:     base >= 4.2 && < 5, ghc-prim, deepseq
 
   exposed-modules:   Data.ByteString
                      Data.ByteString.Char8
@@ -93,23 +89,19 @@ library
   extensions:        CPP,
                      ForeignFunctionInterface,
                      BangPatterns
-
-  if impl(ghc)
-      extensions:   UnliftedFFITypes,
-                    MagicHash,
-                    UnboxedTuples,
-                    DeriveDataTypeable
-                    ScopedTypeVariables
-                    Rank2Types
-  if impl(ghc >= 6.11)
-      extensions:   NamedFieldPuns
+                     UnliftedFFITypes,
+                     MagicHash,
+                     UnboxedTuples,
+                     DeriveDataTypeable
+                     ScopedTypeVariables
+                     Rank2Types
+                     NamedFieldPuns
 
   ghc-options:      -Wall
                     -O2
                     -fmax-simplifier-iterations=10
                     -fdicts-cheap
-  if impl(ghc >= 6.10)
-    ghc-options:    -fspec-constr-count=6
+                    -fspec-constr-count=6
 
   c-sources:         cbits/fpstring.c
                      cbits/itoa.c
@@ -117,33 +109,25 @@ library
   includes:          fpstring.h
   install-includes:  fpstring.h
 
-  nhc98-options:     -K4M -K3M
 
 -- QC properties, with GHC RULES disabled
 test-suite prop-compiled
   type:             exitcode-stdio-1.0
   main-is:          Properties.hs
   hs-source-dirs:   . tests
-  build-depends:    base, deepseq, random, directory,
+  build-depends:    base, ghc-prim, deepseq, random, directory,
                     QuickCheck >= 2.3 && < 3
-  if impl(ghc >= 6.10)
-    build-depends:  ghc-prim
   c-sources:        cbits/fpstring.c
   include-dirs:     include
   ghc-options:      -fwarn-unused-binds
-  if impl(ghc >= 6.10)
-    ghc-options:    -fno-enable-rewrite-rules
-  else
-    ghc-options:    -fno-rewrite-rules
+                    -fno-enable-rewrite-rules
   extensions:       BangPatterns
-  if impl(ghc)
-      extensions:   UnliftedFFITypes,
+                    UnliftedFFITypes,
                     MagicHash,
                     UnboxedTuples,
                     DeriveDataTypeable
                     ScopedTypeVariables
-  if impl(ghc >= 6.11)
-      extensions:   NamedFieldPuns
+                    NamedFieldPuns
 
 test-suite test-builder
   type:             exitcode-stdio-1.0
