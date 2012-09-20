@@ -1,5 +1,5 @@
 Name:                bytestring
-Version:             0.10.1.0
+Version:             0.10.0.0
 Synopsis:            Fast, compact, strict and lazy byte strings with a list interface
 Description:
     An efficient compact, immutable byte string type (both strict and lazy)
@@ -136,10 +136,10 @@ test-suite test-builder
   type:             exitcode-stdio-1.0
   hs-source-dirs:   . tests tests/builder
   main-is:          TestSuite.hs
-  other-modules:    Data.ByteString.Builder.Tests
-                    Data.ByteString.Builder.Prim.Tests
-                    Data.ByteString.Builder.Prim.TestUtils
-                    Data.ByteString.Builder.Prim.Extra
+  other-modules:    Data.ByteString.Lazy.Builder.Tests
+                    Data.ByteString.Lazy.Builder.BasicEncoding.Tests
+                    Data.ByteString.Lazy.Builder.BasicEncoding.TestUtils
+                    Data.ByteString.Lazy.Builder.BasicEncoding.Extras
                     TestFramework
 
   build-depends:    base, ghc-prim,
