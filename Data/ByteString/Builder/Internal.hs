@@ -297,6 +297,15 @@ instance Monoid Builder where
   {-# INLINE mconcat #-}
   mconcat = foldr mappend mempty
 
+instance Show Builder where
+  show = show . showBuilder
+
+{-# NOINLINE showBuilder #-} -- ensure code is shared
+showBuilder :: Builder -> L.ByteString
+showBuilder = toLazyByteStringWith
+    (safeStrategy L.smallChunkSize L.smallChunkSize) L.Empty
+
+
 -- | Flush the current buffer. This introduces a chunk boundary.
 --
 {-# INLINE flush #-}
