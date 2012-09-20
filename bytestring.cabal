@@ -78,6 +78,12 @@ library
                      -- perhaps only exposed temporarily
                      Data.ByteString.Builder.Internal
                      Data.ByteString.Builder.Prim.Internal
+
+                     -- sigh, we decided to rename shortly after making
+                     -- an initial release, so these are here for compat
+                     Data.ByteString.Lazy.Builder
+                     Data.ByteString.Lazy.Builder.Extras
+                     Data.ByteString.Lazy.Builder.ASCII
   other-modules:
                      Data.ByteString.Builder.ASCII
                      Data.ByteString.Builder.Prim.Binary
