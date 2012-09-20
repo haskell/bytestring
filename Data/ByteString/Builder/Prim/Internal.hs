@@ -125,11 +125,11 @@ infixr 5 >*<
 --
 -- For example,
 --
--- > showF (char7 >*< char7) ('x','y') = "xy"
+-- > toLazyByteString (primFixed (char7 >*< char7) ('x','y')) = "xy"
 --
 -- We can combine multiple primitives using '>*<' multiple times.
 --
--- > showEncoding (char7 >*< char7 >*< char7) ('x',('y','z')) = "xyz"
+-- > toLazyByteString (primFixed (char7 >*< char7 >*< char7) ('x',('y','z'))) = "xyz"
 --
 (>*<) :: Monoidal f => f a -> f b -> f (a, b)
 (>*<) = pair

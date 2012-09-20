@@ -44,7 +44,7 @@ module Data.ByteString.Builder.Prim.ASCII
       -- ASCII characters. The shortest possible representation is used. For
       -- example,
       --
-      -- > showB word16Hex 0x0a10 = "a10"
+      -- > toLazyByteString (primBounded word16Hex 0x0a10) = "a10"
       --
       -- Note that there is no support for using upper-case characters. Please
       -- contact the maintainer if your application cannot work without
@@ -61,7 +61,7 @@ module Data.ByteString.Builder.Prim.ASCII
       -- | Encoding the bytes of fixed-width types as hexadecimal
       -- numbers using lower-case ASCII characters. For example,
       --
-      -- > showF word16HexFixed 0x0a10 = "0a10"
+      -- > toLazyByteString (primFixed word16HexFixed 0x0a10) = "0a10"
       --
     , int8HexFixed
     , int16HexFixed
