@@ -142,10 +142,10 @@ test-suite test-builder
   type:             exitcode-stdio-1.0
   hs-source-dirs:   . tests tests/builder
   main-is:          TestSuite.hs
-  other-modules:    Data.ByteString.Lazy.Builder.Tests
-                    Data.ByteString.Lazy.Builder.BasicEncoding.Tests
-                    Data.ByteString.Lazy.Builder.BasicEncoding.TestUtils
-                    Data.ByteString.Lazy.Builder.BasicEncoding.Extras
+  other-modules:    Data.ByteString.Builder.Tests
+                    Data.ByteString.Builder.Prim.Tests
+                    Data.ByteString.Builder.Prim.TestUtils
+                    Data.ByteString.Builder.Prim.Extra
                     TestFramework
 
   build-depends:    base, ghc-prim,
