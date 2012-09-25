@@ -485,7 +485,7 @@ append = mappend
 -- | /O(n)/ 'map' @f xs@ is the ByteString obtained by applying @f@ to each
 -- element of @xs@. This function is subject to array fusion.
 map :: (Word8 -> Word8) -> ByteString -> ByteString
-map f (PS fp s len) = inlinePerformIO $ withForeignPtr fp $ \a ->
+map f (PS fp s len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a ->
     create len $ map_ 0 (a `plusPtr` s)
   where
     map_ :: Int -> Ptr Word8 -> Ptr Word8 -> IO ()
@@ -676,7 +676,7 @@ minimum xs@(PS x s l)
 -- passing an accumulating parameter from left to right, and returning a
 -- final value of this accumulator together with the new list.
 mapAccumL :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
-mapAccumL f acc (PS fp o len) = inlinePerformIO $ withForeignPtr fp $ \a -> do
+mapAccumL f acc (PS fp o len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a -> do
     gp   <- mallocByteString len
     acc' <- withForeignPtr gp $ \p -> mapAccumL_ acc 0 (a `plusPtr` o) p
     return $! (acc', PS gp 0 len)
@@ -696,7 +696,7 @@ mapAccumL f acc (PS fp o len) = inlinePerformIO $ withForeignPtr fp $ \a -> do
 -- passing an accumulating parameter from right to left, and returning a
 -- final value of this accumulator together with the new ByteString.
 mapAccumR :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
-mapAccumR f acc (PS fp o len) = inlinePerformIO $ withForeignPtr fp $ \a -> do
+mapAccumR f acc (PS fp o len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a -> do
     gp   <- mallocByteString len
     acc' <- withForeignPtr gp $ \p -> mapAccumR_ acc (len-1) (a `plusPtr` o) p
     return $! (acc', PS gp 0 len)
@@ -725,7 +725,7 @@ mapAccumR f acc (PS fp o len) = inlinePerformIO $ withForeignPtr fp $ \a -> do
 --
 scanl :: (Word8 -> Word8 -> Word8) -> Word8 -> ByteString -> ByteString
 
-scanl f v (PS fp s len) = inlinePerformIO $ withForeignPtr fp $ \a ->
+scanl f v (PS fp s len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a ->
     create (len+1) $ \q -> do
         poke q v
         scanl_ v 0 (a `plusPtr` s) (q `plusPtr` 1)
@@ -756,7 +756,7 @@ scanl1 f ps
 
 -- | scanr is the right-to-left dual of scanl.
 scanr :: (Word8 -> Word8 -> Word8) -> Word8 -> ByteString -> ByteString
-scanr f v (PS fp s len) = inlinePerformIO $ withForeignPtr fp $ \a ->
+scanr f v (PS fp s len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a ->
     create (len+1) $ \q -> do
         poke (q `plusPtr` len) v
         scanr_ v (len-1) (a `plusPtr` s) q
@@ -1509,7 +1509,7 @@ zipWith f ps qs
 -- performed on the result of zipWith.
 --
 zipWith' :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString -> ByteString
-zipWith' f (PS fp s l) (PS fq t m) = inlinePerformIO $
+zipWith' f (PS fp s l) (PS fq t m) = unsafeDupablePerformIO $
     withForeignPtr fp $ \a ->
     withForeignPtr fq $ \b ->
     create len $ zipWith_ 0 (a `plusPtr` s) (b `plusPtr` t)
