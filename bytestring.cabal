@@ -153,7 +153,7 @@ test-suite test-builder
                     QuickCheck                 >= 2.4 && < 3,
                     byteorder                  == 1.0.*,
                     dlist                      == 0.5.*,
-                    directory                  >= 1.0 && < 1.2,
+                    directory,
                     mtl                        >= 2.0 && < 2.2
 
   ghc-options:      -Wall -fwarn-tabs
