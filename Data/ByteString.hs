@@ -476,7 +476,7 @@ append = mappend
 -- Transformations
 
 -- | /O(n)/ 'map' @f xs@ is the ByteString obtained by applying @f@ to each
--- element of @xs@. This function is subject to array fusion.
+-- element of @xs@.
 map :: (Word8 -> Word8) -> ByteString -> ByteString
 map f (PS fp s len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a ->
     create len $ map_ 0 (a `plusPtr` s)
@@ -517,8 +517,6 @@ transpose ps = P.map pack (List.transpose (P.map unpack ps))
 -- | 'foldl', applied to a binary operator, a starting value (typically
 -- the left-identity of the operator), and a ByteString, reduces the
 -- ByteString using the binary operator, from left to right.
---
--- This function is subject to array fusion.
 --
 foldl :: (a -> Word8 -> a) -> a -> ByteString -> a
 foldl f z (PS fp off len) =
@@ -578,7 +576,6 @@ foldr' k v (PS fp off len) =
 
 -- | 'foldl1' is a variant of 'foldl' that has no starting value
 -- argument, and thus must be applied to non-empty 'ByteStrings'.
--- This function is subject to array fusion. 
 -- An exception will be thrown in the case of an empty ByteString.
 foldl1 :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldl1 f ps
@@ -1275,7 +1272,7 @@ notElem c ps = not (elem c ps)
 
 -- | /O(n)/ 'filter', applied to a predicate and a ByteString,
 -- returns a ByteString containing those characters that satisfy the
--- predicate. This function is subject to array fusion.
+-- predicate.
 filter :: (Word8 -> Bool) -> ByteString -> ByteString
 filter k ps@(PS x s l)
     | null ps   = ps
