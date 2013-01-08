@@ -234,7 +234,14 @@ import Control.Monad            (when)
 
 import Foreign.C.String         (CString, CStringLen)
 import Foreign.C.Types          (CSize)
-import Foreign.ForeignPtr
+#if MIN_VERSION_base(4,6,0)
+import Foreign.ForeignPtr       (ForeignPtr, newForeignPtr, withForeignPtr
+                                ,touchForeignPtr)
+import Foreign.ForeignPtr.Unsafe(unsafeForeignPtrToPtr)
+#else
+import Foreign.ForeignPtr       (ForeignPtr, newForeignPtr, withForeignPtr
+                                ,touchForeignPtr, unsafeForeignPtrToPtr)
+#endif
 import Foreign.Marshal.Alloc    (allocaBytes, mallocBytes, reallocBytes, finalizerFree)
 import Foreign.Marshal.Array    (allocaArray)
 import Foreign.Ptr
@@ -535,9 +542,9 @@ foldl f z (PS fp off len) =
 -- | 'foldl\'' is like 'foldl', but strict in the accumulator.
 --
 foldl' :: (a -> Word8 -> a) -> a -> ByteString -> a
-foldl' f v (PS x s l) =
-      inlinePerformIO $ withForeignPtr x $ \ptr ->
-        go v (ptr `plusPtr` s) (ptr `plusPtr` (s+l))
+foldl' f v (PS fp off len) =
+      inlinePerformIO $ withForeignPtr fp $ \p ->
+        go v (p `plusPtr` off) (p `plusPtr` (off+len))
     where
       -- tail recursive; traverses array left to right
       go !z !p !q | p == q    = return z
