@@ -362,30 +362,19 @@ unpack :: ByteString -> [Word8]
 unpack = unpackBytes
 #else
 
-unpack ps = build (unpackFoldr ps)
+unpack bs = build (unpackFoldr bs)
 {-# INLINE unpack #-}
 
 --
 -- Have unpack fuse with good list consumers
 --
--- critical this isn't strict in the acc
--- as it will break in the presence of list fusion. this is a known
--- issue with seq and build/foldr rewrite rules, which rely on lazy
--- demanding to avoid bottoms in the list.
---
 unpackFoldr :: ByteString -> (Word8 -> a -> a) -> a -> a
-unpackFoldr (PS fp off len) f ch = withPtr fp $ \p -> do
-    let loop q n    _   | q `seq` n `seq` False = undefined -- n.b.
-        loop _ (-1) acc = return acc
-        loop q n    acc = do
-           a <- peekByteOff q n
-           loop q (n-1) (a `f` acc)
-    loop (p `plusPtr` off) (len-1) ch
+unpackFoldr bs k z = foldr k z bs
 {-# INLINE [0] unpackFoldr #-}
 
 {-# RULES
-"ByteString unpack-list" [1]  forall p  .
-    unpackFoldr p (:) [] = unpackBytes p
+"ByteString unpack-list" [1]  forall bs .
+    unpackFoldr bs (:) [] = unpackBytes bs
  #-}
 
 #endif
@@ -532,44 +521,59 @@ transpose ps = P.map pack (List.transpose (P.map unpack ps))
 -- This function is subject to array fusion.
 --
 foldl :: (a -> Word8 -> a) -> a -> ByteString -> a
-foldl f v (PS x s l) = inlinePerformIO $ withForeignPtr x $ \ptr ->
-        lgo v (ptr `plusPtr` s) (ptr `plusPtr` (s+l))
+foldl f z (PS fp off len) =
+      let p = unsafeForeignPtrToPtr fp
+       in go (p `plusPtr` (off+len-1)) (p `plusPtr` (off-1))
     where
-        STRICT3(lgo)
-        lgo z p q | p == q    = return z
-                  | otherwise = do c <- peek p
-                                   lgo (f z c) (p `plusPtr` 1) q
+      -- not tail recursive; traverses array right to left
+      go !p !q | p == q    = z
+               | otherwise = let !x = inlinePerformIO $ do
+                                        x' <- peek p
+                                        touchForeignPtr fp
+                                        return x'
+                             in f (go (p `plusPtr` (-1)) q) x
 {-# INLINE foldl #-}
 
 -- | 'foldl\'' is like 'foldl', but strict in the accumulator.
--- However, for ByteStrings, all left folds are strict in the accumulator.
 --
 foldl' :: (a -> Word8 -> a) -> a -> ByteString -> a
-foldl' = foldl
+foldl' f v (PS x s l) =
+      inlinePerformIO $ withForeignPtr x $ \ptr ->
+        go v (ptr `plusPtr` s) (ptr `plusPtr` (s+l))
+    where
+      -- tail recursive; traverses array left to right
+      go !z !p !q | p == q    = return z
+                  | otherwise = do x <- peek p
+                                   go (f z x) (p `plusPtr` 1) q
 {-# INLINE foldl' #-}
 
 -- | 'foldr', applied to a binary operator, a starting value
 -- (typically the right-identity of the operator), and a ByteString,
 -- reduces the ByteString using the binary operator, from right to left.
 foldr :: (Word8 -> a -> a) -> a -> ByteString -> a
-foldr k v (PS x s l) = inlinePerformIO $ withForeignPtr x $ \ptr ->
-        go v (ptr `plusPtr` (s+l-1)) (ptr `plusPtr` (s-1))
+foldr k z (PS fp off len) =
+      let p = unsafeForeignPtrToPtr fp
+       in go (p `plusPtr` off) (p `plusPtr` (off+len))
     where
-        STRICT3(go)
-        go z p q | p == q    = return z
-                 | otherwise = do c  <- peek p
-                                  go (c `k` z) (p `plusPtr` (-1)) q -- tail recursive
+      -- not tail recursive; traverses array left to right
+      go !p !q | p == q    = z
+               | otherwise = let !x = inlinePerformIO $ do
+                                        x' <- peek p
+                                        touchForeignPtr fp
+                                        return x'
+                              in k x (go (p `plusPtr` 1) q)
 {-# INLINE foldr #-}
 
 -- | 'foldr\'' is like 'foldr', but strict in the accumulator.
 foldr' :: (Word8 -> a -> a) -> a -> ByteString -> a
-foldr' k v (PS x s l) = inlinePerformIO $ withForeignPtr x $ \ptr ->
-        go v (ptr `plusPtr` (s+l-1)) (ptr `plusPtr` (s-1))
+foldr' k v (PS fp off len) =
+      inlinePerformIO $ withForeignPtr fp $ \p ->
+        go v (p `plusPtr` (off+len-1)) (p `plusPtr` (off-1))
     where
-        STRICT3(go)
-        go z p q | p == q    = return z
-                 | otherwise = do c  <- peek p
-                                  go (c `k` z) (p `plusPtr` (-1)) q -- tail recursive
+      -- tail recursive; traverses array right to left
+      go !z !p !q | p == q    = return z
+                  | otherwise = do x <- peek p
+                                   go (k x z) (p `plusPtr` (-1)) q
 {-# INLINE foldr' #-}
 
 -- | 'foldl1' is a variant of 'foldl' that has no starting value
