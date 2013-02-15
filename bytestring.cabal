@@ -49,16 +49,16 @@ Author:              Don Stewart,
                      Duncan Coutts
 Maintainer:          Don Stewart <dons00@gmail.com>,
                      Duncan Coutts <duncan@community.haskell.org>
-Bug-reports:         dons00@gmail.com,
-                     duncan@community.haskell.org
+Homepage:            https://github.com/haskell/bytestring
+Bug-reports:         https://github.com/haskell/bytestring/issues
 Tested-With:         GHC==7.6.1, GHC==7.4.1, GHC==7.0.4, GHC==6.12.3
 Build-Type:          Simple
 Cabal-Version:       >= 1.8
 extra-source-files:  README TODO
 
 source-repository head
-  type:     darcs
-  location: http://darcs.haskell.org/bytestring/
+  type:     git
+  location: https://github.com/haskell/bytestring
 
 library
   build-depends:     base >= 4.2 && < 5, ghc-prim, deepseq
