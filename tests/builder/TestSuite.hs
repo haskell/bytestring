@@ -1,11 +1,12 @@
 module Main where
 
---import           Test.Framework (defaultMain, Test, testGroup)
-
 import qualified Data.ByteString.Builder.Tests
 import qualified Data.ByteString.Builder.Prim.Tests
+#if defined(HAVE_TEST_FRAMEWORK)
+import           Test.Framework (defaultMain, Test, testGroup)
+#else
 import           TestFramework
-
+#endif
 
 main :: IO ()
 main = defaultMain tests
@@ -18,4 +19,3 @@ tests =
   , testGroup "Data.ByteString.Lazy.Builder.BasicEncoding"
        Data.ByteString.Builder.Prim.Tests.tests
   ]
-

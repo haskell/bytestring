@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 module Rules where
 --
 -- Tests to ensure rules are firing.
@@ -11,7 +13,12 @@ import Data.List
 import Data.Char
 
 import QuickCheckUtils
+
+#if defined(HAVE_TEST_FRAMEWORK)
+import Test.Framework.Providers.QuickCheck2
+#else
 import TestFramework
+#endif
 
 
 prop_break_C x = C.break ((==) x) `eq1` break ((==) x)

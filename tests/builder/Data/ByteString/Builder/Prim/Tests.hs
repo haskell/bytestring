@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE CPP, ScopedTypeVariables #-}
 
 -- |
 -- Copyright   : (c) 2011 Simon Meier
@@ -25,7 +25,11 @@ import           Numeric (showHex)
 
 import           Foreign
 
+#if defined(HAVE_TEST_FRAMEWORK)
+import           Test.Framework
+#else
 import           TestFramework
+#endif
 import           Test.QuickCheck (Arbitrary)
 
 
@@ -329,9 +333,3 @@ testsCombinatorsB =
 
     encViaBuilder = BP.primMapListBounded $ maybeB (BP.liftFixedToBounded $ (\_ -> 112) BP.>$< BP.word8)
                                                 (ord BP.>$< (BP.liftFixedToBounded $ BP.intHost))
-
-
-
-
-
-

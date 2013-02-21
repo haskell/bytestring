@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE CPP, ScopedTypeVariables #-}
 -- |
 -- Copyright   : (c) 2011 Simon Meier
 -- License     : BSD3-style (see LICENSE)
@@ -84,7 +84,14 @@ import Foreign
 import           System.ByteOrder
 import           Unsafe.Coerce (unsafeCoerce)
 
+#if defined(HAVE_TEST_FRAMEWORK)
+import           Test.HUnit (assertBool)
+import           Test.Framework
+import           Test.Framework.Providers.HUnit
+import           Test.Framework.Providers.QuickCheck2
+#else
 import           TestFramework
+#endif
 import           Test.QuickCheck (Arbitrary(..))
 
 -- Helper functions
@@ -96,8 +103,8 @@ testBoundedProperty :: forall a. (Arbitrary a, Show a, Bounded a)
                     => String -> (a -> Bool) -> Test
 testBoundedProperty name p = testGroup name
   [ testProperty "arbitrary" p
-  , testCase "bounds" $ p (minBound :: a)
-                     && p (maxBound :: a)
+  , testCase "minBound" $ assertBool "minBound" (p (minBound :: a))
+  , testCase "maxBound" $ assertBool "minBound" (p (maxBound :: a))
   ]
 
 -- | Quote a 'String' nicely.
@@ -381,5 +388,3 @@ parseVar =
       | otherwise       = first add (go ws)
       where
         add x = (x `shiftL` 7) .|. (fromIntegral w .&. 0x7f)
-
-

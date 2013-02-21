@@ -1,6 +1,6 @@
 -- |
 -- Copyright   : (c) 2011 Duncan Coutts
--- 
+--
 -- test-framework stub API
 --
 -- Currently we cannot use the nice test-framework package for this testsuite
@@ -46,6 +46,9 @@ testProperty name p = [(name, runQcTest)]
                      maxSuccess = n
                      --chatty   = ... if we want to increase verbosity
                    }
+
+assertBool :: String -> Bool -> Bool
+assertBool = const
 
 testCase :: String -> Bool -> Test
 testCase name tst = [(name, runPlainTest)]
