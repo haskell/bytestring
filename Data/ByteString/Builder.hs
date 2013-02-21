@@ -1,5 +1,5 @@
 {-# LANGUAGE CPP, BangPatterns #-}
-{-# OPTIONS_GHC -fno-warn-unused-imports #-}
+{-# OPTIONS_GHC -fno-warn-unused-imports -fno-warn-orphans #-}
 {- | Copyright   : (c) 2010 Jasper Van der Jeugt
                    (c) 2010 - 2011 Simon Meier
 License     : BSD3-style (see LICENSE)
@@ -263,6 +263,7 @@ import           Data.ByteString.Builder.Internal
 import qualified Data.ByteString.Builder.Prim  as P
 import qualified Data.ByteString.Lazy.Internal as L
 
+import           Data.String (IsString(..))
 import           System.IO (Handle)
 import           Foreign
 
@@ -450,3 +451,5 @@ charUtf8 = P.primBounded P.charUtf8
 stringUtf8 :: String -> Builder
 stringUtf8 = P.primMapListBounded P.charUtf8
 
+instance IsString Builder where
+    fromString = stringUtf8
