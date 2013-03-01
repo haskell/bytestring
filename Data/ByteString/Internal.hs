@@ -32,6 +32,7 @@ module Data.ByteString.Internal (
         packChars, packUptoLenChars, unsafePackLenChars,
         unpackBytes, unpackAppendBytesLazy, unpackAppendBytesStrict,
         unpackChars, unpackAppendCharsLazy, unpackAppendCharsStrict,
+        unsafePackAddr,
 
         -- * Low level imperative construction
         create,                 -- :: Int -> (Ptr Word8 -> IO ()) -> IO ByteString
@@ -112,6 +113,8 @@ import Data.Generics            (Data(..), mkNorepType)
 
 #ifdef __GLASGOW_HASKELL__
 import GHC.Base                 (realWorld#,unsafeChr)
+import GHC.CString              (unpackCString#)
+import GHC.Prim                 (Addr#)
 #if __GLASGOW_HASKELL__ >= 611
 import GHC.IO                   (IO(IO))
 #else
@@ -128,7 +131,8 @@ import System.IO.Unsafe         (unsafePerformIO)
 #endif
 
 #ifdef __GLASGOW_HASKELL__
-import GHC.ForeignPtr           (mallocPlainForeignPtrBytes)
+import GHC.ForeignPtr           (newForeignPtr_, mallocPlainForeignPtrBytes)
+import GHC.Ptr                  (Ptr(..), castPtr)
 #else
 import Foreign.ForeignPtr       (mallocForeignPtrBytes)
 #endif
@@ -226,6 +230,15 @@ packBytes ws = unsafePackLenBytes (List.length ws) ws
 packChars :: [Char] -> ByteString
 packChars cs = unsafePackLenChars (List.length cs) cs
 
+#if defined(__GLASGOW_HASKELL__)
+{-# INLINE [0] packChars #-}
+
+{-# RULES
+"ByteString packChars/packAddress" forall s .
+   packChars (unpackCString# s) = inlinePerformIO (unsafePackAddr s)
+ #-}
+#endif
+
 unsafePackLenBytes :: Int -> [Word8] -> ByteString
 unsafePackLenBytes len xs0 =
     unsafeCreate len $ \p -> go p xs0
@@ -239,6 +252,18 @@ unsafePackLenChars len cs0 =
   where
     go !_ []     = return ()
     go !p (c:cs) = poke p (c2w c) >> go (p `plusPtr` 1) cs
+
+#if defined(__GLASGOW_HASKELL__)
+unsafePackAddr :: Addr# -> IO ByteString
+unsafePackAddr addr# = do
+    p <- newForeignPtr_ (castPtr cstr)
+    l <- c_strlen cstr
+    return $ PS p 0 (fromIntegral l)
+  where
+    cstr :: CString
+    cstr = Ptr addr#
+{-# INLINE unsafePackAddr #-}
+#endif
 
 packUptoLenBytes :: Int -> [Word8] -> (ByteString, [Word8])
 packUptoLenBytes len xs0 =

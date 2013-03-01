@@ -284,16 +284,7 @@ singleton = B.singleton . c2w
 -- bottleneck.
 pack :: String -> ByteString
 pack = packChars
-
-#if !defined(__GLASGOW_HASKELL__)
-{-# INLINE [1] pack #-}
-
-{-# RULES
-"ByteString pack/packAddress" forall s .
-   pack (unpackCString# s) = inlinePerformIO (B.unsafePackAddress s)
- #-}
-
-#endif
+{-# INLINE pack #-}
 
 -- | /O(n)/ Converts a 'ByteString' to a 'String'.
 unpack :: ByteString -> [Char]
