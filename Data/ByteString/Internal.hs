@@ -32,7 +32,9 @@ module Data.ByteString.Internal (
         packChars, packUptoLenChars, unsafePackLenChars,
         unpackBytes, unpackAppendBytesLazy, unpackAppendBytesStrict,
         unpackChars, unpackAppendCharsLazy, unpackAppendCharsStrict,
+#if defined(__GLASGOW_HASKELL__)
         unsafePackAddress,
+#endif
 
         -- * Low level imperative construction
         create,                 -- :: Int -> (Ptr Word8 -> IO ()) -> IO ByteString
