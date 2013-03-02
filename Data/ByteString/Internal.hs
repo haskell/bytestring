@@ -32,7 +32,7 @@ module Data.ByteString.Internal (
         packChars, packUptoLenChars, unsafePackLenChars,
         unpackBytes, unpackAppendBytesLazy, unpackAppendBytesStrict,
         unpackChars, unpackAppendCharsLazy, unpackAppendCharsStrict,
-        unsafePackAddr,
+        unsafePackAddress,
 
         -- * Low level imperative construction
         create,                 -- :: Int -> (Ptr Word8 -> IO ()) -> IO ByteString
@@ -235,7 +235,7 @@ packChars cs = unsafePackLenChars (List.length cs) cs
 
 {-# RULES
 "ByteString packChars/packAddress" forall s .
-   packChars (unpackCString# s) = inlinePerformIO (unsafePackAddr s)
+   packChars (unpackCString# s) = inlinePerformIO (unsafePackAddress s)
  #-}
 #endif
 
@@ -254,15 +254,36 @@ unsafePackLenChars len cs0 =
     go !p (c:cs) = poke p (c2w c) >> go (p `plusPtr` 1) cs
 
 #if defined(__GLASGOW_HASKELL__)
-unsafePackAddr :: Addr# -> IO ByteString
-unsafePackAddr addr# = do
+-- | /O(n)/ Pack a null-terminated sequence of bytes, pointed to by an
+-- Addr\# (an arbitrary machine address assumed to point outside the
+-- garbage-collected heap) into a @ByteString@. A much faster way to
+-- create an Addr\# is with an unboxed string literal, than to pack a
+-- boxed string. A unboxed string literal is compiled to a static @char
+-- []@ by GHC. Establishing the length of the string requires a call to
+-- @strlen(3)@, so the Addr# must point to a null-terminated buffer (as
+-- is the case with "string"# literals in GHC). Use 'unsafePackAddressLen'
+-- if you know the length of the string statically.
+--
+-- An example:
+--
+-- > literalFS = unsafePackAddress "literal"#
+--
+-- This function is /unsafe/. If you modify the buffer pointed to by the
+-- original Addr# this modification will be reflected in the resulting
+-- @ByteString@, breaking referential transparency.
+--
+-- Note this also won't work if you Add# has embedded '\0' characters in
+-- the string (strlen will fail).
+--
+unsafePackAddress :: Addr# -> IO ByteString
+unsafePackAddress addr# = do
     p <- newForeignPtr_ (castPtr cstr)
     l <- c_strlen cstr
     return $ PS p 0 (fromIntegral l)
   where
     cstr :: CString
     cstr = Ptr addr#
-{-# INLINE unsafePackAddr #-}
+{-# INLINE unsafePackAddress #-}
 #endif
 
 packUptoLenBytes :: Int -> [Word8] -> (ByteString, [Word8])

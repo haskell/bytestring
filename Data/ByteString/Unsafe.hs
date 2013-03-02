@@ -150,31 +150,6 @@ unsafeDrop n (PS x s l) = assert (0 <= n && n <= l) $ PS x (s+n) (l-n)
 
 
 #if defined(__GLASGOW_HASKELL__)
--- | /O(n)/ Pack a null-terminated sequence of bytes, pointed to by an
--- Addr\# (an arbitrary machine address assumed to point outside the
--- garbage-collected heap) into a @ByteString@. A much faster way to
--- create an Addr\# is with an unboxed string literal, than to pack a
--- boxed string. A unboxed string literal is compiled to a static @char
--- []@ by GHC. Establishing the length of the string requires a call to
--- @strlen(3)@, so the Addr# must point to a null-terminated buffer (as
--- is the case with "string"# literals in GHC). Use 'unsafePackAddressLen'
--- if you know the length of the string statically.
---
--- An example:
---
--- > literalFS = unsafePackAddress "literal"#
---
--- This function is /unsafe/. If you modify the buffer pointed to by the
--- original Addr# this modification will be reflected in the resulting
--- @ByteString@, breaking referential transparency.
---
--- Note this also won't work if you Add# has embedded '\0' characters in
--- the string (strlen will fail).
---
-unsafePackAddress :: Addr# -> IO ByteString
-unsafePackAddress = unsafePackAddr
-{-# INLINE unsafePackAddress #-}
-
 -- | /O(1)/ 'unsafePackAddressLen' provides constant-time construction of
 -- 'ByteStrings' which is ideal for string literals. It packs a sequence
 -- of bytes into a 'ByteString', given a raw 'Addr#' to the string, and
