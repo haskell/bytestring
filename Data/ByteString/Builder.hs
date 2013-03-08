@@ -54,7 +54,6 @@ We use the following imports and abbreviate 'mappend' to simplify reading.
 @
 import qualified "Data.ByteString.Lazy"               as L
 import           "Data.ByteString.Builder"
-import           "Data.ByteString.Builder.ASCII" ('intDec')
 import           Data.Monoid
 import           Data.Foldable                        ('foldMap')
 import           Data.List                            ('intersperse')
@@ -262,13 +261,13 @@ module Data.ByteString.Builder
 import           Data.ByteString.Builder.Internal
 import qualified Data.ByteString.Builder.Prim  as P
 import qualified Data.ByteString.Lazy.Internal as L
+import           Data.ByteString.Builder.ASCII
 
 import           Data.String (IsString(..))
 import           System.IO (Handle)
 import           Foreign
 
 -- HADDOCK only imports
-import           Data.ByteString.Builder.ASCII (intDec)
 import qualified Data.ByteString               as S (concat)
 import           Data.Monoid
 import           Data.Foldable                      (foldMap)
