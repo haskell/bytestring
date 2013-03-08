@@ -9,6 +9,16 @@
 --
 module Data.ByteString.Lazy.Builder.ASCII (
   module Data.ByteString.Builder
+, byteStringHexFixed
+, lazyByteStringHexFixed
 ) where
 
 import Data.ByteString.Builder
+import qualified Data.ByteString      as S
+import qualified Data.ByteString.Lazy as L
+
+byteStringHexFixed :: S.ByteString -> Builder
+byteStringHexFixed = byteStringHex
+
+lazyByteStringHexFixed :: L.ByteString -> Builder
+lazyByteStringHexFixed = lazyByteStringHex
