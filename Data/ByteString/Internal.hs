@@ -278,8 +278,8 @@ unsafePackLenChars len cs0 =
 -- original Addr# this modification will be reflected in the resulting
 -- @ByteString@, breaking referential transparency.
 --
--- Note this also won't work if you Add# has embedded '\0' characters in
--- the string (strlen will fail).
+-- Note this also won't work if your Addr# has embedded '\0' characters in
+-- the string, as @strlen@ will return too short a length.
 --
 unsafePackAddress :: Addr# -> IO ByteString
 unsafePackAddress addr# = do
@@ -550,7 +550,7 @@ c2w = fromIntegral . ord
 {-# INLINE c2w #-}
 
 -- | Selects words corresponding to white-space characters in the Latin-1 range
--- ordered by frequency. 
+-- ordered by frequency.
 isSpaceWord8 :: Word8 -> Bool
 isSpaceWord8 w =
     w == 0x20 ||
@@ -590,7 +590,7 @@ inlinePerformIO = unsafePerformIO
 #endif
 
 -- ---------------------------------------------------------------------
--- 
+--
 -- Standard C functions
 --
 
