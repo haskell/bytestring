@@ -151,8 +151,8 @@ unsafeDrop n (PS x s l) = assert (0 <= n && n <= l) $ PS x (s+n) (l-n)
 
 #if defined(__GLASGOW_HASKELL__)
 -- | /O(1)/ 'unsafePackAddressLen' provides constant-time construction of
--- 'ByteStrings' which is ideal for string literals. It packs a sequence
--- of bytes into a 'ByteString', given a raw 'Addr#' to the string, and
+-- 'ByteString's, which is ideal for string literals. It packs a sequence
+-- of bytes into a @ByteString@, given a raw 'Addr#' to the string, and
 -- the length of the string.
 --
 -- This function is /unsafe/ in two ways:
@@ -165,7 +165,7 @@ unsafeDrop n (PS x s l) = assert (0 <= n && n <= l) $ PS x (s+n) (l-n)
 -- reflected in resulting @ByteString@, breaking referential
 -- transparency.
 --
--- If in doubt, don't use these functions.
+-- If in doubt, don't use this function.
 --
 unsafePackAddressLen :: Int -> Addr# -> IO ByteString
 unsafePackAddressLen len addr# = do
@@ -294,7 +294,7 @@ unsafeUseAsCString (PS ps s _) ac = withForeignPtr ps $ \p -> ac (castPtr p `plu
 
 -- | /O(1) construction/ Use a @ByteString@ with a function requiring a
 -- @CStringLen@.
--- 
+--
 -- This function does zero copying, and merely unwraps a @ByteString@ to
 -- appear as a @CStringLen@. It is /unsafe/:
 --
