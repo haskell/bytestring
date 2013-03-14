@@ -9,7 +9,7 @@
 // Decimal Encoding
 ///////////////////
 
-const char* digits = "0123456789abcdef";
+static const char* digits = "0123456789abcdef";
 
 // signed integers
 char* _hs_bytestring_int_dec (int x, char* buf)
