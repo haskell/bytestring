@@ -2,6 +2,9 @@
 #if __GLASGOW_HASKELL__
 {-# LANGUAGE UnliftedFFITypes, MagicHash,
             UnboxedTuples, DeriveDataTypeable #-}
+#if __GLASGOW_HASKELL__ >= 701
+{-# LANGUAGE Unsafe #-}
+#endif
 #endif
 {-# OPTIONS_HADDOCK hide #-}
 

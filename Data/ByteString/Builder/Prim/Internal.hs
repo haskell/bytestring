@@ -1,4 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables, CPP, BangPatterns #-}
+#if __GLASGOW_HASKELL__ >= 701
+{-# LANGUAGE Unsafe #-}
+#endif
 {-# OPTIONS_HADDOCK hide #-}
 -- |
 -- Copyright   : 2010-2011 Simon Meier, 2010 Jasper van der Jeugt
