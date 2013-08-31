@@ -1,4 +1,6 @@
-{-# LANGUAGE PackageImports, ScopedTypeVariables, BangPatterns #-}
+{-# LANGUAGE BangPatterns        #-}
+{-# LANGUAGE PackageImports      #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 -- |
 -- Copyright   : (c) 2011 Simon Meier
 -- License     : BSD3-style (see LICENSE)
@@ -10,21 +12,26 @@
 -- Benchmark all 'Builder' functions.
 module Main (main) where
 
-import Prelude hiding (words)
-import Criterion.Main
-import Data.Foldable (foldMap)
+import           Criterion.Main
+import           Data.Foldable                         (foldMap)
+import           Data.Monoid
+import           Prelude                               hiding (words)
 
-import qualified Data.ByteString                  as S
-import qualified Data.ByteString.Lazy             as L
+import qualified Data.ByteString                       as S
+import qualified Data.ByteString.Lazy                  as L
 
 import           Data.ByteString.Builder
 import           Data.ByteString.Builder.ASCII
-import           Data.ByteString.Builder.Prim
-                   ( FixedPrim, BoundedPrim, (>$<) )
+import           Data.ByteString.Builder.Extra         (byteStringCopy,
+                                                        byteStringInsert,
+                                                        intHost)
+import           Data.ByteString.Builder.Internal      (ensureFree)
+import           Data.ByteString.Builder.Prim          (BoundedPrim, FixedPrim,
+                                                        (>$<))
 import qualified Data.ByteString.Builder.Prim          as P
 import qualified Data.ByteString.Builder.Prim.Internal as PI
 
-import Foreign
+import           Foreign
 
 ------------------------------------------------------------------------------
 -- Benchmark support
@@ -72,6 +79,10 @@ lazyByteStringData :: L.ByteString
 lazyByteStringData = case S.splitAt (nRepl `div` 2) byteStringData of
     (bs1, bs2) -> L.fromChunks [bs1, bs2]
 
+{-# NOINLINE byteStringChunksData #-}
+byteStringChunksData :: [S.ByteString]
+byteStringChunksData = map (S.pack . replicate (4 ) . fromIntegral) intData
+
 
 -- benchmark wrappers
 ---------------------
@@ -81,6 +92,10 @@ benchB :: String -> a -> (a -> Builder) -> Benchmark
 benchB name x b =
     bench (name ++" (" ++ show nRepl ++ ")") $
         whnf (L.length . toLazyByteString . b) x
+
+{-# INLINE benchB' #-}
+benchB' :: String -> a -> (a -> Builder) -> Benchmark
+benchB' name x b = bench name $ whnf (L.length . toLazyByteString . b) x
 
 {-# INLINE benchBInts #-}
 benchBInts :: String -> ([Int] -> Builder) -> Benchmark
@@ -134,7 +149,13 @@ main = do
   putStrLn ""
   Criterion.Main.defaultMain
     [ bgroup "Data.ByteString.Builder"
-      [ bgroup "Encoding wrappers"
+      [ bgroup "Small payload"
+        [ benchB' "mempty"        ()  (const mempty)
+        , benchB' "ensureFree 8"  ()  (const (ensureFree 8))
+        , benchB' "intHost 1"     1   intHost
+        ]
+
+      , bgroup "Encoding wrappers"
         [ benchBInts "foldMap word8" $
             foldMap (word8 . fromIntegral)
         , benchBInts "primMapListFixed word8" $
@@ -146,6 +167,17 @@ main = do
         , benchB     "primMapLazyByteStringFixed word8" lazyByteStringData $
             P.primMapLazyByteStringFixed P.word8
         ]
+      , bgroup "ByteString insertion" $
+          let dataName = " byteStringChunks" ++
+                         show (S.length (head byteStringChunksData)) ++ "Data"
+          in
+            [ benchB ("foldMap byteStringInsert" ++ dataName) byteStringChunksData
+                (foldMap byteStringInsert)
+            , benchB ("foldMap byteString" ++ dataName) byteStringChunksData
+                (foldMap byteString)
+            , benchB ("foldMap byteStringCopy" ++ dataName) byteStringChunksData
+                (foldMap byteStringCopy)
+            ]
 
       , bgroup "Non-bounded encodings"
         [ benchB "foldMap floatDec"        floatData          $ foldMap floatDec

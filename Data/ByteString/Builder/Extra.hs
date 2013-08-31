@@ -67,8 +67,6 @@ import Data.ByteString.Builder.Internal
 import qualified Data.ByteString.Builder.Internal as I
 import qualified Data.ByteString.Builder.Prim  as P
 import qualified Data.ByteString.Internal      as S
-import qualified Data.ByteString.Lazy.Internal as L
-
 
 import Foreign
 
@@ -121,37 +119,29 @@ data Next =
 runBuilder :: Builder -> BufferWriter
 runBuilder = run . I.runBuilder
   where
-    run :: I.BuildStep () -> BufferWriter
-    run step = \buf len -> do
-      sig <- step (I.BufferRange buf (buf `plusPtr` len))
-      case sig of
-        I.Done endPtr () ->
-          let !wc  = bytesWritten buf endPtr
-              next = Done
-           in return (wc, next)
-
-        I.BufferFull minReq endPtr step' ->
-          let !wc  = bytesWritten buf endPtr
-              next = More minReq (run step')
-           in return (wc, next)
-
-        I.InsertChunks endPtr _ lbsc step' ->
-          let !wc  = bytesWritten buf endPtr
-              next = case lbsc L.Empty of
-                       L.Empty      -> More  (len - wc) (run step')
-                       L.Chunk c cs -> Chunk c          (yieldChunks step' cs)
-           in return (wc, next)
-
-    yieldChunks :: I.BuildStep () -> L.ByteString -> BufferWriter
-    yieldChunks step' cs = \buf len ->
-      case cs of
-        L.Empty       -> run step' buf len
-        L.Chunk c cs' ->
-          let wc   = 0
-              next = Chunk c (yieldChunks step' cs')
-           in return (wc, next)
-
     bytesWritten startPtr endPtr = endPtr `minusPtr` startPtr
+
+    run :: I.BuildStep () -> BufferWriter
+    run step = \buf len ->
+      let doneH endPtr () =
+            let !wc  = bytesWritten buf endPtr
+                next = Done
+             in return (wc, next)
+
+          bufferFullH endPtr minReq step' =
+            let !wc  = bytesWritten buf endPtr
+                next = More minReq (run step')
+             in return (wc, next)
+
+          insertChunkH endPtr bs step' =
+            let !wc  = bytesWritten buf endPtr
+                next = Chunk bs (run step')
+             in return (wc, next)
+
+          br = I.BufferRange buf (buf `plusPtr` len)
+
+      in I.fillWithBuildStep step doneH bufferFullH insertChunkH br
+
 
 
 ------------------------------------------------------------------------------
