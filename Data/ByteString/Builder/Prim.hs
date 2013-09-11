@@ -1,5 +1,8 @@
 {-# LANGUAGE CPP, BangPatterns, ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
+#if __GLASGOW_HASKELL__ >= 701
+{-# LANGUAGE Trustworthy #-}
+#endif
 {- | Copyright : (c) 2010-2011 Simon Meier
                  (c) 2010      Jasper van der Jeugt
 License        : BSD3-style (see LICENSE)
