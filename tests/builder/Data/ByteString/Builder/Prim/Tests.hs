@@ -12,25 +12,25 @@
 
 module Data.ByteString.Builder.Prim.Tests (tests) where
 
-import           Control.Arrow (first)
+-- import           Control.Arrow (first)
 
 import           Data.Char  (ord)
 import qualified Data.ByteString.Lazy                  as L
 import           Data.ByteString.Builder
 import qualified Data.ByteString.Builder.Prim          as BP
-import qualified Data.ByteString.Builder.Prim.Extra    as BP
+-- import qualified Data.ByteString.Builder.Prim.Extra    as BP
 import           Data.ByteString.Builder.Prim.TestUtils
 
-import           Numeric (showHex)
+-- import           Numeric (showHex)
 
-import           Foreign
+-- import           Foreign
 
 #if defined(HAVE_TEST_FRAMEWORK)
 import           Test.Framework
 #else
 import           TestFramework
 #endif
-import           Test.QuickCheck (Arbitrary)
+-- import           Test.QuickCheck (Arbitrary)
 
 
 tests :: [Test]
@@ -85,37 +85,38 @@ testsBinary =
   , testF "floatHost"   (float_list  hostEndian_list)   BP.floatHost
   , testF "doubleHost"  (double_list hostEndian_list)   BP.doubleHost
 
-  , testBoundedB "word8Var"     genVar_list  BP.word8Var
-  , testBoundedB "word16Var"    genVar_list  BP.word16Var
-  , testBoundedB "word32Var"    genVar_list  BP.word32Var
-  , testBoundedB "word64Var"    genVar_list  BP.word64Var
-  , testBoundedB "wordVar"      genVar_list  BP.wordVar
+  -- , testBoundedB "word8Var"     genVar_list  BP.word8Var
+  -- , testBoundedB "word16Var"    genVar_list  BP.word16Var
+  -- , testBoundedB "word32Var"    genVar_list  BP.word32Var
+  -- , testBoundedB "word64Var"    genVar_list  BP.word64Var
+  -- , testBoundedB "wordVar"      genVar_list  BP.wordVar
 
-  , testBoundedB "int8Var"     int8Var_list   BP.int8Var
-  , testBoundedB "int16Var"    int16Var_list  BP.int16Var
-  , testBoundedB "int32Var"    int32Var_list  BP.int32Var
-  , testBoundedB "int64Var"    int64Var_list  BP.int64Var
-  , testBoundedB "intVar"      intVar_list    BP.intVar
+  -- , testBoundedB "int8Var"     int8Var_list   BP.int8Var
+  -- , testBoundedB "int16Var"    int16Var_list  BP.int16Var
+  -- , testBoundedB "int32Var"    int32Var_list  BP.int32Var
+  -- , testBoundedB "int64Var"    int64Var_list  BP.int64Var
+  -- , testBoundedB "intVar"      intVar_list    BP.intVar
 
-  , testBoundedB "int8VarSigned"     (int8Var_list  . zigZag)  BP.int8VarSigned
-  , testBoundedB "int16VarSigned"    (int16Var_list . zigZag)  BP.int16VarSigned
-  , testBoundedB "int32VarSigned"    (int32Var_list . zigZag)  BP.int32VarSigned
-  , testBoundedB "int64VarSigned"    (int64Var_list . zigZag)  BP.int64VarSigned
-  , testBoundedB "intVarSigned"      (intVar_list   . zigZag)  BP.intVarSigned
+  -- , testBoundedB "int8VarSigned"     (int8Var_list  . zigZag)  BP.int8VarSigned
+  -- , testBoundedB "int16VarSigned"    (int16Var_list . zigZag)  BP.int16VarSigned
+  -- , testBoundedB "int32VarSigned"    (int32Var_list . zigZag)  BP.int32VarSigned
+  -- , testBoundedB "int64VarSigned"    (int64Var_list . zigZag)  BP.int64VarSigned
+  -- , testBoundedB "intVarSigned"      (intVar_list   . zigZag)  BP.intVarSigned
 
-  , testGroup "parseable"
-    [ prop_zigZag_parseable  "int8VarSigned"   unZigZagInt8  BP.int8VarSigned
-    , prop_zigZag_parseable  "int16VarSigned"  unZigZagInt16 BP.int16VarSigned
-    , prop_zigZag_parseable  "int32VarSigned"  unZigZagInt32 BP.int32VarSigned
-    , prop_zigZag_parseable  "int64VarSigned"  unZigZagInt64 BP.int64VarSigned
-    , prop_zigZag_parseable  "intVarSigned"    unZigZagInt   BP.intVarSigned
-    ]
+  -- , testGroup "parseable"
+  --   [ prop_zigZag_parseable  "int8VarSigned"   unZigZagInt8  BP.int8VarSigned
+  --   , prop_zigZag_parseable  "int16VarSigned"  unZigZagInt16 BP.int16VarSigned
+  --   , prop_zigZag_parseable  "int32VarSigned"  unZigZagInt32 BP.int32VarSigned
+  --   , prop_zigZag_parseable  "int64VarSigned"  unZigZagInt64 BP.int64VarSigned
+  --   , prop_zigZag_parseable  "intVarSigned"    unZigZagInt   BP.intVarSigned
+  --   ]
 
-  , testFixedBoundF "wordVarFixedBound"   wordVarFixedBound_list    BP.wordVarFixedBound
-  , testFixedBoundF "word64VarFixedBound" word64VarFixedBound_list  BP.word64VarFixedBound
+  -- , testFixedBoundF "wordVarFixedBound"   wordVarFixedBound_list    BP.wordVarFixedBound
+  -- , testFixedBoundF "word64VarFixedBound" word64VarFixedBound_list  BP.word64VarFixedBound
 
   ]
 
+{-
 
 -- Variable length encodings
 ----------------------------
@@ -209,6 +210,7 @@ word64VarFixedBound_list bound = genVarFixedBound_list (length $ genVar_list bou
 -- intVarFixedBound_list :: Int -> Int -> [Word8]
 -- intVarFixedBound_list bound = wordVarFixedBound_list (fromIntegral bound) . fromIntegral
 
+-}
 
 ------------------------------------------------------------------------------
 -- Latin-1  aka  Char8
@@ -257,7 +259,9 @@ testsASCII =
 
   , testF "floatHexFixed"  floatHexFixed_list  BP.floatHexFixed
   , testF "doubleHexFixed" doubleHexFixed_list BP.doubleHexFixed
+  ]
 
+  {-
   , testFixedBoundF "wordDecFixedBound"
       (genDecFixedBound_list 'x') (BP.wordDecFixedBound 'x')
 
@@ -270,6 +274,7 @@ testsASCII =
   , testFixedBoundF "word64HexFixedBound"
       (genHexFixedBound_list 'x') (BP.word64HexFixedBound 'x')
   ]
+
 
 -- | PRE: positive bound and value.
 genDecFixedBound_list :: (Show a, Integral a)
@@ -294,6 +299,7 @@ genHexFixedBound_list padChar bound =
   where
     n      = length $ (`showHex` "") bound
     pad cs = replicate (n - length cs) padChar ++ cs
+-}
 
 
 ------------------------------------------------------------------------------
