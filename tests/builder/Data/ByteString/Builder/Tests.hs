@@ -18,7 +18,7 @@ import           Control.Applicative
 import           Control.Monad.State
 import           Control.Monad.Writer
 
-import           Foreign (Word, Word8, Word64, minusPtr)
+import           Foreign (Word, Word8, minusPtr)
 import           System.IO.Unsafe (unsafePerformIO)
 
 import           Data.Char (ord, chr)
@@ -31,14 +31,14 @@ import qualified Data.ByteString.Lazy     as L
 
 import           Data.ByteString.Builder
 import           Data.ByteString.Builder.Extra
-import           Data.ByteString.Builder.ASCII
+-- import           Data.ByteString.Builder.ASCII
 import           Data.ByteString.Builder.Internal (Put, putBuilder, fromPut)
 import qualified Data.ByteString.Builder.Internal   as BI
 import qualified Data.ByteString.Builder.Prim       as BP
-import qualified Data.ByteString.Builder.Prim.Extra as BP
+-- import qualified Data.ByteString.Builder.Prim.Extra as BP
 import           Data.ByteString.Builder.Prim.TestUtils
 
-import           Numeric (readHex)
+-- import           Numeric (readHex)
 
 import           Control.Exception (evaluate)
 import           System.IO (openTempFile, hPutStr, hClose, hSetBinaryMode)
@@ -360,6 +360,7 @@ testsEncodingToBuilder =
   [ test_encodeUnfoldrF
   , test_encodeUnfoldrB
 
+{-
   , compareImpls "encodeSize/Chunked/Size/Chunked (recipe)"
         (testBuilder id)
         (
@@ -374,7 +375,7 @@ testsEncodingToBuilder =
             encodeHex
           )
         )
-
+-}
   ]
 
 
@@ -405,6 +406,7 @@ test_encodeUnfoldrB =
         go (c:cs) = Just (c, cs)
 
 
+{-
 -- Chunked encoding and size prefix
 -----------------------------------
 
@@ -471,6 +473,7 @@ parseSizePrefix parseLen =
       where
         (len, ws') = parseLen ws
 
+-}
 
 ------------------------------------------------------------------------------
 -- Testing the Put monad

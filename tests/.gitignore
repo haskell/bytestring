@@ -1,2 +1,3 @@
-cabal-dev
-dist
+*.html
+*.tix
+/.hpc
