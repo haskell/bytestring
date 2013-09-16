@@ -31,6 +31,11 @@ import           Data.ByteString.Builder.Prim          (BoundedPrim, FixedPrim,
 import qualified Data.ByteString.Builder.Prim          as P
 import qualified Data.ByteString.Builder.Prim.Internal as PI
 
+import qualified Blaze.ByteString.Builder          as Blaze
+import qualified Blaze.Text                        as Blaze
+import qualified "bytestring" Data.ByteString      as OldS
+import qualified "bytestring" Data.ByteString.Lazy as OldL
+
 import           Foreign
 
 ------------------------------------------------------------------------------
@@ -57,10 +62,14 @@ nRepl = 10000
 intData :: [Int]
 intData = [1..nRepl]
 
--- Half of the integers inside the range of an Int and half of them outside.
-{-# NOINLINE integerData #-}
-integerData :: [Integer]
-integerData = map (\x -> fromIntegral x + fromIntegral (maxBound - nRepl `div` 2)) intData
+{-# NOINLINE smallIntegerData #-}
+smallIntegerData :: [Integer]
+smallIntegerData = map fromIntegral intData
+
+{-# NOINLINE largeIntegerData #-}
+largeIntegerData :: [Integer]
+largeIntegerData = map (* (10 ^ (100 :: Integer))) smallIntegerData
+
 
 {-# NOINLINE floatData #-}
 floatData :: [Float]
@@ -83,9 +92,20 @@ lazyByteStringData = case S.splitAt (nRepl `div` 2) byteStringData of
 byteStringChunksData :: [S.ByteString]
 byteStringChunksData = map (S.pack . replicate (4 ) . fromIntegral) intData
 
+{-# NOINLINE oldByteStringChunksData #-}
+oldByteStringChunksData :: [OldS.ByteString]
+oldByteStringChunksData = map (OldS.pack . replicate (4 ) . fromIntegral) intData
+
 
 -- benchmark wrappers
 ---------------------
+
+{-# INLINE benchBlaze #-}
+benchBlaze :: String -> a -> (a -> Blaze.Builder) -> Benchmark
+benchBlaze name x b =
+    bench (name ++" (" ++ show nRepl ++ ")") $
+        whnf (OldL.length . Blaze.toLazyByteString . b) x
+
 
 {-# INLINE benchB #-}
 benchB :: String -> a -> (a -> Builder) -> Benchmark
@@ -138,7 +158,8 @@ sanityCheckInfo :: [String]
 sanityCheckInfo =
   [ "Sanity checks:"
   , " lengths of input data: " ++ show
-      [ length intData, length floatData, length doubleData, length integerData
+      [ length intData, length floatData, length doubleData
+      , length smallIntegerData, length largeIntegerData
       , S.length byteStringData, fromIntegral (L.length lazyByteStringData)
       ]
   ]
@@ -177,14 +198,23 @@ main = do
                 (foldMap byteString)
             , benchB ("foldMap byteStringCopy" ++ dataName) byteStringChunksData
                 (foldMap byteStringCopy)
+            , benchBlaze ("foldMap Blaze.insertByteString" ++ dataName) oldByteStringChunksData
+                (foldMap Blaze.insertByteString)
+            , benchBlaze ("foldMap Blaze.fromByteString" ++ dataName) oldByteStringChunksData
+                (foldMap Blaze.fromByteString)
             ]
 
       , bgroup "Non-bounded encodings"
-        [ benchB "foldMap floatDec"        floatData          $ foldMap floatDec
-        , benchB "foldMap doubleDec"       doubleData         $ foldMap doubleDec
-        , benchB "foldMap integerDec"      integerData        $ foldMap integerDec
-        , benchB "byteStringHex"           byteStringData     $ byteStringHex
+        [ benchB "byteStringHex"           byteStringData     $ byteStringHex
         , benchB "lazyByteStringHex"       lazyByteStringData $ lazyByteStringHex
+        , benchB "foldMap floatDec"        floatData          $ foldMap floatDec
+        , benchB "foldMap doubleDec"       doubleData         $ foldMap doubleDec
+          -- Note that the small data corresponds to the intData pre-converted
+          -- to Integer.
+        , benchB "foldMap integerDec (small)"                     smallIntegerData        $ foldMap integerDec
+        , benchB "foldMap integerDec (large)"                     largeIntegerData        $ foldMap integerDec
+        , benchBlaze "foldMap integerDec (small) (blaze-textual)" smallIntegerData        $ foldMap Blaze.integral
+        , benchBlaze "foldMap integerDec (large) (blaze-textual)" largeIntegerData        $ foldMap Blaze.integral
         ]
       ]
 
