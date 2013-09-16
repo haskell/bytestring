@@ -3,3 +3,4 @@ cabal-dev
 dist
 dist-install
 ghc.mk
+.hsenv
