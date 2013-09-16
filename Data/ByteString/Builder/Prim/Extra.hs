@@ -1,6 +1,11 @@
 {-# LANGUAGE CPP, BangPatterns, ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 {-# OPTIONS_HADDOCK hide #-}
+
+-- DEPRECATED (SM 2013): The code in this module is slightly bitrotten. We
+-- should upgrade it and move it to a separate package.
+
+
 {- | Copyright : (c) 2010-2011 Simon Meier
 License        : BSD3-style (see LICENSE)
 
