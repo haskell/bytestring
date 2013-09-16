@@ -18,7 +18,7 @@ import           Control.Applicative
 import           Control.Monad.State
 import           Control.Monad.Writer
 
-import           Foreign (Word, Word8, Word64, minusPtr)
+import           Foreign (Word, Word8, minusPtr)
 import           System.IO.Unsafe (unsafePerformIO)
 
 import           Data.Char (ord, chr)
