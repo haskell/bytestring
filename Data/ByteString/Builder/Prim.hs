@@ -450,7 +450,6 @@ module Data.ByteString.Builder.Prim (
 
 import           Data.ByteString.Builder.Internal
 import           Data.ByteString.Builder.Prim.Internal.UncheckedShifts
-import           Data.ByteString.Builder.Prim.Internal.Base16 (lowerTable, encode4_as_8)
 
 import qualified Data.ByteString               as S
 import qualified Data.ByteString.Internal      as S
@@ -735,32 +734,4 @@ encodeCharUtf8 f1 f2 f3 f4 c = case ord c of
                x4 = fromIntegral $ (x .&. 0x3F) + 0x80
            in f4 x1 x2 x3 x4
 
-
-------------------------------------------------------------------------------
--- Testing encodings
-------------------------------------------------------------------------------
-{-
--- | /For testing use only./ Evaluate a 'FixedPrim' on a given value.
-evalF :: FixedPrim a -> a -> [Word8]
-evalF fe = S.unpack . S.unsafeCreate (I.size fe) . runF fe
-
--- | /For testing use only./ Evaluate a 'BoundedPrim' on a given value.
-evalB :: BoundedPrim a -> a -> [Word8]
-evalB be x = S.unpack $ unsafePerformIO $
-    S.createAndTrim (I.sizeBound be) $ \op -> do
-        op' <- runB be x op
-        return (op' `minusPtr` op)
-
--- | /For testing use only./ Show the result of a 'FixedPrim' of a given
--- value as a 'String' by interpreting the resulting bytes as Unicode
--- codepoints.
-showF :: FixedPrim a -> a -> String
-showF fe = map (chr . fromIntegral) . evalF fe
-
--- | /For testing use only./ Show the result of a 'BoundedPrim' of a given
--- value as a 'String' by interpreting the resulting bytes as Unicode
--- codepoints.
-showB :: BoundedPrim a -> a -> String
-showB be = map (chr . fromIntegral) . evalB be
--}
 
