@@ -466,9 +466,8 @@ import           Data.ByteString.Builder.Prim.Binary
 import           Data.ByteString.Builder.Prim.ASCII
 
 #if MIN_VERSION_base(4,4,0)
-import           Foreign hiding (unsafePerformIO, unsafeForeignPtrToPtr)
+import           Foreign hiding (unsafeForeignPtrToPtr)
 import           Foreign.ForeignPtr.Unsafe (unsafeForeignPtrToPtr)
-import           System.IO.Unsafe (unsafePerformIO)
 #else
 import           Foreign
 #endif
