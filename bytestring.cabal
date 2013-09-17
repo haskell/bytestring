@@ -147,7 +147,6 @@ test-suite test-builder
   other-modules:    Data.ByteString.Builder.Tests
                     Data.ByteString.Builder.Prim.Tests
                     Data.ByteString.Builder.Prim.TestUtils
-                    Data.ByteString.Builder.Prim.Extra
                     TestFramework
 
   build-depends:    base, ghc-prim,
