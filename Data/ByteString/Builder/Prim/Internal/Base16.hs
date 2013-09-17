@@ -17,11 +17,8 @@
 --
 module Data.ByteString.Builder.Prim.Internal.Base16 (
     EncodingTable
-  -- , upperTable
   , lowerTable
-  -- , encode4_as_8
   , encode8_as_16h
-  -- , encode8_as_8_8
   ) where
 
 import qualified Data.ByteString          as S
@@ -35,8 +32,8 @@ import           System.IO.Unsafe (unsafePerformIO)
 import           Foreign
 #endif
 
--- Creating the encoding tables
--------------------------------
+-- Creating the encoding table
+------------------------------
 
 -- TODO: Use table from C implementation.
 
@@ -56,19 +53,6 @@ base16EncodingTable alphabet = do
   where
     ix = unsafeIndex alphabet
 
-{-
-{-# NOINLINE upperAlphabet #-}
-upperAlphabet :: EncodingTable
-upperAlphabet =
-    tableFromList $ map (fromIntegral . fromEnum) $ ['0'..'9'] ++ ['A'..'F']
-
--- | The encoding table for hexadecimal values with upper-case characters;
--- e.g., DEADBEEF.
-{-# NOINLINE upperTable #-}
-upperTable :: EncodingTable
-upperTable = unsafePerformIO $ base16EncodingTable upperAlphabet
--}
-
 {-# NOINLINE lowerAlphabet #-}
 lowerAlphabet :: EncodingTable
 lowerAlphabet =
@@ -81,20 +65,6 @@ lowerTable :: EncodingTable
 lowerTable = unsafePerformIO $ base16EncodingTable lowerAlphabet
 
 
--- Encoding nibbles and octets
-------------------------------
-
-{-
--- | Encode a nibble as an octet.
---
--- > encode4_as_8 lowerTable 10 = fromIntegral (char 'a')
---
-{-# INLINE encode4_as_8 #-}
-encode4_as_8 :: EncodingTable -> Word8 -> IO Word8
-encode4_as_8 table x = unsafeIndex table (2 * fromIntegral x + 1)
--- TODO: Use a denser table to reduce cache utilization.
--}
-
 -- | Encode an octet as 16bit word comprising both encoded nibbles ordered
 -- according to the host endianness. Writing these 16bit to memory will write
 -- the nibbles in the correct order (i.e. big-endian).
@@ -102,17 +72,3 @@ encode4_as_8 table x = unsafeIndex table (2 * fromIntegral x + 1)
 encode8_as_16h :: EncodingTable -> Word8 -> IO Word16
 encode8_as_16h (EncodingTable table) =
     peekElemOff (castPtr $ unsafeForeignPtrToPtr table) . fromIntegral
-
-{-
--- | Encode an octet as a big-endian ordered tuple of octets; i.e.,
---
--- >   encode8_as_8_8 lowerTable 10
--- > = (fromIntegral (chr '0'), fromIntegral (chr 'a'))
---
-{-# INLINE encode8_as_8_8 #-}
-encode8_as_8_8 :: EncodingTable -> Word8 -> IO (Word8, Word8)
-encode8_as_8_8 table x =
-    (,) <$> unsafeIndex table i <*> unsafeIndex table (i + 1)
-  where
-    i = 2 * fromIntegral x
--}
