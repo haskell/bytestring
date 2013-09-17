@@ -57,7 +57,7 @@ executable test-builder
                     test-framework-quickcheck2  >= 0.3
 
   cpp-options:      -DHAVE_TEST_FRAMEWORK=1
-  ghc-options:      -Wall -fwarn-tabs
+  ghc-options:      -Wall -fwarn-tabs -fhpc
 
   extensions:       CPP, ForeignFunctionInterface
                     UnliftedFFITypes,
