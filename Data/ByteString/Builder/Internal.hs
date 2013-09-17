@@ -82,6 +82,8 @@ module Data.ByteString.Builder.Internal (
   , lazyByteStringCopy
   , lazyByteStringInsert
   , lazyByteStringThreshold
+  
+  , shortByteString
 
   , lazyByteStringC
 
@@ -123,6 +125,7 @@ import Data.Monoid
 import qualified Data.ByteString               as S
 import qualified Data.ByteString.Internal      as S
 import qualified Data.ByteString.Lazy.Internal as L
+import qualified Data.ByteString.Short.Internal as Sh
 
 #if __GLASGOW_HASKELL__ >= 611
 import GHC.IO.Buffer (Buffer(..), newByteBuffer)
@@ -636,6 +639,35 @@ byteStringInsert =
       | S.null bs = k br
       | otherwise =
           return $ insertChunks op (fromIntegral $ S.length bs) (L.Chunk bs) k
+
+-- Short bytestrings
+------------------------------------------------------------------------------
+
+-- | Construct a 'Builder' that copies the 'SH.ShortByteString'.
+--
+{-# INLINE shortByteString #-}
+shortByteString :: Sh.ShortByteString -> Builder
+shortByteString = \sbs -> builder $ shortByteStringCopyStep sbs
+
+-- | Copy the bytes from a 'SH.ShortByteString' into the output stream.
+{-# INLINE shortByteStringCopyStep #-}
+shortByteStringCopyStep :: Sh.ShortByteString  -- ^ Input 'SH.ShortByteString'.
+                        -> BuildStep a -> BuildStep a
+shortByteStringCopyStep !sbs k =
+    go 0 (Sh.length sbs)
+  where
+    go !ip !ipe !(BufferRange op ope)
+      | inpRemaining <= outRemaining = do
+          Sh.copyToPtr sbs ip op inpRemaining
+          let !br' = BufferRange (op `plusPtr` inpRemaining) ope
+          k br'
+      | otherwise = do
+          Sh.copyToPtr sbs ip op outRemaining
+          let !ip' = ip + outRemaining
+          return $ bufferFull 1 ope (go ip' ipe)
+      where
+        outRemaining = ope `minusPtr` op
+        inpRemaining = ipe - ip
 
 
 -- Lazy bytestrings

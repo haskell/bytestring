@@ -197,6 +197,7 @@ module Data.ByteString.Builder
       -- ** Binary encodings
     , byteString
     , lazyByteString
+    , shortByteString
     , int8
     , word8
 
