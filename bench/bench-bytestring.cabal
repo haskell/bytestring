@@ -25,6 +25,10 @@ source-repository head
   type:     darcs
   location: http://darcs.haskell.org/bytestring/
 
+flag integer-simple
+  description: Use the simple integer library instead of GMP
+  default: False
+
 executable bench-bytestring-builder
   hs-source-dirs:    . ..
   main-is:           BenchAll.hs
@@ -52,13 +56,16 @@ executable bench-bytestring-builder
                     -fdicts-cheap
                     -fspec-constr-count=6
 
+  -- flags for the decimal integer serialization code
   if impl(ghc >= 6.11)
-    cpp-options: -DINTEGER_GMP
-    build-depends: integer-gmp >= 0.2
+    if !flag(integer-simple)
+      cpp-options: -DINTEGER_GMP
+      build-depends: integer-gmp >= 0.2
 
   if impl(ghc >= 6.9) && impl(ghc < 6.11)
     cpp-options: -DINTEGER_GMP
-    build-depends: integer >= 0.1
+    build-depends: integer >= 0.1 && < 0.2
+
 
   if impl(ghc)
     extensions:   UnliftedFFITypes,

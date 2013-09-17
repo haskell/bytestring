@@ -74,18 +74,21 @@ import           Data.ByteString                                as S
 import           Data.ByteString.Lazy                           as L
 import           Data.ByteString.Builder.Internal (Builder)
 import qualified Data.ByteString.Builder.Prim                   as P
+
+import           Foreign
+
+
+#if defined(__GLASGOW_HASKELL__) && defined(INTEGER_GMP)
+import           Data.Monoid (mappend)
+import           Foreign.C.Types
+
 import qualified Data.ByteString.Builder.Prim.Internal          as P
 import           Data.ByteString.Builder.Prim.Internal.UncheckedShifts
                    ( caseWordSize_32_64 )
-import           Data.Monoid (mappend)
 
-import           Foreign
-import           Foreign.C.Types
-
-
-#ifdef  __GLASGOW_HASKELL__
 import           GHC.Num     (quotRemInteger)
 import           GHC.Types   (Int(..))
+
 
 # if __GLASGOW_HASKELL__ < 611
 import GHC.Integer.Internals
@@ -289,17 +292,13 @@ lazyByteStringHex = P.primMapLazyByteStringFixed P.word8HexFixed
 -- Fast decimal 'Integer' encoding.
 ------------------------------------------------------------------------------
 
-#ifdef  __GLASGOW_HASKELL__
+#if defined(__GLASGOW_HASKELL__) && defined(INTEGER_GMP)
 -- An optimized version of the integer serialization code
 -- in blaze-textual (c) 2011 MailRank, Inc. Bryan O'Sullivan
 -- <bos@mailrank.com>. It is 2.5x faster on Int-sized integers and 4.5x faster
 -- on larger integers.
 
-#ifdef INTEGER_GMP
 # define PAIR(a,b) (# a,b #)
-#else
-# define PAIR(a,b) (a,b)
-#endif
 
 -- | Maximal power of 10 fitting into an 'Int' without using the MSB.
 --     10 ^ 9  for 32 bit ints  (31 * log 2 / log 10 =  9.33)
@@ -375,5 +374,5 @@ intDecPadded = P.liftFixedToBounded $ caseWordSize_32_64
 -- | Decimal encoding of an 'Integer' using the ASCII digits. Implemented
 -- using via the 'Show' instance of 'Integer's.
 integerDec :: Integer -> Builder
-integerDec = string8 . show
+integerDec = string7 . show
 #endif
