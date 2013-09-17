@@ -570,7 +570,7 @@ testsASCII =
   , testBuilderConstr "word64Dec" dec_list word64Dec
   , testBuilderConstr "wordDec"   dec_list wordDec
 
-  , testBuilderConstr "integerDec" dec_list integerDec
+  , testBuilderConstr "integerDec" (dec_list . enlarge) (integerDec . enlarge)
   , testBuilderConstr "floatDec"   dec_list floatDec
   , testBuilderConstr "doubleDec"  dec_list doubleDec
 
@@ -593,6 +593,8 @@ testsASCII =
   , testBuilderConstr "floatHexFixed"  floatHexFixed_list  floatHexFixed
   , testBuilderConstr "doubleHexFixed" doubleHexFixed_list doubleHexFixed
   ]
+  where
+    enlarge (n, e) = n ^ (abs (e `mod` (50 :: Integer)))
 
 testsChar8 :: [Test]
 testsChar8 =
