@@ -28,6 +28,7 @@ import           Data.Foldable (asum, foldMap)
 import qualified Data.ByteString          as S
 import qualified Data.ByteString.Internal as S
 import qualified Data.ByteString.Lazy     as L
+import qualified Data.ByteString.Short    as Sh
 
 import           Data.ByteString.Builder
 import           Data.ByteString.Builder.Extra
@@ -188,6 +189,7 @@ data Mode =
 data Action =
        SBS Mode S.ByteString
      | LBS Mode L.ByteString
+     | ShBS Sh.ShortByteString
      | W8  Word8
      | W8S [Word8]
      | String String
@@ -213,6 +215,7 @@ renderRecipe (Recipe _ firstSize _ cont as) =
     renderAction (SBS _ bs)     = tell $ D.fromList $ S.unpack bs
     renderAction (LBS Hex lbs)  = tell $ foldMap hexWord8 $ L.unpack lbs
     renderAction (LBS _ lbs)    = tell $ renderLBS lbs
+    renderAction (ShBS sbs)     = tell $ D.fromList $ Sh.unpack sbs
     renderAction (W8 w)         = tell $ return w
     renderAction (W8S ws)       = tell $ D.fromList ws
     renderAction (String cs)    = tell $ foldMap (D.fromList . charUtf8_list) cs
@@ -240,6 +243,7 @@ buildAction (LBS Smart lbs)         = lift $ putBuilder $ lazyByteString lbs
 buildAction (LBS Copy lbs)          = lift $ putBuilder $ lazyByteStringCopy lbs
 buildAction (LBS Insert lbs)        = lift $ putBuilder $ lazyByteStringInsert lbs
 buildAction (LBS (Threshold i) lbs) = lift $ putBuilder $ lazyByteStringThreshold i lbs
+buildAction (ShBS sbs)              = lift $ putBuilder $ shortByteString sbs
 buildAction (W8 w)                  = lift $ putBuilder $ word8 w
 buildAction (W8S ws)                = lift $ putBuilder $ BP.primMapListFixed BP.word8 ws
 buildAction (String cs)             = lift $ putBuilder $ stringUtf8 cs
@@ -301,6 +305,7 @@ instance Arbitrary Action where
     arbitrary = oneof
       [ SBS <$> arbitrary <*> arbitrary
       , LBS <$> arbitrary <*> arbitrary
+      , ShBS . Sh.toShort <$> arbitrary
       , W8  <$> arbitrary
       , W8S <$> listOf arbitrary
         -- ensure that larger character codes are also tested
@@ -320,6 +325,8 @@ instance Arbitrary Action where
     shrink (LBS m lbs) =
       (LBS <$> shrink m <*> pure lbs) <|>
       (LBS <$> pure m   <*> shrink lbs)
+    shrink (ShBS sbs) =
+      ShBS . Sh.toShort <$> shrink (Sh.fromShort sbs)
     shrink (W8 w)         = W8 <$> shrink w
     shrink (W8S ws)       = W8S <$> shrink ws
     shrink (String cs)    = String <$> shrink cs
