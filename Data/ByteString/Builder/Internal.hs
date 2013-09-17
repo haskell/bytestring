@@ -150,9 +150,9 @@ import qualified Data.ByteString.Lazy as L
 import           System.IO (Handle)
 
 #if MIN_VERSION_base(4,4,0)
-import           Foreign hiding (unsafePerformIO, unsafeForeignPtrToPtr)
+import           Foreign hiding (unsafeForeignPtrToPtr)
 import           Foreign.ForeignPtr.Unsafe (unsafeForeignPtrToPtr)
-import           System.IO.Unsafe (unsafePerformIO)
+import           System.IO.Unsafe (unsafeDupablePerformIO)
 #else
 import           Foreign
 #endif
@@ -227,17 +227,17 @@ yield1 bs cios | S.null bs = cios
                | otherwise = return $ Yield1 bs cios
 
 -- | Convert a @'ChunkIOStream' ()@ to a lazy 'L.ByteString' using
--- 'unsafePerformIO'.
+-- 'unsafeDupablePerformIO'.
 {-# INLINE ciosUnitToLazyByteString #-}
 ciosUnitToLazyByteString :: AllocationStrategy
                          -> L.ByteString -> ChunkIOStream () -> L.ByteString
 ciosUnitToLazyByteString strategy k = go
   where
     go (Finished buf _) = trimmedChunkFromBuffer strategy buf k
-    go (Yield1 bs io)   = L.Chunk bs $ unsafePerformIO (go <$> io)
+    go (Yield1 bs io)   = L.Chunk bs $ unsafeDupablePerformIO (go <$> io)
 
 -- | Convert a 'ChunkIOStream' to a lazy tuple of the result and the written
--- 'L.ByteString' using 'unsafePerformIO'.
+-- 'L.ByteString' using 'unsafeDupablePerformIO'.
 {-# INLINE ciosToLazyByteString #-}
 ciosToLazyByteString :: AllocationStrategy
                      -> (a -> (b, L.ByteString))
@@ -248,15 +248,14 @@ ciosToLazyByteString strategy k =
   where
     go (Finished buf x) =
         second (trimmedChunkFromBuffer strategy buf) $ k x
-    go (Yield1 bs io)   = second (L.Chunk bs) $ unsafePerformIO (go <$> io)
+    go (Yield1 bs io)   = second (L.Chunk bs) $ unsafeDupablePerformIO (go <$> io)
 
 ------------------------------------------------------------------------------
 -- Build signals
 ------------------------------------------------------------------------------
 
--- | 'BuildStep's may assume that they are called at most once. However,
--- they must not execute any function that may rise an async. exception,
--- as this would invalidate the code of 'hPut' below.
+-- | 'BuildStep's may be called *multiple times* and they must not rise an
+-- async. exception.
 type BuildStep a = BufferRange -> IO (BuildSignal a)
 
 -- | 'BuildSignal's abstract signals to the caller of a 'BuildStep'. There are
@@ -608,6 +607,12 @@ hPut h p = do
         --      the start of 'fillHandle', hence entering it a second time is
         --      not safe, as it could lead to a 'BuildStep' being run twice.
         --
+        --      FIXME (SM): Adapt this function or at least its documentation,
+        --      as it is OK to run a 'BuildStep' twice. We dropped this
+        --      requirement in favor of being able to use
+        --      'unsafeDupablePerformIO' and the speed improvement that it
+        --      brings.
+        --
         --   2. We use the 'S.hPut' function to also write to the handle.
         --      This function tries to take the same lock taken by
         --      'wantWritableHandle'. Therefore, we cannot call 'S.hPut'
@@ -767,7 +772,7 @@ putToLazyByteStringWith
     -> (b, L.ByteString)
        -- ^ Resulting lazy 'L.ByteString'
 putToLazyByteStringWith strategy k p =
-    ciosToLazyByteString strategy k $ unsafePerformIO $
+    ciosToLazyByteString strategy k $ unsafeDupablePerformIO $
         buildStepToCIOS strategy (runPut p)
 
 
@@ -1071,7 +1076,7 @@ toLazyByteStringWith
     -> L.ByteString
        -- ^ Resulting lazy 'L.ByteString'
 toLazyByteStringWith strategy k b =
-    ciosUnitToLazyByteString strategy k $ unsafePerformIO $
+    ciosUnitToLazyByteString strategy k $ unsafeDupablePerformIO $
         buildStepToCIOS strategy (runBuilder b)
 
 -- | Convert a 'BuildStep' to a 'ChunkIOStream' stream by executing it on
