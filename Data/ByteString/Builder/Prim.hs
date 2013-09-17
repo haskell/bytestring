@@ -686,7 +686,7 @@ char8 = (fromIntegral . ord) >$< word8
 -- | UTF-8 encode a 'Char'.
 {-# INLINE charUtf8 #-}
 charUtf8 :: BoundedPrim Char
-charUtf8 = boundedEncoding 4 (encodeCharUtf8 f1 f2 f3 f4)
+charUtf8 = boudedPrim 4 (encodeCharUtf8 f1 f2 f3 f4)
   where
     pokeN n io op  = io op >> return (op `plusPtr` n)
 
