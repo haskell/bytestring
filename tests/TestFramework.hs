@@ -48,7 +48,7 @@ testProperty name p = [(name, runQcTest)]
                    }
 
 assertBool :: String -> Bool -> Bool
-assertBool = const
+assertBool _ = id
 
 testCase :: String -> Bool -> Test
 testCase name tst = [(name, runPlainTest)]
