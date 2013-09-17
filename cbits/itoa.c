@@ -130,6 +130,50 @@ char* _hs_bytestring_long_long_uint_dec (long long unsigned int x, char* buf)
 }
 
 
+// Padded, decimal, positive integers for the decimal output of bignums
+///////////////////////////////////////////////////////////////////////
+
+// Padded (9 digits), decimal, positive int:
+// We will use it with numbers that fit in 31 bits; i.e., numbers smaller than
+// 10^9, as "31 * log 2 / log 10 = 9.33"
+void _hs_bytestring_int_dec_padded9 (int x, char* buf)
+{
+    const int max_width_int32_dec = 9;
+    char* ptr = buf + max_width_int32_dec;
+    int x_tmp;
+
+    // encode positive number as little-endian decimal
+    do {
+        x_tmp = x;
+        x /= 10;
+        *(--ptr) = digits[x_tmp - x * 10];
+    } while ( x );
+
+    // pad beginning
+    while (buf < ptr) { *(--ptr) = '0'; }
+}
+
+// Padded (19 digits), decimal, positive long long int:
+// We will use it with numbers that fit in 63 bits; i.e., numbers smaller than
+// 10^18, as "63 * log 2 / log 10 = 18.96"
+void _hs_bytestring_long_long_int_dec_padded18 (long long int x, char* buf)
+{
+    const int max_width_int64_dec = 18;
+    char* ptr = buf + max_width_int64_dec;
+    long long int x_tmp;
+
+    // encode positive number as little-endian decimal
+    do {
+        x_tmp = x;
+        x /= 10;
+        *(--ptr) = digits[x_tmp - x * 10];
+    } while ( x );
+
+    // pad beginning
+    while (buf < ptr) { *(--ptr) = '0'; }
+}
+
+
 ///////////////////////
 // Hexadecimal encoding
 ///////////////////////
