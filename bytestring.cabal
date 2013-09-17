@@ -70,6 +70,8 @@ library
                      Data.ByteString.Lazy
                      Data.ByteString.Lazy.Char8
                      Data.ByteString.Lazy.Internal
+                     Data.ByteString.Short
+                     Data.ByteString.Short.Internal
 
                      Data.ByteString.Builder
                      Data.ByteString.Builder.Extra
