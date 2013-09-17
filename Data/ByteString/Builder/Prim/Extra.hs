@@ -434,7 +434,7 @@ encodeBase128
     => (a -> Int -> a) -> BoundedPrim b
 encodeBase128 shiftr =
     -- We add 6 because we require the result of (`div` 7) to be rounded up.
-    boundedEncoding ((8 * sizeOf (undefined :: b) + 6) `div` 7) (io . fromIntegral)
+    boudedPrim ((8 * sizeOf (undefined :: b) + 6) `div` 7) (io . fromIntegral)
   where
     io !x !op
       | x' == 0   = do poke8 (x .&. 0x7f)
@@ -785,7 +785,7 @@ appsUntilZero f x0 =
 genericVarFixedBound :: (Eq b, Show b, Bits b, Num a, Integral b)
                 => (b -> a -> b) -> b -> FixedPrim b
 genericVarFixedBound shiftRight bound =
-    fixedEncoding n0 io
+    fixedPrim n0 io
   where
     n0 = max 1 $ appsUntilZero (`shiftRight` 7) bound
 
@@ -822,7 +822,7 @@ word64VarFixedBound = genericVarFixedBound shiftr_w64
 genHexFixedBound :: (Num a, Bits a, Integral a)
                  => (a -> Int -> a) -> Char -> a -> FixedPrim a
 genHexFixedBound shiftr padding0 bound =
-    fixedEncoding n0 io
+    fixedPrim n0 io
   where
     n0 = max 1 $ appsUntilZero (`shiftr` 4) bound
 
@@ -858,7 +858,7 @@ word64HexFixedBound = genHexFixedBound shiftr_w64
 genDecFixedBound :: (Num a, Bits a, Integral a)
                  => Char -> a -> FixedPrim a
 genDecFixedBound padding0 bound =
-    fixedEncoding n0 io
+    fixedPrim n0 io
   where
     n0 = max 1 $ appsUntilZero (`div` 10) bound
 

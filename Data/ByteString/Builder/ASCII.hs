@@ -366,8 +366,8 @@ foreign import ccall unsafe "static _hs_bytestring_long_long_int_dec_padded18"
 {-# INLINE intDecPadded #-}
 intDecPadded :: P.BoundedPrim Int
 intDecPadded = P.liftFixedToBounded $ caseWordSize_32_64
-    (P.fixedEncoding  9 $ c_int_dec_padded9            . fromIntegral)
-    (P.fixedEncoding 18 $ c_long_long_int_dec_padded18 . fromIntegral)
+    (P.fixedPrim  9 $ c_int_dec_padded9            . fromIntegral)
+    (P.fixedPrim 18 $ c_long_long_int_dec_padded18 . fromIntegral)
 
 #else
 -- compilers other than GHC
