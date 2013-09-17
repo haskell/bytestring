@@ -450,7 +450,6 @@ module Data.ByteString.Builder.Prim (
 
 import           Data.ByteString.Builder.Internal
 import           Data.ByteString.Builder.Prim.Internal.UncheckedShifts
-import           Data.ByteString.Builder.Prim.Internal.Base16 (lowerTable, encode4_as_8)
 
 import qualified Data.ByteString               as S
 import qualified Data.ByteString.Internal      as S

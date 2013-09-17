@@ -19,7 +19,7 @@ module Data.ByteString.Builder.Prim.Internal.Base16 (
     EncodingTable
   -- , upperTable
   , lowerTable
-  , encode4_as_8
+  -- , encode4_as_8
   , encode8_as_16h
   -- , encode8_as_8_8
   ) where
@@ -84,6 +84,7 @@ lowerTable = unsafePerformIO $ base16EncodingTable lowerAlphabet
 -- Encoding nibbles and octets
 ------------------------------
 
+{-
 -- | Encode a nibble as an octet.
 --
 -- > encode4_as_8 lowerTable 10 = fromIntegral (char 'a')
@@ -92,6 +93,7 @@ lowerTable = unsafePerformIO $ base16EncodingTable lowerAlphabet
 encode4_as_8 :: EncodingTable -> Word8 -> IO Word8
 encode4_as_8 table x = unsafeIndex table (2 * fromIntegral x + 1)
 -- TODO: Use a denser table to reduce cache utilization.
+-}
 
 -- | Encode an octet as 16bit word comprising both encoded nibbles ordered
 -- according to the host endianness. Writing these 16bit to memory will write
