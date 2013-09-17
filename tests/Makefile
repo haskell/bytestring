@@ -32,6 +32,16 @@ units-compiled:
 	time ./u
 
 # ---------------------------------------------
+# ByteString Builders
+
+hpc-builder: dist/build/test-builder/test-builder
+	rm -f test-builder.tix
+	dist/build/test-builder/test-builder
+	hpc markup test-builder.tix
+
+
+
+# ---------------------------------------------
 # QuickCheck
 
 # interpreted

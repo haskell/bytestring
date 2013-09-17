@@ -70,12 +70,29 @@ module Data.ByteString.Builder.ASCII
 
     ) where
 
-import           Data.ByteString                             as S
-import           Data.ByteString.Lazy.Internal               as L
+import           Data.ByteString                                as S
+import           Data.ByteString.Lazy                           as L
 import           Data.ByteString.Builder.Internal (Builder)
-import qualified Data.ByteString.Builder.Prim                as P
+import qualified Data.ByteString.Builder.Prim                   as P
+import qualified Data.ByteString.Builder.Prim.Internal          as P
+import           Data.ByteString.Builder.Prim.Internal.UncheckedShifts
+                   ( caseWordSize_32_64 )
+import           Data.Monoid (mappend)
 
 import           Foreign
+import           Foreign.C.Types
+
+
+#ifdef  __GLASGOW_HASKELL__
+import           GHC.Num     (quotRemInteger)
+import           GHC.Types   (Int(..))
+
+# if __GLASGOW_HASKELL__ < 611
+import GHC.Integer.Internals
+# else
+import GHC.Integer.GMP.Internals
+# endif
+#endif
 
 ------------------------------------------------------------------------------
 -- Decimal Encoding
@@ -124,11 +141,6 @@ int64Dec = P.primBounded P.int64Dec
 {-# INLINE intDec #-}
 intDec :: Int -> Builder
 intDec = P.primBounded P.intDec
-
--- | /Currently slow./ Decimal encoding of an 'Integer' using the ASCII digits.
-{-# INLINE integerDec #-}
-integerDec :: Integer -> Builder
-integerDec =  string7 . show
 
 
 -- Unsigned integers
@@ -271,3 +283,97 @@ byteStringHex = P.primMapByteStringFixed P.word8HexFixed
 {-# NOINLINE lazyByteStringHex #-} -- share code
 lazyByteStringHex :: L.ByteString -> Builder
 lazyByteStringHex = P.primMapLazyByteStringFixed P.word8HexFixed
+
+
+------------------------------------------------------------------------------
+-- Fast decimal 'Integer' encoding.
+------------------------------------------------------------------------------
+
+#ifdef  __GLASGOW_HASKELL__
+-- An optimized version of the integer serialization code
+-- in blaze-textual (c) 2011 MailRank, Inc. Bryan O'Sullivan
+-- <bos@mailrank.com>. It is 2.5x faster on Int-sized integers and 4.5x faster
+-- on larger integers.
+
+#ifdef INTEGER_GMP
+# define PAIR(a,b) (# a,b #)
+#else
+# define PAIR(a,b) (a,b)
+#endif
+
+-- | Maximal power of 10 fitting into an 'Int' without using the MSB.
+--     10 ^ 9  for 32 bit ints  (31 * log 2 / log 10 =  9.33)
+--     10 ^ 18 for 64 bit ints  (63 * log 2 / log 10 = 18.96)
+--
+-- FIXME: Think about also using the MSB. For 64 bit 'Int's this makes a
+-- difference.
+maxPow10 :: Integer
+maxPow10 = toInteger $ (10 :: Int) ^ caseWordSize_32_64 (9 :: Int) 18
+
+-- | Decimal encoding of an 'Integer' using the ASCII digits.
+integerDec :: Integer -> Builder
+integerDec (S# i#) = intDec (I# i#)
+integerDec i
+    | i < 0     = P.primFixed P.char8 '-' `mappend` go (-i)
+    | otherwise =                                   go ( i)
+  where
+    errImpossible fun =
+        error $ "integerDec: " ++ fun ++ ": the impossible happened."
+
+    go :: Integer -> Builder
+    go n | n < maxPow10 = intDec (fromInteger n)
+         | otherwise    =
+             case putH (splitf (maxPow10 * maxPow10) n) of
+               (x:xs) -> intDec x `mappend` P.primMapListBounded intDecPadded xs
+               []     -> errImpossible "integerDec: go"
+
+    splitf :: Integer -> Integer -> [Integer]
+    splitf pow10 n0
+      | pow10 > n0  = [n0]
+      | otherwise   = splith (splitf (pow10 * pow10) n0)
+      where
+        splith []     = errImpossible "splith"
+        splith (n:ns) =
+            case n `quotRemInteger` pow10 of
+                PAIR(q,r) | q > 0     -> q : r : splitb ns
+                          | otherwise ->     r : splitb ns
+
+        splitb []     = []
+        splitb (n:ns) = case n `quotRemInteger` pow10 of
+                            PAIR(q,r) -> q : r : splitb ns
+
+    putH :: [Integer] -> [Int]
+    putH []     = errImpossible "putH"
+    putH (n:ns) = case n `quotRemInteger` maxPow10 of
+                    PAIR(x,y)
+                        | q > 0     -> q : r : putB ns
+                        | otherwise ->     r : putB ns
+                        where q = fromInteger x
+                              r = fromInteger y
+
+    putB :: [Integer] -> [Int]
+    putB []     = []
+    putB (n:ns) = case n `quotRemInteger` maxPow10 of
+                    PAIR(q,r) -> fromInteger q : fromInteger r : putB ns
+
+
+foreign import ccall unsafe "static _hs_bytestring_int_dec_padded9"
+    c_int_dec_padded9 :: CInt -> Ptr Word8 -> IO ()
+
+foreign import ccall unsafe "static _hs_bytestring_long_long_int_dec_padded18"
+    c_long_long_int_dec_padded18 :: CLLong -> Ptr Word8 -> IO ()
+
+{-# INLINE intDecPadded #-}
+intDecPadded :: P.BoundedPrim Int
+intDecPadded = P.liftFixedToBounded $ caseWordSize_32_64
+    (P.fixedPrim  9 $ c_int_dec_padded9            . fromIntegral)
+    (P.fixedPrim 18 $ c_long_long_int_dec_padded18 . fromIntegral)
+
+#else
+-- compilers other than GHC
+
+-- | Decimal encoding of an 'Integer' using the ASCII digits. Implemented
+-- using via the 'Show' instance of 'Integer's.
+integerDec :: Integer -> Builder
+integerDec = string8 . show
+#endif
