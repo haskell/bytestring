@@ -83,7 +83,7 @@ word16BE :: FixedPrim Word16
 #ifdef WORD_BIGENDIAN
 word16BE = word16Host
 #else
-word16BE = fixedEncoding 2 $ \w p -> do
+word16BE = fixedPrim 2 $ \w p -> do
     poke p               (fromIntegral (shiftr_w16 w 8) :: Word8)
     poke (p `plusPtr` 1) (fromIntegral (w)              :: Word8)
 #endif
@@ -92,7 +92,7 @@ word16BE = fixedEncoding 2 $ \w p -> do
 {-# INLINE word16LE #-}
 word16LE :: FixedPrim Word16
 #ifdef WORD_BIGENDIAN
-word16LE = fixedEncoding 2 $ \w p -> do
+word16LE = fixedPrim 2 $ \w p -> do
     poke p               (fromIntegral (w)              :: Word8)
     poke (p `plusPtr` 1) (fromIntegral (shiftr_w16 w 8) :: Word8)
 #else
@@ -105,7 +105,7 @@ word32BE :: FixedPrim Word32
 #ifdef WORD_BIGENDIAN
 word32BE = word32Host
 #else
-word32BE = fixedEncoding 4 $ \w p -> do
+word32BE = fixedPrim 4 $ \w p -> do
     poke p               (fromIntegral (shiftr_w32 w 24) :: Word8)
     poke (p `plusPtr` 1) (fromIntegral (shiftr_w32 w 16) :: Word8)
     poke (p `plusPtr` 2) (fromIntegral (shiftr_w32 w  8) :: Word8)
@@ -116,7 +116,7 @@ word32BE = fixedEncoding 4 $ \w p -> do
 {-# INLINE word32LE #-}
 word32LE :: FixedPrim Word32
 #ifdef WORD_BIGENDIAN
-word32LE = fixedEncoding 4 $ \w p -> do
+word32LE = fixedPrim 4 $ \w p -> do
     poke p               (fromIntegral (w)               :: Word8)
     poke (p `plusPtr` 1) (fromIntegral (shiftr_w32 w  8) :: Word8)
     poke (p `plusPtr` 2) (fromIntegral (shiftr_w32 w 16) :: Word8)
@@ -126,7 +126,7 @@ word32LE = word32Host
 #endif
 
 -- on a little endian machine:
--- word32LE w32 = fixedEncoding 4 (\w p -> poke (castPtr p) w32)
+-- word32LE w32 = fixedPrim 4 (\w p -> poke (castPtr p) w32)
 
 -- | Encoding 'Word64's in big endian format.
 {-# INLINE word64BE #-}
@@ -140,7 +140,7 @@ word64BE = word64Host
 -- Word32, and write that
 --
 word64BE =
-    fixedEncoding 8 $ \w p -> do
+    fixedPrim 8 $ \w p -> do
         let a = fromIntegral (shiftr_w64 w 32) :: Word32
             b = fromIntegral w                 :: Word32
         poke p               (fromIntegral (shiftr_w32 a 24) :: Word8)
@@ -152,7 +152,7 @@ word64BE =
         poke (p `plusPtr` 6) (fromIntegral (shiftr_w32 b  8) :: Word8)
         poke (p `plusPtr` 7) (fromIntegral (b)               :: Word8)
 #else
-word64BE = fixedEncoding 8 $ \w p -> do
+word64BE = fixedPrim 8 $ \w p -> do
     poke p               (fromIntegral (shiftr_w64 w 56) :: Word8)
     poke (p `plusPtr` 1) (fromIntegral (shiftr_w64 w 48) :: Word8)
     poke (p `plusPtr` 2) (fromIntegral (shiftr_w64 w 40) :: Word8)
@@ -170,7 +170,7 @@ word64LE :: FixedPrim Word64
 #ifdef WORD_BIGENDIAN
 #if WORD_SIZE_IN_BITS < 64
 word64LE =
-    fixedEncoding 8 $ \w p -> do
+    fixedPrim 8 $ \w p -> do
         let b = fromIntegral (shiftr_w64 w 32) :: Word32
             a = fromIntegral w                 :: Word32
         poke (p)             (fromIntegral (a)               :: Word8)
@@ -182,7 +182,7 @@ word64LE =
         poke (p `plusPtr` 6) (fromIntegral (shiftr_w32 b 16) :: Word8)
         poke (p `plusPtr` 7) (fromIntegral (shiftr_w32 b 24) :: Word8)
 #else
-word64LE = fixedEncoding 8 $ \w p -> do
+word64LE = fixedPrim 8 $ \w p -> do
     poke p               (fromIntegral (w)               :: Word8)
     poke (p `plusPtr` 1) (fromIntegral (shiftr_w64 w  8) :: Word8)
     poke (p `plusPtr` 2) (fromIntegral (shiftr_w64 w 16) :: Word8)
