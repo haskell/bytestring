@@ -14,6 +14,11 @@ category:      Data
 build-type:    Simple
 cabal-version: >=1.8
 
+
+flag integer-simple
+  description: Use the simple integer library instead of GMP
+  default: False
+
 -- QC properties, with GHC RULES disabled
 executable prop-compiled
   main-is:          Properties.hs
@@ -76,8 +81,9 @@ executable test-builder
 
    -- flags for the decimal integer serialization code
   if impl(ghc >= 6.11)
-    cpp-options: -DINTEGER_GMP
-    build-depends: integer-gmp >= 0.2 && < 0.6
+    if !flag(integer-simple)
+      cpp-options: -DINTEGER_GMP
+      build-depends: integer-gmp >= 0.2
 
   if impl(ghc >= 6.9) && impl(ghc < 6.11)
     cpp-options: -DINTEGER_GMP
