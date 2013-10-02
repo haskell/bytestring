@@ -1,7 +1,7 @@
-{-# LANGUAGE DeriveDataTypeable, CPP, BangPatterns, RankNTypes,
-             ForeignFunctionInterface, MagicHash, UnboxedTuples #-}
+{-# LANGUAGE CPP #-}
+#if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE Trustworthy #-}
-{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
+#endif
 
 -- |
 -- Module      : Data.ByteString.Short

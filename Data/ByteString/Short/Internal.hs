@@ -1,7 +1,9 @@
 {-# LANGUAGE DeriveDataTypeable, CPP, BangPatterns, RankNTypes,
              ForeignFunctionInterface, MagicHash, UnboxedTuples #-}
-{-# LANGUAGE Trustworthy #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
+#if __GLASGOW_HASKELL__ >= 701
+{-# LANGUAGE Unsafe #-}
+#endif
 {-# OPTIONS_HADDOCK hide #-}
 
 -- |
@@ -27,8 +29,8 @@ module Data.ByteString.Short.Internal (
     unpack,
 
     -- * Other operations
-    empty, null, length, index,
-    
+    empty, null, length, index, unsafeIndex,
+
     -- * Low level operations
     createFromPtr, copyToPtr
   ) where
@@ -38,15 +40,49 @@ import Data.ByteString.Internal (ByteString(..), inlinePerformIO)
 import Data.Typeable    (Typeable)
 import Data.Data        (Data(..), mkNoRepType)
 import Data.Monoid      (Monoid(..))
+import Data.String      (IsString(..))
 import Control.DeepSeq  (NFData(..))
 import qualified Data.List as List (length)
+#if MIN_VERSION_base(4,7,0)
+import Foreign.C.Types  (CSize(..), CInt(..))
+#elif MIN_VERSION_base(4,4,0)
 import Foreign.C.Types  (CSize(..), CInt(..), CLong(..))
-import Data.Word
+#else
+import Foreign.C.Types  (CSize, CInt, CLong)
+#endif
+import Foreign.Ptr
+import Foreign.ForeignPtr (touchForeignPtr)
+#if MIN_VERSION_base(4,5,0)
+import Foreign.ForeignPtr.Unsafe (unsafeForeignPtrToPtr)
+#else
+import Foreign.ForeignPtr (unsafeForeignPtrToPtr)
+#endif
 
-import GHC.Exts
+#if MIN_VERSION_base(4,5,0)
+import qualified GHC.Exts
+#endif
+import GHC.Exts ( Int(I#), Int#, Ptr(Ptr), Addr#, Char(C#)
+                , State#, RealWorld
+                , ByteArray#, MutableByteArray#
+                , newByteArray#
+#if MIN_VERSION_base(4,6,0)
+                , newPinnedByteArray#
+                , byteArrayContents#
+                , unsafeCoerce#
+#endif
+#if MIN_VERSION_base(4,3,0)
+                , sizeofByteArray#
+#endif
+                , indexWord8Array#, indexCharArray#
+                , writeWord8Array#, writeCharArray#
+                , unsafeFreezeByteArray# )
 import GHC.IO
-import GHC.ForeignPtr
-import GHC.ST
+#if MIN_VERSION_base(4,6,0)
+import GHC.ForeignPtr (ForeignPtr(ForeignPtr), ForeignPtrContents(PlainPtr))
+#else
+import GHC.ForeignPtr (mallocPlainForeignPtrBytes)
+#endif
+import GHC.ST         (ST(ST), runST)
 import GHC.Word
 
 import Prelude ( Eq(..), Ord(..), Ordering(..), Read(..), Show(..)
@@ -70,6 +106,16 @@ import Prelude ( Eq(..), Ord(..), Ordering(..), Read(..), Show(..)
 -- more flexible and it supports a wide range of operations.
 --
 data ShortByteString = SBS ByteArray#
+#if !(MIN_VERSION_base(4,3,0))
+                           Int  -- ^ Prior to ghc-7.0.x, 'ByteArray#'s reported
+                                -- their length rounded up to the nearest word.
+                                -- This means we have to store the true length
+                                -- separately, wasting a word.
+#define LEN(x) (x)
+#else
+#define _len   /* empty */
+#define LEN(x) /* empty */
+#endif
     deriving Typeable
 
 -- The ByteArray# representation is always word sized and aligned but with a
@@ -115,38 +161,49 @@ instance Data ShortByteString where
 
 -- | /O(1)/. The empty 'ShortByteString'.
 empty :: ShortByteString
-empty = create 0# (\_ s -> s)
+empty = create 0 (\_ -> return ())
 
 -- | /O(1)/ The length of a 'ShortByteString'.
 length :: ShortByteString -> Int
+#if MIN_VERSION_base(4,3,0)
 length (SBS barr#) = I# (sizeofByteArray# barr#)
+#else
+length (SBS _ len) = len
+#endif
 
 -- | /O(1)/ Test whether a 'ShortByteString' is empty.
 null :: ShortByteString -> Bool
-null (SBS barr#) = sizeofByteArray# barr# ==# 0#
+null sbs = length sbs == 0
 
 -- | /O(1)/ 'ShortByteString' index (subscript) operator, starting from 0. 
 index :: ShortByteString -> Int -> Word8
-index (SBS barr#) (I# i#)
-  | i# >=# 0# && i# <# sizeofByteArray# barr# = W8# (indexWord8Array# barr# i#)
-  | otherwise                                 = indexError barr# i#
+index sbs i
+  | i >= 0 && i < length sbs = unsafeIndex sbs i
+  | otherwise                = indexError sbs i
 
-indexError :: ByteArray# -> Int# -> a
-indexError barr# i# =
-  error $ "Data.ByteString.Short.index: error in array index; " ++ show (I# i#)
-       ++ " not in range [0.." ++ show (I# (sizeofByteArray# barr#)) ++ ")"
-{-# NOINLINE indexError #-}
+unsafeIndex :: ShortByteString -> Int -> Word8
+unsafeIndex sbs = indexWord8Array (asBA sbs)
+
+indexError :: ShortByteString -> Int -> a
+indexError sbs i =
+  error $ "Data.ByteString.Short.index: error in array index; " ++ show i
+       ++ " not in range [0.." ++ show (length sbs) ++ ")"
+
 
 ------------------------------------------------------------------------
 -- Internal utils
 
-create :: Int# -> (forall s. MutableByteArray# s -> State# s -> State# s) -> ShortByteString
-create len# fill =
-    runST (ST (\s ->
-      case newByteArray# len# s             of { (# s, mbarr# #) ->
-      case fill mbarr# s                    of {    s            ->
-      case unsafeFreezeByteArray# mbarr# s  of { (# s, barr# #)  ->
-      (# s, SBS barr# #) }}}))
+asBA :: ShortByteString -> BA
+asBA (SBS ba# _len) = BA# ba#
+
+create :: Int -> (forall s. MBA s -> ST s ()) -> ShortByteString
+create len fill =
+    runST (do
+      mba <- newByteArray len
+      fill mba
+      BA# ba# <- unsafeFreezeByteArray mba
+      return (SBS ba# LEN(len)))
+{-# INLINE create #-}
 
 ------------------------------------------------------------------------
 -- Conversion to and from ByteString
@@ -156,48 +213,41 @@ create len# fill =
 -- This makes a copy, so does not retain the input string.
 --
 toShort :: ByteString -> ShortByteString
-toShort bs = unsafeDupablePerformIO (toShortIO bs)
+toShort !bs = unsafeDupablePerformIO (toShortIO bs)
 
 toShortIO :: ByteString -> IO ShortByteString
-toShortIO (PS (ForeignPtr addr# fpc) (I# off#) (I# len#)) =
-  IO $ \s ->
-    case newByteArray# len# s                         of { (# s, mbarr# #) ->
-#if MIN_VERSION_base(4,7,0)
-    case copyAddrToByteArray# (plusAddr# addr# off#)
-                              mbarr# 0# len# s        of { s ->
-#else
-    case copyAddrToByteArray  (plusAddr# addr# off#)
-                              mbarr# len# s           of { (# s, _ #) ->
-#endif
-    case touch# fpc s                                 of { s ->
-    case unsafeFreezeByteArray# mbarr# s              of { (# s, barr# #) ->
-    (# s, SBS barr# #) }}}}
+toShortIO (PS fptr off len) = do
+    mba <- stToIO (newByteArray len)
+    let ptr = unsafeForeignPtrToPtr fptr
+    stToIO (copyAddrToByteArray (ptr `plusPtr` off) mba 0 len)
+    touchForeignPtr fptr
+    BA# ba# <- stToIO (unsafeFreezeByteArray mba)
+    return (SBS ba# LEN(len))
 
 
 -- | /O(n)/. Convert a 'ShortByteString' into a 'ByteString'.
 --
 fromShort :: ShortByteString -> ByteString
-fromShort sbs = unsafeDupablePerformIO (fromShortIO sbs)
+fromShort !sbs = unsafeDupablePerformIO (fromShortIO sbs)
 
 fromShortIO :: ShortByteString -> IO ByteString
-fromShortIO (SBS barr#) =
+fromShortIO sbs = do
 #if MIN_VERSION_base(4,6,0)
-    IO (\s ->
-      case sizeofByteArray# barr#                     of { size# ->
-      case newPinnedByteArray# size# s                of { (# s, mbarr# #) ->
-      case copyByteArray# barr# 0# mbarr# 0# size# s  of { s ->
-      (# s, PS (ForeignPtr (byteArrayContents# (unsafeCoerce# mbarr#))
-                           (PlainPtr mbarr#))
-               (I# 0#) (I# size#) #) }}})
+    let len = length sbs
+    mba@(MBA# mba#) <- stToIO (newPinnedByteArray len)
+    stToIO (copyByteArray (asBA sbs) 0 mba 0 len)
+    let fp = ForeignPtr (byteArrayContents# (unsafeCoerce# mba#))
+                        (PlainPtr mba#)
+    return (PS fp 0 len)
 #else
     -- Before base 4.6 ForeignPtrContents is not exported from GHC.ForeignPtr
     -- so we cannot get direct access to the mbarr#
-    IO (\s ->
-      case sizeofByteArray# barr#                         of { size# ->
-      case unIO (mallocPlainForeignPtrBytes (I# size#)) s of { (# s, fp@(ForeignPtr addr# fpc) #) ->
-      case copyByteArrayToAddr barr# addr# size# s        of { (# s, _ #) ->
-      case touch# fpc s                                   of { s ->
-      (# s, PS fp (I# 0#) (I# size#) #) }}}})
+    let len = length sbs
+    fptr <- mallocPlainForeignPtrBytes len
+    let ptr = unsafeForeignPtrToPtr fptr
+    stToIO (copyByteArrayToAddr (asBA sbs) 0 ptr len)
+    touchForeignPtr fptr
+    return (PS fptr 0 len)
 #endif
 
 
@@ -219,24 +269,24 @@ packBytes :: [Word8] -> ShortByteString
 packBytes cs = packLenBytes (List.length cs) cs
 
 packLenChars :: Int -> [Char] -> ShortByteString
-packLenChars (I# len#) cs0 =
-    create len# (\mbarr# s -> go mbarr# 0# cs0 s)
+packLenChars len cs0 =
+    create len (\mba -> go mba 0 cs0)
   where
-    go :: MutableByteArray# s -> Int# -> [Char] -> State# s -> State# s
-    go _      _  []         s = s
-    go mbarr# i# (C# c#:cs) s = 
-      case writeCharArray# mbarr# i# c# s of { s ->
-      go mbarr# (i# +# 1#) cs s }
+    go :: MBA s -> Int -> [Char] -> ST s ()
+    go !_   !_ []     = return ()
+    go !mba !i (c:cs) = do
+      writeCharArray mba i c
+      go mba (i+1) cs
 
 packLenBytes :: Int -> [Word8] -> ShortByteString
-packLenBytes (I# len#) ws0 =
-    create len# (\mbarr# s -> go mbarr# 0# ws0 s)
+packLenBytes len ws0 =
+    create len (\mba -> go mba 0 ws0)
   where
-    go :: MutableByteArray# s -> Int# -> [Word8] -> State# s -> State# s
-    go _      _  []          s = s
-    go mbarr# i# (W8# w#:ws) s = 
-      case writeWord8Array# mbarr# i# w# s of { s ->
-      go mbarr# (i# +# 1#) ws s }
+    go :: MBA s -> Int -> [Word8] -> ST s ()
+    go !_   !_ []     = return ()
+    go !mba !i (w:ws) = do
+      writeWord8Array mba i w
+      go mba (i+1) ws
 
 -- Unpacking bytestrings into lists effeciently is a tradeoff: on the one hand
 -- we would like to write a tight loop that just blats the list into memory, on
@@ -287,73 +337,71 @@ unpackAppendBytesLazy sbs ws0 =
 -- buffer and loops down until we hit the sentinal:
 
 unpackAppendCharsStrict :: ShortByteString -> Int -> Int -> [Char] -> [Char]
-unpackAppendCharsStrict (SBS barr#) (I# off#) (I# len#) cs =
-    go (off# -# 1#) (off# -# 1# +# len#) cs
+unpackAppendCharsStrict !sbs off len cs =
+    go (off-1) (off-1 + len) cs
   where
-    go sentinal# i# acc
-      | i# ==# sentinal# = acc
-      | otherwise        = let !c# = indexCharArray# barr# i#
-                            in go sentinal# (i# -# 1#) (C# c#:acc)
+    go !sentinal !i !acc
+      | i == sentinal = acc
+      | otherwise     = let !c = indexCharArray (asBA sbs) i
+                        in go sentinal (i-1) (c:acc)
 
 unpackAppendBytesStrict :: ShortByteString -> Int -> Int -> [Word8] -> [Word8]
-unpackAppendBytesStrict (SBS barr#) (I# off#) (I# len#) ws =
-    go (off# -# 1#) (off# -# 1# +# len#) ws
+unpackAppendBytesStrict !sbs off len ws =
+    go (off-1) (off-1 + len) ws
   where
-    go sentinal# i# acc
-      | i# ==# sentinal# = acc
-      | otherwise        = let !w# = indexWord8Array# barr# i#
-                            in go sentinal# (i# -# 1#) (W8# w#:acc)
+    go !sentinal !i !acc
+      | i == sentinal = acc
+      | otherwise     = let !w = indexWord8Array (asBA sbs) i
+                         in go sentinal (i-1) (w:acc)
 
 
 ------------------------------------------------------------------------
 -- Eq and Ord implementations
 
 equateBytes :: ShortByteString -> ShortByteString -> Bool
-equateBytes (SBS ba1#) (SBS ba2#) =
-    let !len1 = sizeofByteArray# ba1#
-        !len2 = sizeofByteArray# ba2#
-     in I# len1 == I# len2
-     && inlinePerformIO (memcmp_ByteArray ba1# ba2# (fromIntegral (I# len1)))
-        == 0
+equateBytes sbs1 sbs2 =
+    let !len1 = length sbs1
+        !len2 = length sbs2
+     in len1 == len2
+     && 0 == inlinePerformIO (memcmp_ByteArray (asBA sbs1) (asBA sbs2) len1)
 
 compareBytes :: ShortByteString -> ShortByteString -> Ordering
-compareBytes (SBS ba1#) (SBS ba2#) =
-    let !len1 = sizeofByteArray# ba1#
-        !len2 = sizeofByteArray# ba2#
-        !len  = fromIntegral (min (I# len1) (I# len2))
-     in case inlinePerformIO (memcmp_ByteArray ba1# ba2# len) of
-          i | i < 0             -> LT
-            | i > 0             -> GT
-            | I# len2 > I# len1 -> LT
-            | I# len2 < I# len1 -> GT
-            | otherwise         -> EQ
+compareBytes sbs1 sbs2 =
+    let !len1 = length sbs1
+        !len2 = length sbs2
+        !len  = min len1 len2
+     in case inlinePerformIO (memcmp_ByteArray (asBA sbs1) (asBA sbs2) len) of
+          i | i    < 0    -> LT
+            | i    > 0    -> GT
+            | len2 > len1 -> LT
+            | len2 < len1 -> GT
+            | otherwise   -> EQ
 
 
 ------------------------------------------------------------------------
 -- Appending and concatenation
 
 append :: ShortByteString -> ShortByteString -> ShortByteString
-append (SBS src1#) (SBS src2#) =
-  case sizeofByteArray# src1# of { len1# ->
-  case sizeofByteArray# src2# of { len2# ->
-  create (len1# +# len2#) $ \dst# s ->
-    case copyByteArray# src1# 0# dst# 0#    len1# s of { s ->
-    case copyByteArray# src2# 0# dst# len1# len2# s of { s ->
-    s }}}}
+append src1 src2 =
+  let !len1 = length src1
+      !len2 = length src2
+   in create (len1 + len2) $ \dst -> do
+        copyByteArray (asBA src1) 0 dst 0    len1
+        copyByteArray (asBA src2) 0 dst len1 len2
 
 concat :: [ShortByteString] -> ShortByteString
 concat sbss =
-    create (totalLen 0# sbss) (\dst# s -> copy dst# 0# sbss s)
+    create (totalLen 0 sbss) (\dst -> copy dst 0 sbss)
   where
-    totalLen acc []               = acc
-    totalLen acc (SBS ba# : sbss) = totalLen (acc +# sizeofByteArray# ba#) sbss
+    totalLen !acc []          = acc
+    totalLen !acc (sbs: sbss) = totalLen (acc + length sbs) sbss
 
-    copy :: MutableByteArray# s -> Int# -> [ShortByteString] -> State# s -> State# s
-    copy _    _    []                s = s
-    copy dst# off# (SBS src# : sbss) s =
-      case sizeofByteArray# src#                    of { len# ->
-      case copyByteArray# src# 0# dst# off# len# s  of { s ->
-      copy dst# (off# +# len#) sbss s }}
+    copy :: MBA s -> Int -> [ShortByteString] -> ST s ()
+    copy !_   !_   []                           = return ()
+    copy !dst !off (src : sbss) = do
+      let !len = length src
+      copyByteArray (asBA src) 0 dst off len
+      copy dst (off + len) sbss
 
 
 ------------------------------------------------------------------------
@@ -364,60 +412,178 @@ copyToPtr :: ShortByteString  -- ^ source data
           -> Ptr a            -- ^ destination
           -> Int              -- ^ number of bytes to copy
           -> IO ()
-#if MIN_VERSION_base(4,7,0)
-copyToPtr (SBS src#) (I# off#) (Ptr dst#) (I# len#) =
-  IO $ \s ->
-    case copyByteArrayToAddr# src# off# dst# 0# size# s of { s ->
-    (# s, () #) }
-#else
-copyToPtr (SBS src#) off dst len =
-    memcpy_src_off dst src# (fromIntegral off) (fromIntegral len)
-#endif
+copyToPtr src off dst len =
+    stToIO $
+      copyByteArrayToAddr (asBA src) off dst len
 
 createFromPtr :: Ptr a   -- ^ source data
               -> Int     -- ^ number of bytes to copy
               -> IO ShortByteString
-createFromPtr (Ptr addr#) (I# len#) =
-  IO $ \s ->
-    case newByteArray# len# s                         of { (# s, mbarr# #) ->
-#if MIN_VERSION_base(4,7,0)
-    case copyAddrToByteArray# addr# mbarr# 0# len# s  of { s ->
-#else
-    case copyAddrToByteArray  addr# mbarr#    len# s  of { (# s, _ #) ->
-#endif
-    case unsafeFreezeByteArray# mbarr# s              of { (# s, barr# #) ->
-    (# s, SBS barr# #) }}}
+createFromPtr !ptr len =
+    stToIO $ do
+      mba <- newByteArray len
+      copyAddrToByteArray ptr mba 0 len
+      BA# ba# <- unsafeFreezeByteArray mba
+      return (SBS ba# LEN(len))
 
 
 ------------------------------------------------------------------------
--- FFI imports and primop replacements
+-- Primop wrappers
 
-foreign import ccall unsafe "string.h memcmp"
-  memcmp_ByteArray :: ByteArray# -> ByteArray# -> CSize -> IO CInt
+data BA    = BA# ByteArray#
+data MBA s = MBA# (MutableByteArray# s)
 
-#if !(MIN_VERSION_base(4,7,0))
--- These exist as real primops in ghc-7.8, and for before that we use
--- FFI to C memcpy.
+indexCharArray :: BA -> Int -> Char
+indexCharArray (BA# ba#) (I# i#) = C# (indexCharArray# ba# i#)
 
-copyAddrToByteArray :: Addr# -> MutableByteArray# s -> Int#
-                    -> State# RealWorld -> (# State# RealWorld, () #)
-copyAddrToByteArray src dst n s =
-  unIO (memcpy_AddrToByteArray dst src (fromIntegral (I# n))) s
+indexWord8Array :: BA -> Int -> Word8
+indexWord8Array (BA# ba#) (I# i#) = W8# (indexWord8Array# ba# i#)
 
-foreign import ccall unsafe "string.h memcpy"
-  memcpy_AddrToByteArray :: MutableByteArray# s -> Addr# -> CSize -> IO ()
+newByteArray :: Int -> ST s (MBA s)
+newByteArray (I# len#) =
+    ST $ \s -> case newByteArray# len# s of
+                 (# s, mba# #) -> (# s, MBA# mba# #)
 
-foreign import ccall unsafe "fpstring.h fps_memcpy_src_off"
-  memcpy_src_off :: Ptr a -> ByteArray# -> CLong -> CSize -> IO ()
+#if MIN_VERSION_base(4,6,0)
+newPinnedByteArray :: Int -> ST s (MBA s)
+newPinnedByteArray (I# len#) =
+    ST $ \s -> case newPinnedByteArray# len# s of
+                 (# s, mba# #) -> (# s, MBA# mba# #)
 #endif
 
-#if !(MIN_VERSION_base(4,6,0))
-copyByteArrayToAddr :: ByteArray# -> Addr# -> Int#
-                    -> State# RealWorld -> (# State# RealWorld, () #)
-copyByteArrayToAddr src dst n s =
-  unIO (memcpy_ByteArrayToAddr dst src (fromIntegral (I# n))) s
+unsafeFreezeByteArray :: MBA s -> ST s BA
+unsafeFreezeByteArray (MBA# mba#) =
+    ST $ \s -> case unsafeFreezeByteArray# mba# s of
+                 (# s, ba# #) -> (# s, BA# ba# #)
+
+writeCharArray :: MBA s -> Int -> Char -> ST s ()
+writeCharArray (MBA# mba#) (I# i#) (C# c#) =
+  ST $ \s -> case writeCharArray# mba# i# c# s of
+               s -> (# s, () #)
+
+writeWord8Array :: MBA s -> Int -> Word8 -> ST s ()
+writeWord8Array (MBA# mba#) (I# i#) (W8# w#) =
+  ST $ \s -> case writeWord8Array# mba# i# w# s of
+               s -> (# s, () #)
+
+copyAddrToByteArray :: Ptr a -> MBA RealWorld -> Int -> Int -> ST RealWorld ()
+copyAddrToByteArray (Ptr src#) (MBA# dst#) (I# dst_off#) (I# len#) =
+    ST $ \s -> case copyAddrToByteArray# src# dst# dst_off# len# s of
+                 s -> (# s, () #)
+
+copyByteArrayToAddr :: BA -> Int -> Ptr a -> Int -> ST RealWorld ()
+copyByteArrayToAddr (BA# src#) (I# src_off#) (Ptr dst#) (I# len#) =
+    ST $ \s -> case copyByteArrayToAddr# src# src_off# dst# len# s of
+                 s -> (# s, () #)
+
+copyByteArray :: BA -> Int -> MBA s -> Int -> Int -> ST s ()
+copyByteArray (BA# src#) (I# src_off#) (MBA# dst#) (I# dst_off#) (I# len#) =
+    ST $ \s -> case copyByteArray# src# src_off# dst# dst_off# len# s of
+                 s -> (# s, () #)
+
+
+------------------------------------------------------------------------
+-- FFI imports
+
+memcmp_ByteArray :: BA -> BA -> Int -> IO CInt
+memcmp_ByteArray (BA# ba1#) (BA# ba2#) len =
+  c_memcmp_ByteArray ba1# ba2# (fromIntegral len)
+
+foreign import ccall unsafe "string.h memcmp"
+  c_memcmp_ByteArray :: ByteArray# -> ByteArray# -> CSize -> IO CInt
+
+
+------------------------------------------------------------------------
+-- Primop replacements
+
+copyAddrToByteArray# :: Addr#
+                     -> MutableByteArray# RealWorld -> Int#
+                     -> Int#
+                     -> State# RealWorld -> State# RealWorld
+
+copyByteArrayToAddr# :: ByteArray# -> Int#
+                     -> Addr#
+                     -> Int#
+                     -> State# RealWorld -> State# RealWorld
+
+copyByteArray#       :: ByteArray# -> Int#
+                     -> MutableByteArray# s -> Int#
+                     -> Int#
+                     -> State# s -> State# s
+
+#if MIN_VERSION_base(4,7,0)
+
+-- These exist as real primops in ghc-7.8, and for before that we use
+-- FFI to C memcpy.
+copyAddrToByteArray# = GHC.Exts.copyAddrToByteArray#
+copyByteArrayToAddr# = GHC.Exts.copyByteArrayToAddr#
+
+#else
+
+copyAddrToByteArray# src dst dst_off len s =
+  unIO_ (memcpy_AddrToByteArray dst (clong dst_off) src 0 (csize len)) s
+
+copyAddrToByteArray0 :: Addr# -> MutableByteArray# s -> Int#
+                     -> State# RealWorld -> State# RealWorld
+copyAddrToByteArray0 src dst len s =
+  unIO_ (memcpy_AddrToByteArray0 dst src (csize len)) s
+
+{-# INLINE [0] copyAddrToByteArray# #-}
+{-# RULES "copyAddrToByteArray# dst_off=0"
+      forall src dst len s.
+          copyAddrToByteArray# src dst 0# len s
+        = copyAddrToByteArray0 src dst    len s  #-}
+
+foreign import ccall unsafe "fpstring.h fps_memcpy_offsets"
+  memcpy_AddrToByteArray :: MutableByteArray# s -> CLong -> Addr# -> CLong -> CSize -> IO ()
 
 foreign import ccall unsafe "string.h memcpy"
-  memcpy_ByteArrayToAddr :: Addr# -> ByteArray# -> CSize -> IO ()
+  memcpy_AddrToByteArray0 :: MutableByteArray# s -> Addr# -> CSize -> IO ()
+
+
+copyByteArrayToAddr# src src_off dst len s =
+  unIO_ (memcpy_ByteArrayToAddr dst 0 src (clong src_off) (csize len)) s
+
+copyByteArrayToAddr0 :: ByteArray# -> Addr# -> Int#
+                     -> State# RealWorld -> State# RealWorld
+copyByteArrayToAddr0 src dst len s =
+  unIO_ (memcpy_ByteArrayToAddr0 dst src (csize len)) s
+
+{-# INLINE [0] copyByteArrayToAddr# #-}
+{-# RULES "copyByteArrayToAddr# src_off=0"
+      forall src dst len s.
+          copyByteArrayToAddr# src 0# dst len s
+        = copyByteArrayToAddr0 src    dst len s  #-}
+
+foreign import ccall unsafe "fpstring.h fps_memcpy_offsets"
+  memcpy_ByteArrayToAddr :: Addr# -> CLong -> ByteArray# -> CLong -> CSize -> IO ()
+
+foreign import ccall unsafe "string.h memcpy"
+  memcpy_ByteArrayToAddr0 :: Addr# -> ByteArray# -> CSize -> IO ()
+
+
+unIO_ :: IO () -> State# RealWorld -> State# RealWorld
+unIO_ io s = case unIO io s of (# s, _ #) -> s
+
+clong :: Int# -> CLong
+clong i# = fromIntegral (I# i#)
+
+csize :: Int# -> CSize
+csize i# = fromIntegral (I# i#)
+#endif
+
+#if MIN_VERSION_base(4,5,0)
+copyByteArray# = GHC.Exts.copyByteArray#
+#else
+copyByteArray# src src_off dst dst_off len s =
+    unST_ (unsafeIOToST
+      (memcpy_ByteArray dst (clong dst_off) src (clong src_off) (csize len))) s
+  where
+    unST (ST st) = st
+    unST_ st s = case unST st s of (# s, _ #) -> s
+
+foreign import ccall unsafe "fpstring.h fps_memcpy_offsets"
+  memcpy_ByteArray :: MutableByteArray# s -> CLong
+                   -> ByteArray# -> CLong -> CSize -> IO ()
 #endif
 
