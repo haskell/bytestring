@@ -82,7 +82,6 @@ import Foreign
 #endif
 
 import           System.ByteOrder
-import           Unsafe.Coerce (unsafeCoerce)
 
 #if defined(HAVE_TEST_FRAMEWORK)
 import           Test.HUnit (assertBool)
@@ -355,27 +354,21 @@ float_list f  = f . coerceFloatToWord32
 double_list :: (Word64 -> [Word8]) -> Double -> [Word8]
 double_list f = f . coerceDoubleToWord64
 
--- Note that the following use of unsafeCoerce is not guaranteed to be
--- safe on GHC 7.0 and less. The reason is probably the following ticket:
---
---   http://hackage.haskell.org/trac/ghc/ticket/4092
---
--- However, that only applies if the value is loaded in a register. We
--- avoid this by coercing only boxed values and ensuring that they
--- remain boxed using a NOINLINE pragma.
---
-
--- | Super unsafe coerce a 'Float' to a 'Word32'. We have to explicitly mask
--- out the higher bits in case we are working on a 64-bit machine.
+-- | Bytewise coercion of a 'Float' to a 'Word32'.
 {-# NOINLINE coerceFloatToWord32 #-}
 coerceFloatToWord32 :: Float -> Word32
-coerceFloatToWord32 = (.&. maxBound) . unsafeCoerce
+coerceFloatToWord32 = fromFloat
 
--- | Super unsafe coerce a 'Double' to a 'Word64'. Currently, there are no
--- > 64 bit machines supported by GHC. But we just play it safe.
+-- | Bytewise coercion of a 'Double' to a 'Word64'.
 {-# NOINLINE coerceDoubleToWord64 #-}
 coerceDoubleToWord64 :: Double -> Word64
-coerceDoubleToWord64 = (.&. maxBound) . unsafeCoerce
+coerceDoubleToWord64 = fromFloat
+
+-- | Bytewise coercion from a float value to a word value.
+fromFloat :: (Storable word, Storable float) => float -> word
+fromFloat float = unsafePerformIO $ alloca $ \buf -> do
+    poke (castPtr buf) float
+    peek buf
 
 -- | Parse a variable length encoding
 parseVar :: (Num a, Bits a) => [Word8] -> (a, [Word8])
