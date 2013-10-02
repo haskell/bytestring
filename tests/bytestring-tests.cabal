@@ -14,6 +14,11 @@ category:      Data
 build-type:    Simple
 cabal-version: >=1.8
 
+
+flag integer-simple
+  description: Use the simple integer library instead of GMP
+  default: False
+
 -- QC properties, with GHC RULES disabled
 executable prop-compiled
   main-is:          Properties.hs
@@ -42,7 +47,6 @@ executable test-builder
   other-modules:    Data.ByteString.Builder.Tests
                     Data.ByteString.Builder.Prim.Tests
                     Data.ByteString.Builder.Prim.TestUtils
-                    Data.ByteString.Builder.Prim.Extra
 
   build-depends:    base, ghc-prim,
                     deepseq,
@@ -54,10 +58,10 @@ executable test-builder
                     HUnit,
                     test-framework,
                     test-framework-hunit,
-                    test-framework-quickcheck2
+                    test-framework-quickcheck2  >= 0.3
 
   cpp-options:      -DHAVE_TEST_FRAMEWORK=1
-  ghc-options:      -Wall -fwarn-tabs
+  ghc-options:      -Wall -fwarn-tabs -fhpc
 
   extensions:       CPP, ForeignFunctionInterface
                     UnliftedFFITypes,
@@ -74,3 +78,13 @@ executable test-builder
   include-dirs:     ../include
   includes:         fpstring.h
   install-includes: fpstring.h
+
+   -- flags for the decimal integer serialization code
+  if impl(ghc >= 6.11)
+    if !flag(integer-simple)
+      cpp-options: -DINTEGER_GMP
+      build-depends: integer-gmp >= 0.2
+
+  if impl(ghc >= 6.9) && impl(ghc < 6.11)
+    cpp-options: -DINTEGER_GMP
+    build-depends: integer >= 0.1 && < 0.2

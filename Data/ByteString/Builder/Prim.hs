@@ -44,7 +44,7 @@ performed by a 'Builder' more efficient. We explain these two steps in turn.
 
 The first most common step is the concatenation of two 'Builder's. Internally,
 concatenation corresponds to function composition. (Note that 'Builder's can
-be seen as difference-lists of buffer-filling functions; cf. 
+be seen as difference-lists of buffer-filling functions; cf.
 <http://hackage.haskell.org/cgi-bin/hackage-scripts/package/dlist>. )
 Function composition is a fast /O(1)/ operation. However, we can use bounded
 primitives to remove some of these function compositions altogether, which is
@@ -450,7 +450,6 @@ module Data.ByteString.Builder.Prim (
 
 import           Data.ByteString.Builder.Internal
 import           Data.ByteString.Builder.Prim.Internal.UncheckedShifts
-import           Data.ByteString.Builder.Prim.Internal.Base16 (lowerTable, encode4_as_8)
 
 import qualified Data.ByteString               as S
 import qualified Data.ByteString.Internal      as S
@@ -467,9 +466,8 @@ import           Data.ByteString.Builder.Prim.Binary
 import           Data.ByteString.Builder.Prim.ASCII
 
 #if MIN_VERSION_base(4,4,0)
-import           Foreign hiding (unsafePerformIO, unsafeForeignPtrToPtr)
+import           Foreign hiding (unsafeForeignPtrToPtr)
 import           Foreign.ForeignPtr.Unsafe (unsafeForeignPtrToPtr)
-import           System.IO.Unsafe (unsafePerformIO)
 #else
 import           Foreign
 #endif
@@ -540,18 +538,16 @@ primMapLazyByteStringFixed = primMapLazyByteStringBounded . toB
 --
 {-# INLINE[1] primBounded #-}
 primBounded :: BoundedPrim a -> (a -> Builder)
-primBounded w =
-    mkBuilder
+primBounded w x =
+    -- It is important to avoid recursive 'BuildStep's where possible, as
+    -- their closure allocation is expensive. Using 'ensureFree' allows the
+    -- 'step' to assume that at least 'sizeBound w' free space is available.
+    ensureFree (I.sizeBound w) `mappend` builder step
   where
-    bound = I.sizeBound w
-    mkBuilder x = builder step
-      where
-        step k (BufferRange op ope)
-          | op `plusPtr` bound <= ope = do
-              op' <- runB w x op
-              let !br' = BufferRange op' ope
-              k br'
-          | otherwise = return $ bufferFull bound op (step k)
+    step k (BufferRange op ope) = do
+        op' <- runB w x op
+        let !br' = BufferRange op' ope
+        k br'
 
 {-# RULES
 
@@ -588,23 +584,19 @@ primBounded w =
 -- because it moves several variables out of the inner loop.
 {-# INLINE primMapListBounded #-}
 primMapListBounded :: BoundedPrim a -> [a] -> Builder
-primMapListBounded w =
-    makeBuilder
+primMapListBounded w xs0 =
+    builder $ step xs0
   where
-    bound = I.sizeBound w
-    makeBuilder xs0 = builder $ step xs0
+    step xs1 k (BufferRange op0 ope0) =
+        go xs1 op0
       where
-        step xs1 k !(BufferRange op0 ope0) = go xs1 op0
-          where
-            go [] !op = do
-               let !br' = BufferRange op ope0
-               k br'
+        go []          !op             = k (BufferRange op ope0)
+        go xs@(x':xs') !op
+          | op `plusPtr` bound <= ope0 = runB w x' op >>= go xs'
+          | otherwise                  =
+             return $ bufferFull bound op (step xs k)
 
-            go xs@(x':xs') !op
-              | op `plusPtr` bound <= ope0 = do
-                  !op' <- runB w x' op
-                  go xs' op'
-             | otherwise = return $ bufferFull bound op (step xs k)
+    bound = I.sizeBound w
 
 -- TODO: Add 'foldMap/encodeWith' its variants
 -- TODO: Ensure rewriting 'primBounded w . f = primBounded (w #. f)'
@@ -613,27 +605,21 @@ primMapListBounded w =
 -- using a 'BoundedPrim' for each sequence element.
 {-# INLINE primUnfoldrBounded #-}
 primUnfoldrBounded :: BoundedPrim b -> (a -> Maybe (b, a)) -> a -> Builder
-primUnfoldrBounded w =
-    makeBuilder
+primUnfoldrBounded w f x0 =
+    builder $ fillWith x0
   where
-    bound = I.sizeBound w
-    makeBuilder f x0 = builder $ step x0
+    fillWith x k !(BufferRange op0 ope0) =
+        go (f x) op0
       where
-        step x1 !k = fill x1
-          where
-            fill x !(BufferRange pf0 pe0) = go (f x) pf0
-              where
-                go !Nothing        !pf = do
-                    let !br' = BufferRange pf pe0
-                    k br'
-                go !(Just (y, x')) !pf
-                  | pf `plusPtr` bound <= pe0 = do
-                      !pf' <- runB w y pf
-                      go (f x') pf'
-                  | otherwise = return $ bufferFull bound pf $
-                      \(BufferRange pfNew peNew) -> do
-                          !pfNew' <- runB w y pfNew
-                          fill x' (BufferRange pfNew' peNew)
+        go !Nothing        !op         = do let !br' = BufferRange op ope0
+                                            k br'
+        go !(Just (y, x')) !op
+          | op `plusPtr` bound <= ope0 = runB w y op >>= go (f x')
+          | otherwise                  = return $ bufferFull bound op $
+              \(BufferRange opNew opeNew) -> do
+                  !opNew' <- runB w y opNew
+                  fillWith x' k (BufferRange opNew' opeNew)
+    bound = I.sizeBound w
 
 -- | Create a 'Builder' that encodes each 'Word8' of a strict 'S.ByteString'
 -- using a 'BoundedPrim'. For example, we can write a 'Builder' that filters
@@ -700,7 +686,7 @@ char8 = (fromIntegral . ord) >$< word8
 -- | UTF-8 encode a 'Char'.
 {-# INLINE charUtf8 #-}
 charUtf8 :: BoundedPrim Char
-charUtf8 = boundedEncoding 4 (encodeCharUtf8 f1 f2 f3 f4)
+charUtf8 = boudedPrim 4 (encodeCharUtf8 f1 f2 f3 f4)
   where
     pokeN n io op  = io op >> return (op `plusPtr` n)
 
@@ -748,32 +734,4 @@ encodeCharUtf8 f1 f2 f3 f4 c = case ord c of
                x4 = fromIntegral $ (x .&. 0x3F) + 0x80
            in f4 x1 x2 x3 x4
 
-
-------------------------------------------------------------------------------
--- Testing encodings
-------------------------------------------------------------------------------
-{-
--- | /For testing use only./ Evaluate a 'FixedPrim' on a given value.
-evalF :: FixedPrim a -> a -> [Word8]
-evalF fe = S.unpack . S.unsafeCreate (I.size fe) . runF fe
-
--- | /For testing use only./ Evaluate a 'BoundedPrim' on a given value.
-evalB :: BoundedPrim a -> a -> [Word8]
-evalB be x = S.unpack $ unsafePerformIO $
-    S.createAndTrim (I.sizeBound be) $ \op -> do
-        op' <- runB be x op
-        return (op' `minusPtr` op)
-
--- | /For testing use only./ Show the result of a 'FixedPrim' of a given
--- value as a 'String' by interpreting the resulting bytes as Unicode
--- codepoints.
-showF :: FixedPrim a -> a -> String
-showF fe = map (chr . fromIntegral) . evalF fe
-
--- | /For testing use only./ Show the result of a 'BoundedPrim' of a given
--- value as a 'String' by interpreting the resulting bytes as Unicode
--- codepoints.
-showB :: BoundedPrim a -> a -> String
-showB be = map (chr . fromIntegral) . evalB be
--}
 
