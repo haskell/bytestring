@@ -234,7 +234,7 @@ import Control.Monad            (when)
 
 import Foreign.C.String         (CString, CStringLen)
 import Foreign.C.Types          (CSize)
-#if MIN_VERSION_base(4,6,0)
+#if MIN_VERSION_base(4,5,0)
 import Foreign.ForeignPtr       (ForeignPtr, newForeignPtr, withForeignPtr
                                 ,touchForeignPtr)
 import Foreign.ForeignPtr.Unsafe(unsafeForeignPtrToPtr)

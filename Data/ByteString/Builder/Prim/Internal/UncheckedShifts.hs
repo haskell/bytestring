@@ -98,7 +98,12 @@ shiftr_w64 = shiftR
 caseWordSize_32_64 :: a -- Value to use for 32-bit 'Word's
                    -> a -- Value to use for 64-bit 'Word's
                    -> a
-caseWordSize_32_64 f32 f64 = case bitSize (undefined :: Word) of
+caseWordSize_32_64 f32 f64 =
+#if MIN_VERSION_base(4,7,0)
+  case finiteBitSize (undefined :: Word) of
+#else
+  case bitSize (undefined :: Word) of
+#endif
     32 -> f32
     64 -> f64
     s  -> error $ "caseWordSize_32_64: unsupported Word bit-size " ++ show s
