@@ -72,10 +72,12 @@ import Data.Data                (mkNorepType)
 import Data.Generics            (Data(..), mkNorepType)
 #endif
 
--- | A space-efficient representation of a Word8 vector, supporting many
--- efficient operations.  A 'ByteString' contains 8-bit characters only.
+-- | A space-efficient representation of a 'Word8' vector, supporting many
+-- efficient operations.
 --
--- Instances of Eq, Ord, Read, Show, Data, Typeable
+-- A lazy 'ByteString' contains 8-bit bytes, or by using the operations
+-- from "Data.ByteString.Lazy.Char8" it can be interpreted as containing
+-- 8-bit characters.
 --
 data ByteString = Empty | Chunk {-# UNPACK #-} !S.ByteString ByteString
 

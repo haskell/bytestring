@@ -649,7 +649,7 @@ hPut h p = do
             fillBuffer buf
               | freeSpace buf < minFree =
                   error $ unlines
-                    [ "Data.ByteString.Lazy.Builder.Internal.hPut: internal error."
+                    [ "Data.ByteString.Builder.Internal.hPut: internal error."
                     , "  Not enough space after flush."
                     , "    required: " ++ show minFree
                     , "    free: "     ++ show (freeSpace buf)

@@ -15,7 +15,7 @@
 --               (c) Simon Marlow 2005,
 --               (c) Bjorn Bringert 2006,
 --               (c) Don Stewart 2005-2008,
---               (c) Duncan Coutts 2006-2011
+--               (c) Duncan Coutts 2006-2013
 -- License     : BSD-style
 --
 -- Maintainer  : dons00@gmail.com, duncan@community.haskell.org
@@ -27,6 +27,9 @@
 -- of large data quantities, or high speed requirements. Byte vectors
 -- are encoded as strict 'Word8' arrays of bytes, held in a 'ForeignPtr',
 -- and can be passed between C and Haskell with little effort.
+--
+-- The recomended way to assemble ByteStrings from smaller parts
+-- is to use the builder monoid from "Data.ByteString.Builder".
 --
 -- This module is intended to be imported @qualified@, to avoid name
 -- clashes with "Prelude" functions.  eg.
@@ -406,7 +409,7 @@ infixr 5 `cons` --same as list (:)
 infixl 5 `snoc`
 
 -- | /O(n)/ 'cons' is analogous to (:) for lists, but of different
--- complexity, as it requires a memcpy.
+-- complexity, as it requires making a copy.
 cons :: Word8 -> ByteString -> ByteString
 cons c (PS x s l) = unsafeCreate (l+1) $ \p -> withForeignPtr x $ \f -> do
         poke p c
@@ -539,7 +542,7 @@ foldl f z (PS fp off len) =
                              in f (go (p `plusPtr` (-1)) q) x
 {-# INLINE foldl #-}
 
--- | 'foldl\'' is like 'foldl', but strict in the accumulator.
+-- | 'foldl'' is like 'foldl', but strict in the accumulator.
 --
 foldl' :: (a -> Word8 -> a) -> a -> ByteString -> a
 foldl' f v (PS fp off len) =
@@ -569,7 +572,7 @@ foldr k z (PS fp off len) =
                               in k x (go (p `plusPtr` 1) q)
 {-# INLINE foldr #-}
 
--- | 'foldr\'' is like 'foldr', but strict in the accumulator.
+-- | 'foldr'' is like 'foldr', but strict in the accumulator.
 foldr' :: (Word8 -> a -> a) -> a -> ByteString -> a
 foldr' k v (PS fp off len) =
       inlinePerformIO $ withForeignPtr fp $ \p ->
@@ -1614,8 +1617,8 @@ sort (PS x s l) = unsafeCreate l $ \p -> withForeignPtr x $ \f -> do
 -- Low level constructors
 
 -- | /O(n) construction/ Use a @ByteString@ with a function requiring a
--- null-terminated @CString@.  The @CString@ will be freed
--- automatically. This is a memcpy(3).
+-- null-terminated @CString@.  The @CString@ is a copy and will be freed
+-- automatically.
 useAsCString :: ByteString -> (CString -> IO a) -> IO a
 useAsCString (PS fp o l) action = do
  allocaBytes (l+1) $ \buf ->

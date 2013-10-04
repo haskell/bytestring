@@ -11,7 +11,7 @@
 -- |
 -- Module      : Data.ByteString.Internal
 -- Copyright   : (c) Don Stewart 2006-2008
---               (c) Duncan Coutts 2006-2011
+--               (c) Duncan Coutts 2006-2012
 -- License     : BSD-style
 -- Maintainer  : dons00@gmail.com, duncan@community.haskell.org
 -- Stability   : unstable
@@ -183,10 +183,12 @@ assertS s False = error ("assertion failed at "++s)
 
 -- -----------------------------------------------------------------------------
 
--- | A space-efficient representation of a Word8 vector, supporting many
--- efficient operations.  A 'ByteString' contains 8-bit characters only.
+-- | A space-efficient representation of a 'Word8' vector, supporting many
+-- efficient operations.
 --
--- Instances of Eq, Ord, Read, Show, Data, Typeable
+-- A 'ByteString' contains 8-bit bytes, or by using the operations from
+-- "Data.ByteString.Char8" it can be interpreted as containing 8-bit
+-- characters.
 --
 data ByteString = PS {-# UNPACK #-} !(ForeignPtr Word8) -- payload
                      {-# UNPACK #-} !Int                -- offset
