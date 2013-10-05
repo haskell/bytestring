@@ -7,7 +7,7 @@
 {-# OPTIONS_HADDOCK hide #-}
 
 -- |
--- Module      : Data.ByteString.Short
+-- Module      : Data.ByteString.Short.Internal
 -- Copyright   : (c) Duncan Coutts 2012-2013
 -- License     : BSD-style
 --
