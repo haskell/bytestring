@@ -36,16 +36,16 @@ module Data.ByteString.Short (
     -- | With GHC, the memory overheads are as follows, expressed in words and
     -- in bytes (words are 4 and 8 bytes on 32 or 64bit machines respectively).
     --
-    -- * 'ByteString' unshared: 7 words; 28 or 56 bytes.
+    -- * 'ByteString' unshared: 9 words; 36 or 72 bytes.
     --
     -- * 'ByteString' shared substring: 5 words; 20 or 40 bytes.
     --
-    -- * 'ShortByteString': 3 words; 12 or 24 bytes.
+    -- * 'ShortByteString': 4 words; 16 or 32 bytes.
     --
     -- For the string data itself, both 'ShortByteString' and 'ByteString' use
     -- one byte per element, rounded up to the nearest word. For example,
     -- including the overheads, a length 10 'ShortByteString' would take
-    -- @12 + 12 = 24@ bytes on a 32bit platform and @24 + 16 = 40@ bytes on a
+    -- @16 + 12 = 28@ bytes on a 32bit platform and @32 + 16 = 48@ bytes on a
     -- 64bit platform.
     --
     -- These overheads can all be reduced by 1 word (4 or 8 bytes) when the
@@ -53,11 +53,12 @@ module Data.ByteString.Short (
     --
     -- For example:
     --
-    -- > data ThingyId = ThingyId {-# UNPACK #-} !Int
-    -- >                          {-# UNPACK #-} !ShortByteString
+    -- > data ThingId = ThingId {-# UNPACK #-} !Int
+    -- >                        {-# UNPACK #-} !ShortByteString
     --
-    -- This will take @1 + 1 + 2@ words (the constructor + unpacked @Int@ +
-    -- unpacked @ShortByteString@), plus the words for the string data.
+    -- This will take @1 + 1 + 3@ words (the @ThingId@ constructor +
+    -- unpacked @Int@ + unpacked @ShortByteString@), plus the words for the
+    -- string data.
     
     -- ** Heap fragmentation
     -- | With GHC, the 'ByteString' representation uses /pinned/ memory,
