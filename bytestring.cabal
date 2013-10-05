@@ -7,7 +7,7 @@ Description:
     .
     The 'ByteString' type represents sequences of bytes or 8-bit characters.
     It is suitable for high performance use, both in terms of large data
-    quantities, or high speed requirements. The 'ByteStrin'g functions follow
+    quantities, or high speed requirements. The 'ByteString' functions follow
     the same style as Haskell\'s ordinary lists, so it is easy to convert code
     from using 'String' to 'ByteString'.
     .
