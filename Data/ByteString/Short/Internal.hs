@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable, CPP, BangPatterns, RankNTypes,
-             ForeignFunctionInterface, MagicHash, UnboxedTuples #-}
+             ForeignFunctionInterface, MagicHash, UnboxedTuples,
+             UnliftedFFITypes #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE Unsafe #-}

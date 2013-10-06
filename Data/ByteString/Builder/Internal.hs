@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables, CPP, BangPatterns, Rank2Types #-}
+{-# LANGUAGE ScopedTypeVariables, CPP, BangPatterns, RankNTypes #-}
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE Unsafe #-}
 #endif

@@ -57,7 +57,7 @@ Homepage:            https://github.com/haskell/bytestring
 Bug-reports:         https://github.com/haskell/bytestring/issues
 Tested-With:         GHC==7.6.1, GHC==7.4.1, GHC==7.0.4, GHC==6.12.3
 Build-Type:          Simple
-Cabal-Version:       >= 1.8
+Cabal-Version:       >= 1.10
 extra-source-files:  README TODO
 
 source-repository head
@@ -102,7 +102,8 @@ library
                      Data.ByteString.Builder.Prim.Internal.UncheckedShifts
                      Data.ByteString.Builder.Prim.Internal.Base16
 
-  extensions:        CPP,
+  default-language:  Haskell98
+  other-extensions:  CPP,
                      ForeignFunctionInterface,
                      BangPatterns
                      UnliftedFFITypes,
@@ -110,8 +111,13 @@ library
                      UnboxedTuples,
                      DeriveDataTypeable
                      ScopedTypeVariables
-                     Rank2Types
+                     RankNTypes
                      NamedFieldPuns
+  -- older ghc had issues with language pragmas guarded by cpp
+  if impl(ghc < 7)
+    default-extensions: CPP, MagicHash, UnboxedTuples,
+                        DeriveDataTypeable, BangPatterns,
+                        NamedFieldPuns
 
   ghc-options:      -Wall
                     -O2
@@ -150,13 +156,12 @@ test-suite prop-compiled
   include-dirs:     include
   ghc-options:      -fwarn-unused-binds
                     -fno-enable-rewrite-rules
-  extensions:       BangPatterns
-                    UnliftedFFITypes,
-                    MagicHash,
-                    UnboxedTuples,
-                    DeriveDataTypeable
-                    ScopedTypeVariables
-                    NamedFieldPuns
+  default-language: Haskell98
+  -- older ghc had issues with language pragmas guarded by cpp
+  if impl(ghc < 7)
+    default-extensions: CPP, MagicHash, UnboxedTuples,
+                        DeriveDataTypeable, BangPatterns,
+                        NamedFieldPuns
 
 test-suite test-builder
   type:             exitcode-stdio-1.0
@@ -177,15 +182,12 @@ test-suite test-builder
 
   ghc-options:      -Wall -fwarn-tabs
 
-  extensions:       CPP, ForeignFunctionInterface
-                    UnliftedFFITypes,
-                    MagicHash,
-                    UnboxedTuples,
-                    DeriveDataTypeable
-                    ScopedTypeVariables
-                    Rank2Types
-                    BangPatterns
-                    NamedFieldPuns
+  default-language: Haskell98
+  -- older ghc had issues with language pragmas guarded by cpp
+  if impl(ghc < 7)
+    default-extensions: CPP, MagicHash, UnboxedTuples,
+                        DeriveDataTypeable, BangPatterns,
+                        NamedFieldPuns
 
   c-sources:        cbits/fpstring.c
                     cbits/itoa.c
