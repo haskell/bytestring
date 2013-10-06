@@ -124,3 +124,31 @@ executable bench-bytestring-builder
 --                   NamedFieldPuns
 --                   PackageImports
 --                   ForeignFunctionInterface
+
+executable bench-builder-boundscheck
+  hs-source-dirs:   .. .
+  main-is:          BoundsCheckFusion.hs
+  build-depends:    base, deepseq, ghc-prim,
+                    criterion
+  c-sources:        ../cbits/fpstring.c
+                    ../cbits/itoa.c
+  include-dirs:     ../include
+  ghc-options:      -O2
+                    -fmax-simplifier-iterations=10
+                    -fdicts-cheap
+                    -fspec-constr-count=6
+
+--executable bench-builder-csv
+--  hs-source-dirs:   .. .
+--  main-is:          CSV.hs
+--  build-depends:    base, deepseq, ghc-prim,
+--                    text, binary,
+--                    criterion
+--  c-sources:        ../cbits/fpstring.c
+--                    ../cbits/itoa.c
+--  include-dirs:     ../include
+--  ghc-options:      -O2
+--                    -fmax-simplifier-iterations=10
+--                    -fdicts-cheap
+--                    -fspec-constr-count=6
+
