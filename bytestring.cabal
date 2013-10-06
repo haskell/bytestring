@@ -118,6 +118,8 @@ library
                      ScopedTypeVariables
                      RankNTypes
                      NamedFieldPuns
+  if impl(ghc >= 7.2)
+    other-extensions: Trustworthy, Unsafe
   -- older ghc had issues with language pragmas guarded by cpp
   if impl(ghc < 7)
     default-extensions: CPP, MagicHash, UnboxedTuples,

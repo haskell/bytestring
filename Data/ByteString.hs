@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP #-}
 #if __GLASGOW_HASKELL__
 {-# LANGUAGE MagicHash, UnboxedTuples,
-            NamedFieldPuns, BangPatterns, RecordWildCards #-}
+            NamedFieldPuns, BangPatterns #-}
 #endif
 {-# OPTIONS_HADDOCK prune #-}
 #if __GLASGOW_HASKELL__ >= 701
