@@ -1,5 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables, CPP, BangPatterns, RankNTypes #-}
-#if __GLASGOW_HASKELL__ >= 701
+#if __GLASGOW_HASKELL__ >= 703
 {-# LANGUAGE Unsafe #-}
 #endif
 {-# OPTIONS_HADDOCK hide #-}

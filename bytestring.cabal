@@ -1,5 +1,5 @@
 Name:                bytestring
-Version:             0.10.4.0
+Version:             0.10.4.1
 Synopsis:            Fast, compact, strict and lazy byte strings with a list interface
 Description:
     An efficient compact, immutable byte string type (both strict and lazy)
@@ -63,11 +63,6 @@ extra-source-files:  README TODO
 source-repository head
   type:     git
   location: https://github.com/haskell/bytestring
-
-source-repository this
-  type:     git
-  location: https://github.com/haskell/bytestring
-  tag: 0.10.4.0
 
 flag integer-simple
   description: Use the simple integer library instead of GMP

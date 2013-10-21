@@ -2,7 +2,7 @@
              ForeignFunctionInterface, MagicHash, UnboxedTuples,
              UnliftedFFITypes #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
-#if __GLASGOW_HASKELL__ >= 701
+#if __GLASGOW_HASKELL__ >= 703
 {-# LANGUAGE Unsafe #-}
 #endif
 {-# OPTIONS_HADDOCK hide #-}

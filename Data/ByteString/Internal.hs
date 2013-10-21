@@ -2,7 +2,7 @@
 #if __GLASGOW_HASKELL__
 {-# LANGUAGE UnliftedFFITypes, MagicHash,
             UnboxedTuples, DeriveDataTypeable #-}
-#if __GLASGOW_HASKELL__ >= 701
+#if __GLASGOW_HASKELL__ >= 703
 {-# LANGUAGE Unsafe #-}
 #endif
 #endif
