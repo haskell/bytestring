@@ -1,7 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables, CPP, ForeignFunctionInterface,
              MagicHash, UnboxedTuples #-}
 {-# OPTIONS_HADDOCK hide #-}
-#if __GLASGOW_HASKELL__ >= 701
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE Trustworthy #-}
 #endif
 -- | Copyright : (c) 2010 - 2011 Simon Meier

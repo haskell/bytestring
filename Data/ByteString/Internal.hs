@@ -1,5 +1,5 @@
 {-# LANGUAGE CPP, ForeignFunctionInterface, BangPatterns #-}
-#if __GLASGOW_HASKELL__
+#if defined(__GLASGOW_HASKELL__)
 {-# LANGUAGE UnliftedFFITypes, MagicHash,
             UnboxedTuples, DeriveDataTypeable #-}
 #if __GLASGOW_HASKELL__ >= 703
@@ -83,7 +83,7 @@ import qualified Data.List as List
 import Foreign.ForeignPtr       (ForeignPtr, withForeignPtr)
 import Foreign.Ptr              (Ptr, FunPtr, plusPtr)
 import Foreign.Storable         (Storable(..))
-#if MIN_VERSION_base(4,5,0) || __GLASGOW_HASKELL__ >= 703
+#if MIN_VERSION_base(4,5,0) || (defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 703)
 import Foreign.C.Types          (CInt(..), CSize(..), CULong(..))
 #else
 import Foreign.C.Types          (CInt, CSize, CULong)
@@ -155,7 +155,7 @@ import Foreign.Ptr              (nullPtr)
 
 #if __HUGS__
 import Hugs.ForeignPtr          (newForeignPtr_)
-#elif __GLASGOW_HASKELL__<=604
+#elif defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ <=604
 import Foreign.ForeignPtr       (newForeignPtr_)
 #endif
 

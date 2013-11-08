@@ -1,5 +1,5 @@
 {-# LANGUAGE CPP #-}
-#if __GLASGOW_HASKELL__
+#if defined(__GLASGOW_HASKELL__)
 {-# LANGUAGE MagicHash #-}
 #endif
 

@@ -1,5 +1,5 @@
 {-# LANGUAGE CPP, ForeignFunctionInterface, BangPatterns #-}
-#if __GLASGOW_HASKELL__
+#if defined(__GLASGOW_HASKELL__)
 {-# LANGUAGE DeriveDataTypeable #-}
 #if __GLASGOW_HASKELL__ >= 703
 {-# LANGUAGE Unsafe #-}
