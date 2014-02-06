@@ -36,7 +36,7 @@ module Data.ByteString.Short.Internal (
     createFromPtr, copyToPtr
   ) where
 
-import Data.ByteString.Internal (ByteString(..), inlinePerformIO)
+import Data.ByteString.Internal (ByteString(..), accursedUnutterablePerformIO)
 
 import Data.Typeable    (Typeable)
 import Data.Data        (Data(..), mkNoRepType)
@@ -364,14 +364,16 @@ equateBytes sbs1 sbs2 =
     let !len1 = length sbs1
         !len2 = length sbs2
      in len1 == len2
-     && 0 == inlinePerformIO (memcmp_ByteArray (asBA sbs1) (asBA sbs2) len1)
+     && 0 == accursedUnutterablePerformIO
+               (memcmp_ByteArray (asBA sbs1) (asBA sbs2) len1)
 
 compareBytes :: ShortByteString -> ShortByteString -> Ordering
 compareBytes sbs1 sbs2 =
     let !len1 = length sbs1
         !len2 = length sbs2
         !len  = min len1 len2
-     in case inlinePerformIO (memcmp_ByteArray (asBA sbs1) (asBA sbs2) len) of
+     in case accursedUnutterablePerformIO
+               (memcmp_ByteArray (asBA sbs1) (asBA sbs2) len) of
           i | i    < 0    -> LT
             | i    > 0    -> GT
             | len2 > len1 -> LT

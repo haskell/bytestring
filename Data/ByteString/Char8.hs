@@ -810,7 +810,7 @@ unsafeHead  = w2c . B.unsafeHead
 -- > break isSpace == breakSpace
 --
 breakSpace :: ByteString -> (ByteString,ByteString)
-breakSpace (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
+breakSpace (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> do
     i <- firstspace (p `plusPtr` s) 0 l
     return $! case () of {_
         | i == 0    -> (empty, PS x s l)
@@ -833,7 +833,7 @@ firstspace ptr n m
 -- > dropWhile isSpace == dropSpace
 --
 dropSpace :: ByteString -> ByteString
-dropSpace (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
+dropSpace (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> do
     i <- firstnonspace (p `plusPtr` s) 0 l
     return $! if i == l then empty else PS x (s+i) (l-i)
 {-# INLINE dropSpace #-}
@@ -854,7 +854,7 @@ firstnonspace ptr n m
 -- but it is more efficient than using multiple reverses.
 --
 dropSpaceEnd :: ByteString -> ByteString
-dropSpaceEnd (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
+dropSpaceEnd (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> do
     i <- lastnonspace (p `plusPtr` s) (l-1)
     return $! if i == (-1) then empty else PS x s (i+1)
 {-# INLINE dropSpaceEnd #-}
@@ -882,7 +882,7 @@ lines ps
 -- Just as fast, but more complex. Should be much faster, I thought.
 lines :: ByteString -> [ByteString]
 lines (PS _ _ 0) = []
-lines (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
+lines (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> do
         let ptr = p `plusPtr` s
 
             STRICT1(loop)

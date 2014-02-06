@@ -53,7 +53,6 @@ module Data.ByteString.Internal (
         toForeignPtr,           -- :: ByteString -> (ForeignPtr Word8, Int, Int)
 
         -- * Utilities
-        inlinePerformIO,        -- :: IO a -> a
         nullForeignPtr,         -- :: ForeignPtr Word8
 
         -- * Standard C Functions
@@ -73,8 +72,11 @@ module Data.ByteString.Internal (
         c_count,                -- :: Ptr Word8 -> CInt -> Word8 -> IO CInt
 
         -- * Chars
-        w2c, c2w, isSpaceWord8, isSpaceChar8
+        w2c, c2w, isSpaceWord8, isSpaceChar8,
 
+        -- * Deprecated and unmentionable
+        accursedUnutterablePerformIO, -- :: IO a -> a
+        inlinePerformIO               -- :: IO a -> a
   ) where
 
 import Prelude hiding (concat)
@@ -246,7 +248,7 @@ packChars cs = unsafePackLenChars (List.length cs) cs
 
 {-# RULES
 "ByteString packChars/packAddress" forall s .
-   packChars (unpackCString# s) = inlinePerformIO (unsafePackAddress s)
+   packChars (unpackCString# s) = accursedUnutterablePerformIO (unsafePackAddress s)
  #-}
 #endif
 
@@ -355,7 +357,7 @@ unpackAppendCharsLazy (PS fp off len) cs
 
 unpackAppendBytesStrict :: ByteString -> [Word8] -> [Word8]
 unpackAppendBytesStrict (PS fp off len) xs =
-    inlinePerformIO $ withForeignPtr fp $ \base -> do
+    accursedUnutterablePerformIO $ withForeignPtr fp $ \base -> do
       loop (base `plusPtr` (off-1)) (base `plusPtr` (off-1+len)) xs
   where
     loop !sentinal !p acc
@@ -365,7 +367,7 @@ unpackAppendBytesStrict (PS fp off len) xs =
 
 unpackAppendCharsStrict :: ByteString -> [Char] -> [Char]
 unpackAppendCharsStrict (PS fp off len) xs =
-    inlinePerformIO $ withForeignPtr fp $ \base ->
+    accursedUnutterablePerformIO $ withForeignPtr fp $ \base ->
       loop (base `plusPtr` (off-1)) (base `plusPtr` (off-1+len)) xs
   where
     loop !sentinal !p acc
@@ -508,7 +510,7 @@ eq a@(PS fp off len) b@(PS fp' off' len')
 compareBytes :: ByteString -> ByteString -> Ordering
 compareBytes (PS _   _    0)    (PS _   _    0)    = EQ  -- short cut for empty strings
 compareBytes (PS fp1 off1 len1) (PS fp2 off2 len2) =
-    inlinePerformIO $
+    accursedUnutterablePerformIO $
       withForeignPtr fp1 $ \p1 ->
       withForeignPtr fp2 $ \p2 -> do
         i <- memcmp (p1 `plusPtr` off1) (p2 `plusPtr` off2) (min len1 len2)
@@ -581,18 +583,43 @@ isSpaceChar8 c =
 
 ------------------------------------------------------------------------
 
--- | Just like unsafePerformIO, but we inline it. Big performance gains as
--- it exposes lots of things to further inlining. /Very unsafe/. In
--- particular, you should do no memory allocation inside an
--- 'inlinePerformIO' block. On Hugs this is just @unsafePerformIO@.
+-- | This \"function\" has a superficial similarity to 'unsafePerformIO' but
+-- it is in fact a malevolent agent of chaos. It unpicks the seams of reality
+-- (and the 'IO' monad) so that the normal rules no longer apply. It lulls you
+-- into thinking it is reasonable, but when you are not looking it stabs you
+-- in the back and aliases all of your mutable buffers. The carcass of many a
+-- seasoned Haskell programmer lie strewn at its feet.
 --
-{-# INLINE inlinePerformIO #-}
-inlinePerformIO :: IO a -> a
+-- Witness the trail of destruction:
+--
+-- * <https://github.com/haskell/bytestring/commit/71c4b438c675aa360c79d79acc9a491e7bbc26e7>
+--
+-- * <https://github.com/haskell/bytestring/commit/210c656390ae617d9ee3b8bcff5c88dd17cef8da>
+--
+-- * <https://ghc.haskell.org/trac/ghc/ticket/3486>
+--
+-- * <https://ghc.haskell.org/trac/ghc/ticket/3487>
+--
+-- * <https://ghc.haskell.org/trac/ghc/ticket/7270>
+--
+-- Do not talk about \"safe\"! You do not know what is safe!
+--
+-- Yield not to its blasphemous call! Flee traveller! Flee or you will be
+-- corrupted and devoured!
+--
+{-# INLINE accursedUnutterablePerformIO #-}
+accursedUnutterablePerformIO :: IO a -> a
 #if defined(__GLASGOW_HASKELL__)
-inlinePerformIO (IO m) = case m realWorld# of (# _, r #) -> r
+accursedUnutterablePerformIO (IO m) = case m realWorld# of (# _, r #) -> r
 #else
-inlinePerformIO = unsafePerformIO
+accursedUnutterablePerformIO = unsafePerformIO
 #endif
+
+inlinePerformIO :: IO a -> a
+inlinePerformIO = accursedUnutterablePerformIO
+{-# INLINE inlinePerformIO #-}
+{-# DEPRECATED inlinePerformIO "If you think you know what you are doing, use 'unsafePerformIO'. If you are sure you know what you are doing, use 'unsafeDupablePerformIO'. If you enjoy sharing an address space with a malevolent agent of chaos, try 'accursedUnutterablePerformIO'." #-}
+
 
 -- ---------------------------------------------------------------------
 --

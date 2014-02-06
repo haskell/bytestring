@@ -914,7 +914,7 @@ elemIndex w cs0 = elemIndex' 0 cs0
 -- > (-) (length xs - 1) `fmap` elemIndex c (reverse xs)
 --
 elemIndexEnd :: Word8 -> ByteString -> Maybe Int
-elemIndexEnd ch (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p ->
+elemIndexEnd ch (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
     go (p `plusPtr` s) (l-1)
   where
     STRICT2(go)
@@ -1342,7 +1342,9 @@ revChunks cs = L.foldl' (flip chunk) Empty cs
 -- | 'findIndexOrEnd' is a variant of findIndex, that returns the length
 -- of the string if no element is found, rather than Nothing.
 findIndexOrEnd :: (Word8 -> Bool) -> P.ByteString -> Int
-findIndexOrEnd k (S.PS x s l) = S.inlinePerformIO $ withForeignPtr x $ \f -> go (f `plusPtr` s) 0
+findIndexOrEnd k (S.PS x s l) =
+    S.accursedUnutterablePerformIO $
+      withForeignPtr x $ \f -> go (f `plusPtr` s) 0
   where
     STRICT2(go)
     go ptr n | n >= l    = return l
