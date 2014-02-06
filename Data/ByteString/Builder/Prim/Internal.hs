@@ -1,5 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables, CPP, BangPatterns #-}
-#if __GLASGOW_HASKELL__ >= 703
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 703
 {-# LANGUAGE Unsafe #-}
 #endif
 {-# OPTIONS_HADDOCK hide #-}
@@ -69,7 +69,7 @@ module Data.ByteString.Builder.Prim.Internal (
 import Foreign
 import Prelude hiding (maxBound)
 
-#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ < 611
+#if !(defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 611)
 -- ghc-6.10 and older do not support {-# INLINE CONLIKE #-}
 #define CONLIKE
 #endif

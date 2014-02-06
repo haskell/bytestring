@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP, BangPatterns #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports -fno-warn-orphans #-}
-#if __GLASGOW_HASKELL__ >= 701
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE Trustworthy #-}
 #endif
 {- | Copyright   : (c) 2010 Jasper Van der Jeugt

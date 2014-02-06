@@ -33,7 +33,7 @@ module Data.ByteString.Builder.Prim.Internal.UncheckedShifts (
 import GHC.Base
 import GHC.Word (Word32(..),Word16(..),Word64(..))
 
-#if WORD_SIZE_IN_BITS < 64 && __GLASGOW_HASKELL__ >= 608
+#if WORD_SIZE_IN_BITS < 64 && defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 608
 import GHC.Word (uncheckedShiftRL64#)
 #endif
 #else

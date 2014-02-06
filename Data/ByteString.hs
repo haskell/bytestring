@@ -1,10 +1,10 @@
 {-# LANGUAGE CPP #-}
-#if __GLASGOW_HASKELL__
+#if defined(__GLASGOW_HASKELL__)
 {-# LANGUAGE MagicHash, UnboxedTuples,
             NamedFieldPuns, BangPatterns #-}
 #endif
 {-# OPTIONS_HADDOCK prune #-}
-#if __GLASGOW_HASKELL__ >= 701
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE Trustworthy #-}
 #endif
 
@@ -905,7 +905,7 @@ dropWhile f ps = unsafeDrop (findIndexOrEnd (not . f) ps) ps
 --
 break :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
 break p ps = case findIndexOrEnd p ps of n -> (unsafeTake n ps, unsafeDrop n ps)
-#if __GLASGOW_HASKELL__ 
+#if defined(__GLASGOW_HASKELL__)
 {-# INLINE [1] break #-}
 #endif
 
@@ -940,7 +940,7 @@ breakEnd  p ps = splitAt (findFromEndUntil p ps) ps
 -- equivalent to @('takeWhile' p xs, 'dropWhile' p xs)@
 span :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
 span p ps = break (not . p) ps
-#if __GLASGOW_HASKELL__
+#if defined(__GLASGOW_HASKELL__)
 {-# INLINE [1] span #-}
 #endif
 

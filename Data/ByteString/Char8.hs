@@ -1,9 +1,9 @@
 {-# LANGUAGE CPP #-}
-#if __GLASGOW_HASKELL__
+#if defined(__GLASGOW_HASKELL__)
 {-# LANGUAGE MagicHash, UnboxedTuples #-}
 #endif
 {-# OPTIONS_HADDOCK prune #-}
-#if __GLASGOW_HASKELL__ >= 701
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE Trustworthy #-}
 #endif
 

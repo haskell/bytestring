@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP, BangPatterns, ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
-#if __GLASGOW_HASKELL__ >= 701
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE Trustworthy #-}
 #endif
 {- | Copyright : (c) 2010-2011 Simon Meier
