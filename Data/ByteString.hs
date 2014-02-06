@@ -91,6 +91,7 @@ module Data.ByteString (
         all,                    -- :: (Word8 -> Bool) -> ByteString -> Bool
         maximum,                -- :: ByteString -> Word8
         minimum,                -- :: ByteString -> Word8
+        mapM_,                  -- :: (Word8 -> m ()) -> ByteString -> m ()
 
         -- * Building ByteStrings
         -- ** Scans
@@ -214,7 +215,7 @@ import Prelude hiding           (reverse,head,tail,last,init,null
                                 ,concat,any,take,drop,splitAt,takeWhile
                                 ,dropWhile,span,break,elem,filter,maximum
                                 ,minimum,all,concatMap,foldl1,foldr1
-                                ,scanl,scanl1,scanr,scanr1
+                                ,scanl,scanl1,scanr,scanr1,mapM_
                                 ,readFile,writeFile,appendFile,replicate
                                 ,getContents,getLine,putStr,putStrLn,interact
                                 ,zip,zipWith,unzip,notElem)
@@ -684,6 +685,18 @@ minimum xs@(PS x s l)
     | otherwise = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
                       c_minimum (p `plusPtr` s) (fromIntegral l)
 {-# INLINE minimum #-}
+
+-- | /O(n)/ Perform the given monadic action on all bytes in the 'ByteString',
+-- discarding all results.
+mapM_ :: Monad m => (Word8 -> m ()) -> ByteString -> m ()
+mapM_ f (PS fptr offset len) = do
+    let start = unsafeForeignPtrToPtr fptr `plusPtr` offset
+        end = start `plusPtr` len
+        loop ptr
+            | ptr >= end = inlinePerformIO (touchForeignPtr fptr) `seq` return ()
+            | otherwise = f (inlinePerformIO (peek ptr)) >> loop (ptr `plusPtr` 1)
+    loop start
+{-# INLINE mapM_ #-}
 
 ------------------------------------------------------------------------
 

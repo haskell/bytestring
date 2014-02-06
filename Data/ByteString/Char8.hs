@@ -93,6 +93,7 @@ module Data.ByteString.Char8 (
         all,                    -- :: (Char -> Bool) -> ByteString -> Bool
         maximum,                -- :: ByteString -> Char
         minimum,                -- :: ByteString -> Char
+        mapM_,                  -- :: (Char -> m ()) -> ByteString -> m ()
 
         -- * Building ByteStrings
         -- ** Scans
@@ -229,7 +230,7 @@ import Prelude hiding           (reverse,head,tail,last,init,null
                                 ,concat,any,take,drop,splitAt,takeWhile
                                 ,dropWhile,span,break,elem,filter,unwords
                                 ,words,maximum,minimum,all,concatMap
-                                ,scanl,scanl1,scanr,scanr1
+                                ,scanl,scanl1,scanr,scanr1,mapM_
                                 ,appendFile,readFile,writeFile
                                 ,foldl1,foldr1,replicate
                                 ,getContents,getLine,putStr,putStrLn,interact
@@ -416,6 +417,12 @@ maximum = w2c . B.maximum
 minimum :: ByteString -> Char
 minimum = w2c . B.minimum
 {-# INLINE minimum #-}
+
+-- | /O(n)/ Perform the given monadic action on all bytes in the 'ByteString',
+-- discarding all results.
+mapM_ :: Monad m => (Char -> m ()) -> ByteString -> m ()
+mapM_ f = B.mapM_ (f . w2c)
+{-# INLINE mapM_ #-}
 
 -- | The 'mapAccumL' function behaves like a combination of 'map' and
 -- 'foldl'; it applies a function to each element of a ByteString,

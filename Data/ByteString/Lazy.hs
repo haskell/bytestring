@@ -102,6 +102,7 @@ module Data.ByteString.Lazy (
         all,                    -- :: (Word8 -> Bool) -> ByteString -> Bool
         maximum,                -- :: ByteString -> Word8
         minimum,                -- :: ByteString -> Word8
+        mapM_,                  -- :: (Word8 -> m ()) -> ByteString -> m ()
 
         -- * Building ByteStrings
         -- ** Scans
@@ -210,7 +211,7 @@ module Data.ByteString.Lazy (
 import Prelude hiding
     (reverse,head,tail,last,init,null,length,map,lines,foldl,foldr,unlines
     ,concat,any,take,drop,splitAt,takeWhile,dropWhile,span,break,elem,filter,maximum
-    ,minimum,all,concatMap,foldl1,foldr1,scanl, scanl1, scanr, scanr1
+    ,minimum,all,concatMap,foldl1,foldr1,scanl, scanl1, scanr, scanr1, mapM_
     ,repeat, cycle, interact, iterate,readFile,writeFile,appendFile,replicate
     ,getContents,getLine,putStr,putStrLn ,zip,zipWith,unzip,notElem)
 
@@ -557,6 +558,16 @@ minimum Empty        = errorEmptyList "minimum"
 minimum (Chunk c cs) = foldlChunks (\n c' -> n `min` S.minimum c')
                                      (S.minimum c) cs
 {-# INLINE minimum #-}
+
+-- | /O(n)/ Perform the given monadic action on all bytes in the 'ByteString',
+-- discarding all results.
+mapM_ :: Monad m => (Word8 -> m ()) -> ByteString -> m ()
+mapM_ f =
+    go
+  where
+    go Empty        = return ()
+    go (Chunk c cs) = S.mapM_ f c >> go cs
+{-# INLINE mapM_ #-}
 
 -- | The 'mapAccumL' function behaves like a combination of 'map' and
 -- 'foldl'; it applies a function to each element of a ByteString,

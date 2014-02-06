@@ -49,6 +49,8 @@ import qualified Data.ByteString.Lazy.Char8 as D
 import qualified Data.ByteString.Lazy.Internal as L
 import Prelude hiding (abs)
 
+import Control.Monad.Trans.Writer (tell, execWriter)
+
 import Rules
 import QuickCheckUtils
 #if defined(HAVE_TEST_FRAMEWORK)
@@ -1650,6 +1652,12 @@ prop_packCStringFinaliser x = unsafePerformIO $ do
 prop_fromForeignPtr x = (let (a,b,c) = (P.toForeignPtr x)
                                 in P.fromForeignPtr a b c) == x
 
+prop_mapM_ x =
+    x == y
+  where
+    f = tell . P.singleton
+    y = execWriter (P.mapM_ f x)
+
 ------------------------------------------------------------------------
 -- IO
 
@@ -1916,6 +1924,8 @@ misc_tests =
     , testProperty "read 3"                 prop_readL1
     , testProperty "read 4"                 prop_readL2
     , testProperty "fromForeignPtr"         prop_fromForeignPtr
+
+    , testProperty "mapM_"                  prop_mapM_
     ]
 
 ------------------------------------------------------------------------

@@ -81,6 +81,7 @@ module Data.ByteString.Lazy.Char8 (
         all,                    -- :: (Char -> Bool) -> ByteString -> Bool
         maximum,                -- :: ByteString -> Char
         minimum,                -- :: ByteString -> Char
+        mapM_,                  -- :: (Char -> m ()) -> ByteString -> m ()
 
         -- * Building ByteStrings
         -- ** Scans
@@ -217,7 +218,7 @@ import qualified Data.List as List
 import Prelude hiding           
         (reverse,head,tail,last,init,null,length,map,lines,foldl,foldr,unlines
         ,concat,any,take,drop,splitAt,takeWhile,dropWhile,span,break,elem,filter
-        ,unwords,words,maximum,minimum,all,concatMap,scanl,scanl1,foldl1,foldr1
+        ,unwords,words,maximum,minimum,all,concatMap,scanl,scanl1,foldl1,foldr1,mapM_
         ,readFile,writeFile,appendFile,replicate,getContents,getLine,putStr,putStrLn
         ,zip,zipWith,unzip,notElem,repeat,iterate,interact,cycle)
 
@@ -380,6 +381,12 @@ maximum = w2c . L.maximum
 minimum :: ByteString -> Char
 minimum = w2c . L.minimum
 {-# INLINE minimum #-}
+
+-- | /O(n)/ Perform the given monadic action on all bytes in the 'ByteString',
+-- discarding all results.
+mapM_ :: Monad m => (Char -> m ()) -> ByteString -> m ()
+mapM_ f = L.mapM_ (f . w2c)
+{-# INLINE mapM_ #-}
 
 -- ---------------------------------------------------------------------
 -- Building ByteStrings
