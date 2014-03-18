@@ -515,42 +515,42 @@ testsBinary =
   , testBuilderConstr "int8"      bigEndian_list    int8
 
   --  big-endian
-  , testBuilderConstr "int16BE"   bigEndian_list    int16BE
-  , testBuilderConstr "int32BE"   bigEndian_list    int32BE
-  , testBuilderConstr "int64BE"   bigEndian_list    int64BE
+  , testBuilderConstr "int16be"   bigEndian_list    int16be
+  , testBuilderConstr "int32be"   bigEndian_list    int32be
+  , testBuilderConstr "int64be"   bigEndian_list    int64be
 
-  , testBuilderConstr "word16BE"  bigEndian_list    word16BE
-  , testBuilderConstr "word32BE"  bigEndian_list    word32BE
-  , testBuilderConstr "word64BE"  bigEndian_list    word64BE
+  , testBuilderConstr "word16be"  bigEndian_list    word16be
+  , testBuilderConstr "word32be"  bigEndian_list    word32be
+  , testBuilderConstr "word64be"  bigEndian_list    word64be
 
-  , testBuilderConstr "floatLE"     (float_list  littleEndian_list) floatLE
-  , testBuilderConstr "doubleLE"    (double_list littleEndian_list) doubleLE
+  , testBuilderConstr "float32le"    (float_list  littleEndian_list) float32le
+  , testBuilderConstr "float64le"    (double_list littleEndian_list) float64le
 
   --  little-endian
-  , testBuilderConstr "int16LE"   littleEndian_list int16LE
-  , testBuilderConstr "int32LE"   littleEndian_list int32LE
-  , testBuilderConstr "int64LE"   littleEndian_list int64LE
+  , testBuilderConstr "int16le"   littleEndian_list int16le
+  , testBuilderConstr "int32le"   littleEndian_list int32le
+  , testBuilderConstr "int64le"   littleEndian_list int64le
 
-  , testBuilderConstr "word16LE"  littleEndian_list word16LE
-  , testBuilderConstr "word32LE"  littleEndian_list word32LE
-  , testBuilderConstr "word64LE"  littleEndian_list word64LE
+  , testBuilderConstr "word16le"  littleEndian_list word16le
+  , testBuilderConstr "word32le"  littleEndian_list word32le
+  , testBuilderConstr "word64le"  littleEndian_list word64le
 
-  , testBuilderConstr "floatBE"     (float_list  bigEndian_list)   floatBE
-  , testBuilderConstr "doubleBE"    (double_list bigEndian_list)   doubleBE
+  , testBuilderConstr "float32be"    (float_list  bigEndian_list)   float32be
+  , testBuilderConstr "float64be"    (double_list bigEndian_list)   float64be
 
   --  host dependent
-  , testBuilderConstr "int16Host"   hostEndian_list  int16Host
-  , testBuilderConstr "int32Host"   hostEndian_list  int32Host
-  , testBuilderConstr "int64Host"   hostEndian_list  int64Host
+  , testBuilderConstr "int16host"   hostEndian_list  int16host
+  , testBuilderConstr "int32host"   hostEndian_list  int32host
+  , testBuilderConstr "int64host"   hostEndian_list  int64host
   , testBuilderConstr "intHost"     hostEndian_list  intHost
 
-  , testBuilderConstr "word16Host"  hostEndian_list  word16Host
-  , testBuilderConstr "word32Host"  hostEndian_list  word32Host
-  , testBuilderConstr "word64Host"  hostEndian_list  word64Host
+  , testBuilderConstr "word16host"  hostEndian_list  word16host
+  , testBuilderConstr "word32host"  hostEndian_list  word32host
+  , testBuilderConstr "word64host"  hostEndian_list  word64host
   , testBuilderConstr "wordHost"    hostEndian_list  wordHost
 
-  , testBuilderConstr "floatHost"   (float_list  hostEndian_list)   floatHost
-  , testBuilderConstr "doubleHost"  (double_list hostEndian_list)   doubleHost
+  , testBuilderConstr "float32host"  (float_list  hostEndian_list)   float32host
+  , testBuilderConstr "float64host"  (double_list hostEndian_list)   float64host
   ]
 
 testsASCII :: [Test]

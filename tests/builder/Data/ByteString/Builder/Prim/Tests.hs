@@ -40,42 +40,42 @@ testsBinary =
   , testBoundedF "int8"      bigEndian_list    BP.int8
 
   --  big-endian
-  , testBoundedF "int16BE"   bigEndian_list    BP.int16BE
-  , testBoundedF "int32BE"   bigEndian_list    BP.int32BE
-  , testBoundedF "int64BE"   bigEndian_list    BP.int64BE
+  , testBoundedF "int16be"   bigEndian_list    BP.int16be
+  , testBoundedF "int32be"   bigEndian_list    BP.int32be
+  , testBoundedF "int64be"   bigEndian_list    BP.int64be
 
-  , testBoundedF "word16BE"  bigEndian_list    BP.word16BE
-  , testBoundedF "word32BE"  bigEndian_list    BP.word32BE
-  , testBoundedF "word64BE"  bigEndian_list    BP.word64BE
+  , testBoundedF "word16be"  bigEndian_list    BP.word16be
+  , testBoundedF "word32be"  bigEndian_list    BP.word32be
+  , testBoundedF "word64be"  bigEndian_list    BP.word64be
 
-  , testF "floatLE"     (float_list  littleEndian_list) BP.floatLE
-  , testF "doubleLE"    (double_list littleEndian_list) BP.doubleLE
+  , testF "float32le"    (float_list  littleEndian_list) BP.float32le
+  , testF "float64le"    (double_list littleEndian_list) BP.float64le
 
   --  little-endian
-  , testBoundedF "int16LE"   littleEndian_list BP.int16LE
-  , testBoundedF "int32LE"   littleEndian_list BP.int32LE
-  , testBoundedF "int64LE"   littleEndian_list BP.int64LE
+  , testBoundedF "int16le"   littleEndian_list BP.int16le
+  , testBoundedF "int32le"   littleEndian_list BP.int32le
+  , testBoundedF "int64le"   littleEndian_list BP.int64le
 
-  , testBoundedF "word16LE"  littleEndian_list BP.word16LE
-  , testBoundedF "word32LE"  littleEndian_list BP.word32LE
-  , testBoundedF "word64LE"  littleEndian_list BP.word64LE
+  , testBoundedF "word16le"  littleEndian_list BP.word16le
+  , testBoundedF "word32le"  littleEndian_list BP.word32le
+  , testBoundedF "word64le"  littleEndian_list BP.word64le
 
-  , testF "floatBE"     (float_list  bigEndian_list)   BP.floatBE
-  , testF "doubleBE"    (double_list bigEndian_list)   BP.doubleBE
+  , testF "float32be"    (float_list  bigEndian_list)   BP.float32be
+  , testF "float64be"    (double_list bigEndian_list)   BP.float64be
 
   --  host dependent
-  , testBoundedF "int16Host"   hostEndian_list  BP.int16Host
-  , testBoundedF "int32Host"   hostEndian_list  BP.int32Host
-  , testBoundedF "int64Host"   hostEndian_list  BP.int64Host
+  , testBoundedF "int16host"   hostEndian_list  BP.int16host
+  , testBoundedF "int32host"   hostEndian_list  BP.int32host
+  , testBoundedF "int64host"   hostEndian_list  BP.int64host
   , testBoundedF "intHost"     hostEndian_list  BP.intHost
 
-  , testBoundedF "word16Host"  hostEndian_list  BP.word16Host
-  , testBoundedF "word32Host"  hostEndian_list  BP.word32Host
-  , testBoundedF "word64Host"  hostEndian_list  BP.word64Host
+  , testBoundedF "word16host"  hostEndian_list  BP.word16host
+  , testBoundedF "word32host"  hostEndian_list  BP.word32host
+  , testBoundedF "word64host"  hostEndian_list  BP.word64host
   , testBoundedF "wordHost"    hostEndian_list  BP.wordHost
 
-  , testF "floatHost"   (float_list  hostEndian_list)   BP.floatHost
-  , testF "doubleHost"  (double_list hostEndian_list)   BP.doubleHost
+  , testF "float32host"  (float_list  hostEndian_list)   BP.float32host
+  , testF "float64host"  (double_list hostEndian_list)   BP.float64host
   ]
 
 
