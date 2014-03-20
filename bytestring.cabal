@@ -153,7 +153,7 @@ test-suite prop-compiled
                     TestFramework
   hs-source-dirs:   . tests
   build-depends:    base, ghc-prim, deepseq, random, directory,
-                    QuickCheck >= 2.3 && < 3
+                    QuickCheck >= 2.3 && < 2.7
   c-sources:        cbits/fpstring.c
   include-dirs:     include
   ghc-options:      -fwarn-unused-binds
@@ -176,7 +176,7 @@ test-suite test-builder
 
   build-depends:    base, ghc-prim,
                     deepseq,
-                    QuickCheck                 >= 2.4 && < 3,
+                    QuickCheck                 >= 2.4 && < 2.7,
                     byteorder                  == 1.0.*,
                     dlist                      == 0.5.*,
                     directory,
