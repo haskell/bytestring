@@ -485,66 +485,50 @@ instance IsString Builder where
 -- Deprecated encodings
 ------------------------------------------------------------------------------
 
-{-# DEPRECATED int16BE "Use int16be instead" #-}
 int16BE :: Int16 -> Builder
 int16BE = int16be
 
-{-# DEPRECATED int32BE "Use int32be instead" #-}
 int32BE :: Int32 -> Builder
 int32BE = int32be
 
-{-# DEPRECATED int64BE "Use int64be instead" #-}
 int64BE :: Int64 -> Builder
 int64BE = int64be
 
-{-# DEPRECATED word16BE "Use word16be instead" #-}
 word16BE :: Word16 -> Builder
 word16BE = word16be
 
-{-# DEPRECATED word32BE "Use word32be instead" #-}
 word32BE :: Word32 -> Builder
 word32BE = word32be
 
-{-# DEPRECATED word64BE "Use word64be instead" #-}
 word64BE :: Word64 -> Builder
 word64BE = word64be
 
-{-# DEPRECATED floatBE "Use float32be instead" #-}
 floatBE :: Float -> Builder
 floatBE  = float32be
 
-{-# DEPRECATED doubleBE "Use float64be instead" #-}
 doubleBE :: Double -> Builder
 doubleBE = float64be
 
-{-# DEPRECATED int16LE "Use int16le instead" #-}
 int16LE :: Int16 -> Builder
 int16LE = int16le
 
-{-# DEPRECATED int32LE "Use int32le instead" #-}
 int32LE :: Int32 -> Builder
 int32LE = int32le
 
-{-# DEPRECATED int64LE "Use int64le instead" #-}
 int64LE :: Int64 -> Builder
 int64LE = int64le
 
-{-# DEPRECATED word16LE "Use word16le instead" #-}
 word16LE :: Word16 -> Builder
 word16LE = word16le
 
-{-# DEPRECATED word32LE "Use word32le instead" #-}
 word32LE :: Word32 -> Builder
 word32LE = word32le
 
-{-# DEPRECATED word64LE "Use word64le instead" #-}
 word64LE :: Word64 -> Builder
 word64LE = word64le
 
-{-# DEPRECATED floatLE "Use float32le instead" #-}
 floatLE :: Float -> Builder
 floatLE  = float32le
 
-{-# DEPRECATED doubleLE "Use float64le instead" #-}
 doubleLE :: Double -> Builder
 doubleLE = float64le
