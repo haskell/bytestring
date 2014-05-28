@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, ScopedTypeVariables, BangPatterns #-}
+{-# LANGUAGE CPP, FlexibleContexts, ScopedTypeVariables, BangPatterns #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
