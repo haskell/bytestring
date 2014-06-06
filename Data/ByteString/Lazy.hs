@@ -14,7 +14,7 @@
 -- Maintainer  : dons00@gmail.com, duncan@community.haskell.org
 -- Stability   : stable
 -- Portability : portable
--- 
+--
 -- A time and space-efficient implementation of lazy byte vectors
 -- using lists of packed 'Word8' arrays, suitable for high performance
 -- use, both in terms of large data quantities, or high speed
@@ -263,7 +263,7 @@ singleton :: Word8 -> ByteString
 singleton w = Chunk (S.singleton w) Empty
 {-# INLINE singleton #-}
 
--- | /O(n)/ Convert a '[Word8]' into a 'ByteString'. 
+-- | /O(n)/ Convert a '[Word8]' into a 'ByteString'.
 pack :: [Word8] -> ByteString
 pack = packBytes
 
@@ -689,7 +689,7 @@ splitAt i cs0 = splitAt' i cs0
         splitAt' _ Empty        = (Empty, Empty)
         splitAt' n (Chunk c cs) =
           if n < fromIntegral (S.length c)
-            then (Chunk (S.take (fromIntegral n) c) Empty 
+            then (Chunk (S.take (fromIntegral n) c) Empty
                  ,Chunk (S.drop (fromIntegral n) c) cs)
             else let (cs', cs'') = splitAt' (n - fromIntegral (S.length c)) cs
                    in (Chunk c cs', cs'')
@@ -738,7 +738,7 @@ break f cs0 = break' cs0
 -- | 'breakByte' breaks its ByteString argument at the first occurence
 -- of the specified byte. It is more efficient than 'break' as it is
 -- implemented with @memchr(3)@. I.e.
--- 
+--
 -- > break (=='c') "abcd" == breakByte 'c' "abcd"
 --
 breakByte :: Word8 -> ByteString -> (ByteString, ByteString)
@@ -798,12 +798,12 @@ splitWith p (Chunk c0 cs0) = comb [] (S.splitWith p c0) cs0
 -- > split '\n' "a\nb\nd\ne" == ["a","b","d","e"]
 -- > split 'a'  "aXaXaXa"    == ["","X","X","X",""]
 -- > split 'x'  "x"          == ["",""]
--- 
+--
 -- and
 --
 -- > intercalate [c] . split c == id
 -- > split == splitWith . (==)
--- 
+--
 -- As for all splitting functions in this library, this function does
 -- not copy the substrings, it just constructs new 'ByteStrings' that
 -- are slices of the original.
@@ -821,7 +821,7 @@ split w (Chunk c0 cs0) = comb [] (S.split w c0) cs0
 {-
 -- | Like 'splitWith', except that sequences of adjacent separators are
 -- treated as a single separator. eg.
--- 
+--
 -- > tokens (=='a') "aabbaca" == ["bb","c"]
 --
 tokens :: (Word8 -> Bool) -> ByteString -> [ByteString]
@@ -888,13 +888,13 @@ index _  i | i < 0  = moduleError "index" ("negative index: " ++ show i)
 index cs0 i         = index' cs0 i
   where index' Empty     n = moduleError "index" ("index too large: " ++ show n)
         index' (Chunk c cs) n
-          | n >= fromIntegral (S.length c) = 
+          | n >= fromIntegral (S.length c) =
               index' cs (n - fromIntegral (S.length c))
           | otherwise       = S.unsafeIndex c (fromIntegral n)
 
 -- | /O(n)/ The 'elemIndex' function returns the index of the first
 -- element in the given 'ByteString' which is equal to the query
--- element, or 'Nothing' if there is no such element. 
+-- element, or 'Nothing' if there is no such element.
 -- This implementation uses memchr(3).
 elemIndex :: Word8 -> ByteString -> Maybe Int64
 elemIndex w cs0 = elemIndex' 0 cs0
@@ -910,7 +910,7 @@ elemIndex w cs0 = elemIndex' 0 cs0
 -- element, or 'Nothing' if there is no such element. The following
 -- holds:
 --
--- > elemIndexEnd c xs == 
+-- > elemIndexEnd c xs ==
 -- > (-) (length xs - 1) `fmap` elemIndex c (reverse xs)
 --
 elemIndexEnd :: Word8 -> ByteString -> Maybe Int
@@ -1057,7 +1057,7 @@ isPrefixOf (Chunk x xs) (Chunk y ys)
 
 -- | /O(n)/ The 'isSuffixOf' function takes two ByteStrings and returns 'True'
 -- iff the first is a suffix of the second.
--- 
+--
 -- The following holds:
 --
 -- > isSuffixOf x y == reverse x `isPrefixOf` reverse y
@@ -1142,7 +1142,7 @@ copy cs = foldrChunks (Chunk . S.copy) Empty cs
 -- Lazy ByteString IO
 --
 -- Rule for when to close: is it expected to read the whole file?
--- If so, close when done. 
+-- If so, close when done.
 --
 
 -- | Read entire handle contents /lazily/ into a 'ByteString'. Chunks
