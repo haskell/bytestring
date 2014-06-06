@@ -33,6 +33,7 @@ executable prop-compiled
   cpp-options:      -DHAVE_TEST_FRAMEWORK=1
   ghc-options:      -fwarn-unused-binds
                     -fno-enable-rewrite-rules
+                    -threaded -rtsopts
   extensions:       BangPatterns
                     UnliftedFFITypes,
                     MagicHash,
@@ -61,7 +62,7 @@ executable test-builder
                     test-framework-quickcheck2  >= 0.3
 
   cpp-options:      -DHAVE_TEST_FRAMEWORK=1
-  ghc-options:      -Wall -fwarn-tabs -fhpc
+  ghc-options:      -Wall -fwarn-tabs -fhpc -threaded -rtsopts
 
   extensions:       CPP, ForeignFunctionInterface
                     UnliftedFFITypes,

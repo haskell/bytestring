@@ -158,6 +158,7 @@ test-suite prop-compiled
   include-dirs:     include
   ghc-options:      -fwarn-unused-binds
                     -fno-enable-rewrite-rules
+                    -threaded -rtsopts
   default-language: Haskell98
   -- older ghc had issues with language pragmas guarded by cpp
   if impl(ghc < 7)
@@ -182,7 +183,7 @@ test-suite test-builder
                     directory,
                     mtl                        >= 2.0 && < 2.2
 
-  ghc-options:      -Wall -fwarn-tabs
+  ghc-options:      -Wall -fwarn-tabs -threaded -rtsopts
 
   default-language: Haskell98
   -- older ghc had issues with language pragmas guarded by cpp
