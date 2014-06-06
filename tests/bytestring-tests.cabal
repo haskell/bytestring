@@ -42,6 +42,25 @@ executable prop-compiled
                     ScopedTypeVariables
                     NamedFieldPuns
 
+executable regressions
+  main-is:          Regressions.hs
+  hs-source-dirs:   . ..
+  build-depends:    base, ghc-prim, deepseq, random, directory,
+                    test-framework, test-framework-hunit, HUnit
+  c-sources:        ../cbits/fpstring.c
+  include-dirs:     ../include
+  cpp-options:      -DHAVE_TEST_FRAMEWORK=1
+  ghc-options:      -fwarn-unused-binds
+                    -fno-enable-rewrite-rules
+                    -threaded -rtsopts
+  extensions:       BangPatterns
+                    UnliftedFFITypes,
+                    MagicHash,
+                    UnboxedTuples,
+                    DeriveDataTypeable
+                    ScopedTypeVariables
+                    NamedFieldPuns
+
 executable test-builder
   hs-source-dirs:   . .. builder
   main-is:          TestSuite.hs

@@ -153,7 +153,26 @@ test-suite prop-compiled
                     TestFramework
   hs-source-dirs:   . tests
   build-depends:    base, ghc-prim, deepseq, random, directory,
+                    test-framework, test-framework-quickcheck2,
                     QuickCheck >= 2.3 && < 2.7
+  c-sources:        cbits/fpstring.c
+  include-dirs:     include
+  ghc-options:      -fwarn-unused-binds
+                    -fno-enable-rewrite-rules
+                    -threaded -rtsopts
+  default-language: Haskell98
+  -- older ghc had issues with language pragmas guarded by cpp
+  if impl(ghc < 7)
+    default-extensions: CPP, MagicHash, UnboxedTuples,
+                        DeriveDataTypeable, BangPatterns,
+                        NamedFieldPuns
+
+test-suite regressions
+  type:             exitcode-stdio-1.0
+  main-is:          Regressions.hs
+  hs-source-dirs:   . tests
+  build-depends:    base, ghc-prim, deepseq, random, directory,
+                    test-framework, test-framework-hunit, HUnit,
   c-sources:        cbits/fpstring.c
   include-dirs:     include
   ghc-options:      -fwarn-unused-binds
@@ -197,4 +216,3 @@ test-suite test-builder
   include-dirs:     include
   includes:         fpstring.h
   install-includes: fpstring.h
-
