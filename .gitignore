@@ -6,3 +6,4 @@ ghc.mk
 .cabal-sandbox
 cabal.sandbox.config
 .hsenv
+*~
