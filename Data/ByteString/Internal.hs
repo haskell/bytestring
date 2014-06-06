@@ -38,6 +38,7 @@ module Data.ByteString.Internal (
 #if defined(__GLASGOW_HASKELL__)
         unsafePackAddress,
 #endif
+        checkedSum,
 
         -- * Low level imperative construction
         create,                 -- :: Int -> (Ptr Word8 -> IO ()) -> IO ByteString
@@ -532,11 +533,20 @@ concat []     = mempty
 concat [bs]   = bs
 concat bss0   = unsafeCreate totalLen $ \ptr -> go bss0 ptr
   where
-    totalLen = List.sum [ len | (PS _ _ len) <- bss0 ]
+    totalLen = checkedSum "concat" [ len | (PS _ _ len) <- bss0 ]
     go []                  !_   = return ()
     go (PS fp off len:bss) !ptr = do
       withForeignPtr fp $ \p -> memcpy ptr (p `plusPtr` off) len
       go bss (ptr `plusPtr` len)
+
+-- | Add a list of non-negative numbers.  Errors out on overflow.
+checkedSum :: String -> [Int] -> Int
+checkedSum fun = go 0
+  where go !a (x:xs)
+            | ax >= 0   = go ax xs
+            | otherwise = overflowError fun
+          where ax = a + x
+        go a  _         = a
 
 ------------------------------------------------------------------------
 
@@ -581,6 +591,9 @@ isSpaceChar8 c =
     c == '\xa0'
 {-# INLINE isSpaceChar8 #-}
 
+overflowError :: String -> a
+overflowError fun = error $ "Data.ByteString." ++ fun ++ ": size overflow"
+
 ------------------------------------------------------------------------
 
 -- | This \"function\" has a superficial similarity to 'unsafePerformIO' but
@@ -619,7 +632,6 @@ inlinePerformIO :: IO a -> a
 inlinePerformIO = accursedUnutterablePerformIO
 {-# INLINE inlinePerformIO #-}
 {-# DEPRECATED inlinePerformIO "If you think you know what you are doing, use 'unsafePerformIO'. If you are sure you know what you are doing, use 'unsafeDupablePerformIO'. If you enjoy sharing an address space with a malevolent agent of chaos, try 'accursedUnutterablePerformIO'." #-}
-
 
 -- ---------------------------------------------------------------------
 --
@@ -684,4 +696,3 @@ foreign import ccall unsafe "static fpstring.h fps_minimum" c_minimum
 
 foreign import ccall unsafe "static fpstring.h fps_count" c_count
     :: Ptr Word8 -> CULong -> Word8 -> IO CULong
-
