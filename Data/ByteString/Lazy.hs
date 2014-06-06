@@ -295,7 +295,7 @@ toStrict Empty           = S.empty
 toStrict (Chunk c Empty) = c
 toStrict cs0 = S.unsafeCreate totalLen $ \ptr -> go cs0 ptr
   where
-    totalLen = foldlChunks (\a c -> a + S.length c) 0 cs0
+    totalLen = S.checkedSum "Lazy.toStrict" . L.map S.length . toChunks $ cs0
 
     go Empty                        !_       = return ()
     go (Chunk (S.PS fp off len) cs) !destptr =
