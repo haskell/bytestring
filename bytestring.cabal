@@ -172,7 +172,7 @@ test-suite regressions
   main-is:          Regressions.hs
   hs-source-dirs:   . tests
   build-depends:    base, ghc-prim, deepseq, random, directory,
-                    test-framework, test-framework-hunit, HUnit,
+                    test-framework, test-framework-hunit, HUnit
   c-sources:        cbits/fpstring.c
   include-dirs:     include
   ghc-options:      -fwarn-unused-binds
