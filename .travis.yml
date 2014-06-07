@@ -28,7 +28,7 @@ install:
 script:
  - cabal configure --enable-tests -v2
  - cabal build
- - cabal test
+ - cabal test --show-details=always
  - cabal sdist
  # "cabal check" disabled due to -O2 warning
  - export SRC_TGZ=$(cabal info . | awk '{print $2 ".tar.gz";exit}') ;
