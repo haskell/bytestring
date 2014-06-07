@@ -1,3 +1,5 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+
 import Control.Exception (SomeException, handle)
 import Test.HUnit (assertBool, assertEqual, assertFailure)
 import qualified Data.ByteString as B
