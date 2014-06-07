@@ -28,7 +28,12 @@ install:
 script:
  - cabal configure --enable-tests -v2
  - cabal build
- - cabal test --show-details=always
+ # --show-details=streaming is available for CABALVER>=1.20 only
+ - if [ "$(echo -e "1.20\n$CABALVER" | sort -rV | head -n1)" = "$CABALVER" ]; then
+     cabal test --show-details=streaming;
+   else
+     cabal test --show-details=always;
+   fi
  - cabal sdist
  # "cabal check" disabled due to -O2 warning
  - export SRC_TGZ=$(cabal info . | awk '{print $2 ".tar.gz";exit}') ;
