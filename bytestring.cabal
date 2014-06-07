@@ -160,6 +160,7 @@ test-suite prop-compiled
   ghc-options:      -fwarn-unused-binds
                     -fno-enable-rewrite-rules
                     -threaded -rtsopts
+  cpp-options:      -DHAVE_TEST_FRAMEWORK=1
   default-language: Haskell98
   -- older ghc had issues with language pragmas guarded by cpp
   if impl(ghc < 7)
@@ -168,6 +169,8 @@ test-suite prop-compiled
                         NamedFieldPuns
 
 test-suite regressions
+  -- temporarily disabled as it allocates too much memory
+  buildable:        False
   type:             exitcode-stdio-1.0
   main-is:          Regressions.hs
   hs-source-dirs:   . tests
@@ -200,9 +203,14 @@ test-suite test-builder
                     byteorder                  == 1.0.*,
                     dlist                      == 0.5.*,
                     directory,
-                    mtl                        >= 2.0 && < 2.2
+                    mtl                        >= 2.0 && < 2.2,
+                    HUnit,
+                    test-framework,
+                    test-framework-hunit,
+                    test-framework-quickcheck2
 
   ghc-options:      -Wall -fwarn-tabs -threaded -rtsopts
+  cpp-options:      -DHAVE_TEST_FRAMEWORK=1
 
   default-language: Haskell98
   -- older ghc had issues with language pragmas guarded by cpp
