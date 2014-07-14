@@ -1942,9 +1942,6 @@ illegalBufferSize handle fn sz =
 -- files > half of available memory, this may lead to memory exhaustion.
 -- Consider using 'readFile' in this case.
 --
--- As with 'hGet', the string representation in the file is assumed to
--- be ISO-8859-1.
---
 -- The Handle is closed once the contents have been read,
 -- or if an exception is thrown.
 --
