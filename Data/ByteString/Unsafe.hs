@@ -224,7 +224,7 @@ unsafePackCString cstr = do
 -- collected by Haskell. This operation has /O(1)/ complexity as we
 -- already know the final size, so no /strlen(3)/ is required.
 --
--- This funtion is /unsafe/. If the original @CStringLen@ is later
+-- This function is /unsafe/. If the original @CStringLen@ is later
 -- modified, this change will be reflected in the resulting @ByteString@,
 -- breaking referential transparency.
 --
@@ -236,7 +236,7 @@ unsafePackCStringLen (ptr,len) = do
 -- | /O(n)/ Build a @ByteString@ from a malloced @CString@. This value will
 -- have a @free(3)@ finalizer associated to it.
 --
--- This funtion is /unsafe/. If the original @CString@ is later
+-- This function is /unsafe/. If the original @CString@ is later
 -- modified, this change will be reflected in the resulting @ByteString@,
 -- breaking referential transparency.
 --
@@ -253,7 +253,7 @@ unsafePackMallocCString cstr = do
 -- | /O(n)/ Build a @ByteString@ from a malloced @CStringLen@. This
 -- value will have a @free(3)@ finalizer associated to it.
 --
--- This funtion is /unsafe/. If the original @CString@ is later
+-- This function is /unsafe/. If the original @CString@ is later
 -- modified, this change will be reflected in the resulting @ByteString@,
 -- breaking referential transparency.
 --
