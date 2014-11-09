@@ -250,7 +250,7 @@ unsafePackMallocCString cstr = do
     len <- c_strlen cstr
     return $! PS fp 0 (fromIntegral len)
 
--- | /O(n)/ Build a @ByteString@ from a malloced @CStringLen@. This
+-- | /O(1)/ Build a @ByteString@ from a malloced @CStringLen@. This
 -- value will have a @free(3)@ finalizer associated to it.
 --
 -- This function is /unsafe/. If the original @CString@ is later
