@@ -51,8 +51,7 @@ Copyright:           Copyright (c) Don Stewart          2005-2009,
 
 Author:              Don Stewart,
                      Duncan Coutts
-Maintainer:          Don Stewart <dons00@gmail.com>,
-                     Duncan Coutts <duncan@community.haskell.org>
+Maintainer:          Duncan Coutts <duncan@community.haskell.org>
 Homepage:            https://github.com/haskell/bytestring
 Bug-reports:         https://github.com/haskell/bytestring/issues
 Tested-With:         GHC==7.8.1, GHC==7.6.3, GHC==7.4.2, GHC==7.0.4, GHC==6.12.3
