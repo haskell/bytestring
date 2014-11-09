@@ -226,15 +226,13 @@ module Data.ByteString.Builder
     , doubleLE
 
     -- ** Character encodings
+    -- | Conversion from 'Char' and 'String' into 'Builder's in various encodings.
 
     -- *** ASCII (Char7)
     -- | The ASCII encoding is a 7-bit encoding. The /Char7/ encoding implemented here
     -- works by truncating the Unicode codepoint to 7-bits, prefixing it
     -- with a leading 0, and encoding the resulting 8-bits as a single byte.
-    -- For the codepoints 0-127 this corresponds the ASCII encoding. In
-    -- "Data.ByteString.Builder.ASCII", we also provide efficient
-    -- implementations of ASCII-based encodings of numbers (e.g., decimal and
-    -- hexadecimal encodings).
+    -- For the codepoints 0-127 this corresponds the ASCII encoding.
     , char7
     , string7
 
@@ -242,19 +240,14 @@ module Data.ByteString.Builder
     -- | The ISO/IEC 8859-1 encoding is an 8-bit encoding often known as Latin-1.
     -- The /Char8/ encoding implemented here works by truncating the Unicode codepoint
     -- to 8-bits and encoding them as a single byte. For the codepoints 0-255 this corresponds
-    -- to the ISO/IEC 8859-1 encoding. Note that you can also use
-    -- the functions from "Data.ByteString.Builder.ASCII", as the ASCII encoding
-    -- and ISO/IEC 8859-1 are equivalent on the codepoints 0-127.
+    -- to the ISO/IEC 8859-1 encoding.
     , char8
     , string8
 
     -- *** UTF-8
     -- | The UTF-8 encoding can encode /all/ Unicode codepoints. We recommend
     -- using it always for encoding 'Char's and 'String's unless an application
-    -- really requires another encoding. Note that you can also use the
-    -- functions from "Data.ByteString.Builder.ASCII" for UTF-8 encoding,
-    -- as the ASCII encoding is equivalent to the UTF-8 encoding on the Unicode
-    -- codepoints 0-127.
+    -- really requires another encoding.
     , charUtf8
     , stringUtf8
 

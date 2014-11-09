@@ -14,7 +14,13 @@
 --
 module Data.ByteString.Builder.ASCII
     (
-      -- ** ASCII text
+      -- ** Formatting numbers as text
+      -- | Formatting of numbers as ASCII text.
+      --
+      -- Note that you can also use these functions for the ISO/IEC 8859-1 and
+      -- UTF-8 encodings, as the ASCII encoding is equivalent on the 
+      -- codepoints 0-127.
+
       -- *** Decimal numbers
       -- | Decimal encoding of numbers using ASCII encoded characters.
       int8Dec
