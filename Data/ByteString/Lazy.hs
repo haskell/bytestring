@@ -479,7 +479,7 @@ foldl' :: (a -> Word8 -> a) -> a -> ByteString -> a
 foldl' f z = go z
   where go a _ | a `seq` False = undefined
         go a Empty        = a
-        go a (Chunk c cs) = go (S.foldl f a c) cs
+        go a (Chunk c cs) = go (S.foldl' f a c) cs
 {-# INLINE foldl' #-}
 
 -- | 'foldr', applied to a binary operator, a starting value
