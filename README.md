@@ -33,6 +33,6 @@ cabal test
 `ByteString` was derived from the GHC `PackedString` library,
 originally written by Bryan O'Sullivan, and then by Simon Marlow.
 It was adapted and greatly extended for darcs by David Roundy and
-others. Don Stewart cleaned up and further extended the implementation.
-Duncan Coutts wrote much of the `.Lazy` code. Don, Duncan and Roman
-Leshchinskiy wrote the fusion system.
+others. Don Stewart and Duncan Coutts cleaned up and further extended
+the implementation and added the `.Lazy` code. Simon Meier contributed
+the `Builder` feature.
