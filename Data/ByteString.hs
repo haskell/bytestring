@@ -430,7 +430,7 @@ snoc (PS x s l) c = unsafeCreate (l+1) $ \p -> withForeignPtr x $ \f -> do
 head :: ByteString -> Word8
 head (PS x s l)
     | l <= 0    = errorEmptyList "head"
-    | otherwise = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> peekByteOff p s
+    | otherwise = inlinePerformIO $ withForeignPtr x $ \p -> peekByteOff p s
 {-# INLINE head #-}
 
 -- | /O(1)/ Extract the elements after the head of a ByteString, which must be non-empty.
@@ -446,8 +446,8 @@ tail (PS p s l)
 uncons :: ByteString -> Maybe (Word8, ByteString)
 uncons (PS x s l)
     | l <= 0    = Nothing
-    | otherwise = Just (accursedUnutterablePerformIO $ withForeignPtr x
-                                                     $ \p -> peekByteOff p s,
+    | otherwise = Just (inlinePerformIO $ withForeignPtr x
+                                        $ \p -> peekByteOff p s,
                         PS x (s+1) (l-1))
 {-# INLINE uncons #-}
 
@@ -456,8 +456,7 @@ uncons (PS x s l)
 last :: ByteString -> Word8
 last ps@(PS x s l)
     | null ps   = errorEmptyList "last"
-    | otherwise = accursedUnutterablePerformIO $
-                    withForeignPtr x $ \p -> peekByteOff p (s+l-1)
+    | otherwise = inlinePerformIO $ withForeignPtr x $ \p -> peekByteOff p (s+l-1)
 {-# INLINE last #-}
 
 -- | /O(1)/ Return all the elements of a 'ByteString' except the last one.
@@ -474,8 +473,8 @@ unsnoc :: ByteString -> Maybe (ByteString, Word8)
 unsnoc (PS x s l)
     | l <= 0    = Nothing
     | otherwise = Just (PS x s (l-1),
-                        accursedUnutterablePerformIO $
-                          withForeignPtr x $ \p -> peekByteOff p (s+l-1))
+                        inlinePerformIO $ withForeignPtr x
+                                        $ \p -> peekByteOff p (s+l-1))
 {-# INLINE unsnoc #-}
 
 -- | /O(n)/ Append two ByteStrings
@@ -536,7 +535,7 @@ foldl f z (PS fp off len) =
     where
       -- not tail recursive; traverses array right to left
       go !p !q | p == q    = z
-               | otherwise = let !x = accursedUnutterablePerformIO $ do
+               | otherwise = let !x = inlinePerformIO $ do
                                         x' <- peek p
                                         touchForeignPtr fp
                                         return x'
@@ -547,7 +546,7 @@ foldl f z (PS fp off len) =
 --
 foldl' :: (a -> Word8 -> a) -> a -> ByteString -> a
 foldl' f v (PS fp off len) =
-      accursedUnutterablePerformIO $ withForeignPtr fp $ \p ->
+      inlinePerformIO $ withForeignPtr fp $ \p ->
         go v (p `plusPtr` off) (p `plusPtr` (off+len))
     where
       -- tail recursive; traverses array left to right
@@ -566,7 +565,7 @@ foldr k z (PS fp off len) =
     where
       -- not tail recursive; traverses array left to right
       go !p !q | p == q    = z
-               | otherwise = let !x = accursedUnutterablePerformIO $ do
+               | otherwise = let !x = inlinePerformIO $ do
                                         x' <- peek p
                                         touchForeignPtr fp
                                         return x'
@@ -576,7 +575,7 @@ foldr k z (PS fp off len) =
 -- | 'foldr'' is like 'foldr', but strict in the accumulator.
 foldr' :: (Word8 -> a -> a) -> a -> ByteString -> a
 foldr' k v (PS fp off len) =
-      accursedUnutterablePerformIO $ withForeignPtr fp $ \p ->
+      inlinePerformIO $ withForeignPtr fp $ \p ->
         go v (p `plusPtr` (off+len-1)) (p `plusPtr` (off-1))
     where
       -- tail recursive; traverses array right to left
@@ -636,7 +635,7 @@ concatMap f = concat . foldr ((:) . f) []
 -- any element of the 'ByteString' satisfies the predicate.
 any :: (Word8 -> Bool) -> ByteString -> Bool
 any _ (PS _ _ 0) = False
-any f (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \ptr ->
+any f (PS x s l) = inlinePerformIO $ withForeignPtr x $ \ptr ->
         go (ptr `plusPtr` s) (ptr `plusPtr` (s+l))
     where
         STRICT2(go)
@@ -652,7 +651,7 @@ any f (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \ptr ->
 -- if all elements of the 'ByteString' satisfy the predicate.
 all :: (Word8 -> Bool) -> ByteString -> Bool
 all _ (PS _ _ 0) = True
-all f (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \ptr ->
+all f (PS x s l) = inlinePerformIO $ withForeignPtr x $ \ptr ->
         go (ptr `plusPtr` s) (ptr `plusPtr` (s+l))
     where
         STRICT2(go)
@@ -671,7 +670,7 @@ all f (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \ptr ->
 maximum :: ByteString -> Word8
 maximum xs@(PS x s l)
     | null xs   = errorEmptyList "maximum"
-    | otherwise = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
+    | otherwise = inlinePerformIO $ withForeignPtr x $ \p ->
                       c_maximum (p `plusPtr` s) (fromIntegral l)
 {-# INLINE maximum #-}
 
@@ -681,7 +680,7 @@ maximum xs@(PS x s l)
 minimum :: ByteString -> Word8
 minimum xs@(PS x s l)
     | null xs   = errorEmptyList "minimum"
-    | otherwise = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
+    | otherwise = inlinePerformIO $ withForeignPtr x $ \p ->
                       c_minimum (p `plusPtr` s) (fromIntegral l)
 {-# INLINE minimum #-}
 
@@ -951,10 +950,8 @@ span p ps = break (not . p) ps
 -- > span  (=='c') "abcd" == spanByte 'c' "abcd"
 --
 spanByte :: Word8 -> ByteString -> (ByteString, ByteString)
-spanByte c ps@(PS x s l) =
-    accursedUnutterablePerformIO $
-      withForeignPtr x $ \p ->
-        go (p `plusPtr` s) 0
+spanByte c ps@(PS x s l) = inlinePerformIO $ withForeignPtr x $ \p ->
+    go (p `plusPtr` s) 0
   where
     STRICT2(go)
     go p i | i >= l    = return (ps, empty)
@@ -1001,10 +998,8 @@ splitWith pred_ (PS fp off len) = splitWith0 pred# off len fp
   where pred# c# = pred_ (W8# c#)
 
         STRICT4(splitWith0)
-        splitWith0 pred' off' len' fp' =
-          accursedUnutterablePerformIO $
-            withForeignPtr fp $ \p ->
-              splitLoop pred' p 0 off' len' fp'
+        splitWith0 pred' off' len' fp' = withPtr fp $ \p ->
+            splitLoop pred' p 0 off' len' fp'
 
         splitLoop :: (Word# -> Bool)
                   -> Ptr Word8
@@ -1054,12 +1049,12 @@ split w (PS x s l) = loop 0
     where
         STRICT1(loop)
         loop n =
-            let q = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
+            let q = inlinePerformIO $ withForeignPtr x $ \p ->
                       memchr (p `plusPtr` (s+n))
                              w (fromIntegral (l-n))
             in if q == nullPtr
                 then [PS x (s+n) (l-n)]
-                else let i = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
+                else let i = inlinePerformIO $ withForeignPtr x $ \p ->
                                return (q `minusPtr` (p `plusPtr` s))
                       in PS x (s+n) (i-n) : loop (i+1)
 
@@ -1168,7 +1163,7 @@ index ps n
 -- element, or 'Nothing' if there is no such element. 
 -- This implementation uses memchr(3).
 elemIndex :: Word8 -> ByteString -> Maybe Int
-elemIndex c (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> do
+elemIndex c (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p -> do
     let p' = p `plusPtr` s
     q <- memchr p' c (fromIntegral l)
     return $! if q == nullPtr then Nothing else Just $! q `minusPtr` p'
@@ -1183,7 +1178,7 @@ elemIndex c (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
 -- > (-) (length xs - 1) `fmap` elemIndex c (reverse xs)
 --
 elemIndexEnd :: Word8 -> ByteString -> Maybe Int
-elemIndexEnd ch (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
+elemIndexEnd ch (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p ->
     go (p `plusPtr` s) (l-1)
   where
     STRICT2(go)
@@ -1201,12 +1196,12 @@ elemIndices :: Word8 -> ByteString -> [Int]
 elemIndices w (PS x s l) = loop 0
     where
         STRICT1(loop)
-        loop n = let q = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
+        loop n = let q = inlinePerformIO $ withForeignPtr x $ \p ->
                            memchr (p `plusPtr` (n+s))
                                                 w (fromIntegral (l - n))
                  in if q == nullPtr
                         then []
-                        else let i = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
+                        else let i = inlinePerformIO $ withForeignPtr x $ \p ->
                                        return (q `minusPtr` (p `plusPtr` s))
                              in i : loop (i+1)
 {-# INLINE elemIndices #-}
@@ -1227,7 +1222,7 @@ elemIndices c ps = loop 0 ps
 --
 -- But more efficiently than using length on the intermediate list.
 count :: Word8 -> ByteString -> Int
-count w (PS x s m) = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
+count w (PS x s m) = inlinePerformIO $ withForeignPtr x $ \p ->
     fmap fromIntegral $ c_count (p `plusPtr` s) (fromIntegral m) w
 {-# INLINE count #-}
 
@@ -1235,7 +1230,7 @@ count w (PS x s m) = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
 --
 -- around 30% slower
 --
-count w (PS x s m) = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
+count w (PS x s m) = inlinePerformIO $ withForeignPtr x $ \p ->
      go (p `plusPtr` s) (fromIntegral m) 0
     where
         go :: Ptr Word8 -> CSize -> Int -> IO Int
@@ -1252,7 +1247,7 @@ count w (PS x s m) = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
 -- returns the index of the first element in the ByteString
 -- satisfying the predicate.
 findIndex :: (Word8 -> Bool) -> ByteString -> Maybe Int
-findIndex k (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \f -> go (f `plusPtr` s) 0
+findIndex k (PS x s l) = inlinePerformIO $ withForeignPtr x $ \f -> go (f `plusPtr` s) 0
   where
     STRICT2(go)
     go ptr n | n >= l    = return Nothing
@@ -1368,7 +1363,7 @@ isPrefixOf :: ByteString -> ByteString -> Bool
 isPrefixOf (PS x1 s1 l1) (PS x2 s2 l2)
     | l1 == 0   = True
     | l2 < l1   = False
-    | otherwise = accursedUnutterablePerformIO $ withForeignPtr x1 $ \p1 ->
+    | otherwise = inlinePerformIO $ withForeignPtr x1 $ \p1 ->
         withForeignPtr x2 $ \p2 -> do
             i <- memcmp (p1 `plusPtr` s1) (p2 `plusPtr` s2) (fromIntegral l1)
             return $! i == 0
@@ -1386,7 +1381,7 @@ isSuffixOf :: ByteString -> ByteString -> Bool
 isSuffixOf (PS x1 s1 l1) (PS x2 s2 l2)
     | l1 == 0   = True
     | l2 < l1   = False
-    | otherwise = accursedUnutterablePerformIO $ withForeignPtr x1 $ \p1 ->
+    | otherwise = inlinePerformIO $ withForeignPtr x1 $ \p1 ->
         withForeignPtr x2 $ \p2 -> do
             i <- memcmp (p1 `plusPtr` s1) (p2 `plusPtr` s2 `plusPtr` (l2 - l1)) (fromIntegral l1)
             return $! i == 0
@@ -2007,10 +2002,7 @@ appendFile f txt = bracket (openBinaryFile f AppendMode) hClose
 -- | 'findIndexOrEnd' is a variant of findIndex, that returns the length
 -- of the string if no element is found, rather than Nothing.
 findIndexOrEnd :: (Word8 -> Bool) -> ByteString -> Int
-findIndexOrEnd k (PS x s l) =
-    accursedUnutterablePerformIO $
-      withForeignPtr x $ \f ->
-        go (f `plusPtr` s) 0
+findIndexOrEnd k (PS x s l) = inlinePerformIO $ withForeignPtr x $ \f -> go (f `plusPtr` s) 0
   where
     STRICT2(go)
     go ptr n | n >= l    = return l
@@ -2019,6 +2011,11 @@ findIndexOrEnd k (PS x s l) =
                                 then return n
                                 else go (ptr `plusPtr` 1) (n+1)
 {-# INLINE findIndexOrEnd #-}
+
+-- | Perform an operation with a temporary ByteString
+withPtr :: ForeignPtr a -> (Ptr a -> IO b) -> b
+withPtr fp io = inlinePerformIO (withForeignPtr fp io)
+{-# INLINE withPtr #-}
 
 -- Common up near identical calls to `error' to reduce the number
 -- constant strings created when compiled:

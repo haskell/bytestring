@@ -38,7 +38,6 @@ module Data.ByteString.Internal (
 #if defined(__GLASGOW_HASKELL__)
         unsafePackAddress,
 #endif
-        checkedSum,
 
         -- * Low level imperative construction
         create,                 -- :: Int -> (Ptr Word8 -> IO ()) -> IO ByteString
@@ -54,6 +53,7 @@ module Data.ByteString.Internal (
         toForeignPtr,           -- :: ByteString -> (ForeignPtr Word8, Int, Int)
 
         -- * Utilities
+        inlinePerformIO,        -- :: IO a -> a
         nullForeignPtr,         -- :: ForeignPtr Word8
 
         -- * Standard C Functions
@@ -73,11 +73,8 @@ module Data.ByteString.Internal (
         c_count,                -- :: Ptr Word8 -> CInt -> Word8 -> IO CInt
 
         -- * Chars
-        w2c, c2w, isSpaceWord8, isSpaceChar8,
+        w2c, c2w, isSpaceWord8, isSpaceChar8
 
-        -- * Deprecated and unmentionable
-        accursedUnutterablePerformIO, -- :: IO a -> a
-        inlinePerformIO               -- :: IO a -> a
   ) where
 
 import Prelude hiding (concat)
@@ -249,7 +246,7 @@ packChars cs = unsafePackLenChars (List.length cs) cs
 
 {-# RULES
 "ByteString packChars/packAddress" forall s .
-   packChars (unpackCString# s) = accursedUnutterablePerformIO (unsafePackAddress s)
+   packChars (unpackCString# s) = inlinePerformIO (unsafePackAddress s)
  #-}
 #endif
 
@@ -358,7 +355,7 @@ unpackAppendCharsLazy (PS fp off len) cs
 
 unpackAppendBytesStrict :: ByteString -> [Word8] -> [Word8]
 unpackAppendBytesStrict (PS fp off len) xs =
-    accursedUnutterablePerformIO $ withForeignPtr fp $ \base -> do
+    inlinePerformIO $ withForeignPtr fp $ \base -> do
       loop (base `plusPtr` (off-1)) (base `plusPtr` (off-1+len)) xs
   where
     loop !sentinal !p acc
@@ -368,7 +365,7 @@ unpackAppendBytesStrict (PS fp off len) xs =
 
 unpackAppendCharsStrict :: ByteString -> [Char] -> [Char]
 unpackAppendCharsStrict (PS fp off len) xs =
-    accursedUnutterablePerformIO $ withForeignPtr fp $ \base ->
+    inlinePerformIO $ withForeignPtr fp $ \base ->
       loop (base `plusPtr` (off-1)) (base `plusPtr` (off-1+len)) xs
   where
     loop !sentinal !p acc
@@ -511,7 +508,7 @@ eq a@(PS fp off len) b@(PS fp' off' len')
 compareBytes :: ByteString -> ByteString -> Ordering
 compareBytes (PS _   _    0)    (PS _   _    0)    = EQ  -- short cut for empty strings
 compareBytes (PS fp1 off1 len1) (PS fp2 off2 len2) =
-    accursedUnutterablePerformIO $
+    inlinePerformIO $
       withForeignPtr fp1 $ \p1 ->
       withForeignPtr fp2 $ \p2 -> do
         i <- memcmp (p1 `plusPtr` off1) (p2 `plusPtr` off2) (min len1 len2)
@@ -620,18 +617,13 @@ overflowError fun = error $ "Data.ByteString." ++ fun ++ ": size overflow"
 -- Yield not to its blasphemous call! Flee traveller! Flee or you will be
 -- corrupted and devoured!
 --
-{-# INLINE accursedUnutterablePerformIO #-}
-accursedUnutterablePerformIO :: IO a -> a
-#if defined(__GLASGOW_HASKELL__)
-accursedUnutterablePerformIO (IO m) = case m realWorld# of (# _, r #) -> r
-#else
-accursedUnutterablePerformIO = unsafePerformIO
-#endif
-
-inlinePerformIO :: IO a -> a
-inlinePerformIO = accursedUnutterablePerformIO
 {-# INLINE inlinePerformIO #-}
-{-# DEPRECATED inlinePerformIO "If you think you know what you are doing, use 'unsafePerformIO'. If you are sure you know what you are doing, use 'unsafeDupablePerformIO'. If you enjoy sharing an address space with a malevolent agent of chaos, try 'accursedUnutterablePerformIO'." #-}
+inlinePerformIO :: IO a -> a
+#if defined(__GLASGOW_HASKELL__)
+inlinePerformIO (IO m) = case m realWorld# of (# _, r #) -> r
+#else
+inlinePerformIO = unsafePerformIO
+#endif
 
 -- ---------------------------------------------------------------------
 --

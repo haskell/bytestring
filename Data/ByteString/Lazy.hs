@@ -295,13 +295,25 @@ toStrict Empty           = S.empty
 toStrict (Chunk c Empty) = c
 toStrict cs0 = S.unsafeCreate totalLen $ \ptr -> go cs0 ptr
   where
-    totalLen = S.checkedSum "Lazy.toStrict" . L.map S.length . toChunks $ cs0
+    totalLen = checkedSum "Lazy.toStrict" . L.map S.length . toChunks $ cs0
 
     go Empty                        !_       = return ()
     go (Chunk (S.PS fp off len) cs) !destptr =
       withForeignPtr fp $ \p -> do
         S.memcpy destptr (p `plusPtr` off) len
         go cs (destptr `plusPtr` len)
+
+-- just here in 0.10.4.x, in later version it's exported from .Internal
+checkedSum :: String -> [Int] -> Int
+checkedSum fun = go 0
+  where go !a (x:xs)
+            | ax >= 0   = go ax xs
+            | otherwise = overflowError fun
+          where ax = a + x
+        go a  _         = a
+
+overflowError :: String -> a
+overflowError fun = error $ "Data.ByteString." ++ fun ++ ": size overflow"
 
 ------------------------------------------------------------------------
 
@@ -914,7 +926,7 @@ elemIndex w cs0 = elemIndex' 0 cs0
 -- > (-) (length xs - 1) `fmap` elemIndex c (reverse xs)
 --
 elemIndexEnd :: Word8 -> ByteString -> Maybe Int
-elemIndexEnd ch (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
+elemIndexEnd ch (PS x s l) = inlinePerformIO $ withForeignPtr x $ \p ->
     go (p `plusPtr` s) (l-1)
   where
     STRICT2(go)
@@ -1342,9 +1354,7 @@ revChunks cs = L.foldl' (flip chunk) Empty cs
 -- | 'findIndexOrEnd' is a variant of findIndex, that returns the length
 -- of the string if no element is found, rather than Nothing.
 findIndexOrEnd :: (Word8 -> Bool) -> P.ByteString -> Int
-findIndexOrEnd k (S.PS x s l) =
-    S.accursedUnutterablePerformIO $
-      withForeignPtr x $ \f -> go (f `plusPtr` s) 0
+findIndexOrEnd k (S.PS x s l) = S.inlinePerformIO $ withForeignPtr x $ \f -> go (f `plusPtr` s) 0
   where
     STRICT2(go)
     go ptr n | n >= l    = return l

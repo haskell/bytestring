@@ -102,7 +102,7 @@ assertS s False = error ("assertion failed at "++s)
 -- to provide a proof that the ByteString is non-empty.
 unsafeHead :: ByteString -> Word8
 unsafeHead (PS x s l) = assert (l > 0) $
-    accursedUnutterablePerformIO $ withForeignPtr x $ \p -> peekByteOff p s
+    inlinePerformIO $ withForeignPtr x $ \p -> peekByteOff p s
 {-# INLINE unsafeHead #-}
 
 -- | A variety of 'tail' for non-empty ByteStrings. 'unsafeTail' omits the
@@ -124,7 +124,7 @@ unsafeInit (PS ps s l) = assert (l > 0) $ PS ps s (l-1)
 -- provide a separate proof that the ByteString is non-empty.
 unsafeLast :: ByteString -> Word8
 unsafeLast (PS x s l) = assert (l > 0) $
-    accursedUnutterablePerformIO $ withForeignPtr x $ \p -> peekByteOff p (s+l-1)
+    inlinePerformIO $ withForeignPtr x $ \p -> peekByteOff p (s+l-1)
 {-# INLINE unsafeLast #-}
 
 -- | Unsafe 'ByteString' index (subscript) operator, starting from 0, returning a 'Word8'
@@ -133,7 +133,7 @@ unsafeLast (PS x s l) = assert (l > 0) $
 -- other way.
 unsafeIndex :: ByteString -> Int -> Word8
 unsafeIndex (PS x s l) i = assert (i >= 0 && i < l) $
-    accursedUnutterablePerformIO $ withForeignPtr x $ \p -> peekByteOff p (s+i)
+    inlinePerformIO $ withForeignPtr x $ \p -> peekByteOff p (s+i)
 {-# INLINE unsafeIndex #-}
 
 -- | A variety of 'take' which omits the checks on @n@ so there is an
