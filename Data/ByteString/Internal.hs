@@ -94,7 +94,7 @@ import Foreign.C.Types          (CInt, CSize, CULong)
 import Foreign.C.String         (CString)
 
 import Data.Monoid              (Monoid(..))
-import Control.DeepSeq          (NFData)
+import Control.DeepSeq          (NFData(rnf))
 
 #if MIN_VERSION_base(3,0,0)
 import Data.String              (IsString(..))
@@ -212,7 +212,8 @@ instance Monoid ByteString where
     mappend = append
     mconcat = concat
 
-instance NFData ByteString
+instance NFData ByteString where
+    rnf (PS _ _ _) = ()
 
 instance Show ByteString where
     showsPrec p ps r = showsPrec p (unpackChars ps) r
