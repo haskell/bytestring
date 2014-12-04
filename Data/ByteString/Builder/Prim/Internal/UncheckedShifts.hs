@@ -1,4 +1,7 @@
 {-# LANGUAGE CPP, MagicHash #-}
+#if __GLASGOW_HASKELL__ >= 703
+{-# LANGUAGE Unsafe #-}
+#endif
 -- |
 -- Copyright   : (c) 2010 Simon Meier
 --

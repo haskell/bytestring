@@ -2,6 +2,9 @@
 #if __GLASGOW_HASKELL__
 {-# LANGUAGE MagicHash #-}
 #endif
+#if __GLASGOW_HASKELL__ >= 703
+{-# LANGUAGE Unsafe #-}
+#endif
 
 -- |
 -- Module      : Data.ByteString.Unsafe
