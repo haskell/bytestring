@@ -825,13 +825,13 @@ unfoldrN :: Int -> (a -> Maybe (Word8, a)) -> a -> (ByteString, Maybe a)
 unfoldrN i f x0
     | i < 0     = (empty, Just x0)
     | otherwise = unsafePerformIO $ createAndTrim' i $ \p -> go p x0 0
-  where go !p !x !n =
-          case f x of
-            Nothing      -> return (0, n, Nothing)
-            Just (w,x')
-             | n == i    -> return (0, n, Just x)
-             | otherwise -> do poke p w
-                               go (p `plusPtr` 1) x' (n+1)
+  where
+    go !p !x !n
+      | n == i    = return (0, n, Just x)
+      | otherwise = case f x of
+                      Nothing     -> return (0, n, Nothing)
+                      Just (w,x') -> do poke p w
+                                        go (p `plusPtr` 1) x' (n+1)
 {-# INLINE unfoldrN #-}
 
 -- ---------------------------------------------------------------------
