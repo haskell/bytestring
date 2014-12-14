@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP, BangPatterns #-}
 {-# OPTIONS_HADDOCK prune #-}
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE Trustworthy #-}
@@ -229,12 +229,6 @@ import Control.Exception    (bracket)
 import IO                   (bracket)
 #endif
 
-#define STRICT1(f) f a | a `seq` False = undefined
-#define STRICT2(f) f a b | a `seq` b `seq` False = undefined
-#define STRICT3(f) f a b c | a `seq` b `seq` c `seq` False = undefined
-#define STRICT4(f) f a b c d | a `seq` b `seq` c `seq` d `seq` False = undefined
-#define STRICT5(f) f a b c d e | a `seq` b `seq` c `seq` d `seq` e `seq` False = undefined
-#define STRICT5_(f) f a b c d _ | a `seq` b `seq` c `seq` d `seq` False = undefined
 
 ------------------------------------------------------------------------
 
@@ -782,8 +776,7 @@ readInt (Chunk x xs) = case w2c (B.unsafeHead x) of
 
     where loop :: Bool -> Int -> Int
                 -> S.ByteString -> ByteString -> Maybe (Int, ByteString)
-          STRICT5_(loop)
-          loop neg i n c cs
+          loop neg !i !n !c cs
               | B.null c = case cs of
                              Empty          -> end  neg i n c  cs
                              (Chunk c' cs') -> loop neg i n c' cs'
@@ -828,8 +821,7 @@ readInteger (Chunk c0 cs0) =
 
           loop :: Int -> Int -> [Integer]
                -> S.ByteString -> ByteString -> (Integer, ByteString)
-          STRICT5_(loop)
-          loop d acc ns c cs
+          loop !d !acc ns !c cs
               | B.null c = case cs of
                              Empty          -> combine d acc ns c cs
                              (Chunk c' cs') -> loop d acc ns c' cs'

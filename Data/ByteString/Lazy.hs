@@ -241,16 +241,6 @@ import Foreign.ForeignPtr       (withForeignPtr)
 import Foreign.Ptr
 import Foreign.Storable
 
--- -----------------------------------------------------------------------------
---
--- Useful macros, until we have bang patterns
---
-
-#define STRICT1(f) f a | a `seq` False = undefined
-#define STRICT2(f) f a b | a `seq` b `seq` False = undefined
-#define STRICT3(f) f a b c | a `seq` b `seq` c `seq` False = undefined
-#define STRICT4(f) f a b c d | a `seq` b `seq` c `seq` d `seq` False = undefined
-#define STRICT5(f) f a b c d e | a `seq` b `seq` c `seq` d `seq` e `seq` False = undefined
 
 -- -----------------------------------------------------------------------------
 -- Introducing and eliminating 'ByteString's
@@ -1172,8 +1162,7 @@ hGetContentsN k h = lazyRead -- TODO close on exceptions
 hGetN :: Int -> Handle -> Int -> IO ByteString
 hGetN k h n | n > 0 = readChunks n
   where
-    STRICT1(readChunks)
-    readChunks i = do
+    readChunks !i = do
         c <- S.hGet h (min k i)
         case S.length c of
             0 -> return Empty
@@ -1191,8 +1180,7 @@ hGetNonBlockingN :: Int -> Handle -> Int -> IO ByteString
 #if defined(__GLASGOW_HASKELL__)
 hGetNonBlockingN k h n | n > 0= readChunks n
   where
-    STRICT1(readChunks)
-    readChunks i = do
+    readChunks !i = do
         c <- S.hGetNonBlocking h (min k i)
         case S.length c of
             0 -> return Empty
@@ -1344,10 +1332,9 @@ findIndexOrEnd k (S.PS x s l) =
     S.accursedUnutterablePerformIO $
       withForeignPtr x $ \f -> go (f `plusPtr` s) 0
   where
-    STRICT2(go)
-    go ptr n | n >= l    = return l
-             | otherwise = do w <- peek ptr
-                              if k w
-                                then return n
-                                else go (ptr `plusPtr` 1) (n+1)
+    go !ptr !n | n >= l    = return l
+               | otherwise = do w <- peek ptr
+                                if k w
+                                  then return n
+                                  else go (ptr `plusPtr` 1) (n+1)
 {-# INLINE findIndexOrEnd #-}

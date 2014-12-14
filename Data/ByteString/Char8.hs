@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP, BangPatterns #-}
 #if __GLASGOW_HASKELL__
 {-# LANGUAGE MagicHash, UnboxedTuples #-}
 #endif
@@ -266,10 +266,6 @@ import IO			(bracket)
 #endif
 import Foreign
 
-#define STRICT1(f) f a | a `seq` False = undefined
-#define STRICT2(f) f a b | a `seq` b `seq` False = undefined
-#define STRICT3(f) f a b c | a `seq` b `seq` c `seq` False = undefined
-#define STRICT4(f) f a b c d | a `seq` b `seq` c `seq` d `seq` False = undefined
 
 ------------------------------------------------------------------------
 
@@ -820,8 +816,7 @@ breakSpace (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> 
 {-# INLINE breakSpace #-}
 
 firstspace :: Ptr Word8 -> Int -> Int -> IO Int
-STRICT3(firstspace)
-firstspace ptr n m
+firstspace !ptr !n !m
     | n >= m    = return n
     | otherwise = do w <- peekByteOff ptr n
                      if (not . isSpaceWord8) w then firstspace ptr (n+1) m else return n
@@ -839,8 +834,7 @@ dropSpace (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> d
 {-# INLINE dropSpace #-}
 
 firstnonspace :: Ptr Word8 -> Int -> Int -> IO Int
-STRICT3(firstnonspace)
-firstnonspace ptr n m
+firstnonspace !ptr !n !m
     | n >= m    = return n
     | otherwise = do w <- peekElemOff ptr n
                      if isSpaceWord8 w then firstnonspace ptr (n+1) m else return n
@@ -860,7 +854,6 @@ dropSpaceEnd (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -
 {-# INLINE dropSpaceEnd #-}
 
 lastnonspace :: Ptr Word8 -> Int -> IO Int
-STRICT2(lastnonspace)
 lastnonspace ptr n
     | n < 0     = return n
     | otherwise = do w <- peekElemOff ptr n
@@ -885,7 +878,6 @@ lines (PS _ _ 0) = []
 lines (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> do
         let ptr = p `plusPtr` s
 
-            STRICT1(loop)
             loop n = do
                 let q = memchr (ptr `plusPtr` n) 0x0a (fromIntegral (l-n))
                 if q == nullPtr
@@ -930,8 +922,7 @@ readInt as
             _   -> loop False 0 0 as
 
     where loop :: Bool -> Int -> Int -> ByteString -> Maybe (Int, ByteString)
-          STRICT4(loop)
-          loop neg i n ps
+          loop neg !i !n !ps
               | null ps   = end neg i n ps
               | otherwise =
                   case B.unsafeHead ps of
@@ -966,8 +957,7 @@ readInteger as
 
           loop :: Int -> Int -> [Integer]
                -> ByteString -> (Integer, ByteString)
-          STRICT4(loop)
-          loop d acc ns ps
+          loop !d !acc ns !ps
               | null ps   = combine d acc ns empty
               | otherwise =
                   case B.unsafeHead ps of

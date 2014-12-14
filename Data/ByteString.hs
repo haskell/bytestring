@@ -315,16 +315,6 @@ hWaitForInput _ _ = return ()
 unsafeDupablePerformIO = unsafePerformIO
 #endif
 
--- -----------------------------------------------------------------------------
---
--- Useful macros, until we have bang patterns
---
-
-#define STRICT1(f) f a | a `seq` False = undefined
-#define STRICT2(f) f a b | a `seq` b `seq` False = undefined
-#define STRICT3(f) f a b c | a `seq` b `seq` c `seq` False = undefined
-#define STRICT4(f) f a b c d | a `seq` b `seq` c `seq` d `seq` False = undefined
-#define STRICT5(f) f a b c d e | a `seq` b `seq` c `seq` d `seq` e `seq` False = undefined
 
 -- -----------------------------------------------------------------------------
 -- Introducing and eliminating 'ByteString's
@@ -493,8 +483,7 @@ map f (PS fp s len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a ->
     create len $ map_ 0 (a `plusPtr` s)
   where
     map_ :: Int -> Ptr Word8 -> Ptr Word8 -> IO ()
-    STRICT3(map_)
-    map_ n p1 p2
+    map_ !n !p1 !p2
        | n >= len = return ()
        | otherwise = do
             x <- peekByteOff p1 n
@@ -639,11 +628,10 @@ any _ (PS _ _ 0) = False
 any f (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \ptr ->
         go (ptr `plusPtr` s) (ptr `plusPtr` (s+l))
     where
-        STRICT2(go)
-        go p q | p == q    = return False
-               | otherwise = do c <- peek p
-                                if f c then return True
-                                       else go (p `plusPtr` 1) q
+        go !p !q | p == q    = return False
+                 | otherwise = do c <- peek p
+                                  if f c then return True
+                                         else go (p `plusPtr` 1) q
 {-# INLINE any #-}
 
 -- todo fuse
@@ -655,12 +643,11 @@ all _ (PS _ _ 0) = True
 all f (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \ptr ->
         go (ptr `plusPtr` s) (ptr `plusPtr` (s+l))
     where
-        STRICT2(go)
-        go p q | p == q     = return True  -- end of list
-               | otherwise  = do c <- peek p
-                                 if f c
-                                    then go (p `plusPtr` 1) q
-                                    else return False
+        go !p !q | p == q     = return True  -- end of list
+                 | otherwise  = do c <- peek p
+                                   if f c
+                                      then go (p `plusPtr` 1) q
+                                      else return False
 {-# INLINE all #-}
 
 ------------------------------------------------------------------------
@@ -697,8 +684,7 @@ mapAccumL f acc (PS fp o len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a 
     acc' <- withForeignPtr gp $ \p -> mapAccumL_ acc 0 (a `plusPtr` o) p
     return $! (acc', PS gp 0 len)
   where
-    STRICT4(mapAccumL_)
-    mapAccumL_ s n p1 p2
+    mapAccumL_ !s !n !p1 !p2
        | n >= len = return s
        | otherwise = do
             x <- peekByteOff p1 n
@@ -717,8 +703,7 @@ mapAccumR f acc (PS fp o len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a 
     acc' <- withForeignPtr gp $ \p -> mapAccumR_ acc (len-1) (a `plusPtr` o) p
     return $! (acc', PS gp 0 len)
   where
-    STRICT4(mapAccumR_)
-    mapAccumR_ s n p q
+    mapAccumR_ !s !n !p !q
        | n <  0    = return s
        | otherwise = do
             x  <- peekByteOff p n
@@ -746,8 +731,7 @@ scanl f v (PS fp s len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a ->
         poke q v
         scanl_ v 0 (a `plusPtr` s) (q `plusPtr` 1)
   where
-    STRICT4(scanl_)
-    scanl_ z n p q
+    scanl_ !z !n !p !q
         | n >= len  = return ()
         | otherwise = do
             x <- peekByteOff p n
@@ -777,8 +761,7 @@ scanr f v (PS fp s len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a ->
         poke (q `plusPtr` len) v
         scanr_ v (len-1) (a `plusPtr` s) q
   where
-    STRICT4(scanr_)
-    scanr_ z n p q
+    scanr_ !z !n !p !q
         | n <  0    = return ()
         | otherwise = do
             x <- peekByteOff p n
@@ -842,8 +825,7 @@ unfoldrN :: Int -> (a -> Maybe (Word8, a)) -> a -> (ByteString, Maybe a)
 unfoldrN i f x0
     | i < 0     = (empty, Just x0)
     | otherwise = unsafePerformIO $ createAndTrim' i $ \p -> go p x0 0
-  where STRICT3(go)
-        go p x n =
+  where go !p !x !n =
           case f x of
             Nothing      -> return (0, n, Nothing)
             Just (w,x')
@@ -957,12 +939,11 @@ spanByte c ps@(PS x s l) =
       withForeignPtr x $ \p ->
         go (p `plusPtr` s) 0
   where
-    STRICT2(go)
-    go p i | i >= l    = return (ps, empty)
-           | otherwise = do c' <- peekByteOff p i
-                            if c /= c'
-                                then return (unsafeTake i ps, unsafeDrop i ps)
-                                else go p (i+1)
+    go !p !i | i >= l    = return (ps, empty)
+             | otherwise = do c' <- peekByteOff p i
+                              if c /= c'
+                                  then return (unsafeTake i ps, unsafeDrop i ps)
+                                  else go p (i+1)
 {-# INLINE spanByte #-}
 
 {-# RULES
@@ -1001,8 +982,7 @@ splitWith _pred (PS _  _   0) = []
 splitWith pred_ (PS fp off len) = splitWith0 pred# off len fp
   where pred# c# = pred_ (W8# c#)
 
-        STRICT4(splitWith0)
-        splitWith0 pred' off' len' fp' =
+        splitWith0 !pred' !off' !len' !fp' =
           accursedUnutterablePerformIO $
             withForeignPtr fp $ \p ->
               splitLoop pred' p 0 off' len' fp'
@@ -1027,9 +1007,8 @@ splitWith pred_ (PS fp off len) = splitWith0 pred# off len fp
 splitWith _ (PS _ _ 0) = []
 splitWith p ps = loop p ps
     where
-        STRICT2(loop)
-        loop q qs = if null rest then [chunk]
-                                 else chunk : loop q (unsafeTail rest)
+        loop !q !qs = if null rest then [chunk]
+                                   else chunk : loop q (unsafeTail rest)
             where (chunk,rest) = break q qs
 #endif
 
@@ -1053,8 +1032,7 @@ split :: Word8 -> ByteString -> [ByteString]
 split _ (PS _ _ 0) = []
 split w (PS x s l) = loop 0
     where
-        STRICT1(loop)
-        loop n =
+        loop !n =
             let q = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
                       memchr (p `plusPtr` (s+n))
                              w (fromIntegral (l-n))
@@ -1079,7 +1057,6 @@ split (W8# w#) (PS fp off len) = splitWith' off len fp
                   -> ForeignPtr Word8
                   -> IO [ByteString]
 
-        STRICT5(splitLoop)
         splitLoop p idx' off' len' fp'
             | idx' >= len'  = return [PS fp' off' idx']
             | otherwise = do
@@ -1187,12 +1164,11 @@ elemIndexEnd :: Word8 -> ByteString -> Maybe Int
 elemIndexEnd ch (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
     go (p `plusPtr` s) (l-1)
   where
-    STRICT2(go)
-    go p i | i < 0     = return Nothing
-           | otherwise = do ch' <- peekByteOff p i
-                            if ch == ch'
-                                then return $ Just i
-                                else go p (i-1)
+    go !p !i | i < 0     = return Nothing
+             | otherwise = do ch' <- peekByteOff p i
+                              if ch == ch'
+                                  then return $ Just i
+                                  else go p (i-1)
 {-# INLINE elemIndexEnd #-}
 
 -- | /O(n)/ The 'elemIndices' function extends 'elemIndex', by returning
@@ -1201,11 +1177,10 @@ elemIndexEnd ch (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \
 elemIndices :: Word8 -> ByteString -> [Int]
 elemIndices w (PS x s l) = loop 0
     where
-        STRICT1(loop)
-        loop n = let q = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
+        loop !n = let q = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
                            memchr (p `plusPtr` (n+s))
                                                 w (fromIntegral (l - n))
-                 in if q == nullPtr
+                  in if q == nullPtr
                         then []
                         else let i = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
                                        return (q `minusPtr` (p `plusPtr` s))
@@ -1216,8 +1191,7 @@ elemIndices w (PS x s l) = loop 0
 -- much slower
 elemIndices :: Word8 -> ByteString -> [Int]
 elemIndices c ps = loop 0 ps
-   where STRICT2(loop)
-         loop _ ps' | null ps'            = []
+   where loop _ ps' | null ps'            = []
          loop n ps' | c == unsafeHead ps' = n : loop (n+1) (unsafeTail ps')
                     | otherwise           = loop (n+1) (unsafeTail ps')
 -}
@@ -1240,7 +1214,6 @@ count w (PS x s m) = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
      go (p `plusPtr` s) (fromIntegral m) 0
     where
         go :: Ptr Word8 -> CSize -> Int -> IO Int
-        STRICT3(go)
         go p l i = do
             q <- memchr p w l
             if q == nullPtr
@@ -1255,12 +1228,11 @@ count w (PS x s m) = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
 findIndex :: (Word8 -> Bool) -> ByteString -> Maybe Int
 findIndex k (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \f -> go (f `plusPtr` s) 0
   where
-    STRICT2(go)
-    go ptr n | n >= l    = return Nothing
-             | otherwise = do w <- peek ptr
-                              if k w
-                                then return (Just n)
-                                else go (ptr `plusPtr` 1) (n+1)
+    go !ptr !n | n >= l    = return Nothing
+               | otherwise = do w <- peek ptr
+                                if k w
+                                  then return (Just n)
+                                  else go (ptr `plusPtr` 1) (n+1)
 {-# INLINE findIndex #-}
 
 -- | The 'findIndices' function extends 'findIndex', by returning the
@@ -1268,10 +1240,9 @@ findIndex k (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \f ->
 findIndices :: (Word8 -> Bool) -> ByteString -> [Int]
 findIndices p ps = loop 0 ps
    where
-     STRICT2(loop)
-     loop n qs | null qs           = []
-               | p (unsafeHead qs) = n : loop (n+1) (unsafeTail qs)
-               | otherwise         =     loop (n+1) (unsafeTail qs)
+     loop !n !qs | null qs           = []
+                 | p (unsafeHead qs) = n : loop (n+1) (unsafeTail qs)
+                 | otherwise         =     loop (n+1) (unsafeTail qs)
 
 -- ---------------------------------------------------------------------
 -- Searching ByteStrings
@@ -1296,11 +1267,10 @@ filter k ps@(PS x s l)
         t <- go (f `plusPtr` s) p (f `plusPtr` (s + l))
         return $! t `minusPtr` p -- actual length
     where
-        STRICT3(go)
-        go f t end | f == end  = return t
-                   | otherwise = do
-                        w <- peek f
-                        if k w
+        go !f !t !end | f == end  = return t
+                      | otherwise = do
+                          w <- peek f
+                          if k w
                             then poke t w >> go (f `plusPtr` 1) (t `plusPtr` 1) end
                             else             go (f `plusPtr` 1) t               end
 {-# INLINE filter #-}
@@ -1431,8 +1401,7 @@ breakSubstring :: ByteString -- ^ String to search for
 
 breakSubstring pat src = search 0 src
   where
-    STRICT2(search)
-    search n s
+    search !n !s
         | null s             = (src,empty)      -- not found
         | pat `isPrefixOf` s = (take n src,s)
         | otherwise          = search (n+1) (unsafeTail s)
@@ -1450,7 +1419,6 @@ findSubstring f i = listToMaybe (findSubstrings f i)
 {-
 findSubstring pat str = search 0 str
     where
-        STRICT2(search)
         search n s
             = let x = pat `isPrefixOf` s
               in
@@ -1470,8 +1438,7 @@ findSubstrings pat str
     | null pat         = [0 .. length str]
     | otherwise        = search 0 str
   where
-    STRICT2(search)
-    search n s
+    search !n !s
         | null s             = []
         | pat `isPrefixOf` s = n : search (n+1) (unsafeTail s)
         | otherwise          =     search (n+1) (unsafeTail s)
@@ -1536,8 +1503,7 @@ zipWith' f (PS fp s l) (PS fq t m) = unsafeDupablePerformIO $
     create len $ zipWith_ 0 (a `plusPtr` s) (b `plusPtr` t)
   where
     zipWith_ :: Int -> Ptr Word8 -> Ptr Word8 -> Ptr Word8 -> IO ()
-    STRICT4(zipWith_)
-    zipWith_ n p1 p2 r
+    zipWith_ !n !p1 !p2 !r
        | n >= len = return ()
        | otherwise = do
             x <- peekByteOff p1 n
@@ -1583,26 +1549,23 @@ sort (PS input s l) = unsafeCreate l $ \p -> allocaArray 256 $ \arr -> do
     _ <- memset (castPtr arr) 0 (256 * fromIntegral (sizeOf (undefined :: CSize)))
     withForeignPtr input (\x -> countOccurrences arr (x `plusPtr` s) l)
 
-    let STRICT2(go)
-        go 256 _   = return ()
-        go i   ptr = do n <- peekElemOff arr i
-                        when (n /= 0) $ memset ptr (fromIntegral i) n >> return ()
-                        go (i + 1) (ptr `plusPtr` (fromIntegral n))
+    let go 256 !_   = return ()
+        go i   !ptr = do n <- peekElemOff arr i
+                         when (n /= 0) $ memset ptr (fromIntegral i) n >> return ()
+                         go (i + 1) (ptr `plusPtr` (fromIntegral n))
     go 0 p
   where
     -- | Count the number of occurrences of each byte.
     -- Used by 'sort'
     --
     countOccurrences :: Ptr CSize -> Ptr Word8 -> Int -> IO ()
-    STRICT3(countOccurrences)
-    countOccurrences counts str len = go 0
+    countOccurrences !counts !str !len = go 0
      where
-        STRICT1(go)
-        go i | i == len    = return ()
-             | otherwise = do k <- fromIntegral `fmap` peekElemOff str i
-                              x <- peekElemOff counts k
-                              pokeElemOff counts k (x + 1)
-                              go (i + 1)
+        go !i | i == len    = return ()
+              | otherwise = do k <- fromIntegral `fmap` peekElemOff str i
+                               x <- peekElemOff counts k
+                               pokeElemOff counts k (x + 1)
+                               go (i + 1)
 
 {-
 sort :: ByteString -> ByteString
@@ -2011,12 +1974,11 @@ findIndexOrEnd k (PS x s l) =
       withForeignPtr x $ \f ->
         go (f `plusPtr` s) 0
   where
-    STRICT2(go)
-    go ptr n | n >= l    = return l
-             | otherwise = do w <- peek ptr
-                              if k w
-                                then return n
-                                else go (ptr `plusPtr` 1) (n+1)
+    go !ptr !n | n >= l    = return l
+               | otherwise = do w <- peek ptr
+                                if k w
+                                  then return n
+                                  else go (ptr `plusPtr` 1) (n+1)
 {-# INLINE findIndexOrEnd #-}
 
 -- Common up near identical calls to `error' to reduce the number
@@ -2043,7 +2005,6 @@ moduleErrorMsg fun msg = "Data.ByteString." ++ fun ++ ':':' ':msg
 
 -- Find from the end of the string using predicate
 findFromEndUntil :: (Word8 -> Bool) -> ByteString -> Int
-STRICT2(findFromEndUntil)
 findFromEndUntil f ps@(PS x s l) =
     if null ps then 0
     else if f (unsafeLast ps) then l
