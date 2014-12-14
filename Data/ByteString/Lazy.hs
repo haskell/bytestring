@@ -809,16 +809,6 @@ split w (Chunk c0 cs0) = comb [] (S.split w c0) cs0
         comb acc (s:ss) cs           = revChunks (s:acc) : comb [] ss cs
 {-# INLINE split #-}
 
-{-
--- | Like 'splitWith', except that sequences of adjacent separators are
--- treated as a single separator. eg.
---
--- > tokens (=='a') "aabbaca" == ["bb","c"]
---
-tokens :: (Word8 -> Bool) -> ByteString -> [ByteString]
-tokens f = L.filter (not.null) . splitWith f
--}
-
 -- | The 'group' function takes a ByteString and returns a list of
 -- ByteStrings such that the concatenation of the result is equal to the
 -- argument.  Moreover, each sublist in the result contains only equal

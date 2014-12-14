@@ -1044,39 +1044,6 @@ split w (PS x s l) = loop 0
 
 {-# INLINE split #-}
 
-{-
--- slower. but stays inside Haskell.
-split _ (PS _  _   0) = []
-split (W8# w#) (PS fp off len) = splitWith' off len fp
-    where
-        splitWith' off' len' fp' = withPtr fp $ \p ->
-            splitLoop p 0 off' len' fp'
-
-        splitLoop :: Ptr Word8
-                  -> Int -> Int -> Int
-                  -> ForeignPtr Word8
-                  -> IO [ByteString]
-
-        splitLoop p idx' off' len' fp'
-            | idx' >= len'  = return [PS fp' off' idx']
-            | otherwise = do
-                (W8# x#) <- peekElemOff p (off'+idx')
-                if word2Int# w# ==# word2Int# x#
-                   then return (PS fp' off' idx' :
-                              splitWith' (off'+idx'+1) (len'-idx'-1) fp')
-                   else splitLoop p (idx'+1) off' len' fp'
--}
-
-{-
--- | Like 'splitWith', except that sequences of adjacent separators are
--- treated as a single separator. eg.
--- 
--- > tokens (=='a') "aabbaca" == ["bb","c"]
---
-tokens :: (Word8 -> Bool) -> ByteString -> [ByteString]
-tokens f = P.filter (not.null) . splitWith f
-{-# INLINE tokens #-}
--}
 
 -- | The 'group' function takes a ByteString and returns a list of
 -- ByteStrings such that the concatenation of the result is equal to the
@@ -1187,15 +1154,6 @@ elemIndices w (PS x s l) = loop 0
                              in i : loop (i+1)
 {-# INLINE elemIndices #-}
 
-{-
--- much slower
-elemIndices :: Word8 -> ByteString -> [Int]
-elemIndices c ps = loop 0 ps
-   where loop _ ps' | null ps'            = []
-         loop n ps' | c == unsafeHead ps' = n : loop (n+1) (unsafeTail ps')
-                    | otherwise           = loop (n+1) (unsafeTail ps')
--}
-
 -- | count returns the number of times its argument appears in the ByteString
 --
 -- > count = length . elemIndices
@@ -1205,22 +1163,6 @@ count :: Word8 -> ByteString -> Int
 count w (PS x s m) = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
     fmap fromIntegral $ c_count (p `plusPtr` s) (fromIntegral m) w
 {-# INLINE count #-}
-
-{-
---
--- around 30% slower
---
-count w (PS x s m) = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
-     go (p `plusPtr` s) (fromIntegral m) 0
-    where
-        go :: Ptr Word8 -> CSize -> Int -> IO Int
-        go p l i = do
-            q <- memchr p w l
-            if q == nullPtr
-                then return i
-                else do let k = fromIntegral $ q `minusPtr` p
-                        go (q `plusPtr` 1) (l-k-1) (i+1)
--}
 
 -- | The 'findIndex' function takes a predicate and a 'ByteString' and
 -- returns the index of the first element in the ByteString
@@ -1309,16 +1251,6 @@ find f p = case findIndex f p of
                     Just n -> Just (p `unsafeIndex` n)
                     _      -> Nothing
 {-# INLINE find #-}
-
-{-
---
--- fuseable, but we don't want to walk the whole array.
--- 
-find k = foldl findEFL Nothing
-    where findEFL a@(Just _) _ = a
-          findEFL _          c | k c       = Just c
-                               | otherwise = Nothing
--}
 
 -- | /O(n)/ The 'partition' function takes a predicate a ByteString and returns
 -- the pair of ByteStrings with elements which do and do not satisfy the
@@ -1416,18 +1348,6 @@ findSubstring f i = listToMaybe (findSubstrings f i)
 
 {-# DEPRECATED findSubstring "findSubstring is deprecated in favour of breakSubstring." #-}
 
-{-
-findSubstring pat str = search 0 str
-    where
-        search n s
-            = let x = pat `isPrefixOf` s
-              in
-                if null s
-                    then if x then Just n else Nothing
-                    else if x then Just n
-                              else     search (n+1) (unsafeTail s)
--}
-
 -- | Find the indexes of all (possibly overlapping) occurances of a
 -- substring in a string.
 --
@@ -1444,29 +1364,6 @@ findSubstrings pat str
         | otherwise          =     search (n+1) (unsafeTail s)
 
 {-# DEPRECATED findSubstrings "findSubstrings is deprecated in favour of breakSubstring." #-}
-
-{-
-{- This function uses the Knuth-Morris-Pratt string matching algorithm.  -}
-
-findSubstrings pat@(PS _ _ m) str@(PS _ _ n) = search 0 0
-  where
-      patc x = pat `unsafeIndex` x
-      strc x = str `unsafeIndex` x
-
-      -- maybe we should make kmpNext a UArray before using it in search?
-      kmpNext = listArray (0,m) (-1:kmpNextL pat (-1))
-      kmpNextL p _ | null p = []
-      kmpNextL p j = let j' = next (unsafeHead p) j + 1
-                         ps = unsafeTail p
-                         x = if not (null ps) && unsafeHead ps == patc j'
-                                then kmpNext Array.! j' else j'
-                        in x:kmpNextL ps j'
-      search i j = match ++ rest -- i: position in string, j: position in pattern
-        where match = if j == m then [(i - j)] else []
-              rest = if i == n then [] else search (i+1) (next (strc i) j + 1)
-      next c j | j >= 0 && (j == m || c /= patc j) = next c (kmpNext Array.! j)
-               | otherwise = j
--}
 
 -- ---------------------------------------------------------------------
 -- Zipping
@@ -1567,20 +1464,6 @@ sort (PS input s l) = unsafeCreate l $ \p -> allocaArray 256 $ \arr -> do
                                pokeElemOff counts k (x + 1)
                                go (i + 1)
 
-{-
-sort :: ByteString -> ByteString
-sort (PS x s l) = unsafeCreate l $ \p -> withForeignPtr x $ \f -> do
-        memcpy p (f `plusPtr` s) l
-        c_qsort p l -- inplace
--}
-
--- The 'sortBy' function is the non-overloaded version of 'sort'.
---
--- Try some linear sorts: radix, counting
--- Or mergesort.
---
--- sortBy :: (Word8 -> Word8 -> Ordering) -> ByteString -> ByteString
--- sortBy f ps = undefined
 
 -- ---------------------------------------------------------------------
 -- Low level constructors

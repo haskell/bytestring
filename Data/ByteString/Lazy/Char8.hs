@@ -759,13 +759,6 @@ unwords = intercalate (singleton ' ')
 -- Nothing, otherwise it just returns the int read, and the rest of the
 -- string.
 
-{-
--- Faster:
-
-data MaybeS = NothingS
-            | JustS {-# UNPACK #-} !Int {-# UNPACK #-} !ByteString
--}
-
 readInt :: ByteString -> Maybe (Int, ByteString)
 {-# INLINE readInt #-}
 readInt Empty        = Nothing
