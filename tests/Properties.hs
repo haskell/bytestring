@@ -1090,6 +1090,14 @@ prop_elemIndexEnd1CC c xs = (C.elemIndexEnd c (C.pack xs)) ==
 prop_elemIndexEnd2BB c xs = (P.elemIndexEnd c (P.pack xs)) ==
                            ((-) (length xs - 1) `fmap` P.elemIndex c (P.pack $ reverse xs))
 
+prop_elemIndexEnd1LL c xs = (L.elemIndexEnd c (L.pack xs)) ==
+                           (case L.elemIndex c (L.pack (reverse xs)) of
+                                Nothing -> Nothing
+                                Just i  -> Just (fromIntegral (length xs) -1 -i))
+
+prop_elemIndexEnd2LL c xs = (L.elemIndexEnd c (L.pack xs)) ==
+                           ((-) (fromIntegral (length xs) - 1) `fmap` L.elemIndex c (L.pack $ reverse xs))
+
 prop_elemIndicesBB xs c = elemIndices c xs == P.elemIndices c (P.pack xs)
 
 prop_findIndexBB xs a = (findIndex (==a) xs) == (P.findIndex (==a) (P.pack xs))
@@ -2333,6 +2341,8 @@ bb_tests =
     , testProperty "elemIndexEnd 1" prop_elemIndexEnd1BB
     , testProperty "elemIndexEnd 1" prop_elemIndexEnd1CC
     , testProperty "elemIndexEnd 2" prop_elemIndexEnd2BB
+    , testProperty "elemIndexEnd 1" prop_elemIndexEnd1LL
+    , testProperty "elemIndexEnd 2" prop_elemIndexEnd2LL
 --  , testProperty "words'"         prop_wordsBB'
 --  , testProperty "lines'"         prop_linesBB'
 --  , testProperty "dropSpaceEnd"   prop_dropSpaceEndBB

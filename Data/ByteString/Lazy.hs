@@ -166,6 +166,7 @@ module Data.ByteString.Lazy (
         -- * Indexing ByteStrings
         index,                  -- :: ByteString -> Int64 -> Word8
         elemIndex,              -- :: Word8 -> ByteString -> Maybe Int64
+        elemIndexEnd,           -- :: Word8 -> ByteString -> Maybe Int64
         elemIndices,            -- :: Word8 -> ByteString -> [Int64]
         findIndex,              -- :: (Word8 -> Bool) -> ByteString -> Maybe Int64
         findIndices,            -- :: (Word8 -> Bool) -> ByteString -> [Int64]
@@ -222,6 +223,7 @@ import qualified Data.ByteString.Unsafe as S
 import Data.ByteString.Lazy.Internal
 
 import Data.Monoid              (Monoid(..))
+import Control.Monad            (mplus)
 
 import Data.Word                (Word8)
 import Data.Int                 (Int64)
@@ -904,7 +906,6 @@ elemIndex w cs0 = elemIndex' 0 cs0
             Nothing -> elemIndex' (n + fromIntegral (S.length c)) cs
             Just i  -> Just (n + fromIntegral i)
 
-{-
 -- | /O(n)/ The 'elemIndexEnd' function returns the last index of the
 -- element in the given 'ByteString' which is equal to the query
 -- element, or 'Nothing' if there is no such element. The following
@@ -912,18 +913,16 @@ elemIndex w cs0 = elemIndex' 0 cs0
 --
 -- > elemIndexEnd c xs ==
 -- > (-) (length xs - 1) `fmap` elemIndex c (reverse xs)
---
-elemIndexEnd :: Word8 -> ByteString -> Maybe Int
-elemIndexEnd ch (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
-    go (p `plusPtr` s) (l-1)
+
+elemIndexEnd :: Word8 -> ByteString -> Maybe Int64
+elemIndexEnd w = elemIndexEnd' 0
   where
-    STRICT2(go)
-    go p i | i < 0     = return Nothing
-           | otherwise = do ch' <- peekByteOff p i
-                            if ch == ch'
-                                then return $ Just i
-                                else go p (i-1)
--}
+    elemIndexEnd' _ Empty = Nothing
+    elemIndexEnd' n (Chunk c cs) = let
+      n' = n + S.length c
+      i = fmap (fromIntegral . (n +)) $ S.elemIndexEnd w c
+      in n' `seq` i `seq` elemIndexEnd' n' cs `mplus` i
+
 -- | /O(n)/ The 'elemIndices' function extends 'elemIndex', by returning
 -- the indices of all elements equal to the query element, in ascending order.
 -- This implementation uses memchr(3).
