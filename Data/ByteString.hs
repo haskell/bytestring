@@ -929,6 +929,7 @@ breakByte c p = case elemIndex c p of
     Nothing -> (p,empty)
     Just n  -> (unsafeTake n p, unsafeDrop n p)
 {-# INLINE breakByte #-}
+{-# DEPRECATED breakByte "It is an internal function and should never have been exported. Use 'break (== x)' instead. (There are rewrite rules that handle this special case of 'break'.)" #-}
 
 -- | 'breakEnd' behaves like 'break' but from the end of the 'ByteString'
 -- 
