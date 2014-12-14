@@ -129,7 +129,7 @@ module Data.ByteString.Lazy.Char8 (
 
         -- * Predicates
         isPrefixOf,             -- :: ByteString -> ByteString -> Bool
---      isSuffixOf,             -- :: ByteString -> ByteString -> Bool
+        isSuffixOf,             -- :: ByteString -> ByteString -> Bool
 
         -- * Searching ByteStrings
 
@@ -197,7 +197,8 @@ module Data.ByteString.Lazy.Char8 (
 import Data.ByteString.Lazy 
         (fromChunks, toChunks, fromStrict, toStrict
         ,empty,null,length,tail,init,append,reverse,transpose,cycle
-        ,concat,take,drop,splitAt,intercalate,isPrefixOf,group,inits,tails,copy
+        ,concat,take,drop,splitAt,intercalate
+        ,isPrefixOf,isSuffixOf,group,inits,tails,copy
         ,hGetContents, hGet, hPut, getContents
         ,hGetNonBlocking, hPutNonBlocking
         ,putStr, hPutStr, interact)
