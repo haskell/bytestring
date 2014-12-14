@@ -1697,8 +1697,7 @@ hGetLine h =
          else haveBuf h_ buf 0 []
  where
 
-  fill h_@Handle__{haByteBuffer,haDevice} buf len xss =
-    len `seq` do
+  fill h_@Handle__{haByteBuffer,haDevice} buf !len xss = do
     (r,buf') <- Buffered.fillReadBuffer haDevice buf
     if r == 0
        then do writeIORef haByteBuffer buf{ bufR=0, bufL=0 }
@@ -1757,8 +1756,7 @@ hGetLine h = wantReadableHandle "Data.ByteString.hGetLine" h $ \ handle_ -> do
         hGetLineBufferedLoop handle_ ref buf 0 []
 
     hGetLineBufferedLoop handle_ ref
-            buf@Buffer{ bufRPtr=r, bufWPtr=w, bufBuf=raw } len xss =
-        len `seq` do
+            buf@Buffer{ bufRPtr=r, bufWPtr=w, bufBuf=raw } !len xss = do
         off <- findEOL r w raw
         let new_len = len + off - r
         xs <- mkPS raw r off

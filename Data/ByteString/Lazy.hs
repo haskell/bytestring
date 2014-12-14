@@ -479,9 +479,8 @@ foldl f z = go z
 -- | 'foldl\'' is like 'foldl', but strict in the accumulator.
 foldl' :: (a -> Word8 -> a) -> a -> ByteString -> a
 foldl' f z = go z
-  where go a _ | a `seq` False = undefined
-        go a Empty        = a
-        go a (Chunk c cs) = go (S.foldl' f a c) cs
+  where go !a Empty        = a
+        go !a (Chunk c cs) = go (S.foldl' f a c) cs
 {-# INLINE foldl' #-}
 
 -- | 'foldr', applied to a binary operator, a starting value
@@ -610,7 +609,7 @@ scanl f z = snd . foldl k (z,singleton z)
 -- > iterate f x == [x, f x, f (f x), ...]
 --
 iterate :: (Word8 -> Word8) -> Word8 -> ByteString
-iterate f = unfoldr (\x -> case f x of x' -> x' `seq` Just (x', x'))
+iterate f = unfoldr (\x -> case f x of !x' -> Just (x', x'))
 
 -- | @'repeat' x@ is an infinite ByteString, with @x@ the value of every
 -- element.
@@ -918,10 +917,10 @@ elemIndexEnd :: Word8 -> ByteString -> Maybe Int64
 elemIndexEnd w = elemIndexEnd' 0
   where
     elemIndexEnd' _ Empty = Nothing
-    elemIndexEnd' n (Chunk c cs) = let
-      n' = n + S.length c
-      i = fmap (fromIntegral . (n +)) $ S.elemIndexEnd w c
-      in n' `seq` i `seq` elemIndexEnd' n' cs `mplus` i
+    elemIndexEnd' n (Chunk c cs) =
+      let !n' = n + S.length c
+          !i  = fmap (fromIntegral . (n +)) $ S.elemIndexEnd w c
+      in elemIndexEnd' n' cs `mplus` i
 
 -- | /O(n)/ The 'elemIndices' function extends 'elemIndex', by returning
 -- the indices of all elements equal to the query element, in ascending order.
