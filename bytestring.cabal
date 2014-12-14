@@ -120,7 +120,7 @@ library
                         DeriveDataTypeable, BangPatterns,
                         NamedFieldPuns
 
-  ghc-options:      -Wall
+  ghc-options:      -Wall -fwarn-tabs
                     -O2
                     -fmax-simplifier-iterations=10
                     -fdicts-cheap
