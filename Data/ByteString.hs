@@ -237,15 +237,13 @@ import Control.Monad            (when)
 
 import Foreign.C.String         (CString, CStringLen)
 import Foreign.C.Types          (CSize)
+import Foreign.ForeignPtr       (ForeignPtr, withForeignPtr, touchForeignPtr)
 #if MIN_VERSION_base(4,5,0)
-import Foreign.ForeignPtr       (ForeignPtr, newForeignPtr, withForeignPtr
-                                ,touchForeignPtr)
 import Foreign.ForeignPtr.Unsafe(unsafeForeignPtrToPtr)
 #else
-import Foreign.ForeignPtr       (ForeignPtr, newForeignPtr, withForeignPtr
-                                ,touchForeignPtr, unsafeForeignPtrToPtr)
+import Foreign.ForeignPtr       (unsafeForeignPtrToPtr)
 #endif
-import Foreign.Marshal.Alloc    (allocaBytes, mallocBytes, reallocBytes, finalizerFree)
+import Foreign.Marshal.Alloc    (allocaBytes)
 import Foreign.Marshal.Array    (allocaArray)
 import Foreign.Ptr
 import Foreign.Storable         (Storable(..))
@@ -1780,10 +1778,10 @@ illegalBufferSize handle fn sz =
       msg = fn ++ ": illegal ByteString size " ++ showsPrec 9 sz []
 
 
--- | Read entire handle contents strictly into a 'ByteString'.
+-- | Read a handle's entire contents strictly into a 'ByteString'.
 --
--- This function reads chunks at a time, doubling the chunksize on each
--- read. The final buffer is then realloced to the appropriate size. For
+-- This function reads chunks at a time, increasing the chunk size on each
+-- read. The final string is then realloced to the appropriate size. For
 -- files > half of available memory, this may lead to memory exhaustion.
 -- Consider using 'readFile' in this case.
 --
@@ -1791,27 +1789,32 @@ illegalBufferSize handle fn sz =
 -- or if an exception is thrown.
 --
 hGetContents :: Handle -> IO ByteString
-hGetContents h = always (hClose h) $ do -- strict, so hClose
-    let start_size = 1024
-    p <- mallocBytes start_size
-    i <- hGetBuf h p start_size
-    if i < start_size
-        then do p' <- reallocBytes p i
-                fp <- newForeignPtr finalizerFree p'
-                return $! PS fp 0 i
-        else f p start_size
-    where
-        always = flip finally
-        f p s = do
-            let s' = 2 * s
-            p' <- reallocBytes p s'
-            i  <- hGetBuf h (p' `plusPtr` s) s
-            if i < s
-                then do let i' = s + i
-                        p'' <- reallocBytes p' i'
-                        fp  <- newForeignPtr finalizerFree p''
-                        return $! PS fp 0 i'
-                else f p' s'
+hGetContents hnd = do
+    bs <- hGetContentsSizeHint hnd 1024 2048
+            `finally` hClose hnd
+    -- don't waste too much space for small files:
+    if length bs < 900
+      then return $! copy bs
+      else return bs
+
+hGetContentsSizeHint :: Handle
+                     -> Int -- ^ first read size
+                     -> Int -- ^ initial buffer size increment
+                     -> IO ByteString
+hGetContentsSizeHint hnd =
+    readChunks []
+  where
+    readChunks chunks sz sz' = do
+      fp        <- mallocByteString sz
+      readcount <- withForeignPtr fp $ \buf -> hGetBuf hnd buf sz
+      let chunk = PS fp 0 readcount
+      -- We rely on the hGetBuf behaviour (not hGetBufSome) where it reads up
+      -- to the size we ask for, or EOF. So short reads indicate EOF.
+      if readcount < sz && sz > 0
+        then return $! concat (P.reverse (chunk : chunks))
+        else readChunks (chunk : chunks) sz' ((sz+sz') `min` 32752)
+             -- we grow the buffer sizes, but not too huge
+             -- we concatenate in the end anyway
 
 -- | getContents. Read stdin strictly. Equivalent to hGetContents stdin
 -- The 'Handle' is closed after the contents have been read.
@@ -1827,14 +1830,18 @@ getContents = hGetContents stdin
 interact :: (ByteString -> ByteString) -> IO ()
 interact transformer = putStr . transformer =<< getContents
 
--- | Read an entire file strictly into a 'ByteString'.  This is far more
--- efficient than reading the characters into a 'String' and then using
--- 'pack'.  It also may be more efficient than opening the file and
--- reading it using 'hGet'.
+-- | Read an entire file strictly into a 'ByteString'.
 --
 readFile :: FilePath -> IO ByteString
-readFile f = bracket (openBinaryFile f ReadMode) hClose
-    (\h -> hFileSize h >>= hGet h . fromIntegral)
+readFile f =
+    bracket (openBinaryFile f ReadMode) hClose $ \h -> do
+      filesz <- hFileSize h
+      let readsz = (fromIntegral filesz `max` 0) + 1
+      hGetContentsSizeHint h readsz (readsz `max` 255)
+      -- Our initial size is one bigger than the file size so that in the
+      -- typical case we will read the whole file in one go and not have
+      -- to allocate any more chunks. We'll still do the right thing if the
+      -- file size is 0 or is changed before we do the read.
 
 -- | Write a 'ByteString' to a file.
 writeFile :: FilePath -> ByteString -> IO ()
