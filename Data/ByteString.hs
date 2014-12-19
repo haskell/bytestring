@@ -1713,7 +1713,7 @@ putStrLn = hPutStrLn stdout
 -- is far more efficient than reading the characters into a 'String'
 -- and then using 'pack'. First argument is the Handle to read from, 
 -- and the second is the number of bytes to read. It returns the bytes
--- read, up to n, or 'null' if EOF has been reached.
+-- read, up to n, or 'empty' if EOF has been reached.
 --
 -- 'hGet' is implemented in terms of 'hGetBuf'.
 --
