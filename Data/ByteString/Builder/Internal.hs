@@ -385,7 +385,11 @@ runBuilderWith (Builder b) = b
 -- only exported for use in rewriting rules. Use 'mempty' otherwise.
 {-# INLINE[1] empty #-}
 empty :: Builder
-empty = Builder id
+empty = Builder (\cont -> (\range -> cont range))
+-- This eta expansion (hopefully) allows GHC to worker-wrapper the
+-- 'BufferRange' in the 'empty' base case of loops (since
+-- worker-wrapper requires (TODO: verify this) that all paths match
+-- against the wrapped argument.
 
 -- | Concatenate two 'Builder's. This function is only exported for use in rewriting
 -- rules. Use 'mappend' otherwise.
