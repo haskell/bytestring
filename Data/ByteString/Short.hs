@@ -11,7 +11,7 @@
 -- Maintainer  : duncan@community.haskell.org
 -- Stability   : stable
 -- Portability : ghc only
--- 
+--
 -- A compact representation suitable for storing short byte strings in memory.
 --
 -- In typical use cases it can be imported alongside "Data.ByteString", e.g.
@@ -59,7 +59,7 @@ module Data.ByteString.Short (
     -- This will take @1 + 1 + 3@ words (the @ThingId@ constructor +
     -- unpacked @Int@ + unpacked @ShortByteString@), plus the words for the
     -- string data.
-    
+
     -- ** Heap fragmentation
     -- | With GHC, the 'ByteString' representation uses /pinned/ memory,
     -- meaning it cannot be moved by the GC. This is usually the right thing to

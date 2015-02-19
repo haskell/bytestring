@@ -24,8 +24,8 @@
 -- More specifically these byte strings are taken to be in the
 -- subset of Unicode covered by code points 0-255. This covers
 -- Unicode Basic Latin, Latin-1 Supplement and C0+C1 Controls.
--- 
--- See: 
+--
+-- See:
 --
 --  * <http://www.unicode.org/charts/>
 --
@@ -462,11 +462,11 @@ replicate :: Int -> Char -> ByteString
 replicate w = B.replicate w . c2w
 {-# INLINE replicate #-}
 
--- | /O(n)/, where /n/ is the length of the result.  The 'unfoldr' 
--- function is analogous to the List \'unfoldr\'.  'unfoldr' builds a 
--- ByteString from a seed value.  The function takes the element and 
--- returns 'Nothing' if it is done producing the ByteString or returns 
--- 'Just' @(a,b)@, in which case, @a@ is the next character in the string, 
+-- | /O(n)/, where /n/ is the length of the result.  The 'unfoldr'
+-- function is analogous to the List \'unfoldr\'.  'unfoldr' builds a
+-- ByteString from a seed value.  The function takes the element and
+-- returns 'Nothing' if it is done producing the ByteString or returns
+-- 'Just' @(a,b)@, in which case, @a@ is the next character in the string,
 -- and @b@ is the seed value for further production.
 --
 -- Examples:
@@ -527,7 +527,7 @@ break f = B.break (f . w2c)
 -- | 'breakChar' breaks its ByteString argument at the first occurence
 -- of the specified char. It is more efficient than 'break' as it is
 -- implemented with @memchr(3)@. I.e.
--- 
+--
 -- > break (=='c') "abcd" == breakChar 'c' "abcd"
 --
 breakChar :: Char -> ByteString -> (ByteString, ByteString)
@@ -550,15 +550,15 @@ span f = B.span (f . w2c)
 -- and
 --
 -- > spanEnd (not . isSpace) ps
--- >    == 
--- > let (x,y) = span (not.isSpace) (reverse ps) in (reverse y, reverse x) 
+-- >    ==
+-- > let (x,y) = span (not.isSpace) (reverse ps) in (reverse y, reverse x)
 --
 spanEnd :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
 spanEnd f = B.spanEnd (f . w2c)
 {-# INLINE spanEnd #-}
 
 -- | 'breakEnd' behaves like 'break' but from the end of the 'ByteString'
--- 
+--
 -- breakEnd p == spanEnd (not.p)
 breakEnd :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
 breakEnd f = B.breakEnd (f . w2c)
@@ -568,7 +568,7 @@ breakEnd f = B.breakEnd (f . w2c)
 -- | 'breakChar' breaks its ByteString argument at the first occurence
 -- of the specified Char. It is more efficient than 'break' as it is
 -- implemented with @memchr(3)@. I.e.
--- 
+--
 -- > break (=='c') "abcd" == breakChar 'c' "abcd"
 --
 breakChar :: Char -> ByteString -> (ByteString, ByteString)
@@ -592,12 +592,12 @@ spanChar = B.spanByte . c2w
 -- > split '\n' "a\nb\nd\ne" == ["a","b","d","e"]
 -- > split 'a'  "aXaXaXa"    == ["","X","X","X",""]
 -- > split 'x'  "x"          == ["",""]
--- 
+--
 -- and
 --
 -- > intercalate [c] . split c == id
 -- > split == splitWith . (==)
--- 
+--
 -- As for all splitting functions in this library, this function does
 -- not copy the substrings, it just constructs new 'ByteStrings' that
 -- are slices of the original.
@@ -621,7 +621,7 @@ splitWith f = B.splitWith (f . w2c)
 {-
 -- | Like 'splitWith', except that sequences of adjacent separators are
 -- treated as a single separator. eg.
--- 
+--
 -- > tokens (=='a') "aabbaca" == ["bb","c"]
 --
 tokens :: (Char -> Bool) -> ByteString -> [ByteString]
@@ -650,7 +650,7 @@ elemIndex = B.elemIndex . c2w
 -- element, or 'Nothing' if there is no such element. The following
 -- holds:
 --
--- > elemIndexEnd c xs == 
+-- > elemIndexEnd c xs ==
 -- > (-) (length xs - 1) `fmap` elemIndex c (reverse xs)
 --
 elemIndexEnd :: Char -> ByteString -> Maybe Int
@@ -677,9 +677,9 @@ findIndices f = B.findIndices (f . w2c)
 -- | count returns the number of times its argument appears in the ByteString
 --
 -- > count = length . elemIndices
--- 
+--
 -- Also
---  
+--
 -- > count '\n' == length . lines
 --
 -- But more efficiently than using length on the intermediate list.
@@ -802,7 +802,7 @@ unsafeHead  = w2c . B.unsafeHead
 
 -- | 'breakSpace' returns the pair of ByteStrings when the argument is
 -- broken at the first whitespace byte. I.e.
--- 
+--
 -- > break isSpace == breakSpace
 --
 breakSpace :: ByteString -> (ByteString,ByteString)
@@ -824,7 +824,7 @@ firstspace !ptr !n !m
 -- | 'dropSpace' efficiently returns the 'ByteString' argument with
 -- white space Chars removed from the front. It is more efficient than
 -- calling dropWhile for removing whitespace. I.e.
--- 
+--
 -- > dropWhile isSpace == dropSpace
 --
 dropSpace :: ByteString -> ByteString
@@ -842,7 +842,7 @@ firstnonspace !ptr !n !m
 {-
 -- | 'dropSpaceEnd' efficiently returns the 'ByteString' argument with
 -- white space removed from the end. I.e.
--- 
+--
 -- > reverse . (dropWhile isSpace) . reverse == dropSpaceEnd
 --
 -- but it is more efficient than using multiple reverses.

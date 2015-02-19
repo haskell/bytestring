@@ -92,7 +92,7 @@ module Data.ByteString.Builder.Internal (
   , lazyByteStringCopy
   , lazyByteStringInsert
   , lazyByteStringThreshold
-  
+
   , shortByteString
 
   , maximalCopySize
