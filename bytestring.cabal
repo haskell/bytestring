@@ -125,6 +125,7 @@ library
                     -fmax-simplifier-iterations=10
                     -fdicts-cheap
                     -fspec-constr-count=6
+                    -fobject-code
 
   c-sources:         cbits/fpstring.c
                      cbits/itoa.c
