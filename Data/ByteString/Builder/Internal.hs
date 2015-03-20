@@ -129,10 +129,13 @@ module Data.ByteString.Builder.Internal (
 ) where
 
 import           Control.Arrow (second)
-import           Control.Applicative (Applicative(..), (<$>))
--- import           Control.Exception (return)
 
+#if !(MIN_VERSION_base(4,8,0))
 import           Data.Monoid
+import           Control.Applicative (Applicative(..))
+#endif
+import           Control.Applicative ((<$>))
+
 import qualified Data.ByteString               as S
 import qualified Data.ByteString.Internal      as S
 import qualified Data.ByteString.Lazy.Internal as L

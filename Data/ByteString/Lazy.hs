@@ -222,7 +222,9 @@ import qualified Data.ByteString.Internal as S
 import qualified Data.ByteString.Unsafe as S
 import Data.ByteString.Lazy.Internal
 
+#if !(MIN_VERSION_base(4,8,0))
 import Data.Monoid              (Monoid(..))
+#endif
 import Control.Monad            (mplus)
 
 import Data.Word                (Word8)

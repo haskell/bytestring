@@ -254,7 +254,9 @@ import System.IO                (stdin,stdout,hClose,hFileSize
                                 ,IOMode(..))
 import System.IO.Error          (mkIOError, illegalOperationErrorType)
 
+#if !(MIN_VERSION_base(4,8,0))
 import Data.Monoid              (Monoid(..))
+#endif
 
 #if !defined(__GLASGOW_HASKELL__)
 import System.IO.Unsafe

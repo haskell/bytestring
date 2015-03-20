@@ -86,14 +86,19 @@ import           Foreign
 
 
 #if defined(__GLASGOW_HASKELL__) && defined(INTEGER_GMP)
+
+#if !(MIN_VERSION_base(4,8,0))
 import           Data.Monoid (mappend)
+# endif
 import           Foreign.C.Types
 
 import qualified Data.ByteString.Builder.Prim.Internal          as P
 import           Data.ByteString.Builder.Prim.Internal.UncheckedShifts
                    ( caseWordSize_32_64 )
 
+# if __GLASGOW_HASKELL__ < 710
 import           GHC.Num     (quotRemInteger)
+# endif
 import           GHC.Types   (Int(..))
 
 

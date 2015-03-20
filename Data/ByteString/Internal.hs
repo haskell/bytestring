@@ -93,7 +93,9 @@ import Foreign.C.Types          (CInt, CSize, CULong)
 #endif
 import Foreign.C.String         (CString)
 
+#if !(MIN_VERSION_base(4,8,0))
 import Data.Monoid              (Monoid(..))
+#endif
 import Control.DeepSeq          (NFData(rnf))
 
 #if MIN_VERSION_base(3,0,0)

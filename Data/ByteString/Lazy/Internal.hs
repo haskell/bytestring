@@ -53,7 +53,9 @@ import qualified Data.ByteString          as S (length, take, drop)
 import Data.Word        (Word8)
 import Foreign.Storable (Storable(sizeOf))
 
+#if !(MIN_VERSION_base(4,8,0))
 import Data.Monoid      (Monoid(..))
+#endif
 import Control.DeepSeq  (NFData, rnf)
 
 #if MIN_VERSION_base(3,0,0)
