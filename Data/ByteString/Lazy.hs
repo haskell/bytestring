@@ -1017,8 +1017,11 @@ filterNotByte w (LPS xs) = LPS (filterMap (P.filterNotByte w) xs)
 -- > partition p bs == (filter p xs, filter (not . p) xs)
 --
 partition :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
-partition f p = (filter f p, filter (not . f) p)
---TODO: use a better implementation
+partition _ Empty = (Empty, Empty)
+partition p (Chunk x xs) = (chunk t ts, chunk f fs)
+  where
+    (t,   f) = S.partition p x
+    (ts, fs) = partition   p xs
 
 -- ---------------------------------------------------------------------
 -- Searching for substrings

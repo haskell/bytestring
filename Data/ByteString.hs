@@ -231,7 +231,7 @@ import Data.Maybe               (isJust, listToMaybe)
 #ifndef __NHC__
 import Control.Exception        (finally, bracket, assert, throwIO)
 #else
-import Control.Exception	(bracket, finally)
+import Control.Exception       (bracket, finally)
 #endif
 import Control.Monad            (when)
 
@@ -1259,14 +1259,42 @@ find f p = case findIndex f p of
 -- > partition p bs == (filter p xs, filter (not . p) xs)
 --
 partition :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
-partition p bs = (filter p bs, filter (not . p) bs)
---TODO: use a better implementation
+partition f s = unsafeDupablePerformIO $
+    do fp' <- mallocByteString len
+       withForeignPtr fp' $ \p ->
+           do let end = p `plusPtr` (len - 1)
+              mid <- sep 0 p end
+              rev mid end
+              let i = mid `minusPtr` p
+              return (PS fp' 0 i,
+                      PS fp' i (len - i))
+  where
+    len  = length s
+    incr = (`plusPtr` 1)
+    decr = (`plusPtr` (-1))
 
--- ---------------------------------------------------------------------
--- Searching for substrings
+    sep !i !p1 !p2
+       | i == len  = return p1
+       | f w       = do poke p1 w
+                        sep (i + 1) (incr p1) p2
+       | otherwise = do poke p2 w
+                        sep (i + 1) p1 (decr p2)
+      where
+        w = s `unsafeIndex` i
 
--- | /O(n)/ The 'isPrefixOf' function takes two ByteStrings and returns 'True'
--- iff the first is a prefix of the second.
+    rev !p1 !p2
+      | p1 >= p2  = return ()
+      | otherwise = do a <- peek p1
+                       b <- peek p2
+                       poke p1 b
+                       poke p2 a
+                       rev (incr p1) (decr p2)
+
+-- --------------------------------------------------------------------
+-- Sarching for substrings
+
+-- |/O(n)/ The 'isPrefixOf' function takes two ByteStrings and returns 'True'
+-- if the first is a prefix of the second.
 isPrefixOf :: ByteString -> ByteString -> Bool
 isPrefixOf (PS x1 s1 l1) (PS x2 s2 l2)
     | l1 == 0   = True
