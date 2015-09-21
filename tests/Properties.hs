@@ -1168,6 +1168,10 @@ prop_prefixBB xs ys = isPrefixOf xs ys == (P.pack xs `P.isPrefixOf` P.pack ys)
 prop_suffixBB xs ys = isSuffixOf xs ys == (P.pack xs `P.isSuffixOf` P.pack ys)
 prop_suffixLL xs ys = isSuffixOf xs ys == (L.pack xs `L.isSuffixOf` L.pack ys)
 
+prop_stripPrefixBB xs ys = (P.pack <$> stripPrefix xs ys) == (P.pack xs `P.stripPrefix` P.pack ys)
+prop_stripSuffixBB xs ys = (P.pack <$> stripSuffix xs ys) == (P.pack xs `P.stripSuffix` P.pack ys)
+   where stripSuffix x y = reverse <$> stripPrefix (reverse x) (reverse y)
+
 prop_copyBB xs = let p = P.pack xs in P.copy p == p
 prop_copyLL xs = let p = L.pack xs in L.copy p == p
 
@@ -2148,7 +2152,9 @@ bb_tests =
 --  , testProperty "dropSpaceEnd"   prop_dropSpaceEndBB
     , testProperty "unfoldr"        prop_unfoldrBB
     , testProperty "prefix"         prop_prefixBB
+    , testProperty "stripPrefix"    prop_stripPrefixBB
     , testProperty "suffix"         prop_suffixBB
+    , testProperty "stripSuffix"    prop_stripSuffixBB
     , testProperty "suffix"         prop_suffixLL
     , testProperty "copy"           prop_copyBB
     , testProperty "copy"           prop_copyLL
