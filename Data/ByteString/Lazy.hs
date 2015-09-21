@@ -137,6 +137,8 @@ module Data.ByteString.Lazy (
         groupBy,                -- :: (Word8 -> Word8 -> Bool) -> ByteString -> [ByteString]
         inits,                  -- :: ByteString -> [ByteString]
         tails,                  -- :: ByteString -> [ByteString]
+        stripPrefix,            -- :: ByteString -> ByteString -> Maybe ByteString
+        stripSuffix,            -- :: ByteString -> ByteString -> Maybe ByteString
 
         -- ** Breaking into many substrings
         split,                  -- :: Word8 -> ByteString -> [ByteString]
@@ -1034,6 +1036,19 @@ isPrefixOf (Chunk x xs) (Chunk y ys)
   where (xh,xt) = S.splitAt (S.length y) x
         (yh,yt) = S.splitAt (S.length x) y
 
+-- | /O(n)/ The 'stripPrefix' function takes two ByteStrings and returns 'Just'
+-- the remainder of the second iff the first is its prefix, and otherwise
+-- 'Nothing'.
+stripPrefix :: ByteString -> ByteString -> Maybe ByteString
+stripPrefix Empty bs  = Just bs
+stripPrefix _ Empty  = Nothing
+stripPrefix (Chunk x xs) (Chunk y ys)
+    | S.length x == S.length y = if x == y then stripPrefix xs ys else Nothing
+    | S.length x <  S.length y = do yt <- S.stripPrefix x y
+                                    stripPrefix xs (Chunk yt ys)
+    | otherwise                = do xt <- S.stripPrefix y x
+                                    stripPrefix (Chunk xt xs) ys
+
 -- | /O(n)/ The 'isSuffixOf' function takes two ByteStrings and returns 'True'
 -- iff the first is a suffix of the second.
 --
@@ -1043,6 +1058,13 @@ isPrefixOf (Chunk x xs) (Chunk y ys)
 --
 isSuffixOf :: ByteString -> ByteString -> Bool
 isSuffixOf x y = reverse x `isPrefixOf` reverse y
+--TODO: a better implementation
+
+-- | /O(n)/ The 'stripSuffix' function takes two ByteStrings and returns 'Just'
+-- the remainder of the second iff the first is its suffix, and otherwise
+-- 'Nothing'.
+stripSuffix :: ByteString -> ByteString -> Maybe ByteString
+stripSuffix x y = reverse <$> stripPrefix (reverse x) (reverse y)
 --TODO: a better implementation
 
 -- ---------------------------------------------------------------------
