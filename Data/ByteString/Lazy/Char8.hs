@@ -116,6 +116,8 @@ module Data.ByteString.Lazy.Char8 (
         groupBy,                -- :: (Char -> Char -> Bool) -> ByteString -> [ByteString]
         inits,                  -- :: ByteString -> [ByteString]
         tails,                  -- :: ByteString -> [ByteString]
+        stripPrefix,            -- :: ByteString -> ByteString -> Maybe ByteString
+        stripSuffix,            -- :: ByteString -> ByteString -> Maybe ByteString
 
         -- ** Breaking into many substrings
         split,                  -- :: Char -> ByteString -> [ByteString]
@@ -199,6 +201,7 @@ import Data.ByteString.Lazy
         ,empty,null,length,tail,init,append,reverse,transpose,cycle
         ,concat,take,drop,splitAt,intercalate
         ,isPrefixOf,isSuffixOf,group,inits,tails,copy
+        ,stripPrefix,stripSuffix
         ,hGetContents, hGet, hPut, getContents
         ,hGetNonBlocking, hPutNonBlocking
         ,putStr, hPutStr, interact)

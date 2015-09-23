@@ -124,8 +124,8 @@ module Data.ByteString (
         groupBy,                -- :: (Word8 -> Word8 -> Bool) -> ByteString -> [ByteString]
         inits,                  -- :: ByteString -> [ByteString]
         tails,                  -- :: ByteString -> [ByteString]
-        stripPrefix,            -- :: ByteString -> ByteString -> ByteString
-        stripSuffix,            -- :: ByteString -> ByteString -> ByteString
+        stripPrefix,            -- :: ByteString -> ByteString -> Maybe ByteString
+        stripSuffix,            -- :: ByteString -> ByteString -> Maybe ByteString
 
         -- ** Breaking into many substrings
         split,                  -- :: Word8 -> ByteString -> [ByteString]
