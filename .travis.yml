@@ -21,11 +21,9 @@ before_install:
  - cabal --version
 
 install:
- - cabal sandbox delete
- - cabal sandbox init
  - travis_retry cabal update
  # can't use "cabal install --only-dependencies --enable-tests" due to dep-cycle
- - cabal install QuickCheck byteorder dlist mtl "deepseq >=1.3.0.2 && <1.4" test-framework-hunit test-framework-quickcheck2
+ - cabal install QuickCheck byteorder dlist mtl "deepseq >=1.3.0.2 && <1.4" test-framework-hunit test-framework-quickcheck2 --force-reinstalls
 
 script:
  - cabal configure --enable-tests -v2
