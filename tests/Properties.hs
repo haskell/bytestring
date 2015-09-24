@@ -2289,7 +2289,7 @@ ll_tests =
     , testProperty "all"                prop_all
     , testProperty "maximum"            prop_maximum
     , testProperty "minimum"            prop_minimum
-    --, testProperty "replicate 1"        prop_replicate1
+    , testProperty "replicate 1"        prop_replicate1
     , testProperty "replicate 2"        prop_replicate2
     , testProperty "take"               prop_take1
     , testProperty "drop"               prop_drop1
