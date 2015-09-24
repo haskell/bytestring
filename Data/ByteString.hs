@@ -21,7 +21,7 @@
 -- Maintainer  : dons00@gmail.com, duncan@community.haskell.org
 -- Stability   : stable
 -- Portability : portable
--- 
+--
 -- A time and space-efficient implementation of byte vectors using
 -- packed Word8 arrays, suitable for high performance use, both in terms
 -- of large data quantities, or high speed requirements. Byte vectors
@@ -339,17 +339,17 @@ singleton c = unsafeCreate 1 $ \p -> poke p c
 --
 -- is compiled to:
 --
---  case mallocByteString 2 of 
---      ForeignPtr f internals -> 
---           case writeWord8OffAddr# f 0 255 of _ -> 
+--  case mallocByteString 2 of
+--      ForeignPtr f internals ->
+--           case writeWord8OffAddr# f 0 255 of _ ->
 --           case writeWord8OffAddr# f 0 127 of _ ->
---           case eqAddr# f f of 
---                  False -> case compare (GHC.Prim.plusAddr# f 0) 
+--           case eqAddr# f f of
+--                  False -> case compare (GHC.Prim.plusAddr# f 0)
 --                                        (GHC.Prim.plusAddr# f 0)
 --
 --
 
--- | /O(n)/ Convert a '[Word8]' into a 'ByteString'. 
+-- | /O(n)/ Convert a '[Word8]' into a 'ByteString'.
 --
 -- For applications with large numbers of string literals, pack can be a
 -- bottleneck. In such cases, consider using packAddress (GHC only).
@@ -792,11 +792,11 @@ replicate w c
     | otherwise = unsafeCreate w $ \ptr ->
                       memset ptr c (fromIntegral w) >> return ()
 
--- | /O(n)/, where /n/ is the length of the result.  The 'unfoldr' 
--- function is analogous to the List \'unfoldr\'.  'unfoldr' builds a 
--- ByteString from a seed value.  The function takes the element and 
--- returns 'Nothing' if it is done producing the ByteString or returns 
--- 'Just' @(a,b)@, in which case, @a@ is the next byte in the string, 
+-- | /O(n)/, where /n/ is the length of the result.  The 'unfoldr'
+-- function is analogous to the List \'unfoldr\'.  'unfoldr' builds a
+-- ByteString from a seed value.  The function takes the element and
+-- returns 'Nothing' if it is done producing the ByteString or returns
+-- 'Just' @(a,b)@, in which case, @a@ is the next byte in the string,
 -- and @b@ is the seed value for further production.
 --
 -- Examples:
@@ -887,7 +887,7 @@ dropWhile f ps = unsafeDrop (findIndexOrEnd (not . f) ps) ps
 --
 break :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
 break p ps = case findIndexOrEnd p ps of n -> (unsafeTake n ps, unsafeDrop n ps)
-#if __GLASGOW_HASKELL__ 
+#if __GLASGOW_HASKELL__
 {-# INLINE [1] break #-}
 #endif
 
@@ -903,7 +903,7 @@ break p ps = case findIndexOrEnd p ps of n -> (unsafeTake n ps, unsafeDrop n ps)
 -- | 'breakByte' breaks its ByteString argument at the first occurence
 -- of the specified byte. It is more efficient than 'break' as it is
 -- implemented with @memchr(3)@. I.e.
--- 
+--
 -- > break (=='c') "abcd" == breakByte 'c' "abcd"
 --
 breakByte :: Word8 -> ByteString -> (ByteString, ByteString)
@@ -914,7 +914,7 @@ breakByte c p = case elemIndex c p of
 {-# DEPRECATED breakByte "It is an internal function and should never have been exported. Use 'break (== x)' instead. (There are rewrite rules that handle this special case of 'break'.)" #-}
 
 -- | 'breakEnd' behaves like 'break' but from the end of the 'ByteString'
--- 
+--
 -- breakEnd p == spanEnd (not.p)
 breakEnd :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
 breakEnd  p ps = splitAt (findFromEndUntil p ps) ps
@@ -961,8 +961,8 @@ spanByte c ps@(PS x s l) =
 -- and
 --
 -- > spanEnd (not . isSpace) ps
--- >    == 
--- > let (x,y) = span (not.isSpace) (reverse ps) in (reverse y, reverse x) 
+-- >    ==
+-- > let (x,y) = span (not.isSpace) (reverse ps) in (reverse y, reverse x)
 --
 spanEnd :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
 spanEnd  p ps = splitAt (findFromEndUntil (not.p) ps) ps
@@ -1018,12 +1018,12 @@ splitWith p ps = loop p ps
 -- > split '\n' "a\nb\nd\ne" == ["a","b","d","e"]
 -- > split 'a'  "aXaXaXa"    == ["","X","X","X",""]
 -- > split 'x'  "x"          == ["",""]
--- 
+--
 -- and
 --
 -- > intercalate [c] . split c == id
 -- > split == splitWith . (==)
--- 
+--
 -- As for all splitting functions in this library, this function does
 -- not copy the substrings, it just constructs new 'ByteStrings' that
 -- are slices of the original.
@@ -1053,7 +1053,7 @@ split w (PS x s l) = loop 0
 -- > group "Mississippi" = ["M","i","ss","i","ss","i","pp","i"]
 --
 -- It is a special case of 'groupBy', which allows the programmer to
--- supply their own equality test. It is about 40% faster than 
+-- supply their own equality test. It is about 40% faster than
 -- /groupBy (==)/
 group :: ByteString -> [ByteString]
 group xs
@@ -1110,7 +1110,7 @@ index ps n
 
 -- | /O(n)/ The 'elemIndex' function returns the index of the first
 -- element in the given 'ByteString' which is equal to the query
--- element, or 'Nothing' if there is no such element. 
+-- element, or 'Nothing' if there is no such element.
 -- This implementation uses memchr(3).
 elemIndex :: Word8 -> ByteString -> Maybe Int
 elemIndex c (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> do
@@ -1124,7 +1124,7 @@ elemIndex c (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
 -- element, or 'Nothing' if there is no such element. The following
 -- holds:
 --
--- > elemIndexEnd c xs == 
+-- > elemIndexEnd c xs ==
 -- > (-) (length xs - 1) `fmap` elemIndex c (reverse xs)
 --
 elemIndexEnd :: Word8 -> ByteString -> Maybe Int
@@ -1278,7 +1278,7 @@ isPrefixOf (PS x1 s1 l1) (PS x2 s2 l2)
 
 -- | /O(n)/ The 'isSuffixOf' function takes two ByteStrings and returns 'True'
 -- iff the first is a suffix of the second.
--- 
+--
 -- The following holds:
 --
 -- > isSuffixOf x y == reverse x `isPrefixOf` reverse y
@@ -1320,23 +1320,45 @@ isInfixOf p s = isJust (findSubstring p s)
 -- >     where (h,t) = breakSubstring x y
 --
 -- To skip to the first occurence of a string:
--- 
--- > snd (breakSubstring x y) 
+--
+-- > snd (breakSubstring x y)
 --
 -- To take the parts of a string before a delimiter:
 --
--- > fst (breakSubstring x y) 
+-- > fst (breakSubstring x y)
 --
+-- Note that calling `breakSubstring x` does some preprocessing work, so
+-- you should avoid uneccesarily duplicating breakSubstring calls with the same
+-- pattern.
+
 breakSubstring :: ByteString -- ^ String to search for
                -> ByteString -- ^ String to search in
                -> (ByteString,ByteString) -- ^ Head and tail of string broken at substring
-
-breakSubstring pat src = search 0 src
+breakSubstring pat =
+  case lp of
+    0 -> \src -> (empty,src)
+    1 -> breakByte (unsafeHead pat)
+    _ -> karpRabin
   where
-    search !n !s
-        | null s             = (src,empty)      -- not found
-        | pat `isPrefixOf` s = (take n src,s)
-        | otherwise          = search (n+1) (unsafeTail s)
+    lp          = length pat
+    k           = 2891336453 :: Word32
+    rollingHash = foldl' (\h b -> h * k + fromIntegral b) 0
+    hp          = rollingHash pat
+    m           = k ^ lp
+    karpRabin src
+      | length src < lp = (src,empty)
+      | otherwise = search (rollingHash $ unsafeTake lp src) 0
+      where
+        search !hs !n
+            | hp == hs && pat `isPrefixOf` s = (unsafeTake n src,s)
+            | length src - n <= lp           = (src,empty) -- not found
+            | otherwise                      = search hs' (n+1)
+          where
+            get = fromIntegral . unsafeIndex src
+            s   = unsafeDrop n src
+            hs' = hs * k +
+                  get (n + lp) -
+                  m * get n
 
 -- | Get the first index of a substring in another string,
 --   or 'Nothing' if the string is not found.
@@ -1344,7 +1366,11 @@ breakSubstring pat src = search 0 src
 findSubstring :: ByteString -- ^ String to search for.
               -> ByteString -- ^ String to seach in.
               -> Maybe Int
-findSubstring f i = listToMaybe (findSubstrings f i)
+findSubstring pat src
+    | null pat && null src = Just 0
+    | null b = Nothing
+    | otherwise = Just (length a)
+  where (a, b) = breakSubstring pat src
 
 {-# DEPRECATED findSubstring "findSubstring is deprecated in favour of breakSubstring." #-}
 
@@ -1354,14 +1380,16 @@ findSubstring f i = listToMaybe (findSubstrings f i)
 findSubstrings :: ByteString -- ^ String to search for.
                -> ByteString -- ^ String to seach in.
                -> [Int]
-findSubstrings pat str
-    | null pat         = [0 .. length str]
-    | otherwise        = search 0 str
-  where
-    search !n !s
-        | null s             = []
-        | pat `isPrefixOf` s = n : search (n+1) (unsafeTail s)
-        | otherwise          =     search (n+1) (unsafeTail s)
+findSubstrings pat src
+    | null pat        = [0 .. ls]
+    | otherwise       = search 0
+  where lp = length pat
+        ls = length src
+        search !n
+            | (n > ls - lp) || null b = []
+            | otherwise = let k = n + length a
+                          in  k : search (k + lp)
+          where (a, b) = breakSubstring pat (unsafeDrop n src)
 
 {-# DEPRECATED findSubstrings "findSubstrings is deprecated in favour of breakSubstring." #-}
 
@@ -1380,7 +1408,7 @@ zip ps qs
 -- | 'zipWith' generalises 'zip' by zipping with the function given as
 -- the first argument, instead of a tupling function.  For example,
 -- @'zipWith' (+)@ is applied to two ByteStrings to produce the list of
--- corresponding sums. 
+-- corresponding sums.
 zipWith :: (Word8 -> Word8 -> a) -> ByteString -> ByteString -> [a]
 zipWith f ps qs
     | null ps || null qs = []
@@ -1507,12 +1535,12 @@ packCStringLen (_, len) =
 
 ------------------------------------------------------------------------
 
--- | /O(n)/ Make a copy of the 'ByteString' with its own storage. 
+-- | /O(n)/ Make a copy of the 'ByteString' with its own storage.
 -- This is mainly useful to allow the rest of the data pointed
 -- to by the 'ByteString' to be garbage collected, for example
--- if a large string has been read in, and only a small part of it 
+-- if a large string has been read in, and only a small part of it
 -- is needed in the rest of the program.
--- 
+--
 copy :: ByteString -> ByteString
 copy (PS x s l) = unsafeCreate l $ \p -> withForeignPtr x $ \f ->
     memcpy p (f `plusPtr` s) (fromIntegral l)
@@ -1683,7 +1711,7 @@ hPutNonBlocking h bs@(PS ps s l) = do
 hPutNonBlocking h bs = hPut h bs >> return empty
 #endif
 
--- | A synonym for @hPut@, for compatibility 
+-- | A synonym for @hPut@, for compatibility
 hPutStr :: Handle -> ByteString -> IO ()
 hPutStr = hPut
 
@@ -1713,7 +1741,7 @@ putStrLn = hPutStrLn stdout
 
 -- | Read a 'ByteString' directly from the specified 'Handle'.  This
 -- is far more efficient than reading the characters into a 'String'
--- and then using 'pack'. First argument is the Handle to read from, 
+-- and then using 'pack'. First argument is the Handle to read from,
 -- and the second is the number of bytes to read. It returns the bytes
 -- read, up to n, or 'empty' if EOF has been reached.
 --
