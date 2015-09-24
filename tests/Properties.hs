@@ -152,7 +152,7 @@ prop_concatBP       = forAll (sized $ \n -> resize (n `div` 2) arbitrary) $
 prop_nullBP         = L.null                 `eq1`  P.null
 prop_reverseBP      = L.reverse              `eq1`  P.reverse
 
-prop_transposeBP    = L.transpose            `eq1`  P.transpose
+--prop_transposeBP    = L.transpose            `eq1`  P.transpose
 prop_groupBP        = L.group                `eq1`  P.group
 prop_groupByBP      = L.groupBy              `eq2`  P.groupBy
 prop_initsBP        = L.inits                `eq1`  P.inits
@@ -1900,7 +1900,7 @@ bp_tests =
     , testProperty "snoc"        prop_snocBP
     , testProperty "tail"        prop_tailBP
     , testProperty "scanl"       prop_scanlBP
-    , testProperty "transpose"   prop_transposeBP
+--  , testProperty "transpose"   prop_transposeBP
     , testProperty "replicate"   prop_replicateBP
     , testProperty "take"        prop_takeBP
     , testProperty "drop"        prop_dropBP
