@@ -51,7 +51,8 @@ instance Arbitrary L.ByteString where
                                    else fmap (L.checkInvariant .
                                               L.fromChunks .
                                               filter (not . P.null)) $
-                                            vectorOf (sizedByteString
+                                            vectorOf numChunks
+                                                     (sizedByteString
                                                           (n `div` numChunks))
 
 instance CoArbitrary L.ByteString where
