@@ -1065,7 +1065,7 @@ isSuffixOf x y = reverse x `isPrefixOf` reverse y
 -- the remainder of the second iff the first is its suffix, and otherwise
 -- 'Nothing'.
 stripSuffix :: ByteString -> ByteString -> Maybe ByteString
-stripSuffix x y = reverse <$> stripSuffix (reverse x) (reverse y)
+stripSuffix x y = reverse <$> stripPrefix (reverse x) (reverse y)
 --TODO: a better implementation
 
 -- ---------------------------------------------------------------------
