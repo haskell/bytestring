@@ -126,6 +126,8 @@ module Data.ByteString.Char8 (
         groupBy,                -- :: (Char -> Char -> Bool) -> ByteString -> [ByteString]
         inits,                  -- :: ByteString -> [ByteString]
         tails,                  -- :: ByteString -> [ByteString]
+        stripPrefix,            -- :: ByteString -> ByteString -> Maybe ByteString
+        stripSuffix,            -- :: ByteString -> ByteString -> Maybe ByteString
 
         -- ** Breaking into many substrings
         split,                  -- :: Char -> ByteString -> [ByteString]
@@ -244,6 +246,7 @@ import Data.ByteString (empty,null,length,tail,init,append
                        ,inits,tails,reverse,transpose
                        ,concat,take,drop,splitAt,intercalate
                        ,sort,isPrefixOf,isSuffixOf,isInfixOf
+                       ,stripPrefix,stripSuffix
                        ,findSubstring,findSubstrings,breakSubstring,copy,group
 
                        ,getLine, getContents, putStr, interact

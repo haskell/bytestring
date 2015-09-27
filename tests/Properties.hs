@@ -91,6 +91,9 @@ prop_findCC         = D.find                  `eq2`  C.find
 prop_findIndexCC    = D.findIndex             `eq2`  ((fmap toInt64 .) . C.findIndex)
 prop_findIndicesCC  = D.findIndices           `eq2`  ((fmap toInt64 .) . C.findIndices)
 prop_isPrefixOfCC   = D.isPrefixOf            `eq2`  C.isPrefixOf
+prop_stripPrefixCC  = D.stripPrefix           `eq2`  C.stripPrefix
+prop_isSuffixOfCC   = D.isSuffixOf            `eq2`  C.isSuffixOf
+prop_stripSuffixCC  = D.stripSuffix           `eq2`  C.stripSuffix
 prop_mapCC          = D.map                   `eq2`  C.map
 prop_replicateCC    = forAll arbitrarySizedIntegral $
                       (D.replicate . toInt64) `eq2`  C.replicate
@@ -175,6 +178,9 @@ prop_findBP         = L.find                 `eq2`  P.find
 prop_findIndexBP    = L.findIndex            `eq2`  ((fmap toInt64 .) . P.findIndex)
 prop_findIndicesBP  = L.findIndices          `eq2`  ((fmap toInt64 .) . P.findIndices)
 prop_isPrefixOfBP   = L.isPrefixOf           `eq2`  P.isPrefixOf
+prop_stripPrefixBP  = L.stripPrefix          `eq2`  P.stripPrefix
+prop_isSuffixOfBP   = L.isSuffixOf           `eq2`  P.isSuffixOf
+prop_stripSuffixBP  = L.stripSuffix          `eq2`  P.stripSuffix
 prop_mapBP          = L.map                  `eq2`  P.map
 prop_replicateBP    = forAll arbitrarySizedIntegral $
                       (L.replicate. toInt64) `eq2`  P.replicate
@@ -356,6 +362,9 @@ prop_findBL         = L.find                  `eq2` (find      :: (W -> Bool) ->
 prop_findIndicesBL  = L.findIndices           `eq2` ((fmap toInt64 .) . findIndices:: (W -> Bool) -> [W] -> [Int64])
 prop_findIndexBL    = L.findIndex             `eq2` ((fmap toInt64 .) . findIndex :: (W -> Bool) -> [W] -> Maybe Int64)
 prop_isPrefixOfBL   = L.isPrefixOf            `eq2` (isPrefixOf:: [W] -> [W] -> Bool)
+prop_stripPrefixBL  = L.stripPrefix           `eq2` (stripPrefix:: [W] -> [W] -> Maybe [W])
+prop_isSuffixOfBL   = L.isSuffixOf            `eq2` (isSuffixOf:: [W] -> [W] -> Bool)
+prop_stripSuffixBL  = L.stripSuffix           `eq2` (stripSuffix :: [W] -> [W] -> Maybe [W])
 prop_mapBL          = L.map                   `eq2` (map       :: (W -> W) -> [W] -> [W])
 prop_replicateBL    = forAll arbitrarySizedIntegral $
                       (L.replicate . toInt64) `eq2` (replicate :: Int -> W -> [W])
@@ -457,7 +466,10 @@ prop_partitionLL  = L.partition `eq2`    (partition :: (W -> Bool ) -> [W] -> ([
 prop_findPL       = P.find      `eq2`    (find      :: (W -> Bool) -> [W] -> Maybe W)
 prop_findIndexPL  = P.findIndex `eq2`    (findIndex :: (W -> Bool) -> [W] -> Maybe Int)
 prop_isPrefixOfPL = P.isPrefixOf`eq2`    (isPrefixOf:: [W] -> [W] -> Bool)
+prop_isSuffixOfPL = P.isSuffixOf`eq2`    (isSuffixOf:: [W] -> [W] -> Bool)
 prop_isInfixOfPL  = P.isInfixOf `eq2`    (isInfixOf:: [W] -> [W] -> Bool)
+prop_stripPrefixPL = P.stripPrefix`eq2`  (stripPrefix:: [W] -> [W] -> Maybe [W])
+prop_stripSuffixPL = P.stripSuffix`eq2`  (stripSuffix:: [W] -> [W] -> Maybe [W])
 prop_mapPL        = P.map       `eq2`    (map       :: (W -> W) -> [W] -> [W])
 prop_replicatePL  = forAll arbitrarySizedIntegral $
                     P.replicate `eq2`    (replicate :: Int -> W -> [W])
@@ -764,6 +776,10 @@ prop_find_findIndex p xs =
                                 _      -> Nothing
 
 prop_isPrefixOf xs ys = isPrefixOf xs ys == (pack xs `L.isPrefixOf` pack ys)
+prop_stripPrefix xs ys = (pack <$> stripPrefix xs ys) == (pack xs `L.stripPrefix` pack ys)
+
+prop_isSuffixOf xs ys = isSuffixOf xs ys == (pack xs `L.isSuffixOf` pack ys)
+prop_stripSuffix xs ys = (pack <$> stripSuffix xs ys) == (pack xs `L.stripSuffix` pack ys)
 
 {-
 prop_sort1 xs = sort xs == (unpack . L.sort . pack) xs
@@ -1165,8 +1181,14 @@ prop_unfoldrBB c =
     fn x = Just (x, chr (ord x + 1))
 
 prop_prefixBB xs ys = isPrefixOf xs ys == (P.pack xs `P.isPrefixOf` P.pack ys)
+prop_prefixLL xs ys = isPrefixOf xs ys == (L.pack xs `L.isPrefixOf` L.pack ys)
 prop_suffixBB xs ys = isSuffixOf xs ys == (P.pack xs `P.isSuffixOf` P.pack ys)
 prop_suffixLL xs ys = isSuffixOf xs ys == (L.pack xs `L.isSuffixOf` L.pack ys)
+
+prop_stripPrefixBB xs ys = (P.pack <$> stripPrefix xs ys) == (P.pack xs `P.stripPrefix` P.pack ys)
+prop_stripPrefixLL xs ys = (L.pack <$> stripPrefix xs ys) == (L.pack xs `L.stripPrefix` L.pack ys)
+prop_stripSuffixBB xs ys = (P.pack <$> stripSuffix xs ys) == (P.pack xs `P.stripSuffix` P.pack ys)
+prop_stripSuffixLL xs ys = (L.pack <$> stripSuffix xs ys) == (L.pack xs `L.stripSuffix` L.pack ys)
 
 prop_copyBB xs = let p = P.pack xs in P.copy p == p
 prop_copyLL xs = let p = L.pack xs in L.copy p == p
@@ -1611,6 +1633,8 @@ prop_short_show' xs =
 prop_short_read xs =
     read (show (Short.pack xs)) == Short.pack xs
 
+stripSuffix :: [W] -> [W] -> Maybe [W]
+stripSuffix xs ys = reverse <$> stripPrefix (reverse xs) (reverse ys)
 
 short_tests =
     [ testProperty "pack/unpack"              prop_short_pack_unpack
@@ -1762,6 +1786,9 @@ bl_tests =
     , testProperty "head"        prop_headBL
     , testProperty "init"        prop_initBL
     , testProperty "isPrefixOf"  prop_isPrefixOfBL
+    , testProperty "isSuffixOf"  prop_isSuffixOfBL
+    , testProperty "stripPrefix" prop_stripPrefixBL
+    , testProperty "stripSuffix" prop_stripSuffixBL
     , testProperty "last"        prop_lastBL
     , testProperty "length"      prop_lengthBL
     , testProperty "map"         prop_mapBL
@@ -1820,7 +1847,10 @@ cc_tests =
     , testProperty "prop_findCC"        prop_findCC
     , testProperty "prop_findIndexCC"   prop_findIndexCC
     , testProperty "prop_findIndicesCC" prop_findIndicesCC
-    , testProperty "prop_isPrefixOfCC"  prop_isPrefixOfCC
+    , testProperty "prop_isPrefixCC"    prop_isPrefixOfCC
+    , testProperty "prop_isSuffixCC"    prop_isSuffixOfCC
+    , testProperty "prop_stripPrefixCC" prop_stripPrefixCC
+    , testProperty "prop_stripSuffixCC" prop_stripSuffixCC
     , testProperty "prop_mapCC"         prop_mapCC
     , testProperty "prop_replicateCC"   prop_replicateCC
     , testProperty "prop_snocCC"        prop_snocCC
@@ -1887,6 +1917,9 @@ bp_tests =
     , testProperty "head"        prop_headBP
     , testProperty "init"        prop_initBP
     , testProperty "isPrefixOf"  prop_isPrefixOfBP
+    , testProperty "isSuffixOf"  prop_isSuffixOfBP
+    , testProperty "stripPrefix" prop_stripPrefixBP
+    , testProperty "stripSuffix" prop_stripSuffixBP
     , testProperty "last"        prop_lastBP
     , testProperty "length"      prop_lengthBP
     , testProperty "readInt"     prop_readIntBP
@@ -1976,7 +2009,10 @@ pl_tests =
 --  , testProperty "zipWith/zipWith'" prop_zipWithPL'
 
     , testProperty "isPrefixOf"  prop_isPrefixOfPL
+    , testProperty "isSuffixOf"  prop_isSuffixOfPL
     , testProperty "isInfixOf"   prop_isInfixOfPL
+    , testProperty "stripPrefix" prop_stripPrefixPL
+    , testProperty "stripSuffix" prop_stripSuffixPL
     , testProperty "length"      prop_lengthPL
     , testProperty "map"         prop_mapPL
     , testProperty "null"        prop_nullPL
@@ -2148,8 +2184,13 @@ bb_tests =
 --  , testProperty "dropSpaceEnd"   prop_dropSpaceEndBB
     , testProperty "unfoldr"        prop_unfoldrBB
     , testProperty "prefix"         prop_prefixBB
+    , testProperty "prefix"         prop_prefixLL
     , testProperty "suffix"         prop_suffixBB
     , testProperty "suffix"         prop_suffixLL
+    , testProperty "stripPrefix"    prop_stripPrefixBB
+    , testProperty "stripPrefix"    prop_stripPrefixLL
+    , testProperty "stripSuffix"    prop_stripSuffixBB
+    , testProperty "stripSuffix"    prop_stripSuffixLL
     , testProperty "copy"           prop_copyBB
     , testProperty "copy"           prop_copyLL
     , testProperty "inits"          prop_initsBB
@@ -2329,6 +2370,9 @@ ll_tests =
 --  , testProperty "filterNotByte 1"    prop_filterNotByte
 --  , testProperty "filterNotByte 2"    prop_filterNotByte2
     , testProperty "isPrefixOf"         prop_isPrefixOf
+    , testProperty "isSuffixOf"         prop_isSuffixOf
+    , testProperty "stripPrefix"        prop_stripPrefix
+    , testProperty "stripSuffix"        prop_stripSuffix
     , testProperty "concatMap"          prop_concatMap
     , testProperty "isSpace"            prop_isSpaceWord8
     ]

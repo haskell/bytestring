@@ -124,6 +124,8 @@ module Data.ByteString (
         groupBy,                -- :: (Word8 -> Word8 -> Bool) -> ByteString -> [ByteString]
         inits,                  -- :: ByteString -> [ByteString]
         tails,                  -- :: ByteString -> [ByteString]
+        stripPrefix,            -- :: ByteString -> ByteString -> Maybe ByteString
+        stripSuffix,            -- :: ByteString -> ByteString -> Maybe ByteString
 
         -- ** Breaking into many substrings
         split,                  -- :: Word8 -> ByteString -> [ByteString]
@@ -1276,6 +1278,14 @@ isPrefixOf (PS x1 s1 l1) (PS x2 s2 l2)
             i <- memcmp (p1 `plusPtr` s1) (p2 `plusPtr` s2) (fromIntegral l1)
             return $! i == 0
 
+-- | /O(n)/ The 'stripPrefix' function takes two ByteStrings and returns 'Just'
+-- the remainder of the second iff the first is its prefix, and otherwise
+-- 'Nothing'.
+stripPrefix :: ByteString -> ByteString -> Maybe ByteString
+stripPrefix bs1@(PS _ _ l1) bs2
+   | bs1 `isPrefixOf` bs2 = Just (unsafeDrop l1 bs2)
+   | otherwise = Nothing
+
 -- | /O(n)/ The 'isSuffixOf' function takes two ByteStrings and returns 'True'
 -- iff the first is a suffix of the second.
 -- 
@@ -1293,6 +1303,14 @@ isSuffixOf (PS x1 s1 l1) (PS x2 s2 l2)
         withForeignPtr x2 $ \p2 -> do
             i <- memcmp (p1 `plusPtr` s1) (p2 `plusPtr` s2 `plusPtr` (l2 - l1)) (fromIntegral l1)
             return $! i == 0
+
+-- | /O(n)/ The 'stripSuffix' function takes two ByteStrings and returns 'Just'
+-- the remainder of the second iff the first is its suffix, and otherwise
+-- 'Nothing'.
+stripSuffix :: ByteString -> ByteString -> Maybe ByteString
+stripSuffix bs1@(PS _ _ l1) bs2@(PS _ _ l2)
+   | bs1 `isSuffixOf` bs2 = Just (unsafeTake (l2 - l1) bs2)
+   | otherwise = Nothing
 
 -- | Check whether one string is a substring of another. @isInfixOf
 -- p s@ is equivalent to @not (null (findSubstrings p s))@.
