@@ -1338,7 +1338,7 @@ isInfixOf p s = isJust (findSubstring p s)
 -- > fst (breakSubstring x y)
 --
 -- Note that calling `breakSubstring x` does some preprocessing work, so
--- you should avoid uneccesarily duplicating breakSubstring calls with the same
+-- you should avoid unnecessarily duplicating breakSubstring calls with the same
 -- pattern.
 --
 breakSubstring :: ByteString -- ^ String to search for
