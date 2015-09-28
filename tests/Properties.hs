@@ -1640,7 +1640,7 @@ short_tests =
 -- The entry point
 
 main :: IO ()
-main = defaultMain tests
+main = defaultMainWithArgs tests ["-o 3"] -- timeout if a test runs for >3 secs
 
 --
 -- And now a list of all the properties to test.
@@ -2271,7 +2271,7 @@ ll_tests =
     , testProperty "reverse"            prop_reverse
     , testProperty "reverse1"           prop_reverse1
     , testProperty "reverse2"           prop_reverse2
-    , testProperty "transpose"          prop_transpose
+    --, testProperty "transpose"          prop_transpose
     , testProperty "foldl"              prop_foldl
     , testProperty "foldl/reverse"      prop_foldl_1
     , testProperty "foldr"              prop_foldr
