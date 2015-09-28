@@ -322,6 +322,7 @@ unsafeDupablePerformIO = unsafePerformIO
 #endif
 
 #if !MIN_VERSION_base(4,7,0)
+finiteBitSize :: Word -> Int
 finiteBitSize = bitSize
 #endif
 
@@ -1364,9 +1365,9 @@ breakSubstring pat =
         m           = k ^ lp
         get = fromIntegral . unsafeIndex src
         search !hs !i
-            | hp == hs && pat `isPrefixOf` b = u
-            | length src <= i                = (src,empty) -- not found
-            | otherwise                      = search hs' (i + 1)
+            | hp == hs && pat == unsafeTake lp b = u
+            | length src <= i                    = (src,empty) -- not found
+            | otherwise                          = search hs' (i + 1)
           where
             u@(_, b) = unsafeSplitAt (i - lp) src
             hs' = hs * k +
