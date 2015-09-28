@@ -219,6 +219,12 @@ import Prelude hiding           (reverse,head,tail,last,init,null
                                 ,getContents,getLine,putStr,putStrLn,interact
                                 ,zip,zipWith,unzip,notElem)
 
+#if MIN_VERSION_base(4,7,0)
+import Data.Bits                (finiteBitSize, shiftL, (.|.), (.&.))
+#else
+import Data.Bits                (bitSize, shiftL, (.|.), (.&.))
+#endif
+
 import Data.ByteString.Internal
 import Data.ByteString.Unsafe
 
@@ -231,7 +237,7 @@ import Data.Maybe               (isJust, listToMaybe)
 #ifndef __NHC__
 import Control.Exception        (finally, bracket, assert, throwIO)
 #else
-import Control.Exception	(bracket, finally)
+import Control.Exception	      (bracket, finally)
 #endif
 import Control.Monad            (when)
 
@@ -315,6 +321,9 @@ hWaitForInput _ _ = return ()
 unsafeDupablePerformIO = unsafePerformIO
 #endif
 
+#if !MIN_VERSION_base(4,7,0)
+finiteBitSize = bitSize
+#endif
 
 -- -----------------------------------------------------------------------------
 -- Introducing and eliminating 'ByteString's
@@ -1330,7 +1339,7 @@ isInfixOf p s = isJust (findSubstring p s)
 -- Note that calling `breakSubstring x` does some preprocessing work, so
 -- you should avoid uneccesarily duplicating breakSubstring calls with the same
 -- pattern.
-
+--
 breakSubstring :: ByteString -- ^ String to search for
                -> ByteString -- ^ String to search in
                -> (ByteString,ByteString) -- ^ Head and tail of string broken at substring
@@ -1338,27 +1347,50 @@ breakSubstring pat =
   case lp of
     0 -> \src -> (empty,src)
     1 -> breakByte (unsafeHead pat)
-    _ -> karpRabin
+    _ -> if lp * 8 <= finiteBitSize (0 :: Word)
+             then shift
+             else karpRabin
   where
-    lp          = length pat
-    k           = 2891336453 :: Word32
-    rollingHash = foldl' (\h b -> h * k + fromIntegral b) 0
-    hp          = rollingHash pat
-    m           = k ^ lp
+    unsafeSplitAt i s = (unsafeTake i s, unsafeDrop i s)
+    lp                = length pat
+    karpRabin :: ByteString -> (ByteString, ByteString)
     karpRabin src
-      | length src < lp = (src,empty)
-      | otherwise = search (rollingHash $ unsafeTake lp src) 0
+        | length src < lp = (src,empty)
+        | otherwise = search (rollingHash $ unsafeTake lp src) lp
       where
-        search !hs !n
-            | hp == hs && pat `isPrefixOf` s = (unsafeTake n src,s)
-            | length src - n <= lp           = (src,empty) -- not found
-            | otherwise                      = search hs' (n+1)
+        k           = 2891336453 :: Word32
+        rollingHash = foldl' (\h b -> h * k + fromIntegral b) 0
+        hp          = rollingHash pat
+        m           = k ^ lp
+        get = fromIntegral . unsafeIndex src
+        search !hs !i
+            | hp == hs && pat `isPrefixOf` b = u
+            | length src <= i                = (src,empty) -- not found
+            | otherwise                      = search hs' (i + 1)
           where
-            get = fromIntegral . unsafeIndex src
-            s   = unsafeDrop n src
+            u@(_, b) = unsafeSplitAt (i - lp) src
             hs' = hs * k +
-                  get (n + lp) -
-                  m * get n
+                  get i -
+                  m * get (i - lp)
+    {-# INLINE karpRabin #-}
+
+    shift :: ByteString -> (ByteString, ByteString)
+    shift !src
+        | length src < lp = (src,empty)
+        | otherwise       = search (intoWord $ unsafeTake lp src) lp
+      where
+        intoWord :: ByteString -> Word
+        intoWord = foldl' (\w b -> (w `shiftL` 8) .|. fromIntegral b) 0
+        wp   = intoWord pat
+        mask = (1 `shiftL` (8 * lp)) - 1
+        search !w !i
+            | w == wp         = unsafeSplitAt (i - lp) src
+            | length src <= i = (src, empty)
+            | otherwise       = search w' (i + 1)
+          where
+            b  = fromIntegral (unsafeIndex src i)
+            w' = mask .&. ((w `shiftL` 8) .|. b)
+    {-# INLINE shift #-}
 
 -- | Get the first index of a substring in another string,
 --   or 'Nothing' if the string is not found.
@@ -1383,13 +1415,15 @@ findSubstrings :: ByteString -- ^ String to search for.
 findSubstrings pat src
     | null pat        = [0 .. ls]
     | otherwise       = search 0
-  where lp = length pat
-        ls = length src
-        search !n
-            | (n > ls - lp) || null b = []
-            | otherwise = let k = n + length a
-                          in  k : search (k + lp)
-          where (a, b) = breakSubstring pat (unsafeDrop n src)
+  where
+    lp = length pat
+    ls = length src
+    search !n
+        | (n > ls - lp) || null b = []
+        | otherwise = let k = n + length a
+                      in  k : search (k + lp)
+      where
+        (a, b) = breakSubstring pat (unsafeDrop n src)
 
 {-# DEPRECATED findSubstrings "findSubstrings is deprecated in favour of breakSubstring." #-}
 

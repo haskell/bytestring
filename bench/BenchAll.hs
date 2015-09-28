@@ -38,6 +38,10 @@ import qualified "bytestring" Data.ByteString.Lazy as OldL
 
 import           Foreign
 
+import           Paths_bench_bytestring
+
+import           System.Random
+
 ------------------------------------------------------------------------------
 -- Benchmark support
 ------------------------------------------------------------------------------
@@ -149,7 +153,42 @@ benchIntEncodingB n0 w
       | n <= 0    = return op
       | otherwise = PI.runB w n op >>= loop (n - 1)
 
+easySubstrings, randomSubstrings :: Int -> Int -> (S.ByteString, S.ByteString)
+hardSubstrings, pathologicalSubstrings :: Int ->
+                                          Int -> (S.ByteString, S.ByteString)
 
+w :: Int -> Word8
+w = fromIntegral
+
+{-# INLINE easySubstrings #-}
+easySubstrings n h = (S.replicate n $ w 1,
+                      S.replicate h $ w 0)
+
+{-# INLINE randomSubstrings #-}
+randomSubstrings n h = (f 48278379 n, f 98403980 h)
+  where
+    next' g = let (x, g') = next g in (w x, g')
+    f g l = fst $ S.unfoldrN l (Just . next') (mkStdGen g)
+
+{-# INLINE hardSubstrings #-}
+hardSubstrings n h = (f 48278379 n, f 98403980 h)
+  where
+    next' g = let (x, g') = next g
+              in (w $ x `mod` 4, g')
+    f g l = fst $ S.unfoldrN l (Just . next') (mkStdGen g)
+
+{-# INLINE pathologicalSubstrings #-}
+pathologicalSubstrings n h =
+  (S.replicate n (w 0),
+   S.concat . replicate (h `div` n) $ S.replicate (n - 1) (w 0) `S.snoc` w 1)
+
+htmlSubstrings :: S.ByteString -> Int -> Int -> IO (S.ByteString, S.ByteString)
+htmlSubstrings s n h =
+    do i <- randomRIO (0, l - n)
+       return (S.take n . S.drop i $ s', s')
+  where
+    s' = S.take h s
+    l  = S.length s'
 
 -- benchmarks
 -------------
@@ -168,6 +207,7 @@ main :: IO ()
 main = do
   mapM_ putStrLn sanityCheckInfo
   putStrLn ""
+  wikiPage <- getDataFileName "wiki-haskell.html" >>= S.readFile
   Criterion.Main.defaultMain
     [ bgroup "Data.ByteString.Builder"
       [ bgroup "Small payload"
@@ -215,6 +255,80 @@ main = do
         , benchB "foldMap integerDec (large)"                     largeIntegerData        $ foldMap integerDec
         , benchBlaze "foldMap integerDec (small) (blaze-textual)" smallIntegerData        $ foldMap Blaze.integral
         , benchBlaze "foldMap integerDec (large) (blaze-textual)" largeIntegerData        $ foldMap Blaze.integral
+        ]
+      ]
+
+    , bgroup "substrings"
+      [ bgroup "easy"
+        [ bench "easy1"    . nf (uncurry S.findSubstrings)
+                          $ easySubstrings 1 1000000
+        , bench "easy4"    . nf (uncurry S.findSubstrings)
+                          $ easySubstrings 4 1000000
+        , bench "easy16"   . nf (uncurry S.findSubstrings)
+                          $ easySubstrings 16 1000000
+        , bench "easy64"   . nf (uncurry S.findSubstrings)
+                          $ easySubstrings 64 1000000
+        , bench "easy128"  . nf (uncurry S.findSubstrings)
+                          $ easySubstrings 128 1000000
+        , bench "easy1024" . nf (uncurry S.findSubstrings)
+                          $ easySubstrings 1024 1000000
+        ]
+      , bgroup "random"
+        [ bench "random1"    . nf (uncurry S.findSubstrings)
+                          $ randomSubstrings 1 1000000
+        , bench "random4"    . nf (uncurry S.findSubstrings)
+                          $ randomSubstrings 4 1000000
+        , bench "random16"   . nf (uncurry S.findSubstrings)
+                          $ randomSubstrings 16 1000000
+        , bench "random64"   . nf (uncurry S.findSubstrings)
+                          $ randomSubstrings 64 1000000
+        , bench "random128"  . nf (uncurry S.findSubstrings)
+                          $ randomSubstrings 128 1000000
+        , bench "random1024" . nf (uncurry S.findSubstrings)
+                          $ randomSubstrings 1024 1000000
+
+        ]
+      , bgroup "hard"
+        [ bench "hard1"    . nf (uncurry S.findSubstrings)
+                          $ hardSubstrings 1 1000000
+        , bench "hard4"    . nf (uncurry S.findSubstrings)
+                          $ hardSubstrings 4 1000000
+        , bench "hard16"   . nf (uncurry S.findSubstrings)
+                          $ hardSubstrings 16 1000000
+        , bench "hard64"   . nf (uncurry S.findSubstrings)
+                          $ hardSubstrings 64 1000000
+        , bench "hard128"  . nf (uncurry S.findSubstrings)
+                          $ hardSubstrings 128 1000000
+        , bench "hard1024" . nf (uncurry S.findSubstrings)
+                          $ hardSubstrings 1024 1000000
+        ]
+      , bgroup "pathological"
+        [ bench "pathological1"    . nf (uncurry S.findSubstrings)
+                          $ pathologicalSubstrings 1 1000000
+        , bench "pathological4"    . nf (uncurry S.findSubstrings)
+                          $ pathologicalSubstrings 4 1000000
+        , bench "pathological16"   . nf (uncurry S.findSubstrings)
+                          $ pathologicalSubstrings 16 1000000
+        , bench "pathological64"   . nf (uncurry S.findSubstrings)
+                          $ pathologicalSubstrings 64 1000000
+        , bench "pathological128"  . nf (uncurry S.findSubstrings)
+                          $ pathologicalSubstrings 128 1000000
+        , bench "pathological1024" . nf (uncurry S.findSubstrings)
+                          $ pathologicalSubstrings 1024 1000000
+        ]
+      , bgroup "html"
+        [ bench "html1"    . nfIO . fmap (uncurry S.findSubstrings)
+                          $ htmlSubstrings wikiPage 1 1000000
+        , bench "html4"    . nfIO . fmap (uncurry S.findSubstrings)
+                          $ htmlSubstrings wikiPage 4 1000000
+        , bench "html16"   . nfIO . fmap (uncurry S.findSubstrings)
+                          $ htmlSubstrings wikiPage 16 1000000
+        , bench "html64"   . nfIO . fmap (uncurry S.findSubstrings)
+                          $ htmlSubstrings wikiPage 64 1000000
+        , bench "html128"  . nfIO . fmap (uncurry S.findSubstrings)
+                          $ htmlSubstrings wikiPage 128 1000000
+        , bench "html1024" . nfIO . fmap (uncurry S.findSubstrings)
+                          $ htmlSubstrings wikiPage 1024 1000000
         ]
       ]
 
