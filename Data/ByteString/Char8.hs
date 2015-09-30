@@ -135,7 +135,7 @@ module Data.ByteString.Char8 (
         lines,                  -- :: ByteString -> [ByteString]
         words,                  -- :: ByteString -> [ByteString]
         unlines,                -- :: [ByteString] -> ByteString
-        unwords,                -- :: ByteString -> [ByteString]
+        unwords,                -- :: [ByteString] -> ByteString
 
         -- * Predicates
         isPrefixOf,             -- :: ByteString -> ByteString -> Bool
