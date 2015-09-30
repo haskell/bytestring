@@ -151,6 +151,9 @@ import GHC.Ptr                  (Ptr(..), castPtr)
 import Foreign.ForeignPtr       (mallocForeignPtrBytes)
 #endif
 
+import Foreign.Marshal.Alloc    (mallocBytes, reallocBytes)
+import Foreign.Marshal.Utils    (moveBytes)
+
 #ifdef __GLASGOW_HASKELL__
 import GHC.ForeignPtr           (ForeignPtr(ForeignPtr))
 import GHC.Base                 (nullAddr#)
@@ -460,24 +463,27 @@ createUptoN' l f = do
 --
 createAndTrim :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
 createAndTrim l f = do
-    fp <- mallocByteString l
-    withForeignPtr fp $ \p -> do
-        l' <- f p
-        if assert (l' <= l) $ l' >= l
-            then return $! PS fp 0 l
-            else create l' $ \p' -> memcpy p' p l'
+    p  <- mallocBytes l
+    l' <- f p
+    (l_, p_) <- if assert (l' <= l) $ l' >= l
+                    then return (l, p)
+                    else fmap (\p' -> (l', p')) $ reallocBytes p l'
+    fp <- newForeignPtr_ p_
+    return $! PS fp 0 l_
 {-# INLINE createAndTrim #-}
 
 createAndTrim' :: Int -> (Ptr Word8 -> IO (Int, Int, a)) -> IO (ByteString, a)
 createAndTrim' l f = do
-    fp <- mallocByteString l
-    withForeignPtr fp $ \p -> do
-        (off, l', res) <- f p
-        if assert (l' <= l) $ l' >= l
-            then return $! (PS fp 0 l, res)
-            else do ps <- create l' $ \p' ->
-                            memcpy p' (p `plusPtr` off) l'
-                    return $! (ps, res)
+    p <- mallocBytes l
+    (off, l', res) <- f p
+    (l_, p_) <- if assert (l' <= l) $ l' >= l
+                    then return (l, p)
+                    else do moveBytes p (p `plusPtr` off) l'
+                            p' <- reallocBytes p l'
+                            return $! (l', p')
+    fp <- newForeignPtr_ p_
+    return $! (PS fp 0 l_, res)
+{-# INLINE createAndTrim' #-}
 
 -- | Wrapper of 'mallocForeignPtrBytes' with faster implementation for GHC
 --

@@ -231,7 +231,7 @@ import Data.Maybe               (isJust, listToMaybe)
 #ifndef __NHC__
 import Control.Exception        (finally, bracket, assert, throwIO)
 #else
-import Control.Exception	(bracket, finally)
+import Control.Exception       (bracket, finally)
 #endif
 import Control.Monad            (when)
 
