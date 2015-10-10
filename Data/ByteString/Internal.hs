@@ -169,7 +169,7 @@ import Foreign.ForeignPtr       (newForeignPtr_)
 
 -- An alternative to Control.Exception (assert) for nhc98
 #ifdef __NHC__
-#define assert	assertS "__FILE__ : __LINE__"
+#define assert  assertS "__FILE__ : __LINE__"
 assertS :: String -> Bool -> a -> a
 assertS _ True  = id
 assertS s False = error ("assertion failed at "++s)
