@@ -223,12 +223,7 @@ import Prelude hiding
         ,zip,zipWith,unzip,notElem,repeat,iterate,interact,cycle)
 
 import System.IO            (Handle,stdout,hClose,openBinaryFile,IOMode(..))
-#ifndef __NHC__
 import Control.Exception    (bracket)
-#else
-import IO                   (bracket)
-#endif
-
 
 ------------------------------------------------------------------------
 

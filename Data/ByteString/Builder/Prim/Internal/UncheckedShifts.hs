@@ -18,7 +18,7 @@
 -- These functions are undefined when the amount being shifted by is
 -- greater than the size in bits of a machine Int#.-
 --
-#if defined(__GLASGOW_HASKELL__) && !defined(__HADDOCK__)
+#if !defined(__HADDOCK__)
 #include "MachDeps.h"
 #endif
 
@@ -32,7 +32,7 @@ module Data.ByteString.Builder.Prim.Internal.UncheckedShifts (
   ) where
 
 
-#if defined(__GLASGOW_HASKELL__) && !defined(__HADDOCK__)
+#if !defined(__HADDOCK__)
 import GHC.Base
 import GHC.Word (Word32(..),Word16(..),Word64(..))
 
@@ -70,19 +70,12 @@ shiftr_w w s = fromIntegral $ (`shiftr_w32` s) $ fromIntegral w
 shiftr_w w s = fromIntegral $ (`shiftr_w64` s) $ fromIntegral w
 #endif
 
-#if defined(__GLASGOW_HASKELL__) && !defined(__HADDOCK__)
+#if !defined(__HADDOCK__)
 shiftr_w16 (W16# w) (I# i) = W16# (w `uncheckedShiftRL#`   i)
 shiftr_w32 (W32# w) (I# i) = W32# (w `uncheckedShiftRL#`   i)
 
 #if WORD_SIZE_IN_BITS < 64
 shiftr_w64 (W64# w) (I# i) = W64# (w `uncheckedShiftRL64#` i)
-
-#if __GLASGOW_HASKELL__ <= 606
--- Exported by GHC.Word in GHC 6.8 and higher
-foreign import ccall unsafe "stg_uncheckedShiftRL64"
-    uncheckedShiftRL64#     :: Word64# -> Int# -> Word64#
-#endif
-
 #else
 shiftr_w64 (W64# w) (I# i) = W64# (w `uncheckedShiftRL#` i)
 #endif
