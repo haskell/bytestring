@@ -19,7 +19,7 @@ Todo items
         - System.IO.ByteString
         - Data.ByteString.IO
 
-* can we avoid joinWithByte? 
+* can we avoid joinWithByte?
         - Hard. Can't do it easily with a rule.
 
 * think about Data.ByteString.hGetLines. is it needed in the presence of
@@ -33,7 +33,7 @@ Todo items
   we choose to realloc to save space. This combined with GC-movable strings
   might improve fragmentation / space usage for the many small strings case.
 
-* if we can be sure there is very little variance then it might be interesting to look 
+* if we can be sure there is very little variance then it might be interesting to look
  into the cases where we're doing slightly worse eg the map/up, filter/up cases
  and why we're doing so much better in the up/up case!?  that one makes no sense
  since we should be doing the exact same thing as the old loopU for the up/up

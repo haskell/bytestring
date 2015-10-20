@@ -61,7 +61,7 @@ time (F f) a = do
     hFlush stdout
 
 ------------------------------------------------------------------------
--- 
+--
 -- an existential list
 --
 data F a = forall b . Forceable b => F (a -> b)

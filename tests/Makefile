@@ -4,7 +4,7 @@ GHCFLAGS=       -cpp -O2 -funbox-strict-fields -v0 -fglasgow-exts -O2 -funbox-st
 #PKG=            -package fps
 
 #GHC=            /usr/obj/build/compiler/stage2/ghc-inplace
-#PKG=            
+#PKG=
 
 BIN=            run-utests run-qtests
 
@@ -46,8 +46,8 @@ hpc-builder: dist/build/test-builder/test-builder
 
 # interpreted
 .PHONY: prop hugs
-prop:: 
-	@echo "Interpreted"	
+prop::
+	@echo "Interpreted"
 	runhaskell -i../cbits/fpstring.o Properties.hs
 
 hugs::
@@ -56,26 +56,26 @@ hugs::
 # interpreted fast. Just a quick check.
 .PHONY: prop-fast
 prop-fast::
-	runhaskell -i../cbits/fpstring.o Properties.hs 30 
+	runhaskell -i../cbits/fpstring.o Properties.hs 30
 
 # compiled
 .PHONY: prop-compiled
-prop-compiled: 
-	@echo "Compiled, rules off"	
+prop-compiled:
+	@echo "Compiled, rules off"
 	${GHC} ${PKG} ${GHCFLAGS} -fno-rewrite-rules --make Properties.hs -o p -package QuickCheck
 	time ./p
 
 # rules-on
 .PHONY: prop-opt
-prop-opt: 
-	@echo "Compiled, rules on"	
+prop-opt:
+	@echo "Compiled, rules on"
 	${GHC} ${PKG} ${GHCFLAGS} --make Properties.hs -o p -package QuickCheck
 	time ./p
 
 # rules-on
 .PHONY: hpc-lite
-hpc-lite: 
-	@echo "Compiled, rules on, with hpc"	
+hpc-lite:
+	@echo "Compiled, rules on, with hpc"
 	rm -f p.tix
 	${GHC} ${GHCFLAGS} ../dist/build/cbits/fpstring.o -ddump-simpl-stats -fhpc --make -i.. Properties.hs -o p -O -fno-ignore-asserts -fasm -frewrite-rules
 	rm Rules.o Rules.hi
@@ -210,14 +210,14 @@ plot:: results
              set yrange [0:2]          \n \
              plot "results" using ($$1):($$2) with boxes, "" using ($$1):($$3) with boxes' |\
              gnuplot ;
-	xv results.png    
+	xv results.png
 
 # ---------------------------------------------------
 # Cleaning
 
 .PHONY: clean
 clean:
-	rm -f *~ *.o *.hi $(BIN) bench */*.o */*.hi */*~ 
+	rm -f *~ *.o *.hi $(BIN) bench */*.o */*.hi */*~
 	rm -f wc letter_frequency spellcheck linesort fuse inline p u fp lazylines lazybuild lazybuildcons
 	rm -f down-fuse zipwith fusionbench unpack groupby
 	rm -rf *.tix *.html .hpc check

@@ -15,7 +15,7 @@
 -- Maintainer  : duncan@community.haskell.org
 -- Stability   : stable
 -- Portability : ghc only
--- 
+--
 -- Internal representation of ShortByteString
 --
 module Data.ByteString.Short.Internal (
@@ -173,7 +173,7 @@ length (SBS _ len) = len
 null :: ShortByteString -> Bool
 null sbs = length sbs == 0
 
--- | /O(1)/ 'ShortByteString' index (subscript) operator, starting from 0. 
+-- | /O(1)/ 'ShortByteString' index (subscript) operator, starting from 0.
 index :: ShortByteString -> Int -> Word8
 index sbs i
   | i >= 0 && i < length sbs = unsafeIndex sbs i
@@ -586,4 +586,3 @@ foreign import ccall unsafe "fpstring.h fps_memcpy_offsets"
   memcpy_ByteArray :: MutableByteArray# s -> CLong
                    -> ByteArray# -> CLong -> CSize -> IO ()
 #endif
-

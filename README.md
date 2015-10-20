@@ -3,7 +3,7 @@
 [![Build Status](https://secure.travis-ci.org/haskell/bytestring.png?branch=master)](http://travis-ci.org/haskell/bytestring)
 
 This library provides the `Data.ByteString` module -- strict and lazy
-byte arrays manipulable as strings -- providing very time/space-efficient 
+byte arrays manipulable as strings -- providing very time/space-efficient
 string and IO operations.
 
 For very large data requirements, or constraints on heap size,
@@ -25,7 +25,7 @@ cabal install
 ```
 
 You can run the testsuite as follows:
-```    
+```
 cabal test
 ```
 

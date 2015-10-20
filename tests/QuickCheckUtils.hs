@@ -78,14 +78,14 @@ instance Arbitrary CChar where
 --
 --  i.e.    Lazy    ==   Byte
 --              \\      //
---                 List 
+--                 List
 --
 -- That is, the Lazy type can be modeled by functions in both the Byte
 -- and List type. For each of the 3 models, we have a set of tests that
 -- check those types match.
 --
 -- The Model class connects a type and its model type, via a conversion
--- function. 
+-- function.
 --
 --
 class Model a b where
@@ -139,7 +139,7 @@ checkInvariant :: L.ByteString -> L.ByteString
 checkInvariant = L.checkInvariant
 
 abstr :: L.ByteString -> P.ByteString
-abstr = P.concat . L.toChunks 
+abstr = P.concat . L.toChunks
 
 -- Some short hand.
 type X = Int

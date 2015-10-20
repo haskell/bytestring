@@ -45,7 +45,7 @@ compareBytes (PS fp1 off1 len1) (PS fp2 off2 len2)
         withForeignPtr fp2 $ \p2 ->
             cmp (p1 `plusPtr` off1)
                 (p2 `plusPtr` off2) 0 len1 len2
- 
+
 cmp :: Ptr Word8 -> Ptr Word8 -> Int -> Int -> Int-> IO Ordering
 cmp p1 p2 n len1 len2
       | n == len1 = if n == len2 then return EQ else return LT
@@ -57,7 +57,7 @@ cmp p1 p2 n len1 len2
                 EQ -> cmp p1 p2 (n+1) len1 len2
                 LT -> return LT
                 GT -> return GT
- 
+
 compareBytesC (PS x1 s1 l1) (PS x2 s2 l2)
     | l1 == 0  && l2 == 0               = EQ  -- short cut for empty strings
     | x1 == x2 && s1 == s2 && l1 == l2  = EQ  -- short cut for the same string
@@ -69,4 +69,3 @@ compareBytesC (PS x1 s1 l1) (PS x2 s2 l2)
                         EQ  -> l1 `compare` l2
                         x   -> x
 {-# INLINE compareBytes #-}
-
