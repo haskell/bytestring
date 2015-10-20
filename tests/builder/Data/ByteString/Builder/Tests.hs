@@ -39,9 +39,7 @@ import           Data.ByteString.Builder.Prim.TestUtils
 
 import           Control.Exception (evaluate)
 import           System.IO (openTempFile, hPutStr, hClose, hSetBinaryMode)
-#if MIN_VERSION_base(4,2,0)
 import           System.IO (hSetEncoding, utf8)
-#endif
 import           System.Directory
 import           Foreign (ForeignPtr, withForeignPtr, castPtr)
 
@@ -61,9 +59,7 @@ import           Test.QuickCheck.Property
 tests :: [Test]
 tests =
   [ testBuilderRecipe
-#if MIN_VERSION_base(4,2,0)
   , testHandlePutBuilder
-#endif
   , testHandlePutBuilderChar8
   , testPut
   , testRunBuilder
@@ -96,7 +92,6 @@ testBuilderRecipe =
           , "diff  : " ++ show (dropWhile (uncurry (==)) $ zip x1 x2)
           ]
 
-#if MIN_VERSION_base(4,2,0)
 testHandlePutBuilder :: Test
 testHandlePutBuilder =
     testProperty "hPutBuilder" testRecipe
@@ -132,7 +127,6 @@ testHandlePutBuilder =
             success = lbs == lbsRef
         unless success (error msg)
         return success
-#endif
 
 testHandlePutBuilderChar8 :: Test
 testHandlePutBuilderChar8 =

@@ -1,9 +1,7 @@
 {-# LANGUAGE CPP, ForeignFunctionInterface, BangPatterns #-}
-#if __GLASGOW_HASKELL__
 {-# LANGUAGE DeriveDataTypeable #-}
 #if __GLASGOW_HASKELL__ >= 703
 {-# LANGUAGE Unsafe #-}
-#endif
 #endif
 {-# OPTIONS_HADDOCK hide #-}
 
@@ -58,21 +56,10 @@ import Data.Monoid      (Monoid(..))
 #endif
 import Control.DeepSeq  (NFData, rnf)
 
-#if MIN_VERSION_base(3,0,0)
 import Data.String      (IsString(..))
-#endif
 
 import Data.Typeable            (Typeable)
-#if MIN_VERSION_base(4,1,0)
-import Data.Data                (Data(..))
-#if MIN_VERSION_base(4,2,0)
-import Data.Data                (mkNoRepType)
-#else
-import Data.Data                (mkNorepType)
-#endif
-#else
-import Data.Generics            (Data(..), mkNorepType)
-#endif
+import Data.Data                (Data(..), mkNoRepType)
 
 -- | A space-efficient representation of a 'Word8' vector, supporting many
 -- efficient operations.
@@ -82,10 +69,7 @@ import Data.Generics            (Data(..), mkNorepType)
 -- 8-bit characters.
 --
 data ByteString = Empty | Chunk {-# UNPACK #-} !S.ByteString ByteString
-
-#if defined(__GLASGOW_HASKELL__)
     deriving (Typeable)
-#endif
 
 instance Eq  ByteString where
     (==)    = eq
@@ -108,20 +92,14 @@ instance Show ByteString where
 instance Read ByteString where
     readsPrec p str = [ (packChars x, y) | (x, y) <- readsPrec p str ]
 
-#if MIN_VERSION_base(3,0,0)
 instance IsString ByteString where
     fromString = packChars
-#endif
 
 instance Data ByteString where
   gfoldl f z txt = z packBytes `f` unpackBytes txt
   toConstr _     = error "Data.ByteString.Lazy.ByteString.toConstr"
   gunfold _ _    = error "Data.ByteString.Lazy.ByteString.gunfold"
-#if MIN_VERSION_base(4,2,0)
   dataTypeOf _   = mkNoRepType "Data.ByteString.Lazy.ByteString"
-#else
-  dataTypeOf _   = mkNorepType "Data.ByteString.Lazy.ByteString"
-#endif
 
 ------------------------------------------------------------------------
 -- Packing and unpacking from lists
