@@ -44,7 +44,7 @@ License:             BSD3
 License-file:        LICENSE
 Category:            Data
 Copyright:           Copyright (c) Don Stewart          2005-2009,
-                               (c) Duncan Coutts        2006-2013,
+                               (c) Duncan Coutts        2006-2015,
                                (c) David Roundy         2003-2005,
                                (c) Jasper Van der Jeugt 2010,
                                (c) Simon Meier          2010-2013.
@@ -54,10 +54,10 @@ Author:              Don Stewart,
 Maintainer:          Duncan Coutts <duncan@community.haskell.org>
 Homepage:            https://github.com/haskell/bytestring
 Bug-reports:         https://github.com/haskell/bytestring/issues
-Tested-With:         GHC==7.8.1, GHC==7.6.3, GHC==7.4.2, GHC==7.0.4, GHC==6.12.3
+Tested-With:         GHC==7.10.1, GHC==7.8.4, GHC==7.6.3, GHC==7.4.2, GHC==6.12.3
 Build-Type:          Simple
 Cabal-Version:       >= 1.10
-extra-source-files:  README.md TODO
+extra-source-files:  README.md Changelog.md
 
 source-repository head
   type:     git
@@ -125,6 +125,7 @@ library
                     -fmax-simplifier-iterations=10
                     -fdicts-cheap
                     -fspec-constr-count=6
+                    -fobject-code
 
   c-sources:         cbits/fpstring.c
                      cbits/itoa.c
@@ -153,7 +154,7 @@ test-suite prop-compiled
   hs-source-dirs:   . tests
   build-depends:    base, ghc-prim, deepseq, random, directory,
                     test-framework, test-framework-quickcheck2,
-                    QuickCheck >= 2.3 && < 2.7
+                    QuickCheck >= 2.3
   c-sources:        cbits/fpstring.c
   include-dirs:     include
   ghc-options:      -fwarn-unused-binds
@@ -198,7 +199,7 @@ test-suite test-builder
 
   build-depends:    base, ghc-prim,
                     deepseq,
-                    QuickCheck                 >= 2.4 && < 2.7,
+                    QuickCheck                 >= 2.4,
                     byteorder                  == 1.0.*,
                     dlist                      == 0.5.*,
                     directory,

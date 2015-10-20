@@ -77,7 +77,7 @@ prop_allCC          = D.all                   `eq2`  C.all
 prop_anyCC          = D.any                   `eq2`  C.any
 prop_appendCC       = D.append                `eq2`  C.append
 prop_breakCC        = D.break                 `eq2`  C.break
-prop_concatMapCC    = adjustSize (min 50) $
+prop_concatMapCC    = forAll (sized $ \n -> resize (min 50 n) arbitrary) $
                       D.concatMap             `eq2`  C.concatMap
 prop_consCC         = D.cons                  `eq2`  C.cons
 prop_consCC'        = D.cons'                 `eq2`  C.cons
@@ -147,7 +147,7 @@ prop_mapAccumLCC = eq3
 -- ByteString.Lazy <=> ByteString
 --
 
-prop_concatBP       = adjustSize (`div` 2) $
+prop_concatBP       = forAll (sized $ \n -> resize (n `div` 2) arbitrary) $
                       L.concat               `eq1`  P.concat
 prop_nullBP         = L.null                 `eq1`  P.null
 prop_reverseBP      = L.reverse              `eq1`  P.reverse
@@ -161,7 +161,7 @@ prop_allBP          = L.all                  `eq2`  P.all
 prop_anyBP          = L.any                  `eq2`  P.any
 prop_appendBP       = L.append               `eq2`  P.append
 prop_breakBP        = L.break                `eq2`  P.break
-prop_concatMapBP    = adjustSize (`div` 4) $
+prop_concatMapBP    = forAll (sized $ \n -> resize (n `div` 4) arbitrary) $
                       L.concatMap            `eq2`  P.concatMap
 prop_consBP         = L.cons                 `eq2`  P.cons
 prop_consBP'        = L.cons'                `eq2`  P.cons
@@ -332,7 +332,7 @@ prop_repeatL   =
 -- properties comparing ByteString.Lazy `eq1` List
 --
 
-prop_concatBL       = adjustSize (`div` 2) $
+prop_concatBL       = forAll (sized $ \n -> resize (n `div` 2) arbitrary) $
                       L.concat                `eq1` (concat    :: [[W]] -> [W])
 prop_lengthBL       = L.length                `eq1` (toInt64 . length    :: [W] -> Int64)
 prop_nullBL         = L.null                  `eq1` (null      :: [W] -> Bool)
@@ -346,7 +346,7 @@ prop_allBL          = L.all                   `eq2` (all       :: (W -> Bool) ->
 prop_anyBL          = L.any                   `eq2` (any       :: (W -> Bool) -> [W] -> Bool)
 prop_appendBL       = L.append                `eq2` ((++)      :: [W] -> [W] -> [W])
 prop_breakBL        = L.break                 `eq2` (break     :: (W -> Bool) -> [W] -> ([W],[W]))
-prop_concatMapBL    = adjustSize (`div` 2) $
+prop_concatMapBL    = forAll (sized $ \n -> resize (n `div` 2) arbitrary) $
                       L.concatMap             `eq2` (concatMap :: (W -> [W]) -> [W] -> [W])
 prop_consBL         = L.cons                  `eq2` ((:)       :: W -> [W] -> [W])
 prop_dropBL         = (L.drop . toInt64)      `eq2` (drop      :: Int -> [W] -> [W])
@@ -431,13 +431,13 @@ prop_groupPL      = P.group     `eq1` (group     :: [W] -> [[W]])
 prop_groupByPL    = P.groupBy   `eq2` (groupBy   :: (W -> W -> Bool) -> [W] -> [[W]])
 prop_initsPL      = P.inits     `eq1` (inits     :: [W] -> [[W]])
 prop_tailsPL      = P.tails     `eq1` (tails     :: [W] -> [[W]])
-prop_concatPL     = adjustSize (`div` 2) $
+prop_concatPL     = forAll (sized $ \n -> resize (n `div` 2) arbitrary) $
                     P.concat    `eq1` (concat    :: [[W]] -> [W])
 prop_allPL        = P.all       `eq2` (all       :: (W -> Bool) -> [W] -> Bool)
 prop_anyPL        = P.any       `eq2`    (any       :: (W -> Bool) -> [W] -> Bool)
 prop_appendPL     = P.append    `eq2`    ((++)      :: [W] -> [W] -> [W])
 prop_breakPL      = P.break     `eq2`    (break     :: (W -> Bool) -> [W] -> ([W],[W]))
-prop_concatMapPL  = adjustSize (`div` 2) $
+prop_concatMapPL  = forAll (sized $ \n -> resize (n `div` 2) arbitrary) $
                     P.concatMap `eq2`    (concatMap :: (W -> [W]) -> [W] -> [W])
 prop_consPL       = P.cons      `eq2`    ((:)       :: W -> [W] -> [W])
 prop_dropPL       = P.drop      `eq2`    (drop      :: Int -> [W] -> [W])
@@ -655,8 +655,8 @@ prop_foldr1_3 xs =
 
 prop_concat1 xs = (concat [xs,xs]) == (unpack $ L.concat [pack xs, pack xs])
 prop_concat2 xs = (concat [xs,[]]) == (unpack $ L.concat [pack xs, pack []])
-prop_concat3 xss = adjustSize (`div` 2) $
-                   L.concat (map pack xss) == pack (concat xss)
+prop_concat3    = forAll (sized $ \n -> resize (n `div` 2) arbitrary) $ \xss ->
+                  L.concat (map pack xss) == pack (concat xss)
 
 prop_concatMap xs = L.concatMap L.singleton xs == (pack . concatMap (:[]) . unpack) xs
 
@@ -667,7 +667,7 @@ prop_maximum xs = (not (null xs)) ==> (maximum xs) == (L.maximum ( pack xs ))
 prop_minimum xs = (not (null xs)) ==> (minimum xs) == (L.minimum ( pack xs ))
 
 prop_replicate1 c =
-    forAll arbitrarySizedIntegral $ \(Positive n) ->
+    forAll arbitrary $ \(Positive n) ->
     unpack (L.replicate (fromIntegral n) c) == replicate n c
 
 prop_replicate2 c = unpack (L.replicate 0 c) == replicate 0 c
@@ -1640,7 +1640,7 @@ short_tests =
 -- The entry point
 
 main :: IO ()
-main = defaultMain tests
+main = defaultMainWithArgs tests ["-o 3"] -- timeout if a test runs for >3 secs
 
 --
 -- And now a list of all the properties to test.
@@ -2271,7 +2271,7 @@ ll_tests =
     , testProperty "reverse"            prop_reverse
     , testProperty "reverse1"           prop_reverse1
     , testProperty "reverse2"           prop_reverse2
-    , testProperty "transpose"          prop_transpose
+    --, testProperty "transpose"          prop_transpose
     , testProperty "foldl"              prop_foldl
     , testProperty "foldl/reverse"      prop_foldl_1
     , testProperty "foldr"              prop_foldr

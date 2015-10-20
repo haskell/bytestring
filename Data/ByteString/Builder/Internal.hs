@@ -129,10 +129,12 @@ module Data.ByteString.Builder.Internal (
 ) where
 
 import           Control.Arrow (second)
-import           Control.Applicative (Applicative(..), (<$>))
--- import           Control.Exception (return)
 
+#if !(MIN_VERSION_base(4,8,0))
 import           Data.Monoid
+import           Control.Applicative (Applicative(..),(<$>))
+#endif
+
 import qualified Data.ByteString               as S
 import qualified Data.ByteString.Internal      as S
 import qualified Data.ByteString.Lazy.Internal as L
@@ -487,21 +489,18 @@ instance Applicative Put where
   pure x = Put $ \k -> k x
   {-# INLINE (<*>) #-}
   Put f <*> Put a = Put $ \k -> f (\f' -> a (\a' -> k (f' a')))
-#if MIN_VERSION_base(4,2,0)
   {-# INLINE (<*) #-}
   (<*) = ap_l
   {-# INLINE (*>) #-}
   (*>) = ap_r
-#endif
 
 instance Monad Put where
   {-# INLINE return #-}
-  return x = Put $ \k -> k x
+  return = pure
   {-# INLINE (>>=) #-}
   Put m >>= f = Put $ \k -> m (\m' -> unPut (f m') k)
   {-# INLINE (>>) #-}
-  (>>) = ap_r
-
+  (>>) = (*>)
 
 -- Conversion between Put and Builder
 -------------------------------------

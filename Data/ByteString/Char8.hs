@@ -1,7 +1,5 @@
 {-# LANGUAGE CPP, BangPatterns #-}
-#if __GLASGOW_HASKELL__
 {-# LANGUAGE MagicHash, UnboxedTuples #-}
-#endif
 {-# OPTIONS_HADDOCK prune #-}
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE Trustworthy #-}
@@ -135,7 +133,7 @@ module Data.ByteString.Char8 (
         lines,                  -- :: ByteString -> [ByteString]
         words,                  -- :: ByteString -> [ByteString]
         unlines,                -- :: [ByteString] -> ByteString
-        unwords,                -- :: ByteString -> [ByteString]
+        unwords,                -- :: [ByteString] -> ByteString
 
         -- * Predicates
         isPrefixOf,             -- :: ByteString -> ByteString -> Bool
@@ -259,11 +257,7 @@ import Data.Char    ( isSpace )
 import qualified Data.List as List (intersperse)
 
 import System.IO    (Handle,stdout,openBinaryFile,hClose,hFileSize,IOMode(..))
-#ifndef __NHC__
 import Control.Exception        (bracket)
-#else
-import IO			(bracket)
-#endif
 import Foreign
 
 
@@ -499,9 +493,7 @@ takeWhile f = B.takeWhile (f . w2c)
 -- | 'dropWhile' @p xs@ returns the suffix remaining after 'takeWhile' @p xs@.
 dropWhile :: (Char -> Bool) -> ByteString -> ByteString
 dropWhile f = B.dropWhile (f . w2c)
-#if defined(__GLASGOW_HASKELL__)
 {-# INLINE [1] dropWhile #-}
-#endif
 
 {-# RULES
 "ByteString specialise dropWhile isSpace -> dropSpace"
@@ -511,9 +503,7 @@ dropWhile f = B.dropWhile (f . w2c)
 -- | 'break' @p@ is equivalent to @'span' ('not' . p)@.
 break :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
 break f = B.break (f . w2c)
-#if defined(__GLASGOW_HASKELL__)
 {-# INLINE [1] break #-}
-#endif
 
 {-# RULES
 "ByteString specialise break (x==)" forall x.

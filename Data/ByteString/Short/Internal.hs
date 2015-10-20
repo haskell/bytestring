@@ -108,7 +108,7 @@ import Prelude ( Eq(..), Ord(..), Ordering(..), Read(..), Show(..)
 --
 data ShortByteString = SBS ByteArray#
 #if !(MIN_VERSION_base(4,3,0))
-                           Int  -- ^ Prior to ghc-7.0.x, 'ByteArray#'s reported
+           {-# UNPACK #-} !Int  -- ^ Prior to ghc-7.0.x, 'ByteArray#'s reported
                                 -- their length rounded up to the nearest word.
                                 -- This means we have to store the true length
                                 -- separately, wasting a word.
@@ -137,7 +137,7 @@ instance Monoid ShortByteString where
     mconcat = concat
 
 instance NFData ShortByteString where
-    rnf (SBS !_) = ()
+    rnf (SBS {}) = ()
 
 instance Show ShortByteString where
     showsPrec p ps r = showsPrec p (unpackChars ps) r
@@ -152,11 +152,7 @@ instance Data ShortByteString where
   gfoldl f z txt = z packBytes `f` (unpackBytes txt)
   toConstr _     = error "Data.ByteString.Short.ShortByteString.toConstr"
   gunfold _ _    = error "Data.ByteString.Short.ShortByteString.gunfold"
-#if MIN_VERSION_base(4,2,0)
   dataTypeOf _   = mkNoRepType "Data.ByteString.Short.ShortByteString"
-#else
-  dataTypeOf _   = mkNorepType "Data.ByteString.Short.ShortByteString"
-#endif
 
 ------------------------------------------------------------------------
 -- Simple operations

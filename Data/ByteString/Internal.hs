@@ -1,10 +1,8 @@
 {-# LANGUAGE CPP, ForeignFunctionInterface, BangPatterns #-}
-#if __GLASGOW_HASKELL__
 {-# LANGUAGE UnliftedFFITypes, MagicHash,
             UnboxedTuples, DeriveDataTypeable #-}
 #if __GLASGOW_HASKELL__ >= 703
 {-# LANGUAGE Unsafe #-}
-#endif
 #endif
 {-# OPTIONS_HADDOCK hide #-}
 
@@ -35,9 +33,7 @@ module Data.ByteString.Internal (
         packChars, packUptoLenChars, unsafePackLenChars,
         unpackBytes, unpackAppendBytesLazy, unpackAppendBytesStrict,
         unpackChars, unpackAppendCharsLazy, unpackAppendCharsStrict,
-#if defined(__GLASGOW_HASKELL__)
         unsafePackAddress,
-#endif
         checkedSum,
 
         -- * Low level imperative construction
@@ -93,33 +89,21 @@ import Foreign.C.Types          (CInt, CSize, CULong)
 #endif
 import Foreign.C.String         (CString)
 
+#if !(MIN_VERSION_base(4,8,0))
 import Data.Monoid              (Monoid(..))
+#endif
 import Control.DeepSeq          (NFData(rnf))
 
-#if MIN_VERSION_base(3,0,0)
 import Data.String              (IsString(..))
-#endif
 
-#ifndef __NHC__
 import Control.Exception        (assert)
-#endif
 
 import Data.Char                (ord)
 import Data.Word                (Word8)
 
 import Data.Typeable            (Typeable)
-#if MIN_VERSION_base(4,1,0)
-import Data.Data                (Data(..))
-#if MIN_VERSION_base(4,2,0)
-import Data.Data                (mkNoRepType)
-#else
-import Data.Data                (mkNorepType)
-#endif
-#else
-import Data.Generics            (Data(..), mkNorepType)
-#endif
+import Data.Data                (Data(..), mkNoRepType)
 
-#ifdef __GLASGOW_HASKELL__
 import GHC.Base                 (realWorld#,unsafeChr)
 #if MIN_VERSION_base(4,4,0)
 import GHC.CString              (unpackCString#)
@@ -137,42 +121,14 @@ import GHC.IO                   (unsafeDupablePerformIO)
 #else
 import GHC.IOBase               (unsafeDupablePerformIO)
 #endif
-#else
-import Data.Char                (chr)
-import System.IO.Unsafe         (unsafePerformIO)
-#endif
 
-#ifdef __GLASGOW_HASKELL__
-import GHC.ForeignPtr           (newForeignPtr_, mallocPlainForeignPtrBytes)
-import GHC.Ptr                  (Ptr(..), castPtr)
-#else
-import Foreign.ForeignPtr       (mallocForeignPtrBytes)
-#endif
-
-#ifdef __GLASGOW_HASKELL__
-import GHC.ForeignPtr           (ForeignPtr(ForeignPtr))
 import GHC.Base                 (nullAddr#)
-#else
-import Foreign.Ptr              (nullPtr)
-#endif
-
-#if __HUGS__
-import Hugs.ForeignPtr          (newForeignPtr_)
-#elif __GLASGOW_HASKELL__<=604
-import Foreign.ForeignPtr       (newForeignPtr_)
-#endif
+import GHC.ForeignPtr           (ForeignPtr(ForeignPtr)
+                                ,newForeignPtr_, mallocPlainForeignPtrBytes)
+import GHC.Ptr                  (Ptr(..), castPtr)
 
 -- CFILES stuff is Hugs only
 {-# CFILES cbits/fpstring.c #-}
-
--- An alternative to Control.Exception (assert) for nhc98
-#ifdef __NHC__
-#define assert	assertS "__FILE__ : __LINE__"
-assertS :: String -> Bool -> a -> a
-assertS _ True  = id
-assertS s False = error ("assertion failed at "++s)
-#endif
-
 
 -- -----------------------------------------------------------------------------
 
@@ -186,10 +142,7 @@ assertS s False = error ("assertion failed at "++s)
 data ByteString = PS {-# UNPACK #-} !(ForeignPtr Word8) -- payload
                      {-# UNPACK #-} !Int                -- offset
                      {-# UNPACK #-} !Int                -- length
-
-#if defined(__GLASGOW_HASKELL__)
     deriving (Typeable)
-#endif
 
 instance Eq  ByteString where
     (==)    = eq
@@ -211,20 +164,14 @@ instance Show ByteString where
 instance Read ByteString where
     readsPrec p str = [ (packChars x, y) | (x, y) <- readsPrec p str ]
 
-#if MIN_VERSION_base(3,0,0)
 instance IsString ByteString where
     fromString = packChars
-#endif
 
 instance Data ByteString where
   gfoldl f z txt = z packBytes `f` (unpackBytes txt)
   toConstr _     = error "Data.ByteString.ByteString.toConstr"
   gunfold _ _    = error "Data.ByteString.ByteString.gunfold"
-#if MIN_VERSION_base(4,2,0)
   dataTypeOf _   = mkNoRepType "Data.ByteString.ByteString"
-#else
-  dataTypeOf _   = mkNorepType "Data.ByteString.ByteString"
-#endif
 
 ------------------------------------------------------------------------
 -- Packing and unpacking from lists
@@ -235,14 +182,12 @@ packBytes ws = unsafePackLenBytes (List.length ws) ws
 packChars :: [Char] -> ByteString
 packChars cs = unsafePackLenChars (List.length cs) cs
 
-#if defined(__GLASGOW_HASKELL__)
 {-# INLINE [0] packChars #-}
 
 {-# RULES
 "ByteString packChars/packAddress" forall s .
    packChars (unpackCString# s) = accursedUnutterablePerformIO (unsafePackAddress s)
  #-}
-#endif
 
 unsafePackLenBytes :: Int -> [Word8] -> ByteString
 unsafePackLenBytes len xs0 =
@@ -258,7 +203,7 @@ unsafePackLenChars len cs0 =
     go !_ []     = return ()
     go !p (c:cs) = poke p (c2w c) >> go (p `plusPtr` 1) cs
 
-#if defined(__GLASGOW_HASKELL__)
+
 -- | /O(n)/ Pack a null-terminated sequence of bytes, pointed to by an
 -- Addr\# (an arbitrary machine address assumed to point outside the
 -- garbage-collected heap) into a @ByteString@. A much faster way to
@@ -289,7 +234,7 @@ unsafePackAddress addr# = do
     cstr :: CString
     cstr = Ptr addr#
 {-# INLINE unsafePackAddress #-}
-#endif
+
 
 packUptoLenBytes :: Int -> [Word8] -> (ByteString, [Word8])
 packUptoLenBytes len xs0 =
@@ -371,12 +316,7 @@ unpackAppendCharsStrict (PS fp off len) xs =
 
 -- | The 0 pointer. Used to indicate the empty Bytestring.
 nullForeignPtr :: ForeignPtr Word8
-#ifdef __GLASGOW_HASKELL__
 nullForeignPtr = ForeignPtr nullAddr# (error "nullForeignPtr") --TODO: should ForeignPtrContents be strict?
-#else
-nullForeignPtr = unsafePerformIO $ newForeignPtr_ nullPtr
-{-# NOINLINE nullForeignPtr #-}
-#endif
 
 -- ---------------------------------------------------------------------
 -- Low level constructors
@@ -416,12 +356,6 @@ unsafeCreateUptoN l f = unsafeDupablePerformIO (createUptoN l f)
 unsafeCreateUptoN' :: Int -> (Ptr Word8 -> IO (Int, a)) -> (ByteString, a)
 unsafeCreateUptoN' l f = unsafeDupablePerformIO (createUptoN' l f)
 {-# INLINE unsafeCreateUptoN' #-}
-
-#ifndef __GLASGOW_HASKELL__
--- for Hugs, NHC etc
-unsafeDupablePerformIO :: IO a -> a
-unsafeDupablePerformIO = unsafePerformIO
-#endif
 
 -- | Create ByteString of size @l@ and use action @f@ to fill it's contents.
 create :: Int -> (Ptr Word8 -> IO ()) -> IO ByteString
@@ -480,12 +414,7 @@ createAndTrim' l f = do
 -- | Wrapper of 'mallocForeignPtrBytes' with faster implementation for GHC
 --
 mallocByteString :: Int -> IO (ForeignPtr a)
-mallocByteString l = do
-#ifdef __GLASGOW_HASKELL__
-    mallocPlainForeignPtrBytes l
-#else
-    mallocForeignPtrBytes l
-#endif
+mallocByteString l = mallocPlainForeignPtrBytes l
 {-# INLINE mallocByteString #-}
 
 ------------------------------------------------------------------------
@@ -543,11 +472,7 @@ checkedSum fun = go 0
 
 -- | Conversion between 'Word8' and 'Char'. Should compile to a no-op.
 w2c :: Word8 -> Char
-#if !defined(__GLASGOW_HASKELL__)
-w2c = chr . fromIntegral
-#else
 w2c = unsafeChr . fromIntegral
-#endif
 {-# INLINE w2c #-}
 
 -- | Unsafe conversion between 'Char' and 'Word8'. This is a no-op and
@@ -613,11 +538,7 @@ overflowError fun = error $ "Data.ByteString." ++ fun ++ ": size overflow"
 --
 {-# INLINE accursedUnutterablePerformIO #-}
 accursedUnutterablePerformIO :: IO a -> a
-#if defined(__GLASGOW_HASKELL__)
 accursedUnutterablePerformIO (IO m) = case m realWorld# of (# _, r #) -> r
-#else
-accursedUnutterablePerformIO = unsafePerformIO
-#endif
 
 inlinePerformIO :: IO a -> a
 inlinePerformIO = accursedUnutterablePerformIO

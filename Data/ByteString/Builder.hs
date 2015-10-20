@@ -266,7 +266,9 @@ import           Foreign
 
 -- HADDOCK only imports
 import qualified Data.ByteString               as S (concat)
-import           Data.Monoid
+#if !(MIN_VERSION_base(4,8,0))
+import           Data.Monoid (Monoid(..))
+#endif
 import           Data.Foldable                      (foldMap)
 import           Data.List                          (intersperse)
 

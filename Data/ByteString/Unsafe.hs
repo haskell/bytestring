@@ -1,7 +1,5 @@
 {-# LANGUAGE CPP #-}
-#if __GLASGOW_HASKELL__
 {-# LANGUAGE MagicHash #-}
-#endif
 #if __GLASGOW_HASKELL__ >= 703
 {-# LANGUAGE Unsafe #-}
 #endif
@@ -43,12 +41,10 @@ module Data.ByteString.Unsafe (
         unsafePackMallocCString,-- :: CString -> IO ByteString
         unsafePackMallocCStringLen, -- :: CStringLen -> IO ByteString
 
-#if defined(__GLASGOW_HASKELL__)
         unsafePackAddress,          -- :: Addr# -> IO ByteString
         unsafePackAddressLen,       -- :: Int -> Addr# -> IO ByteString
         unsafePackCStringFinalizer, -- :: Ptr Word8 -> Int -> IO () -> IO ByteString
         unsafeFinalize,             -- :: ByteString -> IO ()
-#endif
 
   ) where
 
@@ -60,30 +56,15 @@ import Foreign.Ptr              (Ptr, plusPtr, castPtr)
 import Foreign.Storable         (Storable(..))
 import Foreign.C.String         (CString, CStringLen)
 
-#ifndef __NHC__
 import Control.Exception        (assert)
-#endif
 
 import Data.Word                (Word8)
 
-#if defined(__GLASGOW_HASKELL__)
 import qualified Foreign.ForeignPtr as FC (finalizeForeignPtr)
 import qualified Foreign.Concurrent as FC (newForeignPtr)
 
---import Data.Generics            (Data(..), Typeable(..))
-
 import GHC.Prim                 (Addr#)
 import GHC.Ptr                  (Ptr(..))
-#endif
-
--- An alternative to Control.Exception (assert) for nhc98
-#ifdef __NHC__
-#define assert	assertS "__FILE__ : __LINE__"
-assertS :: String -> Bool -> a -> a
-assertS _ True  = id
-assertS s False = error ("assertion failed at "++s)
-#endif
-
 
 -- ---------------------------------------------------------------------
 --
@@ -142,7 +123,6 @@ unsafeDrop n (PS x s l) = assert (0 <= n && n <= l) $ PS x (s+n) (l-n)
 {-# INLINE unsafeDrop #-}
 
 
-#if defined(__GLASGOW_HASKELL__)
 -- | /O(1)/ 'unsafePackAddressLen' provides constant-time construction of
 -- 'ByteString's, which is ideal for string literals. It packs a sequence
 -- of bytes into a @ByteString@, given a raw 'Addr#' to the string, and
@@ -191,8 +171,6 @@ unsafePackCStringFinalizer p l f = do
 --
 unsafeFinalize :: ByteString -> IO ()
 unsafeFinalize (PS p _ _) = FC.finalizeForeignPtr p
-
-#endif
 
 ------------------------------------------------------------------------
 -- Packing CStrings into ByteStrings
