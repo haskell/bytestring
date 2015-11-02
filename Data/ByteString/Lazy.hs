@@ -233,11 +233,7 @@ import System.IO                (Handle,stdin,stdout,openBinaryFile,IOMode(..)
                                 ,hClose)
 import System.IO.Error          (mkIOError, illegalOperationErrorType)
 import System.IO.Unsafe
-#ifndef __NHC__
 import Control.Exception        (bracket)
-#else
-import IO		        (bracket)
-#endif
 
 import Foreign.ForeignPtr       (withForeignPtr)
 import Foreign.Ptr
@@ -1017,8 +1013,11 @@ filterNotByte w (LPS xs) = LPS (filterMap (P.filterNotByte w) xs)
 -- > partition p bs == (filter p xs, filter (not . p) xs)
 --
 partition :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
-partition f p = (filter f p, filter (not . f) p)
---TODO: use a better implementation
+partition _ Empty = (Empty, Empty)
+partition p (Chunk x xs) = (chunk t ts, chunk f fs)
+  where
+    (t,   f) = S.partition p x
+    (ts, fs) = partition   p xs
 
 -- ---------------------------------------------------------------------
 -- Searching for substrings
@@ -1169,7 +1168,6 @@ hGetN _ h n = illegalBufferSize h "hGet" n
 -- is available. Chunks are read on demand, in @k@-sized chunks.
 --
 hGetNonBlockingN :: Int -> Handle -> Int -> IO ByteString
-#if defined(__GLASGOW_HASKELL__)
 hGetNonBlockingN k h n | n > 0= readChunks n
   where
     readChunks !i = do
@@ -1181,9 +1179,6 @@ hGetNonBlockingN k h n | n > 0= readChunks n
 
 hGetNonBlockingN _ _ 0 = return Empty
 hGetNonBlockingN _ h n = illegalBufferSize h "hGetNonBlocking" n
-#else
-hGetNonBlockingN = hGetN
-#endif
 
 illegalBufferSize :: Handle -> String -> Int -> IO a
 illegalBufferSize handle fn sz =
@@ -1217,12 +1212,8 @@ hGet = hGetN defaultChunkSize
 -- Note: on Windows and with Haskell implementation other than GHC, this
 -- function does not work correctly; it behaves identically to 'hGet'.
 --
-#if defined(__GLASGOW_HASKELL__)
 hGetNonBlocking :: Handle -> Int -> IO ByteString
 hGetNonBlocking = hGetNonBlockingN defaultChunkSize
-#else
-hGetNonBlocking = hGet
-#endif
 
 -- | Read an entire file /lazily/ into a 'ByteString'.
 -- The Handle will be held open until EOF is encountered.

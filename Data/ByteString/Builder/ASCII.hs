@@ -85,7 +85,7 @@ import qualified Data.ByteString.Builder.Prim                   as P
 import           Foreign
 
 
-#if defined(__GLASGOW_HASKELL__) && defined(INTEGER_GMP)
+#if defined(INTEGER_GMP)
 
 #if !(MIN_VERSION_base(4,8,0))
 import           Data.Monoid (mappend)
@@ -304,7 +304,7 @@ lazyByteStringHex = P.primMapLazyByteStringFixed P.word8HexFixed
 -- Fast decimal 'Integer' encoding.
 ------------------------------------------------------------------------------
 
-#if defined(__GLASGOW_HASKELL__) && defined(INTEGER_GMP)
+#if defined(INTEGER_GMP)
 -- An optimized version of the integer serialization code
 -- in blaze-textual (c) 2011 MailRank, Inc. Bryan O'Sullivan
 -- <bos@mailrank.com>. It is 2.5x faster on Int-sized integers and 4.5x faster

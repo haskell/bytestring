@@ -38,9 +38,8 @@ import qualified "bytestring" Data.ByteString.Lazy as OldL
 
 import           Foreign
 
-import           Paths_bench_bytestring
+import System.Random
 
-import           System.Random
 
 ------------------------------------------------------------------------------
 -- Benchmark support
@@ -153,12 +152,34 @@ benchIntEncodingB n0 w
       | n <= 0    = return op
       | otherwise = PI.runB w n op >>= loop (n - 1)
 
-easySubstrings, randomSubstrings :: Int -> Int -> (S.ByteString, S.ByteString)
-hardSubstrings, pathologicalSubstrings :: Int ->
-                                          Int -> (S.ByteString, S.ByteString)
+hashInt :: Int -> Int
+hashInt x = iterate step x !! 10
+  where
+    step a = e
+      where b = (a `xor` 61) `xor` (a `shiftR` 16)
+            c = b + (b `shiftL` 3)
+            d = c `xor` (c `shiftR` 4)
+            e = d * 0x27d4eb2d
+            f = e `xor` (e `shiftR` 15)
 
 w :: Int -> Word8
 w = fromIntegral
+
+hashWord8 :: Word8 -> Word8
+hashWord8 = fromIntegral . hashInt . w
+
+partitionStrict p = nf (S.partition p) . randomStrict $ mkStdGen 98423098
+  where randomStrict = fst . S.unfoldrN 10000 (Just . random)
+
+partitionLazy p = nf (L.partition p) . randomLazy $ (0, mkStdGen 98423098)
+  where step (k, g)
+          | k >= 10000 = Nothing
+          | otherwise  = let (x, g') = random g in Just (x, (k + 1, g'))
+        randomLazy = L.unfoldr step
+
+easySubstrings, randomSubstrings :: Int -> Int -> (S.ByteString, S.ByteString)
+hardSubstrings, pathologicalSubstrings :: Int ->
+                                          Int -> (S.ByteString, S.ByteString)
 
 {-# INLINE easySubstrings #-}
 easySubstrings n h = (S.replicate n $ w 1,
@@ -415,5 +436,28 @@ main = do
 
       , benchFE "floatHexFixed"    $ fromIntegral >$< P.floatHexFixed
       , benchFE "doubleHexFixed"   $ fromIntegral >$< P.doubleHexFixed
+      ]
+    , bgroup "partition"
+      [
+        bgroup "strict"
+        [
+          bench "mostlyTrueFast"  $ partitionStrict (< (w 225))
+        , bench "mostlyFalseFast" $ partitionStrict (< (w 10))
+        , bench "balancedFast"    $ partitionStrict (< (w 128))
+
+        , bench "mostlyTrueSlow"  $ partitionStrict (\x -> hashWord8 x < w 225)
+        , bench "mostlyFalseSlow" $ partitionStrict (\x -> hashWord8 x < w 10)
+        , bench "balancedSlow"    $ partitionStrict (\x -> hashWord8 x < w 128)
+        ]
+      , bgroup "lazy"
+        [
+          bench "mostlyTrueFast"  $ partitionLazy (< (w 225))
+        , bench "mostlyFalseFast" $ partitionLazy (< (w 10))
+        , bench "balancedFast"    $ partitionLazy (< (w 128))
+
+        , bench "mostlyTrueSlow"  $ partitionLazy (\x -> hashWord8 x < w 225)
+        , bench "mostlyFalseSlow" $ partitionLazy (\x -> hashWord8 x < w 10)
+        , bench "balancedSlow"    $ partitionLazy (\x -> hashWord8 x < w 128)
+        ]
       ]
     ]

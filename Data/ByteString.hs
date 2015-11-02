@@ -1,8 +1,6 @@
 {-# LANGUAGE CPP #-}
-#if __GLASGOW_HASKELL__
 {-# LANGUAGE MagicHash, UnboxedTuples,
             NamedFieldPuns, BangPatterns #-}
-#endif
 {-# OPTIONS_HADDOCK prune #-}
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE Trustworthy #-}
@@ -233,12 +231,7 @@ import qualified Data.List as List
 import Data.Word                (Word8)
 import Data.Maybe               (isJust, listToMaybe)
 
--- Control.Exception.assert not available in yhc or nhc
-#ifndef __NHC__
 import Control.Exception        (finally, bracket, assert, throwIO)
-#else
-import Control.Exception	      (bracket, finally)
-#endif
 import Control.Monad            (when)
 
 import Foreign.C.String         (CString, CStringLen)
@@ -264,14 +257,6 @@ import System.IO.Error          (mkIOError, illegalOperationErrorType)
 import Data.Monoid              (Monoid(..))
 #endif
 
-#if !defined(__GLASGOW_HASKELL__)
-import System.IO.Unsafe
-import qualified System.Environment
-import qualified System.IO      (hGetLine)
-import System.IO                (hIsEOF)
-#endif
-
-#if defined(__GLASGOW_HASKELL__)
 
 import System.IO                (hGetBufNonBlocking, hPutBufNonBlocking)
 
@@ -281,7 +266,6 @@ import System.IO                (hGetBufSome)
 import System.IO                (hWaitForInput, hIsEOF)
 #endif
 
-#if __GLASGOW_HASKELL__ >= 611
 import Data.IORef
 import GHC.IO.Handle.Internals
 import GHC.IO.Handle.Types
@@ -290,41 +274,10 @@ import GHC.IO.BufferedIO as Buffered
 import GHC.IO                   (unsafePerformIO, unsafeDupablePerformIO)
 import Data.Char                (ord)
 import Foreign.Marshal.Utils    (copyBytes)
-#else
-import System.IO.Error          (isEOFError)
-import GHC.IOBase
-import GHC.Handle
-#endif
 
 import GHC.Prim                 (Word#)
 import GHC.Base                 (build)
 import GHC.Word hiding (Word8)
-
-#endif
-
--- An alternative to Control.Exception (assert) for nhc98
-#ifdef __NHC__
-
-import System.IO (Handle)
-
-#define assert  assertS "__FILE__ : __LINE__"
-assertS :: String -> Bool -> a -> a
-assertS _ True  = id
-assertS s False = error ("assertion failed at "++s)
-
--- An alternative to hWaitForInput
-hWaitForInput :: Handle -> Int -> IO ()
-hWaitForInput _ _ = return ()
-#endif
-
-#ifndef __GLASGOW_HASKELL__
-unsafeDupablePerformIO = unsafePerformIO
-#endif
-
-#if !MIN_VERSION_base(4,7,0)
-finiteBitSize :: Word -> Int
-finiteBitSize = bitSize
-#endif
 
 -- -----------------------------------------------------------------------------
 -- Introducing and eliminating 'ByteString's
@@ -368,10 +321,6 @@ pack = packBytes
 
 -- | /O(n)/ Converts a 'ByteString' to a '[Word8]'.
 unpack :: ByteString -> [Word8]
-#if !defined(__GLASGOW_HASKELL__)
-unpack = unpackBytes
-#else
-
 unpack bs = build (unpackFoldr bs)
 {-# INLINE unpack #-}
 
@@ -386,8 +335,6 @@ unpackFoldr bs k z = foldr k z bs
 "ByteString unpack-list" [1]  forall bs .
     unpackFoldr bs (:) [] = unpackBytes bs
  #-}
-
-#endif
 
 -- ---------------------------------------------------------------------
 -- Basic interface
@@ -897,9 +844,7 @@ dropWhile f ps = unsafeDrop (findIndexOrEnd (not . f) ps) ps
 --
 break :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
 break p ps = case findIndexOrEnd p ps of n -> (unsafeTake n ps, unsafeDrop n ps)
-#if __GLASGOW_HASKELL__ 
 {-# INLINE [1] break #-}
-#endif
 
 {-# RULES
 "ByteString specialise break (x==)" forall x.
@@ -933,9 +878,7 @@ breakEnd  p ps = splitAt (findFromEndUntil p ps) ps
 -- equivalent to @('takeWhile' p xs, 'dropWhile' p xs)@
 span :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
 span p ps = break (not . p) ps
-#if __GLASGOW_HASKELL__
 {-# INLINE [1] span #-}
-#endif
 
 -- | 'spanByte' breaks its ByteString argument at the first
 -- occurence of a byte other than its argument. It is more efficient
@@ -986,8 +929,6 @@ spanEnd  p ps = splitAt (findFromEndUntil (not.p) ps) ps
 -- > splitWith (=='a') []        == []
 --
 splitWith :: (Word8 -> Bool) -> ByteString -> [ByteString]
-
-#if defined(__GLASGOW_HASKELL__)
 splitWith _pred (PS _  _   0) = []
 splitWith pred_ (PS fp off len) = splitWith0 pred# off len fp
   where pred# c# = pred_ (W8# c#)
@@ -1012,15 +953,6 @@ splitWith pred_ (PS fp off len) = splitWith0 pred# off len fp
                               splitWith0 pred' (off'+idx'+1) (len'-idx'-1) fp')
                    else splitLoop pred' p (idx'+1) off' len' fp'
 {-# INLINE splitWith #-}
-
-#else
-splitWith _ (PS _ _ 0) = []
-splitWith p ps = loop p ps
-    where
-        loop !q !qs = if null rest then [chunk]
-                                   else chunk : loop q (unsafeTail rest)
-            where (chunk,rest) = break q qs
-#endif
 
 -- | /O(n)/ Break a 'ByteString' into pieces separated by the byte
 -- argument, consuming the delimiter. I.e.
@@ -1269,14 +1201,42 @@ find f p = case findIndex f p of
 -- > partition p bs == (filter p xs, filter (not . p) xs)
 --
 partition :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
-partition p bs = (filter p bs, filter (not . p) bs)
---TODO: use a better implementation
+partition f s = unsafeDupablePerformIO $
+    do fp' <- mallocByteString len
+       withForeignPtr fp' $ \p ->
+           do let end = p `plusPtr` (len - 1)
+              mid <- sep 0 p end
+              rev mid end
+              let i = mid `minusPtr` p
+              return (PS fp' 0 i,
+                      PS fp' i (len - i))
+  where
+    len  = length s
+    incr = (`plusPtr` 1)
+    decr = (`plusPtr` (-1))
 
--- ---------------------------------------------------------------------
--- Searching for substrings
+    sep !i !p1 !p2
+       | i == len  = return p1
+       | f w       = do poke p1 w
+                        sep (i + 1) (incr p1) p2
+       | otherwise = do poke p2 w
+                        sep (i + 1) p1 (decr p2)
+      where
+        w = s `unsafeIndex` i
 
--- | /O(n)/ The 'isPrefixOf' function takes two ByteStrings and returns 'True'
--- iff the first is a prefix of the second.
+    rev !p1 !p2
+      | p1 >= p2  = return ()
+      | otherwise = do a <- peek p1
+                       b <- peek p2
+                       poke p1 b
+                       poke p2 a
+                       rev (incr p1) (decr p2)
+
+-- --------------------------------------------------------------------
+-- Sarching for substrings
+
+-- |/O(n)/ The 'isPrefixOf' function takes two ByteStrings and returns 'True'
+-- if the first is a prefix of the second.
 isPrefixOf :: ByteString -> ByteString -> Bool
 isPrefixOf (PS x1 s1 l1) (PS x2 s2 l2)
     | l1 == 0   = True
@@ -1590,13 +1550,6 @@ getLine = hGetLine stdin
 -- | Read a line from a handle
 
 hGetLine :: Handle -> IO ByteString
-
-#if !defined(__GLASGOW_HASKELL__)
-
-hGetLine h = System.IO.hGetLine h >>= return . pack . P.map c2w
-
-#elif __GLASGOW_HASKELL__ >= 611
-
 hGetLine h =
   wantReadableHandle_ "Data.ByteString.hGetLine" h $
     \ h_@Handle__{haByteBuffer} -> do
@@ -1651,72 +1604,6 @@ mkPS buf start end =
  where
    len = end - start
 
-#else
--- GHC 6.10 and older, pre-Unicode IO library
-
-hGetLine h = wantReadableHandle "Data.ByteString.hGetLine" h $ \ handle_ -> do
-    case haBufferMode handle_ of
-       NoBuffering -> error "no buffering"
-       _other      -> hGetLineBuffered handle_
-
- where
-    hGetLineBuffered handle_ = do
-        let ref = haBuffer handle_
-        buf <- readIORef ref
-        hGetLineBufferedLoop handle_ ref buf 0 []
-
-    hGetLineBufferedLoop handle_ ref
-            buf@Buffer{ bufRPtr=r, bufWPtr=w, bufBuf=raw } !len xss = do
-        off <- findEOL r w raw
-        let new_len = len + off - r
-        xs <- mkPS raw r off
-
-      -- if eol == True, then off is the offset of the '\n'
-      -- otherwise off == w and the buffer is now empty.
-        if off /= w
-            then do if (w == off + 1)
-                            then writeIORef ref buf{ bufRPtr=0, bufWPtr=0 }
-                            else writeIORef ref buf{ bufRPtr = off + 1 }
-                    mkBigPS new_len (xs:xss)
-            else do
-                 maybe_buf <- maybeFillReadBuffer (haFD handle_) True (haIsStream handle_)
-                                    buf{ bufWPtr=0, bufRPtr=0 }
-                 case maybe_buf of
-                    -- Nothing indicates we caught an EOF, and we may have a
-                    -- partial line to return.
-                    Nothing -> do
-                         writeIORef ref buf{ bufRPtr=0, bufWPtr=0 }
-                         if new_len > 0
-                            then mkBigPS new_len (xs:xss)
-                            else ioe_EOF
-                    Just new_buf ->
-                         hGetLineBufferedLoop handle_ ref new_buf new_len (xs:xss)
-
-    -- find the end-of-line character, if there is one
-    findEOL r w raw
-        | r == w = return w
-        | otherwise =  do
-            (c,r') <- readCharFromBuffer raw r
-            if c == '\n'
-                then return r -- NB. not r': don't include the '\n'
-                else findEOL r' w raw
-
-    maybeFillReadBuffer fd is_line is_stream buf = catch
-        (do buf' <- fillReadBuffer fd is_line is_stream buf
-            return (Just buf'))
-        (\e -> if isEOFError e then return Nothing else ioError e)
-
--- TODO, rewrite to use normal memcpy
-mkPS :: RawBuffer -> Int -> Int -> IO ByteString
-mkPS buf start end =
-    let len = end - start
-    in create len $ \p -> do
-        memcpy_ptr_baoff p buf (fromIntegral start) (fromIntegral len)
-        return ()
-
-memcpy_ptr_baoff dst src src_off sz = memcpy dst (src+src_off) sz
-#endif
-
 mkBigPS :: Int -> [ByteString] -> IO ByteString
 mkBigPS _ [ps] = return ps
 mkBigPS _ pss = return $! concat (P.reverse pss)
@@ -1738,13 +1625,9 @@ hPut h (PS ps s l) = withForeignPtr ps $ \p-> hPutBuf h (p `plusPtr` s) l
 -- function does not work correctly; it behaves identically to 'hPut'.
 --
 hPutNonBlocking :: Handle -> ByteString -> IO ByteString
-#if defined(__GLASGOW_HASKELL__)
 hPutNonBlocking h bs@(PS ps s l) = do
   bytesWritten <- withForeignPtr ps $ \p-> hPutBufNonBlocking h (p `plusPtr` s) l
   return $! drop bytesWritten bs
-#else
-hPutNonBlocking h bs = hPut h bs >> return empty
-#endif
 
 -- | A synonym for @hPut@, for compatibility 
 hPutStr :: Handle -> ByteString -> IO ()
@@ -1800,14 +1683,10 @@ hGet h i
 -- function does not work correctly; it behaves identically to 'hGet'.
 --
 hGetNonBlocking :: Handle -> Int -> IO ByteString
-#if defined(__GLASGOW_HASKELL__)
 hGetNonBlocking h i
     | i >  0    = createAndTrim i $ \p -> hGetBufNonBlocking h p i
     | i == 0    = return empty
     | otherwise = illegalBufferSize h "hGetNonBlocking" i
-#else
-hGetNonBlocking = hGet
-#endif
 
 -- | Like 'hGet', except that a shorter 'ByteString' may be returned
 -- if there are not enough bytes immediately available to satisfy the
@@ -1947,12 +1826,7 @@ moduleError fun msg = error (moduleErrorMsg fun msg)
 {-# NOINLINE moduleError #-}
 
 moduleErrorIO :: String -> String -> IO a
-moduleErrorIO fun msg =
-#if MIN_VERSION_base(4,0,0)
-    throwIO . userError $ moduleErrorMsg fun msg
-#else
-    throwIO . IOException . userError $ moduleErrorMsg fun msg
-#endif
+moduleErrorIO fun msg = throwIO . userError $ moduleErrorMsg fun msg
 {-# NOINLINE moduleErrorIO #-}
 
 moduleErrorMsg :: String -> String -> String
