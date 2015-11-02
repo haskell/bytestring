@@ -217,6 +217,12 @@ import Prelude hiding           (reverse,head,tail,last,init,null
                                 ,getContents,getLine,putStr,putStrLn,interact
                                 ,zip,zipWith,unzip,notElem)
 
+#if MIN_VERSION_base(4,7,0)
+import Data.Bits                (finiteBitSize, shiftL, (.|.), (.&.))
+#else
+import Data.Bits                (bitSize, shiftL, (.|.), (.&.))
+#endif
+
 import Data.ByteString.Internal
 import Data.ByteString.Unsafe
 
@@ -272,6 +278,10 @@ import Foreign.Marshal.Utils    (copyBytes)
 import GHC.Prim                 (Word#)
 import GHC.Base                 (build)
 import GHC.Word hiding (Word8)
+
+#if !(MIN_VERSION_base(4,7,0))
+finiteBitSize = bitSize
+#endif
 
 -- -----------------------------------------------------------------------------
 -- Introducing and eliminating 'ByteString's
@@ -1289,18 +1299,63 @@ isInfixOf p s = isJust (findSubstring p s)
 --
 -- To take the parts of a string before a delimiter:
 --
--- > fst (breakSubstring x y) 
+-- > fst (breakSubstring x y)
+--
+-- Note that calling `breakSubstring x` does some preprocessing work, so
+-- you should avoid unnecessarily duplicating breakSubstring calls with the same
+-- pattern.
 --
 breakSubstring :: ByteString -- ^ String to search for
                -> ByteString -- ^ String to search in
                -> (ByteString,ByteString) -- ^ Head and tail of string broken at substring
-
-breakSubstring pat src = search 0 src
+breakSubstring pat =
+  case lp of
+    0 -> \src -> (empty,src)
+    1 -> breakByte (unsafeHead pat)
+    _ -> if lp * 8 <= finiteBitSize (0 :: Word)
+             then shift
+             else karpRabin
   where
-    search !n !s
-        | null s             = (src,empty)      -- not found
-        | pat `isPrefixOf` s = (take n src,s)
-        | otherwise          = search (n+1) (unsafeTail s)
+    unsafeSplitAt i s = (unsafeTake i s, unsafeDrop i s)
+    lp                = length pat
+    karpRabin :: ByteString -> (ByteString, ByteString)
+    karpRabin src
+        | length src < lp = (src,empty)
+        | otherwise = search (rollingHash $ unsafeTake lp src) lp
+      where
+        k           = 2891336453 :: Word32
+        rollingHash = foldl' (\h b -> h * k + fromIntegral b) 0
+        hp          = rollingHash pat
+        m           = k ^ lp
+        get = fromIntegral . unsafeIndex src
+        search !hs !i
+            | hp == hs && pat == unsafeTake lp b = u
+            | length src <= i                    = (src,empty) -- not found
+            | otherwise                          = search hs' (i + 1)
+          where
+            u@(_, b) = unsafeSplitAt (i - lp) src
+            hs' = hs * k +
+                  get i -
+                  m * get (i - lp)
+    {-# INLINE karpRabin #-}
+
+    shift :: ByteString -> (ByteString, ByteString)
+    shift !src
+        | length src < lp = (src,empty)
+        | otherwise       = search (intoWord $ unsafeTake lp src) lp
+      where
+        intoWord :: ByteString -> Word
+        intoWord = foldl' (\w b -> (w `shiftL` 8) .|. fromIntegral b) 0
+        wp   = intoWord pat
+        mask = (1 `shiftL` (8 * lp)) - 1
+        search !w !i
+            | w == wp         = unsafeSplitAt (i - lp) src
+            | length src <= i = (src, empty)
+            | otherwise       = search w' (i + 1)
+          where
+            b  = fromIntegral (unsafeIndex src i)
+            w' = mask .&. ((w `shiftL` 8) .|. b)
+    {-# INLINE shift #-}
 
 -- | Get the first index of a substring in another string,
 --   or 'Nothing' if the string is not found.
@@ -1308,7 +1363,11 @@ breakSubstring pat src = search 0 src
 findSubstring :: ByteString -- ^ String to search for.
               -> ByteString -- ^ String to seach in.
               -> Maybe Int
-findSubstring f i = listToMaybe (findSubstrings f i)
+findSubstring pat src
+    | null pat && null src = Just 0
+    | null b = Nothing
+    | otherwise = Just (length a)
+  where (a, b) = breakSubstring pat src
 
 {-# DEPRECATED findSubstring "findSubstring is deprecated in favour of breakSubstring." #-}
 
@@ -1318,14 +1377,18 @@ findSubstring f i = listToMaybe (findSubstrings f i)
 findSubstrings :: ByteString -- ^ String to search for.
                -> ByteString -- ^ String to seach in.
                -> [Int]
-findSubstrings pat str
-    | null pat         = [0 .. length str]
-    | otherwise        = search 0 str
+findSubstrings pat src
+    | null pat        = [0 .. ls]
+    | otherwise       = search 0
   where
-    search !n !s
-        | null s             = []
-        | pat `isPrefixOf` s = n : search (n+1) (unsafeTail s)
-        | otherwise          =     search (n+1) (unsafeTail s)
+    lp = length pat
+    ls = length src
+    search !n
+        | (n > ls - lp) || null b = []
+        | otherwise = let k = n + length a
+                      in  k : search (k + lp)
+      where
+        (a, b) = breakSubstring pat (unsafeDrop n src)
 
 {-# DEPRECATED findSubstrings "findSubstrings is deprecated in favour of breakSubstring." #-}
 
@@ -1476,7 +1539,7 @@ packCStringLen (_, len) =
 -- to by the 'ByteString' to be garbage collected, for example
 -- if a large string has been read in, and only a small part of it 
 -- is needed in the rest of the program.
--- 
+--
 copy :: ByteString -> ByteString
 copy (PS x s l) = unsafeCreate l $ \p -> withForeignPtr x $ \f ->
     memcpy p (f `plusPtr` s) (fromIntegral l)
