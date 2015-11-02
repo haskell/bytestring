@@ -220,7 +220,7 @@ import Prelude hiding           (reverse,head,tail,last,init,null
 #if MIN_VERSION_base(4,7,0)
 import Data.Bits                (finiteBitSize, shiftL, (.|.), (.&.))
 #else
-import Data.Bits                (Bits, bitSize, shiftL, (.|.), (.&.))
+import Data.Bits                (bitSize, shiftL, (.|.), (.&.))
 #endif
 
 import Data.ByteString.Internal
@@ -280,7 +280,6 @@ import GHC.Base                 (build)
 import GHC.Word hiding (Word8)
 
 #if !(MIN_VERSION_base(4,7,0))
-finiteBitSize :: Bits a => a -> Int
 finiteBitSize = bitSize
 #endif
 

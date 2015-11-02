@@ -121,20 +121,20 @@ prop_scanlCC        = D.scanl       `eqnotnull3` C.scanl
 prop_intersperseCC = D.intersperse  `eq2` C.intersperse
 
 prop_foldlCC     = eq3
-    (D.foldl     :: (Int -> Char -> Int) -> Int -> B -> Int)
-    (C.foldl     :: (Int -> Char -> Int) -> Int -> P -> Int)
+    (D.foldl     :: (X -> Char -> X) -> X -> B -> X)
+    (C.foldl     :: (X -> Char -> X) -> X -> P -> X)
 prop_foldlCC'    = eq3
-    (D.foldl'    :: (Int -> Char -> Int) -> Int -> B -> Int)
-    (C.foldl'    :: (Int -> Char -> Int) -> Int -> P -> Int)
+    (D.foldl'    :: (X -> Char -> X) -> X -> B -> X)
+    (C.foldl'    :: (X -> Char -> X) -> X -> P -> X)
 prop_foldrCC     = eq3
-    (D.foldr     :: (Char -> Int -> Int) -> Int -> B -> Int)
-    (C.foldr     :: (Char -> Int -> Int) -> Int -> P -> Int)
+    (D.foldr     :: (Char -> X -> X) -> X -> B -> X)
+    (C.foldr     :: (Char -> X -> X) -> X -> P -> X)
 prop_foldrCC'    = eq3
-    (D.foldr     :: (Char -> Int -> Int) -> Int -> B -> Int)
-    (C.foldr'    :: (Char -> Int -> Int) -> Int -> P -> Int)
+    (D.foldr     :: (Char -> X -> X) -> X -> B -> X)
+    (C.foldr'    :: (Char -> X -> X) -> X -> P -> X)
 prop_mapAccumLCC = eq3
-    (D.mapAccumL :: (Int -> Char -> (Int,Char)) -> Int -> B -> (Int, B))
-    (C.mapAccumL :: (Int -> Char -> (Int,Char)) -> Int -> P -> (Int, P))
+    (D.mapAccumL :: (X -> Char -> (X,Char)) -> X -> B -> (X, B))
+    (C.mapAccumL :: (X -> Char -> (X,Char)) -> X -> P -> (X, P))
 
 --prop_mapIndexedCC = D.mapIndexed `eq2` C.mapIndexed
 --prop_mapIndexedPL = L.mapIndexed `eq2` P.mapIndexed
@@ -219,28 +219,28 @@ prop_compareBP   = eq2
     ((compare) :: B -> B -> Ordering)
     ((compare) :: P -> P -> Ordering)
 prop_foldlBP     = eq3
-    (L.foldl     :: (Int -> W -> Int) -> Int -> B -> Int)
-    (P.foldl     :: (Int -> W -> Int) -> Int -> P -> Int)
+    (L.foldl     :: (X -> W -> X) -> X -> B -> X)
+    (P.foldl     :: (X -> W -> X) -> X -> P -> X)
 prop_foldlBP'    = eq3
-    (L.foldl'    :: (Int -> W -> Int) -> Int -> B -> Int)
-    (P.foldl'    :: (Int -> W -> Int) -> Int -> P -> Int)
+    (L.foldl'    :: (X -> W -> X) -> X -> B -> X)
+    (P.foldl'    :: (X -> W -> X) -> X -> P -> X)
 prop_foldrBP     = eq3
-    (L.foldr     :: (W -> Int -> Int) -> Int -> B -> Int)
-    (P.foldr     :: (W -> Int -> Int) -> Int -> P -> Int)
+    (L.foldr     :: (W -> X -> X) -> X -> B -> X)
+    (P.foldr     :: (W -> X -> X) -> X -> P -> X)
 prop_foldrBP'    = eq3
-    (L.foldr     :: (W -> Int -> Int) -> Int -> B -> Int)
-    (P.foldr'    :: (W -> Int -> Int) -> Int -> P -> Int)
+    (L.foldr     :: (W -> X -> X) -> X -> B -> X)
+    (P.foldr'    :: (W -> X -> X) -> X -> P -> X)
 prop_mapAccumLBP = eq3
-    (L.mapAccumL :: (Int -> W -> (Int,W)) -> Int -> B -> (Int, B))
-    (P.mapAccumL :: (Int -> W -> (Int,W)) -> Int -> P -> (Int, P))
+    (L.mapAccumL :: (X -> W -> (X,W)) -> X -> B -> (X, B))
+    (P.mapAccumL :: (X -> W -> (X,W)) -> X -> P -> (X, P))
 
 prop_unfoldrBP   =
   forAll arbitrarySizedIntegral $
   eq3
     ((\n f a -> L.take (fromIntegral n) $
-        L.unfoldr    f a) :: Int -> (Int -> Maybe (W,Int)) -> Int -> B)
+        L.unfoldr    f a) :: Int -> (X -> Maybe (W,X)) -> X -> B)
     ((\n f a ->                     fst $
-        P.unfoldrN n f a) :: Int -> (Int -> Maybe (W,Int)) -> Int -> P)
+        P.unfoldrN n f a) :: Int -> (X -> Maybe (W,X)) -> X -> P)
 
 prop_unfoldr2BP   =
   forAll arbitrarySizedIntegral $ \n ->
@@ -271,9 +271,9 @@ prop_unfoldrLC   =
   forAll arbitrarySizedIntegral $
   eq3
     ((\n f a -> LC.take (fromIntegral n) $
-        LC.unfoldr    f a) :: Int -> (Int -> Maybe (Char,Int)) -> Int -> B)
+        LC.unfoldr    f a) :: Int -> (X -> Maybe (Char,X)) -> X -> B)
     ((\n f a ->                     fst $
-        C.unfoldrN n f a) :: Int -> (Int -> Maybe (Char,Int)) -> Int -> P)
+        C.unfoldrN n f a) :: Int -> (X -> Maybe (Char,X)) -> X -> P)
 
 prop_cycleLC  a   =
   not (LC.null a) ==>
@@ -387,37 +387,37 @@ prop_compareBL    = eq2
     ((compare) :: B   -> B   -> Ordering)
     ((compare) :: [W] -> [W] -> Ordering)
 prop_foldlBL      = eq3
-    (L.foldl  :: (Int -> W -> Int) -> Int -> B   -> Int)
-    (  foldl  :: (Int -> W -> Int) -> Int -> [W] -> Int)
+    (L.foldl  :: (X -> W -> X) -> X -> B   -> X)
+    (  foldl  :: (X -> W -> X) -> X -> [W] -> X)
 prop_foldlBL'     = eq3
-    (L.foldl' :: (Int -> W -> Int) -> Int -> B   -> Int)
-    (  foldl' :: (Int -> W -> Int) -> Int -> [W] -> Int)
+    (L.foldl' :: (X -> W -> X) -> X -> B   -> X)
+    (  foldl' :: (X -> W -> X) -> X -> [W] -> X)
 prop_foldrBL      = eq3
-    (L.foldr  :: (W -> Int -> Int) -> Int -> B   -> Int)
-    (  foldr  :: (W -> Int -> Int) -> Int -> [W] -> Int)
+    (L.foldr  :: (W -> X -> X) -> X -> B   -> X)
+    (  foldr  :: (W -> X -> X) -> X -> [W] -> X)
 prop_mapAccumLBL  = eq3
-    (L.mapAccumL :: (Int -> W -> (Int,W)) -> Int -> B   -> (Int, B))
-    (  mapAccumL :: (Int -> W -> (Int,W)) -> Int -> [W] -> (Int, [W]))
+    (L.mapAccumL :: (X -> W -> (X,W)) -> X -> B   -> (X, B))
+    (  mapAccumL :: (X -> W -> (X,W)) -> X -> [W] -> (X, [W]))
 
 prop_mapAccumRBL  = eq3
-    (L.mapAccumR :: (Int -> W -> (Int,W)) -> Int -> B   -> (Int, B))
-    (  mapAccumR :: (Int -> W -> (Int,W)) -> Int -> [W] -> (Int, [W]))
+    (L.mapAccumR :: (X -> W -> (X,W)) -> X -> B   -> (X, B))
+    (  mapAccumR :: (X -> W -> (X,W)) -> X -> [W] -> (X, [W]))
 
 prop_mapAccumRDL  = eq3
-    (D.mapAccumR :: (Int -> Char -> (Int,Char)) -> Int -> B   -> (Int, B))
-    (  mapAccumR :: (Int -> Char -> (Int,Char)) -> Int -> [Char] -> (Int, [Char]))
+    (D.mapAccumR :: (X -> Char -> (X,Char)) -> X -> B   -> (X, B))
+    (  mapAccumR :: (X -> Char -> (X,Char)) -> X -> [Char] -> (X, [Char]))
 
 prop_mapAccumRCC  = eq3
-    (C.mapAccumR :: (Int -> Char -> (Int,Char)) -> Int -> P   -> (Int, P))
-    (  mapAccumR :: (Int -> Char -> (Int,Char)) -> Int -> [Char] -> (Int, [Char]))
+    (C.mapAccumR :: (X -> Char -> (X,Char)) -> X -> P   -> (X, P))
+    (  mapAccumR :: (X -> Char -> (X,Char)) -> X -> [Char] -> (X, [Char]))
 
 prop_unfoldrBL =
   forAll arbitrarySizedIntegral $
   eq3
     ((\n f a -> L.take (fromIntegral n) $
-        L.unfoldr f a) :: Int -> (Int -> Maybe (W,Int)) -> Int -> B)
+        L.unfoldr f a) :: Int -> (X -> Maybe (W,X)) -> X -> B)
     ((\n f a ->                  take n $
-          unfoldr f a) :: Int -> (Int -> Maybe (W,Int)) -> Int -> [W])
+          unfoldr f a) :: Int -> (X -> Maybe (W,X)) -> X -> [W])
 
 --
 -- And finally, check correspondance between Data.ByteString and List
@@ -499,8 +499,8 @@ prop_scanr1CL     = C.scanr1    `eqnotnull2` (scanr1 :: (Char -> Char -> Char) -
 
 -- prop_zipWithPL'   = P.zipWith'  `eq3` (zipWith :: (W -> W -> W) -> [W] -> [W] -> [W])
 
-prop_zipWithPL    = (P.zipWith  :: (W -> W -> Int) -> P   -> P   -> [Int]) `eq3`
-                      (zipWith  :: (W -> W -> Int) -> [W] -> [W] -> [Int])
+prop_zipWithPL    = (P.zipWith  :: (W -> W -> X) -> P   -> P   -> [X]) `eq3`
+                      (zipWith  :: (W -> W -> X) -> [W] -> [W] -> [X])
 
 prop_zipWithPL_rules   = (P.zipWith  :: (W -> W -> W) -> P -> P -> [W]) `eq3`
                          (zipWith    :: (W -> W -> W) -> [W] -> [W] -> [W])
@@ -512,27 +512,27 @@ prop_comparePL = eq2
     ((compare) :: P   -> P   -> Ordering)
     ((compare) :: [W] -> [W] -> Ordering)
 prop_foldlPL   = eq3
-    (P.foldl  :: (Int -> W -> Int) -> Int -> P        -> Int)
-    (  foldl  :: (Int -> W -> Int) -> Int -> [W]      -> Int)
+    (P.foldl  :: (X -> W -> X) -> X -> P        -> X)
+    (  foldl  :: (X -> W -> X) -> X -> [W]      -> X)
 prop_foldlPL'  = eq3
-    (P.foldl' :: (Int -> W -> Int) -> Int -> P        -> Int)
-    (  foldl' :: (Int -> W -> Int) -> Int -> [W]      -> Int)
+    (P.foldl' :: (X -> W -> X) -> X -> P        -> X)
+    (  foldl' :: (X -> W -> X) -> X -> [W]      -> X)
 prop_foldrPL   = eq3
-    (P.foldr  :: (W -> Int -> Int) -> Int -> P        -> Int)
-    (  foldr  :: (W -> Int -> Int) -> Int -> [W]      -> Int)
+    (P.foldr  :: (W -> X -> X) -> X -> P        -> X)
+    (  foldr  :: (W -> X -> X) -> X -> [W]      -> X)
 prop_mapAccumLPL= eq3
-    (P.mapAccumL :: (Int -> W -> (Int,W)) -> Int -> P -> (Int, P))
-    (  mapAccumL :: (Int -> W -> (Int,W)) -> Int -> [W] -> (Int, [W]))
+    (P.mapAccumL :: (X -> W -> (X,W)) -> X -> P -> (X, P))
+    (  mapAccumL :: (X -> W -> (X,W)) -> X -> [W] -> (X, [W]))
 prop_mapAccumRPL= eq3
-    (P.mapAccumR :: (Int -> W -> (Int,W)) -> Int -> P -> (Int, P))
-    (  mapAccumR :: (Int -> W -> (Int,W)) -> Int -> [W] -> (Int, [W]))
+    (P.mapAccumR :: (X -> W -> (X,W)) -> X -> P -> (X, P))
+    (  mapAccumR :: (X -> W -> (X,W)) -> X -> [W] -> (X, [W]))
 prop_unfoldrPL =
   forAll arbitrarySizedIntegral $
   eq3
     ((\n f a ->      fst $
-        P.unfoldrN n f a) :: Int -> (Int -> Maybe (W,Int)) -> Int -> P)
+        P.unfoldrN n f a) :: Int -> (X -> Maybe (W,X)) -> X -> P)
     ((\n f a ->   take n $
-          unfoldr    f a) :: Int -> (Int -> Maybe (W,Int)) -> Int -> [W])
+          unfoldr    f a) :: Int -> (X -> Maybe (W,X)) -> X -> [W])
 
 ------------------------------------------------------------------------
 --
@@ -911,7 +911,7 @@ prop_compare7BB x  y = x `compare` y == (C.singleton x `compare` C.singleton y)
 prop_compare8BB xs ys = xs `compare` ys == (P.pack xs `compare` P.pack ys)
 
 prop_consBB  c xs = P.unpack (P.cons c (P.pack xs)) == (c:xs)
-prop_cons1BB xs   = 'Int' : xs == C.unpack ('Int' `C.cons` (C.pack xs))
+prop_cons1BB xs   = 'X' : xs == C.unpack ('X' `C.cons` (C.pack xs))
 prop_cons2BB xs c = c : xs == P.unpack (c `P.cons` (P.pack xs))
 prop_cons3BB c    = C.unpack (C.singleton c) == (c:[])
 prop_cons4BB c    = (c `P.cons` P.empty)  == P.pack (c:[])
@@ -954,7 +954,7 @@ prop_map2BB f g xs = P.map f (P.map g xs) == P.map (f . g) xs
 prop_map3BB f xs   = map f xs == (P.unpack . P.map f .  P.pack) xs
 -- prop_mapBB' f xs   = P.map' f (P.pack xs) == P.pack (map f xs)
 
-prop_filter1BB xs   = (filter (=='Int') xs) == (C.unpack $ C.filter (=='Int') (C.pack xs))
+prop_filter1BB xs   = (filter (=='X') xs) == (C.unpack $ C.filter (=='X') (C.pack xs))
 prop_filter2BB p xs = (filter p xs) == (P.unpack $ P.filter p (P.pack xs))
 
 prop_findBB p xs = find p xs == P.find p (P.pack xs)
@@ -1070,7 +1070,7 @@ prop_groupBy2CC xs = groupBy (/=) xs == (map C.unpack . C.groupBy (/=) . C.pack)
 prop_joinBB xs ys = (concat . (intersperse ys) . lines) xs ==
                (C.unpack $ C.intercalate (C.pack ys) (C.lines (C.pack xs)))
 
-prop_elemIndex1BB xs   = (elemIndex 'Int' xs) == (C.elemIndex 'Int' (C.pack xs))
+prop_elemIndex1BB xs   = (elemIndex 'X' xs) == (C.elemIndex 'X' (C.pack xs))
 prop_elemIndex2BB xs c = (elemIndex c xs) == (C.elemIndex c (C.pack xs))
 
 -- prop_lineIndices1BB xs = C.elemIndices '\n' xs == C.lineIndices xs
@@ -2332,4 +2332,5 @@ ll_tests =
     , testProperty "concatMap"          prop_concatMap
     , testProperty "isSpace"            prop_isSpaceWord8
     ]
+
 
