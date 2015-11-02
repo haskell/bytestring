@@ -220,7 +220,7 @@ import Prelude hiding           (reverse,head,tail,last,init,null
 #if MIN_VERSION_base(4,7,0)
 import Data.Bits                (finiteBitSize, shiftL, (.|.), (.&.))
 #else
-import Data.Bits                (bitSize, shiftL, (.|.), (.&.))
+import Data.Bits                (Bits, bitSize, shiftL, (.|.), (.&.))
 #endif
 
 import Data.ByteString.Internal
