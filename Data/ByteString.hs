@@ -229,7 +229,7 @@ import Data.ByteString.Unsafe
 import qualified Data.List as List
 
 import Data.Word                (Word8)
-import Data.Maybe               (isJust, listToMaybe)
+import Data.Maybe               (isJust)
 
 import Control.Exception        (finally, bracket, assert, throwIO)
 import Control.Monad            (when)
