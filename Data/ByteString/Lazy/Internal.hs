@@ -51,6 +51,9 @@ import qualified Data.ByteString          as S (length, take, drop)
 import Data.Word        (Word8)
 import Foreign.Storable (Storable(sizeOf))
 
+#if MIN_VERSION_base(4,9,0)
+import Data.Semigroup   (Semigroup((<>)))
+#endif
 #if !(MIN_VERSION_base(4,8,0))
 import Data.Monoid      (Monoid(..))
 #endif
@@ -77,9 +80,18 @@ instance Eq  ByteString where
 instance Ord ByteString where
     compare = cmp
 
+#if MIN_VERSION_base(4,9,0)
+instance Semigroup ByteString where
+    (<>)    = append
+#endif
+
 instance Monoid ByteString where
     mempty  = Empty
+#if MIN_VERSION_base(4,9,0)
+    mappend = (<>)
+#else
     mappend = append
+#endif
     mconcat = concat
 
 instance NFData ByteString where

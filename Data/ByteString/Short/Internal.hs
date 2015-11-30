@@ -40,6 +40,9 @@ import Data.ByteString.Internal (ByteString(..), accursedUnutterablePerformIO)
 
 import Data.Typeable    (Typeable)
 import Data.Data        (Data(..), mkNoRepType)
+#if MIN_VERSION_base(4,9,0)
+import Data.Semigroup   (Semigroup((<>)))
+#endif
 import Data.Monoid      (Monoid(..))
 import Data.String      (IsString(..))
 import Control.DeepSeq  (NFData(..))
@@ -131,9 +134,18 @@ instance Eq ShortByteString where
 instance Ord ShortByteString where
     compare = compareBytes
 
+#if MIN_VERSION_base(4,9,0)
+instance Semigroup ShortByteString where
+    (<>)    = append
+#endif
+
 instance Monoid ShortByteString where
     mempty  = empty
+#if MIN_VERSION_base(4,9,0)
+    mappend = (<>)
+#else
     mappend = append
+#endif
     mconcat = concat
 
 instance NFData ShortByteString where

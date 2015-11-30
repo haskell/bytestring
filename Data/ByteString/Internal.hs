@@ -89,6 +89,9 @@ import Foreign.C.Types          (CInt, CSize, CULong)
 #endif
 import Foreign.C.String         (CString)
 
+#if MIN_VERSION_base(4,9,0)
+import Data.Semigroup           (Semigroup((<>)))
+#endif
 #if !(MIN_VERSION_base(4,8,0))
 import Data.Monoid              (Monoid(..))
 #endif
@@ -150,9 +153,18 @@ instance Eq  ByteString where
 instance Ord ByteString where
     compare = compareBytes
 
+#if MIN_VERSION_base(4,9,0)
+instance Semigroup ByteString where
+    (<>)    = append
+#endif
+
 instance Monoid ByteString where
     mempty  = PS nullForeignPtr 0 0
+#if MIN_VERSION_base(4,9,0)
+    mappend = (<>)
+#else
     mappend = append
+#endif
     mconcat = concat
 
 instance NFData ByteString where

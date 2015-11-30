@@ -130,6 +130,9 @@ module Data.ByteString.Builder.Internal (
 
 import           Control.Arrow (second)
 
+#if MIN_VERSION_base(4,9,0)
+import           Data.Semigroup (Semigroup((<>)))
+#endif
 #if !(MIN_VERSION_base(4,8,0))
 import           Data.Monoid
 import           Control.Applicative (Applicative(..),(<$>))
@@ -399,11 +402,21 @@ empty = Builder (\cont -> (\range -> cont range))
 append :: Builder -> Builder -> Builder
 append (Builder b1) (Builder b2) = Builder $ b1 . b2
 
+#if MIN_VERSION_base(4,9,0)
+instance Semigroup Builder where
+  {-# INLINE (<>) #-}
+  (<>) = append
+#endif
+
 instance Monoid Builder where
   {-# INLINE mempty #-}
   mempty = empty
   {-# INLINE mappend #-}
+#if MIN_VERSION_base(4,9,0)
+  mappend = (<>)
+#else
   mappend = append
+#endif
   {-# INLINE mconcat #-}
   mconcat = foldr mappend mempty
 
