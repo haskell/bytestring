@@ -257,6 +257,10 @@ import Data.ByteString (empty,null,length,tail,init,append
 import Data.ByteString.Internal
 
 import Data.Char    ( isSpace )
+#if MIN_VERSION_base(4,9,0)
+-- See bytestring #70
+import GHC.Char (eqChar)
+#endif
 import qualified Data.List as List (intersperse)
 
 import System.IO    (Handle,stdout,openBinaryFile,hClose,hFileSize,IOMode(..))
@@ -508,12 +512,22 @@ break :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
 break f = B.break (f . w2c)
 {-# INLINE [1] break #-}
 
+-- See bytestring #70
+#if MIN_VERSION_base(4,9,0)
 {-# RULES
 "ByteString specialise break (x==)" forall x.
-    break ((==) x) = breakChar x
+    break (x `eqChar`) = breakChar x
 "ByteString specialise break (==x)" forall x.
-    break (==x) = breakChar x
+    break (`eqChar` x) = breakChar x
   #-}
+#else
+{-# RULES
+"ByteString specialise break (x==)" forall x.
+    break (x ==) = breakChar x
+"ByteString specialise break (==x)" forall x.
+    break (== x) = breakChar x
+  #-}
+#endif
 
 -- INTERNAL:
 

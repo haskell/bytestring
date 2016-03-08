@@ -852,12 +852,22 @@ break :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
 break p ps = case findIndexOrEnd p ps of n -> (unsafeTake n ps, unsafeDrop n ps)
 {-# INLINE [1] break #-}
 
+-- See bytestring #70
+#if MIN_VERSION_base(4,9,0)
 {-# RULES
-"ByteString specialise break (x==)" forall x.
-    break ((==) x) = breakByte x
-"ByteString specialise break (==x)" forall x.
-    break (==x) = breakByte x
+"ByteString specialise break (x ==)" forall x.
+    break (x `eqWord8`) = breakByte x
+"ByteString specialise break (== x)" forall x.
+    break (`eqWord8` x) = breakByte x
   #-}
+#else
+{-# RULES
+"ByteString specialise break (x ==)" forall x.
+    break (x ==) = breakByte x
+"ByteString specialise break (== x)" forall x.
+    break (== x) = breakByte x
+  #-}
+#endif
 
 -- INTERNAL:
 
@@ -905,12 +915,22 @@ spanByte c ps@(PS x s l) =
                                   else go p (i+1)
 {-# INLINE spanByte #-}
 
+-- See bytestring #70
+#if MIN_VERSION_base(4,9,0)
 {-# RULES
-"ByteString specialise span (x==)" forall x.
-    span ((==) x) = spanByte x
-"ByteString specialise span (==x)" forall x.
-    span (==x) = spanByte x
+"ByteString specialise span (x ==)" forall x.
+    span (x `eqWord8`) = spanByte x
+"ByteString specialise span (== x)" forall x.
+    span (`eqWord8` x) = spanByte x
   #-}
+#else
+{-# RULES
+"ByteString specialise span (x ==)" forall x.
+    span (x ==) = spanByte x
+"ByteString specialise span (== x)" forall x.
+    span (== x) = spanByte x
+  #-}
+#endif
 
 -- | 'spanEnd' behaves like 'span' but from the end of the 'ByteString'.
 -- We have
