@@ -1,3 +1,9 @@
+0.10.8.0 Duncan Coutts <duncan@community.haskell.org> May 2016
+
+ * Use Rabin-Karp substring search for `breakSubstring` and `findSubstring`
+ * Improve the performance of `partition` for lazy and strict bytestrings
+ * Added `stripPrefix` and `stripSuffix` for lazy and strict bytestrings
+ * Fix building with ghc 8.0 & base 4.9 (Semigroup etc)
 
 0.10.6.0 Duncan Coutts <duncan@community.haskell.org> Mar 2015
 
