@@ -14,6 +14,7 @@ import Foreign.Marshal.Alloc
 import Foreign.Marshal.Array
 import GHC.Ptr
 import Test.QuickCheck
+import Control.Applicative
 import Control.Monad
 import Control.Concurrent
 import Control.Exception
