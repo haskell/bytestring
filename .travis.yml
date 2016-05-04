@@ -145,6 +145,21 @@ install:
     cabal)
       cabal --version
       travis_retry cabal update
+
+      # Cabal does not handle cyclic dependencies from the test suite well. To
+      # address this, we're going to:
+      #
+      # * First install this copy of bytestring without any tests
+      # * Rename our package to bytestring-local to avoid cycles
+      #
+      # The first step isn't strictly necessary, but it allows for better
+      # testing: we'll be running the full test suite using bytestring under
+      # the surface.
+      cabal install --force-reinstalls --ghc-options=-O0 --reorder-goals --max-backjumps=-1 $CABALARGS $PACKAGES
+
+      cat bytestring.cabal | sed 's@^Name:.*@Name: bytestring-local@' > bytestring-local.cabal
+      rm -f bytestring.cabal
+
       cabal install --only-dependencies --enable-tests --enable-benchmarks --force-reinstalls --ghc-options=-O0 --reorder-goals --max-backjumps=-1 $CABALARGS $PACKAGES
       ;;
   esac
