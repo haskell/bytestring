@@ -202,28 +202,28 @@ module Data.ByteString.Builder
     , word8
 
       -- *** Big-endian
-    , int16BE
-    , int32BE
-    , int64BE
+    , int16be
+    , int32be
+    , int64be
 
-    , word16BE
-    , word32BE
-    , word64BE
+    , word16be
+    , word32be
+    , word64be
 
-    , floatBE
-    , doubleBE
+    , float32be
+    , float64be
 
       -- *** Little-endian
-    , int16LE
-    , int32LE
-    , int64LE
+    , int16le
+    , int32le
+    , int64le
 
-    , word16LE
-    , word32LE
-    , word64LE
+    , word16le
+    , word32le
+    , word64le
 
-    , floatLE
-    , doubleLE
+    , float32le
+    , float64le
 
     -- ** Character encodings
     -- | Conversion from 'Char' and 'String' into 'Builder's in various encodings.
@@ -252,6 +252,29 @@ module Data.ByteString.Builder
     , stringUtf8
 
     , module Data.ByteString.Builder.ASCII
+
+      -- *** Deprecated builders
+    , int16BE
+    , int32BE
+    , int64BE
+    
+    , word16BE
+    , word32BE
+    , word64BE
+    
+    , floatBE
+    , doubleBE
+    
+    , int16LE
+    , int32LE
+    , int64LE
+    
+    , word16LE
+    , word32LE
+    , word64LE
+    
+    , floatLE
+    , doubleLE
 
     ) where
 
@@ -323,44 +346,44 @@ word8 = P.primFixed P.word8
 ------------------------------------------------------------------------------
 
 -- | Encode an 'Int16' in little endian format.
-{-# INLINE int16LE #-}
-int16LE :: Int16 -> Builder
-int16LE = P.primFixed P.int16LE
+{-# INLINE int16le #-}
+int16le :: Int16 -> Builder
+int16le = P.primFixed P.int16le
 
 -- | Encode an 'Int32' in little endian format.
-{-# INLINE int32LE #-}
-int32LE :: Int32 -> Builder
-int32LE = P.primFixed P.int32LE
+{-# INLINE int32le #-}
+int32le :: Int32 -> Builder
+int32le = P.primFixed P.int32le
 
 -- | Encode an 'Int64' in little endian format.
-{-# INLINE int64LE #-}
-int64LE :: Int64 -> Builder
-int64LE = P.primFixed P.int64LE
+{-# INLINE int64le #-}
+int64le :: Int64 -> Builder
+int64le = P.primFixed P.int64le
 
 -- | Encode a 'Word16' in little endian format.
-{-# INLINE word16LE #-}
-word16LE :: Word16 -> Builder
-word16LE = P.primFixed P.word16LE
+{-# INLINE word16le #-}
+word16le :: Word16 -> Builder
+word16le = P.primFixed P.word16le
 
 -- | Encode a 'Word32' in little endian format.
-{-# INLINE word32LE #-}
-word32LE :: Word32 -> Builder
-word32LE = P.primFixed P.word32LE
+{-# INLINE word32le #-}
+word32le :: Word32 -> Builder
+word32le = P.primFixed P.word32le
 
 -- | Encode a 'Word64' in little endian format.
-{-# INLINE word64LE #-}
-word64LE :: Word64 -> Builder
-word64LE = P.primFixed P.word64LE
+{-# INLINE word64le #-}
+word64le :: Word64 -> Builder
+word64le = P.primFixed P.word64le
 
 -- | Encode a 'Float' in little endian format.
-{-# INLINE floatLE #-}
-floatLE :: Float -> Builder
-floatLE = P.primFixed P.floatLE
+{-# INLINE float32le #-}
+float32le :: Float -> Builder
+float32le = P.primFixed P.float32le
 
 -- | Encode a 'Double' in little endian format.
-{-# INLINE doubleLE #-}
-doubleLE :: Double -> Builder
-doubleLE = P.primFixed P.doubleLE
+{-# INLINE float64le #-}
+float64le :: Double -> Builder
+float64le = P.primFixed P.float64le
 
 
 ------------------------------------------------------------------------------
@@ -368,44 +391,44 @@ doubleLE = P.primFixed P.doubleLE
 ------------------------------------------------------------------------------
 
 -- | Encode an 'Int16' in big endian format.
-{-# INLINE int16BE #-}
-int16BE :: Int16 -> Builder
-int16BE = P.primFixed P.int16BE
+{-# INLINE int16be #-}
+int16be :: Int16 -> Builder
+int16be = P.primFixed P.int16be
 
 -- | Encode an 'Int32' in big endian format.
-{-# INLINE int32BE #-}
-int32BE :: Int32 -> Builder
-int32BE = P.primFixed P.int32BE
+{-# INLINE int32be #-}
+int32be :: Int32 -> Builder
+int32be = P.primFixed P.int32be
 
 -- | Encode an 'Int64' in big endian format.
-{-# INLINE int64BE #-}
-int64BE :: Int64 -> Builder
-int64BE = P.primFixed P.int64BE
+{-# INLINE int64be #-}
+int64be :: Int64 -> Builder
+int64be = P.primFixed P.int64be
 
 -- | Encode a 'Word16' in big endian format.
-{-# INLINE word16BE #-}
-word16BE :: Word16 -> Builder
-word16BE = P.primFixed P.word16BE
+{-# INLINE word16be #-}
+word16be :: Word16 -> Builder
+word16be = P.primFixed P.word16be
 
 -- | Encode a 'Word32' in big endian format.
-{-# INLINE word32BE #-}
-word32BE :: Word32 -> Builder
-word32BE = P.primFixed P.word32BE
+{-# INLINE word32be #-}
+word32be :: Word32 -> Builder
+word32be = P.primFixed P.word32be
 
 -- | Encode a 'Word64' in big endian format.
-{-# INLINE word64BE #-}
-word64BE :: Word64 -> Builder
-word64BE = P.primFixed P.word64BE
+{-# INLINE word64be #-}
+word64be :: Word64 -> Builder
+word64be = P.primFixed P.word64be
 
 -- | Encode a 'Float' in big endian format.
-{-# INLINE floatBE #-}
-floatBE :: Float -> Builder
-floatBE = P.primFixed P.floatBE
+{-# INLINE float32be #-}
+float32be :: Float -> Builder
+float32be = P.primFixed P.float32be
 
 -- | Encode a 'Double' in big endian format.
-{-# INLINE doubleBE #-}
-doubleBE :: Double -> Builder
-doubleBE = P.primFixed P.doubleBE
+{-# INLINE float64be #-}
+float64be :: Double -> Builder
+float64be = P.primFixed P.float64be
 
 ------------------------------------------------------------------------------
 -- ASCII encoding
@@ -451,3 +474,56 @@ stringUtf8 = P.primMapListBounded P.charUtf8
 
 instance IsString Builder where
     fromString = stringUtf8
+
+
+------------------------------------------------------------------------------
+-- Deprecated encodings
+------------------------------------------------------------------------------
+
+int16BE :: Int16 -> Builder
+int16BE = int16be
+
+int32BE :: Int32 -> Builder
+int32BE = int32be
+
+int64BE :: Int64 -> Builder
+int64BE = int64be
+
+word16BE :: Word16 -> Builder
+word16BE = word16be
+
+word32BE :: Word32 -> Builder
+word32BE = word32be
+
+word64BE :: Word64 -> Builder
+word64BE = word64be
+
+floatBE :: Float -> Builder
+floatBE  = float32be
+
+doubleBE :: Double -> Builder
+doubleBE = float64be
+
+int16LE :: Int16 -> Builder
+int16LE = int16le
+
+int32LE :: Int32 -> Builder
+int32LE = int32le
+
+int64LE :: Int64 -> Builder
+int64LE = int64le
+
+word16LE :: Word16 -> Builder
+word16LE = word16le
+
+word32LE :: Word32 -> Builder
+word32LE = word32le
+
+word64LE :: Word64 -> Builder
+word64LE = word64le
+
+floatLE :: Float -> Builder
+floatLE  = float32le
+
+doubleLE :: Double -> Builder
+doubleLE = float64le

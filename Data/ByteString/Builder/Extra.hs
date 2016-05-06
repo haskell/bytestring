@@ -43,11 +43,23 @@ module Data.ByteString.Builder.Extra
 
     -- * Host-specific binary encodings
     , intHost
+    , int16host
+    , int32host
+    , int64host
+
+    , wordHost
+    , word16host
+    , word32host
+    , word64host
+
+    , float32host
+    , float64host
+
+    -- * Host-specific binary encodings
     , int16Host
     , int32Host
     , int64Host
 
-    , wordHost
     , word16Host
     , word32Host
     , word64Host
@@ -160,19 +172,19 @@ intHost :: Int -> Builder
 intHost = P.primFixed P.intHost
 
 -- | Encode a 'Int16' in native host order and host endianness.
-{-# INLINE int16Host #-}
-int16Host :: Int16 -> Builder
-int16Host = P.primFixed P.int16Host
+{-# INLINE int16host #-}
+int16host :: Int16 -> Builder
+int16host = P.primFixed P.int16host
 
 -- | Encode a 'Int32' in native host order and host endianness.
-{-# INLINE int32Host #-}
-int32Host :: Int32 -> Builder
-int32Host = P.primFixed P.int32Host
+{-# INLINE int32host #-}
+int32host :: Int32 -> Builder
+int32host = P.primFixed P.int32host
 
 -- | Encode a 'Int64' in native host order and host endianness.
-{-# INLINE int64Host #-}
-int64Host :: Int64 -> Builder
-int64Host = P.primFixed P.int64Host
+{-# INLINE int64host #-}
+int64host :: Int64 -> Builder
+int64host = P.primFixed P.int64host
 
 -- | Encode a single native machine 'Word'. The 'Word' is encoded in host order,
 -- host endian form, for the machine you're on. On a 64 bit machine the 'Word'
@@ -185,28 +197,65 @@ wordHost :: Word -> Builder
 wordHost = P.primFixed P.wordHost
 
 -- | Encode a 'Word16' in native host order and host endianness.
-{-# INLINE word16Host #-}
-word16Host :: Word16 -> Builder
-word16Host = P.primFixed P.word16Host
+{-# INLINE word16host #-}
+word16host :: Word16 -> Builder
+word16host = P.primFixed P.word16host
 
 -- | Encode a 'Word32' in native host order and host endianness.
-{-# INLINE word32Host #-}
-word32Host :: Word32 -> Builder
-word32Host = P.primFixed P.word32Host
+{-# INLINE word32host #-}
+word32host :: Word32 -> Builder
+word32host = P.primFixed P.word32host
 
 -- | Encode a 'Word64' in native host order and host endianness.
-{-# INLINE word64Host #-}
-word64Host :: Word64 -> Builder
-word64Host = P.primFixed P.word64Host
+{-# INLINE word64host #-}
+word64host :: Word64 -> Builder
+word64host = P.primFixed P.word64host
 
 -- | Encode a 'Float' in native host order. Values encoded this way are not
 -- portable to different endian machines, without conversion.
-{-# INLINE floatHost #-}
-floatHost :: Float -> Builder
-floatHost = P.primFixed P.floatHost
+{-# INLINE float32host #-}
+float32host :: Float -> Builder
+float32host = P.primFixed P.float32host
 
 -- | Encode a 'Double' in native host order.
-{-# INLINE doubleHost #-}
-doubleHost :: Double -> Builder
-doubleHost = P.primFixed P.doubleHost
+{-# INLINE float64host #-}
+float64host :: Double -> Builder
+float64host = P.primFixed P.float64host
 
+
+------------------------------------------------------------------------------
+-- Deprecated encodings
+------------------------------------------------------------------------------
+
+{-# DEPRECATED int16Host "Use int16host instead" #-}
+int16Host :: Int16 -> Builder
+int16Host = int16host
+
+{-# DEPRECATED int32Host "Use int32host instead" #-}
+int32Host :: Int32 -> Builder
+int32Host = int32host
+
+{-# DEPRECATED int64Host "Use int64host instead" #-}
+int64Host :: Int64 -> Builder
+int64Host = int64host
+
+
+{-# DEPRECATED word16Host "Use word16host instead" #-}
+word16Host :: Word16 -> Builder
+word16Host = word16host
+
+{-# DEPRECATED word32Host "Use word32host instead" #-}
+word32Host :: Word32 -> Builder
+word32Host = word32host
+
+{-# DEPRECATED word64Host "Use word64host instead" #-}
+word64Host :: Word64 -> Builder
+word64Host = word64host
+
+{-# DEPRECATED floatHost "Use float32host instead" #-}
+floatHost :: Float -> Builder
+floatHost = float32host
+
+{-# DEPRECATED doubleHost "Use float64host instead" #-}
+doubleHost :: Double -> Builder
+doubleHost = float64host
