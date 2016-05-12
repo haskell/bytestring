@@ -83,7 +83,7 @@ word8 = storableToF
 -- | Encoding 'Word16's in big endian format.
 {-# INLINE word16BE #-}
 word16BE :: FixedPrim Word16
-#ifdef WORD_BIGENDIAN
+#ifdef WORDS_BIGENDIAN
 word16BE = word16Host
 #else
 word16BE = fixedPrim 2 $ \w p -> do
@@ -94,7 +94,7 @@ word16BE = fixedPrim 2 $ \w p -> do
 -- | Encoding 'Word16's in little endian format.
 {-# INLINE word16LE #-}
 word16LE :: FixedPrim Word16
-#ifdef WORD_BIGENDIAN
+#ifdef WORDS_BIGENDIAN
 word16LE = fixedPrim 2 $ \w p -> do
     poke p               (fromIntegral (w)              :: Word8)
     poke (p `plusPtr` 1) (fromIntegral (shiftr_w16 w 8) :: Word8)
@@ -105,7 +105,7 @@ word16LE = word16Host
 -- | Encoding 'Word32's in big endian format.
 {-# INLINE word32BE #-}
 word32BE :: FixedPrim Word32
-#ifdef WORD_BIGENDIAN
+#ifdef WORDS_BIGENDIAN
 word32BE = word32Host
 #else
 word32BE = fixedPrim 4 $ \w p -> do
@@ -118,7 +118,7 @@ word32BE = fixedPrim 4 $ \w p -> do
 -- | Encoding 'Word32's in little endian format.
 {-# INLINE word32LE #-}
 word32LE :: FixedPrim Word32
-#ifdef WORD_BIGENDIAN
+#ifdef WORDS_BIGENDIAN
 word32LE = fixedPrim 4 $ \w p -> do
     poke p               (fromIntegral (w)               :: Word8)
     poke (p `plusPtr` 1) (fromIntegral (shiftr_w32 w  8) :: Word8)
@@ -134,7 +134,7 @@ word32LE = word32Host
 -- | Encoding 'Word64's in big endian format.
 {-# INLINE word64BE #-}
 word64BE :: FixedPrim Word64
-#ifdef WORD_BIGENDIAN
+#ifdef WORDS_BIGENDIAN
 word64BE = word64Host
 #else
 #if WORD_SIZE_IN_BITS < 64
@@ -170,7 +170,7 @@ word64BE = fixedPrim 8 $ \w p -> do
 -- | Encoding 'Word64's in little endian format.
 {-# INLINE word64LE #-}
 word64LE :: FixedPrim Word64
-#ifdef WORD_BIGENDIAN
+#ifdef WORDS_BIGENDIAN
 #if WORD_SIZE_IN_BITS < 64
 word64LE =
     fixedPrim 8 $ \w p -> do
