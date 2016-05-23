@@ -149,7 +149,7 @@ instance Monoid ShortByteString where
     mconcat = concat
 
 instance NFData ShortByteString where
-    rnf (SBS {}) = ()
+    rnf SBS{} = ()
 
 instance Show ShortByteString where
     showsPrec p ps r = showsPrec p (unpackChars ps) r
@@ -161,7 +161,7 @@ instance IsString ShortByteString where
     fromString = packChars
 
 instance Data ShortByteString where
-  gfoldl f z txt = z packBytes `f` (unpackBytes txt)
+  gfoldl f z txt = z packBytes `f` unpackBytes txt
   toConstr _     = error "Data.ByteString.Short.ShortByteString.toConstr"
   gunfold _ _    = error "Data.ByteString.Short.ShortByteString.gunfold"
   dataTypeOf _   = mkNoRepType "Data.ByteString.Short.ShortByteString"
@@ -320,8 +320,7 @@ unpackBytes bs = unpackAppendBytesLazy bs []
 -- (5 words per list element, 8 bytes per word, 100 elements = 4000 bytes)
 
 unpackAppendCharsLazy :: ShortByteString -> [Char] -> [Char]
-unpackAppendCharsLazy sbs cs0 =
-    go 0 (length sbs) cs0
+unpackAppendCharsLazy sbs cs0 = go 0 (length sbs) cs0
   where
     sz = 100
 
@@ -331,8 +330,7 @@ unpackAppendCharsLazy sbs cs0 =
                       where remainder = go (off+sz) (len-sz) cs
 
 unpackAppendBytesLazy :: ShortByteString -> [Word8] -> [Word8]
-unpackAppendBytesLazy sbs ws0 =
-    go 0 (length sbs) ws0
+unpackAppendBytesLazy sbs ws0 = go 0 (length sbs) ws0
   where
     sz = 100
 
@@ -347,8 +345,7 @@ unpackAppendBytesLazy sbs ws0 =
 -- buffer and loops down until we hit the sentinal:
 
 unpackAppendCharsStrict :: ShortByteString -> Int -> Int -> [Char] -> [Char]
-unpackAppendCharsStrict !sbs off len cs =
-    go (off-1) (off-1 + len) cs
+unpackAppendCharsStrict !sbs off len cs = go (off-1) (off-1 + len) cs
   where
     go !sentinal !i !acc
       | i == sentinal = acc
@@ -356,8 +353,7 @@ unpackAppendCharsStrict !sbs off len cs =
                         in go sentinal (i-1) (c:acc)
 
 unpackAppendBytesStrict :: ShortByteString -> Int -> Int -> [Word8] -> [Word8]
-unpackAppendBytesStrict !sbs off len ws =
-    go (off-1) (off-1 + len) ws
+unpackAppendBytesStrict !sbs off len ws = go (off-1) (off-1 + len) ws
   where
     go !sentinal !i !acc
       | i == sentinal = acc
