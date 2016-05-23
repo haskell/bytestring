@@ -82,11 +82,13 @@ import qualified Data.List as List
 import Foreign.ForeignPtr       (ForeignPtr, withForeignPtr)
 import Foreign.Ptr              (Ptr, FunPtr, plusPtr)
 import Foreign.Storable         (Storable(..))
+
 #if MIN_VERSION_base(4,5,0) || __GLASGOW_HASKELL__ >= 703
 import Foreign.C.Types          (CInt(..), CSize(..), CULong(..))
 #else
 import Foreign.C.Types          (CInt, CSize, CULong)
 #endif
+
 import Foreign.C.String         (CString)
 
 #if MIN_VERSION_base(4,9,0)
@@ -95,6 +97,7 @@ import Data.Semigroup           (Semigroup((<>)))
 #if !(MIN_VERSION_base(4,8,0))
 import Data.Monoid              (Monoid(..))
 #endif
+
 import Control.DeepSeq          (NFData(rnf))
 
 import Data.String              (IsString(..))
@@ -107,25 +110,22 @@ import Data.Word                (Word8)
 import Data.Typeable            (Typeable)
 import Data.Data                (Data(..), mkNoRepType)
 
-import GHC.Base                 (realWorld#,unsafeChr)
+import GHC.Base                 (nullAddr#,realWorld#,unsafeChr)
+
 #if MIN_VERSION_base(4,4,0)
 import GHC.CString              (unpackCString#)
 #else
 import GHC.Base                 (unpackCString#)
 #endif
+
 import GHC.Prim                 (Addr#)
+
 #if __GLASGOW_HASKELL__ >= 611
-import GHC.IO                   (IO(IO))
+import GHC.IO                   (IO(IO),unsafeDupablePerformIO)
 #else
-import GHC.IOBase               (IO(IO),RawBuffer)
-#endif
-#if __GLASGOW_HASKELL__ >= 611
-import GHC.IO                   (unsafeDupablePerformIO)
-#else
-import GHC.IOBase               (unsafeDupablePerformIO)
+import GHC.IOBase               (IO(IO),RawBuffer,unsafeDupablePerformIO)
 #endif
 
-import GHC.Base                 (nullAddr#)
 import GHC.ForeignPtr           (ForeignPtr(ForeignPtr)
                                 ,newForeignPtr_, mallocPlainForeignPtrBytes)
 import GHC.Ptr                  (Ptr(..), castPtr)
@@ -168,10 +168,10 @@ instance Monoid ByteString where
     mconcat = concat
 
 instance NFData ByteString where
-    rnf (PS _ _ _) = ()
+    rnf PS{} = ()
 
 instance Show ByteString where
-    showsPrec p ps r = showsPrec p (unpackChars ps) r
+    showsPrec p ps = showsPrec p (unpackChars ps)
 
 instance Read ByteString where
     readsPrec p str = [ (packChars x, y) | (x, y) <- readsPrec p str ]
@@ -180,7 +180,7 @@ instance IsString ByteString where
     fromString = packChars
 
 instance Data ByteString where
-  gfoldl f z txt = z packBytes `f` (unpackBytes txt)
+  gfoldl f z txt = z packBytes `f` unpackBytes txt
   toConstr _     = error "Data.ByteString.ByteString.toConstr"
   gunfold _ _    = error "Data.ByteString.ByteString.gunfold"
   dataTypeOf _   = mkNoRepType "Data.ByteString.ByteString"
@@ -191,7 +191,7 @@ instance Data ByteString where
 packBytes :: [Word8] -> ByteString
 packBytes ws = unsafePackLenBytes (List.length ws) ws
 
-packChars :: [Char] -> ByteString
+packChars :: String -> ByteString
 packChars cs = unsafePackLenChars (List.length cs) cs
 
 {-# INLINE [0] packChars #-}
@@ -208,7 +208,7 @@ unsafePackLenBytes len xs0 =
     go !_ []     = return ()
     go !p (x:xs) = poke p x >> go (p `plusPtr` 1) xs
 
-unsafePackLenChars :: Int -> [Char] -> ByteString
+unsafePackLenChars :: Int -> String -> ByteString
 unsafePackLenChars len cs0 =
     unsafeCreate len $ \p -> go p cs0
   where
@@ -256,7 +256,7 @@ packUptoLenBytes len xs0 =
     go !_ !0 xs     = return (len,   xs)
     go !p !n (x:xs) = poke p x >> go (p `plusPtr` 1) (n-1) xs
 
-packUptoLenChars :: Int -> [Char] -> (ByteString, [Char])
+packUptoLenChars :: Int -> String -> (ByteString, String)
 packUptoLenChars len cs0 =
     unsafeCreateUptoN' len $ \p -> go p len cs0
   where
@@ -278,7 +278,7 @@ packUptoLenChars len cs0 =
 unpackBytes :: ByteString -> [Word8]
 unpackBytes bs = unpackAppendBytesLazy bs []
 
-unpackChars :: ByteString -> [Char]
+unpackChars :: ByteString -> String
 unpackChars bs = unpackAppendCharsLazy bs []
 
 unpackAppendBytesLazy :: ByteString -> [Word8] -> [Word8]
@@ -292,7 +292,7 @@ unpackAppendBytesLazy (PS fp off len) xs
   -- takes just shy of 4k which seems like a reasonable amount.
   -- (5 words per list element, 8 bytes per word, 100 elements = 4000 bytes)
 
-unpackAppendCharsLazy :: ByteString -> [Char] -> [Char]
+unpackAppendCharsLazy :: ByteString -> String -> String
 unpackAppendCharsLazy (PS fp off len) cs
   | len <= 100 = unpackAppendCharsStrict (PS fp off len) cs
   | otherwise  = unpackAppendCharsStrict (PS fp off 100) remainder
@@ -306,7 +306,7 @@ unpackAppendCharsLazy (PS fp off len) cs
 
 unpackAppendBytesStrict :: ByteString -> [Word8] -> [Word8]
 unpackAppendBytesStrict (PS fp off len) xs =
-    accursedUnutterablePerformIO $ withForeignPtr fp $ \base -> do
+    accursedUnutterablePerformIO $ withForeignPtr fp $ \base ->
       loop (base `plusPtr` (off-1)) (base `plusPtr` (off-1+len)) xs
   where
     loop !sentinal !p acc
@@ -314,7 +314,7 @@ unpackAppendBytesStrict (PS fp off len) xs =
       | otherwise     = do x <- peek p
                            loop sentinal (p `plusPtr` (-1)) (x:acc)
 
-unpackAppendCharsStrict :: ByteString -> [Char] -> [Char]
+unpackAppendCharsStrict :: ByteString -> String -> String
 unpackAppendCharsStrict (PS fp off len) xs =
     accursedUnutterablePerformIO $ withForeignPtr fp $ \base ->
       loop (base `plusPtr` (off-1)) (base `plusPtr` (off-1+len)) xs
@@ -343,7 +343,7 @@ fromForeignPtr :: ForeignPtr Word8
                -> Int -- ^ Offset
                -> Int -- ^ Length
                -> ByteString
-fromForeignPtr fp s l = PS fp s l
+fromForeignPtr = PS
 {-# INLINE fromForeignPtr #-}
 
 -- | /O(1)/ Deconstruct a ForeignPtr from a ByteString
@@ -418,15 +418,15 @@ createAndTrim' l f = do
     withForeignPtr fp $ \p -> do
         (off, l', res) <- f p
         if assert (l' <= l) $ l' >= l
-            then return $! (PS fp 0 l, res)
+            then return (PS fp 0 l, res)
             else do ps <- create l' $ \p' ->
                             memcpy p' (p `plusPtr` off) l'
-                    return $! (ps, res)
+                    return (ps, res)
 
 -- | Wrapper of 'mallocForeignPtrBytes' with faster implementation for GHC
 --
 mallocByteString :: Int -> IO (ForeignPtr a)
-mallocByteString l = mallocPlainForeignPtrBytes l
+mallocByteString = mallocPlainForeignPtrBytes
 {-# INLINE mallocByteString #-}
 
 ------------------------------------------------------------------------
@@ -572,7 +572,7 @@ foreign import ccall unsafe "string.h memchr" c_memchr
     :: Ptr Word8 -> CInt -> CSize -> IO (Ptr Word8)
 
 memchr :: Ptr Word8 -> Word8 -> CSize -> IO (Ptr Word8)
-memchr p w s = c_memchr p (fromIntegral w) s
+memchr p w = c_memchr p (fromIntegral w)
 
 foreign import ccall unsafe "string.h memcmp" c_memcmp
     :: Ptr Word8 -> Ptr Word8 -> CSize -> IO CInt
@@ -599,7 +599,7 @@ foreign import ccall unsafe "string.h memset" c_memset
     :: Ptr Word8 -> CInt -> CSize -> IO (Ptr Word8)
 
 memset :: Ptr Word8 -> Word8 -> CSize -> IO (Ptr Word8)
-memset p w s = c_memset p (fromIntegral w) s
+memset p w = c_memset p (fromIntegral w)
 
 -- ---------------------------------------------------------------------
 --

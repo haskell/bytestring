@@ -1,5 +1,5 @@
 {-# LANGUAGE CPP, BangPatterns #-}
-{-# LANGUAGE MagicHash, UnboxedTuples #-}
+{-# LANGUAGE MagicHash #-}
 {-# OPTIONS_HADDOCK prune #-}
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE Trustworthy #-}
@@ -263,8 +263,7 @@ import GHC.Char (eqChar)
 #endif
 import qualified Data.List as List (intersperse)
 
-import System.IO    (Handle,stdout,openBinaryFile,hClose,hFileSize,IOMode(..))
-import Control.Exception        (bracket)
+import System.IO    (Handle,stdout,withBinaryFile,hFileSize,IOMode(..))
 import Foreign
 
 
@@ -284,7 +283,7 @@ pack = packChars
 {-# INLINE pack #-}
 
 -- | /O(n)/ Converts a 'ByteString' to a 'String'.
-unpack :: ByteString -> [Char]
+unpack :: ByteString -> String
 unpack = B.unpackChars
 {-# INLINE unpack #-}
 
@@ -460,7 +459,7 @@ scanr1 f = B.scanr1 (\a b -> c2w (f (w2c a) (w2c b)))
 --
 -- This implemenation uses @memset(3)@
 replicate :: Int -> Char -> ByteString
-replicate w = B.replicate w . c2w
+replicate n = B.replicate n . c2w
 {-# INLINE replicate #-}
 
 -- | /O(n)/, where /n/ is the length of the result.  The 'unfoldr'
@@ -474,7 +473,7 @@ replicate w = B.replicate w . c2w
 --
 -- > unfoldr (\x -> if x <= '9' then Just (x, succ x) else Nothing) '0' == "0123456789"
 unfoldr :: (a -> Maybe (Char, a)) -> a -> ByteString
-unfoldr f x0 = B.unfoldr (fmap k . f) x0
+unfoldr f = B.unfoldr (fmap k . f)
     where k (i, j) = (c2w i, j)
 
 -- | /O(n)/ Like 'unfoldr', 'unfoldrN' builds a ByteString from a seed
@@ -486,7 +485,7 @@ unfoldr f x0 = B.unfoldr (fmap k . f) x0
 --
 -- > unfoldrN n f s == take n (unfoldr f s)
 unfoldrN :: Int -> (a -> Maybe (Char, a)) -> a -> (ByteString, Maybe a)
-unfoldrN n f w = B.unfoldrN n ((k `fmap`) . f) w
+unfoldrN n f = B.unfoldrN n ((k `fmap`) . f)
     where k (i,j) = (c2w i, j)
 {-# INLINE unfoldrN #-}
 
@@ -877,7 +876,7 @@ lines (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> do
 -- after appending a terminating newline to each.
 unlines :: [ByteString] -> ByteString
 unlines [] = empty
-unlines ss = (concat $ List.intersperse nl ss) `append` nl -- half as much space
+unlines ss = concat (List.intersperse nl ss) `append` nl -- half as much space
     where nl = singleton '\n'
 
 -- | 'words' breaks a ByteString up into a list of words, which
@@ -957,7 +956,7 @@ readInteger as
 
           combine _ acc [] ps = (toInteger acc, ps)
           combine d acc ns ps =
-              ((10^d * combine1 1000000000 ns + toInteger acc), ps)
+              (10^d * combine1 1000000000 ns + toInteger acc, ps)
 
           combine1 _ [n] = n
           combine1 b ns  = combine1 (b*b) $ combine2 b ns
@@ -973,25 +972,25 @@ readInteger as
 -- 'pack'.  It also may be more efficient than opening the file and
 -- reading it using hGet.
 readFile :: FilePath -> IO ByteString
-readFile f = bracket (openBinaryFile f ReadMode) hClose
+readFile f = withBinaryFile f ReadMode
     (\h -> hFileSize h >>= hGet h . fromIntegral)
+
+modifyFile :: IOMode -> FilePath -> ByteString -> IO ()
+modifyFile mode f txt = withBinaryFile f mode (`hPut` txt)
 
 -- | Write a 'ByteString' to a file.
 writeFile :: FilePath -> ByteString -> IO ()
-writeFile f txt = bracket (openBinaryFile f WriteMode) hClose
-    (\h -> hPut h txt)
+writeFile = modifyFile WriteMode
 
 -- | Append a 'ByteString' to a file.
 appendFile :: FilePath -> ByteString -> IO ()
-appendFile f txt = bracket (openBinaryFile f AppendMode) hClose
-    (\h -> hPut h txt)
-
+appendFile = modifyFile AppendMode
 
 -- | Write a ByteString to a handle, appending a newline byte
 hPutStrLn :: Handle -> ByteString -> IO ()
 hPutStrLn h ps
     | length ps < 1024 = hPut h (ps `B.snoc` 0x0a)
-    | otherwise        = hPut h ps >> hPut h (B.singleton (0x0a)) -- don't copy
+    | otherwise        = hPut h ps >> hPut h (B.singleton 0x0a) -- don't copy
 
 -- | Write a ByteString to stdout, appending a newline byte
 putStrLn :: ByteString -> IO ()

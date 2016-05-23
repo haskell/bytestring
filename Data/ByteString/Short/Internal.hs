@@ -90,7 +90,7 @@ import GHC.ST         (ST(ST), runST)
 import GHC.Word
 
 import Prelude ( Eq(..), Ord(..), Ordering(..), Read(..), Show(..)
-               , ($), error, (++)
+               , ($), error, (++), String
                , Bool(..), (&&), otherwise
                , (+), (-), fromIntegral
                , return )
@@ -149,10 +149,10 @@ instance Monoid ShortByteString where
     mconcat = concat
 
 instance NFData ShortByteString where
-    rnf (SBS {}) = ()
+    rnf SBS{} = ()
 
 instance Show ShortByteString where
-    showsPrec p ps r = showsPrec p (unpackChars ps) r
+    showsPrec p ps = showsPrec p (unpackChars ps)
 
 instance Read ShortByteString where
     readsPrec p str = [ (packChars x, y) | (x, y) <- readsPrec p str ]
@@ -161,7 +161,7 @@ instance IsString ShortByteString where
     fromString = packChars
 
 instance Data ShortByteString where
-  gfoldl f z txt = z packBytes `f` (unpackBytes txt)
+  gfoldl f z txt = z packBytes `f` unpackBytes txt
   toConstr _     = error "Data.ByteString.Short.ShortByteString.toConstr"
   gunfold _ _    = error "Data.ByteString.Short.ShortByteString.gunfold"
   dataTypeOf _   = mkNoRepType "Data.ByteString.Short.ShortByteString"
@@ -272,17 +272,17 @@ pack = packBytes
 unpack :: ShortByteString -> [Word8]
 unpack = unpackBytes
 
-packChars :: [Char] -> ShortByteString
+packChars :: String -> ShortByteString
 packChars cs = packLenChars (List.length cs) cs
 
 packBytes :: [Word8] -> ShortByteString
 packBytes cs = packLenBytes (List.length cs) cs
 
-packLenChars :: Int -> [Char] -> ShortByteString
+packLenChars :: Int -> String -> ShortByteString
 packLenChars len cs0 =
     create len (\mba -> go mba 0 cs0)
   where
-    go :: MBA s -> Int -> [Char] -> ST s ()
+    go :: MBA s -> Int -> String -> ST s ()
     go !_   !_ []     = return ()
     go !mba !i (c:cs) = do
       writeCharArray mba i c
@@ -309,7 +309,7 @@ packLenBytes len ws0 =
 -- unpackChars does the lazy loop, while unpackAppendBytes and
 -- unpackAppendChars do the chunks strictly.
 
-unpackChars :: ShortByteString -> [Char]
+unpackChars :: ShortByteString -> String
 unpackChars bs = unpackAppendCharsLazy bs []
 
 unpackBytes :: ShortByteString -> [Word8]
@@ -319,9 +319,8 @@ unpackBytes bs = unpackAppendBytesLazy bs []
 -- takes just shy of 4k which seems like a reasonable amount.
 -- (5 words per list element, 8 bytes per word, 100 elements = 4000 bytes)
 
-unpackAppendCharsLazy :: ShortByteString -> [Char] -> [Char]
-unpackAppendCharsLazy sbs cs0 =
-    go 0 (length sbs) cs0
+unpackAppendCharsLazy :: ShortByteString -> String -> String
+unpackAppendCharsLazy sbs = go 0 (length sbs)
   where
     sz = 100
 
@@ -331,8 +330,7 @@ unpackAppendCharsLazy sbs cs0 =
                       where remainder = go (off+sz) (len-sz) cs
 
 unpackAppendBytesLazy :: ShortByteString -> [Word8] -> [Word8]
-unpackAppendBytesLazy sbs ws0 =
-    go 0 (length sbs) ws0
+unpackAppendBytesLazy sbs = go 0 (length sbs)
   where
     sz = 100
 
@@ -346,9 +344,8 @@ unpackAppendBytesLazy sbs ws0 =
 -- the list starting at the end. So our traversal starts at the end of the
 -- buffer and loops down until we hit the sentinal:
 
-unpackAppendCharsStrict :: ShortByteString -> Int -> Int -> [Char] -> [Char]
-unpackAppendCharsStrict !sbs off len cs =
-    go (off-1) (off-1 + len) cs
+unpackAppendCharsStrict :: ShortByteString -> Int -> Int -> String -> String
+unpackAppendCharsStrict !sbs off len = go (off-1) (off-1 + len)
   where
     go !sentinal !i !acc
       | i == sentinal = acc
@@ -356,8 +353,7 @@ unpackAppendCharsStrict !sbs off len cs =
                         in go sentinal (i-1) (c:acc)
 
 unpackAppendBytesStrict :: ShortByteString -> Int -> Int -> [Word8] -> [Word8]
-unpackAppendBytesStrict !sbs off len ws =
-    go (off-1) (off-1 + len) ws
+unpackAppendBytesStrict !sbs off len = go (off-1) (off-1 + len)
   where
     go !sentinal !i !acc
       | i == sentinal = acc
