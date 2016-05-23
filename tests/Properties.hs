@@ -680,7 +680,7 @@ prop_maximum xs = (not (null xs)) ==> (maximum xs) == (L.maximum ( pack xs ))
 prop_minimum xs = (not (null xs)) ==> (minimum xs) == (L.minimum ( pack xs ))
 
 prop_replicate1 c =
-    forAll arbitrary $ \(Positive n) ->
+    forAll arbitrarySizedIntegral $ \(Positive n) ->
     unpack (L.replicate (fromIntegral n) c) == replicate n c
 
 prop_replicate2 c = unpack (L.replicate 0 c) == replicate 0 c
@@ -2313,7 +2313,7 @@ ll_tests =
     , testProperty "reverse"            prop_reverse
     , testProperty "reverse1"           prop_reverse1
     , testProperty "reverse2"           prop_reverse2
-    --, testProperty "transpose"          prop_transpose
+    , testProperty "transpose"          prop_transpose
     , testProperty "foldl"              prop_foldl
     , testProperty "foldl/reverse"      prop_foldl_1
     , testProperty "foldr"              prop_foldr

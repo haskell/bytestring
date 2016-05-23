@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, ForeignFunctionInterface, BangPatterns #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 #if __GLASGOW_HASKELL__ >= 703
 {-# LANGUAGE Unsafe #-}
@@ -99,7 +99,7 @@ instance NFData ByteString where
     rnf (Chunk _ b) = rnf b
 
 instance Show ByteString where
-    showsPrec p ps r = showsPrec p (unpackChars ps) r
+    showsPrec p ps = showsPrec p (unpackChars ps)
 
 instance Read ByteString where
     readsPrec p str = [ (packChars x, y) | (x, y) <- readsPrec p str ]
@@ -124,9 +124,8 @@ packBytes cs0 =
       (bs, [])  -> chunk bs Empty
       (bs, cs') -> Chunk bs (packChunks (min (n * 2) smallChunkSize) cs')
 
-packChars :: [Char] -> ByteString
-packChars cs0 =
-    packChunks 32 cs0
+packChars :: String -> ByteString
+packChars = packChunks 32
   where
     packChunks n cs = case S.packUptoLenChars n cs of
       (bs, [])  -> chunk bs Empty
@@ -136,7 +135,7 @@ unpackBytes :: ByteString -> [Word8]
 unpackBytes Empty        = []
 unpackBytes (Chunk c cs) = S.unpackAppendBytesLazy c (unpackBytes cs)
 
-unpackChars :: ByteString -> [Char]
+unpackChars :: ByteString -> String
 unpackChars Empty        = []
 unpackChars (Chunk c cs) = S.unpackAppendCharsLazy c (unpackChars cs)
 
@@ -176,7 +175,7 @@ foldrChunks f z = go
 -- | Consume the chunks of a lazy ByteString with a strict, tail-recursive,
 -- accumulating left fold.
 foldlChunks :: (a -> S.ByteString -> a) -> a -> ByteString -> a
-foldlChunks f z = go z
+foldlChunks f = go
   where go a _ | a `seq` False = undefined
         go a Empty        = a
         go a (Chunk c cs) = go (f a c) cs
@@ -218,9 +217,9 @@ eq Empty _     = False
 eq _     Empty = False
 eq (Chunk a as) (Chunk b bs) =
   case compare (S.length a) (S.length b) of
-    LT -> a == (S.take (S.length a) b) && eq as (Chunk (S.drop (S.length a) b) bs)
-    EQ -> a == b                       && eq as bs
-    GT -> (S.take (S.length b) a) == b && eq (Chunk (S.drop (S.length b) a) as) bs
+    LT -> a == S.take (S.length a) b && eq as (Chunk (S.drop (S.length a) b) bs)
+    EQ -> a == b                     && eq as bs
+    GT -> S.take (S.length b) a == b && eq (Chunk (S.drop (S.length b) a) as) bs
 
 cmp :: ByteString -> ByteString -> Ordering
 cmp Empty Empty = EQ
@@ -242,7 +241,7 @@ append :: ByteString -> ByteString -> ByteString
 append xs ys = foldrChunks Chunk ys xs
 
 concat :: [ByteString] -> ByteString
-concat css0 = to css0
+concat = to
   where
     go Empty        css = to css
     go (Chunk c cs) css = Chunk c (go cs css)
