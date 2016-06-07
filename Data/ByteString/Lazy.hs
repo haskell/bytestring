@@ -264,11 +264,11 @@ unpack = unpackBytes
 
 -- | /O(c)/ Convert a list of strict 'ByteString' into a lazy 'ByteString'
 fromChunks :: [P.ByteString] -> ByteString
-fromChunks = L.foldr chunk Empty
+fromChunks cs = L.foldr chunk Empty cs
 
 -- | /O(c)/ Convert a lazy 'ByteString' into a list of strict 'ByteString'
 toChunks :: ByteString -> [P.ByteString]
-toChunks = foldrChunks (:) []
+toChunks cs = foldrChunks (:) [] cs
 
 -- |/O(1)/ Convert a strict 'ByteString' into a lazy 'ByteString'.
 fromStrict :: P.ByteString -> ByteString
@@ -322,7 +322,7 @@ null _     = False
 
 -- | /O(n\/c)/ 'length' returns the length of a ByteString as an 'Int64'
 length :: ByteString -> Int64
-length = foldlChunks (\n c -> n + fromIntegral (S.length c)) 0
+length cs = foldlChunks (\n c -> n + fromIntegral (S.length c)) 0 cs
 {-# INLINE length #-}
 
 infixr 5 `cons`, `cons'` --same as list (:)
@@ -331,7 +331,7 @@ infixl 5 `snoc`
 -- | /O(1)/ 'cons' is analogous to '(:)' for lists.
 --
 cons :: Word8 -> ByteString -> ByteString
-cons c = Chunk (S.singleton c)
+cons c cs = Chunk (S.singleton c) cs
 {-# INLINE cons #-}
 
 -- | /O(1)/ Unlike 'cons', 'cons\'' is
@@ -417,7 +417,7 @@ append = mappend
 -- | /O(n)/ 'map' @f xs@ is the ByteString obtained by applying @f@ to each
 -- element of @xs@.
 map :: (Word8 -> Word8) -> ByteString -> ByteString
-map f = go
+map f s = go s
     where
         go Empty        = Empty
         go (Chunk x xs) = Chunk y ys
@@ -428,7 +428,7 @@ map f = go
 
 -- | /O(n)/ 'reverse' @xs@ returns the elements of @xs@ in reverse order.
 reverse :: ByteString -> ByteString
-reverse = rev Empty
+reverse cs0 = rev Empty cs0
   where rev a Empty        = a
         rev a (Chunk c cs) = rev (Chunk (S.reverse c) a) cs
 {-# INLINE reverse #-}
@@ -460,14 +460,14 @@ transpose css = L.map (\ss -> Chunk (S.pack ss) Empty)
 -- the left-identity of the operator), and a ByteString, reduces the
 -- ByteString using the binary operator, from left to right.
 foldl :: (a -> Word8 -> a) -> a -> ByteString -> a
-foldl f = go
+foldl f z = go z
   where go a Empty        = a
         go a (Chunk c cs) = go (S.foldl f a c) cs
 {-# INLINE foldl #-}
 
 -- | 'foldl\'' is like 'foldl', but strict in the accumulator.
 foldl' :: (a -> Word8 -> a) -> a -> ByteString -> a
-foldl' f = go
+foldl' f z = go z
   where go !a Empty        = a
         go !a (Chunk c cs) = go (S.foldl' f a c) cs
 {-# INLINE foldl' #-}
@@ -476,7 +476,7 @@ foldl' f = go
 -- (typically the right-identity of the operator), and a ByteString,
 -- reduces the ByteString using the binary operator, from right to left.
 foldr :: (Word8 -> a -> a) -> a -> ByteString -> a
-foldr k = foldrChunks (flip (S.foldr k))
+foldr k z = foldrChunks (flip (S.foldr k)) z
 {-# INLINE foldr #-}
 
 -- | 'foldl1' is a variant of 'foldl' that has no starting value
@@ -523,14 +523,14 @@ concatMap f (Chunk c0 cs0) = to c0 cs0
 -- | /O(n)/ Applied to a predicate and a ByteString, 'any' determines if
 -- any element of the 'ByteString' satisfies the predicate.
 any :: (Word8 -> Bool) -> ByteString -> Bool
-any f = foldrChunks (\c rest -> S.any f c || rest) False
+any f cs = foldrChunks (\c rest -> S.any f c || rest) False cs
 {-# INLINE any #-}
 -- todo fuse
 
 -- | /O(n)/ Applied to a predicate and a 'ByteString', 'all' determines
 -- if all elements of the 'ByteString' satisfy the predicate.
 all :: (Word8 -> Bool) -> ByteString -> Bool
-all f = foldrChunks (\c rest -> S.all f c && rest) True
+all f cs = foldrChunks (\c rest -> S.all f c && rest) True cs
 {-# INLINE all #-}
 -- todo fuse
 
@@ -553,7 +553,7 @@ minimum (Chunk c cs) = foldlChunks (\n c' -> n `min` S.minimum c')
 -- passing an accumulating parameter from left to right, and returning a
 -- final value of this accumulator together with the new ByteString.
 mapAccumL :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
-mapAccumL f = go
+mapAccumL f s0 = go s0
   where
     go s Empty        = (s, Empty)
     go s (Chunk c cs) = (s'', Chunk c' cs')
@@ -565,7 +565,7 @@ mapAccumL f = go
 -- passing an accumulating parameter from right to left, and returning a
 -- final value of this accumulator together with the new ByteString.
 mapAccumR :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
-mapAccumR f = go
+mapAccumR f s0 = go s0
   where
     go s Empty        = (s, Empty)
     go s (Chunk c cs) = (s'', Chunk c' cs')
@@ -636,13 +636,13 @@ cycle cs    = cs' where cs' = foldrChunks Chunk cs' cs
 -- prepending to the ByteString and @b@ is used as the next element in a
 -- recursive call.
 unfoldr :: (a -> Maybe (Word8, a)) -> a -> ByteString
-unfoldr f = unfoldChunk 32
-  where unfoldChunk n s =
-          case S.unfoldrN n f s of
+unfoldr f z = unfoldChunk 32 z
+  where unfoldChunk n x =
+          case S.unfoldrN n f x of
             (c, Nothing)
               | S.null c  -> Empty
               | otherwise -> Chunk c Empty
-            (c, Just s')  -> Chunk c (unfoldChunk (n*2) s')
+            (c, Just x')  -> Chunk c (unfoldChunk (n*2) x')
 
 -- ---------------------------------------------------------------------
 -- Substrings
@@ -689,7 +689,7 @@ splitAt i cs0 = splitAt' i cs0
 -- returns the longest prefix (possibly empty) of @xs@ of elements that
 -- satisfy @p@.
 takeWhile :: (Word8 -> Bool) -> ByteString -> ByteString
-takeWhile f = takeWhile'
+takeWhile f cs0 = takeWhile' cs0
   where takeWhile' Empty        = Empty
         takeWhile' (Chunk c cs) =
           case findIndexOrEnd (not . f) c of
@@ -699,7 +699,7 @@ takeWhile f = takeWhile'
 
 -- | 'dropWhile' @p xs@ returns the suffix remaining after 'takeWhile' @p xs@.
 dropWhile :: (Word8 -> Bool) -> ByteString -> ByteString
-dropWhile f = dropWhile'
+dropWhile f cs0 = dropWhile' cs0
   where dropWhile' Empty        = Empty
         dropWhile' (Chunk c cs) =
           case findIndexOrEnd (not . f) c of
@@ -708,7 +708,7 @@ dropWhile f = dropWhile'
 
 -- | 'break' @p@ is equivalent to @'span' ('not' . p)@.
 break :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
-break f = break'
+break f cs0 = break' cs0
   where break' Empty        = (Empty, Empty)
         break' (Chunk c cs) =
           case findIndexOrEnd f c of
@@ -776,10 +776,9 @@ splitWith _ Empty          = []
 splitWith p (Chunk c0 cs0) = comb [] (S.splitWith p c0) cs0
 
   where comb :: [P.ByteString] -> [P.ByteString] -> ByteString -> [ByteString]
-        comb acc [s] Empty        = [revChunks (s:acc)]
-        comb acc [s] (Chunk c cs) = comb (s:acc) (S.splitWith p c) cs
-        comb acc (s:ss) cs        = revChunks (s:acc) : comb [] ss cs
-
+        comb acc (s:[]) Empty        = revChunks (s:acc) : []
+        comb acc (s:[]) (Chunk c cs) = comb (s:acc) (S.splitWith p c) cs
+        comb acc (s:ss) cs           = revChunks (s:acc) : comb [] ss cs
 {-# INLINE splitWith #-}
 
 -- | /O(n)/ Break a 'ByteString' into pieces separated by the byte
@@ -803,8 +802,8 @@ split _ Empty     = []
 split w (Chunk c0 cs0) = comb [] (S.split w c0) cs0
 
   where comb :: [P.ByteString] -> [P.ByteString] -> ByteString -> [ByteString]
-        comb acc [s] Empty        = [revChunks (s:acc)]
-        comb acc [s] (Chunk c cs) = comb (s:acc) (S.split w c) cs
+        comb acc (s:[]) Empty        = revChunks (s:acc) : []
+        comb acc (s:[]) (Chunk c cs) = comb (s:acc) (S.split w c) cs
         comb acc (s:ss) cs        = revChunks (s:acc) : comb [] ss cs
 {-# INLINE split #-}
 
@@ -825,7 +824,7 @@ group = go
       | S.length c == 1  = to [c] (S.unsafeHead c) cs
       | otherwise        = to [S.unsafeTake 1 c] (S.unsafeHead c) (Chunk (S.unsafeTail c) cs)
 
-    to acc !_ Empty        = [revNonEmptyChunks acc]
+    to acc !_ Empty        = revNonEmptyChunks acc : []
     to acc !w (Chunk c cs) =
       case findIndexOrEnd (/= w) c of
         0                    -> revNonEmptyChunks acc
@@ -844,7 +843,7 @@ groupBy k = go
       | S.length c == 1  = to [c] (S.unsafeHead c) cs
       | otherwise        = to [S.unsafeTake 1 c] (S.unsafeHead c) (Chunk (S.unsafeTail c) cs)
 
-    to acc !_ Empty        = [revNonEmptyChunks acc]
+    to acc !_ Empty        = revNonEmptyChunks acc : []
     to acc !w (Chunk c cs) =
       case findIndexOrEnd (not . k w) c of
         0                    -> revNonEmptyChunks acc
@@ -877,7 +876,7 @@ index cs0 i         = index' cs0 i
 -- element, or 'Nothing' if there is no such element.
 -- This implementation uses memchr(3).
 elemIndex :: Word8 -> ByteString -> Maybe Int64
-elemIndex w = elemIndex' 0
+elemIndex w cs0 = elemIndex' 0 cs0
   where elemIndex' _ Empty        = Nothing
         elemIndex' n (Chunk c cs) =
           case S.elemIndex w c of
@@ -905,7 +904,7 @@ elemIndexEnd w = elemIndexEnd' 0
 -- the indices of all elements equal to the query element, in ascending order.
 -- This implementation uses memchr(3).
 elemIndices :: Word8 -> ByteString -> [Int64]
-elemIndices w = elemIndices' 0
+elemIndices w cs0 = elemIndices' 0 cs0
   where elemIndices' _ Empty        = []
         elemIndices' n (Chunk c cs) = L.map ((+n).fromIntegral) (S.elemIndices w c)
                              ++ elemIndices' (n + fromIntegral (S.length c)) cs
@@ -916,13 +915,13 @@ elemIndices w = elemIndices' 0
 --
 -- But more efficiently than using length on the intermediate list.
 count :: Word8 -> ByteString -> Int64
-count w = foldlChunks (\n c -> n + fromIntegral (S.count w c)) 0
+count w cs = foldlChunks (\n c -> n + fromIntegral (S.count w c)) 0 cs
 
 -- | The 'findIndex' function takes a predicate and a 'ByteString' and
 -- returns the index of the first element in the ByteString
 -- satisfying the predicate.
 findIndex :: (Word8 -> Bool) -> ByteString -> Maybe Int64
-findIndex k = findIndex' 0
+findIndex k cs0 = findIndex' 0 cs0
   where findIndex' _ Empty        = Nothing
         findIndex' n (Chunk c cs) =
           case S.findIndex k c of
@@ -937,7 +936,7 @@ findIndex k = findIndex' 0
 -- > find f p = case findIndex f p of Just n -> Just (p ! n) ; _ -> Nothing
 --
 find :: (Word8 -> Bool) -> ByteString -> Maybe Word8
-find f = find'
+find f cs0 = find' cs0
   where find' Empty        = Nothing
         find' (Chunk c cs) = case S.find f c of
             Nothing -> find' cs
@@ -947,7 +946,7 @@ find f = find'
 -- | The 'findIndices' function extends 'findIndex', by returning the
 -- indices of all elements satisfying the predicate, in ascending order.
 findIndices :: (Word8 -> Bool) -> ByteString -> [Int64]
-findIndices k = findIndices' 0
+findIndices k cs0 = findIndices' 0 cs0
   where findIndices' _ Empty        = []
         findIndices' n (Chunk c cs) = L.map ((+n).fromIntegral) (S.findIndices k c)
                              ++ findIndices' (n + fromIntegral (S.length c)) cs
@@ -967,7 +966,7 @@ notElem w cs = not (elem w cs)
 -- returns a ByteString containing those characters that satisfy the
 -- predicate.
 filter :: (Word8 -> Bool) -> ByteString -> ByteString
-filter p = go
+filter p s = go s
     where
         go Empty        = Empty
         go (Chunk x xs) = chunk (S.filter p x) (go xs)
@@ -1114,7 +1113,7 @@ inits = (Empty :) . inits'
 
 -- | /O(n)/ Return all final segments of the given 'ByteString', longest first.
 tails :: ByteString -> [ByteString]
-tails Empty         = [Empty]
+tails Empty         = Empty : []
 tails cs@(Chunk c cs')
   | S.length c == 1 = cs : tails cs'
   | otherwise       = cs : tails (Chunk (S.unsafeTail c) cs')
@@ -1128,7 +1127,7 @@ tails cs@(Chunk c cs')
 --   if a large string has been read in, and only a small part of it
 --   is needed in the rest of the program.
 copy :: ByteString -> ByteString
-copy = foldrChunks (Chunk . S.copy) Empty
+copy cs = foldrChunks (Chunk . S.copy) Empty cs
 --TODO, we could coalese small blocks here
 --FIXME: probably not strict enough, if we're doing this to avoid retaining
 -- the parent blocks then we'd better copy strictly.
@@ -1164,8 +1163,9 @@ hGetContentsN k h = lazyRead -- TODO close on exceptions
     loop = do
         c <- S.hGetSome h k -- only blocks if there is no data available
         if S.null c
-          then fmap (const Empty) (hClose h)
-          else fmap (Chunk c) lazyRead
+          then hClose h >> return Empty
+          else do cs <- lazyRead
+                  return (Chunk c cs)
 
 -- | Read @n@ bytes into a 'ByteString', directly from the
 -- specified 'Handle', in chunks of size @k@.
@@ -1262,7 +1262,7 @@ getContents = hGetContents stdin
 -- | Outputs a 'ByteString' to the specified 'Handle'.
 --
 hPut :: Handle -> ByteString -> IO ()
-hPut h = foldrChunks (\c rest -> S.hPut h c >> rest) (return ())
+hPut h cs = foldrChunks (\c rest -> S.hPut h c >> rest) (return ()) cs
 
 -- | Similar to 'hPut' except that it will never block. Instead it returns
 -- any tail that did not get written. This tail may be 'empty' in the case that
@@ -1323,11 +1323,11 @@ moduleError fun msg = error ("Data.ByteString.Lazy." ++ fun ++ ':':' ':msg)
 
 -- reverse a list of non-empty chunks into a lazy ByteString
 revNonEmptyChunks :: [P.ByteString] -> ByteString
-revNonEmptyChunks = L.foldl' (flip Chunk) Empty
+revNonEmptyChunks cs = L.foldl' (flip Chunk) Empty cs
 
 -- reverse a list of possibly-empty chunks into a lazy ByteString
 revChunks :: [P.ByteString] -> ByteString
-revChunks = L.foldl' (flip chunk) Empty
+revChunks cs = L.foldl' (flip chunk) Empty cs
 
 -- | 'findIndexOrEnd' is a variant of findIndex, that returns the length
 -- of the string if no element is found, rather than Nothing.

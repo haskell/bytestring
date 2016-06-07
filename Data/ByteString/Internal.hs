@@ -171,7 +171,7 @@ instance NFData ByteString where
     rnf PS{} = ()
 
 instance Show ByteString where
-    showsPrec p ps = showsPrec p (unpackChars ps)
+    showsPrec p ps r = showsPrec p (unpackChars ps) r
 
 instance Read ByteString where
     readsPrec p str = [ (packChars x, y) | (x, y) <- readsPrec p str ]
@@ -191,7 +191,7 @@ instance Data ByteString where
 packBytes :: [Word8] -> ByteString
 packBytes ws = unsafePackLenBytes (List.length ws) ws
 
-packChars :: String -> ByteString
+packChars :: [Char] -> ByteString
 packChars cs = unsafePackLenChars (List.length cs) cs
 
 {-# INLINE [0] packChars #-}
@@ -208,7 +208,7 @@ unsafePackLenBytes len xs0 =
     go !_ []     = return ()
     go !p (x:xs) = poke p x >> go (p `plusPtr` 1) xs
 
-unsafePackLenChars :: Int -> String -> ByteString
+unsafePackLenChars :: Int -> [Char] -> ByteString
 unsafePackLenChars len cs0 =
     unsafeCreate len $ \p -> go p cs0
   where
@@ -256,7 +256,7 @@ packUptoLenBytes len xs0 =
     go !_ !0 xs     = return (len,   xs)
     go !p !n (x:xs) = poke p x >> go (p `plusPtr` 1) (n-1) xs
 
-packUptoLenChars :: Int -> String -> (ByteString, String)
+packUptoLenChars :: Int -> [Char] -> (ByteString, [Char])
 packUptoLenChars len cs0 =
     unsafeCreateUptoN' len $ \p -> go p len cs0
   where
@@ -278,7 +278,7 @@ packUptoLenChars len cs0 =
 unpackBytes :: ByteString -> [Word8]
 unpackBytes bs = unpackAppendBytesLazy bs []
 
-unpackChars :: ByteString -> String
+unpackChars :: ByteString -> [Char]
 unpackChars bs = unpackAppendCharsLazy bs []
 
 unpackAppendBytesLazy :: ByteString -> [Word8] -> [Word8]
@@ -292,7 +292,7 @@ unpackAppendBytesLazy (PS fp off len) xs
   -- takes just shy of 4k which seems like a reasonable amount.
   -- (5 words per list element, 8 bytes per word, 100 elements = 4000 bytes)
 
-unpackAppendCharsLazy :: ByteString -> String -> String
+unpackAppendCharsLazy :: ByteString -> [Char] -> [Char]
 unpackAppendCharsLazy (PS fp off len) cs
   | len <= 100 = unpackAppendCharsStrict (PS fp off len) cs
   | otherwise  = unpackAppendCharsStrict (PS fp off 100) remainder
@@ -314,7 +314,7 @@ unpackAppendBytesStrict (PS fp off len) xs =
       | otherwise     = do x <- peek p
                            loop sentinal (p `plusPtr` (-1)) (x:acc)
 
-unpackAppendCharsStrict :: ByteString -> String -> String
+unpackAppendCharsStrict :: ByteString -> [Char] -> [Char]
 unpackAppendCharsStrict (PS fp off len) xs =
     accursedUnutterablePerformIO $ withForeignPtr fp $ \base ->
       loop (base `plusPtr` (off-1)) (base `plusPtr` (off-1+len)) xs
@@ -572,7 +572,7 @@ foreign import ccall unsafe "string.h memchr" c_memchr
     :: Ptr Word8 -> CInt -> CSize -> IO (Ptr Word8)
 
 memchr :: Ptr Word8 -> Word8 -> CSize -> IO (Ptr Word8)
-memchr p w = c_memchr p (fromIntegral w)
+memchr p w s = c_memchr p (fromIntegral w) s
 
 foreign import ccall unsafe "string.h memcmp" c_memcmp
     :: Ptr Word8 -> Ptr Word8 -> CSize -> IO CInt
@@ -599,7 +599,7 @@ foreign import ccall unsafe "string.h memset" c_memset
     :: Ptr Word8 -> CInt -> CSize -> IO (Ptr Word8)
 
 memset :: Ptr Word8 -> Word8 -> CSize -> IO (Ptr Word8)
-memset p w = c_memset p (fromIntegral w)
+memset p w s = c_memset p (fromIntegral w) s
 
 -- ---------------------------------------------------------------------
 --

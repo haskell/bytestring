@@ -470,7 +470,7 @@ intersperse c ps@(PS x s l)
 -- | The 'transpose' function transposes the rows and columns of its
 -- 'ByteString' argument.
 transpose :: [ByteString] -> [ByteString]
-transpose = P.map pack . List.transpose . P.map unpack
+transpose ps = P.map pack . List.transpose . P.map unpack $ ps
 
 -- ---------------------------------------------------------------------
 -- Reducing 'ByteString's
@@ -769,7 +769,7 @@ unfoldr :: (a -> Maybe (Word8, a)) -> a -> ByteString
 unfoldr f = concat . unfoldChunk 32 64
   where unfoldChunk n n' x =
           case unfoldrN n f x of
-            (s, Nothing) -> [s]
+            (s, Nothing) -> s : []
             (s, Just x') -> s : unfoldChunk n' (n+n') x'
 {-# INLINE unfoldr #-}
 
@@ -891,7 +891,7 @@ breakEnd  p ps = splitAt (findFromEndUntil p ps) ps
 -- | 'span' @p xs@ breaks the ByteString into two segments. It is
 -- equivalent to @('takeWhile' p xs, 'dropWhile' p xs)@
 span :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
-span p = break (not . p)
+span p ps = break (not . p) ps
 {-# INLINE [1] span #-}
 
 -- | 'spanByte' breaks its ByteString argument at the first
@@ -1146,7 +1146,7 @@ findIndex k (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \f ->
 -- | The 'findIndices' function extends 'findIndex', by returning the
 -- indices of all elements satisfying the predicate, in ascending order.
 findIndices :: (Word8 -> Bool) -> ByteString -> [Int]
-findIndices p = loop 0
+findIndices p ps = loop 0 ps
    where
      loop !n !qs | null qs           = []
                  | p (unsafeHead qs) = n : loop (n+1) (unsafeTail qs)

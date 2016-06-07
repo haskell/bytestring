@@ -283,7 +283,7 @@ pack = packChars
 {-# INLINE pack #-}
 
 -- | /O(n)/ Converts a 'ByteString' to a 'String'.
-unpack :: ByteString -> String
+unpack :: ByteString -> [Char]
 unpack = B.unpackChars
 {-# INLINE unpack #-}
 
@@ -473,7 +473,7 @@ replicate n = B.replicate n . c2w
 --
 -- > unfoldr (\x -> if x <= '9' then Just (x, succ x) else Nothing) '0' == "0123456789"
 unfoldr :: (a -> Maybe (Char, a)) -> a -> ByteString
-unfoldr f = B.unfoldr (fmap k . f)
+unfoldr f x = B.unfoldr (fmap k . f) x
     where k (i, j) = (c2w i, j)
 
 -- | /O(n)/ Like 'unfoldr', 'unfoldrN' builds a ByteString from a seed

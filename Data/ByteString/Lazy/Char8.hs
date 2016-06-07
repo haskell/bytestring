@@ -205,7 +205,7 @@ import Data.ByteString.Lazy
         ,hGetContents, hGet, hPut, getContents
         ,hGetNonBlocking, hPutNonBlocking
         ,putStr, hPutStr, interact
-        ,readFile,writeFile,appendFile,putStrLn)
+        ,readFile,writeFile,appendFile)
 
 -- Functions we need to wrap.
 import qualified Data.ByteString.Lazy as L
@@ -226,7 +226,7 @@ import Prelude hiding
         ,readFile,writeFile,appendFile,replicate,getContents,getLine,putStr,putStrLn
         ,zip,zipWith,unzip,notElem,repeat,iterate,interact,cycle)
 
-import System.IO            (Handle)
+import System.IO            (Handle, stdout)
 
 ------------------------------------------------------------------------
 
@@ -236,11 +236,11 @@ singleton = L.singleton . c2w
 {-# INLINE singleton #-}
 
 -- | /O(n)/ Convert a 'String' into a 'ByteString'. 
-pack :: String -> ByteString
+pack :: [Char] -> ByteString
 pack = packChars
 
 -- | /O(n)/ Converts a 'ByteString' to a 'String'.
-unpack :: ByteString -> String
+unpack :: ByteString -> [Char]
 unpack = unpackChars
 
 infixr 5 `cons`, `cons'` --same as list (:)
@@ -680,8 +680,8 @@ lines (Chunk c0 cs0) = loop0 c0 cs0
     loop0 c cs =
         case B.elemIndex (c2w '\n') c of
             Nothing -> case cs of
-                           Empty  | B.null c  -> []
-                                  | otherwise -> [Chunk c Empty]
+                           Empty  | B.null c  ->                 []
+                                  | otherwise -> Chunk c Empty : []
                            (Chunk c' cs')
                                | B.null c  -> loop0 c'     cs'
                                | otherwise -> loop  c' [c] cs'
@@ -699,7 +699,7 @@ lines (Chunk c0 cs0) = loop0 c0 cs0
             Nothing ->
                 case cs of
                     Empty -> let c' = revChunks (c : line)
-                              in c' `seq` [c']
+                              in c' `seq` (c' : [])
 
                     (Chunk c' cs') -> loop c' (c : line) cs'
 
@@ -846,9 +846,14 @@ readInteger (Chunk c0 cs0) =
 hPutStrLn :: Handle -> ByteString -> IO ()
 hPutStrLn h ps = hPut h ps >> hPut h (L.singleton 0x0a)
 
+-- | Write a ByteString to stdout, appending a newline byte
+--
+putStrLn :: ByteString -> IO ()
+putStrLn = hPutStrLn stdout
+
 -- ---------------------------------------------------------------------
 -- Internal utilities
 
 -- reverse a list of possibly-empty chunks into a lazy ByteString
 revChunks :: [S.ByteString] -> ByteString
-revChunks = List.foldl' (flip chunk) Empty
+revChunks cs = List.foldl' (flip chunk) Empty cs

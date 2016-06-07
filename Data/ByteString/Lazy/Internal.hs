@@ -99,7 +99,7 @@ instance NFData ByteString where
     rnf (Chunk _ b) = rnf b
 
 instance Show ByteString where
-    showsPrec p ps = showsPrec p (unpackChars ps)
+    showsPrec p ps r = showsPrec p (unpackChars ps) r
 
 instance Read ByteString where
     readsPrec p str = [ (packChars x, y) | (x, y) <- readsPrec p str ]
@@ -124,8 +124,8 @@ packBytes cs0 =
       (bs, [])  -> chunk bs Empty
       (bs, cs') -> Chunk bs (packChunks (min (n * 2) smallChunkSize) cs')
 
-packChars :: String -> ByteString
-packChars = packChunks 32
+packChars :: [Char] -> ByteString
+packChars cs0 = packChunks 32 cs0
   where
     packChunks n cs = case S.packUptoLenChars n cs of
       (bs, [])  -> chunk bs Empty
@@ -135,7 +135,7 @@ unpackBytes :: ByteString -> [Word8]
 unpackBytes Empty        = []
 unpackBytes (Chunk c cs) = S.unpackAppendBytesLazy c (unpackBytes cs)
 
-unpackChars :: ByteString -> String
+unpackChars :: ByteString -> [Char]
 unpackChars Empty        = []
 unpackChars (Chunk c cs) = S.unpackAppendCharsLazy c (unpackChars cs)
 
@@ -175,7 +175,7 @@ foldrChunks f z = go
 -- | Consume the chunks of a lazy ByteString with a strict, tail-recursive,
 -- accumulating left fold.
 foldlChunks :: (a -> S.ByteString -> a) -> a -> ByteString -> a
-foldlChunks f = go
+foldlChunks f z = go z
   where go a _ | a `seq` False = undefined
         go a Empty        = a
         go a (Chunk c cs) = go (f a c) cs
@@ -241,7 +241,7 @@ append :: ByteString -> ByteString -> ByteString
 append xs ys = foldrChunks Chunk ys xs
 
 concat :: [ByteString] -> ByteString
-concat = to
+concat css0 = to css0
   where
     go Empty        css = to css
     go (Chunk c cs) css = Chunk c (go cs css)
