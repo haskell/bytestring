@@ -1261,7 +1261,9 @@ appendFile f txt = bracket (openBinaryFile f AppendMode) hClose
 getContents :: IO ByteString
 getContents = hGetContents stdin
 
--- | Outputs a 'ByteString' to the specified 'Handle'.
+-- | Outputs a 'ByteString' to the specified 'Handle'. The chunks will be
+-- written one at a time. Other threads might write to the 'Handle' between the
+-- writes, and hence 'hPut' alone might not be suitable for concurrent writes.
 --
 hPut :: Handle -> ByteString -> IO ()
 hPut h cs = foldrChunks (\c rest -> S.hPut h c >> rest) (return ()) cs
