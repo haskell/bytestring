@@ -23,7 +23,7 @@ before_install:
 install:
  - travis_retry cabal update
  # can't use "cabal install --only-dependencies --enable-tests" due to dep-cycle
- - cabal install "QuickCheck >=2.4" "byteorder ==1.0.*" "dlist ==0.5.*" "mtl >=2.0 && <2.2" deepseq test-framework-hunit test-framework-quickcheck2
+ - cabal install "QuickCheck >=2.4" "byteorder ==1.0.*" "dlist >=0.5 && <0.8" "mtl >=2.0 && <2.3" deepseq test-framework-hunit test-framework-quickcheck2
 
 script:
  - cabal configure --enable-tests -v2
@@ -39,7 +39,7 @@ script:
  - export SRC_TGZ=$(cabal info . | awk '{print $2 ".tar.gz";exit}') ;
    cd dist/;
    if [ -f "$SRC_TGZ" ]; then
-      cabal install "$SRC_TGZ";
+      cabal install --force-reinstalls "$SRC_TGZ";
    else
       echo "expected '$SRC_TGZ' not found";
       exit 1;
