@@ -201,8 +201,8 @@ byteStringFromBuffer :: Buffer -> S.ByteString
 byteStringFromBuffer (Buffer fpbuf (BufferRange op _)) =
     S.PS fpbuf 0 (op `minusPtr` unsafeForeignPtrToPtr fpbuf)
 
---- | Prepend the filled part of a 'Buffer' to a lazy 'L.ByteString'
---- trimming it if necessary.
+-- | Prepend the filled part of a 'Buffer' to a lazy 'L.ByteString'
+-- trimming it if necessary.
 {-# INLINE trimmedChunkFromBuffer #-}
 trimmedChunkFromBuffer :: AllocationStrategy -> Buffer
                        -> L.ByteString -> L.ByteString

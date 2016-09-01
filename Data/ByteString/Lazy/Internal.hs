@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, ForeignFunctionInterface, BangPatterns #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 #if __GLASGOW_HASKELL__ >= 703
 {-# LANGUAGE Unsafe #-}
@@ -125,8 +125,7 @@ packBytes cs0 =
       (bs, cs') -> Chunk bs (packChunks (min (n * 2) smallChunkSize) cs')
 
 packChars :: [Char] -> ByteString
-packChars cs0 =
-    packChunks 32 cs0
+packChars cs0 = packChunks 32 cs0
   where
     packChunks n cs = case S.packUptoLenChars n cs of
       (bs, [])  -> chunk bs Empty
@@ -218,9 +217,9 @@ eq Empty _     = False
 eq _     Empty = False
 eq (Chunk a as) (Chunk b bs) =
   case compare (S.length a) (S.length b) of
-    LT -> a == (S.take (S.length a) b) && eq as (Chunk (S.drop (S.length a) b) bs)
-    EQ -> a == b                       && eq as bs
-    GT -> (S.take (S.length b) a) == b && eq (Chunk (S.drop (S.length b) a) as) bs
+    LT -> a == S.take (S.length a) b && eq as (Chunk (S.drop (S.length a) b) bs)
+    EQ -> a == b                     && eq as bs
+    GT -> S.take (S.length b) a == b && eq (Chunk (S.drop (S.length b) a) as) bs
 
 cmp :: ByteString -> ByteString -> Ordering
 cmp Empty Empty = EQ
