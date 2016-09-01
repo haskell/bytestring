@@ -217,7 +217,7 @@ import Prelude hiding           (reverse,head,tail,last,init,null
                                 ,scanl,scanl1,scanr,scanr1
                                 ,readFile,writeFile,appendFile,replicate
                                 ,getContents,getLine,putStr,putStrLn,interact
-                                ,zip,zipWith,unzip,notElem)
+                                ,zip,zipWith,unzip,notElem,catch)
 
 #if MIN_VERSION_base(4,7,0)
 import Data.Bits                (finiteBitSize, shiftL, (.|.), (.&.))
@@ -233,7 +233,7 @@ import qualified Data.List as List
 import Data.Word                (Word8)
 import Data.Maybe               (isJust)
 
-import Control.Exception        (finally, assert, throwIO)
+import Control.Exception        (IOException, catch, finally, assert, throwIO)
 import Control.Monad            (when)
 
 import Foreign.C.String         (CString, CStringLen)
@@ -1817,13 +1817,18 @@ interact transformer = putStr . transformer =<< getContents
 readFile :: FilePath -> IO ByteString
 readFile f =
     withBinaryFile f ReadMode $ \h -> do
-      filesz <- hFileSize h
+      -- hFileSize fails if file is not regular file (like
+      -- /dev/null). Catch exception and try reading anyway.
+      filesz <- catch (hFileSize h) useZeroIfNotRegularFile
       let readsz = (fromIntegral filesz `max` 0) + 1
       hGetContentsSizeHint h readsz (readsz `max` 255)
       -- Our initial size is one bigger than the file size so that in the
       -- typical case we will read the whole file in one go and not have
       -- to allocate any more chunks. We'll still do the right thing if the
       -- file size is 0 or is changed before we do the read.
+  where
+    useZeroIfNotRegularFile :: IOException -> IO Integer
+    useZeroIfNotRegularFile _ = return 0
 
 modifyFile :: IOMode -> FilePath -> ByteString -> IO ()
 modifyFile mode f txt = withBinaryFile f mode (`hPut` txt)
