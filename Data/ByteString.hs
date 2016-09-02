@@ -1533,7 +1533,8 @@ sort (PS input s l) = unsafeCreate l $ \p -> allocaArray 256 $ \arr -> do
 
 -- | /O(n) construction/ Use a @ByteString@ with a function requiring a
 -- null-terminated @CString@.  The @CString@ is a copy and will be freed
--- automatically.
+-- automatically; it must not be stored or used after the
+-- subcomputation finishes.
 useAsCString :: ByteString -> (CString -> IO a) -> IO a
 useAsCString (PS fp o l) action =
  allocaBytes (l+1) $ \buf ->
@@ -1544,6 +1545,7 @@ useAsCString (PS fp o l) action =
 
 -- | /O(n) construction/ Use a @ByteString@ with a function requiring a @CStringLen@.
 -- As for @useAsCString@ this function makes a copy of the original @ByteString@.
+-- It must not be stored or used after the subcomputation finishes.
 useAsCStringLen :: ByteString -> (CStringLen -> IO a) -> IO a
 useAsCStringLen p@(PS _ _ l) f = useAsCString p $ \cstr -> f (cstr,l)
 

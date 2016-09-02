@@ -260,6 +260,10 @@ unsafePackMallocCStringLen (cstr, len) = do
 -- to guarantee that the @ByteString@ is indeed null terminated. If in
 -- doubt, use @useAsCString@.
 --
+-- * The memory may freed at any point after the subcomputation
+-- terminates, so the pointer to the storage must *not* be used
+-- after this.
+--
 unsafeUseAsCString :: ByteString -> (CString -> IO a) -> IO a
 unsafeUseAsCString (PS ps s _) ac = withForeignPtr ps $ \p -> ac (castPtr p `plusPtr` s)
 
