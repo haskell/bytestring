@@ -1,5 +1,9 @@
 {-# LANGUAGE CPP, BangPatterns, ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
+#if __GLASGOW_HASKELL__ == 700
+-- This is needed as a workaround for an old bug in GHC 7.0.1 (Trac #4498)
+{-# LANGUAGE MonoPatBinds #-}
+#endif
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE Trustworthy #-}
 #endif
