@@ -130,11 +130,13 @@ module Data.ByteString.Builder.Internal (
 
 import           Control.Arrow (second)
 
+#if MIN_VERSION_base(4,9,0)
+import           Data.Semigroup (Semigroup((<>)))
+#endif
 #if !(MIN_VERSION_base(4,8,0))
 import           Data.Monoid
-import           Control.Applicative (Applicative(..))
+import           Control.Applicative (Applicative(..),(<$>))
 #endif
-import           Control.Applicative ((<$>))
 
 import qualified Data.ByteString               as S
 import qualified Data.ByteString.Internal      as S
@@ -199,8 +201,8 @@ byteStringFromBuffer :: Buffer -> S.ByteString
 byteStringFromBuffer (Buffer fpbuf (BufferRange op _)) =
     S.PS fpbuf 0 (op `minusPtr` unsafeForeignPtrToPtr fpbuf)
 
---- | Prepend the filled part of a 'Buffer' to a lazy 'L.ByteString'
---- trimming it if necessary.
+-- | Prepend the filled part of a 'Buffer' to a lazy 'L.ByteString'
+-- trimming it if necessary.
 {-# INLINE trimmedChunkFromBuffer #-}
 trimmedChunkFromBuffer :: AllocationStrategy -> Buffer
                        -> L.ByteString -> L.ByteString
@@ -400,11 +402,21 @@ empty = Builder (\cont -> (\range -> cont range))
 append :: Builder -> Builder -> Builder
 append (Builder b1) (Builder b2) = Builder $ b1 . b2
 
+#if MIN_VERSION_base(4,9,0)
+instance Semigroup Builder where
+  {-# INLINE (<>) #-}
+  (<>) = append
+#endif
+
 instance Monoid Builder where
   {-# INLINE mempty #-}
   mempty = empty
   {-# INLINE mappend #-}
+#if MIN_VERSION_base(4,9,0)
+  mappend = (<>)
+#else
   mappend = append
+#endif
   {-# INLINE mconcat #-}
   mconcat = foldr mappend mempty
 
@@ -490,21 +502,18 @@ instance Applicative Put where
   pure x = Put $ \k -> k x
   {-# INLINE (<*>) #-}
   Put f <*> Put a = Put $ \k -> f (\f' -> a (\a' -> k (f' a')))
-#if MIN_VERSION_base(4,2,0)
   {-# INLINE (<*) #-}
   (<*) = ap_l
   {-# INLINE (*>) #-}
   (*>) = ap_r
-#endif
 
 instance Monad Put where
   {-# INLINE return #-}
-  return x = Put $ \k -> k x
+  return = pure
   {-# INLINE (>>=) #-}
   Put m >>= f = Put $ \k -> m (\m' -> unPut (f m') k)
   {-# INLINE (>>) #-}
-  (>>) = ap_r
-
+  (>>) = (*>)
 
 -- Conversion between Put and Builder
 -------------------------------------

@@ -112,12 +112,12 @@ fusionbench::
 
 prof::
 	@if [ ! -f "bigdata" ] ; then ln -s data bigdata ; fi
-	${GHC} ${PKG} ${GHCFLAGS} -prof -auto-all --make Bench.hs -o bench
+	${GHC} ${PKG} ${GHCFLAGS} -prof -fprof-auto --make Bench.hs -o bench
 	./bench +RTS -H64m -p
 
 fusionprof::
 	@if [ ! -f "bigdata" ] ; then ln -s data bigdata ; fi
-	${GHC} ${PKG} ${GHCFLAGS} -prof -auto-all --make FusionBench.hs -o fusionbench
+	${GHC} ${PKG} ${GHCFLAGS} -prof -fprof-auto --make FusionBench.hs -o fusionbench
 	./bench +RTS -H64m -p
 
 # ---------------------------------------------------------

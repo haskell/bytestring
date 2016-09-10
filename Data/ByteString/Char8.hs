@@ -1,7 +1,5 @@
 {-# LANGUAGE CPP, BangPatterns #-}
-#if __GLASGOW_HASKELL__
-{-# LANGUAGE MagicHash, UnboxedTuples #-}
-#endif
+{-# LANGUAGE MagicHash #-}
 {-# OPTIONS_HADDOCK prune #-}
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE Trustworthy #-}
@@ -24,8 +22,8 @@
 -- More specifically these byte strings are taken to be in the
 -- subset of Unicode covered by code points 0-255. This covers
 -- Unicode Basic Latin, Latin-1 Supplement and C0+C1 Controls.
--- 
--- See: 
+--
+-- See:
 --
 --  * <http://www.unicode.org/charts/>
 --
@@ -137,7 +135,7 @@ module Data.ByteString.Char8 (
         lines,                  -- :: ByteString -> [ByteString]
         words,                  -- :: ByteString -> [ByteString]
         unlines,                -- :: [ByteString] -> ByteString
-        unwords,                -- :: ByteString -> [ByteString]
+        unwords,                -- :: [ByteString] -> ByteString
 
         -- * Predicates
         isPrefixOf,             -- :: ByteString -> ByteString -> Bool
@@ -259,14 +257,13 @@ import Data.ByteString (empty,null,length,tail,init,append
 import Data.ByteString.Internal
 
 import Data.Char    ( isSpace )
+#if MIN_VERSION_base(4,9,0)
+-- See bytestring #70
+import GHC.Char (eqChar)
+#endif
 import qualified Data.List as List (intersperse)
 
-import System.IO    (Handle,stdout,openBinaryFile,hClose,hFileSize,IOMode(..))
-#ifndef __NHC__
-import Control.Exception        (bracket)
-#else
-import IO			(bracket)
-#endif
+import System.IO    (Handle,stdout,withBinaryFile,hFileSize,IOMode(..))
 import Foreign
 
 
@@ -462,21 +459,21 @@ scanr1 f = B.scanr1 (\a b -> c2w (f (w2c a) (w2c b)))
 --
 -- This implemenation uses @memset(3)@
 replicate :: Int -> Char -> ByteString
-replicate w = B.replicate w . c2w
+replicate n = B.replicate n . c2w
 {-# INLINE replicate #-}
 
--- | /O(n)/, where /n/ is the length of the result.  The 'unfoldr' 
--- function is analogous to the List \'unfoldr\'.  'unfoldr' builds a 
--- ByteString from a seed value.  The function takes the element and 
--- returns 'Nothing' if it is done producing the ByteString or returns 
--- 'Just' @(a,b)@, in which case, @a@ is the next character in the string, 
+-- | /O(n)/, where /n/ is the length of the result.  The 'unfoldr'
+-- function is analogous to the List \'unfoldr\'.  'unfoldr' builds a
+-- ByteString from a seed value.  The function takes the element and
+-- returns 'Nothing' if it is done producing the ByteString or returns
+-- 'Just' @(a,b)@, in which case, @a@ is the next character in the string,
 -- and @b@ is the seed value for further production.
 --
 -- Examples:
 --
 -- > unfoldr (\x -> if x <= '9' then Just (x, succ x) else Nothing) '0' == "0123456789"
 unfoldr :: (a -> Maybe (Char, a)) -> a -> ByteString
-unfoldr f x0 = B.unfoldr (fmap k . f) x0
+unfoldr f x = B.unfoldr (fmap k . f) x
     where k (i, j) = (c2w i, j)
 
 -- | /O(n)/ Like 'unfoldr', 'unfoldrN' builds a ByteString from a seed
@@ -488,7 +485,7 @@ unfoldr f x0 = B.unfoldr (fmap k . f) x0
 --
 -- > unfoldrN n f s == take n (unfoldr f s)
 unfoldrN :: Int -> (a -> Maybe (Char, a)) -> a -> (ByteString, Maybe a)
-unfoldrN n f w = B.unfoldrN n ((k `fmap`) . f) w
+unfoldrN n f = B.unfoldrN n ((k `fmap`) . f)
     where k (i,j) = (c2w i, j)
 {-# INLINE unfoldrN #-}
 
@@ -502,9 +499,7 @@ takeWhile f = B.takeWhile (f . w2c)
 -- | 'dropWhile' @p xs@ returns the suffix remaining after 'takeWhile' @p xs@.
 dropWhile :: (Char -> Bool) -> ByteString -> ByteString
 dropWhile f = B.dropWhile (f . w2c)
-#if defined(__GLASGOW_HASKELL__)
 {-# INLINE [1] dropWhile #-}
-#endif
 
 {-# RULES
 "ByteString specialise dropWhile isSpace -> dropSpace"
@@ -514,23 +509,31 @@ dropWhile f = B.dropWhile (f . w2c)
 -- | 'break' @p@ is equivalent to @'span' ('not' . p)@.
 break :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
 break f = B.break (f . w2c)
-#if defined(__GLASGOW_HASKELL__)
 {-# INLINE [1] break #-}
-#endif
 
+-- See bytestring #70
+#if MIN_VERSION_base(4,9,0)
 {-# RULES
 "ByteString specialise break (x==)" forall x.
-    break ((==) x) = breakChar x
+    break (x `eqChar`) = breakChar x
 "ByteString specialise break (==x)" forall x.
-    break (==x) = breakChar x
+    break (`eqChar` x) = breakChar x
   #-}
+#else
+{-# RULES
+"ByteString specialise break (x==)" forall x.
+    break (x ==) = breakChar x
+"ByteString specialise break (==x)" forall x.
+    break (== x) = breakChar x
+  #-}
+#endif
 
 -- INTERNAL:
 
 -- | 'breakChar' breaks its ByteString argument at the first occurence
 -- of the specified char. It is more efficient than 'break' as it is
 -- implemented with @memchr(3)@. I.e.
--- 
+--
 -- > break (=='c') "abcd" == breakChar 'c' "abcd"
 --
 breakChar :: Char -> ByteString -> (ByteString, ByteString)
@@ -553,41 +556,19 @@ span f = B.span (f . w2c)
 -- and
 --
 -- > spanEnd (not . isSpace) ps
--- >    == 
--- > let (x,y) = span (not.isSpace) (reverse ps) in (reverse y, reverse x) 
+-- >    ==
+-- > let (x,y) = span (not.isSpace) (reverse ps) in (reverse y, reverse x)
 --
 spanEnd :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
 spanEnd f = B.spanEnd (f . w2c)
 {-# INLINE spanEnd #-}
 
 -- | 'breakEnd' behaves like 'break' but from the end of the 'ByteString'
--- 
+--
 -- breakEnd p == spanEnd (not.p)
 breakEnd :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
 breakEnd f = B.breakEnd (f . w2c)
 {-# INLINE breakEnd #-}
-
-{-
--- | 'breakChar' breaks its ByteString argument at the first occurence
--- of the specified Char. It is more efficient than 'break' as it is
--- implemented with @memchr(3)@. I.e.
--- 
--- > break (=='c') "abcd" == breakChar 'c' "abcd"
---
-breakChar :: Char -> ByteString -> (ByteString, ByteString)
-breakChar = B.breakByte . c2w
-{-# INLINE breakChar #-}
-
--- | 'spanChar' breaks its ByteString argument at the first
--- occurence of a Char other than its argument. It is more efficient
--- than 'span (==)'
---
--- > span  (=='c') "abcd" == spanByte 'c' "abcd"
---
-spanChar :: Char -> ByteString -> (ByteString, ByteString)
-spanChar = B.spanByte . c2w
-{-# INLINE spanChar #-}
--}
 
 -- | /O(n)/ Break a 'ByteString' into pieces separated by the byte
 -- argument, consuming the delimiter. I.e.
@@ -595,12 +576,12 @@ spanChar = B.spanByte . c2w
 -- > split '\n' "a\nb\nd\ne" == ["a","b","d","e"]
 -- > split 'a'  "aXaXaXa"    == ["","X","X","X",""]
 -- > split 'x'  "x"          == ["",""]
--- 
+--
 -- and
 --
 -- > intercalate [c] . split c == id
 -- > split == splitWith . (==)
--- 
+--
 -- As for all splitting functions in this library, this function does
 -- not copy the substrings, it just constructs new 'ByteStrings' that
 -- are slices of the original.
@@ -624,7 +605,7 @@ splitWith f = B.splitWith (f . w2c)
 {-
 -- | Like 'splitWith', except that sequences of adjacent separators are
 -- treated as a single separator. eg.
--- 
+--
 -- > tokens (=='a') "aabbaca" == ["bb","c"]
 --
 tokens :: (Char -> Bool) -> ByteString -> [ByteString]
@@ -653,7 +634,7 @@ elemIndex = B.elemIndex . c2w
 -- element, or 'Nothing' if there is no such element. The following
 -- holds:
 --
--- > elemIndexEnd c xs == 
+-- > elemIndexEnd c xs ==
 -- > (-) (length xs - 1) `fmap` elemIndex c (reverse xs)
 --
 elemIndexEnd :: Char -> ByteString -> Maybe Int
@@ -680,9 +661,9 @@ findIndices f = B.findIndices (f . w2c)
 -- | count returns the number of times its argument appears in the ByteString
 --
 -- > count = length . elemIndices
--- 
+--
 -- Also
---  
+--
 -- > count '\n' == length . lines
 --
 -- But more efficiently than using length on the intermediate list.
@@ -805,7 +786,7 @@ unsafeHead  = w2c . B.unsafeHead
 
 -- | 'breakSpace' returns the pair of ByteStrings when the argument is
 -- broken at the first whitespace byte. I.e.
--- 
+--
 -- > break isSpace == breakSpace
 --
 breakSpace :: ByteString -> (ByteString,ByteString)
@@ -827,7 +808,7 @@ firstspace !ptr !n !m
 -- | 'dropSpace' efficiently returns the 'ByteString' argument with
 -- white space Chars removed from the front. It is more efficient than
 -- calling dropWhile for removing whitespace. I.e.
--- 
+--
 -- > dropWhile isSpace == dropSpace
 --
 dropSpace :: ByteString -> ByteString
@@ -845,7 +826,7 @@ firstnonspace !ptr !n !m
 {-
 -- | 'dropSpaceEnd' efficiently returns the 'ByteString' argument with
 -- white space removed from the end. I.e.
--- 
+--
 -- > reverse . (dropWhile isSpace) . reverse == dropSpaceEnd
 --
 -- but it is more efficient than using multiple reverses.
@@ -895,7 +876,7 @@ lines (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> do
 -- after appending a terminating newline to each.
 unlines :: [ByteString] -> ByteString
 unlines [] = empty
-unlines ss = (concat $ List.intersperse nl ss) `append` nl -- half as much space
+unlines ss = concat (List.intersperse nl ss) `append` nl -- half as much space
     where nl = singleton '\n'
 
 -- | 'words' breaks a ByteString up into a list of words, which
@@ -975,7 +956,7 @@ readInteger as
 
           combine _ acc [] ps = (toInteger acc, ps)
           combine d acc ns ps =
-              ((10^d * combine1 1000000000 ns + toInteger acc), ps)
+              (10^d * combine1 1000000000 ns + toInteger acc, ps)
 
           combine1 _ [n] = n
           combine1 b ns  = combine1 (b*b) $ combine2 b ns
@@ -991,25 +972,25 @@ readInteger as
 -- 'pack'.  It also may be more efficient than opening the file and
 -- reading it using hGet.
 readFile :: FilePath -> IO ByteString
-readFile f = bracket (openBinaryFile f ReadMode) hClose
+readFile f = withBinaryFile f ReadMode
     (\h -> hFileSize h >>= hGet h . fromIntegral)
+
+modifyFile :: IOMode -> FilePath -> ByteString -> IO ()
+modifyFile mode f txt = withBinaryFile f mode (`hPut` txt)
 
 -- | Write a 'ByteString' to a file.
 writeFile :: FilePath -> ByteString -> IO ()
-writeFile f txt = bracket (openBinaryFile f WriteMode) hClose
-    (\h -> hPut h txt)
+writeFile = modifyFile WriteMode
 
 -- | Append a 'ByteString' to a file.
 appendFile :: FilePath -> ByteString -> IO ()
-appendFile f txt = bracket (openBinaryFile f AppendMode) hClose
-    (\h -> hPut h txt)
-
+appendFile = modifyFile AppendMode
 
 -- | Write a ByteString to a handle, appending a newline byte
 hPutStrLn :: Handle -> ByteString -> IO ()
 hPutStrLn h ps
     | length ps < 1024 = hPut h (ps `B.snoc` 0x0a)
-    | otherwise        = hPut h ps >> hPut h (B.singleton (0x0a)) -- don't copy
+    | otherwise        = hPut h ps >> hPut h (B.singleton 0x0a) -- don't copy
 
 -- | Write a ByteString to stdout, appending a newline byte
 putStrLn :: ByteString -> IO ()

@@ -204,7 +204,8 @@ import Data.ByteString.Lazy
         ,stripPrefix,stripSuffix
         ,hGetContents, hGet, hPut, getContents
         ,hGetNonBlocking, hPutNonBlocking
-        ,putStr, hPutStr, interact)
+        ,putStr, hPutStr, interact
+        ,readFile,writeFile,appendFile)
 
 -- Functions we need to wrap.
 import qualified Data.ByteString.Lazy as L
@@ -225,13 +226,7 @@ import Prelude hiding
         ,readFile,writeFile,appendFile,replicate,getContents,getLine,putStr,putStrLn
         ,zip,zipWith,unzip,notElem,repeat,iterate,interact,cycle)
 
-import System.IO            (Handle,stdout,hClose,openBinaryFile,IOMode(..))
-#ifndef __NHC__
-import Control.Exception    (bracket)
-#else
-import IO                   (bracket)
-#endif
-
+import System.IO            (Handle, stdout)
 
 ------------------------------------------------------------------------
 
@@ -740,7 +735,7 @@ we need a similarly lazy, but efficient version.
 -- after appending a terminating newline to each.
 unlines :: [ByteString] -> ByteString
 unlines [] = empty
-unlines ss = (concat $ List.intersperse nl ss) `append` nl -- half as much space
+unlines ss = concat (List.intersperse nl ss) `append` nl -- half as much space
     where nl = singleton '\n'
 
 -- | 'words' breaks a ByteString up into a list of words, which
@@ -786,10 +781,10 @@ readInt (Chunk x xs) = case w2c (B.unsafeHead x) of
 
           {-# INLINE end #-}
           end _   0 _ _  _ = Nothing
-          end neg _ n c cs = e `seq` e
+          end neg _ n c cs = e
                 where n' = if neg then negate n else n
                       c' = chunk c cs
-                      e  = n' `seq` c' `seq` Just $! (n',c')
+                      e  = n' `seq` c' `seq` Just (n',c')
          --                  in n' `seq` c' `seq` JustS n' c'
 
 
@@ -845,20 +840,6 @@ readInteger (Chunk c0 cs0) =
           end n c cs = let c' = chunk c cs
                         in c' `seq` (n, c')
 
--- | Read an entire file /lazily/ into a 'ByteString'.
-readFile :: FilePath -> IO ByteString
-readFile f = openBinaryFile f ReadMode >>= hGetContents
-
--- | Write a 'ByteString' to a file.
-writeFile :: FilePath -> ByteString -> IO ()
-writeFile f txt = bracket (openBinaryFile f WriteMode) hClose
-    (\hdl -> hPut hdl txt)
-
--- | Append a 'ByteString' to a file.
-appendFile :: FilePath -> ByteString -> IO ()
-appendFile f txt = bracket (openBinaryFile f AppendMode) hClose
-    (\hdl -> hPut hdl txt)
-
 
 -- | Write a ByteString to a handle, appending a newline byte
 --
@@ -866,9 +847,9 @@ hPutStrLn :: Handle -> ByteString -> IO ()
 hPutStrLn h ps = hPut h ps >> hPut h (L.singleton 0x0a)
 
 -- | Write a ByteString to stdout, appending a newline byte
+--
 putStrLn :: ByteString -> IO ()
 putStrLn = hPutStrLn stdout
-
 
 -- ---------------------------------------------------------------------
 -- Internal utilities
