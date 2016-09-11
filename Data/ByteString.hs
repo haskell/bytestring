@@ -950,10 +950,10 @@ spanEnd  p ps = splitAt (findFromEndUntil (not.p) ps) ps
 -- separators result in an empty component in the output.  eg.
 --
 -- > splitWith (=='a') "aabbaca" == ["","","bb","c",""]
--- > splitWith (=='a') []        == []
+-- > splitWith (=='a') ""        == [""]
 --
 splitWith :: (Word8 -> Bool) -> ByteString -> [ByteString]
-splitWith _pred (PS _  _   0) = []
+splitWith _pred ps@(PS _  _   0) = [ps]
 splitWith pred_ (PS fp off len) = splitWith0 pred# off len fp
   where pred# c# = pred_ (W8# c#)
 
@@ -984,6 +984,8 @@ splitWith pred_ (PS fp off len) = splitWith0 pred# off len fp
 -- > split '\n' "a\nb\nd\ne" == ["a","b","d","e"]
 -- > split 'a'  "aXaXaXa"    == ["","X","X","X",""]
 -- > split 'x'  "x"          == ["",""]
+-- > split 'x'  ""           == [""]
+-- > length (split a b)      == 1 + length (elemIndices a b)
 --
 -- and
 --
@@ -995,7 +997,7 @@ splitWith pred_ (PS fp off len) = splitWith0 pred# off len fp
 -- are slices of the original.
 --
 split :: Word8 -> ByteString -> [ByteString]
-split _ (PS _ _ 0) = []
+split _ ps@(PS _ _ 0) = [ps]
 split w (PS x s l) = loop 0
     where
         loop !n =

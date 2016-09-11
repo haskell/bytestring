@@ -708,19 +708,19 @@ prop_span xs a = (span (/=a) xs) == (let (x,y) = L.span (/=a) (pack xs) in (unpa
 prop_split c xs = (map L.unpack . map checkInvariant . L.split c $ xs)
                == (map P.unpack . P.split c . P.pack . L.unpack $ xs)
 
-prop_splitWith f xs = (l1 == l2 || l1 == l2+1) &&
+prop_splitWith f xs = l1 == l2+1 &&
         sum (map L.length splits) == L.length xs - l2
   where splits = L.splitWith f xs
         l1 = fromIntegral (length splits)
         l2 = L.length (L.filter f xs)
 
-prop_splitWith_D f xs = (l1 == l2 || l1 == l2+1) &&
+prop_splitWith_D f xs = l1 == l2+1 &&
         sum (map D.length splits) == D.length xs - l2
   where splits = D.splitWith f xs
         l1 = fromIntegral (length splits)
         l2 = D.length (D.filter f xs)
 
-prop_splitWith_C f xs = (l1 == l2 || l1 == l2+1) &&
+prop_splitWith_C f xs = l1 == l2+1 &&
         sum (map C.length splits) == C.length xs - l2
   where splits = C.splitWith f xs
         l1 = fromIntegral (length splits)
@@ -878,7 +878,7 @@ prop_wordsLC xs =
 prop_unwordsSBB xss = C.unwords (map C.pack xss) == C.pack (unwords xss)
 prop_unwordsSLC xss = LC.unwords (map LC.pack xss) == LC.pack (unwords xss)
 
-prop_splitWithBB f xs = (l1 == l2 || l1 == l2+1) &&
+prop_splitWithBB f xs = l1 == l2+1 &&
         sum (map P.length splits) == P.length xs - l2
   where splits = P.splitWith f xs
         l1 = length splits
