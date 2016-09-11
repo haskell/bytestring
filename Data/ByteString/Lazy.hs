@@ -769,10 +769,10 @@ span p = break (not . p)
 -- separators result in an empty component in the output.  eg.
 --
 -- > splitWith (=='a') "aabbaca" == ["","","bb","c",""]
--- > splitWith (=='a') []        == []
+-- > splitWith (=='a') ""        == [""]
 --
 splitWith :: (Word8 -> Bool) -> ByteString -> [ByteString]
-splitWith _ Empty          = []
+splitWith _ Empty          = [Empty]
 splitWith p (Chunk c0 cs0) = comb [] (S.splitWith p c0) cs0
 
   where comb :: [P.ByteString] -> [P.ByteString] -> ByteString -> [ByteString]
@@ -798,7 +798,7 @@ splitWith p (Chunk c0 cs0) = comb [] (S.splitWith p c0) cs0
 -- are slices of the original.
 --
 split :: Word8 -> ByteString -> [ByteString]
-split _ Empty     = []
+split _ Empty     = [Empty]
 split w (Chunk c0 cs0) = comb [] (S.split w c0) cs0
 
   where comb :: [P.ByteString] -> [P.ByteString] -> ByteString -> [ByteString]
