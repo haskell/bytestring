@@ -1,4 +1,8 @@
 {-# LANGUAGE ScopedTypeVariables, CPP, BangPatterns, RankNTypes #-}
+#if __GLASGOW_HASKELL__ == 700
+-- This is needed as a workaround for an old bug in GHC 7.0.1 (Trac #4498)
+{-# LANGUAGE MonoPatBinds #-}
+#endif
 #if __GLASGOW_HASKELL__ >= 703
 {-# LANGUAGE Unsafe #-}
 #endif
@@ -92,7 +96,7 @@ module Data.ByteString.Builder.Internal (
   , lazyByteStringCopy
   , lazyByteStringInsert
   , lazyByteStringThreshold
-  
+
   , shortByteString
 
   , maximalCopySize
