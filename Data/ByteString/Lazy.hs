@@ -282,17 +282,40 @@ fromStrict bs | S.null bs = Empty
 -- avoid converting back and forth between strict and lazy bytestrings.
 --
 toStrict :: ByteString -> S.ByteString
-toStrict Empty           = S.empty
-toStrict (Chunk c Empty) = c
-toStrict cs0 = S.unsafeCreate totalLen $ \ptr -> go cs0 ptr
+toStrict = \cs -> goLen0 cs cs
+    -- We pass the original [ByteString] (bss0) through as an argument through
+    -- goLen0, goLen1, and goLen since we will need it again in goCopy. Passing
+    -- it as an explicit argument avoids capturing it in these functions'
+    -- closures which would result in unnecessary closure allocation.
   where
-    totalLen = S.checkedSum "Lazy.toStrict" . L.map S.length . toChunks $ cs0
+    -- It's still possible that the result is empty
+    goLen0 _   Empty                   = S.empty
+    goLen0 cs0 (Chunk c cs) | S.null c = goLen0 cs0 cs
+    goLen0 cs0 (Chunk c cs)            = goLen1 cs0 c cs
 
-    go Empty                        !_       = return ()
-    go (Chunk (S.PS fp off len) cs) !destptr =
+    -- It's still possible that the result is a single chunk
+    goLen1 _   bs Empty                = bs
+    goLen1 cs0 bs (Chunk c cs)
+      | S.null c                   = goLen1 cs0 bs cs
+      | otherwise                  =
+        goLen cs0 (S.checkedAdd "Lazy.concat" (S.length bs) (S.length c)) cs
+
+    -- General case, just find the total length we'll need
+    goLen cs0 !total (Chunk c cs)      = goLen cs0 total' cs
+      where
+        total' = S.checkedAdd "Lazy.concat" total (S.length c)
+    goLen cs0 total Empty =
+      S.unsafeCreate total $ \ptr -> goCopy cs0 ptr
+
+    -- Copy the data
+    goCopy Empty                        !_   = return ()
+    goCopy (Chunk (S.PS _  _   0  ) cs) !ptr = goCopy cs ptr
+    goCopy (Chunk (S.PS fp off len) cs) !ptr = do
       withForeignPtr fp $ \p -> do
-        S.memcpy destptr (p `plusPtr` off) len
-        go cs (destptr `plusPtr` len)
+        S.memcpy ptr (p `plusPtr` off) len
+        goCopy cs (ptr `plusPtr` len)
+-- See the comment on Data.ByteString.Internal.concat for some background on
+-- this implementation.
 
 ------------------------------------------------------------------------
 
