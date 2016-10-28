@@ -1023,7 +1023,7 @@ partition p (Chunk x xs) = (chunk t ts, chunk f fs)
 -- Searching for substrings
 
 -- | /O(n)/ The 'isPrefixOf' function takes two ByteStrings and returns 'True'
--- iff the first is a prefix of the second.
+-- if the first is a prefix of the second.
 isPrefixOf :: ByteString -> ByteString -> Bool
 isPrefixOf Empty _  = True
 isPrefixOf _ Empty  = False
@@ -1035,7 +1035,7 @@ isPrefixOf (Chunk x xs) (Chunk y ys)
         (yh,yt) = S.splitAt (S.length x) y
 
 -- | /O(n)/ The 'stripPrefix' function takes two ByteStrings and returns 'Just'
--- the remainder of the second iff the first is its prefix, and otherwise
+-- the remainder of the second if the first is its prefix, and otherwise
 -- 'Nothing'.
 stripPrefix :: ByteString -> ByteString -> Maybe ByteString
 stripPrefix Empty bs  = Just bs
@@ -1048,7 +1048,7 @@ stripPrefix (Chunk x xs) (Chunk y ys)
                                     stripPrefix (Chunk xt xs) ys
 
 -- | /O(n)/ The 'isSuffixOf' function takes two ByteStrings and returns 'True'
--- iff the first is a suffix of the second.
+-- if the first is a suffix of the second.
 --
 -- The following holds:
 --
@@ -1059,7 +1059,7 @@ isSuffixOf x y = reverse x `isPrefixOf` reverse y
 --TODO: a better implementation
 
 -- | /O(n)/ The 'stripSuffix' function takes two ByteStrings and returns 'Just'
--- the remainder of the second iff the first is its suffix, and otherwise
+-- the remainder of the second if the first is its suffix, and otherwise
 -- 'Nothing'.
 stripSuffix :: ByteString -> ByteString -> Maybe ByteString
 stripSuffix x y = reverse <$> stripPrefix (reverse x) (reverse y)

@@ -1271,7 +1271,7 @@ isPrefixOf (PS x1 s1 l1) (PS x2 s2 l2)
             return $! i == 0
 
 -- | /O(n)/ The 'stripPrefix' function takes two ByteStrings and returns 'Just'
--- the remainder of the second iff the first is its prefix, and otherwise
+-- the remainder of the second if the first is its prefix, and otherwise
 -- 'Nothing'.
 stripPrefix :: ByteString -> ByteString -> Maybe ByteString
 stripPrefix bs1@(PS _ _ l1) bs2
@@ -1279,7 +1279,7 @@ stripPrefix bs1@(PS _ _ l1) bs2
    | otherwise = Nothing
 
 -- | /O(n)/ The 'isSuffixOf' function takes two ByteStrings and returns 'True'
--- iff the first is a suffix of the second.
+-- if the first is a suffix of the second.
 --
 -- The following holds:
 --
@@ -1297,7 +1297,7 @@ isSuffixOf (PS x1 s1 l1) (PS x2 s2 l2)
             return $! i == 0
 
 -- | /O(n)/ The 'stripSuffix' function takes two ByteStrings and returns 'Just'
--- the remainder of the second iff the first is its suffix, and otherwise
+-- the remainder of the second if the first is its suffix, and otherwise
 -- 'Nothing'.
 stripSuffix :: ByteString -> ByteString -> Maybe ByteString
 stripSuffix bs1@(PS _ _ l1) bs2@(PS _ _ l2)
