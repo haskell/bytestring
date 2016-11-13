@@ -1273,6 +1273,8 @@ isPrefixOf (PS x1 s1 l1) (PS x2 s2 l2)
 -- | /O(n)/ The 'stripPrefix' function takes two ByteStrings and returns 'Just'
 -- the remainder of the second iff the first is its prefix, and otherwise
 -- 'Nothing'.
+--
+-- @since 0.10.8.0
 stripPrefix :: ByteString -> ByteString -> Maybe ByteString
 stripPrefix bs1@(PS _ _ l1) bs2
    | bs1 `isPrefixOf` bs2 = Just (unsafeDrop l1 bs2)

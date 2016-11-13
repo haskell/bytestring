@@ -913,7 +913,8 @@ elemIndex w cs0 = elemIndex' 0 cs0
 --
 -- > elemIndexEnd c xs ==
 -- > (-) (length xs - 1) `fmap` elemIndex c (reverse xs)
-
+--
+-- @since 0.10.6.0
 elemIndexEnd :: Word8 -> ByteString -> Maybe Int64
 elemIndexEnd w = elemIndexEnd' 0
   where
@@ -1060,6 +1061,8 @@ isPrefixOf (Chunk x xs) (Chunk y ys)
 -- | /O(n)/ The 'stripPrefix' function takes two ByteStrings and returns 'Just'
 -- the remainder of the second iff the first is its prefix, and otherwise
 -- 'Nothing'.
+--
+-- @since 0.10.8.0
 stripPrefix :: ByteString -> ByteString -> Maybe ByteString
 stripPrefix Empty bs  = Just bs
 stripPrefix _ Empty  = Nothing
