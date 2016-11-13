@@ -73,6 +73,7 @@ import Data.Data                (Data(..), mkNoRepType)
 --
 data ByteString = Empty | Chunk {-# UNPACK #-} !S.ByteString ByteString
     deriving (Typeable)
+-- See 'invariant' function later in this module for internal invariants.
 
 instance Eq  ByteString where
     (==)    = eq
