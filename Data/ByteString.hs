@@ -565,7 +565,7 @@ foldr1 f ps
     | otherwise      = foldr f (unsafeLast ps) (unsafeInit ps)
 {-# INLINE foldr1 #-}
 
--- | 'foldr1\'' is a variant of 'foldr1', but is strict in the
+-- | 'foldr1'' is a variant of 'foldr1', but is strict in the
 -- accumulator.
 foldr1' :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldr1' f ps
