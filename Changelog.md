@@ -1,11 +1,10 @@
-0.10.8.2 (current dev version)
+0.10.8.2 Duncan Coutts <duncan@community.haskell.org> Feb 2017
 
  * Make readFile work for files with no size like /dev/null
  * Extend the cases in which concat and toStrict can avoid copying data
  * Fix building with ghc-7.0
  * Minor documentation improvements
  * Internal code cleanups
-
 
 0.10.8.1 Duncan Coutts <duncan@community.haskell.org> May 2016
 
