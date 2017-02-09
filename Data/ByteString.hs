@@ -217,7 +217,11 @@ import Prelude hiding           (reverse,head,tail,last,init,null
                                 ,scanl,scanl1,scanr,scanr1
                                 ,readFile,writeFile,appendFile,replicate
                                 ,getContents,getLine,putStr,putStrLn,interact
-                                ,zip,zipWith,unzip,notElem,catch)
+                                ,zip,zipWith,unzip,notElem
+#if !MIN_VERSION_base(4,6,0)
+                                ,catch
+#endif
+                                )
 
 #if MIN_VERSION_base(4,7,0)
 import Data.Bits                (finiteBitSize, shiftL, (.|.), (.&.))

@@ -250,8 +250,8 @@ import Data.ByteString (empty,null,length,tail,init,append
                        ,getLine, getContents, putStr, interact
                        ,readFile, writeFile, appendFile
                        ,hGetContents, hGet, hGetSome, hPut, hPutStr
-                       ,hPutStrLn, putStrLn, hGetLine, hGetNonBlocking
-                       ,hPutNonBlocking, packCString, packCStringLen
+                       ,hGetLine, hGetNonBlocking, hPutNonBlocking
+                       ,packCString,packCStringLen
                        ,useAsCString,useAsCStringLen
                        )
 
@@ -264,6 +264,7 @@ import GHC.Char (eqChar)
 #endif
 import qualified Data.List as List (intersperse)
 
+import System.IO    (Handle,stdout)
 import Foreign
 
 
@@ -963,3 +964,16 @@ readInteger as
 
           combine2 b (n:m:ns) = let t = m*b + n in t `seq` (t : combine2 b ns)
           combine2 _ ns       = ns
+
+------------------------------------------------------------------------
+-- For non-binary text processing:
+
+-- | Write a ByteString to a handle, appending a newline byte
+hPutStrLn :: Handle -> ByteString -> IO ()
+hPutStrLn h ps
+    | length ps < 1024 = hPut h (ps `B.snoc` 0x0a)
+    | otherwise        = hPut h ps >> hPut h (B.singleton 0x0a) -- don't copy
+
+-- | Write a ByteString to stdout, appending a newline byte
+putStrLn :: ByteString -> IO ()
+putStrLn = hPutStrLn stdout
