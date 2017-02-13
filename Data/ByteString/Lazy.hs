@@ -601,7 +601,7 @@ mapAccumR f s0 = go s0
 -- | 'scanl' is similar to 'foldl', but returns a list of successive
 -- reduced values from the left. This function will fuse.
 --
--- > scanl f z [x1, x2, ...] == [z, z `f` x1, (z `f` x1) `f` x2, ...]
+-- > scanl f z [x1, x2, ...] == pack [z, z `f` x1, (z `f` x1) `f` x2, ...]
 --
 -- Note that
 --
@@ -618,7 +618,7 @@ scanl f z = snd . foldl k (z,singleton z)
 -- | @'iterate' f x@ returns an infinite ByteString of repeated applications
 -- of @f@ to @x@:
 --
--- > iterate f x == [x, f x, f (f x), ...]
+-- > iterate f x == pack [x, f x, f (f x), ...]
 --
 iterate :: (Word8 -> Word8) -> Word8 -> ByteString
 iterate f = unfoldr (\x -> case f x of !x' -> Just (x', x'))

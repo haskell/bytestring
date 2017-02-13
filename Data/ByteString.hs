@@ -683,7 +683,7 @@ mapAccumR f acc (PS fp o len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a 
 -- | 'scanl' is similar to 'foldl', but returns a list of successive
 -- reduced values from the left. This function will fuse.
 --
--- > scanl f z [x1, x2, ...] == [z, z `f` x1, (z `f` x1) `f` x2, ...]
+-- > scanl f z [x1, x2, ...] == pack [z, z `f` x1, (z `f` x1) `f` x2, ...]
 --
 -- Note that
 --
@@ -712,7 +712,7 @@ scanl f v (PS fp s len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a ->
 -- | 'scanl1' is a variant of 'scanl' that has no starting value argument.
 -- This function will fuse.
 --
--- > scanl1 f [x1, x2, ...] == [x1, x1 `f` x2, ...]
+-- > scanl1 f [x1, x2, ...] == pack [x1, x1 `f` x2, ...]
 scanl1 :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString
 scanl1 f ps
     | null ps   = empty
