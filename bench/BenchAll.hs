@@ -40,6 +40,7 @@ import           Foreign
 
 import System.Random
 
+import Paths_bench_bytestring
 
 ------------------------------------------------------------------------------
 -- Benchmark support
@@ -133,7 +134,7 @@ benchFE name = benchBE name . P.liftFixedToBounded
 {-# INLINE benchBE #-}
 benchBE :: String -> BoundedPrim Int -> Benchmark
 benchBE name e =
-  bench (name ++" (" ++ show nRepl ++ ")") $ benchIntEncodingB nRepl e
+  bench (name ++" (" ++ show nRepl ++ ")") $ whnfIO $ benchIntEncodingB nRepl e
 
 -- We use this construction of just looping through @n,n-1,..,1@ to ensure that
 -- we measure the speed of the encoding and not the speed of generating the
@@ -166,7 +167,7 @@ w :: Int -> Word8
 w = fromIntegral
 
 hashWord8 :: Word8 -> Word8
-hashWord8 = fromIntegral . hashInt . w
+hashWord8 = fromIntegral . hashInt . fromIntegral
 
 partitionStrict p = nf (S.partition p) . randomStrict $ mkStdGen 98423098
   where randomStrict = fst . S.unfoldrN 10000 (Just . random)
@@ -269,7 +270,9 @@ main = do
         [ benchB "byteStringHex"           byteStringData     $ byteStringHex
         , benchB "lazyByteStringHex"       lazyByteStringData $ lazyByteStringHex
         , benchB "foldMap floatDec"        floatData          $ foldMap floatDec
+        , benchB "foldMap show float"      floatData          $ foldMap (string7 . show)
         , benchB "foldMap doubleDec"       doubleData         $ foldMap doubleDec
+        , benchB "foldMap show double"     doubleData         $ foldMap (string7 . show)
           -- Note that the small data corresponds to the intData pre-converted
           -- to Integer.
         , benchB "foldMap integerDec (small)"                     smallIntegerData        $ foldMap integerDec

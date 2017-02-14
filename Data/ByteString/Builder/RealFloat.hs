@@ -23,7 +23,7 @@ import GHC.Show (intToDigit)
 import Foreign.Marshal (peekArray, alloca, allocaBytes)
 import Foreign.Ptr (Ptr)
 import Foreign.Storable (peek)
-import Foreign.C.Types (CDouble(..), CFloat(..),  CInt(..))
+import Foreign.C.Types
 import Data.Word (Word8)
 import qualified Data.ByteString.Builder.Prim  as P
 import Data.ByteString.Builder.ASCII (intDec, string7, char7)

@@ -38,7 +38,7 @@ executable bench-bytestring-builder
   build-depends:     base >= 4 && < 5
                    , ghc-prim
                    , deepseq       >= 1.2
-                   , criterion     >= 0.5
+                   , criterion     >= 1.0
                    , blaze-textual == 0.2.*
                    , blaze-builder == 0.3.*
                    -- we require bytestring due to benchmarking against
