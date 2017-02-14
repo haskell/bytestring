@@ -24,13 +24,16 @@ import Foreign.Marshal (peekArray, alloca, allocaBytes)
 import Foreign.Ptr (Ptr)
 import Foreign.Storable (peek)
 import Foreign.C.Types (CDouble(..), CFloat(..),  CInt(..))
-import System.IO.Unsafe (unsafeDupablePerformIO)
 import Data.Word (Word8)
-import Data.ByteString.Builder.Internal (Builder)
 import qualified Data.ByteString.Builder.Prim  as P
 import Data.ByteString.Builder.ASCII (intDec, string7, char7)
-import Data.ByteString.Builder.Internal (empty)
-import Data.Monoid ((<>))
+import Data.ByteString.Builder.Internal (Builder, empty, append)
+
+#if MIN_VERSION_base(4,4,0)
+import System.IO.Unsafe (unsafeDupablePerformIO)
+#else
+import           GHC.IO (unsafeDupablePerformIO)
+#endif
 
 -- Floating point numbers
 -------------------------
@@ -60,7 +63,7 @@ formatRealFloat :: FFFormat
 formatRealFloat fmt decs x
     | isNaN x                   = string7 "NaN"
     | isInfinite x              = if x < 0 then string7 "-Infinity" else string7 "Infinity"
-    | x < 0 || isNegativeZero x = char7 '-' <> doFmt fmt decs (digits (-x))
+    | x < 0 || isNegativeZero x = char7 '-' `append` doFmt fmt decs (digits (-x))
     | otherwise                 = doFmt fmt decs (digits x) -- Grisu only handles strictly positive finite numbers.
   where
     digits y = floatToDigits 10 y
@@ -74,7 +77,7 @@ formatRealDouble :: FFFormat
 formatRealDouble fmt decs x
     | isNaN x                   = string7 "NaN"
     | isInfinite x              = if x < 0 then string7 "-Infinity" else string7 "Infinity"
-    | x < 0                     = char7 '-' <> doFmt fmt decs (digits (-x))
+    | x < 0                     = char7 '-' `append` doFmt fmt decs (digits (-x))
     | isNegativeZero x          = string7 "-0.0"
     | x == 0                    = string7 "0.0"
     | otherwise                 = doFmt fmt decs (digits x) -- Grisu only handles strictly positive finite numbers.
@@ -95,26 +98,28 @@ doFmt format decs (is, e) =
                     let show_e' = intDec (e-1)
                     in case ds of
                         "0"     -> string7 "0.0e0"
-                        [d]     -> char7 d <> string7 ".0e" <> show_e'
-                        (d:ds') -> char7 d <> char7 '.' <> string7 ds' <> char7 'e' <> show_e'
+                        [d]     -> char7 d `append` string7 ".0e" `append` show_e'
+                        (d:ds') -> char7 d `append` char7 '.' `append`
+                                    string7 ds' `append` char7 'e' `append` show_e'
                         []      -> error "doFmt/Exponent: []"
                 Just dec ->
                     let dec' = max dec 1 in
                     case is of
-                        [0] -> char7 '0' <> char7 '.' <>
-                                string7 (replicate dec' '0') <> char7 'e' <> char7 '0'
+                        [0] -> char7 '0' `append` char7 '.' `append`
+                                string7 (replicate dec' '0') `append` char7 'e' `append` char7 '0'
                         _ ->
                             let (ei,is') = roundTo 10 (dec'+1) is
                                 (d:ds') = map intToDigit (if ei > 0 then init is' else is')
-                            in char7 d <> char7 '.' <> string7 ds' <> char7 'e' <> intDec (e-1+ei)
+                            in char7 d `append` char7 '.' `append`
+                                string7 ds' `append` char7 'e' `append` intDec (e-1+ei)
         FFFixed ->
             let mk0 ls = case ls of { "" -> char7 '0' ; _ -> string7 ls}
             in case decs of
                 Nothing
-                    | e <= 0    -> char7 '0' <> char7 '.' <>
-                                    string7 (replicate (-e) '0') <> string7 ds
+                    | e <= 0    -> char7 '0' `append` char7 '.' `append`
+                                    string7 (replicate (-e) '0') `append` string7 ds
                     | otherwise ->
-                        let f 0 s    rs  = mk0 (reverse s) <> char7 '.' <> mk0 rs
+                        let f 0 s    rs  = mk0 (reverse s) `append` char7 '.' `append` mk0 rs
                             f n s    ""  = f (n-1) ('0':s) ""
                             f n s (r:rs) = f (n-1) (r:s) rs
                         in f e "" ds
@@ -124,11 +129,13 @@ doFmt format decs (is, e) =
                         then
                             let (ei,is') = roundTo 10 (dec' + e) is
                                 (ls,rs)  = splitAt (e+ei) (map intToDigit is')
-                            in mk0 ls <> (if null rs then empty else char7 '.' <> string7 rs)
+                            in mk0 ls `append`
+                                (if null rs then empty else char7 '.' `append` string7 rs)
                         else
                             let (ei,is') = roundTo 10 dec' (replicate (-e) 0 ++ is)
                                 d:ds' = map intToDigit (if ei > 0 then is' else 0:is')
-                            in char7 d <> (if null ds' then empty else char7 '.' <> string7 ds')
+                            in char7 d `append`
+                                (if null ds' then empty else char7 '.' `append` string7 ds')
 
 ------------------------------------------------------------------------------
 -- Conversion of 'Float's and 'Double's to ASCII in decimal using Grisu3
