@@ -153,12 +153,12 @@ grisu3 d = unsafeDupablePerformIO $ do
     allocaBytes GRISU3_BUF_LEN $ \ pBuf ->
         alloca $ \ pLen ->
             alloca $ \ pE -> do
-                success <- c_grisu3 (CDouble d) pBuf pLen pE
+                success <- c_grisu3 (realToFrac d) pBuf pLen pE
                 if success == 0 -- grisu3 fail, fall back to Dragon4
                     then return Nothing
                     else do
-                        CInt len <- peek pLen
-                        CInt e <- peek pE
+                        len <- peek pLen
+                        e <- peek pE
                         buf <- map fromIntegral `fmap` peekArray (fromIntegral len) pBuf
                         let e' = fromIntegral (e + len)
-                        e `seq` return $ Just (buf, e')
+                        e' `seq` return $ Just (buf, e')
