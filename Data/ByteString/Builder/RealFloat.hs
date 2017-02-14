@@ -159,6 +159,6 @@ grisu3 d = unsafeDupablePerformIO $ do
                     else do
                         CInt len <- peek pLen
                         CInt e <- peek pE
-                        buf <- map fromIntegral <$> peekArray (fromIntegral len) pBuf
+                        buf <- map fromIntegral `fmap` peekArray (fromIntegral len) pBuf
                         let e' = fromIntegral (e + len)
                         e `seq` return $ Just (buf, e')
