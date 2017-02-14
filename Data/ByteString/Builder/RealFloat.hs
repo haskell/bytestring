@@ -56,6 +56,7 @@ doubleDec = formatRealDouble FFGeneric Nothing
 
 -- | Format single-precision float using dragon4(R.G. Burger and R.K. Dybvig).
 --
+{-# INLINE formatRealFloat #-}
 formatRealFloat :: FFFormat
                 -> Maybe Int  -- ^ Number of decimal places to render.
                 -> Float
@@ -64,12 +65,13 @@ formatRealFloat fmt decs x
     | isNaN x                   = string7 "NaN"
     | isInfinite x              = if x < 0 then string7 "-Infinity" else string7 "Infinity"
     | x < 0 || isNegativeZero x = char7 '-' `append` doFmt fmt decs (digits (-x))
-    | otherwise                 = doFmt fmt decs (digits x) -- Grisu only handles strictly positive finite numbers.
+    | otherwise                 = doFmt fmt decs (digits x)
   where
     digits y = floatToDigits 10 y
 
 -- | Format double-precision float using drisu3 with dragon4 fallback.
 --
+{-# INLINE formatRealDouble #-}
 formatRealDouble :: FFFormat
                  -> Maybe Int  -- ^ Number of decimal places to render.
                  -> Double
