@@ -95,6 +95,7 @@ library
                      Data.ByteString.Lazy.Builder.ASCII
   other-modules:
                      Data.ByteString.Builder.ASCII
+                     Data.ByteString.Builder.RealFloat
                      Data.ByteString.Builder.Prim.Binary
                      Data.ByteString.Builder.Prim.ASCII
                      Data.ByteString.Builder.Prim.Internal.Floating
@@ -128,6 +129,7 @@ library
 
   c-sources:         cbits/fpstring.c
                      cbits/itoa.c
+                     cbits/dtoa.c
   include-dirs:      include
   includes:          fpstring.h
   install-includes:  fpstring.h
@@ -220,6 +222,7 @@ test-suite test-builder
 
   c-sources:        cbits/fpstring.c
                     cbits/itoa.c
+                    cbits/dtoa.c
   include-dirs:     include
   includes:         fpstring.h
   install-includes: fpstring.h

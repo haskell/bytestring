@@ -50,6 +50,7 @@ executable bench-bytestring-builder
   -- which probably don't work on windows.
   c-sources:         ../cbits/fpstring.c
                      ../cbits/itoa.c
+                     ../cbits/dtoa.c
   include-dirs:      ../include
   includes:          fpstring.h
   install-includes:  fpstring.h
@@ -124,6 +125,7 @@ executable bench-builder-boundscheck
                     criterion
   c-sources:        ../cbits/fpstring.c
                     ../cbits/itoa.c
+                    ../cbits/dtoa.c
   include-dirs:     ../include
   ghc-options:      -O2
                     -fmax-simplifier-iterations=10

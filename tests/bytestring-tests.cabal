@@ -95,6 +95,7 @@ executable test-builder
 
   c-sources:        ../cbits/fpstring.c
                     ../cbits/itoa.c
+                    ../cbits/dtoa.c
   include-dirs:     ../include
   includes:         fpstring.h
   install-includes: fpstring.h
