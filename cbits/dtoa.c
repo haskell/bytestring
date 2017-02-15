@@ -1,4 +1,5 @@
 /*
+ * Copyright Winterland1989
  * Copyright author of MathGeoLib (https://github.com/juj)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -345,7 +346,7 @@ int grisu3_sp(float v, char *buffer, int *length, int *d_exp)
     diy_fp b_minus;
     diy_fp c_mk; // Cached power of ten: 10^-k
     uint64_t u32 = CAST_U32(v);
-    assert(v > 0 && v <= 3.40282e38); // Grisu only handles strictly positive finite numbers.
+    assert(v > 0 && v <= 3.4028235e38); // Grisu only handles strictly positive finite numbers.
     if (!(u32 & D32_FRACT_MASK) && (u32 & D32_EXP_MASK) != 0) {
         b_minus.f = (dfp.f << 2) - 1; b_minus.e =  dfp.e - 2;
     } // lower boundary is closer?
