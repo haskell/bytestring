@@ -41,12 +41,19 @@
 #define D64_IMPLICIT_ONE 0x0010000000000000ULL
 #define D64_EXP_POS      52
 #define D64_EXP_BIAS     1075
+#define D32_SIGN         0x80000000U
+#define D32_EXP_MASK     0x7F800000U
+#define D32_FRACT_MASK   0x007FFFFFU
+#define D32_IMPLICIT_ONE 0x00800000U
+#define D32_EXP_POS      23
+#define D32_EXP_BIAS     150
 #define DIYFP_FRACT_SIZE 64
 #define D_1_LOG2_10      0.30102999566398114 // 1 / lg(10)
 #define MIN_TARGET_EXP   -60
 #define MASK32           0xFFFFFFFFULL
 
 #define CAST_U64(d) (*(uint64_t*)&d)
+#define CAST_U32(d) (*(uint32_t*)&d)
 #define MIN(x,y) ((x) <= (y) ? (x) : (y))
 #define MAX(x,y) ((x) >= (y) ? (x) : (y))
 
@@ -199,8 +206,29 @@ static diy_fp double2diy_fp(double d)
 {
     diy_fp fp;
     uint64_t u64 = CAST_U64(d);
-    if (!(u64 & D64_EXP_MASK)) { fp.f = u64 & D64_FRACT_MASK; fp.e = 1 - D64_EXP_BIAS; }
-    else { fp.f = (u64 & D64_FRACT_MASK) + D64_IMPLICIT_ONE; fp.e = (int)((u64 & D64_EXP_MASK) >> D64_EXP_POS) - D64_EXP_BIAS; }
+    if (!(u64 & D64_EXP_MASK)) {
+        fp.f = u64 & D64_FRACT_MASK;
+        fp.e = 1 - D64_EXP_BIAS;
+    }
+    else {
+        fp.f = (u64 & D64_FRACT_MASK) + D64_IMPLICIT_ONE; 
+        fp.e = (int)((u64 & D64_EXP_MASK) >> D64_EXP_POS) - D64_EXP_BIAS; 
+    }
+    return fp;
+}
+
+static diy_fp float2diy_fp(float d)
+{
+    diy_fp fp;
+    uint32_t u32 = CAST_U32(d);
+    if (!(u32 & D32_EXP_MASK)) {
+        fp.f = (uint64_t)u32 & D32_FRACT_MASK; 
+        fp.e = 1 - D32_EXP_BIAS; 
+    }
+    else {
+        fp.f = (uint64_t)((u32 & D32_FRACT_MASK) + D32_IMPLICIT_ONE); 
+        fp.e = (int)((u32 & D32_EXP_MASK) >> D32_EXP_POS) - D32_EXP_BIAS; 
+    }
     return fp;
 }
 
@@ -287,7 +315,40 @@ int grisu3(double v, char *buffer, int *length, int *d_exp)
     diy_fp c_mk; // Cached power of ten: 10^-k
     uint64_t u64 = CAST_U64(v);
     assert(v > 0 && v <= 1.7976931348623157e308); // Grisu only handles strictly positive finite numbers.
-    if (!(u64 & D64_FRACT_MASK) && (u64 & D64_EXP_MASK) != 0) { b_minus.f = (dfp.f << 2) - 1; b_minus.e =  dfp.e - 2;} // lower boundary is closer?
+    if (!(u64 & D64_FRACT_MASK) && (u64 & D64_EXP_MASK) != 0) { 
+        b_minus.f = (dfp.f << 2) - 1; b_minus.e =  dfp.e - 2;
+    } // lower boundary is closer?
+    else { b_minus.f = (dfp.f << 1) - 1; b_minus.e = dfp.e - 1; }
+    b_minus.f = b_minus.f << (b_minus.e - b_plus.e);
+    b_minus.e = b_plus.e;
+
+    mk = cached_pow(MIN_TARGET_EXP - DIYFP_FRACT_SIZE - w.e, &c_mk);
+
+    w = multiply(w, c_mk);
+    b_minus = multiply(b_minus, c_mk);
+    b_plus  = multiply(b_plus,  c_mk);
+
+    success = digit_gen(b_minus, w, b_plus, buffer, length, &kappa);
+    *d_exp = kappa - mk;
+    return success;
+}
+
+int grisu3_sp(float v, char *buffer, int *length, int *d_exp)
+{
+    int mk, kappa, success;
+    diy_fp dfp = float2diy_fp(v);
+    diy_fp w = normalize_diy_fp(dfp);
+
+    // normalize boundaries
+    diy_fp t = { (dfp.f << 1) + 1, dfp.e - 1 };
+    diy_fp b_plus = normalize_diy_fp(t);
+    diy_fp b_minus;
+    diy_fp c_mk; // Cached power of ten: 10^-k
+    uint64_t u32 = CAST_U32(v);
+    assert(v > 0 && v <= 3.40282e38); // Grisu only handles strictly positive finite numbers.
+    if (!(u32 & D32_FRACT_MASK) && (u32 & D32_EXP_MASK) != 0) {
+        b_minus.f = (dfp.f << 2) - 1; b_minus.e =  dfp.e - 2;
+    } // lower boundary is closer?
     else { b_minus.f = (dfp.f << 1) - 1; b_minus.e = dfp.e - 1; }
     b_minus.f = b_minus.f << (b_minus.e - b_plus.e);
     b_minus.e = b_plus.e;

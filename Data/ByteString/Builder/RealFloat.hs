@@ -16,6 +16,8 @@ module Data.ByteString.Builder.RealFloat
     , formatRealDouble
     , floatDec
     , doubleDec
+    , grisu3_sp
+    , grisu3
     ) where
 
 import GHC.Float (FFFormat(..), floatToDigits, roundTo)
@@ -39,7 +41,7 @@ import           GHC.IO (unsafeDupablePerformIO)
 -------------------------
 
 -- | Decimal encoding of an IEEE 'Float'.
--- using standard decimal notation for arguments whose absolute value lies
+-- Using standard decimal notation for arguments whose absolute value lies
 -- between @0.1@ and @9,999,999@, and scientific notation otherwise.
 --
 {-# INLINE floatDec #-}
@@ -47,14 +49,14 @@ floatDec :: Float -> Builder
 floatDec = formatRealFloat FFGeneric Nothing
 
 -- | Decimal encoding of an IEEE 'Double'.
--- using standard decimal notation for arguments whose absolute value lies
+-- Using standard decimal notation for arguments whose absolute value lies
 -- between @0.1@ and @9,999,999@, and scientific notation otherwise.
 --
 {-# INLINE doubleDec #-}
 doubleDec :: Double -> Builder
 doubleDec = formatRealDouble FFGeneric Nothing
 
--- | Format single-precision float using dragon4(R.G. Burger and R.K. Dybvig).
+-- | Format single-precision float using drisu3 with dragon4 fallback.
 --
 {-# INLINE formatRealFloat #-}
 formatRealFloat :: FFFormat
@@ -64,10 +66,13 @@ formatRealFloat :: FFFormat
 formatRealFloat fmt decs x
     | isNaN x                   = string7 "NaN"
     | isInfinite x              = if x < 0 then string7 "-Infinity" else string7 "Infinity"
-    | x < 0 || isNegativeZero x = char7 '-' `append` doFmt fmt decs (digits (-x))
-    | otherwise                 = doFmt fmt decs (digits x)
+    | x < 0                     = char7 '-' `append` doFmt fmt decs (digits (-x))
+    | isNegativeZero x          = string7 "-0.0"
+    | x == 0                    = string7 "0.0"
+    | otherwise                 = doFmt fmt decs (digits x) -- Grisu only handles strictly positive finite numbers.
   where
-    digits y = floatToDigits 10 y
+    digits y = case grisu3_sp y of Just r  -> r
+                                   Nothing -> floatToDigits 10 y
 
 -- | Format double-precision float using drisu3 with dragon4 fallback.
 --
@@ -143,7 +148,8 @@ doFmt format decs (is, e) =
 -- Conversion of 'Float's and 'Double's to ASCII in decimal using Grisu3
 ------------------------------------------------------------------------
 
-#define GRISU3_BUF_LEN 18
+#define GRISU3_SINGLE_BUF_LEN 10
+#define GRISU3_DOUBLE_BUF_LEN 18
 
 foreign import ccall unsafe "static grisu3" c_grisu3
     :: CDouble -> Ptr Word8 -> Ptr CInt -> Ptr CInt -> IO CInt
@@ -151,12 +157,32 @@ foreign import ccall unsafe "static grisu3" c_grisu3
 -- | Decimal encoding of a 'Double'.
 {-# INLINE grisu3 #-}
 grisu3 :: Double -> Maybe ([Int], Int)
-grisu3 d = unsafeDupablePerformIO $ do
-    allocaBytes GRISU3_BUF_LEN $ \ pBuf ->
+grisu3 d = unsafeDupablePerformIO $
+    allocaBytes GRISU3_DOUBLE_BUF_LEN $ \ pBuf ->
         alloca $ \ pLen ->
             alloca $ \ pE -> do
                 success <- c_grisu3 (realToFrac d) pBuf pLen pE
-                if success == 0 -- grisu3 fail, fall back to Dragon4
+                if success == 0 -- grisu3 fail
+                    then return Nothing
+                    else do
+                        len <- peek pLen
+                        e <- peek pE
+                        buf <- map fromIntegral `fmap` peekArray (fromIntegral len) pBuf
+                        let e' = fromIntegral (e + len)
+                        e' `seq` return $ Just (buf, e')
+
+foreign import ccall unsafe "static grisu3_sp" c_grisu3_sp
+    :: CFloat -> Ptr Word8 -> Ptr CInt -> Ptr CInt -> IO CInt
+
+-- | Decimal encoding of a 'Float'.
+{-# INLINE grisu3_sp #-}
+grisu3_sp :: Float -> Maybe ([Int], Int)
+grisu3_sp d = unsafeDupablePerformIO $
+    allocaBytes GRISU3_SINGLE_BUF_LEN $ \ pBuf ->
+        alloca $ \ pLen ->
+            alloca $ \ pE -> do
+                success <- c_grisu3_sp (realToFrac d) pBuf pLen pE
+                if success == 0 -- grisu3 fail
                     then return Nothing
                     else do
                         len <- peek pLen
