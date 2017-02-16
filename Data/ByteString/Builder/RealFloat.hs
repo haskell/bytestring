@@ -12,8 +12,8 @@
 
 module Data.ByteString.Builder.RealFloat
     ( FFFormat(..) -- TODO: add document to GHC.Float
-    , formatRealFloat
-    , formatRealDouble
+    , formatFloat
+    , formatDouble
     , floatDec
     , doubleDec
     , grisu3_sp
@@ -46,7 +46,7 @@ import           GHC.IO (unsafeDupablePerformIO)
 --
 {-# INLINE floatDec #-}
 floatDec :: Float -> Builder
-floatDec = formatRealFloat FFGeneric Nothing
+floatDec = formatFloat FFGeneric Nothing
 
 -- | Decimal encoding of an IEEE 'Double'.
 -- Using standard decimal notation for arguments whose absolute value lies
@@ -54,16 +54,16 @@ floatDec = formatRealFloat FFGeneric Nothing
 --
 {-# INLINE doubleDec #-}
 doubleDec :: Double -> Builder
-doubleDec = formatRealDouble FFGeneric Nothing
+doubleDec = formatDouble FFGeneric Nothing
 
 -- | Format single-precision float using drisu3 with dragon4 fallback.
 --
-{-# INLINE formatRealFloat #-}
-formatRealFloat :: FFFormat
-                -> Maybe Int  -- ^ Number of decimal places to render.
-                -> Float
-                -> Builder
-formatRealFloat fmt decs x
+{-# INLINE formatFloat #-}
+formatFloat :: FFFormat
+            -> Maybe Int  -- ^ Number of decimal places to render.
+            -> Float
+            -> Builder
+formatFloat fmt decs x
     | isNaN x                   = string7 "NaN"
     | isInfinite x              = if x < 0 then string7 "-Infinity" else string7 "Infinity"
     | x < 0                     = char7 '-' `append` doFmt fmt decs (digits (-x))
@@ -76,12 +76,12 @@ formatRealFloat fmt decs x
 
 -- | Format double-precision float using drisu3 with dragon4 fallback.
 --
-{-# INLINE formatRealDouble #-}
-formatRealDouble :: FFFormat
-                 -> Maybe Int  -- ^ Number of decimal places to render.
-                 -> Double
-                 -> Builder
-formatRealDouble fmt decs x
+{-# INLINE formatDouble #-}
+formatDouble :: FFFormat
+             -> Maybe Int  -- ^ Number of decimal places to render.
+             -> Double
+             -> Builder
+formatDouble fmt decs x
     | isNaN x                   = string7 "NaN"
     | isInfinite x              = if x < 0 then string7 "-Infinity" else string7 "Infinity"
     | x < 0                     = char7 '-' `append` doFmt fmt decs (digits (-x))
