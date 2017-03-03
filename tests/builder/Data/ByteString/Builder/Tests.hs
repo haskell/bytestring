@@ -55,7 +55,7 @@ import           TestFramework
 import           Test.QuickCheck
                    ( Arbitrary(..), oneof, choose, listOf, elements )
 import           Test.QuickCheck.Property
-                   ( printTestCase, morallyDubiousIOProperty )
+                   ( printTestCase, morallyDubiousIOProperty, forAll )
 
 
 tests :: [Test]
@@ -508,6 +508,17 @@ testBuilderConstr name ref mkBuilder =
       where
         ws = ref x
 
+testBuilderConstrWidth :: (Arbitrary a, Show a) =>
+      TestName -> Int -> (Int -> a -> [Word8]) -> (Int -> a -> Builder) -> Test
+testBuilderConstrWidth name maxDigits ref mkBuilder =
+    testProperty name check
+  where
+    widths = choose (0, maxDigits)
+    check x = forAll widths $ \width ->
+        let ws = ref width x
+        in (ws ++ ws) ==
+          (L.unpack $ toLazyByteString $
+              mkBuilder width x `mappend` mkBuilder width x)
 
 testsBinary :: [Test]
 testsBinary =
@@ -590,11 +601,65 @@ testsASCII =
   , testBuilderConstr "int32HexFixed" int32HexFixed_list int32HexFixed
   , testBuilderConstr "int64HexFixed" int64HexFixed_list int64HexFixed
 
+  , testBuilderConstrWidth "int32HexFixedWidth"   8
+                           (int32HexFixedWidth_list) int32HexFixedWidth
+  , testBuilderConstrWidth "int64HexFixedWidth"  16
+                           (int64HexFixedWidth_list) int64HexFixedWidth
+  , testBuilderConstrWidth "word32HexFixedWidth"  8
+                           (wordHexFixedWidth_list) word32HexFixedWidth
+  , testBuilderConstrWidth "word64HexFixedWidth" 16
+                           (wordHexFixedWidth_list) word64HexFixedWidth
+
   , testBuilderConstr "floatHexFixed"  floatHexFixed_list  floatHexFixed
   , testBuilderConstr "doubleHexFixed" doubleHexFixed_list doubleHexFixed
+
+  , testBuilderConstr "word8UpperHex"  (uphex . hex_list) word8HexUpper
+  , testBuilderConstr "word16UpperHex" (uphex . hex_list)  word16HexUpper
+  , testBuilderConstr "word32UpperHex" (uphex . hex_list) word32HexUpper
+  , testBuilderConstr "word64UpperHex" (uphex . hex_list) word64HexUpper
+  , testBuilderConstr "wordUpperHex"   (uphex . hex_list) wordHexUpper
+
+  , testBuilderConstr "word8HexUpperFixed"
+                      (uphex . wordHexFixed_list) word8HexUpperFixed
+  , testBuilderConstr "word16HexUpperFixed"
+                      (uphex . wordHexFixed_list) word16HexUpperFixed
+  , testBuilderConstr "word32HexUpperFixed"
+                      (uphex . wordHexFixed_list) word32HexUpperFixed
+  , testBuilderConstr "word64HexUpperFixed"
+                      (uphex . wordHexFixed_list) word64HexUpperFixed
+
+  , testBuilderConstr "int8HexUpperFixed"
+                      (uphex . int8HexFixed_list) int8HexUpperFixed
+  , testBuilderConstr "int16HexUpperFixed"
+                      (uphex . int16HexFixed_list) int16HexUpperFixed
+  , testBuilderConstr "int32HexUpperFixed"
+                      (uphex . int32HexFixed_list) int32HexUpperFixed
+  , testBuilderConstr "int64HexUpperFixed"
+                      (uphex . int64HexFixed_list) int64HexUpperFixed
+
+  , testBuilderConstrWidth "int32HexUpperFixedWidth"   8
+                           (\width -> uphex . int32HexFixedWidth_list width)
+                           int32HexUpperFixedWidth
+  , testBuilderConstrWidth "int64HexUpperFixedWidth"  16
+                           (\width -> uphex . int64HexFixedWidth_list width)
+                           int64HexUpperFixedWidth
+  , testBuilderConstrWidth "word32HexUpperFixedWidth"  8
+                           (\width -> uphex . wordHexFixedWidth_list width)
+                           word32HexUpperFixedWidth
+  , testBuilderConstrWidth "word64HexUpperFixedWidth" 16
+                           (\width -> uphex . wordHexFixedWidth_list width)
+                           word64HexUpperFixedWidth
+
+  , testBuilderConstr "floatHexUpperFixed"
+                      (uphex . floatHexFixed_list)  floatHexUpperFixed
+  , testBuilderConstr "doubleHexUpperFixed"
+                      (uphex . doubleHexFixed_list) doubleHexUpperFixed
   ]
   where
     enlarge (n, e) = n ^ (abs (e `mod` (50 :: Integer)))
+    uphex = map uphex1
+    uphex1 n | n <= 57 = n         --  '9' or below
+             | otherwise = n - 32  --  otherwise assume lower case a-f, convert to A-F
 
 testsChar8 :: [Test]
 testsChar8 =

@@ -50,15 +50,23 @@ module Data.ByteString.Builder.Prim.ASCII
       --
       -- > toLazyByteString (primBounded word16Hex 0x0a10) = "a10"
       --
-      -- Note that there is no support for using upper-case characters. Please
-      -- contact the maintainer if your application cannot work without
-      -- hexadecimal encodings that use upper-case characters.
-      --
     , word8Hex
     , word16Hex
     , word32Hex
     , word64Hex
     , wordHex
+
+      -- | Encoding positive integers as hexadecimal numbers using upper-case
+      -- ASCII characters. The shortest possible representation is used. For
+      -- example,
+      --
+      -- > toLazyByteString (primBounded word16Hex 0x0a10) = "A10"
+      --
+    , word8HexUpper
+    , word16HexUpper
+    , word32HexUpper
+    , word64HexUpper
+    , wordHexUpper
 
       -- **** Fixed-width hexadecimal numbers
       --
@@ -75,15 +83,44 @@ module Data.ByteString.Builder.Prim.ASCII
     , word16HexFixed
     , word32HexFixed
     , word64HexFixed
+
+    , int32HexFixedWidth
+    , int64HexFixedWidth
+    , word32HexFixedWidth
+    , word64HexFixedWidth
+
     , floatHexFixed
     , doubleHexFixed
+
+      -- **** Fixed-width upper-case hexadecimal numbers
+      --
+      -- | Encoding the bytes of fixed-width types as hexadecimal
+      -- numbers using upper-case ASCII characters. For example,
+      --
+      -- > toLazyByteString (primFixed word16HexUpperFixed 0x0a10) = "0A10"
+      --
+    , int8HexUpperFixed
+    , int16HexUpperFixed
+    , int32HexUpperFixed
+    , int64HexUpperFixed
+    , word8HexUpperFixed
+    , word16HexUpperFixed
+    , word32HexUpperFixed
+    , word64HexUpperFixed
+
+    , int32HexUpperFixedWidth
+    , int64HexUpperFixedWidth
+    , word32HexUpperFixedWidth
+    , word64HexUpperFixedWidth
+
+    , floatHexUpperFixed
+    , doubleHexUpperFixed
 
     ) where
 
 import Data.ByteString.Builder.Prim.Binary
 import Data.ByteString.Builder.Prim.Internal
 import Data.ByteString.Builder.Prim.Internal.Floating
-import Data.ByteString.Builder.Prim.Internal.Base16
 import Data.ByteString.Builder.Prim.Internal.UncheckedShifts
 
 import Data.Char (ord)
@@ -228,64 +265,232 @@ wordHex = caseWordSize_32_64
     (fromIntegral >$< word32Hex)
     (fromIntegral >$< word64Hex)
 
+foreign import ccall unsafe "static _hs_bytestring_uint_hex_upper" c_uint_hex_upper
+    :: CUInt -> Ptr Word8 -> IO (Ptr Word8)
+
+foreign import ccall unsafe "static _hs_bytestring_long_long_uint_hex_upper" c_long_long_uint_hex_upper
+    :: CULLong -> Ptr Word8 -> IO (Ptr Word8)
+
+{-# INLINE encodeWordHexUpper #-}
+encodeWordHexUpper :: forall a. (Storable a, Integral a) => BoundedPrim a
+encodeWordHexUpper =
+    boudedPrim (2 * sizeOf (undefined :: a)) $ c_uint_hex_upper  . fromIntegral
+
+-- | Shortest hexadecimal encoding of a 'Word8' using upper-case characters.
+{-# INLINE word8HexUpper #-}
+word8HexUpper :: BoundedPrim Word8
+word8HexUpper = encodeWordHexUpper
+
+-- | Shortest hexadecimal encoding of a 'Word16' using upper-case characters.
+{-# INLINE word16HexUpper #-}
+word16HexUpper :: BoundedPrim Word16
+word16HexUpper = encodeWordHexUpper
+
+-- | Shortest hexadecimal encoding of a 'Word32' using upper-case characters.
+{-# INLINE word32HexUpper #-}
+word32HexUpper :: BoundedPrim Word32
+word32HexUpper = encodeWordHexUpper
+
+-- | Shortest hexadecimal encoding of a 'Word64' using upper-case characters.
+{-# INLINE word64HexUpper #-}
+word64HexUpper :: BoundedPrim Word64
+word64HexUpper = boudedPrim 16 $ c_long_long_uint_hex_upper . fromIntegral
+
+-- | Shortest hexadecimal encoding of a 'Word' using upper-case characters.
+{-# INLINE wordHexUpper #-}
+wordHexUpper :: BoundedPrim Word
+wordHexUpper = caseWordSize_32_64
+    (fromIntegral >$< word32HexUpper)
+    (fromIntegral >$< word64HexUpper)
+
 
 -- fixed width; leading zeroes
 ------------------------------
 
--- | Encode a 'Word8' using 2 nibbles (hexadecimal digits).
-{-# INLINE word8HexFixed #-}
-word8HexFixed :: FixedPrim Word8
-word8HexFixed = fixedPrim 2 $
-    \x op -> poke (castPtr op) =<< encode8_as_16h lowerTable x
+foreign import ccall unsafe "static _hs_bytestring_builder_uint_fixed_width_hex" c_uint_fixed_hex
+    :: CInt -> CUInt -> Ptr Word8 -> IO ()
 
--- | Encode a 'Word16' using 4 nibbles.
-{-# INLINE word16HexFixed #-}
-word16HexFixed :: FixedPrim Word16
-word16HexFixed =
-    (\x -> (fromIntegral $ x `shiftr_w16` 8, fromIntegral x))
-      >$< pairF word8HexFixed word8HexFixed
+foreign import ccall unsafe "static _hs_bytestring_builder_long_long_uint_fixed_width_hex" c_long_long_uint_fixed_hex
+    :: CInt -> CULLong -> Ptr Word8 -> IO ()
 
--- | Encode a 'Word32' using 8 nibbles.
-{-# INLINE word32HexFixed #-}
-word32HexFixed :: FixedPrim Word32
-word32HexFixed =
-    (\x -> (fromIntegral $ x `shiftr_w32` 16, fromIntegral x))
-      >$< pairF word16HexFixed word16HexFixed
--- | Encode a 'Word64' using 16 nibbles.
-{-# INLINE word64HexFixed #-}
-word64HexFixed :: FixedPrim Word64
-word64HexFixed =
-    (\x -> (fromIntegral $ x `shiftr_w64` 32, fromIntegral x))
-      >$< pairF word32HexFixed word32HexFixed
+{-# INLINE encodeWordHexFixedWidth #-}
+encodeWordHexFixedWidth :: forall a. (Storable a, Integral a) => Int -> FixedPrim a
+encodeWordHexFixedWidth width = fixedPrim width $ c_uint_fixed_hex (CInt (fromIntegral width)) . fromIntegral
 
--- | Encode a 'Int8' using 2 nibbles (hexadecimal digits).
+{-# INLINE encodeWordHexFixed #-}
+encodeWordHexFixed :: forall a. (Storable a, Integral a) => FixedPrim a
+encodeWordHexFixed = encodeWordHexFixedWidth (2 * sizeOf (undefined :: a))
+
+{-# INLINE encodeWord64HexFixedWidth #-}
+encodeWord64HexFixedWidth :: forall a. (Storable a, Integral a) => Int -> FixedPrim a
+encodeWord64HexFixedWidth width = fixedPrim width $ c_long_long_uint_fixed_hex (CInt (fromIntegral width)) . fromIntegral
+
+-- | Hexadecimal encoding of an 'Int8' using 2 lower-case characters.
 {-# INLINE int8HexFixed #-}
 int8HexFixed :: FixedPrim Int8
 int8HexFixed = fromIntegral >$< word8HexFixed
 
--- | Encode a 'Int16' using 4 nibbles.
+-- | Hexadecimal encoding of an 'Int16' using 4 lower-case characters.
 {-# INLINE int16HexFixed #-}
 int16HexFixed :: FixedPrim Int16
 int16HexFixed = fromIntegral >$< word16HexFixed
 
--- | Encode a 'Int32' using 8 nibbles.
+-- | Hexadecimal encoding of an 'Int32' using 8 lower-case characters.
 {-# INLINE int32HexFixed #-}
 int32HexFixed :: FixedPrim Int32
 int32HexFixed = fromIntegral >$< word32HexFixed
 
--- | Encode a 'Int64' using 16 nibbles.
+-- | Hexadecimal encoding of an 'Int64' using 16 lower-case characters.
 {-# INLINE int64HexFixed #-}
 int64HexFixed :: FixedPrim Int64
 int64HexFixed = fromIntegral >$< word64HexFixed
 
--- | Encode an IEEE 'Float' using 8 nibbles.
+-- | Hexadecimal encoding of a 'Word8' using 2 lower-case characters.
+{-# INLINE word8HexFixed #-}
+word8HexFixed :: FixedPrim Word8
+word8HexFixed = encodeWordHexFixed
+
+-- | Hexadecimal encoding of a 'Word16' using 4 lower-case characters.
+{-# INLINE word16HexFixed #-}
+word16HexFixed :: FixedPrim Word16
+word16HexFixed = encodeWordHexFixed
+
+-- | Hexadecimal encoding of a 'Word32' using 8 lower-case characters.
+{-# INLINE word32HexFixed #-}
+word32HexFixed :: FixedPrim Word32
+word32HexFixed = encodeWordHexFixed
+
+-- | Hexadecimal encoding of a 'Word64' using 16 lower-case characters.
+{-# INLINE word64HexFixed #-}
+word64HexFixed :: FixedPrim Word64
+word64HexFixed = encodeWord64HexFixedWidth 16
+
+-- | Hexadecimal encoding of an 'Int32' using a specified number of
+--   lower-case characters.
+{-# INLINE int32HexFixedWidth #-}
+int32HexFixedWidth :: Int -> FixedPrim Int32
+int32HexFixedWidth width = fromIntegral >$< word32HexFixedWidth width
+
+-- | Hexadecimal encoding of an 'Int64' using a specified number of
+--   lower-case characters.
+{-# INLINE int64HexFixedWidth #-}
+int64HexFixedWidth :: Int -> FixedPrim Int64
+int64HexFixedWidth width = fromIntegral >$< word64HexFixedWidth width
+
+-- | Hexadecimal encoding of a 'Word32' using a specified number of
+--   lower-case characters.
+{-# INLINE word32HexFixedWidth #-}
+word32HexFixedWidth :: Int -> FixedPrim Word32
+word32HexFixedWidth = encodeWordHexFixedWidth
+
+-- | Hexadecimal encoding of a 'Word64' using a specified number of
+--   lower-case characters.
+{-# INLINE word64HexFixedWidth #-}
+word64HexFixedWidth :: Int -> FixedPrim Word64
+word64HexFixedWidth = encodeWord64HexFixedWidth
+
+-- | Encode an IEEE 'Float' using 8 lower-case hexadecimal digits.
 {-# INLINE floatHexFixed #-}
 floatHexFixed :: FixedPrim Float
 floatHexFixed = encodeFloatViaWord32F word32HexFixed
 
--- | Encode an IEEE 'Double' using 16 nibbles.
+-- | Encode an IEEE 'Double' using 16 lower-case hexadecimal digits.
 {-# INLINE doubleHexFixed #-}
 doubleHexFixed :: FixedPrim Double
 doubleHexFixed = encodeDoubleViaWord64F word64HexFixed
 
 
+-- fixed width; leading zeroes; upper-case
+------------------------------------------
+
+foreign import ccall unsafe "static _hs_bytestring_builder_uint_fixed_width_hex_upper" c_uint_fixed_hex_upper
+    :: CInt -> CUInt -> Ptr Word8 -> IO ()
+
+foreign import ccall unsafe "static _hs_bytestring_builder_long_long_uint_fixed_width_hex_upper" c_long_long_uint_fixed_hex_upper
+    :: CInt -> CULLong -> Ptr Word8 -> IO ()
+
+{-# INLINE encodeWordHexUpperFixedWidth #-}
+encodeWordHexUpperFixedWidth :: forall a. (Storable a, Integral a) => Int -> FixedPrim a
+encodeWordHexUpperFixedWidth width = fixedPrim width $ c_uint_fixed_hex_upper (CInt (fromIntegral width)) . fromIntegral
+
+{-# INLINE encodeWordHexUpperFixed #-}
+encodeWordHexUpperFixed :: forall a. (Storable a, Integral a) => FixedPrim a
+encodeWordHexUpperFixed = encodeWordHexUpperFixedWidth (2 * sizeOf (undefined :: a))
+
+{-# INLINE encodeWord64HexUpperFixedWidth #-}
+encodeWord64HexUpperFixedWidth :: forall a. (Storable a, Integral a) => Int -> FixedPrim a
+encodeWord64HexUpperFixedWidth width = fixedPrim width $ c_long_long_uint_fixed_hex_upper (CInt (fromIntegral width)) . fromIntegral
+
+-- | Hexadecimal encoding of an 'Int8' using 2 upper-case characters.
+{-# INLINE int8HexUpperFixed #-}
+int8HexUpperFixed :: FixedPrim Int8
+int8HexUpperFixed = fromIntegral >$< word8HexUpperFixed
+
+-- | Hexadecimal encoding of an 'Int16' using 4 upper-case characters.
+{-# INLINE int16HexUpperFixed #-}
+int16HexUpperFixed :: FixedPrim Int16
+int16HexUpperFixed = fromIntegral >$< word16HexUpperFixed
+
+-- | Hexadecimal encoding of an 'Int32' using 8 upper-case characters.
+{-# INLINE int32HexUpperFixed #-}
+int32HexUpperFixed :: FixedPrim Int32
+int32HexUpperFixed = fromIntegral >$< word32HexUpperFixed
+
+-- | Hexadecimal encoding of an 'Int64' using 16 upper-case characters.
+{-# INLINE int64HexUpperFixed #-}
+int64HexUpperFixed :: FixedPrim Int64
+int64HexUpperFixed = fromIntegral >$< word64HexUpperFixed
+
+-- | Hexadecimal encoding of a 'Word8' using 2 upper-case characters.
+{-# INLINE word8HexUpperFixed #-}
+word8HexUpperFixed :: FixedPrim Word8
+word8HexUpperFixed = encodeWordHexUpperFixed
+
+-- | Hexadecimal encoding of a 'Word16' using 4 upper-case characters.
+{-# INLINE word16HexUpperFixed #-}
+word16HexUpperFixed :: FixedPrim Word16
+word16HexUpperFixed = encodeWordHexUpperFixed
+
+-- | Hexadecimal encoding of a 'Word32' using 8 upper-case characters.
+{-# INLINE word32HexUpperFixed #-}
+word32HexUpperFixed :: FixedPrim Word32
+word32HexUpperFixed = encodeWordHexUpperFixed
+
+-- | Hexadecimal encoding of a 'Word64' using 16 upper-case characters.
+{-# INLINE word64HexUpperFixed #-}
+word64HexUpperFixed :: FixedPrim Word64
+word64HexUpperFixed = encodeWord64HexUpperFixedWidth 16
+
+-- | Hexadecimal encoding of an 'Int32' using a specified number of
+--   upper-case characters.
+{-# INLINE int32HexUpperFixedWidth #-}
+int32HexUpperFixedWidth :: Int -> FixedPrim Int32
+int32HexUpperFixedWidth width = fromIntegral >$< word32HexUpperFixedWidth width
+
+-- | Hexadecimal encoding of an 'Int64' using a specified number of
+--   upper-case characters.
+{-# INLINE int64HexUpperFixedWidth #-}
+int64HexUpperFixedWidth :: Int -> FixedPrim Int64
+int64HexUpperFixedWidth width = fromIntegral >$< word64HexUpperFixedWidth width
+
+-- | Hexadecimal encoding of a 'Word32' using a specified number of
+--   upper-case characters.
+{-# INLINE word32HexUpperFixedWidth #-}
+word32HexUpperFixedWidth :: Int -> FixedPrim Word32
+word32HexUpperFixedWidth = encodeWordHexUpperFixedWidth
+
+-- | Hexadecimal encoding of a 'Word64' using a specified number of
+--   upper-case characters.
+{-# INLINE word64HexUpperFixedWidth #-}
+word64HexUpperFixedWidth :: Int -> FixedPrim Word64
+word64HexUpperFixedWidth = encodeWord64HexUpperFixedWidth
+
+-- | Encode an IEEE 'Float' using 8 upper-case hexadecimal digits.
+{-# INLINE floatHexUpperFixed #-}
+floatHexUpperFixed :: FixedPrim Float
+floatHexUpperFixed = encodeFloatViaWord32F word32HexUpperFixed
+
+-- | Encode an IEEE 'Double' using 16 upper-case hexadecimal digits.
+{-# INLINE doubleHexUpperFixed #-}
+doubleHexUpperFixed :: FixedPrim Double
+doubleHexUpperFixed = encodeDoubleViaWord64F word64HexUpperFixed

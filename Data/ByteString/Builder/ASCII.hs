@@ -48,15 +48,24 @@ module Data.ByteString.Builder.ASCII
       -- >>> toLazyByteString (word16Hex 0x0a10)
       -- Chunk "a10" Empty
       --
-      -- Note that there is no support for using upper-case characters. Please
-      -- contact the maintainer, if your application cannot work without
-      -- hexadecimal encodings that use upper-case characters.
-      --
     , word8Hex
     , word16Hex
     , word32Hex
     , word64Hex
     , wordHex
+
+      -- | Encoding positive integers as hexadecimal numbers using upper-case
+      -- ASCII characters. The shortest
+      -- possible representation is used. For example,
+      --
+      -- >>> toLazyByteString (word16Hex 0x0a10)
+      -- Chunk "A10" Empty
+      --
+    , word8HexUpper
+    , word16HexUpper
+    , word32HexUpper
+    , word64HexUpper
+    , wordHexUpper
 
       -- *** Fixed-width hexadecimal numbers
       --
@@ -69,11 +78,38 @@ module Data.ByteString.Builder.ASCII
     , word32HexFixed
     , word64HexFixed
 
+    , int32HexFixedWidth
+    , int64HexFixedWidth
+    , word32HexFixedWidth
+    , word64HexFixedWidth
+
     , floatHexFixed
     , doubleHexFixed
 
     , byteStringHex
     , lazyByteStringHex
+
+      -- *** Fixed-width upper-case hexadecimal numbers
+      --
+    , int8HexUpperFixed
+    , int16HexUpperFixed
+    , int32HexUpperFixed
+    , int64HexUpperFixed
+    , word8HexUpperFixed
+    , word16HexUpperFixed
+    , word32HexUpperFixed
+    , word64HexUpperFixed
+
+    , int32HexUpperFixedWidth
+    , int64HexUpperFixedWidth
+    , word32HexUpperFixedWidth
+    , word64HexUpperFixedWidth
+
+    , floatHexUpperFixed
+    , doubleHexUpperFixed
+
+    , byteStringHexUpper
+    , lazyByteStringHexUpper
 
     ) where
 
@@ -235,69 +271,209 @@ word64Hex = P.primBounded P.word64Hex
 wordHex :: Word -> Builder
 wordHex = P.primBounded P.wordHex
 
+-- | Shortest hexadecimal encoding of a 'Word8' using upper-case characters.
+{-# INLINE word8HexUpper #-}
+word8HexUpper :: Word8 -> Builder
+word8HexUpper = P.primBounded P.word8HexUpper
+
+-- | Shortest hexadecimal encoding of a 'Word16' using upper-case characters.
+{-# INLINE word16HexUpper #-}
+word16HexUpper :: Word16 -> Builder
+word16HexUpper = P.primBounded P.word16HexUpper
+
+-- | Shortest hexadecimal encoding of a 'Word32' using upper-case characters.
+{-# INLINE word32HexUpper #-}
+word32HexUpper :: Word32 -> Builder
+word32HexUpper = P.primBounded P.word32HexUpper
+
+-- | Shortest hexadecimal encoding of a 'Word64' using upper-case characters.
+{-# INLINE word64HexUpper #-}
+word64HexUpper :: Word64 -> Builder
+word64HexUpper = P.primBounded P.word64HexUpper
+
+-- | Shortest hexadecimal encoding of a 'Word' using upper-case characters.
+{-# INLINE wordHexUpper #-}
+wordHexUpper :: Word -> Builder
+wordHexUpper = P.primBounded P.wordHexUpper
 
 -- fixed width; leading zeroes
 ------------------------------
 
--- | Encode a 'Int8' using 2 nibbles (hexadecimal digits).
+-- | Hexadecimal encoding of an 'Int8' using 2 lower-case characters.
 {-# INLINE int8HexFixed #-}
 int8HexFixed :: Int8 -> Builder
 int8HexFixed = P.primFixed P.int8HexFixed
 
--- | Encode a 'Int16' using 4 nibbles.
+-- | Hexadecimal encoding of an 'Int16' using 4 lower-case characters.
 {-# INLINE int16HexFixed #-}
 int16HexFixed :: Int16 -> Builder
 int16HexFixed = P.primFixed P.int16HexFixed
 
--- | Encode a 'Int32' using 8 nibbles.
+-- | Hexadecimal encoding of an 'Int32' using 8 lower-case characters.
 {-# INLINE int32HexFixed #-}
 int32HexFixed :: Int32 -> Builder
 int32HexFixed = P.primFixed P.int32HexFixed
 
--- | Encode a 'Int64' using 16 nibbles.
+-- | Hexadecimal encoding of an 'Int64' using 16 lower-case characters.
 {-# INLINE int64HexFixed #-}
 int64HexFixed :: Int64 -> Builder
 int64HexFixed = P.primFixed P.int64HexFixed
 
--- | Encode a 'Word8' using 2 nibbles (hexadecimal digits).
+-- | Hexadecimal encoding of a 'Word8' using 2 lower-case characters.
 {-# INLINE word8HexFixed #-}
 word8HexFixed :: Word8 -> Builder
 word8HexFixed = P.primFixed P.word8HexFixed
 
--- | Encode a 'Word16' using 4 nibbles.
+-- | Hexadecimal encoding of a 'Word16' using 4 lower-case characters.
 {-# INLINE word16HexFixed #-}
 word16HexFixed :: Word16 -> Builder
 word16HexFixed = P.primFixed P.word16HexFixed
 
--- | Encode a 'Word32' using 8 nibbles.
+-- | Hexadecimal encoding of a 'Word32' using 8 lower-case characters.
 {-# INLINE word32HexFixed #-}
 word32HexFixed :: Word32 -> Builder
 word32HexFixed = P.primFixed P.word32HexFixed
 
--- | Encode a 'Word64' using 16 nibbles.
+-- | Hexadecimal encoding of a 'Word64' using 16 lower-case characters.
 {-# INLINE word64HexFixed #-}
 word64HexFixed :: Word64 -> Builder
 word64HexFixed = P.primFixed P.word64HexFixed
 
--- | Encode an IEEE 'Float' using 8 nibbles.
+-- | Hexadecimal encoding of an 'Int32' using a specified number of
+--   lower-case characters.
+{-# INLINE int32HexFixedWidth #-}
+int32HexFixedWidth :: Int -> Int32 -> Builder
+int32HexFixedWidth = P.primFixed . P.int32HexFixedWidth
+
+-- | Hexadecimal encoding of an 'Int64' using a specified number of
+--   lower-case characters.
+{-# INLINE int64HexFixedWidth #-}
+int64HexFixedWidth :: Int -> Int64 -> Builder
+int64HexFixedWidth = P.primFixed . P.int64HexFixedWidth
+
+-- | Hexadecimal encoding of a 'Word32' using a specified number of
+--   lower-case characters.
+{-# INLINE word32HexFixedWidth #-}
+word32HexFixedWidth :: Int -> Word32 -> Builder
+word32HexFixedWidth = P.primFixed . P.word32HexFixedWidth
+
+-- | Hexadecimal encoding of a 'Word64' using a specified number of
+--   lower-case characters.
+{-# INLINE word64HexFixedWidth #-}
+word64HexFixedWidth :: Int -> Word64 -> Builder
+word64HexFixedWidth = P.primFixed . P.word64HexFixedWidth
+
+-- | Encode an IEEE 'Float' using 8 lower-case hexadecimal digits.
 {-# INLINE floatHexFixed #-}
 floatHexFixed :: Float -> Builder
 floatHexFixed = P.primFixed P.floatHexFixed
 
--- | Encode an IEEE 'Double' using 16 nibbles.
+-- | Encode an IEEE 'Double' using 16 lower-case hexadecimal digits.
 {-# INLINE doubleHexFixed #-}
 doubleHexFixed :: Double -> Builder
 doubleHexFixed = P.primFixed P.doubleHexFixed
 
--- | Encode each byte of a 'S.ByteString' using its fixed-width hex encoding.
+-- | Encode each byte of a 'S.ByteString' using its fixed-width
+--   lower-case hex encoding.
 {-# NOINLINE byteStringHex #-} -- share code
 byteStringHex :: S.ByteString -> Builder
 byteStringHex = P.primMapByteStringFixed P.word8HexFixed
 
--- | Encode each byte of a lazy 'L.ByteString' using its fixed-width hex encoding.
+-- | Encode each byte of a lazy 'L.ByteString' using its fixed-width
+--   lower-case hex encoding.
 {-# NOINLINE lazyByteStringHex #-} -- share code
 lazyByteStringHex :: L.ByteString -> Builder
 lazyByteStringHex = P.primMapLazyByteStringFixed P.word8HexFixed
+
+
+-- fixed width; leading zeroes; upper-case
+------------------------------------------
+
+-- | Hexadecimal encoding of an 'Int8' using 2 upper-case characters.
+{-# INLINE int8HexUpperFixed #-}
+int8HexUpperFixed :: Int8 -> Builder
+int8HexUpperFixed = P.primFixed P.int8HexUpperFixed
+
+-- | Hexadecimal encoding of an 'Int16' using 4 upper-case characters.
+{-# INLINE int16HexUpperFixed #-}
+int16HexUpperFixed :: Int16 -> Builder
+int16HexUpperFixed = P.primFixed P.int16HexUpperFixed
+
+-- | Hexadecimal encoding of an 'Int32' using 8 upper-case characters.
+{-# INLINE int32HexUpperFixed #-}
+int32HexUpperFixed :: Int32 -> Builder
+int32HexUpperFixed = P.primFixed P.int32HexUpperFixed
+
+-- | Hexadecimal encoding of an 'Int64' using 16 upper-case characters.
+{-# INLINE int64HexUpperFixed #-}
+int64HexUpperFixed :: Int64 -> Builder
+int64HexUpperFixed = P.primFixed P.int64HexUpperFixed
+
+-- | Hexadecimal encoding of a 'Word8' using 2 upper-case characters.
+{-# INLINE word8HexUpperFixed #-}
+word8HexUpperFixed :: Word8 -> Builder
+word8HexUpperFixed = P.primFixed P.word8HexUpperFixed
+
+-- | Hexadecimal encoding of a 'Word16' using 4 upper-case characters.
+{-# INLINE word16HexUpperFixed #-}
+word16HexUpperFixed :: Word16 -> Builder
+word16HexUpperFixed = P.primFixed P.word16HexUpperFixed
+
+-- | Hexadecimal encoding of a 'Word32' using 8 upper-case characters.
+{-# INLINE word32HexUpperFixed #-}
+word32HexUpperFixed :: Word32 -> Builder
+word32HexUpperFixed = P.primFixed P.word32HexUpperFixed
+
+-- | Hexadecimal encoding of a 'Word64' using 16 upper-case characters.
+{-# INLINE word64HexUpperFixed #-}
+word64HexUpperFixed :: Word64 -> Builder
+word64HexUpperFixed = P.primFixed P.word64HexUpperFixed
+
+-- | Hexadecimal encoding of an 'Int32' using a specified number of
+--   upper-case characters.
+{-# INLINE int32HexUpperFixedWidth #-}
+int32HexUpperFixedWidth :: Int -> Int32 -> Builder
+int32HexUpperFixedWidth = P.primFixed . P.int32HexUpperFixedWidth
+
+-- | Hexadecimal encoding of an 'Int64' using a specified number of
+--   upper-case characters.
+{-# INLINE int64HexUpperFixedWidth #-}
+int64HexUpperFixedWidth :: Int -> Int64 -> Builder
+int64HexUpperFixedWidth = P.primFixed . P.int64HexUpperFixedWidth
+
+-- | Hexadecimal encoding of a 'Word32' using a specified number of
+--   upper-case characters.
+{-# INLINE word32HexUpperFixedWidth #-}
+word32HexUpperFixedWidth :: Int -> Word32 -> Builder
+word32HexUpperFixedWidth = P.primFixed . P.word32HexUpperFixedWidth
+
+-- | Hexadecimal encoding of a 'Word64' using a specified number of
+--   upper-case characters.
+{-# INLINE word64HexUpperFixedWidth #-}
+word64HexUpperFixedWidth :: Int -> Word64 -> Builder
+word64HexUpperFixedWidth = P.primFixed . P.word64HexUpperFixedWidth
+
+-- | Encode an IEEE 'Float' using 8 upper-case hexadecimal digits.
+{-# INLINE floatHexUpperFixed #-}
+floatHexUpperFixed :: Float -> Builder
+floatHexUpperFixed = P.primFixed P.floatHexUpperFixed
+
+-- | Encode an IEEE 'Double' using 16 upper-case hexadecimal digits.
+{-# INLINE doubleHexUpperFixed #-}
+doubleHexUpperFixed :: Double -> Builder
+doubleHexUpperFixed = P.primFixed P.doubleHexUpperFixed
+
+-- | Encode each byte of a 'S.ByteString' using its fixed-width hex
+--   upper-case encoding.
+{-# NOINLINE byteStringHexUpper #-} -- share code
+byteStringHexUpper :: S.ByteString -> Builder
+byteStringHexUpper = P.primMapByteStringFixed P.word8HexUpperFixed
+
+-- | Encode each byte of a lazy 'L.ByteString' using its fixed-width hex
+--   upper-case encoding.
+{-# NOINLINE lazyByteStringHexUpper #-} -- share code
+lazyByteStringHexUpper :: L.ByteString -> Builder
+lazyByteStringHexUpper = P.primMapLazyByteStringFixed P.word8HexUpperFixed
 
 
 ------------------------------------------------------------------------------

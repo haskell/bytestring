@@ -46,6 +46,9 @@ module Data.ByteString.Builder.Prim.TestUtils (
   , int16HexFixed_list
   , int32HexFixed_list
   , int64HexFixed_list
+  , wordHexFixedWidth_list
+  , int32HexFixedWidth_list
+  , int64HexFixedWidth_list
   , floatHexFixed_list
   , doubleHexFixed_list
 
@@ -312,6 +315,9 @@ wordHexFixed_list x =
  where
    pad n cs = replicate (n - length cs) '0' ++ cs
 
+pruneWidth :: Int -> [a] -> [a]
+pruneWidth width xs = drop (length xs - width) xs
+
 int8HexFixed_list :: Int8 -> [Word8]
 int8HexFixed_list  = wordHexFixed_list . (fromIntegral :: Int8  -> Word8 )
 
@@ -323,6 +329,17 @@ int32HexFixed_list = wordHexFixed_list . (fromIntegral :: Int32 -> Word32)
 
 int64HexFixed_list :: Int64 -> [Word8]
 int64HexFixed_list = wordHexFixed_list . (fromIntegral :: Int64 -> Word64)
+
+wordHexFixedWidth_list :: (Storable a, Integral a, Show a) => Int -> a -> [Word8]
+wordHexFixedWidth_list width = pruneWidth width . wordHexFixed_list
+
+int32HexFixedWidth_list :: Int -> Int32 -> [Word8]
+int32HexFixedWidth_list width =
+  pruneWidth width . wordHexFixed_list . (fromIntegral :: Int32 -> Word32)
+
+int64HexFixedWidth_list :: Int -> Int64 -> [Word8]
+int64HexFixedWidth_list width =
+  pruneWidth width . wordHexFixed_list . (fromIntegral :: Int64 -> Word64)
 
 floatHexFixed_list :: Float -> [Word8]
 floatHexFixed_list  = float_list wordHexFixed_list

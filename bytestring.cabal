@@ -99,7 +99,6 @@ library
                      Data.ByteString.Builder.Prim.ASCII
                      Data.ByteString.Builder.Prim.Internal.Floating
                      Data.ByteString.Builder.Prim.Internal.UncheckedShifts
-                     Data.ByteString.Builder.Prim.Internal.Base16
 
   default-language:  Haskell98
   other-extensions:  CPP,
