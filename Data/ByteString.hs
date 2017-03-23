@@ -1413,7 +1413,7 @@ findSubstring pat src
 
 {-# DEPRECATED findSubstring "findSubstring is deprecated in favour of breakSubstring." #-}
 
--- | Find the indexes of all (possibly overlapping) occurances of a
+-- | Find the indexes of all (possibly overlapping) occurences of a
 -- substring in a string.
 --
 findSubstrings :: ByteString -- ^ String to search for.
