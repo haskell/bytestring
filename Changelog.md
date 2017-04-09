@@ -1,3 +1,7 @@
+0.10.10.2 –
+
+ * Add `takeWhileEnd`, `dropWhileEnd` and `strip`  for strict bytestrings
+
 0.10.10.1 – June 2020
 
  * Fix off-by-one infinite loop in primMapByteStringBounded ([#203])
