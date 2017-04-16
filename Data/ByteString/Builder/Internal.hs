@@ -968,7 +968,7 @@ byteString :: S.ByteString -> Builder
 byteString = byteStringThreshold maximalCopySize
 
 -- | Create a 'Builder' denoting the same sequence of bytes as a lazy
--- 'S.ByteString'.
+-- 'L.ByteString'.
 -- The 'Builder' inserts large chunks of the lazy 'L.ByteString' directly,
 -- but copies small ones to ensure that the generated chunks are large on
 -- average.
