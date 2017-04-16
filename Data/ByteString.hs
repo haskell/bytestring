@@ -565,7 +565,7 @@ foldr1 f ps
     | otherwise      = foldr f (unsafeLast ps) (unsafeInit ps)
 {-# INLINE foldr1 #-}
 
--- | 'foldr1\'' is a variant of 'foldr1', but is strict in the
+-- | 'foldr1'' is a variant of 'foldr1', but is strict in the
 -- accumulator.
 foldr1' :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldr1' f ps
@@ -1413,7 +1413,7 @@ findSubstring pat src
 
 {-# DEPRECATED findSubstring "findSubstring is deprecated in favour of breakSubstring." #-}
 
--- | Find the indexes of all (possibly overlapping) occurances of a
+-- | Find the indexes of all (possibly overlapping) occurences of a
 -- substring in a string.
 --
 findSubstrings :: ByteString -- ^ String to search for.
