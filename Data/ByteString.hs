@@ -1508,8 +1508,44 @@ tails p | null p    = [empty]
 -- ---------------------------------------------------------------------
 -- ** Ordered 'ByteString's
 
--- | /O(n)/ Sort a ByteString efficiently, using counting sort.
+-- | /O(n)/ Sort a ByteString efficiently, using insertion sort for short
+-- 'ByteString's and counting sort for long 'ByteString's.
 sort :: ByteString -> ByteString
+sort bs@(PS _ _ 0) = bs
+
+sort (PS input s l) | l <= threshold = unsafeCreate l $ \p ->
+    withForeignPtr input (\x -> insertionSort p (x `plusPtr` s) l)
+  where
+    -- threshold is where we find insertion sort still outperforms counting
+    -- sort even for worst case.
+    threshold = 22
+
+    insertionSort :: Ptr Word8 -> Ptr Word8 -> Int -> IO ()
+    insertionSort !buf !str !len = do
+        val <- peek str
+        poke buf val
+        go 1
+      where
+        go !i
+            | i == len = return ()
+            | otherwise = do
+                val <- peekElemOff str i
+                tmp <- peek buf
+                if val < tmp
+                    then memmove (buf `plusPtr` 1) buf i >> poke buf val
+                    else unguardedLinearInsert (buf `plusPtr` i) val
+                go (i + 1)
+
+    unguardedLinearInsert :: Ptr Word8 -> Word8 -> IO ()
+    unguardedLinearInsert !end !val = go end
+      where
+        go !cur = do
+            let pre = cur `plusPtr` (-1)
+            tmp <- peek pre
+            if val < tmp
+                then poke cur tmp >> go pre
+                else poke cur val
+
 sort (PS input s l) = unsafeCreate l $ \p -> allocaArray 256 $ \arr -> do
 
     _ <- memset (castPtr arr) 0 (256 * fromIntegral (sizeOf (undefined :: CSize)))
