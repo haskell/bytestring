@@ -204,7 +204,8 @@ module Data.ByteString (
         hPutStr,                -- :: Handle -> ByteString -> IO ()
         hPutStrLn,              -- :: Handle -> ByteString -> IO ()
 
-        breakByte
+        breakByte,              
+        breakByteEnd,           
 
   ) where
 
@@ -891,6 +892,31 @@ breakByte c p = case elemIndex c p of
 -- breakEnd p == spanEnd (not.p)
 breakEnd :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
 breakEnd  p ps = splitAt (findFromEndUntil p ps) ps
+
+#if __GLASGOW_HASKELL__ 
+{-# INLINE [1] breakEnd #-}
+#endif
+
+{-# RULES
+"ByteString specialise breakEnd (x==)" forall x.
+    breakEnd ((==) x) = breakByteEnd x
+"ByteString specialise breakEnd (==x)" forall x.
+    breakEnd (==x) = breakByteEnd x
+  #-}
+
+-- INTERNAL:
+
+-- | 'breakByteEnd' breaks its ByteString argument at the last occurence
+-- of the specified byte. It is more efficient than 'breakEnd' as it is
+-- implemented with @memchr(3)@. I.e.
+-- 
+-- > breakEnd (=='c') "abcd" == breakByteEnd 'c' "abcd"
+--
+breakByteEnd :: Word8 -> ByteString -> (ByteString, ByteString)
+breakByteEnd c p = case elemIndexEnd c p of
+    Nothing -> (p,empty)
+    Just n  -> (unsafeTake n p, unsafeDrop n p)
+{-# INLINE breakByte #-}
 
 -- | 'span' @p xs@ breaks the ByteString into two segments. It is
 -- equivalent to @('takeWhile' p xs, 'dropWhile' p xs)@

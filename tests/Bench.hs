@@ -135,6 +135,9 @@ tests =
 --      [F ({-# SCC "breakChar"     #-}     app $ B.breakByte 122)
 --      ,F ({-# SCC "lazy breakChar" #-}    app $ L.breakByte 122)
 --  ])
+--  , ("breakByteEnd",
+--      [F ({-# SCC "breakCharEnd"     #-}     app $ B.breakByteEnd 122)
+--  ])
 --  , ("spanByte",
 --      [F ({-# SCC "spanChar"      #-}     app $ B.spanByte 122)
 --      ,F ({-# SCC "lazy spanChar" #-}     app $ L.spanByte 122)
