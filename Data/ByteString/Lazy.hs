@@ -150,6 +150,7 @@ module Data.ByteString.Lazy (
 --        isInfixOf,              -- :: ByteString -> ByteString -> Bool
 
         -- ** Search for arbitrary substrings
+        breakSubstring,         -- :: ByteString -> ByteString -> (ByteString,ByteString)
 --        isSubstringOf,          -- :: ByteString -> ByteString -> Bool
 --        findSubstring,          -- :: ByteString -> ByteString -> Maybe Int
 --        findSubstrings,         -- :: ByteString -> ByteString -> [Int]
@@ -217,6 +218,12 @@ import Prelude hiding
     ,repeat, cycle, interact, iterate,readFile,writeFile,appendFile,replicate
     ,getContents,getLine,putStr,putStrLn ,zip,zipWith,unzip,notElem)
 
+#if MIN_VERSION_base(4,7,0)
+import Data.Bits                (finiteBitSize, shiftL, (.|.), (.&.))
+#else
+import Data.Bits                (bitSize, shiftL, (.|.), (.&.))
+#endif
+
 import qualified Data.List              as L  -- L for list/lazy
 import qualified Data.ByteString        as P  (ByteString) -- type name only
 import qualified Data.ByteString        as S  -- S for strict (hmm...)
@@ -229,7 +236,7 @@ import Control.Applicative      ((<$>))
 import Data.Monoid              (Monoid(..))
 #endif
 import Control.Monad            (mplus)
-import Data.Word                (Word8)
+import Data.Word                (Word8,Word32)
 import Data.Int                 (Int64)
 import System.IO                (Handle,openBinaryFile,stdin,stdout,withBinaryFile,IOMode(..)
                                 ,hClose)
@@ -240,6 +247,9 @@ import Foreign.ForeignPtr       (withForeignPtr)
 import Foreign.Ptr
 import Foreign.Storable
 
+#if !(MIN_VERSION_base(4,7,0))
+finiteBitSize = bitSize
+#endif
 
 -- -----------------------------------------------------------------------------
 -- Introducing and eliminating 'ByteString's
@@ -1090,6 +1100,82 @@ isSuffixOf x y = reverse x `isPrefixOf` reverse y
 stripSuffix :: ByteString -> ByteString -> Maybe ByteString
 stripSuffix x y = reverse <$> stripPrefix (reverse x) (reverse y)
 --TODO: a better implementation
+
+-- | Break a string on a substring, returning a pair of the part of the
+-- string prior to the match, and the rest of the string.
+--
+-- The following relationship hold:
+--
+-- > break (== c) l == breakSubstring (singleton c) l
+--
+-- For example, to tokenise a string, dropping delimiters:
+--
+-- > tokenise x y = h : if null t then [] else tokenise x (drop (length x) t)
+-- >     where (h,t) = breakSubstring x y
+--
+-- To skip to the first occurence of a string:
+--
+-- > snd (breakSubstring x y)
+--
+-- To take the parts of a string before a delimiter:
+--
+-- > fst (breakSubstring x y)
+--
+-- Note that calling `breakSubstring x` does some preprocessing work, so
+-- you should avoid unnecessarily duplicating breakSubstring calls with the same
+-- pattern.
+--
+breakSubstring :: ByteString -- ^ String to search for
+               -> ByteString -- ^ String to search in
+               -> (ByteString,ByteString) -- ^ Head and tail of string broken at substring
+breakSubstring pat =
+  case lp of
+    0 -> \src -> (empty,src)
+    1 -> break (== head pat)
+    _ -> if lp * 8 <= fromIntegral (finiteBitSize (0 :: Word))
+             then shift
+             else karpRabin
+  where
+    unsafeSplitAt i s = (take i s, drop i s)
+    lp                = length pat
+    karpRabin :: ByteString -> (ByteString, ByteString)
+    karpRabin src
+        | length src < lp = (src,empty)
+        | otherwise = search (rollingHash $ take lp src) lp
+      where
+        k           = 2891336453 :: Word32
+        rollingHash = foldl' (\h b -> h * k + fromIntegral b) 0
+        hp          = rollingHash pat
+        m           = k ^ lp
+        get = fromIntegral . index src
+        search !hs !i
+            | hp == hs && pat == take lp b = u
+            | length src <= i              = (src,empty) -- not found
+            | otherwise                    = search hs' (i + 1)
+          where
+            u@(_, b) = splitAt (i - lp) src
+            hs' = hs * k +
+                  get i -
+                  m * get (i - lp)
+    {-# INLINE karpRabin #-}
+
+    shift :: ByteString -> (ByteString, ByteString)
+    shift !src
+        | length src < lp = (src,empty)
+        | otherwise       = search (intoWord $ take lp src) lp
+      where
+        intoWord :: ByteString -> Word
+        intoWord = foldl' (\w b -> (w `shiftL` 8) .|. fromIntegral b) 0
+        wp   = intoWord pat
+        mask = (1 `shiftL` fromIntegral (8 * lp)) - 1
+        search !w !i
+            | w == wp         = splitAt (i - lp) src
+            | length src <= i = (src, empty)
+            | otherwise       = search w' (i + 1)
+          where
+            b  = fromIntegral (index src i)
+            w' = mask .&. ((w `shiftL` 8) .|. b)
+    {-# INLINE shift #-}
 
 -- ---------------------------------------------------------------------
 -- Zipping
