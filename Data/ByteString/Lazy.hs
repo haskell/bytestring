@@ -236,7 +236,7 @@ import Control.Applicative      ((<$>))
 import Data.Monoid              (Monoid(..))
 #endif
 import Control.Monad            (mplus)
-import Data.Word                (Word8,Word32)
+import Data.Word                (Word8)
 import Data.Int                 (Int64)
 import System.IO                (Handle,openBinaryFile,stdin,stdout,withBinaryFile,IOMode(..)
                                 ,hClose)
@@ -246,6 +246,8 @@ import System.IO.Unsafe
 import Foreign.ForeignPtr       (withForeignPtr)
 import Foreign.Ptr
 import Foreign.Storable
+
+import GHC.Word hiding (Word8)
 
 #if !(MIN_VERSION_base(4,7,0))
 finiteBitSize = bitSize
