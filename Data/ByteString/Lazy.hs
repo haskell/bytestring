@@ -1136,8 +1136,7 @@ breakSubstring pat =
              then shift
              else karpRabin
   where
-    unsafeSplitAt i s = (take i s, drop i s)
-    lp                = length pat
+    lp = length pat
     karpRabin :: ByteString -> (ByteString, ByteString)
     karpRabin src
         | length src < lp = (src,empty)
