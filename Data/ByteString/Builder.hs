@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, BangPatterns #-}
+{-# LANGUAGE CPP, BangPatterns, MagicHash #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports -fno-warn-orphans #-}
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE Trustworthy #-}
@@ -263,6 +263,8 @@ import           Data.ByteString.Builder.ASCII
 import           Data.String (IsString(..))
 import           System.IO (Handle)
 import           Foreign
+import           GHC.Base (unpackCString#, unpackCStringUtf8#,
+                           unpackFoldrCString#, build)
 
 -- HADDOCK only imports
 import qualified Data.ByteString               as S (concat)
@@ -431,9 +433,19 @@ char8 :: Char -> Builder
 char8 = P.primFixed P.char8
 
 -- | Char8 encode a 'String'.
-{-# INLINE string8 #-}
+{-# INLINE [1] string8 #-} -- phased to allow P.cstring rewrite
 string8 :: String -> Builder
 string8 = P.primMapListFixed P.char8
+
+-- GHC desugars string literals with unpackCString# which the simplifier tends
+-- to promptly turn into build (unpackFoldrCString# s), so we match on both.
+{-# RULES
+"string8/unpackCString#" forall s.
+  string8 (unpackCString# s) = P.cstring s
+
+"string8/unpackFoldrCString#" forall s.
+  string8 (build (unpackFoldrCString# s)) = P.cstring s
+ #-}
 
 ------------------------------------------------------------------------------
 -- UTF-8 encoding
@@ -445,9 +457,23 @@ charUtf8 :: Char -> Builder
 charUtf8 = P.primBounded P.charUtf8
 
 -- | UTF-8 encode a 'String'.
-{-# INLINE stringUtf8 #-}
+--
+-- Note that 'stringUtf8' performs no codepoint validation and consequently may
+-- emit invalid UTF-8 if asked (e.g. single surrogates).
+{-# INLINE [1] stringUtf8 #-} -- phased to allow P.cstring rewrite
 stringUtf8 :: String -> Builder
 stringUtf8 = P.primMapListBounded P.charUtf8
+
+{-# RULES
+"stringUtf8/unpackCStringUtf8#" forall s.
+  stringUtf8 (unpackCStringUtf8# s) = P.cstringUtf8 s
+
+"stringUtf8/unpackCString#" forall s.
+  stringUtf8 (unpackCString# s) = P.cstring s
+
+"stringUtf8/unpackFoldrCString#" forall s.
+  stringUtf8 (build (unpackFoldrCString# s)) = P.cstring s
+ #-}
 
 instance IsString Builder where
     fromString = stringUtf8
