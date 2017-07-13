@@ -239,6 +239,8 @@ main = do
         [ benchB' "mempty"        ()  (const mempty)
         , benchB' "ensureFree 8"  ()  (const (ensureFree 8))
         , benchB' "intHost 1"     1   intHost
+        , benchB' "UTF-8 String (naive)" "hello world\0" fromString
+        , benchB' "UTF-8 String"  () $ \() -> P.cstringUtf8 "hello world\0"#
         , benchB' "String (naive)" "hello world!" fromString
         , benchB' "String"        () $ \() -> P.cstring "hello world!"#
         ]
