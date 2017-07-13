@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns        #-}
 {-# LANGUAGE PackageImports      #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE MagicHash           #-}
 -- |
 -- Copyright   : (c) 2011 Simon Meier
 -- License     : BSD3-style (see LICENSE)
@@ -239,6 +240,7 @@ main = do
         , benchB' "ensureFree 8"  ()  (const (ensureFree 8))
         , benchB' "intHost 1"     1   intHost
         , benchB' "String (naive)" "hello world!" fromString
+        , benchB' "String"        () $ \() -> P.cstring "hello world!"#
         ]
 
       , bgroup "Encoding wrappers"

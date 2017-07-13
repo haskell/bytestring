@@ -34,6 +34,7 @@ flag integer-simple
 executable bench-bytestring-builder
   hs-source-dirs:    . ..
   main-is:           BenchAll.hs
+  other-modules:     Paths_bench_bytestring
 
   build-depends:     base >= 4 && < 5
                    , ghc-prim
