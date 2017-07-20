@@ -67,9 +67,11 @@ instance Arbitrary CByteString where
       fromCChar :: CChar -> Word8
       fromCChar = fromIntegral
 
+#if !MIN_VERSION_QuickCheck(2,10,0) && __GLASGOW_HASKELL__ > 704
 instance Arbitrary CChar where
   arbitrary = fmap (fromIntegral :: Int -> CChar)
             $ oneof [choose (-128,-1), choose (1,127)]
+#endif
 
 ------------------------------------------------------------------------
 --
