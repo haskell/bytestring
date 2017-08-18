@@ -1313,7 +1313,7 @@ stripSuffix bs1@(PS _ _ l1) bs2@(PS _ _ l2)
 -- | Check whether one string is a substring of another. @isInfixOf
 -- p s@ is equivalent to @not (null (findSubstrings p s))@.
 isInfixOf :: ByteString -> ByteString -> Bool
-isInfixOf p s = isJust (findSubstring p s)
+isInfixOf p = isJust . findSubstring p
 
 -- | Break a string on a substring, returning a pair of the part of the
 -- string prior to the match, and the rest of the string.
@@ -1405,11 +1405,14 @@ breakSubstring pat =
 findSubstring :: ByteString -- ^ String to search for.
               -> ByteString -- ^ String to seach in.
               -> Maybe Int
-findSubstring pat src
-    | null pat && null src = Just 0
-    | null b = Nothing
-    | otherwise = Just (length a)
-  where (a, b) = breakSubstring pat src
+findSubstring pat = go
+  where
+    breakPat = breakSubstring pat
+    go src
+      | null pat && null src = Just 0
+      | null b = Nothing
+      | otherwise = Just (length a)
+      where (a, b) = breakPat src
 
 {-# DEPRECATED findSubstring "findSubstring is deprecated in favour of breakSubstring." #-}
 
@@ -1419,18 +1422,21 @@ findSubstring pat src
 findSubstrings :: ByteString -- ^ String to search for.
                -> ByteString -- ^ String to seach in.
                -> [Int]
-findSubstrings pat src
-    | null pat        = [0 .. ls]
-    | otherwise       = search 0
+findSubstrings pat = go
   where
-    lp = length pat
-    ls = length src
-    search !n
-        | (n > ls - lp) || null b = []
-        | otherwise = let k = n + length a
-                      in  k : search (k + lp)
+    breakPat = breakSubstring pat
+    go src
+        | null pat        = [0 .. ls]
+        | otherwise       = search 0
       where
-        (a, b) = breakSubstring pat (unsafeDrop n src)
+        lp = length pat
+        ls = length src
+        search !n
+            | (n > ls - lp) || null b = []
+            | otherwise = let k = n + length a
+                          in  k : search (k + lp)
+          where
+            (a, b) = breakPat (unsafeDrop n src)
 
 {-# DEPRECATED findSubstrings "findSubstrings is deprecated in favour of breakSubstring." #-}
 
