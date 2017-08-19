@@ -1771,7 +1771,7 @@ illegalBufferSize handle fn sz =
 -- | Read a handle's entire contents strictly into a 'ByteString'.
 --
 -- This function reads chunks at a time, increasing the chunk size on each
--- read. The final string is then realloced to the appropriate size. For
+-- read. The final string is then reallocated to the appropriate size. For
 -- files > half of available memory, this may lead to memory exhaustion.
 -- Consider using 'readFile' in this case.
 --
