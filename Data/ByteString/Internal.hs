@@ -454,11 +454,14 @@ compareBytes (PS fp1 off1 len1) (PS fp2 off2 len2) =
 append :: ByteString -> ByteString -> ByteString
 append (PS _   _    0)    b                  = b
 append a                  (PS _   _    0)    = a
-append (PS fp1 off1 len1) (PS fp2 off2 len2) =
-    unsafeCreate (len1+len2) $ \destptr1 -> do
-      let destptr2 = destptr1 `plusPtr` len1
-      withForeignPtr fp1 $ \p1 -> memcpy destptr1 (p1 `plusPtr` off1) len1
-      withForeignPtr fp2 $ \p2 -> memcpy destptr2 (p2 `plusPtr` off2) len2
+append (PS fp1 off1 len1) (PS fp2 off2 len2)
+    | fp1 == fp2 && off1 + len1 == off2      =
+        PS fp1 off1 (len1+len2)
+    | otherwise                              =
+        unsafeCreate (len1+len2) $ \destptr1 -> do
+          let destptr2 = destptr1 `plusPtr` len1
+          withForeignPtr fp1 $ \p1 -> memcpy destptr1 (p1 `plusPtr` off1) len1
+          withForeignPtr fp2 $ \p2 -> memcpy destptr2 (p2 `plusPtr` off2) len2
 
 concat :: [ByteString] -> ByteString
 concat = \bss0 -> goLen0 bss0 bss0

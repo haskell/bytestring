@@ -433,7 +433,11 @@ unsnoc (PS x s l)
                           withForeignPtr x $ \p -> peekByteOff p (s+l-1))
 {-# INLINE unsnoc #-}
 
--- | /O(n)/ Append two ByteStrings
+-- | /O(n)/ Append two ByteStrings.
+--
+-- Note: 'append' is /O(1)/ if the ByteStrings are slices of a bigger
+-- ByteString and are adjacent in memory (e.g. if they were obtained by doing
+-- 'splitAt').
 append :: ByteString -> ByteString -> ByteString
 append = mappend
 {-# INLINE append #-}
