@@ -544,17 +544,17 @@ integerDec i
                     PAIR(q,r) -> fromInteger q : fromInteger r : putB ns
 
 
-foreign import ccall unsafe "static _hs_bytestring_int_dec_padded9"
+foreign import ccall unsafe "static _hs_bytestring_int32_dec_padded9"
     c_int_dec_padded9 :: CInt -> Ptr Word8 -> IO ()
 
-foreign import ccall unsafe "static _hs_bytestring_long_long_int_dec_padded18"
-    c_long_long_int_dec_padded18 :: CLLong -> Ptr Word8 -> IO ()
+foreign import ccall unsafe "static _hs_bytestring_int64_dec_padded18"
+    c_int64_dec_padded18 :: Int64 -> Ptr Word8 -> IO ()
 
 {-# INLINE intDecPadded #-}
 intDecPadded :: P.BoundedPrim Int
 intDecPadded = P.liftFixedToBounded $ caseWordSize_32_64
-    (P.fixedPrim  9 $ c_int_dec_padded9            . fromIntegral)
-    (P.fixedPrim 18 $ c_long_long_int_dec_padded18 . fromIntegral)
+    (P.fixedPrim  9 $ c_int_dec_padded9    . fromIntegral)
+    (P.fixedPrim 18 $ c_int64_dec_padded18 . fromIntegral)
 
 #else
 -- compilers other than GHC

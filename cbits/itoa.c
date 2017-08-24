@@ -4,7 +4,7 @@
 // inspired by: http://www.jb.man.ac.uk/~slowe/cpp/itoa.html //
 ///////////////////////////////////////////////////////////////
 
-#include <stdio.h>
+#include <stdint.h>
 
 // Decimal Encoding
 ///////////////////
@@ -49,11 +49,11 @@ char* _hs_bytestring_int_dec (int x, char* buf)
     return next_free;
 }
 
-// signed long long ints (64 bit integers)
-char* _hs_bytestring_long_long_int_dec (long long int x, char* buf)
+// signed 64 bit integers
+char* _hs_bytestring_int64_dec (int64_t x, char* buf)
 {
     char c, *ptr = buf, *next_free;
-    long long int x_tmp;
+    int64_t x_tmp;
 
     // we cannot negate directly as  0 - (minBound :: Int) = minBound
     if (x < 0) {
@@ -108,11 +108,11 @@ char* _hs_bytestring_uint_dec (unsigned int x, char* buf)
     return next_free;
 }
 
-// unsigned long ints
-char* _hs_bytestring_long_long_uint_dec (long long unsigned int x, char* buf)
+// unsigned 64 bit integers
+char* _hs_bytestring_uint64_dec (uint64_t x, char* buf)
 {
     char c, *ptr = buf, *next_free;
-    long long unsigned int x_tmp;
+    uint64_t x_tmp;
 
     // encode positive number as little-endian decimal
     do {
@@ -155,14 +155,14 @@ void _hs_bytestring_int_dec_padded9 (int x, char* buf)
     while (buf < ptr) { *(--ptr) = '0'; }
 }
 
-// Padded (19 digits), decimal, positive long long int:
+// Padded (19 digits), decimal, positive int64_t:
 // We will use it with numbers that fit in 63 bits; i.e., numbers smaller than
 // 10^18, as "63 * log 2 / log 10 = 18.96"
-void _hs_bytestring_long_long_int_dec_padded18 (long long int x, char* buf)
+void _hs_bytestring_int64_dec_padded18 (int64_t x, char* buf)
 {
     const int max_width_int64_dec = 18;
     char* ptr = buf + max_width_int64_dec;
-    long long int x_tmp;
+    int64_t x_tmp;
 
     // encode positive number as little-endian decimal
     do {
@@ -181,7 +181,7 @@ void _hs_bytestring_long_long_int_dec_padded18 (long long int x, char* buf)
 ///////////////////////
 
 // unsigned ints (32 bit words)
-char* _hs_bytestring_uint_hex (unsigned int x, char* buf) {
+char* _hs_bytestring_uint32_hex (uint32_t x, char* buf) {
     // write hex representation in reverse order
     char c, *ptr = buf, *next_free;
     do {
@@ -198,8 +198,8 @@ char* _hs_bytestring_uint_hex (unsigned int x, char* buf) {
     return next_free;
 };
 
-// unsigned long ints (64 bit words)
-char* _hs_bytestring_long_long_uint_hex (long long unsigned int x, char* buf) {
+// unsigned 64 bit integers
+char* _hs_bytestring_uint64_hex (uint64_t x, char* buf) {
     // write hex representation in reverse order
     char c, *ptr = buf, *next_free;
     do {
@@ -217,9 +217,9 @@ char* _hs_bytestring_long_long_uint_hex (long long unsigned int x, char* buf) {
 };
 
 // unsigned ints (32 bit words)
-void _hs_bytestring_builder_uint_fixed_width_hex (int width,
-                                                  unsigned int x,
-                                                  char* buf) {
+void _hs_bytestring_builder_uint32_fixed_width_hex (int width,
+                                                    uint32_t x,
+                                                    char* buf) {
     while (--width >= 0) {
       buf[width] = digits[x & 0xf];
       x >>= 4;
@@ -227,9 +227,9 @@ void _hs_bytestring_builder_uint_fixed_width_hex (int width,
 };
 
 // unsigned ints (64 bit words)
-void _hs_bytestring_builder_long_long_uint_fixed_width_hex (int width,
-                                                            long long unsigned int x,
-                                                            char* buf) {
+void _hs_bytestring_builder_uint64_fixed_width_hex (int width,
+                                                    uint64_t x,
+                                                    char* buf) {
     while (--width >= 0) {
       buf[width] = digits[x & 0xf];
       x >>= 4;
@@ -237,7 +237,7 @@ void _hs_bytestring_builder_long_long_uint_fixed_width_hex (int width,
 };
 
 // unsigned ints (32 bit words)
-char* _hs_bytestring_uint_hex_upper (unsigned int x, char* buf) {
+char* _hs_bytestring_uint32_hex_upper (uint32_t x, char* buf) {
     // write hex representation in reverse order
     char c, *ptr = buf, *next_free;
     do {
@@ -255,7 +255,7 @@ char* _hs_bytestring_uint_hex_upper (unsigned int x, char* buf) {
 };
 
 // unsigned long ints (64 bit words)
-char* _hs_bytestring_long_long_uint_hex_upper (long long unsigned int x, char* buf) {
+char* _hs_bytestring_uint64_hex_upper (uint64_t x, char* buf) {
     // write hex representation in reverse order
     char c, *ptr = buf, *next_free;
     do {
@@ -273,9 +273,9 @@ char* _hs_bytestring_long_long_uint_hex_upper (long long unsigned int x, char* b
 };
 
 // unsigned ints (32 bit words)
-void _hs_bytestring_builder_uint_fixed_width_hex_upper (int width,
-                                                        unsigned int x,
-                                                        char* buf) {
+void _hs_bytestring_builder_uint32_fixed_width_hex_upper (int width,
+                                                          uint32_t x,
+                                                          char* buf) {
     while (--width >= 0) {
       buf[width] = digits_upper[x & 0xf];
       x >>= 4;
@@ -283,9 +283,9 @@ void _hs_bytestring_builder_uint_fixed_width_hex_upper (int width,
 };
 
 // unsigned ints (64 bit words)
-void _hs_bytestring_builder_long_long_uint_fixed_width_hex_upper (int width,
-                                                                  long long unsigned int x,
-                                                                  char* buf) {
+void _hs_bytestring_builder_uint64_fixed_width_hex_upper (int width,
+                                                          uint64_t x,
+                                                          char* buf) {
     while (--width >= 0) {
       buf[width] = digits_upper[x & 0xf];
       x >>= 4;

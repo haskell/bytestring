@@ -144,8 +144,8 @@ char7 = (\c -> fromIntegral $ ord c .&. 0x7f) >$< word8
 foreign import ccall unsafe "static _hs_bytestring_int_dec" c_int_dec
     :: CInt -> Ptr Word8 -> IO (Ptr Word8)
 
-foreign import ccall unsafe "static _hs_bytestring_long_long_int_dec" c_long_long_int_dec
-    :: CLLong -> Ptr Word8 -> IO (Ptr Word8)
+foreign import ccall unsafe "static _hs_bytestring_int64_dec" c_int64_dec
+    :: Int64 -> Ptr Word8 -> IO (Ptr Word8)
 
 {-# INLINE encodeIntDecimal #-}
 encodeIntDecimal :: Integral a => Int -> BoundedPrim a
@@ -170,7 +170,7 @@ int32Dec = encodeIntDecimal 11
 -- | Decimal encoding of an 'Int64'.
 {-# INLINE int64Dec #-}
 int64Dec :: BoundedPrim Int64
-int64Dec = boudedPrim 20 $ c_long_long_int_dec . fromIntegral
+int64Dec = boudedPrim 20 $ c_int64_dec . fromIntegral
 
 -- | Decimal encoding of an 'Int'.
 {-# INLINE intDec #-}
@@ -186,8 +186,8 @@ intDec = caseWordSize_32_64
 foreign import ccall unsafe "static _hs_bytestring_uint_dec" c_uint_dec
     :: CUInt -> Ptr Word8 -> IO (Ptr Word8)
 
-foreign import ccall unsafe "static _hs_bytestring_long_long_uint_dec" c_long_long_uint_dec
-    :: CULLong -> Ptr Word8 -> IO (Ptr Word8)
+foreign import ccall unsafe "static _hs_bytestring_uint64_dec" c_uint64_dec
+    :: Word64 -> Ptr Word8 -> IO (Ptr Word8)
 
 {-# INLINE encodeWordDecimal #-}
 encodeWordDecimal :: Integral a => Int -> BoundedPrim a
@@ -211,7 +211,7 @@ word32Dec = encodeWordDecimal 10
 -- | Decimal encoding of a 'Word64'.
 {-# INLINE word64Dec #-}
 word64Dec :: BoundedPrim Word64
-word64Dec = boudedPrim 20 $ c_long_long_uint_dec . fromIntegral
+word64Dec = boudedPrim 20 $ c_uint64_dec . fromIntegral
 
 -- | Decimal encoding of a 'Word'.
 {-# INLINE wordDec #-}
@@ -227,16 +227,16 @@ wordDec = caseWordSize_32_64
 -- without lead
 ---------------
 
-foreign import ccall unsafe "static _hs_bytestring_uint_hex" c_uint_hex
-    :: CUInt -> Ptr Word8 -> IO (Ptr Word8)
+foreign import ccall unsafe "static _hs_bytestring_uint32_hex" c_uint32_hex
+    :: Word32 -> Ptr Word8 -> IO (Ptr Word8)
 
-foreign import ccall unsafe "static _hs_bytestring_long_long_uint_hex" c_long_long_uint_hex
-    :: CULLong -> Ptr Word8 -> IO (Ptr Word8)
+foreign import ccall unsafe "static _hs_bytestring_uint64_hex" c_uint64_hex
+    :: Word64 -> Ptr Word8 -> IO (Ptr Word8)
 
 {-# INLINE encodeWordHex #-}
 encodeWordHex :: forall a. (Storable a, Integral a) => BoundedPrim a
 encodeWordHex =
-    boudedPrim (2 * sizeOf (undefined :: a)) $ c_uint_hex  . fromIntegral
+    boudedPrim (2 * sizeOf (undefined :: a)) $ c_uint32_hex  . fromIntegral
 
 -- | Hexadecimal encoding of a 'Word8'.
 {-# INLINE word8Hex #-}
@@ -256,7 +256,7 @@ word32Hex = encodeWordHex
 -- | Hexadecimal encoding of a 'Word64'.
 {-# INLINE word64Hex #-}
 word64Hex :: BoundedPrim Word64
-word64Hex = boudedPrim 16 $ c_long_long_uint_hex . fromIntegral
+word64Hex = boudedPrim 16 $ c_uint64_hex . fromIntegral
 
 -- | Hexadecimal encoding of a 'Word'.
 {-# INLINE wordHex #-}
@@ -265,16 +265,16 @@ wordHex = caseWordSize_32_64
     (fromIntegral >$< word32Hex)
     (fromIntegral >$< word64Hex)
 
-foreign import ccall unsafe "static _hs_bytestring_uint_hex_upper" c_uint_hex_upper
-    :: CUInt -> Ptr Word8 -> IO (Ptr Word8)
+foreign import ccall unsafe "static _hs_bytestring_uint32_hex_upper" c_uint32_hex_upper
+    :: Word32 -> Ptr Word8 -> IO (Ptr Word8)
 
-foreign import ccall unsafe "static _hs_bytestring_long_long_uint_hex_upper" c_long_long_uint_hex_upper
-    :: CULLong -> Ptr Word8 -> IO (Ptr Word8)
+foreign import ccall unsafe "static _hs_bytestring_uint64_hex_upper" c_uint64_hex_upper
+    :: Word64 -> Ptr Word8 -> IO (Ptr Word8)
 
 {-# INLINE encodeWordHexUpper #-}
 encodeWordHexUpper :: forall a. (Storable a, Integral a) => BoundedPrim a
 encodeWordHexUpper =
-    boudedPrim (2 * sizeOf (undefined :: a)) $ c_uint_hex_upper  . fromIntegral
+    boudedPrim (2 * sizeOf (undefined :: a)) $ c_uint32_hex_upper  . fromIntegral
 
 -- | Shortest hexadecimal encoding of a 'Word8' using upper-case characters.
 {-# INLINE word8HexUpper #-}
@@ -294,7 +294,7 @@ word32HexUpper = encodeWordHexUpper
 -- | Shortest hexadecimal encoding of a 'Word64' using upper-case characters.
 {-# INLINE word64HexUpper #-}
 word64HexUpper :: BoundedPrim Word64
-word64HexUpper = boudedPrim 16 $ c_long_long_uint_hex_upper . fromIntegral
+word64HexUpper = boudedPrim 16 $ c_uint64_hex_upper . fromIntegral
 
 -- | Shortest hexadecimal encoding of a 'Word' using upper-case characters.
 {-# INLINE wordHexUpper #-}
@@ -307,15 +307,15 @@ wordHexUpper = caseWordSize_32_64
 -- fixed width; leading zeroes
 ------------------------------
 
-foreign import ccall unsafe "static _hs_bytestring_builder_uint_fixed_width_hex" c_uint_fixed_hex
-    :: CInt -> CUInt -> Ptr Word8 -> IO ()
+foreign import ccall unsafe "static _hs_bytestring_builder_uint32_fixed_width_hex" c_uint32_fixed_hex
+    :: CInt -> Word32 -> Ptr Word8 -> IO ()
 
-foreign import ccall unsafe "static _hs_bytestring_builder_long_long_uint_fixed_width_hex" c_long_long_uint_fixed_hex
-    :: CInt -> CULLong -> Ptr Word8 -> IO ()
+foreign import ccall unsafe "static _hs_bytestring_builder_uint64_fixed_width_hex" c_uint64_fixed_hex
+    :: CInt -> Word64 -> Ptr Word8 -> IO ()
 
 {-# INLINE encodeWordHexFixedWidth #-}
 encodeWordHexFixedWidth :: forall a. (Storable a, Integral a) => Int -> FixedPrim a
-encodeWordHexFixedWidth width = fixedPrim width $ c_uint_fixed_hex (CInt (fromIntegral width)) . fromIntegral
+encodeWordHexFixedWidth width = fixedPrim width $ c_uint32_fixed_hex (CInt (fromIntegral width)) . fromIntegral
 
 {-# INLINE encodeWordHexFixed #-}
 encodeWordHexFixed :: forall a. (Storable a, Integral a) => FixedPrim a
@@ -323,7 +323,7 @@ encodeWordHexFixed = encodeWordHexFixedWidth (2 * sizeOf (undefined :: a))
 
 {-# INLINE encodeWord64HexFixedWidth #-}
 encodeWord64HexFixedWidth :: forall a. (Storable a, Integral a) => Int -> FixedPrim a
-encodeWord64HexFixedWidth width = fixedPrim width $ c_long_long_uint_fixed_hex (CInt (fromIntegral width)) . fromIntegral
+encodeWord64HexFixedWidth width = fixedPrim width $ c_uint64_fixed_hex (CInt (fromIntegral width)) . fromIntegral
 
 -- | Hexadecimal encoding of an 'Int8' using 2 lower-case characters.
 {-# INLINE int8HexFixed #-}
@@ -403,15 +403,15 @@ doubleHexFixed = encodeDoubleViaWord64F word64HexFixed
 -- fixed width; leading zeroes; upper-case
 ------------------------------------------
 
-foreign import ccall unsafe "static _hs_bytestring_builder_uint_fixed_width_hex_upper" c_uint_fixed_hex_upper
-    :: CInt -> CUInt -> Ptr Word8 -> IO ()
+foreign import ccall unsafe "static _hs_bytestring_builder_uint32_fixed_width_hex_upper" c_uint32_fixed_hex_upper
+    :: CInt -> Word32 -> Ptr Word8 -> IO ()
 
-foreign import ccall unsafe "static _hs_bytestring_builder_long_long_uint_fixed_width_hex_upper" c_long_long_uint_fixed_hex_upper
-    :: CInt -> CULLong -> Ptr Word8 -> IO ()
+foreign import ccall unsafe "static _hs_bytestring_builder_uint64_fixed_width_hex_upper" c_uint64_fixed_hex_upper
+    :: CInt -> Word64 -> Ptr Word8 -> IO ()
 
 {-# INLINE encodeWordHexUpperFixedWidth #-}
 encodeWordHexUpperFixedWidth :: forall a. (Storable a, Integral a) => Int -> FixedPrim a
-encodeWordHexUpperFixedWidth width = fixedPrim width $ c_uint_fixed_hex_upper (CInt (fromIntegral width)) . fromIntegral
+encodeWordHexUpperFixedWidth width = fixedPrim width $ c_uint32_fixed_hex_upper (CInt (fromIntegral width)) . fromIntegral
 
 {-# INLINE encodeWordHexUpperFixed #-}
 encodeWordHexUpperFixed :: forall a. (Storable a, Integral a) => FixedPrim a
@@ -419,7 +419,7 @@ encodeWordHexUpperFixed = encodeWordHexUpperFixedWidth (2 * sizeOf (undefined ::
 
 {-# INLINE encodeWord64HexUpperFixedWidth #-}
 encodeWord64HexUpperFixedWidth :: forall a. (Storable a, Integral a) => Int -> FixedPrim a
-encodeWord64HexUpperFixedWidth width = fixedPrim width $ c_long_long_uint_fixed_hex_upper (CInt (fromIntegral width)) . fromIntegral
+encodeWord64HexUpperFixedWidth width = fixedPrim width $ c_uint64_fixed_hex_upper (CInt (fromIntegral width)) . fromIntegral
 
 -- | Hexadecimal encoding of an 'Int8' using 2 upper-case characters.
 {-# INLINE int8HexUpperFixed #-}
