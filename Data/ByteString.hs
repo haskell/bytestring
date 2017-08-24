@@ -1436,7 +1436,7 @@ findSubstrings pat = go
             | otherwise = let k = n + length a
                           in  k : search (k + lp)
           where
-            (a, b) = breakPat (unsafeDrop n src)
+            !(a, b) = breakPat (unsafeDrop n src)
 
 {-# DEPRECATED findSubstrings "findSubstrings is deprecated in favour of breakSubstring." #-}
 
