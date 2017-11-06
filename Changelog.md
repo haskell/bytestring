@@ -1,6 +1,7 @@
 0.10.10.0 TBD
 
  * Add conversions between ShortByteString and CString (#126)
+ * Don't perform unaligned writes when it isn't known to be safe (#133)
 
 0.10.8.2 Duncan Coutts <duncan@community.haskell.org> Feb 2017
 
