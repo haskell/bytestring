@@ -567,8 +567,8 @@ overflowError fun = error $ "Data.ByteString." ++ fun ++ ": size overflow"
 -- it is in fact a malevolent agent of chaos. It unpicks the seams of reality
 -- (and the 'IO' monad) so that the normal rules no longer apply. It lulls you
 -- into thinking it is reasonable, but when you are not looking it stabs you
--- in the back and aliases all of your mutable buffers. The carcass of many a
--- seasoned Haskell programmer lie strewn at its feet.
+-- in the back and aliases all of your mutable buffers. The carcass of many
+-- seasoned Haskell programmers lie strewn at its feet.
 --
 -- Witness the trail of destruction:
 --
