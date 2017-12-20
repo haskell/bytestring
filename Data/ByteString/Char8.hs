@@ -164,6 +164,7 @@ module Data.ByteString.Char8 (
 
         -- * Indexing ByteStrings
         index,                  -- :: ByteString -> Int -> Char
+        safeIndex,              -- :: ByteString -> Int -> Maybe Char
         elemIndex,              -- :: Char -> ByteString -> Maybe Int
         elemIndices,            -- :: Char -> ByteString -> [Int]
         elemIndexEnd,           -- :: Char -> ByteString -> Maybe Int
@@ -643,6 +644,13 @@ groupBy k = B.groupBy (\a b -> k (w2c a) (w2c b))
 index :: ByteString -> Int -> Char
 index = (w2c .) . B.index
 {-# INLINE index #-}
+
+-- | 'ByteString' index that returns 'Nothing' if:
+--      @n < 0@
+--      @n > length byteString@
+safeIndex :: ByteString -> Int -> Maybe Char
+safeIndex = ((fmap w2c) .) . B.safeIndex
+{-# INLINE safeIndex #-}
 
 -- | /O(n)/ The 'elemIndex' function returns the index of the first
 -- element in the given 'ByteString' which is equal (by memchr) to the
