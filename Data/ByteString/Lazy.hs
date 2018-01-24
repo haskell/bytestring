@@ -168,7 +168,6 @@ module Data.ByteString.Lazy (
         -- * Indexing ByteStrings
         index,                  -- :: ByteString -> Int64 -> Word8
         indexMaybe,             -- :: ByteString -> Int64 -> Maybe Word8
-        (!?),                   -- :: ByteString -> Int64 -> Maybe Word8
         elemIndex,              -- :: Word8 -> ByteString -> Maybe Int64
         elemIndexEnd,           -- :: Word8 -> ByteString -> Maybe Int64
         elemIndices,            -- :: Word8 -> ByteString -> [Int64]
@@ -897,9 +896,11 @@ index cs0 i         = index' cs0 i
               index' cs (n - fromIntegral (S.length c))
           | otherwise       = S.unsafeIndex c (fromIntegral n)
 
--- | 'ByteString' index that returns 'Nothing' if:
---      @n < 0@
---      @n > length byteString@
+-- | /O(c)/ 'ByteString' index, starting from 0, that returns 'Nothing' if:
+--
+-- > 0 <= n < length bs
+--
+-- @since 0.10.10.0
 indexMaybe :: ByteString -> Int64 -> Maybe Word8
 indexMaybe _ i | i < 0 = Nothing
 indexMaybe cs0 i       = index' cs0 i
@@ -908,10 +909,6 @@ indexMaybe cs0 i       = index' cs0 i
           | n >= fromIntegral (S.length c) =
               index' cs (n - fromIntegral (S.length c))
           | otherwise       = Just $ S.unsafeIndex c (fromIntegral n)
-
--- | Infix equivalent for `indexMaybe`
-(!?) :: ByteString -> Int64 -> Maybe Word8
-(!?) = indexMaybe
 
 -- | /O(n)/ The 'elemIndex' function returns the index of the first
 -- element in the given 'ByteString' which is equal to the query

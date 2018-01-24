@@ -165,7 +165,6 @@ module Data.ByteString.Char8 (
         -- * Indexing ByteStrings
         index,                  -- :: ByteString -> Int -> Char
         indexMaybe,             -- :: ByteString -> Int -> Maybe Char
-        (!?),                   -- :: ByteString -> Int -> Maybe Char
         elemIndex,              -- :: Char -> ByteString -> Maybe Int
         elemIndices,            -- :: Char -> ByteString -> [Int]
         elemIndexEnd,           -- :: Char -> ByteString -> Maybe Int
@@ -646,16 +645,14 @@ index :: ByteString -> Int -> Char
 index = (w2c .) . B.index
 {-# INLINE index #-}
 
--- | 'ByteString' index that returns 'Nothing' if:
---      @n < 0@
---      @n > length byteString@
+-- | /O(1)/ 'ByteString' index, starting from 0, that returns 'Nothing' if:
+--
+-- > 0 <= n < length bs
+--
+-- @since 0.10.10.0
 indexMaybe :: ByteString -> Int -> Maybe Char
 indexMaybe = ((fmap w2c) .) . B.indexMaybe
 {-# INLINE indexMaybe #-}
-
--- | Infix equivalent for `indexMaybe`
-(!?) :: ByteString -> Int -> Maybe Char
-(!?) = indexMaybe
 
 -- | /O(n)/ The 'elemIndex' function returns the index of the first
 -- element in the given 'ByteString' which is equal (by memchr) to the
