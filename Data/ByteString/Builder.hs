@@ -191,6 +191,7 @@ module Data.ByteString.Builder
       -- about fine-tuning them.
     , toLazyByteString
     , hPutBuilder
+    , writeFile
 
       -- * Creating Builders
 
@@ -261,7 +262,7 @@ import qualified Data.ByteString.Lazy.Internal as L
 import           Data.ByteString.Builder.ASCII
 
 import           Data.String (IsString(..))
-import           System.IO (Handle)
+import           System.IO (Handle, IOMode(WriteMode), withBinaryFile)
 import           Foreign
 
 -- HADDOCK only imports
@@ -271,6 +272,8 @@ import           Data.Monoid (Monoid(..))
 #endif
 import           Data.Foldable                      (foldMap)
 import           Data.List                          (intersperse)
+
+import           Prelude                     hiding (writeFile)
 
 
 -- | Execute a 'Builder' and return the generated chunks as a lazy 'L.ByteString'.
@@ -300,6 +303,11 @@ toLazyByteString = toLazyByteStringWith
 hPutBuilder :: Handle -> Builder -> IO ()
 hPutBuilder h = hPut h . putBuilder
 
+-- | Write a 'Builder' to a file.
+-- This is a convenience wrapper around and 'withBinaryFile' and 'hPutBuilder'.
+writeFile :: FilePath -> Builder -> IO ()
+writeFile fp b =
+  withBinaryFile fp WriteMode (\h -> hPutBuilder h b)
 
 ------------------------------------------------------------------------------
 -- Binary encodings
