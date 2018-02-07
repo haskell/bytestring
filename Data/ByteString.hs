@@ -20,9 +20,9 @@
 -- Stability   : stable
 -- Portability : portable
 --
--- A time and space-efficient implementation of byte vectors using
+-- A time- and space-efficient implementation of byte vectors using
 -- packed Word8 arrays, suitable for high performance use, both in terms
--- of large data quantities, or high speed requirements. Byte vectors
+-- of large data quantities and high speed requirements. Byte vectors
 -- are encoded as strict 'Word8' arrays of bytes, held in a 'ForeignPtr',
 -- and can be passed between C and Haskell with little effort.
 --
