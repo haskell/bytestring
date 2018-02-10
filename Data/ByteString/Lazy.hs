@@ -488,7 +488,7 @@ foldl f z = go z
         go a (Chunk c cs) = go (S.foldl f a c) cs
 {-# INLINE foldl #-}
 
--- | 'foldl\'' is like 'foldl', but strict in the accumulator.
+-- | 'foldl'' is like 'foldl', but strict in the accumulator.
 foldl' :: (a -> Word8 -> a) -> a -> ByteString -> a
 foldl' f z = go z
   where go !a Empty        = a
@@ -508,7 +508,7 @@ foldl1 :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldl1 _ Empty        = errorEmptyList "foldl1"
 foldl1 f (Chunk c cs) = foldl f (S.unsafeHead c) (Chunk (S.unsafeTail c) cs)
 
--- | 'foldl1\'' is like 'foldl1', but strict in the accumulator.
+-- | 'foldl1'' is like 'foldl1', but strict in the accumulator.
 foldl1' :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldl1' _ Empty        = errorEmptyList "foldl1'"
 foldl1' f (Chunk c cs) = foldl' f (S.unsafeHead c) (Chunk (S.unsafeTail c) cs)
