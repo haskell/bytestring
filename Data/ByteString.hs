@@ -1597,9 +1597,8 @@ sort (BS input l)
                          go (i + 1) (ptr `plusPtr` fromIntegral n)
     go 0 p
   where
-    -- | Count the number of occurrences of each byte.
+    -- Count the number of occurrences of each byte.
     -- Used by 'sort'
-    --
     countOccurrences :: Ptr CSize -> Ptr Word8 -> Int -> IO ()
     countOccurrences !counts !str !len = go 0
      where
