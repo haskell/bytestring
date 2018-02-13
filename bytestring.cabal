@@ -150,6 +150,17 @@ test-suite prop-compiled
   other-modules:    Rules
                     QuickCheckUtils
                     TestFramework
+
+                    Data.ByteString
+                    Data.ByteString.Char8
+                    Data.ByteString.Internal
+                    Data.ByteString.Lazy
+                    Data.ByteString.Lazy.Char8
+                    Data.ByteString.Lazy.Internal
+                    Data.ByteString.Short
+                    Data.ByteString.Short.Internal
+                    Data.ByteString.Unsafe
+
   hs-source-dirs:   . tests
   build-depends:    base, ghc-prim, deepseq, random, directory,
                     test-framework, test-framework-quickcheck2,
