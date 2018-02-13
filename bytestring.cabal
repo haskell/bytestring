@@ -207,6 +207,25 @@ test-suite test-builder
                     Data.ByteString.Builder.Prim.TestUtils
                     TestFramework
 
+                    Data.ByteString
+                    Data.ByteString.Builder
+                    Data.ByteString.Builder.ASCII
+                    Data.ByteString.Builder.Extra
+                    Data.ByteString.Builder.Internal
+                    Data.ByteString.Builder.Prim
+                    Data.ByteString.Builder.Prim.ASCII
+                    Data.ByteString.Builder.Prim.Binary
+                    Data.ByteString.Builder.Prim.Internal
+                    Data.ByteString.Builder.Prim.Internal.Base16
+                    Data.ByteString.Builder.Prim.Internal.Floating
+                    Data.ByteString.Builder.Prim.Internal.UncheckedShifts
+                    Data.ByteString.Internal
+                    Data.ByteString.Lazy
+                    Data.ByteString.Lazy.Internal
+                    Data.ByteString.Short
+                    Data.ByteString.Short.Internal
+                    Data.ByteString.Unsafe
+
   build-depends:    base, ghc-prim,
                     deepseq,
                     QuickCheck                 >= 2.4 && < 2.10,
