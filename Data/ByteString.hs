@@ -486,59 +486,62 @@ transpose ps = P.map pack . List.transpose . P.map unpack $ ps
 -- ByteString using the binary operator, from left to right.
 --
 foldl :: (a -> Word8 -> a) -> a -> ByteString -> a
-foldl f z (BS fp len) =
-      let p = unsafeForeignPtrToPtr fp
-       in go (p `plusPtr` (len-1)) (p `plusPtr` (-1))
-    where
-      -- not tail recursive; traverses array right to left
-      go !p !q | p == q    = z
-               | otherwise = let !x = accursedUnutterablePerformIO $ do
-                                        x' <- peek p
-                                        touchForeignPtr fp
-                                        return x'
-                             in f (go (p `plusPtr` (-1)) q) x
+foldl f z (BS fp len) = go (end `plusPtr` len)
+  where
+    end = (unsafeForeignPtrToPtr fp) `plusPtr` (-1)
+    -- not tail recursive; traverses array right to left
+    go !p | p == end  = z
+          | otherwise = let !x = accursedUnutterablePerformIO $ do
+                                   x' <- peek p
+                                   touchForeignPtr fp
+                                   return x'
+                        in f (go (p `plusPtr` (-1))) x
 {-# INLINE foldl #-}
 
 -- | 'foldl'' is like 'foldl', but strict in the accumulator.
 --
 foldl' :: (a -> Word8 -> a) -> a -> ByteString -> a
 foldl' f v (BS fp len) =
-      accursedUnutterablePerformIO $ withForeignPtr fp $ \p ->
-        go v p (p `plusPtr` len)
-    where
-      -- tail recursive; traverses array left to right
-      go !z !p !q | p == q    = return z
-                  | otherwise = do x <- peek p
-                                   go (f z x) (p `plusPtr` 1) q
+    accursedUnutterablePerformIO $ withForeignPtr fp g
+  where
+    g ptr = go v ptr
+      where
+        end  = ptr `plusPtr` len
+        -- tail recursive; traverses array left to right
+        go !z !p | p == end  = return z
+                 | otherwise = do x <- peek p
+                                  go (f z x) (p `plusPtr` 1)
 {-# INLINE foldl' #-}
 
 -- | 'foldr', applied to a binary operator, a starting value
 -- (typically the right-identity of the operator), and a ByteString,
 -- reduces the ByteString using the binary operator, from right to left.
 foldr :: (Word8 -> a -> a) -> a -> ByteString -> a
-foldr k z (BS fp len) =
-      let p = unsafeForeignPtrToPtr fp
-       in go p (p `plusPtr` len)
-    where
-      -- not tail recursive; traverses array left to right
-      go !p !q | p == q    = z
-               | otherwise = let !x = accursedUnutterablePerformIO $ do
-                                        x' <- peek p
-                                        touchForeignPtr fp
-                                        return x'
-                              in k x (go (p `plusPtr` 1) q)
+foldr k z (BS fp len) = go ptr
+  where
+    ptr = unsafeForeignPtrToPtr fp
+    end = ptr `plusPtr` len
+    -- not tail recursive; traverses array left to right
+    go !p | p == end  = z
+          | otherwise = let !x = accursedUnutterablePerformIO $ do
+                                   x' <- peek p
+                                   touchForeignPtr fp
+                                   return x'
+                         in k x (go (p `plusPtr` 1))
 {-# INLINE foldr #-}
 
 -- | 'foldr'' is like 'foldr', but strict in the accumulator.
 foldr' :: (Word8 -> a -> a) -> a -> ByteString -> a
 foldr' k v (BS fp len) =
-      accursedUnutterablePerformIO $ withForeignPtr fp $ \p ->
-        go v (p `plusPtr` (len-1)) (p `plusPtr` (-1))
-    where
-      -- tail recursive; traverses array right to left
-      go !z !p !q | p == q    = return z
-                  | otherwise = do x <- peek p
-                                   go (k x z) (p `plusPtr` (-1)) q
+    accursedUnutterablePerformIO $ withForeignPtr fp g
+  where
+    g ptr = go v (end `plusPtr` len)
+      where
+        end = ptr `plusPtr` (-1)
+        -- tail recursive; traverses array right to left
+        go !z !p | p == end  = return z
+                 | otherwise = do x <- peek p
+                                  go (k x z) (p `plusPtr` (-1))
 {-# INLINE foldr' #-}
 
 -- | 'foldl1' is a variant of 'foldl' that has no starting value
@@ -591,14 +594,16 @@ concatMap f = concat . foldr ((:) . f) []
 -- | /O(n)/ Applied to a predicate and a ByteString, 'any' determines if
 -- any element of the 'ByteString' satisfies the predicate.
 any :: (Word8 -> Bool) -> ByteString -> Bool
-any _ (BS _ 0) = False
-any f (BS x l) = accursedUnutterablePerformIO $ withForeignPtr x $ \ptr ->
-        go ptr (ptr `plusPtr` l)
-    where
-        go !p !q | p == q    = return False
-                 | otherwise = do c <- peek p
-                                  if f c then return True
-                                         else go (p `plusPtr` 1) q
+any _ (BS _ 0)   = False
+any f (BS x len) = accursedUnutterablePerformIO $ withForeignPtr x g
+  where
+    g ptr = go ptr
+      where
+        end = ptr `plusPtr` len
+        go !p | p == end  = return False
+              | otherwise = do c <- peek p
+                               if f c then return True
+                                      else go (p `plusPtr` 1)
 {-# INLINE any #-}
 
 -- todo fuse
@@ -606,15 +611,17 @@ any f (BS x l) = accursedUnutterablePerformIO $ withForeignPtr x $ \ptr ->
 -- | /O(n)/ Applied to a predicate and a 'ByteString', 'all' determines
 -- if all elements of the 'ByteString' satisfy the predicate.
 all :: (Word8 -> Bool) -> ByteString -> Bool
-all _ (BS _ 0) = True
-all f (BS x l) = accursedUnutterablePerformIO $ withForeignPtr x $ \ptr ->
-        go ptr (ptr `plusPtr` l)
-    where
-        go !p !q | p == q     = return True  -- end of list
-                 | otherwise  = do c <- peek p
-                                   if f c
-                                      then go (p `plusPtr` 1) q
-                                      else return False
+all _ (BS _ 0)   = True
+all f (BS x len) = accursedUnutterablePerformIO $ withForeignPtr x g
+  where
+    g ptr = go ptr
+      where
+        end = ptr `plusPtr` len
+        go !p | p == end  = return True  -- end of list
+              | otherwise = do c <- peek p
+                               if f c
+                                  then go (p `plusPtr` 1)
+                                  else return False
 {-# INLINE all #-}
 
 ------------------------------------------------------------------------
@@ -648,16 +655,18 @@ minimum xs@(BS x l)
 mapAccumL :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
 mapAccumL f acc (BS fp len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a -> do
     gp   <- mallocByteString len
-    acc' <- withForeignPtr gp $ \p -> mapAccumL_ acc 0 a p
+    acc' <- withForeignPtr gp (go a)
     return (acc', BS gp len)
   where
-    mapAccumL_ !s !n !p1 !p2
-       | n >= len = return s
-       | otherwise = do
-            x <- peekByteOff p1 n
-            let (s', y) = f s x
-            pokeByteOff p2 n y
-            mapAccumL_ s' (n+1) p1 p2
+    go p ptr = mapAccumL_ acc 0
+      where
+        mapAccumL_ !s !n
+           | n >= len = return s
+           | otherwise = do
+                x <- peekByteOff p n
+                let (s', y) = f s x
+                pokeByteOff ptr n y
+                mapAccumL_ s' (n+1)
 {-# INLINE mapAccumL #-}
 
 -- | The 'mapAccumR' function behaves like a combination of 'map' and
@@ -667,16 +676,17 @@ mapAccumL f acc (BS fp len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a ->
 mapAccumR :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
 mapAccumR f acc (BS fp len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a -> do
     gp   <- mallocByteString len
-    acc' <- withForeignPtr gp $ \p -> mapAccumR_ acc (len-1) a p
+    acc' <- withForeignPtr gp (go a)
     return $! (acc', BS gp len)
   where
-    mapAccumR_ !s !n !p !q
-       | n <  0    = return s
-       | otherwise = do
+    go p ptr = mapAccumR_ acc (len-1)
+      where
+        mapAccumR_ !s (-1) = return s
+        mapAccumR_ !s !n   = do
             x  <- peekByteOff p n
             let (s', y) = f s x
-            pokeByteOff q n y
-            mapAccumR_ s' (n-1) p q
+            pokeByteOff ptr n y
+            mapAccumR_ s' (n-1)
 {-# INLINE mapAccumR #-}
 
 -- ---------------------------------------------------------------------
@@ -696,15 +706,18 @@ scanl :: (Word8 -> Word8 -> Word8) -> Word8 -> ByteString -> ByteString
 scanl f v (BS fp len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a ->
     create (len+1) $ \q -> do
         poke q v
-        scanl_ v 0 a (q `plusPtr` 1)
+        go a q
   where
-    scanl_ !z !n !p !q
-        | n >= len  = return ()
-        | otherwise = do
-            x <- peekByteOff p n
-            let z' = f z x
-            pokeByteOff q n z'
-            scanl_ z' (n+1) p q
+    go p ptr = scanl_ v 0
+      where
+        q = ptr `plusPtr` 1
+        scanl_ !z !n
+            | n >= len  = return ()
+            | otherwise = do
+                x <- peekByteOff p n
+                let z' = f z x
+                pokeByteOff q n z'
+                scanl_ z' (n+1)
 {-# INLINE scanl #-}
 
     -- n.b. haskell's List scan returns a list one bigger than the
@@ -726,15 +739,17 @@ scanr :: (Word8 -> Word8 -> Word8) -> Word8 -> ByteString -> ByteString
 scanr f v (BS fp len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a ->
     create (len+1) $ \q -> do
         poke (q `plusPtr` len) v
-        scanr_ v (len-1) a q
+        go a q
   where
-    scanr_ !z !n !p !q
-        | n <  0    = return ()
-        | otherwise = do
-            x <- peekByteOff p n
-            let z' = f x z
-            pokeByteOff q n z'
-            scanr_ z' (n-1) p q
+    go p q = scanr_ v (len-1)
+      where
+        scanr_ !z !n
+            | n < 0     = return ()
+            | otherwise = do
+                x <- peekByteOff p n
+                let z' = f x z
+                pokeByteOff q n z'
+                scanr_ z' (n-1)
 {-# INLINE scanr #-}
 
 -- | 'scanr1' is a variant of 'scanr' that has no starting value argument.
@@ -990,15 +1005,15 @@ span p ps = break (not . p) ps
 --
 spanByte :: Word8 -> ByteString -> (ByteString, ByteString)
 spanByte c ps@(BS x l) =
-    accursedUnutterablePerformIO $
-      withForeignPtr x $ \p ->
-        go p 0
+    accursedUnutterablePerformIO $  withForeignPtr x g
   where
-    go !p !i | i >= l    = return (ps, empty)
-             | otherwise = do c' <- peekByteOff p i
-                              if c /= c'
-                                  then return (unsafeTake i ps, unsafeDrop i ps)
-                                  else go p (i+1)
+    g p = go 0
+      where
+        go !i | i >= l    = return (ps, empty)
+              | otherwise = do c' <- peekByteOff p i
+                               if c /= c'
+                                   then return (unsafeTake i ps, unsafeDrop i ps)
+                                   else go (i+1)
 {-# INLINE spanByte #-}
 
 -- See bytestring #70
@@ -1046,28 +1061,29 @@ spanEnd  p ps = splitAt (findFromEndUntil (not.p) ps) ps
 --
 splitWith :: (Word8 -> Bool) -> ByteString -> [ByteString]
 splitWith _pred (BS _  0) = []
-splitWith pred_ (BS fp len) = splitWith0 pred# 0 len fp
-  where pred# c# = pred_ (W8# c#)
+splitWith pred_ (BS fp len) = splitWith0 0 len fp
+  where pred# :: (Word# -> Bool)
+        pred# c# = pred_ (W8# c#)
 
-        splitWith0 !pred' !off' !len' !fp' =
+        splitWith0 !off' !len' !fp' =
           accursedUnutterablePerformIO $
             withForeignPtr fp $ \p ->
-              splitLoop pred' p 0 off' len' fp'
+              splitLoop p 0 off' len' fp'
 
-        splitLoop :: (Word# -> Bool)
-                  -> Ptr Word8
+        splitLoop :: Ptr Word8
                   -> Int -> Int -> Int
                   -> ForeignPtr Word8
                   -> IO [ByteString]
-
-        splitLoop pred' p idx' off' len' fp'
-            | idx' >= len'  = return [BS (plusForeignPtr fp' off') idx']
-            | otherwise = do
-                w <- peekElemOff p (off'+idx')
-                if pred' (case w of W8# w# -> w#)
-                   then return (BS (plusForeignPtr fp' off') idx' :
-                              splitWith0 pred' (off'+idx'+1) (len'-idx'-1) fp')
-                   else splitLoop pred' p (idx'+1) off' len' fp'
+        splitLoop p idx2 off' len' fp' = go idx2
+          where
+            go idx'
+                | idx' >= len'  = return [BS (plusForeignPtr fp' off') idx']
+                | otherwise = do
+                    w <- peekElemOff p (off'+idx')
+                    if pred# (case w of W8# w# -> w#)
+                       then return (BS (plusForeignPtr fp' off') idx' :
+                                  splitWith0 (off'+idx'+1) (len'-idx'-1) fp')
+                       else go (idx'+1)
 {-# INLINE splitWith #-}
 
 -- | /O(n)/ Break a 'ByteString' into pieces separated by the byte
@@ -1291,15 +1307,18 @@ filter :: (Word8 -> Bool) -> ByteString -> ByteString
 filter k ps@(BS x l)
     | null ps   = ps
     | otherwise = unsafePerformIO $ createAndTrim l $ \p -> withForeignPtr x $ \f -> do
-        t <- go f p (f `plusPtr` l)
+        t <- go' f p
         return $! t `minusPtr` p -- actual length
-    where
-        go !f !t !end | f == end  = return t
-                      | otherwise = do
-                          w <- peek f
-                          if k w
-                            then poke t w >> go (f `plusPtr` 1) (t `plusPtr` 1) end
-                            else             go (f `plusPtr` 1) t               end
+  where
+    go' pf pt = go pf pt
+      where
+        end = pf `plusPtr` l
+        go !f !t | f == end  = return t
+                 | otherwise = do
+                     w <- peek f
+                     if k w
+                       then poke t w >> go (f `plusPtr` 1) (t `plusPtr` 1)
+                       else             go (f `plusPtr` 1) t
 {-# INLINE filter #-}
 
 {-
@@ -1537,16 +1556,18 @@ zipWith' :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString -> ByteString
 zipWith' f (BS fp l) (BS fq m) = unsafeDupablePerformIO $
     withForeignPtr fp $ \a ->
     withForeignPtr fq $ \b ->
-    create len $ zipWith_ 0 a b
+    create len $ go a b
   where
-    zipWith_ :: Int -> Ptr Word8 -> Ptr Word8 -> Ptr Word8 -> IO ()
-    zipWith_ !n !p1 !p2 !r
-       | n >= len = return ()
-       | otherwise = do
-            x <- peekByteOff p1 n
-            y <- peekByteOff p2 n
-            pokeByteOff r n (f x y)
-            zipWith_ (n+1) p1 p2 r
+    go p1 p2 = zipWith_ 0
+      where
+        zipWith_ :: Int -> Ptr Word8 -> IO ()
+        zipWith_ !n !r
+           | n >= len = return ()
+           | otherwise = do
+                x <- peekByteOff p1 n
+                y <- peekByteOff p2 n
+                pokeByteOff r n (f x y)
+                zipWith_ (n+1) r
 
     len = min l m
 {-# INLINE zipWith' #-}
@@ -1937,15 +1958,15 @@ appendFile = modifyFile AppendMode
 -- of the string if no element is found, rather than Nothing.
 findIndexOrEnd :: (Word8 -> Bool) -> ByteString -> Int
 findIndexOrEnd k (BS x l) =
-    accursedUnutterablePerformIO $
-      withForeignPtr x $ \f ->
-        go f 0
+    accursedUnutterablePerformIO $ withForeignPtr x g
   where
-    go !ptr !n | n >= l    = return l
-               | otherwise = do w <- peek ptr
-                                if k w
-                                  then return n
-                                  else go (ptr `plusPtr` 1) (n+1)
+    g ptr = go 0
+      where
+        go !n | n >= l    = return l
+              | otherwise = do w <- peek $ ptr `plusPtr` n
+                               if k w
+                                 then return n
+                                 else go (n+1)
 {-# INLINE findIndexOrEnd #-}
 
 -- Common up near identical calls to `error' to reduce the number
