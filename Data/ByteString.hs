@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE MagicHash, UnboxedTuples,
-            NamedFieldPuns, BangPatterns #-}
+            NamedFieldPuns, BangPatterns,
+            MultiWayIf #-}
 {-# OPTIONS_HADDOCK prune #-}
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE Trustworthy #-}
@@ -1402,41 +1403,48 @@ breakSubstring pat =
 -- | Get the first index of a substring in another string,
 --   or 'Nothing' if the string is not found.
 --   @findSubstring p s@ is equivalent to @listToMaybe (findSubstrings p s)@.
+--
+-- Note that calling `findSubstring x` does some preprocessing work, so
+-- you should avoid unnecessarily duplicating findSubstring calls with the same
+-- pattern.
 findSubstring :: ByteString -- ^ String to search for.
               -> ByteString -- ^ String to seach in.
               -> Maybe Int
-findSubstring pat = go
-  where
-    breakPat = breakSubstring pat
-    go src
-      | null pat && null src = Just 0
-      | null b = Nothing
-      | otherwise = Just (length a)
-      where (a, b) = breakPat src
+findSubstring pat =
+  let breakPat = breakSubstring pat
+   in \src ->
+  let (a, b) = breakPat src
+   in if
+    | null pat && null src -> Just 0
+    | null b -> Nothing
+    | otherwise -> Just (length a)
 
 {-# DEPRECATED findSubstring "findSubstring is deprecated in favour of breakSubstring." #-}
 
 -- | Find the indexes of all (possibly overlapping) occurences of a
 -- substring in a string.
 --
+-- Note that calling `findSubstrings x` does some preprocessing work, so
+-- you should avoid unnecessarily duplicating findSubstrings calls with the same
+-- pattern.
 findSubstrings :: ByteString -- ^ String to search for.
                -> ByteString -- ^ String to seach in.
                -> [Int]
-findSubstrings pat = go
-  where
-    breakPat = breakSubstring pat
-    go src
-        | null pat        = [0 .. ls]
-        | otherwise       = search 0
+findSubstrings pat =
+  let breakPat = breakSubstring pat
+   in \src ->
+  let
+    lp = length pat
+    ls = length src
+    search !n
+        | (n > ls - lp) || null b = []
+        | otherwise = let k = n + length a
+                      in  k : search (k + lp)
       where
-        lp = length pat
-        ls = length src
-        search !n
-            | (n > ls - lp) || null b = []
-            | otherwise = let k = n + length a
-                          in  k : search (k + lp)
-          where
-            !(a, b) = breakPat (unsafeDrop n src)
+        !(a, b) = breakPat (unsafeDrop n src)
+  in if
+    | null pat        -> [0 .. ls]
+    | otherwise       -> search 0
 
 {-# DEPRECATED findSubstrings "findSubstrings is deprecated in favour of breakSubstring." #-}
 
