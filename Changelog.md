@@ -1,4 +1,4 @@
-0.10.10.1 <ietf-dane@dukhovni.org> May 2020
+0.10.X.X <ietf-dane@dukhovni.org> May 2020
 
  * Fix off-by-one infinite loop in primMapByteStringBounded.
  * Document inadvertent 0.10.6.0 behaviour change in findSubstrings
@@ -8,6 +8,7 @@
  * Fix benchmark builds
  * Add GHC 8.10 to the CI matrix
  * Improve the performance of `sconcat` for lazy and strict bytestrings
+ * Define `findIndexEnd`
 
 0.10.10.0 July 2019 <duncan+haskell@dcoutts.me.uk> July 2019
 

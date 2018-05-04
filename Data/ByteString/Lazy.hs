@@ -171,6 +171,7 @@ module Data.ByteString.Lazy (
         elemIndexEnd,           -- :: Word8 -> ByteString -> Maybe Int64
         elemIndices,            -- :: Word8 -> ByteString -> [Int64]
         findIndex,              -- :: (Word8 -> Bool) -> ByteString -> Maybe Int64
+        findIndexEnd,           -- :: (Word8 -> Bool) -> ByteString -> Maybe Int64
         findIndices,            -- :: (Word8 -> Bool) -> ByteString -> [Int64]
         count,                  -- :: Word8 -> ByteString -> Int64
 
@@ -916,13 +917,7 @@ elemIndex w cs0 = elemIndex' 0 cs0
 --
 -- @since 0.10.6.0
 elemIndexEnd :: Word8 -> ByteString -> Maybe Int64
-elemIndexEnd w = elemIndexEnd' 0
-  where
-    elemIndexEnd' _ Empty = Nothing
-    elemIndexEnd' n (Chunk c cs) =
-      let !n' = n + S.length c
-          !i  = fmap (fromIntegral . (n +)) $ S.elemIndexEnd w c
-      in elemIndexEnd' n' cs `mplus` i
+elemIndexEnd = findIndexEnd . (==)
 
 -- | /O(n)/ The 'elemIndices' function extends 'elemIndex', by returning
 -- the indices of all elements equal to the query element, in ascending order.
@@ -952,6 +947,19 @@ findIndex k cs0 = findIndex' 0 cs0
             Nothing -> findIndex' (n + fromIntegral (S.length c)) cs
             Just i  -> Just (n + fromIntegral i)
 {-# INLINE findIndex #-}
+
+-- | The 'findIndexEnd' function takes a predicate and a 'ByteString' and
+-- returns the index of the last element in the ByteString
+-- satisfying the predicate.
+findIndexEnd :: (Word8 -> Bool) -> ByteString -> Maybe Int64
+findIndexEnd k = findIndexEnd' 0
+  where
+    findIndexEnd' _ Empty = Nothing
+    findIndexEnd' n (Chunk c cs) =
+      let !n' = n + S.length c
+          !i  = fmap (fromIntegral . (n +)) $ S.findIndexEnd k c
+      in findIndexEnd' n' cs `mplus` i
+{-# INLINE findIndexEnd #-}
 
 -- | /O(n)/ The 'find' function takes a predicate and a ByteString,
 -- and returns the first element in matching the predicate, or 'Nothing'
