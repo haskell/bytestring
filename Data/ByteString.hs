@@ -548,7 +548,7 @@ foldl1 f ps
     | otherwise = foldl f (unsafeHead ps) (unsafeTail ps)
 {-# INLINE foldl1 #-}
 
--- | 'foldl1\'' is like 'foldl1', but strict in the accumulator.
+-- | 'foldl1'' is like 'foldl1', but strict in the accumulator.
 -- An exception will be thrown in the case of an empty ByteString.
 foldl1' :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldl1' f ps
