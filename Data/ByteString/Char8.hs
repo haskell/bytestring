@@ -66,7 +66,7 @@ module Data.ByteString.Char8 (
         null,                   -- :: ByteString -> Bool
         length,                 -- :: ByteString -> Int
 
-        -- * Transformating ByteStrings
+        -- * Transforming ByteStrings
         map,                    -- :: (Char -> Char) -> ByteString -> ByteString
         reverse,                -- :: ByteString -> ByteString
         intersperse,            -- :: Char -> ByteString -> ByteString
