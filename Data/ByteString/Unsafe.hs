@@ -134,8 +134,8 @@ unsafeDrop n (PS x s l) = assert (0 <= n && n <= l) $ PS x (s+n) (l-n)
 -- argument is incorrect, it is possible to overstep the end of the
 -- byte array.
 --
--- * if the underying Addr# is later modified, this change will be
--- reflected in resulting @ByteString@, breaking referential
+-- * if the underlying Addr# is later modified, this change will be
+-- reflected in the resulting @ByteString@, breaking referential
 -- transparency.
 --
 -- If in doubt, don't use this function.
