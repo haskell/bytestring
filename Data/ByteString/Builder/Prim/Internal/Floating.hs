@@ -26,7 +26,7 @@ import Foreign
 import Data.ByteString.Builder.Prim.Internal
 
 {-
-We work around ticket http://hackage.haskell.org/trac/ghc/ticket/4092 using the
+We work around ticket http://ghc.haskell.org/trac/ghc/ticket/4092 using the
 FFI to store the Float/Double in the buffer and peek it out again from there.
 -}
 
