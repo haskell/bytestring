@@ -91,7 +91,7 @@ import Foreign.C.Types          (CInt, CSize, CULong)
 
 import Foreign.C.String         (CString)
 
-#if MIN_VERSION_base(4,9,0)
+#if !(MIN_VERSION_base(4,11,0)) && MIN_VERSION_base(4,9,0)
 import Data.Semigroup           (Semigroup((<>)))
 #endif
 #if !(MIN_VERSION_base(4,8,0))

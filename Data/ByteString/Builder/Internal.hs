@@ -134,7 +134,7 @@ module Data.ByteString.Builder.Internal (
 
 import           Control.Arrow (second)
 
-#if MIN_VERSION_base(4,9,0)
+#if !(MIN_VERSION_base(4,11,0)) && MIN_VERSION_base(4,9,0)
 import           Data.Semigroup (Semigroup((<>)))
 #endif
 #if !(MIN_VERSION_base(4,8,0))
