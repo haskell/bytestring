@@ -897,6 +897,8 @@ unwords = intercalate (singleton ' ')
 -- | readInt reads an Int from the beginning of the ByteString.  If there is no
 -- integer at the beginning of the string, it returns Nothing, otherwise
 -- it just returns the int read, and the rest of the string.
+--
+-- Note: This function will overflow the Int for large integers.
 readInt :: ByteString -> Maybe (Int, ByteString)
 readInt as
     | null as   = Nothing
