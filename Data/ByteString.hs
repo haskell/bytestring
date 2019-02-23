@@ -322,8 +322,8 @@ singleton c = unsafeCreate 1 $ \p -> poke p c
 
 -- | /O(n)/ Convert a @['Word8']@ into a 'ByteString'.
 --
--- For applications with large numbers of string literals, pack can be a
--- bottleneck. In such cases, consider using packAddress (GHC only).
+-- For applications with large numbers of string literals, 'pack' can be a
+-- bottleneck. In such cases, consider using 'unsafePackAddress' (GHC only).
 pack :: [Word8] -> ByteString
 pack = packBytes
 
