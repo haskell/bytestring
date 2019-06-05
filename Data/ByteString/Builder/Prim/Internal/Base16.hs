@@ -48,7 +48,7 @@ import           Foreign
 newtype EncodingTable = EncodingTable (ForeignPtr Word8)
 
 tableFromList :: [Word8] -> EncodingTable
-tableFromList xs = case S.pack xs of S.PS fp _ _ -> EncodingTable fp
+tableFromList xs = case S.pack xs of S.BS fp _ -> EncodingTable fp
 
 unsafeIndex :: EncodingTable -> Int -> IO Word8
 unsafeIndex (EncodingTable table) = peekElemOff (unsafeForeignPtrToPtr table)
