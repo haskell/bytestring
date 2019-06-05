@@ -309,10 +309,10 @@ toStrict = \cs -> goLen0 cs cs
 
     -- Copy the data
     goCopy Empty                        !_   = return ()
-    goCopy (Chunk (S.PS _  _   0  ) cs) !ptr = goCopy cs ptr
-    goCopy (Chunk (S.PS fp off len) cs) !ptr = do
+    goCopy (Chunk (S.BS _  0  ) cs) !ptr = goCopy cs ptr
+    goCopy (Chunk (S.BS fp len) cs) !ptr = do
       withForeignPtr fp $ \p -> do
-        S.memcpy ptr (p `plusPtr` off) len
+        S.memcpy ptr p len
         goCopy cs (ptr `plusPtr` len)
 -- See the comment on Data.ByteString.Internal.concat for some background on
 -- this implementation.
@@ -464,10 +464,10 @@ intersperse _ Empty        = Empty
 intersperse w (Chunk c cs) = Chunk (S.intersperse w c)
                                    (foldrChunks (Chunk . intersperse') Empty cs)
   where intersperse' :: P.ByteString -> P.ByteString
-        intersperse' (S.PS fp o l) =
+        intersperse' (S.BS fp l) =
           S.unsafeCreate (2*l) $ \p' -> withForeignPtr fp $ \p -> do
             poke p' w
-            S.c_intersperse (p' `plusPtr` 1) (p `plusPtr` o) (fromIntegral l) w
+            S.c_intersperse (p' `plusPtr` 1) p (fromIntegral l) w
 
 -- | The 'transpose' function transposes the rows and columns of its
 -- 'ByteString' argument.
@@ -1360,9 +1360,9 @@ revChunks cs = L.foldl' (flip chunk) Empty cs
 -- | 'findIndexOrEnd' is a variant of findIndex, that returns the length
 -- of the string if no element is found, rather than Nothing.
 findIndexOrEnd :: (Word8 -> Bool) -> P.ByteString -> Int
-findIndexOrEnd k (S.PS x s l) =
+findIndexOrEnd k (S.BS x l) =
     S.accursedUnutterablePerformIO $
-      withForeignPtr x $ \f -> go (f `plusPtr` s) 0
+      withForeignPtr x $ \f -> go f 0
   where
     go !ptr !n | n >= l    = return l
                | otherwise = do w <- peek ptr
