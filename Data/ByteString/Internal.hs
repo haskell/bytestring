@@ -175,7 +175,6 @@ plusForeignPtr (ForeignPtr addr guts) (I# offset) = ForeignPtr (plusAddr# addr o
 -- characters.
 --
 data ByteString = BS {-# UNPACK #-} !(ForeignPtr Word8) -- payload
-                     -- {-# UNPACK #-} !Int                -- offset
                      {-# UNPACK #-} !Int                -- length
     deriving (Typeable)
 
