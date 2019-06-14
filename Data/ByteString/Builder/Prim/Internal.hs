@@ -272,7 +272,7 @@ eitherB (BP b1 io1) (BP b2 io2) =
 -- Unicode codepoints above 127 as follows.
 --
 -- @
---charASCIIDrop = 'condB' (< '\128') ('fromF' 'char7') 'emptyB'
+--charASCIIDrop = 'condB' (< \'\\128\') ('fromF' 'char7') 'emptyB'
 -- @
 {-# INLINE CONLIKE condB #-}
 condB :: (a -> Bool) -> BoundedPrim a -> BoundedPrim a -> BoundedPrim a
