@@ -63,9 +63,9 @@ source-repository head
   type:     git
   location: https://github.com/haskell/bytestring
 
-flag integer-simple
-  description: Use the simple integer library instead of GMP
-  default: False
+flag integer-gmp
+  description: Use GMP specific optimizations.
+  default: True
 
 library
   build-depends:     base >= 4.2 && < 5, ghc-prim, deepseq
@@ -134,7 +134,7 @@ library
 
    -- flags for the decimal integer serialization code
   if impl(ghc >= 6.11)
-    if !flag(integer-simple)
+    if flag(integer-gmp)
       cpp-options: -DINTEGER_GMP
       build-depends: integer-gmp >= 0.2
 
