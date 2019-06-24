@@ -1,15 +1,15 @@
 env:
- - GHCVER=7.0.4 CABALVER=1.16
- # we have to use CABALVER=1.16 for GHC<7.6 as well, as there's
- # no package for earlier cabal versions in the PPA
- - GHCVER=7.2.2 CABALVER=1.16
- - GHCVER=7.4.2 CABALVER=1.16
- - GHCVER=7.6.3 CABALVER=1.16
- - GHCVER=7.8.4 CABALVER=1.18
+ - GHCVER=7.0.4 CABALVER=1.20
+ - GHCVER=7.2.2 CABALVER=1.20
+ - GHCVER=7.4.2 CABALVER=1.20
+ - GHCVER=7.6.3 CABALVER=1.20
+ - GHCVER=7.8.4 CABALVER=1.20
  - GHCVER=7.10.3 CABALVER=1.22
  - GHCVER=8.0.2 CABALVER=1.24
  - GHCVER=8.2.2 CABALVER=2.0
- - GHCVER=head  CABALVER=2.0
+ - GHCVER=8.4.4 CABALVER=2.2
+ - GHCVER=8.6.5 CABALVER=2.4
+ - GHCVER=head  CABALVER=head CABALPFX=v1- TESTS=--disable-tests
 
 matrix:
   allow_failures:
@@ -21,27 +21,23 @@ before_install:
  - travis_retry sudo apt-get install cabal-install-$CABALVER ghc-$GHCVER
  - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
  - cabal --version
+ - TESTS=${TESTS---enable-tests}
 
 install:
  - travis_retry cabal update
  # can't use "cabal install --only-dependencies --enable-tests" due to dep-cycle
- - cabal install "QuickCheck >=2.4 && <2.10" "byteorder ==1.0.*" "dlist >=0.5 && <0.8" "mtl >=2.0 && <2.3" deepseq test-framework-hunit test-framework-quickcheck2
+ - cabal ${CABALPFX}install "QuickCheck >=2.4 && <2.10" "byteorder ==1.0.*" "dlist >=0.5 && <0.9" "mtl >=2.0 && <2.3" deepseq test-framework-hunit test-framework-quickcheck2
 
 script:
- - cabal configure --enable-tests -v2
- - cabal build
- # --show-details=streaming is available for CABALVER>=1.20 only
- - if [ "$(echo -e "1.20\n$CABALVER" | sort -rV | head -n1)" = "$CABALVER" ]; then
-     cabal test --show-details=streaming;
-   else
-     travis_wait cabal test --show-details=always;
-   fi
- - cabal sdist
+ - cabal ${CABALPFX}configure ${TESTS} -v2
+ - cabal ${CABALPFX}build
+ - if [ $TESTS = "--enable-tests"]; then cabal ${CABALPFX}test --show-details=streaming; fi
+ - cabal ${CABALPFX}sdist
  # "cabal check" disabled due to -O2 warning
  - export SRC_TGZ=$(cabal info . | awk '{print $2 ".tar.gz";exit}') ;
    cd dist/;
    if [ -f "$SRC_TGZ" ]; then
-      cabal install --force-reinstalls "$SRC_TGZ";
+      cabal ${CABALPFX}install --force-reinstalls "$SRC_TGZ";
    else
       echo "expected '$SRC_TGZ' not found";
       exit 1;
