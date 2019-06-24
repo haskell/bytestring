@@ -11,6 +11,7 @@ env:
  - GHCVER=8.2.2 CABALVER=2.0
  - GHCVER=8.4.4 CABALVER=2.2
  - GHCVER=8.6.3 CABALVER=2.4
+ - GHCVER=8.8.1 CABALVER=2.4
  - GHCVER=head  CABALVER=2.4
 
 matrix:
@@ -27,7 +28,12 @@ before_install:
 install:
  - travis_retry cabal update
  # can't use "cabal install --only-dependencies --enable-tests" due to dep-cycle
- - cabal install "QuickCheck >=2.4 && <2.10" "byteorder ==1.0.*" "dlist >=0.5 && <0.8" "mtl >=2.0 && <2.3" deepseq test-framework-hunit test-framework-quickcheck2
+ - cabal install
+      "QuickCheck >=2.10 && <2.14"
+      "byteorder ==1.0.*"
+      "dlist >=0.5 && <0.9"
+      "mtl >=2.0 && <2.3"
+      deepseq test-framework-hunit test-framework-quickcheck2
 
 script:
  - cabal configure --enable-tests -v2
