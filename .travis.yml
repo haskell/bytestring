@@ -9,6 +9,7 @@ env:
  - GHCVER=8.2.2 CABALVER=2.0
  - GHCVER=8.4.4 CABALVER=2.2
  - GHCVER=8.6.5 CABALVER=2.4
+ - GHCVER=8.8.1 CABALVER=3.0 CABALPFX=v1- TESTS=--disable-tests
  - GHCVER=head  CABALVER=head CABALPFX=v1- TESTS=--disable-tests
 
 matrix:
@@ -20,18 +21,20 @@ before_install:
  - travis_retry sudo apt-get update
  - travis_retry sudo apt-get install cabal-install-$CABALVER ghc-$GHCVER
  - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
+ - ghc --version
  - cabal --version
  - TESTS=${TESTS---enable-tests}
+ - echo $TESTS
 
 install:
  - travis_retry cabal update
  # can't use "cabal install --only-dependencies --enable-tests" due to dep-cycle
- - cabal ${CABALPFX}install "QuickCheck >=2.4 && <2.10" "byteorder ==1.0.*" "dlist >=0.5 && <0.9" "mtl >=2.0 && <2.3" deepseq test-framework-hunit test-framework-quickcheck2
+ - if [ $TESTS = "--enable-tests" ]; then cabal ${CABALPFX}install "QuickCheck >=2.4 && <2.10" "byteorder ==1.0.*" "dlist >=0.5 && <0.9" "mtl >=2.0 && <2.3" deepseq test-framework-hunit test-framework-quickcheck2; fi
 
 script:
  - cabal ${CABALPFX}configure ${TESTS} -v2
  - cabal ${CABALPFX}build
- - if [ $TESTS = "--enable-tests"]; then cabal ${CABALPFX}test --show-details=streaming; fi
+ - if [ $TESTS = "--enable-tests" ]; then cabal ${CABALPFX}test --show-details=streaming; fi
  - cabal ${CABALPFX}sdist
  # "cabal check" disabled due to -O2 warning
  - export SRC_TGZ=$(cabal info . | awk '{print $2 ".tar.gz";exit}') ;
