@@ -1701,18 +1701,18 @@ io_tests =
     ]
 
 misc_tests =
-    [ testProperty "packunpack"             prop_packunpack_s
-    , testProperty "unpackpack"             prop_unpackpack_s
-    , testProperty "packunpack"             prop_packunpack_c
-    , testProperty "unpackpack"             prop_unpackpack_c
-    , testProperty "packunpack"             prop_packunpack_l
-    , testProperty "unpackpack"             prop_unpackpack_l
-    , testProperty "packunpack"             prop_packunpack_lc
-    , testProperty "unpackpack"             prop_unpackpack_lc
-    , testProperty "unpack"                 prop_unpack_s
-    , testProperty "unpack"                 prop_unpack_c
-    , testProperty "unpack"                 prop_unpack_l
-    , testProperty "unpack"                 prop_unpack_lc
+    [ testProperty "packunpack (bytes)"     prop_packunpack_s
+    , testProperty "unpackpack (bytes)"     prop_unpackpack_s
+    , testProperty "packunpack (chars)"     prop_packunpack_c
+    , testProperty "unpackpack (chars)"     prop_unpackpack_c
+    , testProperty "packunpack (lazy bytes)" prop_packunpack_l
+    , testProperty "unpackpack (lazy bytes)" prop_unpackpack_l
+    , testProperty "packunpack (lazy chars)" prop_packunpack_lc
+    , testProperty "unpackpack (lazy chars)" prop_unpackpack_lc
+    , testProperty "unpack (bytes)"         prop_unpack_s
+    , testProperty "unpack (chars)"         prop_unpack_c
+    , testProperty "unpack (lazy bytes)"    prop_unpack_l
+    , testProperty "unpack (lazy chars)"    prop_unpack_lc
     , testProperty "packUptoLenBytes"       prop_packUptoLenBytes
     , testProperty "packUptoLenChars"       prop_packUptoLenChars
     , testProperty "unpackBytes"            prop_unpackBytes
