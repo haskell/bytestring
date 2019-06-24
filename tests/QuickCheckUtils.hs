@@ -62,14 +62,32 @@ newtype CByteString = CByteString P.ByteString
   deriving Show
 
 instance Arbitrary CByteString where
-  arbitrary = fmap (CByteString . P.pack . map fromCChar) arbitrary
+  arbitrary = fmap (CByteString . P.pack . map fromCChar) (listOf arbitraryCChar)
     where
       fromCChar :: CChar -> Word8
       fromCChar = fromIntegral
 
-instance Arbitrary CChar where
-  arbitrary = fmap (fromIntegral :: Int -> CChar)
-            $ oneof [choose (-128,-1), choose (1,127)]
+arbitraryCChar :: Gen CChar
+arbitraryCChar =
+  fmap (fromIntegral :: Int -> CChar)
+  $ oneof [choose (-128,-1), choose (1,127)]
+
+-- | 'Char', but only representing ASCII characters.
+newtype ASCIIChar = ASCIIChar { getASCIIChar :: Char }
+                  deriving (Eq, Ord, Show)
+
+instance Arbitrary ASCIIChar where
+  arbitrary = fmap ASCIIChar arbitraryASCIIChar
+
+instance CoArbitrary ASCIIChar where
+  coarbitrary = coarbitrary . getASCIIChar
+
+-- | A list of ASCII-only 'String's.
+newtype ASCIIStrings = ASCIIStrings { getASCIIStrings :: [String] }
+                  deriving (Eq, Ord, Show)
+
+instance Arbitrary ASCIIStrings where
+  arbitrary = fmap (ASCIIStrings . map getASCIIString) (listOf arbitrary)
 
 ------------------------------------------------------------------------
 --
@@ -89,7 +107,7 @@ instance Arbitrary CChar where
 --
 --
 class Model a b where
-  model :: a -> b  -- get the abstract vale from a concrete value
+  model :: a -> b  -- get the abstract value from a concrete value
 
 --
 -- Connecting our Lazy and Strict types to their models. We also check
@@ -97,22 +115,31 @@ class Model a b where
 --
 -- These instances represent the arrows in the above diagram
 --
-instance Model B P      where model = abstr . checkInvariant
-instance Model P [W]    where model = P.unpack
-instance Model P [Char] where model = PC.unpack
-instance Model B [W]    where model = L.unpack  . checkInvariant
-instance Model B [Char] where model = LC.unpack . checkInvariant
-instance Model Char Word8 where model = fromIntegral . ord
+instance Model B P                 where model = abstr . checkInvariant
+instance Model P [W]               where model = P.unpack
+instance Model P [ASCIIChar]       where model = map ASCIIChar . PC.unpack
+instance Model P [Char]            where model = PC.unpack
+instance Model P ASCIIString       where model = ASCIIString . model
+instance Model B [W]               where model = L.unpack  . checkInvariant
+instance Model B [ASCIIChar]       where model = map ASCIIChar . LC.unpack . checkInvariant
+instance Model B [Char]            where model = LC.unpack . checkInvariant
+instance Model B ASCIIString       where model = ASCIIString . model
+instance Model ASCIIString String  where model = getASCIIString
+instance Model ASCIIString [ASCIIChar] where model = map ASCIIChar . getASCIIString
+instance Model ASCIIChar Word8     where model = fromIntegral . ord . getASCIIChar
+instance Model ASCIIChar Char      where model = getASCIIChar
 
 -- Types are trivially modeled by themselves
-instance Model Bool  Bool         where model = id
-instance Model Int   Int          where model = id
-instance Model P     P            where model = id
-instance Model B     B            where model = id
-instance Model Int64 Int64        where model = id
-instance Model Word8 Word8        where model = id
-instance Model Ordering Ordering  where model = id
-instance Model Char Char  where model = id
+instance Model Bool  Bool          where model = id
+instance Model Int   Int           where model = id
+instance Model P     P             where model = id
+instance Model B     B             where model = id
+instance Model Int64 Int64         where model = id
+instance Model Word8 Word8         where model = id
+instance Model Ordering Ordering   where model = id
+instance Model Char  Char          where model = id
+instance Model ASCIIChar ASCIIChar where model = id
+instance Model ASCIIString ASCIIString where model = id
 
 -- More structured types are modeled recursively, using the NatTrans class from Gofer.
 class (Functor f, Functor g) => NatTrans f g where
@@ -122,6 +149,10 @@ class (Functor f, Functor g) => NatTrans f g where
 instance NatTrans [] []             where eta = id
 instance NatTrans Maybe Maybe       where eta = id
 instance NatTrans ((->) X) ((->) X) where eta = id
+instance NatTrans ((->) ASCIIChar) ((->) ASCIIChar) where eta = id
+instance NatTrans ((->) Char) ((->) ASCIIChar) where eta f = f . getASCIIChar
+instance NatTrans ((->) String) ((->) ASCIIString) where eta f = f . getASCIIString
+instance NatTrans ((->) String) ((->) [ASCIIChar]) where eta f = f . map getASCIIChar
 instance NatTrans ((->) Char) ((->) Char) where eta = id
 
 instance NatTrans ((->) W) ((->) W) where eta = id

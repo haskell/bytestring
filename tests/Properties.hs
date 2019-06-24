@@ -8,6 +8,7 @@
 -- -fhpc interferes with rewrite rules firing.
 --
 
+import Control.Arrow (first, second)
 import Foreign.Storable
 import Foreign.ForeignPtr
 import Foreign.Marshal.Alloc
@@ -294,22 +295,33 @@ prop_cycleLC  a   =
               unfoldr (\x ->  Just (x,x) ) a
      ) :: Int -> B)
 
+liftIterate :: ((Char -> Char) -> Char -> b)
+            -> ((ASCIIChar -> ASCIIChar) -> ASCIIChar -> b)
+liftIterate f g (ASCIIChar c) = f (getASCIIChar . g . ASCIIChar) c
+
+liftUnfoldr :: ((s -> Maybe (Char, s)) -> s -> b)
+            -> ((s -> Maybe (ASCIIChar, s)) -> s -> b)
+liftUnfoldr f g = f (fmap (first getASCIIChar) . g)
+
+liftUnfoldrN :: (Int -> (s -> Maybe (Char, s)) -> s -> b)
+             -> (Int -> (s -> Maybe (ASCIIChar, s)) -> s -> b)
+liftUnfoldrN f n g = f n (fmap (first getASCIIChar) . g)
 
 prop_iterateLC =
   forAll arbitrarySizedIntegral $
   eq3
     ((\n f a -> LC.take (fromIntegral n) $
-        LC.iterate  f a) :: Int -> (Char -> Char) -> Char -> B)
+        liftIterate LC.iterate  f a) :: Int -> (ASCIIChar -> ASCIIChar) -> ASCIIChar -> B)
     ((\n f a -> fst $
-        C.unfoldrN n (\a -> Just (f a, f a)) a) :: Int -> (Char -> Char) -> Char -> P)
+        liftUnfoldrN C.unfoldrN n (\a -> Just (f a, f a)) a) :: Int -> (ASCIIChar -> ASCIIChar) -> ASCIIChar -> P)
 
 prop_iterateLC_2   =
   forAll arbitrarySizedIntegral $
   eq3
     ((\n f a -> LC.take (fromIntegral n) $
-        LC.iterate  f a) :: Int -> (Char -> Char) -> Char -> B)
+        liftIterate LC.iterate  f a) :: Int -> (ASCIIChar -> ASCIIChar) -> ASCIIChar -> B)
     ((\n f a -> LC.take (fromIntegral n) $
-        LC.unfoldr (\a -> Just (f a, f a)) a) :: Int -> (Char -> Char) -> Char -> B)
+        liftUnfoldr LC.unfoldr (\a -> Just (f a, f a)) a) :: Int -> (ASCIIChar -> ASCIIChar) -> ASCIIChar -> B)
 
 prop_iterateL   =
   forAll arbitrarySizedIntegral $
@@ -378,7 +390,7 @@ prop_elemBL         = L.elem                  `eq2` (elem      :: W -> [W] -> Bo
 prop_notElemBL      = L.notElem               `eq2` (notElem   :: W -> [W] -> Bool)
 prop_elemIndexBL    = L.elemIndex             `eq2` ((fmap toInt64 .) . elemIndex   :: W -> [W] -> Maybe Int64)
 prop_elemIndicesBL  = L.elemIndices           `eq2` ((fmap toInt64 .) . elemIndices :: W -> [W] -> [Int64])
-prop_linesBL        = D.lines                 `eq1` (lines     :: String -> [String])
+prop_linesBL        = D.lines                 `eq1` (map ASCIIString . lines . getASCIIString :: ASCIIString -> [ASCIIString])
 
 prop_foldl1BL       = L.foldl1  `eqnotnull2` (foldl1    :: (W -> W -> W) -> [W] -> W)
 prop_foldl1BL'      = L.foldl1' `eqnotnull2` (foldl1'   :: (W -> W -> W) -> [W] -> W)
@@ -414,12 +426,14 @@ prop_mapAccumRBL  = eq3
     (  mapAccumR :: (X -> W -> (X,W)) -> X -> [W] -> (X, [W]))
 
 prop_mapAccumRDL  = eq3
-    (D.mapAccumR :: (X -> Char -> (X,Char)) -> X -> B   -> (X, B))
-    (  mapAccumR :: (X -> Char -> (X,Char)) -> X -> [Char] -> (X, [Char]))
+    (  mapAccumR' :: (X -> ASCIIChar -> (X,ASCIIChar)) -> X -> B   -> (X, B))
+    (  mapAccumR  :: (X -> ASCIIChar -> (X,ASCIIChar)) -> X -> [ASCIIChar] -> (X, [ASCIIChar]))
+  where mapAccumR' f = D.mapAccumR (\x y -> fmap getASCIIChar $ f x (ASCIIChar y))
 
 prop_mapAccumRCC  = eq3
-    (C.mapAccumR :: (X -> Char -> (X,Char)) -> X -> P   -> (X, P))
-    (  mapAccumR :: (X -> Char -> (X,Char)) -> X -> [Char] -> (X, [Char]))
+    (  mapAccumR' :: (X -> ASCIIChar -> (X,ASCIIChar)) -> X -> P   -> (X, P))
+    (  mapAccumR  :: (X -> ASCIIChar -> (X,ASCIIChar)) -> X -> [ASCIIChar] -> (X, [ASCIIChar]))
+  where mapAccumR' f = C.mapAccumR (\x y -> fmap getASCIIChar $ f x (ASCIIChar y))
 
 prop_unfoldrBL =
   forAll arbitrarySizedIntegral $
@@ -482,7 +496,7 @@ prop_takeWhilePL  = P.takeWhile `eq2`    (takeWhile :: (W -> Bool) -> [W] -> [W]
 prop_elemPL       = P.elem      `eq2`    (elem      :: W -> [W] -> Bool)
 prop_notElemPL    = P.notElem   `eq2`    (notElem   :: W -> [W] -> Bool)
 prop_elemIndexPL  = P.elemIndex `eq2`    (elemIndex :: W -> [W] -> Maybe Int)
-prop_linesPL      = C.lines     `eq1`    (lines     :: String -> [String])
+prop_linesPL      = C.lines     `eq1`    (lines . getASCIIString :: ASCIIString -> [String])
 prop_findIndicesPL= P.findIndices`eq2`   (findIndices:: (W -> Bool) -> [W] -> [Int])
 prop_elemIndicesPL= P.elemIndices`eq2`   (elemIndices:: W -> [W] -> [Int])
 prop_zipPL        = P.zip        `eq2`   (zip :: [W] -> [W] -> [(W,W)])
@@ -490,7 +504,9 @@ prop_zipCL        = C.zip        `eq2`   (zip :: [Char] -> [Char] -> [(Char,Char
 prop_zipLL        = L.zip        `eq2`   (zip :: [W] -> [W] -> [(W,W)])
 prop_unzipPL      = P.unzip      `eq1`   (unzip :: [(W,W)] -> ([W],[W]))
 prop_unzipLL      = L.unzip      `eq1`   (unzip :: [(W,W)] -> ([W],[W]))
-prop_unzipCL      = C.unzip      `eq1`   (unzip :: [(Char,Char)] -> ([Char],[Char]))
+prop_unzipCL      = lift C.unzip `eq1`   (unzip :: [(ASCIIChar,ASCIIChar)] -> ([ASCIIChar],[ASCIIChar]))
+  where
+    lift f = f . map (\(ASCIIChar a,ASCIIChar b) -> (a,b))
 
 prop_foldl1PL     = P.foldl1    `eqnotnull2` (foldl1   :: (W -> W -> W) -> [W] -> W)
 prop_foldl1PL'    = P.foldl1'   `eqnotnull2` (foldl1' :: (W -> W -> W) -> [W] -> W)
@@ -730,7 +746,7 @@ prop_joinsplit c xs = L.intercalate (pack [c]) (L.split c xs) == id xs
 
 prop_group xs       = group xs == (map unpack . L.group . pack) xs
 prop_groupBy  f xs  = groupBy f xs == (map unpack . L.groupBy f . pack) xs
-prop_groupBy_LC  f xs  = groupBy f xs == (map LC.unpack . LC.groupBy f .  LC.pack) xs
+prop_groupBy_LC  f (ASCIIString xs) = groupBy f xs == (map LC.unpack . LC.groupBy f .  LC.pack) xs
 
 -- prop_joinjoinByte xs ys c = L.joinWithByte c xs ys == L.join (L.singleton c) [xs,ys]
 
@@ -739,18 +755,18 @@ prop_index xs =
     forAll indices $ \i -> (xs !! i) == L.pack xs `L.index` (fromIntegral i)
   where indices = choose (0, length xs -1)
 
-prop_index_D xs =
+prop_index_D (ASCIIString xs) =
   not (null xs) ==>
     forAll indices $ \i -> (xs !! i) == D.pack xs `D.index` (fromIntegral i)
   where indices = choose (0, length xs -1)
 
-prop_index_C xs =
+prop_index_C (ASCIIString xs) =
   not (null xs) ==>
     forAll indices $ \i -> (xs !! i) == C.pack xs `C.index` (fromIntegral i)
   where indices = choose (0, length xs -1)
 
 prop_elemIndex xs c = (elemIndex c xs) == fmap fromIntegral (L.elemIndex c (pack xs))
-prop_elemIndexCL xs c = (elemIndex c xs) == (C.elemIndex c (C.pack xs))
+prop_elemIndexCL (ASCIIString xs) (ASCIIChar c) = (elemIndex c xs) == (C.elemIndex c (C.pack xs))
 
 prop_elemIndices xs c = elemIndices c xs == map fromIntegral (L.elemIndices c (pack xs))
 
@@ -865,18 +881,20 @@ prop_breakSBB f xs = P.break f (P.pack xs) ==
 
 prop_breakspan_1BB xs c = P.break (== c) xs == P.span (/= c) xs
 
-prop_linesSBB xs = C.lines (C.pack xs) == map C.pack (lines xs)
+prop_linesSBB (ASCIIString xs) =
+    C.lines (C.pack xs) == map C.pack (lines xs)
 
-prop_unlinesSBB xss = C.unlines (map C.pack xss) == C.pack (unlines xss)
+prop_unlinesSBB (ASCIIStrings xss) = 
+    C.unlines (map C.pack xss) == C.pack (unlines xss)
 
-prop_wordsSBB xs =
+prop_wordsSBB (ASCIIString xs) =
     C.words (C.pack xs) == map C.pack (words xs)
 
-prop_wordsLC xs =
+prop_wordsLC (ASCIIString xs) =
     LC.words (LC.pack xs) == map LC.pack (words xs)
 
-prop_unwordsSBB xss = C.unwords (map C.pack xss) == C.pack (unwords xss)
-prop_unwordsSLC xss = LC.unwords (map LC.pack xss) == LC.pack (unwords xss)
+prop_unwordsSBB (ASCIIStrings xss) = C.unwords (map C.pack xss) == C.pack (unwords xss)
+prop_unwordsSLC (ASCIIStrings xss) = LC.unwords (map LC.pack xss) == LC.pack (unwords xss)
 
 prop_splitWithBB f xs = (l1 == l2 || l1 == l2+1) &&
         sum (map P.length splits) == P.length xs - l2
@@ -906,7 +924,7 @@ prop_linessplit2BB xs =
 
 prop_splitsplitWithBB c xs = P.split c xs == P.splitWith (== c) xs
 
-prop_bijectionBB  c = (P.w2c . P.c2w) c == id c
+prop_bijectionBB  (ASCIIChar c) = (P.w2c . P.c2w) c == id c
 prop_bijectionBB' w = (P.c2w . P.w2c) w == id w
 
 prop_packunpackBB  s = (P.unpack . P.pack) s == id s
@@ -924,13 +942,13 @@ prop_compare4BB xs  = (not (null xs)) ==> (P.pack xs  `compare` P.empty) == GT
 prop_compare5BB xs  = (not (null xs)) ==> (P.empty `compare` P.pack xs) == LT
 prop_compare6BB xs ys= (not (null ys)) ==> (P.pack (xs++ys)  `compare` P.pack xs) == GT
 
-prop_compare7BB x  y = x `compare` y == (C.singleton x `compare` C.singleton y)
+prop_compare7BB (ASCIIChar x) (ASCIIChar y) = x `compare` y == (C.singleton x `compare` C.singleton y)
 prop_compare8BB xs ys = xs `compare` ys == (P.pack xs `compare` P.pack ys)
 
 prop_consBB  c xs = P.unpack (P.cons c (P.pack xs)) == (c:xs)
-prop_cons1BB xs   = 'X' : xs == C.unpack ('X' `C.cons` (C.pack xs))
+prop_cons1BB (ASCIIString xs) = 'X' : xs == C.unpack ('X' `C.cons` (C.pack xs))
 prop_cons2BB xs c = c : xs == P.unpack (c `P.cons` (P.pack xs))
-prop_cons3BB c    = C.unpack (C.singleton c) == (c:[])
+prop_cons3BB (ASCIIChar c) = C.unpack (C.singleton c) == (c:[])
 prop_cons4BB c    = (c `P.cons` P.empty)  == P.pack (c:[])
 
 prop_snoc1BB xs c = xs ++ [c] == P.unpack ((P.pack xs) `P.snoc` c)
@@ -971,7 +989,7 @@ prop_map2BB f g xs = P.map f (P.map g xs) == P.map (f . g) xs
 prop_map3BB f xs   = map f xs == (P.unpack . P.map f .  P.pack) xs
 -- prop_mapBB' f xs   = P.map' f (P.pack xs) == P.pack (map f xs)
 
-prop_filter1BB xs   = (filter (=='X') xs) == (C.unpack $ C.filter (=='X') (C.pack xs))
+prop_filter1BB (ASCIIString xs) = (filter (=='X') xs) == (C.unpack $ C.filter (=='X') (C.pack xs))
 prop_filter2BB p xs = (filter p xs) == (P.unpack $ P.filter p (P.pack xs))
 
 prop_findBB p xs = find p xs == P.find p (P.pack xs)
@@ -1021,7 +1039,7 @@ prop_takeWhileBB xs a = (takeWhile (/= a) xs) == (P.unpack . (P.takeWhile (/= a)
 
 prop_dropWhileBB xs a = (dropWhile (/= a) xs) == (P.unpack . (P.dropWhile (/= a)) . P.pack) xs
 
-prop_dropWhileCC_isSpace xs =
+prop_dropWhileCC_isSpace (ASCIIString xs) =
         (dropWhile isSpace xs) ==
        (C.unpack .  (C.dropWhile isSpace) . C.pack) xs
 
@@ -1065,44 +1083,47 @@ prop_concatMapBB xs = C.concatMap C.singleton xs == (C.pack . concatMap (:[]) . 
 prop_anyBB xs a = (any (== a) xs) == (P.any (== a) (P.pack xs))
 prop_allBB xs a = (all (== a) xs) == (P.all (== a) (P.pack xs))
 
-prop_linesBB xs = (lines xs) == ((map C.unpack) . C.lines . C.pack) xs
+prop_linesBB (ASCIIString xs) = (lines xs) == ((map C.unpack) . C.lines . C.pack) xs
 
-prop_unlinesBB xs = (unlines.lines) xs == (C.unpack. C.unlines . C.lines .C.pack) xs
-prop_unlinesLC xs = (unlines.lines) xs == (LC.unpack. LC.unlines .  LC.lines .LC.pack) xs
+prop_unlinesBB (ASCIIString xs) = (unlines.lines) xs == (C.unpack. C.unlines . C.lines .C.pack) xs
+prop_unlinesLC (ASCIIString xs) = (unlines.lines) xs == (LC.unpack. LC.unlines .  LC.lines .LC.pack) xs
 
-prop_wordsBB xs =
+prop_wordsBB (ASCIIString xs) =
     (words xs) == ((map C.unpack) . C.words . C.pack) xs
 -- prop_wordstokensBB xs = C.words xs == C.tokens isSpace xs
 
-prop_unwordsBB xs =
+prop_unwordsBB (ASCIIString xs) =
     (C.pack.unwords.words) xs == (C.unwords . C.words .C.pack) xs
 
 prop_groupBB xs   = group xs == (map P.unpack . P.group . P.pack) xs
 
-prop_groupByBB  xs = groupBy (==) xs == (map P.unpack . P.groupBy (==) . P.pack) xs
-prop_groupBy1CC xs = groupBy (==) xs == (map C.unpack . C.groupBy (==) . C.pack) xs
-prop_groupBy1BB xs = groupBy (/=) xs == (map P.unpack . P.groupBy (/=) . P.pack) xs
-prop_groupBy2CC xs = groupBy (/=) xs == (map C.unpack . C.groupBy (/=) . C.pack) xs
+prop_groupByBB  xs               = groupBy (==) xs == (map P.unpack . P.groupBy (==) . P.pack) xs
+prop_groupBy1CC (ASCIIString xs) = groupBy (==) xs == (map C.unpack . C.groupBy (==) . C.pack) xs
+prop_groupBy1BB xs               = groupBy (/=) xs == (map P.unpack . P.groupBy (/=) . P.pack) xs
+prop_groupBy2CC (ASCIIString xs) = groupBy (/=) xs == (map C.unpack . C.groupBy (/=) . C.pack) xs
 
-prop_joinBB xs ys = (concat . (intersperse ys) . lines) xs ==
-               (C.unpack $ C.intercalate (C.pack ys) (C.lines (C.pack xs)))
+prop_joinBB (ASCIIString xs) (ASCIIString ys) =
+  (concat . (intersperse ys) . lines) xs ==
+    (C.unpack $ C.intercalate (C.pack ys) (C.lines (C.pack xs)))
 
-prop_elemIndex1BB xs   = (elemIndex 'X' xs) == (C.elemIndex 'X' (C.pack xs))
-prop_elemIndex2BB xs c = (elemIndex c xs) == (C.elemIndex c (C.pack xs))
+prop_elemIndex1BB (ASCIIString xs)   = (elemIndex 'X' xs) == (C.elemIndex 'X' (C.pack xs))
+prop_elemIndex2BB (ASCIIString xs) (ASCIIChar c) = (elemIndex c xs) == (C.elemIndex c (C.pack xs))
 
 -- prop_lineIndices1BB xs = C.elemIndices '\n' xs == C.lineIndices xs
 
 prop_countBB c xs = length (P.elemIndices c xs) == P.count c xs
 
-prop_elemIndexEnd1BB c xs = (P.elemIndexEnd c (P.pack xs)) ==
-                           (case P.elemIndex c (P.pack (reverse xs)) of
-                                Nothing -> Nothing
-                                Just i  -> Just (length xs -1 -i))
+prop_elemIndexEnd1BB c xs =
+    (P.elemIndexEnd c (P.pack xs)) ==
+       (case P.elemIndex c (P.pack (reverse xs)) of
+            Nothing -> Nothing
+            Just i  -> Just (length xs -1 -i))
 
-prop_elemIndexEnd1CC c xs = (C.elemIndexEnd c (C.pack xs)) ==
-                           (case C.elemIndex c (C.pack (reverse xs)) of
-                                Nothing -> Nothing
-                                Just i  -> Just (length xs -1 -i))
+prop_elemIndexEnd1CC c (ASCIIString xs) =
+    (C.elemIndexEnd c (C.pack xs)) ==
+       (case C.elemIndex c (C.pack (reverse xs)) of
+            Nothing -> Nothing
+            Just i  -> Just (length xs -1 -i))
 
 prop_elemIndexEnd2BB c xs = (P.elemIndexEnd c (P.pack xs)) ==
                            ((-) (length xs - 1) `fmap` P.elemIndex c (P.pack $ reverse xs))
@@ -1149,7 +1170,7 @@ prop_minimumBB xs = (not (null xs)) ==> (minimum xs) == (P.minimum ( P.pack xs )
 --     (let (x,y) = C.breakSpace (C.pack xs)
 --      in (C.unpack x, C.unpack y)) == (break isSpace xs)
 
-prop_spanEndBB xs =
+prop_spanEndBB (ASCIIString xs) =
         (C.spanEnd (not . isSpace) (C.pack xs)) ==
         (let (x,y) = C.span (not.isSpace) (C.reverse (C.pack xs)) in (C.reverse y,C.reverse x))
 
@@ -1198,7 +1219,7 @@ prop_initsBB xs = inits xs == map P.unpack (P.inits (P.pack xs))
 
 prop_tailsBB xs = tails xs == map P.unpack (P.tails (P.pack xs))
 
-prop_findSubstringsBB s x l
+prop_findSubstringsBB (ASCIIString s) x l
     = C.findSubstrings (C.pack p) (C.pack s) == naive_findSubstrings p s
   where
     _ = l :: Int
@@ -1211,7 +1232,7 @@ prop_findSubstringsBB s x l
     naive_findSubstrings :: String -> String -> [Int]
     naive_findSubstrings p s = [x | x <- [0..length s], p `isPrefixOf` drop x s]
 
-prop_findSubstringBB s x l
+prop_findSubstringBB (ASCIIString s) x l
     = C.findSubstring (C.pack p) (C.pack s) == naive_findSubstring p s
   where
     _ = l :: Int
@@ -1253,14 +1274,14 @@ prop_readintLL n = (fst . fromJust . D.readInt . D.pack . show) n == (n :: Int)
 prop_readBB x = (read . show) x == (x :: P.ByteString)
 prop_readLL x = (read . show) x == (x :: L.ByteString)
 
-prop_readint2BB s =
+prop_readint2BB (ASCIIString s) =
     let s' = filter (\c -> c `notElem` ['0'..'9']) s
     in C.readInt (C.pack s') == Nothing
 
 prop_readintegerBB n = (fst . fromJust . C.readInteger . C.pack . show) n == (n :: Integer)
 prop_readintegerLL n = (fst . fromJust . D.readInteger . D.pack . show) n == (n :: Integer)
 
-prop_readinteger2BB s =
+prop_readinteger2BB (ASCIIString s) =
     let s' = filter (\c -> c `notElem` ['0'..'9']) s
     in C.readInteger (C.pack s') == Nothing
 
@@ -1274,7 +1295,7 @@ prop_readinteger2BB s =
 -- prop_joinjoinpathBB xs ys c = C.joinWithChar c xs ys == C.join (C.singleton c) [xs,ys]
 
 prop_zipBB  xs ys = zip xs ys == P.zip (P.pack xs) (P.pack ys)
-prop_zipLC  xs ys = zip xs ys == LC.zip (LC.pack xs) (LC.pack ys)
+prop_zipLC  (ASCIIString xs) (ASCIIString ys) = zip xs ys == LC.zip (LC.pack xs) (LC.pack ys)
 prop_zip1BB xs ys = P.zip xs ys == zip (P.unpack xs) (P.unpack ys)
 
 prop_zipWithBB xs ys = P.zipWith (,) xs ys == P.zip xs ys
@@ -1301,28 +1322,28 @@ prop_unzipBB x = let (xs,ys) = unzip x in (P.pack xs, P.pack ys) == P.unzip x
 ------------------------------------------------------------------------
 
 -- Test IsString, Show, Read, pack, unpack
-prop_isstring x = C.unpack (fromString x :: C.ByteString) == x
-prop_isstring_lc x = LC.unpack (fromString x :: LC.ByteString) == x
+prop_isstring (ASCIIString x) = C.unpack (fromString x :: C.ByteString) == x
+prop_isstring_lc (ASCIIString x) = LC.unpack (fromString x :: LC.ByteString) == x
 
 prop_showP1 x = show x == show (C.unpack x)
 prop_showL1 x = show x == show (LC.unpack x)
 
 prop_readP1 x = read (show x) == (x :: P.ByteString)
-prop_readP2 x = read (show x) == C.pack (x :: String)
+prop_readP2 (ASCIIString x) = read (show x) == C.pack (x :: String)
 
 prop_readL1 x = read (show x) == (x :: L.ByteString)
-prop_readL2 x = read (show x) == LC.pack (x :: String)
+prop_readL2 (ASCIIString x) = read (show x) == LC.pack (x :: String)
 
 prop_packunpack_s x = (P.unpack . P.pack) x == x
 prop_unpackpack_s x = (P.pack . P.unpack) x == x
 
-prop_packunpack_c x = (C.unpack . C.pack) x == x
+prop_packunpack_c (ASCIIString x) = (C.unpack . C.pack) x == x
 prop_unpackpack_c x = (C.pack . C.unpack) x == x
 
 prop_packunpack_l x = (L.unpack . L.pack) x == x
 prop_unpackpack_l x = (L.pack . L.unpack) x == x
 
-prop_packunpack_lc x = (LC.unpack . LC.pack) x == x
+prop_packunpack_lc (ASCIIString x) = (LC.unpack . LC.pack) x == x
 prop_unpackpack_lc x = (LC.pack . LC.unpack) x == x
 
 prop_toFromChunks x = (L.fromChunks . L.toChunks) x == x
@@ -1339,7 +1360,7 @@ prop_packUptoLenBytes cs =
        && P.pack (take n cs) == bs
        && drop n cs == cs'
 
-prop_packUptoLenChars cs =
+prop_packUptoLenChars (ASCIIString cs) =
     forAll (choose (0, length cs + 1)) $ \n ->
       let (bs, cs') = P.packUptoLenChars n cs
        in P.length bs == min n (length cs)
@@ -1350,21 +1371,21 @@ prop_packUptoLenChars cs =
 prop_unpack_s cs =
     forAll (choose (0, length cs)) $ \n ->
       P.unpack (P.drop n $ P.pack cs) == drop n cs
-prop_unpack_c cs =
+prop_unpack_c (ASCIIString cs) =
     forAll (choose (0, length cs)) $ \n ->
       C.unpack (C.drop n $ C.pack cs) == drop n cs
 
 prop_unpack_l  cs =
     forAll (choose (0, length cs)) $ \n ->
       L.unpack (L.drop (fromIntegral n) $ L.pack cs) == drop n cs
-prop_unpack_lc cs =
+prop_unpack_lc (ASCIIString cs) =
     forAll (choose (0, length cs)) $ \n ->
       LC.unpack (L.drop (fromIntegral n) $ LC.pack cs) == drop n cs
 
 prop_unpackBytes cs =
     forAll (choose (0, length cs)) $ \n ->
       P.unpackBytes (P.drop n $ P.pack cs) == drop n cs
-prop_unpackChars cs =
+prop_unpackChars (ASCIIString cs) =
     forAll (choose (0, length cs)) $ \n ->
       P.unpackChars (P.drop n $ C.pack cs) == drop n cs
 
@@ -1373,7 +1394,7 @@ prop_unpackBytes_l =
     forAll (choose (0, length cs)) $ \n ->
       L.unpackBytes (L.drop (fromIntegral n) $ L.pack cs) == drop n cs
 prop_unpackChars_l =
-    forAll (sized $ \n -> resize (n * 10) arbitrary) $ \cs ->
+    forAll (sized $ \n -> resize (n * 10) arbitrary) $ \(ASCIIString cs) ->
     forAll (choose (0, length cs)) $ \n ->
       L.unpackChars (L.drop (fromIntegral n) $ LC.pack cs) == drop n cs
 
@@ -1381,8 +1402,8 @@ prop_unpackAppendBytesLazy cs' =
     forAll (sized $ \n -> resize (n * 10) arbitrary) $ \cs ->
     forAll (choose (0, 2)) $ \n ->
       P.unpackAppendBytesLazy (P.drop n $ P.pack cs) cs' == drop n cs ++ cs'
-prop_unpackAppendCharsLazy cs' =
-    forAll (sized $ \n -> resize (n * 10) arbitrary) $ \cs ->
+prop_unpackAppendCharsLazy (ASCIIString cs') =
+    forAll (sized $ \n -> resize (n * 10) arbitrary) $ \(ASCIIString cs) ->
     forAll (choose (0, 2)) $ \n ->
       P.unpackAppendCharsLazy (P.drop n $ C.pack cs) cs' == drop n cs ++ cs'
 
@@ -1390,7 +1411,7 @@ prop_unpackAppendBytesStrict cs cs' =
     forAll (choose (0, length cs)) $ \n ->
       P.unpackAppendBytesStrict (P.drop n $ P.pack cs) cs' == drop n cs ++ cs'
 
-prop_unpackAppendCharsStrict cs cs' =
+prop_unpackAppendCharsStrict (ASCIIString cs) (ASCIIString cs') =
     forAll (choose (0, length cs)) $ \n ->
       P.unpackAppendCharsStrict (P.drop n $ C.pack cs) cs' == drop n cs ++ cs'
 

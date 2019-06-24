@@ -51,7 +51,7 @@ import           TestFramework
 #endif
 
 import           Test.QuickCheck
-                   ( Arbitrary(..), oneof, choose, listOf, elements )
+                   ( Arbitrary(..), oneof, choose, listOf, elements, getUnicodeString )
 import           Test.QuickCheck.Property
                    ( printTestCase, morallyDubiousIOProperty )
 
@@ -299,7 +299,7 @@ instance Arbitrary Action where
       , W8  <$> arbitrary
       , W8S <$> listOf arbitrary
         -- ensure that larger character codes are also tested
-      , String <$> listOf ((\c -> chr (ord c * ord c)) <$> arbitrary)
+      , String . getUnicodeString <$> arbitrary
       , pure Flush
         -- never request more than 64kb free space
       , (EnsureFree . (`mod` 0xffff)) <$> arbitrary
