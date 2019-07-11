@@ -51,7 +51,8 @@ import           TestFramework
 #endif
 
 import           Test.QuickCheck
-                   ( Arbitrary(..), oneof, choose, listOf, elements, getUnicodeString )
+                   ( Arbitrary(..), oneof, choose, listOf, elements
+                   , UnicodeString(..) )
 import           Test.QuickCheck.Property
                    ( printTestCase, morallyDubiousIOProperty )
 
@@ -96,8 +97,11 @@ testHandlePutBuilder :: Test
 testHandlePutBuilder =
     testProperty "hPutBuilder" testRecipe
   where
-    testRecipe :: (String, String, String, Recipe) -> Bool
-    testRecipe args@(before, between, after, recipe) = unsafePerformIO $ do
+    testRecipe :: (UnicodeString, UnicodeString, UnicodeString, Recipe) -> Bool
+    testRecipe args@(UnicodeString before,
+                     UnicodeString between,
+                     UnicodeString after, recipe) =
+      unsafePerformIO $ do
         tempDir <- getTemporaryDirectory
         (tempFile, tempH) <- openTempFile tempDir "TestBuilder"
         -- switch to UTF-8 encoding
