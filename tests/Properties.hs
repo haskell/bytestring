@@ -1295,7 +1295,7 @@ prop_readintLL n = (fst . fromJust . D.readInt . D.pack . show) n == (n :: Int)
 prop_readBB x = (read . show) x == (x :: P.ByteString)
 prop_readLL x = (read . show) x == (x :: L.ByteString)
 
-prop_readint2BB s =
+prop_readint2BB (String8 s) =
     let s' = filter (\c -> c `notElem` ['0'..'9']) s
     in C.readInt (C.pack s') == Nothing
 

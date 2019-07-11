@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP, MultiParamTypeClasses,
-             FlexibleInstances, FlexibleContexts #-}
+             FlexibleInstances, FlexibleContexts,
+             TypeSynonymInstances #-}
 --
 -- Uses multi-param type classes
 --
@@ -115,7 +116,7 @@ class Model a b where
 
 -- | Alias for 'model' that's a better name in the situations where we're
 -- really just converting functions that take or return Char8.
-castFn :: Model (a -> b) (a' -> b') => (a -> b) -> (a' -> b')
+castFn :: Model a b => a -> b
 castFn = model
 
 --
