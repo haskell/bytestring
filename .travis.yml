@@ -27,8 +27,8 @@ before_install:
 install:
  - travis_retry cabal update
  # can't use "cabal install --only-dependencies --enable-tests" due to dep-cycle
- - cabal install \
-      "QuickCheck >=2.10 && <2.14" \
+ - cabal install
+      "QuickCheck >=2.10 && <2.14"
       "byteorder ==1.0.*"
       "dlist >=0.5 && <0.9"
       "mtl >=2.0 && <2.3"
