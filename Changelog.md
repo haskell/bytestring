@@ -1,6 +1,9 @@
-0.10.10.0 TBD
+0.10.10.0 July 2019 <duncan+haskell@dcoutts.me.uk> July 2019
 
+ * Build with GHC 8.8, and tests with QC 2.10+
  * Add conversions between ShortByteString and CString (#126)
+ * Documentation fixes (#65, #118, #144, #150, #152, #172)
+ * Resolve potential copyright issue with test data (#165)
 
 0.10.8.2 Duncan Coutts <duncan@community.haskell.org> Feb 2017
 
