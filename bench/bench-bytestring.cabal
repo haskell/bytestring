@@ -40,6 +40,9 @@ executable bench-bytestring-builder
                    , deepseq       >= 1.2
                    , criterion     >= 0.5
                    , blaze-textual == 0.2.*
+                     -- There is no point using blaze-builder-0.4+ as that
+                     -- version is just a wrapper around bytestring itself,
+                     -- abd so a comparison benchmark would have no purpose.
                    , blaze-builder == 0.3.*
                    -- we require bytestring due to benchmarking against
                    -- blaze-textual, which uses blaze-builder
