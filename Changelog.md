@@ -8,6 +8,9 @@
  * Fix benchmark builds
  * Add GHC 8.10 to the CI matrix
  * Improve the performance of `sconcat` for lazy and strict bytestrings
+ * Add `unsafePackLiteral` to `Data.ByteString.Internal`. Where possible,
+   use known-key variant of C `strlen` from `GHC.CString` that supports
+   constant folding.
 
 0.10.10.0 July 2019 <duncan+haskell@dcoutts.me.uk> July 2019
 
