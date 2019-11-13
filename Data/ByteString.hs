@@ -752,6 +752,7 @@ scanr1 f ps
 --
 -- This implemenation uses @memset(3)@
 replicate :: Int -> Word8 -> ByteString
+{-# inline replicate #-}
 replicate w c
     | w <= 0    = empty
     | otherwise = unsafeCreate w $ \ptr ->

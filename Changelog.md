@@ -1,3 +1,9 @@
+0.10.12.0
+
+ * Add `unsafePackLiteral` to `Data.ByteString.Internal`. Where possible,
+   use known-key variant of C `strlen` from `GHC.CString` that supports
+   constant folding.
+
 0.10.10.1 <ietf-dane@dukhovni.org> May 2020
 
  * Fix off-by-one infinite loop in primMapByteStringBounded.

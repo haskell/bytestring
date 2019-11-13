@@ -33,7 +33,7 @@ module Data.ByteString.Internal (
         packChars, packUptoLenChars, unsafePackLenChars,
         unpackBytes, unpackAppendBytesLazy, unpackAppendBytesStrict,
         unpackChars, unpackAppendCharsLazy, unpackAppendCharsStrict,
-        unsafePackAddress,
+        unsafePackAddress, unsafePackLiteral,
 
         -- * Low level imperative construction
         create,                 -- :: Int -> (Ptr Word8 -> IO ()) -> IO ByteString
@@ -135,6 +135,12 @@ import GHC.ForeignPtr           (ForeignPtr(ForeignPtr)
                                 ,newForeignPtr_, mallocPlainForeignPtrBytes)
 import GHC.Ptr                  (Ptr(..), castPtr)
 
+#if __GLASGOW_HASKELL__ >= 809
+import GHC.CString              (cstringLength#)
+import GHC.Exts                 (Int(I#))
+import GHC.ForeignPtr           (ForeignPtrContents(LiteralPtr))
+#endif
+
 -- CFILES stuff is Hugs only
 {-# CFILES cbits/fpstring.c #-}
 
@@ -183,6 +189,7 @@ instance Read ByteString where
     readsPrec p str = [ (packChars x, y) | (x, y) <- readsPrec p str ]
 
 instance IsString ByteString where
+    {-# INLINE fromString #-}
     fromString = packChars
 
 instance Data ByteString where
@@ -204,7 +211,7 @@ packChars cs = unsafePackLenChars (List.length cs) cs
 
 {-# RULES
 "ByteString packChars/packAddress" forall s .
-   packChars (unpackCString# s) = accursedUnutterablePerformIO (unsafePackAddress s)
+   packChars (unpackCString# s) = unsafePackLiteral s
  #-}
 
 unsafePackLenBytes :: Int -> [Word8] -> ByteString
@@ -245,13 +252,39 @@ unsafePackLenChars len cs0 =
 --
 unsafePackAddress :: Addr# -> IO ByteString
 unsafePackAddress addr# = do
+#if __GLASGOW_HASKELL__ >= 809
+    return $ PS
+      (accursedUnutterablePerformIO (newForeignPtr_ (Ptr addr#)))
+      0
+      (I# (cstringLength# addr#))
+#else
     p <- newForeignPtr_ (castPtr cstr)
     l <- c_strlen cstr
-    return $ PS p 0 (fromIntegral l)
+    let len = fromIntegral l
+    return $ PS p 0 len
   where
     cstr :: CString
     cstr = Ptr addr#
+#endif
 {-# INLINE unsafePackAddress #-}
+
+-- | See 'unsafePackAddress'. This function has similar behavior. Prefer
+-- this function when the address in known to be an @Addr#@ literal. In
+-- that context, there is no need for the sequencing guarantees that 'IO'
+-- provides. On GHC 8.10 and up, this function uses the @LiteralPtr@ data
+-- constructor for @ForeignPtrContents@. Do not attempt to add a finalizer
+-- to the resulting @ByteString@. Although the bytestrings produced by
+-- 'unsafePackAddress' allow finalizers to be added, the bytestrings provided
+-- by this function do not.
+unsafePackLiteral :: Addr# -> ByteString
+unsafePackLiteral addr# =
+#if __GLASGOW_HASKELL__ >= 809
+  PS (ForeignPtr addr# LiteralPtr) 0 (I# (cstringLength# addr#))
+#else
+  let len = accursedUnutterablePerformIO (c_strlen (Ptr addr#))
+   in PS (accursedUnutterablePerformIO (newForeignPtr_ (Ptr addr#))) 0 (fromIntegral len)
+#endif
+{-# INLINE unsafePackLiteral #-}
 
 
 packUptoLenBytes :: Int -> [Word8] -> (ByteString, [Word8])
