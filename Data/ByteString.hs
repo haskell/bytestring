@@ -26,7 +26,7 @@
 -- are encoded as strict 'Word8' arrays of bytes, held in a 'ForeignPtr',
 -- and can be passed between C and Haskell with little effort.
 --
--- The recomended way to assemble ByteStrings from smaller parts
+-- The recommended way to assemble ByteStrings from smaller parts
 -- is to use the builder monoid from "Data.ByteString.Builder".
 --
 -- This module is intended to be imported @qualified@, to avoid name
@@ -873,7 +873,7 @@ break p ps = case findIndexOrEnd p ps of n -> (unsafeTake n ps, unsafeDrop n ps)
 
 -- INTERNAL:
 
--- | 'breakByte' breaks its ByteString argument at the first occurence
+-- | 'breakByte' breaks its ByteString argument at the first occurrence
 -- of the specified byte. It is more efficient than 'break' as it is
 -- implemented with @memchr(3)@. I.e.
 --
@@ -899,7 +899,7 @@ span p ps = break (not . p) ps
 {-# INLINE [1] span #-}
 
 -- | 'spanByte' breaks its ByteString argument at the first
--- occurence of a byte other than its argument. It is more efficient
+-- occurrence of a byte other than its argument. It is more efficient
 -- than 'span (==)'
 --
 -- > span  (=='c') "abcd" == spanByte 'c' "abcd"
@@ -1335,7 +1335,7 @@ isInfixOf p s = isJust (findSubstring p s)
 -- > tokenise x y = h : if null t then [] else tokenise x (drop (length x) t)
 -- >     where (h,t) = breakSubstring x y
 --
--- To skip to the first occurence of a string:
+-- To skip to the first occurrence of a string:
 --
 -- > snd (breakSubstring x y)
 --
@@ -1403,7 +1403,7 @@ breakSubstring pat =
 --   or 'Nothing' if the string is not found.
 --   @findSubstring p s@ is equivalent to @listToMaybe (findSubstrings p s)@.
 findSubstring :: ByteString -- ^ String to search for.
-              -> ByteString -- ^ String to seach in.
+              -> ByteString -- ^ String to search in.
               -> Maybe Int
 findSubstring pat src
     | null pat && null src = Just 0
@@ -1413,11 +1413,11 @@ findSubstring pat src
 
 {-# DEPRECATED findSubstring "findSubstring is deprecated in favour of breakSubstring." #-}
 
--- | Find the indexes of all (possibly overlapping) occurences of a
+-- | Find the indexes of all (possibly overlapping) occurrences of a
 -- substring in a string.
 --
 findSubstrings :: ByteString -- ^ String to search for.
-               -> ByteString -- ^ String to seach in.
+               -> ByteString -- ^ String to search in.
                -> [Int]
 findSubstrings pat src
     | null pat        = [0 .. ls]
@@ -1503,7 +1503,7 @@ tails :: ByteString -> [ByteString]
 tails p | null p    = [empty]
         | otherwise = p : tails (unsafeTail p)
 
--- less efficent spacewise: tails (PS x s l) = [PS x (s+n) (l-n) | n <- [0..l]]
+-- less efficient spacewise: tails (PS x s l) = [PS x (s+n) (l-n) | n <- [0..l]]
 
 -- ---------------------------------------------------------------------
 -- ** Ordered 'ByteString's

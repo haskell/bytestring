@@ -33,7 +33,7 @@
 -- operations lazy ByteStrings are usually within a few percent of
 -- strict ones.
 --
--- The recomended way to assemble lazy ByteStrings from smaller parts
+-- The recommended way to assemble lazy ByteStrings from smaller parts
 -- is to use the builder monoid from "Data.ByteString.Builder".
 --
 -- This module is intended to be imported @qualified@, to avoid name
@@ -363,7 +363,7 @@ cons c cs = Chunk (S.singleton c) cs
 -- may coalesce the new byte onto the first \'chunk\' rather than starting a
 -- new \'chunk\'.
 --
--- So that means you can't use a lazy recursive contruction like this:
+-- So that means you can't use a lazy recursive construction like this:
 --
 -- > let xs = cons' c xs in xs
 --
@@ -748,7 +748,7 @@ break f cs0 = break' cs0
 --
 
 {-
--- | 'breakByte' breaks its ByteString argument at the first occurence
+-- | 'breakByte' breaks its ByteString argument at the first occurrence
 -- of the specified byte. It is more efficient than 'break' as it is
 -- implemented with @memchr(3)@. I.e.
 --
@@ -765,7 +765,7 @@ breakByte c (LPS ps) = case (breakByte' ps) of (a,b) -> (LPS a, LPS b)
                         in (x : xs', xs'')
 
 -- | 'spanByte' breaks its ByteString argument at the first
--- occurence of a byte other than its argument. It is more efficient
+-- occurrence of a byte other than its argument. It is more efficient
 -- than 'span (==)'
 --
 -- > span  (=='c') "abcd" == spanByte 'c' "abcd"

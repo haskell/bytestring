@@ -257,7 +257,7 @@ cons = L.cons . c2w
 -- may coalesce the new byte onto the first \'chunk\' rather than starting a
 -- new \'chunk\'.
 --
--- So that means you can't use a lazy recursive contruction like this:
+-- So that means you can't use a lazy recursive construction like this:
 --
 -- > let xs = cons' c xs in xs
 --
@@ -462,7 +462,7 @@ span f = L.span (f . w2c)
 {-# INLINE span #-}
 
 {-
--- | 'breakChar' breaks its ByteString argument at the first occurence
+-- | 'breakChar' breaks its ByteString argument at the first occurrence
 -- of the specified Char. It is more efficient than 'break' as it is
 -- implemented with @memchr(3)@. I.e.
 -- 
@@ -473,7 +473,7 @@ breakChar = L.breakByte . c2w
 {-# INLINE breakChar #-}
 
 -- | 'spanChar' breaks its ByteString argument at the first
--- occurence of a Char other than its argument. It is more efficient
+-- occurrence of a Char other than its argument. It is more efficient
 -- than 'span (==)'
 --
 -- > span  (=='c') "abcd" == spanByte 'c' "abcd"

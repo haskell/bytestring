@@ -72,7 +72,7 @@ unsigned char fps_minimum(unsigned char *p, unsigned long  len) {
     return c;
 }
 
-/* count the number of occurences of a char in a string */
+/* count the number of occurrences of a char in a string */
 unsigned long fps_count(unsigned char *p, unsigned long len, unsigned char w) {
     unsigned long c;
     for (c = 0; len-- != 0; ++p)

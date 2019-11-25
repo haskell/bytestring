@@ -311,7 +311,7 @@ packLenBytes len ws0 =
       writeWord8Array mba i w
       go mba (i+1) ws
 
--- Unpacking bytestrings into lists effeciently is a tradeoff: on the one hand
+-- Unpacking bytestrings into lists efficiently is a tradeoff: on the one hand
 -- we would like to write a tight loop that just blats the list into memory, on
 -- the other hand we want it to be unpacked lazily so we don't end up with a
 -- massive list data structure in memory.

@@ -20,7 +20,7 @@
 -- standard encodings of standard Haskell values.
 --
 -- If you need to write your own builder primitives, then be aware that you are
--- writing code with /all saftey belts off/; i.e.,
+-- writing code with /all safety belts off/; i.e.,
 -- *this is the code that might make your application vulnerable to buffer-overflow attacks!*
 -- The "Data.ByteString.Builder.Prim.Tests" module provides you with
 -- utilities for testing your encodings thoroughly.

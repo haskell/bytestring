@@ -440,7 +440,7 @@ module Data.ByteString.Builder.Prim (
 {-
   -- * Testing support
   -- | The following four functions are intended for testing use
-  -- only. They are /not/ efficient. Basic encodings are efficently executed by
+  -- only. They are /not/ efficient. Basic encodings are efficiently executed by
   -- creating 'Builder's from them using the @encodeXXX@ functions explained at
   -- the top of this module.
 
@@ -533,7 +533,7 @@ primMapLazyByteStringFixed = primMapLazyByteStringBounded . toB
 --
 -- > primBounded (word32 c1) `mappend` primBounded (word32 c2)
 --
--- is rewritten such that the resulting 'Builder' checks only once, if ther are
+-- is rewritten such that the resulting 'Builder' checks only once, if there are
 -- at 8 free bytes, instead of checking twice, if there are 4 free bytes. This
 -- optimization is not observationally equivalent in a strict sense, as it
 -- influences the boundaries of the generated chunks. However, for a user of
@@ -541,7 +541,7 @@ primMapLazyByteStringFixed = primMapLazyByteStringBounded . toB
 -- 'L.ByteString' can only be observed through the internal interface.
 -- Morevoer, we expect that all primitives write much fewer than 4kb (the
 -- default short buffer size). Hence, it is safe to ignore the additional
--- memory spilled due to the more agressive buffer wrapping introduced by this
+-- memory spilled due to the more aggressive buffer wrapping introduced by this
 -- optimization.
 --
 {-# INLINE[1] primBounded #-}
