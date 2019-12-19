@@ -48,6 +48,25 @@ executable bench-bytestring-builder
                    -- blaze-textual, which uses blaze-builder
                    , bytestring    >= 0.9
                    , random
+  other-modules:
+        Data.ByteString
+        Data.ByteString.Builder
+        Data.ByteString.Builder.ASCII
+        Data.ByteString.Builder.Extra
+        Data.ByteString.Builder.Internal
+        Data.ByteString.Builder.Prim
+        Data.ByteString.Builder.Prim.ASCII
+        Data.ByteString.Builder.Prim.Binary
+        Data.ByteString.Builder.Prim.Internal
+        Data.ByteString.Builder.Prim.Internal.Base16
+        Data.ByteString.Builder.Prim.Internal.Floating
+        Data.ByteString.Builder.Prim.Internal.UncheckedShifts
+        Data.ByteString.Internal
+        Data.ByteString.Lazy
+        Data.ByteString.Lazy.Internal
+        Data.ByteString.Short.Internal
+        Data.ByteString.Unsafe
+        Paths_bench_bytestring
 
   -- cabal complains about ../ dirs. However, this is better than symlinks,
   -- which probably don't work on windows.
@@ -133,6 +152,25 @@ executable bench-builder-boundscheck
                     -fdicts-cheap
                     -fspec-constr-count=6
   default-language: Haskell98
+  other-modules:
+        Data.ByteString
+        Data.ByteString.Builder
+        Data.ByteString.Builder.ASCII
+        Data.ByteString.Builder.Extra
+        Data.ByteString.Builder.Internal
+        Data.ByteString.Builder.Prim
+        Data.ByteString.Builder.Prim.ASCII
+        Data.ByteString.Builder.Prim.Binary
+        Data.ByteString.Builder.Prim.Internal
+        Data.ByteString.Builder.Prim.Internal.Base16
+        Data.ByteString.Builder.Prim.Internal.Floating
+        Data.ByteString.Builder.Prim.Internal.UncheckedShifts
+        Data.ByteString.Internal
+        Data.ByteString.Lazy
+        Data.ByteString.Lazy.Internal
+        Data.ByteString.Short.Internal
+        Data.ByteString.Unsafe
+        Paths_bench_bytestring
 
 --executable bench-builder-csv
 --  hs-source-dirs:   .. .
