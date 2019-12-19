@@ -155,6 +155,15 @@ import GHC.Ptr                  (Ptr(..), castPtr)
 {-# CFILES cbits/fpstring.c #-}
 
 #if !MIN_VERSION_base(4,10,0)
+-- |Advances the given address by the given offset in bytes.
+--
+-- The new 'ForeignPtr' shares the finalizer of the original,
+-- equivalent from a finalization standpoint to just creating another
+-- reference to the original. That is, the finalizer will not be
+-- called before the new 'ForeignPtr' is unreachable, nor will it be
+-- called an additional time due to this call, and the finalizer will
+-- be called with the same address that it would have had this call
+-- not happened, *not* the new address.
 plusForeignPtr :: ForeignPtr a -> Int -> ForeignPtr b
 plusForeignPtr (ForeignPtr addr guts) (I# offset) = ForeignPtr (plusAddr# addr offset) guts
 {-# INLINE [0] plusForeignPtr #-}
@@ -163,7 +172,6 @@ plusForeignPtr (ForeignPtr addr guts) (I# offset) = ForeignPtr (plusAddr# addr o
    plusForeignPtr fp 0 = fp
  #-}
 #endif
-
 
 -- -----------------------------------------------------------------------------
 
@@ -180,9 +188,23 @@ data ByteString = BS {-# UNPACK #-} !(ForeignPtr Word8) -- payload
 
 
 #if __GLASGOW_HASKELL__ >= 800
+-- |
+-- @'PS' foreignPtr offset length@ represents a 'ByteString' with data
+-- backed by a given @foreignPtr@, starting at a given @offset@ in bytes
+-- and of a specified @length@.
+--
+-- This pattern is used to emulate the legacy 'ByteString' data
+-- constructor, so that pre-existing code generally doesn't need to
+-- change to benefit from the simplified 'BS' constructor and can
+-- continue to function unchanged.
+--
+-- /Note:/ Matching with this constructor will always be given a 0 'offset',
+-- as the base will be manipulated by 'plusForeignPtr' instead.
+--
 pattern PS :: ForeignPtr Word8 -> Int -> Int -> ByteString
 pattern PS fp zero len <- BS fp (((,) 0) -> (zero, len)) where
   PS fp o len = BS (plusForeignPtr fp o) len
+{-# COMPLETE PS #-}
 #endif
 
 instance Eq  ByteString where
