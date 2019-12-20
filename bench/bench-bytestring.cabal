@@ -82,6 +82,10 @@ executable bench-bytestring-builder
                     -fdicts-cheap
                     -fspec-constr-count=6
 
+  -- blaze-builder-0.3.* requires a GHC < 8.4
+  if impl(ghc >= 8.4)
+    buildable: False
+
   -- flags for the decimal integer serialization code
   if impl(ghc >= 6.11)
     if !flag(integer-simple)
