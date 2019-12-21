@@ -105,7 +105,7 @@ import           GHC.Types   (Int(..))
 # if __GLASGOW_HASKELL__ < 611
 import GHC.Integer.Internals
 # else
-import GHC.Integer.GMP.Internals -- for S# constructor
+import GHC.Integer.GMP.Internals (Integer(S#))
 # endif
 #endif
 
