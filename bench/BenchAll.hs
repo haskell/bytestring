@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP                 #-}
 {-# LANGUAGE BangPatterns        #-}
 {-# LANGUAGE PackageImports      #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -32,10 +31,8 @@ import           Data.ByteString.Builder.Prim          (BoundedPrim, FixedPrim,
 import qualified Data.ByteString.Builder.Prim          as P
 import qualified Data.ByteString.Builder.Prim.Internal as PI
 
-#ifdef BLAZE
 import qualified Blaze.ByteString.Builder          as Blaze
 import qualified Blaze.Text                        as Blaze
-#endif
 import qualified "bytestring" Data.ByteString      as OldS
 import qualified "bytestring" Data.ByteString.Lazy as OldL
 
@@ -107,13 +104,11 @@ oldByteStringChunksData = map (OldS.pack . replicate (4 ) . fromIntegral) intDat
 -- benchmark wrappers
 ---------------------
 
-#ifdef BLAZE
 {-# INLINE benchBlaze #-}
 benchBlaze :: String -> a -> (a -> Blaze.Builder) -> Benchmark
 benchBlaze name x b =
     bench (name ++" (" ++ show nRepl ++ ")") $
         whnf (OldL.length . Blaze.toLazyByteString . b) x
-#endif
 
 
 {-# INLINE benchB #-}
@@ -265,12 +260,10 @@ main = do
                 (foldMap byteString)
             , benchB ("foldMap byteStringCopy" ++ dataName) byteStringChunksData
                 (foldMap byteStringCopy)
-#ifdef BLAZE
             , benchBlaze ("foldMap Blaze.insertByteString" ++ dataName) oldByteStringChunksData
                 (foldMap Blaze.insertByteString)
             , benchBlaze ("foldMap Blaze.fromByteString" ++ dataName) oldByteStringChunksData
                 (foldMap Blaze.fromByteString)
-#endif
             ]
 
       , bgroup "Non-bounded encodings"
@@ -282,10 +275,8 @@ main = do
           -- to Integer.
         , benchB "foldMap integerDec (small)"                     smallIntegerData        $ foldMap integerDec
         , benchB "foldMap integerDec (large)"                     largeIntegerData        $ foldMap integerDec
-#ifdef BLAZE
         , benchBlaze "foldMap integerDec (small) (blaze-textual)" smallIntegerData        $ foldMap Blaze.integral
         , benchBlaze "foldMap integerDec (large) (blaze-textual)" largeIntegerData        $ foldMap Blaze.integral
-#endif
         ]
       ]
 
