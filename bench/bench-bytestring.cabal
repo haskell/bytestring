@@ -39,11 +39,6 @@ executable bench-bytestring-builder
                    , ghc-prim
                    , deepseq       >= 1.2
                    , criterion     >= 0.5
-                   , blaze-textual == 0.2.*
-                     -- There is no point using blaze-builder-0.4+ as that
-                     -- version is just a wrapper around bytestring itself,
-                     -- abd so a comparison benchmark would have no purpose.
-                   , blaze-builder == 0.3.*
                    -- we require bytestring due to benchmarking against
                    -- blaze-textual, which uses blaze-builder
                    , bytestring    >= 0.9
@@ -82,9 +77,14 @@ executable bench-bytestring-builder
                     -fdicts-cheap
                     -fspec-constr-count=6
 
-  -- blaze-builder-0.3.* requires a GHC < 8.4
-  if impl(ghc >= 8.4)
-    buildable: False
+  -- blaze-builder-0.3.* requires GHC < 8.4
+  -- There is no point using blaze-builder-0.4+ as that
+  -- version is just a wrapper around bytestring itself,
+  -- abd so a comparison benchmark would have no purpose.
+  if impl(ghc < 8.4)
+     cpp-options: -DBLAZE
+     build-depends:  blaze-textual == 0.2.*
+                   , blaze-builder == 0.3.*
 
   -- flags for the decimal integer serialization code
   if impl(ghc >= 6.11)
