@@ -1679,7 +1679,11 @@ hPutNonBlocking h bs@(PS ps s l) = do
 hPutStr :: Handle -> ByteString -> IO ()
 hPutStr = hPut
 
--- | Write a ByteString to a handle, appending a newline byte
+-- | Write a ByteString to a handle, appending a newline byte.
+--
+-- This is not atomic.
+-- Writing the bytestring argument is atomic. But other threads might write
+-- to the handle between writing of the bytestring and the newline.
 hPutStrLn :: Handle -> ByteString -> IO ()
 hPutStrLn h ps
     | length ps < 1024 = hPut h (ps `snoc` 0x0a)
@@ -1690,6 +1694,10 @@ putStr :: ByteString -> IO ()
 putStr = hPut stdout
 
 -- | Write a ByteString to stdout, appending a newline byte
+--
+-- This is not atomic.
+-- Writing the bytestring argument is atomic. But other threads might write
+-- to the handle between writing of the bytestring and the newline.
 putStrLn :: ByteString -> IO ()
 putStrLn = hPutStrLn stdout
 
