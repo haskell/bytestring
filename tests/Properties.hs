@@ -1241,17 +1241,17 @@ prop_initsBB xs = inits xs == map P.unpack (P.inits (P.pack xs))
 prop_tailsBB xs = tails xs == map P.unpack (P.tails (P.pack xs))
 
 prop_findSubstringsBB s x l
-    = C.findSubstrings (C.pack p) (C.pack s) == naive_findSubstrings p s
+    -- coerce to 8-bit alphabet to avoid false-positives
+    = let s8 = C.unpack $ C.pack s
+          _ = l :: Int
+          _ = x :: Int
+          -- we look for some random substring of the test string
+          p = take (model l) $ drop (model x) s8
+      in C.findSubstrings (C.pack p) (C.pack s8) == naive_findSubstrings p s8
   where
-    _ = l :: Int
-    _ = x :: Int
-
-    -- we look for some random substring of the test string
-    p = take (model l) $ drop (model x) s
-
     -- naive reference implementation
     naive_findSubstrings :: String -> String -> [Int]
-    naive_findSubstrings p s = [x | x <- [0..length s], p `isPrefixOf` drop x s]
+    naive_findSubstrings p q = [x | x <- [0..length q], p `isPrefixOf` drop x q]
 
 prop_findSubstringBB s x l
     = C.findSubstring (C.pack p) (C.pack s) == naive_findSubstring p s
