@@ -1413,9 +1413,11 @@ findSubstring pat src
 
 {-# DEPRECATED findSubstring "findSubstring is deprecated in favour of breakSubstring." #-}
 
--- | Find the indexes of all (possibly overlapping) occurences of a
--- substring in a string.
+-- | Find the indices of all non-overlapping occurences of a substring in a
+-- string.
 --
+-- Note, prior to @0.10.6.0@ this function returned the indices of all
+-- possibly-overlapping matches.
 findSubstrings :: ByteString -- ^ String to search for.
                -> ByteString -- ^ String to seach in.
                -> [Int]
@@ -1432,6 +1434,14 @@ findSubstrings pat src
       where
         (a, b) = breakSubstring pat (unsafeDrop n src)
 
+-- In
+-- [0.10.6.0](<https://github.com/haskell/bytestring/commit/2160e091e215fecc9177d55a37cd50fc253ba86a?w=1>)
+-- 'findSubstrings' was refactored to call an improved 'breakString'
+-- implementation, but the refactored code no longer matches overlapping
+-- strings.  The behaviour change appears to be inadvertent, but the function
+-- had already been deprecated for more than seven years.  At this time
+-- (@0.10.10.1@), the deprecation was twelve years in the past.
+--
 {-# DEPRECATED findSubstrings "findSubstrings is deprecated in favour of breakSubstring." #-}
 
 -- ---------------------------------------------------------------------

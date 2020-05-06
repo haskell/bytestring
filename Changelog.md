@@ -1,3 +1,13 @@
+0.10.10.1 <ietf-dane@dukhovni.org> May 2020
+
+ * Fix off-by-one infinite loop in primMapByteStringBounded.
+ * Document inadvertent 0.10.6.0 behaviour change in findSubstrings
+ * Fix findSubString and findSubstrings tests
+ * Work around hPutBuilder test failure for GHC < 7.4
+ * Fix GHC Travis CI 7.0 builds
+ * Fix benchmark builds
+ * Add GHC 8.10 to the CI matrix
+
 0.10.10.0 July 2019 <duncan+haskell@dcoutts.me.uk> July 2019
 
  * Build with GHC 8.8, and tests with QC 2.10+

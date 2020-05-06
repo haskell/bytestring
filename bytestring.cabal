@@ -54,8 +54,9 @@ Author:              Don Stewart,
 Maintainer:          Duncan Coutts <duncan@community.haskell.org>
 Homepage:            https://github.com/haskell/bytestring
 Bug-reports:         https://github.com/haskell/bytestring/issues
-Tested-With:         GHC==8.10.1, GHC==8.8.1, GHC==8.6.3, GHC==8.4.4, GHC==8.2.2,
-                     GHC==8.0.2, GHC==7.10.3, GHC==7.8.4, GHC==7.6.3, GHC==7.4.2
+Tested-With:         GHC==8.10.1, GHC==8.8.3, GHC==8.6.5, GHC==8.4.4, GHC==8.2.2,
+                     GHC==8.0.2, GHC==7.10.3, GHC==7.8.4, GHC==7.6.3, GHC==7.4.2,
+                     GHC==7.2.2, GHC==7.0.4
 Build-Type:          Simple
 Cabal-Version:       >= 1.10
 extra-source-files:  README.md Changelog.md

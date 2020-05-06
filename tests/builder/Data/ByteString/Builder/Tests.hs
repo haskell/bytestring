@@ -98,10 +98,22 @@ testHandlePutBuilder =
     testProperty "hPutBuilder" testRecipe
   where
     testRecipe :: (UnicodeString, UnicodeString, UnicodeString, Recipe) -> Bool
-    testRecipe args@(UnicodeString before,
-                     UnicodeString between,
-                     UnicodeString after, recipe) =
+    testRecipe args =
       unsafePerformIO $ do
+        let (UnicodeString a1, UnicodeString a2, UnicodeString a3, recipe) = args
+#if MIN_VERSION_base(4,5,0)
+            before  = a1
+            between = a2
+            after   = a3
+#else
+            -- See https://github.com/haskell/bytestring/issues/212
+            -- write -> read does not roundrip with GHC 7.2 and
+            -- characters in the \xEF00-\xEFFF range.
+            safeChr = \c -> c < '\xEF00' || c > '\xEFFF'
+            before  = filter safeChr a1
+            between = filter safeChr a2
+            after   = filter safeChr a3
+#endif
         tempDir <- getTemporaryDirectory
         (tempFile, tempH) <- openTempFile tempDir "TestBuilder"
         -- switch to UTF-8 encoding
