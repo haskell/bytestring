@@ -27,7 +27,7 @@ executable prop-compiled
   hs-source-dirs:   . ..
   build-depends:    base, ghc-prim, deepseq, random, directory,
                     test-framework, test-framework-quickcheck2,
-                    QuickCheck >= 2.3 && < 2.8
+                    QuickCheck >= 2.10 && < 2.15
   c-sources:        ../cbits/fpstring.c
   include-dirs:     ../include
   cpp-options:      -DHAVE_TEST_FRAMEWORK=1
@@ -70,7 +70,7 @@ executable test-builder
 
   build-depends:    base, ghc-prim,
                     deepseq,
-                    QuickCheck                 >= 2.4 && < 3,
+                    QuickCheck                 >= 2.10 && < 2.15,
                     byteorder                  == 1.0.*,
                     dlist                      >= 0.5 && < 0.9,
                     directory,
