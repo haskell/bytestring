@@ -652,7 +652,7 @@ primMapByteStringBounded w =
               touchForeignPtr ifp -- input buffer consumed
               k br
 
-          | op0 `plusPtr` bound < ope =
+          | op0 `plusPtr` bound <= ope =
               goPartial (ip0 `plusPtr` min outRemaining inpRemaining)
 
           | otherwise  = return $ bufferFull bound op0 (goBS ip0)
