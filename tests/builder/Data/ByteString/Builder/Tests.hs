@@ -60,7 +60,12 @@ import           Test.QuickCheck.Property
 tests :: [Test]
 tests =
   [ testBuilderRecipe
+#if MIN_VERSION_base(4,5,0)
+    -- This test is broken with GHC < 7.4 due to a file handle I/O roundtrip
+    -- issue. See
+    -- https://github.com/haskell/bytestring/issues/212#issuecomment-624963024.
   , testHandlePutBuilder
+#endif
   , testHandlePutBuilderChar8
   , testPut
   , testRunBuilder
