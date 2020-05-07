@@ -1,6 +1,7 @@
 env:
- ### GHC 7.0.4 fails to build "text" 1.2.4.0 for QuickCheck
- - GHCVER=7.0.4 CABALVER=1.16
+ # We use cabal 2.4 with GHC 7.0 since older versions fail to build
+ # text: See https://github.com/haskell/bytestring/issues/213.
+ - GHCVER=7.0.4 CABALVER=2.4
  ### GHC 7.2.2 fails "hPutBuilder" tests due to encoding roundtrip issues
  - GHCVER=7.2.2 CABALVER=1.16
  # we have to use CABALVER=1.16 for GHC<7.6 as well, as there's
