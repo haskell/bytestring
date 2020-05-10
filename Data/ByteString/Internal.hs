@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP, ForeignFunctionInterface, BangPatterns #-}
 {-# LANGUAGE UnliftedFFITypes, MagicHash,
             UnboxedTuples, DeriveDataTypeable #-}
+{-# LANGUAGE TypeFamilies #-}
 #if __GLASGOW_HASKELL__ >= 703
 {-# LANGUAGE Unsafe #-}
 #endif
@@ -117,6 +118,10 @@ import Data.Data                (Data(..), mkNoRepType)
 
 import GHC.Base                 (nullAddr#,realWorld#,unsafeChr)
 
+#if MIN_VERSION_base(4,7,0)
+import GHC.Exts                 (IsList(..))
+#endif
+
 #if MIN_VERSION_base(4,4,0)
 import GHC.CString              (unpackCString#)
 #else
@@ -181,6 +186,13 @@ instance Show ByteString where
 
 instance Read ByteString where
     readsPrec p str = [ (packChars x, y) | (x, y) <- readsPrec p str ]
+
+#if MIN_VERSION_base(4,7,0)
+instance IsList ByteString where
+  type Item ByteString = Word8
+  fromList = packBytes
+  toList   = unpackBytes
+#endif
 
 instance IsString ByteString where
     fromString = packChars
