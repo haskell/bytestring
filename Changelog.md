@@ -1,5 +1,8 @@
 0.10.10.1 <ietf-dane@dukhovni.org> May 2020
 
+ * **Note:** There are several breaking changes planned to be included in v0.11.
+   Please ensure that your package has appropriate upper bounds on bytestring,
+   to minimize avoidable breakage.
  * Fix off-by-one infinite loop in primMapByteStringBounded.
  * Document inadvertent 0.10.6.0 behaviour change in findSubstrings
  * Fix findSubString and findSubstrings tests
