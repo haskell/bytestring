@@ -7,6 +7,7 @@
  * Fix GHC Travis CI 7.0 builds
  * Fix benchmark builds
  * Add GHC 8.10 to the CI matrix
+ * Improve the performance of `sconcat` for lazy and strict bytestrings
 
 0.10.10.0 July 2019 <duncan+haskell@dcoutts.me.uk> July 2019
 
