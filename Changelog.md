@@ -8,7 +8,7 @@
  * Fix benchmark builds
  * Add GHC 8.10 to the CI matrix
  * Improve the performance of `sconcat` for lazy and strict bytestrings
- * Added `indexMaybe` for indexing that returns `Maybe`
+ * Added `indexMaybe` and synonym `(!?)` for indexing that returns `Maybe`
 
 0.10.10.0 July 2019 <duncan+haskell@dcoutts.me.uk> July 2019
 
