@@ -153,6 +153,7 @@ module Data.ByteString (
         -- * Indexing ByteStrings
         index,                  -- :: ByteString -> Int -> Word8
         indexMaybe,             -- :: ByteString -> Int -> Maybe Word8
+        (!?),                   -- :: ByteString -> Int -> Maybe Word8
         elemIndex,              -- :: Word8 -> ByteString -> Maybe Int
         elemIndices,            -- :: Word8 -> ByteString -> [Int]
         elemIndexEnd,           -- :: Word8 -> ByteString -> Maybe Int
@@ -1090,6 +1091,15 @@ indexMaybe ps n
     | n >= length ps = Nothing
     | otherwise      = Just $ ps `unsafeIndex` n
 {-# INLINE indexMaybe #-}
+
+-- | /O(1)/ 'ByteString' index, starting from 0, that returns 'Just' if:
+--
+-- > 0 <= n < length bs
+--
+-- @since 0.10.10.0
+(!?) :: ByteString -> Int -> Maybe Word8
+(!?) = indexMaybe
+{-# INLINE (!?) #-}
 
 -- | /O(n)/ The 'elemIndex' function returns the index of the first
 -- element in the given 'ByteString' which is equal to the query
