@@ -147,6 +147,7 @@ module Data.ByteString.Lazy.Char8 (
         -- * Indexing ByteStrings
         index,                  -- :: ByteString -> Int64 -> Char
         indexMaybe,             -- :: ByteString -> Int64 -> Maybe Char
+        (!?),                   -- :: ByteString -> Int64 -> Maybe Char
         elemIndex,              -- :: Char -> ByteString -> Maybe Int64
         elemIndices,            -- :: Char -> ByteString -> [Int64]
         findIndex,              -- :: (Char -> Bool) -> ByteString -> Maybe Int64
@@ -536,6 +537,15 @@ index = (w2c .) . L.index
 indexMaybe :: ByteString -> Int64 -> Maybe Char
 indexMaybe = ((fmap w2c) .) . L.indexMaybe
 {-# INLINE indexMaybe #-}
+
+-- | /O(1)/ 'ByteString' index, starting from 0, that returns 'Just' if:
+--
+-- > 0 <= n < length bs
+--
+-- @since 0.10.10.0
+(!?) :: ByteString -> Int64 -> Maybe Char
+(!?) = indexMaybe
+{-# INLINE (!?) #-}
 
 -- | /O(n)/ The 'elemIndex' function returns the index of the first
 -- element in the given 'ByteString' which is equal (by memchr) to the
