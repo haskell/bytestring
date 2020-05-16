@@ -528,14 +528,14 @@ index :: ByteString -> Int64 -> Char
 index = (w2c .) . L.index
 {-# INLINE index #-}
 
--- | /O(1)/ 'ByteString' index, starting from 0, that returns 'Nothing' if:
+-- | /O(1)/ 'ByteString' index, starting from 0, that returns 'Just' if:
 --
 -- > 0 <= n < length bs
 --
 -- @since 0.10.10.0
 indexMaybe :: ByteString -> Int64 -> Maybe Char
 indexMaybe = ((fmap w2c) .) . L.indexMaybe
-{-# indexMaybe #-}
+{-# INLINE indexMaybe #-}
 
 -- | /O(n)/ The 'elemIndex' function returns the index of the first
 -- element in the given 'ByteString' which is equal (by memchr) to the

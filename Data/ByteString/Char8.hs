@@ -624,7 +624,7 @@ index :: ByteString -> Int -> Char
 index = (w2c .) . B.index
 {-# INLINE index #-}
 
--- | /O(1)/ 'ByteString' index, starting from 0, that returns 'Nothing' if:
+-- | /O(1)/ 'ByteString' index, starting from 0, that returns 'Just' if:
 --
 -- > 0 <= n < length bs
 --

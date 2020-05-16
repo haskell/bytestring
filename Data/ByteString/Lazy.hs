@@ -895,7 +895,7 @@ index cs0 i         = index' cs0 i
               index' cs (n - fromIntegral (S.length c))
           | otherwise       = S.unsafeIndex c (fromIntegral n)
 
--- | /O(c)/ 'ByteString' index, starting from 0, that returns 'Nothing' if:
+-- | /O(c)/ 'ByteString' index, starting from 0, that returns 'Just' if:
 --
 -- > 0 <= n < length bs
 --
@@ -903,7 +903,7 @@ index cs0 i         = index' cs0 i
 indexMaybe :: ByteString -> Int64 -> Maybe Word8
 indexMaybe _ i | i < 0 = Nothing
 indexMaybe cs0 i       = index' cs0 i
-  where index' Empty b      = Nothing
+  where index' Empty _ = Nothing
         index' (Chunk c cs) n
           | n >= fromIntegral (S.length c) =
               index' cs (n - fromIntegral (S.length c))

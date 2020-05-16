@@ -1079,7 +1079,7 @@ index ps n
     | otherwise      = ps `unsafeIndex` n
 {-# INLINE index #-}
 
--- | /O(1)/ 'ByteString' index, starting from 0, that returns 'Nothing' if:
+-- | /O(1)/ 'ByteString' index, starting from 0, that returns 'Just' if:
 --
 -- > 0 <= n < length bs
 --
