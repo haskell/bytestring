@@ -788,7 +788,7 @@ prop_index_C (String8 xs) =
     forAll indices $ \i -> (xs !! i) == C.pack xs `C.index` (fromIntegral i)
   where indices = choose (0, length xs -1)
 
--- | Test 'indexMaybe for Lazy and Strict 'ByteString's.
+-- | Test 'indexMaybe' for Lazy and Strict 'ByteString's.
 --   If we are testing within the bounds it should return a 'Just' value.
 --   If we are testing outside of the bounds it should return a 'Nothing' value.
 prop_indexMaybe_Just_L xs =
