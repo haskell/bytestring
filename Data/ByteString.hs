@@ -1103,7 +1103,7 @@ index ps n
 --
 -- > 0 <= n < length bs
 --
--- @since 0.10.10.0
+-- @since 0.10.10.1
 indexMaybe :: ByteString -> Int -> Maybe Word8
 indexMaybe ps n
     | n < 0          = Nothing
@@ -1115,7 +1115,7 @@ indexMaybe ps n
 --
 -- > 0 <= n < length bs
 --
--- @since 0.10.10.0
+-- @since 0.10.10.1
 (!?) :: ByteString -> Int -> Maybe Word8
 (!?) = indexMaybe
 {-# INLINE (!?) #-}

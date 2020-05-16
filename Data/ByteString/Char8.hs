@@ -650,7 +650,7 @@ index = (w2c .) . B.index
 --
 -- > 0 <= n < length bs
 --
--- @since 0.10.10.0
+-- @since 0.10.10.1
 indexMaybe :: ByteString -> Int -> Maybe Char
 indexMaybe = ((fmap w2c) .) . B.indexMaybe
 {-# INLINE indexMaybe #-}
@@ -659,7 +659,7 @@ indexMaybe = ((fmap w2c) .) . B.indexMaybe
 --
 -- > 0 <= n < length bs
 --
--- @since 0.10.10.0
+-- @since 0.10.10.1
 (!?) :: ByteString -> Int -> Maybe Char
 (!?) = indexMaybe
 {-# INLINE (!?) #-}

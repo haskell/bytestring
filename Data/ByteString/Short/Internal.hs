@@ -220,7 +220,7 @@ index sbs i
 --
 -- > 0 <= n < length bs
 --
--- @since 0.10.10.0
+-- @since 0.10.10.1
 indexMaybe :: ShortByteString -> Int -> Maybe Word8
 indexMaybe sbs i
   | i >= 0 && i < length sbs = Just $ unsafeIndex sbs i
@@ -230,7 +230,7 @@ indexMaybe sbs i
 --
 -- > 0 <= n < length bs
 --
--- @since 0.10.10.0
+-- @since 0.10.10.1
 (!?) :: ShortByteString -> Int -> Maybe Word8
 (!?) = indexMaybe
 
