@@ -36,8 +36,8 @@ module Data.ByteString.Builder.ASCII
     , word64Dec
     , wordDec
 
-    , floatDec
-    , doubleDec
+    , char7
+    , string7
 
       -- *** Hexadecimal numbers
 
@@ -113,6 +113,10 @@ import GHC.Integer.GMP.Internals
 -- Decimal Encoding
 ------------------------------------------------------------------------------
 
+-- | Encode a 'Char' using 'P.char7'.
+{-# INLINE char7 #-}
+char7 :: Char -> Builder
+char7 = P.primFixed P.char7
 
 -- | Encode a 'String' using 'P.char7'.
 {-# INLINE string7 #-}
@@ -185,22 +189,6 @@ word64Dec = P.primBounded P.word64Dec
 {-# INLINE wordDec #-}
 wordDec :: Word -> Builder
 wordDec = P.primBounded P.wordDec
-
-
--- Floating point numbers
--------------------------
-
--- TODO: Use Bryan O'Sullivan's double-conversion package to speed it up.
-
--- | /Currently slow./ Decimal encoding of an IEEE 'Float'.
-{-# INLINE floatDec #-}
-floatDec :: Float -> Builder
-floatDec = string7 . show
-
--- | /Currently slow./ Decimal encoding of an IEEE 'Double'.
-{-# INLINE doubleDec #-}
-doubleDec :: Double -> Builder
-doubleDec = string7 . show
 
 
 ------------------------------------------------------------------------------

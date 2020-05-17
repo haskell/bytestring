@@ -270,7 +270,9 @@ main = do
         [ benchB "byteStringHex"           byteStringData     $ byteStringHex
         , benchB "lazyByteStringHex"       lazyByteStringData $ lazyByteStringHex
         , benchB "foldMap floatDec"        floatData          $ foldMap floatDec
+        , benchB "foldMap show float"      floatData          $ foldMap (string7 . show)
         , benchB "foldMap doubleDec"       doubleData         $ foldMap doubleDec
+        , benchB "foldMap show double"     doubleData         $ foldMap (string7 . show)
           -- Note that the small data corresponds to the intData pre-converted
           -- to Integer.
         , benchB "foldMap integerDec (small)"                     smallIntegerData        $ foldMap integerDec
