@@ -32,7 +32,7 @@
 
 int f2s_buffered_n(float f, char* result);
 void f2s_floating_decimal(float f, uint32_t* mantissaOut, int32_t* exponentOut);
-int f2s_to_chars(uint32_t mantissa, int32_t exponent, const bool sign, char* const result);
+int f2s_to_chars(uint32_t mantissa, int32_t exponent, const uint8_t sign, char* const result);
 
 
 /*
@@ -528,7 +528,7 @@ void f2s_floating_decimal(float f, uint32_t* mantissaOut, int32_t* exponentOut) 
   *exponentOut = v.exponent;
 }
 
-int f2s_to_chars(uint32_t mantissa, int32_t exponent, const bool sign, char* const result) {
+int f2s_to_chars(uint32_t mantissa, int32_t exponent, const uint8_t sign, char* const result) {
     floating_decimal_32 fd;
     fd.exponent= exponent;
     fd.mantissa = mantissa ;

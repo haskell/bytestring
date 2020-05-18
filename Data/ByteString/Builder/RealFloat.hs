@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE MagicHash, UnboxedTuples #-}
@@ -13,7 +14,7 @@ module Data.ByteString.Builder.RealFloat
 import Data.ByteString.Internal (ByteString(..), mallocByteString)
 import Data.ByteString.Builder.ASCII (char7, string7)
 import Data.ByteString.Builder.Internal (Builder, byteString)
-import Foreign.C.Types (CFloat(..), CDouble(..), CInt(..), CUInt(..), CULong(..), CBool(..))
+import Foreign.C.Types (CFloat(..), CDouble(..), CInt(..), CUInt(..), CULong(..), CUChar(..))
 import Foreign.ForeignPtr (ForeignPtr, withForeignPtr)
 import Foreign.Marshal.Alloc (alloca)
 import Foreign.Ptr (Ptr)
@@ -78,10 +79,10 @@ foreign import ccall unsafe "static d2s_floating_decimal"
     c_ryu_d2s_fd :: CDouble -> Ptr Word64 -> Ptr Int32 -> IO ()
 
 foreign import ccall unsafe "static f2s_to_chars"
-    c_ryu_f2s_to_chars :: CUInt -> CInt -> CBool -> Ptr Word8 -> IO CInt
+    c_ryu_f2s_to_chars :: CUInt -> CInt -> CUChar -> Ptr Word8 -> IO CInt
 
 foreign import ccall unsafe "static d2s_to_chars"
-    c_ryu_d2s_to_chars :: CULong -> CInt -> CBool -> Ptr Word8 -> IO CInt
+    c_ryu_d2s_to_chars :: CULong -> CInt -> CUChar -> Ptr Word8 -> IO CInt
 
 {-# INLINE ryu_f2s #-}
 ryu_f2s :: Float -> ByteString
@@ -128,8 +129,8 @@ ryu_d2s_fd f = unsafeDupablePerformIO $
         e <- peek eOut
         return $ FD64 m e
 
-asCBool :: Bool -> CBool
-asCBool = CBool . fromIntegral . fromEnum
+asCBool :: Bool -> CUChar
+asCBool = CUChar . fromIntegral . fromEnum
 
 {-# INLINE ryu_f2s_to_chars #-}
 ryu_f2s_to_chars :: Word32 -> Int32 -> Bool -> ByteString
