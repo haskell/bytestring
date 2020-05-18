@@ -14,6 +14,12 @@ module Data.ByteString.Builder.RealFloat
 import Data.ByteString.Internal (ByteString(..), mallocByteString)
 import Data.ByteString.Builder.ASCII (char7, string7)
 import Data.ByteString.Builder.Internal (Builder, byteString)
+
+#if !(MIN_VERSION_base(4,8,0))
+import Data.Monoid
+import Control.Applicative ((<$>))
+#endif
+
 import Foreign.C.Types (CFloat(..), CDouble(..), CInt(..), CUInt(..), CULong(..), CUChar(..))
 import Foreign.ForeignPtr (ForeignPtr, withForeignPtr)
 import Foreign.Marshal.Alloc (alloca)
