@@ -41,7 +41,7 @@ formatFloat fmt prec f =
         | Just b <- specialStr f -> b
         | otherwise ->
           if e' >= 0 && e' <= 7
-             then sign f <> showFixed (fromIntegral m) e' prec
+             then sign f `mappend` showFixed (fromIntegral m) e' prec
              else byteString $ ryu_f2s_to_chars m e (f < 0)
         where (FD32 m e) = ryu_f2s_fd f
               e' = fromIntegral e + decimalLength9 m
@@ -56,7 +56,7 @@ formatDouble fmt prec f =
         | Just b <- specialStr f -> b
         | otherwise ->
           if e' >= 0 && e' <= 7
-             then sign f <> showFixed m e' prec
+             then sign f `mappend` showFixed m e' prec
              else byteString $ ryu_d2s_to_chars m e (f < 0)
         where (FD64 m e) = ryu_d2s_fd f
               e' = fromIntegral e + decimalLength17 m
@@ -101,10 +101,10 @@ data FloatingDecimal64 = FD64 !Word64 !Int32
 data FloatingDecimal32 = FD32 !Word32 !Int32
 
 instance Show FloatingDecimal64 where
-  showsPrec p (FD64 m e) = showsPrec p m <> showsPrec p '.' <> showsPrec p e
+  showsPrec p (FD64 m e) = showsPrec p m `mappend` showsPrec p '.' `mappend` showsPrec p e
 
 instance Show FloatingDecimal32 where
-  showsPrec p (FD32 m e) = showsPrec p m <> showsPrec p '.' <> showsPrec p e
+  showsPrec p (FD32 m e) = showsPrec p m `mappend` showsPrec p '.' `mappend` showsPrec p e
 
 -- extracts base-10 converted mantissa and exponent using ryu algorithm
 -- NB: only valid if not NaN, +/-0, or +/-Inf
@@ -185,7 +185,7 @@ sign f = if f < 0 then char7 '-' else mempty
 specialStr :: RealFloat a => a -> Maybe Builder
 specialStr f
   | isNaN f          = Just $ string7 "NaN"
-  | isInfinite f     = Just $ sign f <> string7 "Infinity"
+  | isInfinite f     = Just $ sign f `mappend` string7 "Infinity"
   | isNegativeZero f = Just $ string7 "-0.0"
   | f == 0           = Just $ string7 "0.0"
   | otherwise        = Nothing
@@ -195,7 +195,7 @@ specialStr f
 ryu_d2fixed :: Double -> Maybe Int -> Builder
 ryu_d2fixed f prec
   | Just b <- specialStr f = b
-  | otherwise = sign f <> showFixed m e' prec
+  | otherwise = sign f `mappend` showFixed m e' prec
   where (FD64 m e) = ryu_d2s_fd f
         olength = decimalLength17 m
         -- NB: exponent in exponential format is e' - 1
@@ -206,11 +206,11 @@ showFixed m e prec =
     case prec of
        Nothing
          | e <= 0 -> char7 '0'
-                  <> char7 '.'
-                  <> string7 (replicate (-e) '0')
-                  <> foldr (<>) mempty (toB ds)
+                  `mappend` char7 '.'
+                  `mappend` string7 (replicate (-e) '0')
+                  `mappend` foldr mappend mempty (toB ds)
          | otherwise ->
-           let f 0 s     rs = mk0 (reverse s) <> char7 '.' <> mk0 rs
+           let f 0 s     rs = mk0 (reverse s) `mappend` char7 '.' `mappend` mk0 rs
                f n s     [] = f (n-1) (char7 '0':s) []
                f n s (r:rs) = f (n-1) (r:s) rs
             in f e [] (toB ds)
@@ -218,15 +218,15 @@ showFixed m e prec =
          | e >= 0 ->
            let (ei, is') = roundTo 10 (p' + e) ds
                (ls, rs) = splitAt (e + ei) (toB is')
-            in mk0 ls <> mkDot rs
+            in mk0 ls `mappend` mkDot rs
          | otherwise ->
            let (ei, is') = roundTo 10 p' (replicate (-e) 0 ++ ds)
                (b:bs) = toB (if ei > 0 then is' else 0:is')
-            in b <> mkDot bs
+            in b `mappend` mkDot bs
            where p' = max p 0
     where
-        mk0 ls = case ls of [] -> char7 '0'; _ -> foldr (<>) mempty ls
-        mkDot rs = if null rs then mempty else char7 '.' <> foldr (<>) mempty rs
+        mk0 ls = case ls of [] -> char7 '0'; _ -> foldr mappend mempty ls
+        mkDot rs = if null rs then mempty else char7 '.' `mappend` foldr mappend mempty rs
         ds = digits m
         toB = fmap (char7 . intToDigit)
 
