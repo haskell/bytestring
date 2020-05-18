@@ -24,7 +24,12 @@ import GHC.Int (Int32)
 import GHC.Float (FFFormat(..), roundTo)
 import GHC.Prim
 import GHC.Show (intToDigit)
+
+#if MIN_VERSION_base(4,4,0)
 import System.IO.Unsafe (unsafeDupablePerformIO)
+#else
+import           GHC.IO (unsafeDupablePerformIO)
+#endif
 
 {-# INLINABLE floatDec #-}
 floatDec :: Float -> Builder
