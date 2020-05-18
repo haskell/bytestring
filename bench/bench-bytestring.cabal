@@ -36,7 +36,7 @@ executable bench-bytestring-builder
   main-is:           BenchAll.hs
 
   build-depends:     base >= 4.4 && < 5
-                   , ghc-prim      >= 0.3
+                   , ghc-prim
                    , deepseq       >= 1.2
                    , criterion     >= 0.5
                    , blaze-textual == 0.2.*
@@ -149,7 +149,7 @@ executable bench-bytestring-builder
 executable bench-builder-boundscheck
   hs-source-dirs:   .. .
   main-is:          BoundsCheckFusion.hs
-  build-depends:    base, deepseq, ghc-prim >= 0.3,
+  build-depends:    base, deepseq, ghc-prim,
                     criterion
   c-sources:        ../cbits/fpstring.c
                     ../cbits/itoa.c

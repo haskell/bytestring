@@ -25,7 +25,7 @@ executable prop-compiled
   other-modules:    Rules
                     QuickCheckUtils
   hs-source-dirs:   . ..
-  build-depends:    base, ghc-prim >= 0.3, deepseq, random, directory,
+  build-depends:    base, ghc-prim, deepseq, random, directory,
                     test-framework, test-framework-quickcheck2,
                     QuickCheck >= 2.10 && < 2.15
   c-sources:        ../cbits/fpstring.c
@@ -45,7 +45,7 @@ executable prop-compiled
 executable regressions
   main-is:          Regressions.hs
   hs-source-dirs:   . ..
-  build-depends:    base, ghc-prim >= 0.3, deepseq, random, directory,
+  build-depends:    base, ghc-prim, deepseq, random, directory,
                     test-framework, test-framework-hunit, HUnit
   c-sources:        ../cbits/fpstring.c
   include-dirs:     ../include
@@ -68,7 +68,7 @@ executable test-builder
                     Data.ByteString.Builder.Prim.Tests
                     Data.ByteString.Builder.Prim.TestUtils
 
-  build-depends:    base, ghc-prim >= 0.3,
+  build-depends:    base, ghc-prim,
                     deepseq,
                     QuickCheck                 >= 2.10 && < 2.15,
                     byteorder                  == 1.0.*,
