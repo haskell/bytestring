@@ -249,6 +249,7 @@ showFixed m e prec =
         ds = digits m
         toB = fmap (char7 . intToDigit)
 
+#if MIN_VERSION_base(4,6,0)
 dquot10 :: Word# -> Word#
 dquot10 w
   = let !(# rdx, _ #) = w `timesWord2#` 0xCCCCCCCCCCCCCCCD##
@@ -260,6 +261,10 @@ dquotRem10 w = let w' = dquot10 w
 
 dquotRem10Boxed :: Word64 -> (Word64, Word64)
 dquotRem10Boxed (W64# w) = let !(# q, r #) = dquotRem10 w in (W64# q, W64# r)
+#else
+dquotRem10Boxed :: Word64 -> (Word64, Word64)
+dquotRem10Boxed w = w `quotRem` 10
+#endif
 
 digits :: Word64 -> [Int]
 digits w = go [] w
