@@ -20,7 +20,14 @@ import Data.Monoid
 import Control.Applicative ((<$>))
 #endif
 
+import Foreign.C.Types (CFloat, CDouble, CInt, CUInt, CULong, CUChar)
+
+#if MIN_VERSION_base(4,5,0) || __GLASGOW_HASKELL__ >= 703
 import Foreign.C.Types (CFloat(..), CDouble(..), CInt(..), CUInt(..), CULong(..), CUChar(..))
+#else
+import Foreign.C.Types (CFloat, CDouble, CInt, CUInt, CULong, CUChar)
+#endif
+
 import Foreign.ForeignPtr (ForeignPtr, withForeignPtr)
 import Foreign.Marshal.Alloc (alloca)
 import Foreign.Ptr (Ptr)
@@ -100,14 +107,14 @@ ryu_f2s :: Float -> ByteString
 ryu_f2s f = unsafeDupablePerformIO $ do
     fp <- mallocByteString 16 :: IO (ForeignPtr Word8)
     withForeignPtr fp $ \p ->
-      PS fp 0 . fromIntegral <$> c_ryu_f2s (CFloat f) p
+      PS fp 0 . fromIntegral <$> c_ryu_f2s (realToFrac f) p
 
 {-# INLINE ryu_d2s #-}
 ryu_d2s :: Double -> ByteString
 ryu_d2s f = unsafeDupablePerformIO $ do
     fp <- mallocByteString 25 :: IO (ForeignPtr Word8)
     withForeignPtr fp $ \p ->
-      PS fp 0 . fromIntegral <$> c_ryu_d2s (CDouble f) p
+      PS fp 0 . fromIntegral <$> c_ryu_d2s (realToFrac f) p
 
 data FloatingDecimal64 = FD64 !Word64 !Int32
 data FloatingDecimal32 = FD32 !Word32 !Int32
@@ -125,7 +132,7 @@ ryu_f2s_fd :: Float -> FloatingDecimal32
 ryu_f2s_fd f = unsafeDupablePerformIO $
     alloca $ \mOut -> do
       alloca $ \eOut -> do
-        c_ryu_f2s_fd (CFloat f) mOut eOut
+        c_ryu_f2s_fd (realToFrac f) mOut eOut
         m <- peek mOut
         e <- peek eOut
         return $ FD32 m e
@@ -135,27 +142,27 @@ ryu_d2s_fd :: Double -> FloatingDecimal64
 ryu_d2s_fd f = unsafeDupablePerformIO $
     alloca $ \mOut -> do
       alloca $ \eOut -> do
-        c_ryu_d2s_fd (CDouble f) mOut eOut
+        c_ryu_d2s_fd (realToFrac f) mOut eOut
         m <- peek mOut
         e <- peek eOut
         return $ FD64 m e
 
 asCBool :: Bool -> CUChar
-asCBool = CUChar . fromIntegral . fromEnum
+asCBool = fromIntegral . fromEnum
 
 {-# INLINE ryu_f2s_to_chars #-}
 ryu_f2s_to_chars :: Word32 -> Int32 -> Bool -> ByteString
 ryu_f2s_to_chars m e s = unsafeDupablePerformIO $ do
     fp <- mallocByteString 16 :: IO (ForeignPtr Word8)
     withForeignPtr fp $ \p ->
-      PS fp 0 . fromIntegral <$> c_ryu_f2s_to_chars (CUInt m) (CInt e) (asCBool s) p
+      PS fp 0 . fromIntegral <$> c_ryu_f2s_to_chars (fromIntegral m) (fromIntegral e) (asCBool s) p
 
 {-# INLINE ryu_d2s_to_chars #-}
 ryu_d2s_to_chars :: Word64 -> Int32 -> Bool -> ByteString
 ryu_d2s_to_chars m e s = unsafeDupablePerformIO $ do
     fp <- mallocByteString 25:: IO (ForeignPtr Word8)
     withForeignPtr fp $ \p ->
-      PS fp 0 . fromIntegral <$> c_ryu_d2s_to_chars (CULong m) (CInt e) (asCBool s) p
+      PS fp 0 . fromIntegral <$> c_ryu_d2s_to_chars (fromIntegral m) (fromIntegral e) (asCBool s) p
 
 
 -- auxiliary fixed format printing functions
