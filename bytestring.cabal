@@ -70,7 +70,7 @@ flag integer-simple
   default: False
 
 library
-  build-depends:     base >= 4.2 && < 5, ghc-prim, deepseq
+  build-depends:     base >= 4.2 && < 5, ghc-prim >= 0.3, deepseq
 
   exposed-modules:   Data.ByteString
                      Data.ByteString.Char8
@@ -165,7 +165,7 @@ test-suite prop-compiled
                     Data.ByteString.Short.Internal
                     Data.ByteString.Unsafe
   hs-source-dirs:   . tests
-  build-depends:    base, ghc-prim, deepseq, random, directory,
+  build-depends:    base, ghc-prim >= 0.3, deepseq, random, directory,
                     test-framework, test-framework-quickcheck2,
                     QuickCheck >= 2.10 && < 2.15
   c-sources:        cbits/fpstring.c
@@ -187,7 +187,7 @@ test-suite regressions
   type:             exitcode-stdio-1.0
   main-is:          Regressions.hs
   hs-source-dirs:   . tests
-  build-depends:    base, ghc-prim, deepseq, random, directory,
+  build-depends:    base, ghc-prim >= 0.3, deepseq, random, directory,
                     test-framework, test-framework-hunit, HUnit
   c-sources:        cbits/fpstring.c
   include-dirs:     include
@@ -227,7 +227,7 @@ test-suite test-builder
                     Data.ByteString.Builder.Prim.Tests
                     Data.ByteString.Builder.Tests
                     TestFramework
-  build-depends:    base, ghc-prim,
+  build-depends:    base, ghc-prim >= 0.3,
                     deepseq,
                     QuickCheck                 >= 2.10 && < 2.15,
                     byteorder                  == 1.0.*,
