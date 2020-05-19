@@ -198,7 +198,7 @@ module Data.ByteString.Lazy.Char8 (
   ) where
 
 -- Functions transparently exported
-import Data.ByteString.Lazy 
+import Data.ByteString.Lazy
         (fromChunks, toChunks, fromStrict, toStrict
         ,empty,null,length,tail,init,append,reverse,transpose,cycle
         ,concat,take,drop,splitAt,intercalate
@@ -221,7 +221,7 @@ import Data.ByteString.Internal (w2c, c2w, isSpaceWord8)
 import Data.Int (Int64)
 import qualified Data.List as List
 
-import Prelude hiding           
+import Prelude hiding
         (reverse,head,tail,last,init,null,length,map,lines,foldl,foldr,unlines
         ,concat,any,take,drop,splitAt,takeWhile,dropWhile,span,break,elem,filter
         ,unwords,words,maximum,minimum,all,concatMap,scanl,scanl1,foldl1,foldr1
@@ -237,7 +237,7 @@ singleton :: Char -> ByteString
 singleton = L.singleton . c2w
 {-# INLINE singleton #-}
 
--- | /O(n)/ Convert a 'String' into a 'ByteString'. 
+-- | /O(n)/ Convert a 'String' into a 'ByteString'.
 pack :: [Char] -> ByteString
 pack = packChars
 
@@ -467,7 +467,7 @@ span f = L.span (f . w2c)
 -- | 'breakChar' breaks its ByteString argument at the first occurence
 -- of the specified Char. It is more efficient than 'break' as it is
 -- implemented with @memchr(3)@. I.e.
--- 
+--
 -- > break (=='c') "abcd" == breakChar 'c' "abcd"
 --
 breakChar :: Char -> ByteString -> (ByteString, ByteString)
@@ -495,12 +495,12 @@ spanChar = L.spanByte . c2w
 -- > split '\n' "a\nb\nd\ne" == ["a","b","d","e"]
 -- > split 'a'  "aXaXaXa"    == ["","X","X","X"]
 -- > split 'x'  "x"          == ["",""]
--- 
+--
 -- and
 --
 -- > intercalate [c] . split c == id
 -- > split == splitWith . (==)
--- 
+--
 -- As for all splitting functions in this library, this function does
 -- not copy the substrings, it just constructs new 'ByteStrings' that
 -- are slices of the original.
@@ -678,7 +678,7 @@ zipWith f = L.zipWith ((. w2c) . f . w2c)
 -- | 'lines' breaks a ByteString up into a list of ByteStrings at
 -- newline Chars. The resulting strings do not contain newlines.
 --
--- As of bytestring 0.9.0.3, this function is stricter than its 
+-- As of bytestring 0.9.0.3, this function is stricter than its
 -- list cousin.
 --
 lines :: ByteString -> [ByteString]
