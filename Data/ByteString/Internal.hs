@@ -131,14 +131,15 @@ import GHC.IO                   (IO(IO),unsafeDupablePerformIO)
 import GHC.IOBase               (IO(IO),RawBuffer,unsafeDupablePerformIO)
 #endif
 
-import GHC.ForeignPtr           (ForeignPtr(ForeignPtr)
-                                ,newForeignPtr_, mallocPlainForeignPtrBytes)
-import GHC.Ptr                  (Ptr(..), castPtr)
+import GHC.ForeignPtr           (ForeignPtr(ForeignPtr), mallocPlainForeignPtrBytes)
 
-#if __GLASGOW_HASKELL__ >= 809
+#if __GLASGOW_HASKELL__ >= 811
 import GHC.CString              (cstringLength#)
 import GHC.Exts                 (Int(I#))
-import GHC.ForeignPtr           (ForeignPtrContents(LiteralPtr))
+import GHC.ForeignPtr           (ForeignPtrContents(FinalPtr))
+#else
+import GHC.ForeignPtr           (newForeignPtr_)
+import GHC.Ptr                  (Ptr(..), castPtr)
 #endif
 
 -- CFILES stuff is Hugs only
@@ -252,11 +253,8 @@ unsafePackLenChars len cs0 =
 --
 unsafePackAddress :: Addr# -> IO ByteString
 unsafePackAddress addr# = do
-#if __GLASGOW_HASKELL__ >= 809
-    return $ PS
-      (accursedUnutterablePerformIO (newForeignPtr_ (Ptr addr#)))
-      0
-      (I# (cstringLength# addr#))
+#if __GLASGOW_HASKELL__ >= 811
+    return (PS (ForeignPtr addr# FinalPtr) 0 (I# (cstringLength# addr#)))
 #else
     p <- newForeignPtr_ (castPtr cstr)
     l <- c_strlen cstr
@@ -271,15 +269,12 @@ unsafePackAddress addr# = do
 -- | See 'unsafePackAddress'. This function has similar behavior. Prefer
 -- this function when the address in known to be an @Addr#@ literal. In
 -- that context, there is no need for the sequencing guarantees that 'IO'
--- provides. On GHC 8.10 and up, this function uses the @LiteralPtr@ data
--- constructor for @ForeignPtrContents@. Do not attempt to add a finalizer
--- to the resulting @ByteString@. Although the bytestrings produced by
--- 'unsafePackAddress' allow finalizers to be added, the bytestrings provided
--- by this function do not.
+-- provides. On GHC 8.10 and up, this function uses the @FinalPtr@ data
+-- constructor for @ForeignPtrContents@.
 unsafePackLiteral :: Addr# -> ByteString
 unsafePackLiteral addr# =
-#if __GLASGOW_HASKELL__ >= 809
-  PS (ForeignPtr addr# LiteralPtr) 0 (I# (cstringLength# addr#))
+#if __GLASGOW_HASKELL__ >= 811
+  PS (ForeignPtr addr# FinalPtr) 0 (I# (cstringLength# addr#))
 #else
   let len = accursedUnutterablePerformIO (c_strlen (Ptr addr#))
    in PS (accursedUnutterablePerformIO (newForeignPtr_ (Ptr addr#))) 0 (fromIntegral len)
