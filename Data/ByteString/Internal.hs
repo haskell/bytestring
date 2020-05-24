@@ -258,8 +258,7 @@ unsafePackAddress addr# = do
 #else
     p <- newForeignPtr_ (castPtr cstr)
     l <- c_strlen cstr
-    let len = fromIntegral l
-    return $ PS p 0 len
+    return $ PS p 0 (fromIntegral l)
   where
     cstr :: CString
     cstr = Ptr addr#
