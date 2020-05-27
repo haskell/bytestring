@@ -2,20 +2,22 @@ env:
  # Note: We have to use Cabal 2.4 with GHC 7.0 since for some reason
  # builds of "text" fail with GHC 7.0 and Cabal versions prior to 2.4
  # https://github.com/haskell/bytestring/issues/213
+ # With Cabal 2.4 we also get improved syntax in cabal.project files,
+ # supporting remote sources, and other goodies, so use it across the
+ # board.  This branch is not GHC 7.x compatible, so 8.x-only.
+ #
  - GHCVER=7.0.4 CABALVER=2.4
- - GHCVER=7.2.2 CABALVER=1.16
- # we have to use CABALVER=1.16 for GHC<7.6 as well, as there's
- # no package for earlier cabal versions in the PPA
- - GHCVER=7.4.2 CABALVER=1.16
- - GHCVER=7.6.3 CABALVER=1.16
- - GHCVER=7.8.4 CABALVER=1.18
- - GHCVER=7.10.3 CABALVER=1.22
- - GHCVER=8.0.2 CABALVER=1.24
- - GHCVER=8.2.2 CABALVER=2.0
- - GHCVER=8.4.4 CABALVER=2.2
+ - GHCVER=7.2.2 CABALVER=2.4
+ - GHCVER=7.4.2 CABALVER=2.4
+ - GHCVER=7.6.3 CABALVER=2.4
+ - GHCVER=7.8.4 CABALVER=2.4
+ - GHCVER=7.10.3 CABALVER=2.4
+ - GHCVER=8.0.2 CABALVER=2.4
+ - GHCVER=8.2.2 CABALVER=2.4
+ - GHCVER=8.4.4 CABALVER=2.4
  - GHCVER=8.6.5 CABALVER=2.4
- - GHCVER=8.8.3 CABALVER=2.4
- - GHCVER=8.10.1 CABALVER=2.4
+ - GHCVER=8.8.3 CABALVER=3.0
+ - GHCVER=8.10.1 CABALVER=3.2
  ### The head in "ppa", currently 8.7, is no longer worth testing.
  # - GHCVER=head  CABALVER=2.4
 
@@ -32,31 +34,18 @@ before_install:
 
 install:
  - travis_retry cabal update
- # can't use "cabal install --only-dependencies --enable-tests" due to dep-cycle
- - cabal install
-      "QuickCheck >=2.10 && <2.14"
-      "byteorder ==1.0.*"
-      "dlist >=0.5 && <0.9"
-      "mtl >=2.0 && <2.3"
-      deepseq test-framework-hunit test-framework-quickcheck2
 
 script:
- - cabal configure --enable-tests -v2
- - cabal build
- # --show-details=streaming is available for CABALVER>=1.20 only
- - if [ "$(echo -e "1.20\n$CABALVER" | sort -rV | head -n1)" = "$CABALVER" ]; then
-     cabal test --show-details=streaming;
-   else
-     travis_wait cabal test --show-details=always;
-   fi
- - cabal sdist
+ - cabal v2-configure; cabal v2-build
+ - (cd tests; rm -f test-builder.tix; cabal v2-configure; cabal v2-test)
+ - mkdir -p dist; cabal v2-sdist -o dist
  # "cabal check" disabled due to -O2 warning
  - export SRC_TGZ=$(cabal info . | awk '{print $2 ".tar.gz";exit}') ;
    cd dist/;
    if [ -f "$SRC_TGZ" ]; then
-      cabal install --force-reinstalls "$SRC_TGZ";
+      # What is the v2 equivalent here?
+      cabal v1-install --force-reinstalls "$SRC_TGZ";
    else
       echo "expected '$SRC_TGZ' not found";
       exit 1;
    fi
-

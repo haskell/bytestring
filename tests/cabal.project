@@ -1,0 +1,9 @@
+packages: bytestring-tests.cabal
+          ../bytestring.cabal
+
+allow-newer: *:bytestring
+           , *:ghc-prim
+           , regex-posix:base
+
+package bytesting-tests
+    tests: True
