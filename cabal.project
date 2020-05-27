@@ -1,0 +1,5 @@
+packages: bytestring.cabal
+allow-newer: *:bytestring
+
+tests: False
+benchmarks: False
