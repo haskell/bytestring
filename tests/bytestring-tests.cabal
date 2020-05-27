@@ -42,7 +42,6 @@ executable prop-compiled
   include-dirs:     ../include
   cpp-options:      -DHAVE_TEST_FRAMEWORK=1
   ghc-options:      -fwarn-unused-binds
-                    -fno-enable-rewrite-rules
                     -threaded -rtsopts
   extensions:       BangPatterns
                     UnliftedFFITypes,
@@ -65,7 +64,6 @@ executable regressions
   include-dirs:     ../include
   cpp-options:      -DHAVE_TEST_FRAMEWORK=1
   ghc-options:      -fwarn-unused-binds
-                    -fno-enable-rewrite-rules
                     -threaded -rtsopts
   extensions:       BangPatterns
                     UnliftedFFITypes,

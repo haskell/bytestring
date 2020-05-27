@@ -168,7 +168,6 @@ test-suite prop-compiled
   c-sources:        cbits/fpstring.c
   include-dirs:     include
   ghc-options:      -fwarn-unused-binds
-                    -fno-enable-rewrite-rules
                     -threaded -rtsopts
   cpp-options:      -DHAVE_TEST_FRAMEWORK=1
   default-language: Haskell98
@@ -189,7 +188,6 @@ test-suite regressions
   c-sources:        cbits/fpstring.c
   include-dirs:     include
   ghc-options:      -fwarn-unused-binds
-                    -fno-enable-rewrite-rules
                     -threaded -rtsopts
   default-language: Haskell98
   -- older ghc had issues with language pragmas guarded by cpp
