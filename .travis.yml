@@ -35,7 +35,7 @@ script:
    cd dist/;
    if [ -f "$SRC_TGZ" ]; then
       # Not sure about this step with Cabal 3.x
-      : cabal install --force-reinstalls "$SRC_TGZ";
+      cabal v1-install --force-reinstalls "$SRC_TGZ";
    else
       echo "expected '$SRC_TGZ' not found";
       exit 1;
