@@ -21,7 +21,7 @@ import           Control.Monad.Writer
 import           Foreign (Word, Word8, minusPtr)
 import           System.IO.Unsafe (unsafePerformIO)
 
-import           Data.Char (ord, chr)
+import           Data.Char (chr)
 import qualified Data.DList      as D
 import           Data.Foldable (asum, foldMap)
 
