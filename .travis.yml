@@ -6,18 +6,19 @@ env:
  # supporting remote sources, and other goodies, so use it across the
  # board.  This branch is not GHC 7.x compatible, so 8.x-only.
  #
- - GHCVER=7.0.4 CABALVER=2.4
- - GHCVER=7.2.2 CABALVER=2.4
- - GHCVER=7.4.2 CABALVER=2.4
- - GHCVER=7.6.3 CABALVER=2.4
- - GHCVER=7.8.4 CABALVER=2.4
- - GHCVER=7.10.3 CABALVER=2.4
- - GHCVER=8.0.2 CABALVER=2.4
- - GHCVER=8.2.2 CABALVER=2.4
- - GHCVER=8.4.4 CABALVER=2.4
- - GHCVER=8.6.5 CABALVER=2.4
- - GHCVER=8.8.3 CABALVER=3.0
  - GHCVER=8.10.1 CABALVER=3.2
+ - GHCVER=8.8.3 CABALVER=3.0
+ - GHCVER=8.6.5 CABALVER=2.4
+ - GHCVER=8.4.4 CABALVER=2.4
+ - GHCVER=8.2.2 CABALVER=2.4
+ - GHCVER=8.0.2 CABALVER=2.4
+ - GHCVER=7.10.3 CABALVER=2.4
+ - GHCVER=7.8.4 CABALVER=2.4
+ - GHCVER=7.6.3 CABALVER=2.4
+ - GHCVER=7.4.2 CABALVER=2.4
+ - GHCVER=7.2.2 CABALVER=2.4
+ - GHCVER=7.0.4 CABALVER=2.4
+
  ### The head in "ppa", currently 8.7, is no longer worth testing.
  # - GHCVER=head  CABALVER=2.4
 
@@ -37,14 +38,16 @@ install:
 
 script:
  - cabal v2-configure; cabal v2-build
- - (cd tests; rm -f test-builder.tix; cabal v2-configure; cabal v2-test)
- - mkdir -p dist; cabal v2-sdist -o dist
+ - cabal v2-sdist -o .
+ # Remove to enable build of sdist.
+ - rm -f cabal.project
+ - rm -f tests/test-builder.tix
+ - (cd tests; cabal v2-configure; cabal v2-test)
  # "cabal check" disabled due to -O2 warning
- - export SRC_TGZ=$(cabal info . | awk '{print $2 ".tar.gz";exit}') ;
-   cd dist/;
-   if [ -f "$SRC_TGZ" ]; then
-      # What is the v2 equivalent here?
-      cabal v1-install --force-reinstalls "$SRC_TGZ";
+ - export SRC=$(cabal info . | awk '{print $2; exit}');
+   if [ -f "$SRC.tar.gz" ]; then
+      cabal get "./$SRC.tar.gz";
+      (cd "$SRC"; cabal v1-install --force-reinstalls .);
    else
       echo "expected '$SRC_TGZ' not found";
       exit 1;
