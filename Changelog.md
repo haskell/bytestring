@@ -1,3 +1,10 @@
+0.11.0.0 <ietf-dane@dukhovni.org> XXX XXXX
+
+ * Compute length at compile time for literal strings
+   (PR#191, Andrew Martin)
+ * Remove the offset parameter completely
+   (PR#175, Edward Kmett)
+
 0.10.10.1 <ietf-dane@dukhovni.org> May 2020
 
  * Fix off-by-one infinite loop in primMapByteStringBounded.

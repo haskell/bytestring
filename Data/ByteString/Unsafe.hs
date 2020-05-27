@@ -65,10 +65,7 @@ import qualified Foreign.Concurrent as FC (newForeignPtr)
 
 import GHC.Prim                 (Addr#)
 import GHC.Ptr                  (Ptr(..))
-
-#if __GLASGOW_HASKELL__ >= 811
 import GHC.ForeignPtr           (ForeignPtr(ForeignPtr), ForeignPtrContents(..))
-#endif
 
 -- ---------------------------------------------------------------------
 --
@@ -174,8 +171,10 @@ unsafePackCStringFinalizer p l f = do
 -- ever generated from the underlying byte array are no longer live.
 --
 unsafeFinalize :: ByteString -> IO ()
-unsafeFinalize (BS (ForeignPtr _ FinalPtr) _) = pure ()
 unsafeFinalize (BS (ForeignPtr _ (PlainPtr _)) _) = pure ()
+#if __GLASGOW_HASKELL__ >= 811
+unsafeFinalize (BS (ForeignPtr _ FinalPtr) _) = pure ()
+#endif
 unsafeFinalize (BS p _) = FC.finalizeForeignPtr p
 
 ------------------------------------------------------------------------
