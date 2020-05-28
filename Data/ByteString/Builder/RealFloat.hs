@@ -166,7 +166,7 @@ ryu_d2s_to_chars m e s = unsafeDupablePerformIO $ do
 
 
 -- auxiliary fixed format printing functions
-decimalLength9:: Integral a => a -> Int
+decimalLength9 :: Word32 -> Int
 decimalLength9 v
   | v >= 100000000 = 9
   | v >= 10000000 = 8
@@ -178,7 +178,7 @@ decimalLength9 v
   | v >= 10 = 2
   | otherwise = 1
 
-decimalLength17 :: Integral a => a -> Int
+decimalLength17 :: Word64 -> Int
 decimalLength17 v
   | v >= 10000000000000000 = 17
   | v >= 1000000000000000 = 16
