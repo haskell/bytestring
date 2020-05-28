@@ -134,6 +134,7 @@ library
                      cbits/ftoa.c
                      cbits/dtoa.c
   include-dirs:      include
+                     cbits
   includes:          fpstring.h
   install-includes:  fpstring.h
 

@@ -102,17 +102,27 @@ foreign import ccall unsafe "static f2s_to_chars"
 foreign import ccall unsafe "static d2s_to_chars"
     c_ryu_d2s_to_chars :: CULong -> CInt -> CUChar -> Ptr Word8 -> IO CInt
 
+#include "ryu.h"
+
+{-# INLINABLE f2s_max_digits #-}
+f2s_max_digits :: Int
+f2s_max_digits = #const F2S_MAX_DIGITS
+
+{-# INLINABLE d2s_max_digits #-}
+d2s_max_digits :: Int
+d2s_max_digits = #const D2S_MAX_DIGITS
+
 {-# INLINE ryu_f2s #-}
 ryu_f2s :: Float -> ByteString
 ryu_f2s f = unsafeDupablePerformIO $ do
-    fp <- mallocByteString 16 :: IO (ForeignPtr Word8)
+    fp <- mallocByteString f2s_max_digits :: IO (ForeignPtr Word8)
     withForeignPtr fp $ \p ->
       PS fp 0 . fromIntegral <$> c_ryu_f2s (realToFrac f) p
 
 {-# INLINE ryu_d2s #-}
 ryu_d2s :: Double -> ByteString
 ryu_d2s f = unsafeDupablePerformIO $ do
-    fp <- mallocByteString 25 :: IO (ForeignPtr Word8)
+    fp <- mallocByteString d2s_max_digits :: IO (ForeignPtr Word8)
     withForeignPtr fp $ \p ->
       PS fp 0 . fromIntegral <$> c_ryu_d2s (realToFrac f) p
 
@@ -159,14 +169,14 @@ asCBool x = if x then 1 else 0
 {-# INLINE ryu_f2s_to_chars #-}
 ryu_f2s_to_chars :: Word32 -> Int32 -> Bool -> ByteString
 ryu_f2s_to_chars m e s = unsafeDupablePerformIO $ do
-    fp <- mallocByteString 16 :: IO (ForeignPtr Word8)
+    fp <- mallocByteString f2s_max_digits :: IO (ForeignPtr Word8)
     withForeignPtr fp $ \p ->
       PS fp 0 . fromIntegral <$> c_ryu_f2s_to_chars (fromIntegral m) (fromIntegral e) (asCBool s) p
 
 {-# INLINE ryu_d2s_to_chars #-}
 ryu_d2s_to_chars :: Word64 -> Int32 -> Bool -> ByteString
 ryu_d2s_to_chars m e s = unsafeDupablePerformIO $ do
-    fp <- mallocByteString 25:: IO (ForeignPtr Word8)
+    fp <- mallocByteString d2s_max_digits :: IO (ForeignPtr Word8)
     withForeignPtr fp $ \p ->
       PS fp 0 . fromIntegral <$> c_ryu_d2s_to_chars (fromIntegral m) (fromIntegral e) (asCBool s) p
 
@@ -256,17 +266,17 @@ showFixed m e prec =
         digitsToBuilder = fmap (char7 . intToDigit)
 
 #if MIN_VERSION_base(4,6,0)
-dquot10 :: Word# -> Word#
+dquot10 :: Word## -> Word##
 dquot10 w
-  = let !(# rdx, _ #) = w `timesWord2#` 0xCCCCCCCCCCCCCCCD##
-     in rdx `uncheckedShiftRL#` 3#
+  = let !(## rdx, _ ##) = w `timesWord2##` 0xCCCCCCCCCCCCCCCD####
+     in rdx `uncheckedShiftRL##` 3##
 
-dquotRem10 :: Word# -> (# Word#, Word# #)
+dquotRem10 :: Word## -> (## Word##, Word## ##)
 dquotRem10 w = let w' = dquot10 w
-               in (# w', w `minusWord#` (w' `timesWord#` 10##) #)
+               in (## w', w `minusWord##` (w' `timesWord##` 10####) ##)
 
 dquotRem10Boxed :: Word64 -> (Word64, Word64)
-dquotRem10Boxed (W64# w) = let !(# q, r #) = dquotRem10 w in (W64# q, W64# r)
+dquotRem10Boxed (W64## w) = let !(## q, r ##) = dquotRem10 w in (W64## q, W64## r)
 #else
 dquotRem10Boxed :: Word64 -> (Word64, Word64)
 dquotRem10Boxed w = w `quotRem` 10

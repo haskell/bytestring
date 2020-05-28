@@ -1,0 +1,4 @@
+
+#define F2S_MAX_DIGITS 16
+#define D2S_MAX_DIGITS 25
+
