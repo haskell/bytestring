@@ -154,7 +154,7 @@ ryu_d2s_fd f = unsafeDupablePerformIO $
         return $ FD64 m e
 
 asCBool :: Bool -> CUChar
-asCBool = fromIntegral . fromEnum
+asCBool x = if x then 1 else 0
 
 {-# INLINE ryu_f2s_to_chars #-}
 ryu_f2s_to_chars :: Word32 -> Int32 -> Bool -> ByteString
