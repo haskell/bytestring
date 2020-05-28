@@ -227,27 +227,27 @@ showFixed m e prec =
          | e <= 0 -> char7 '0'
                   `mappend` char7 '.'
                   `mappend` string7 (replicate (-e) '0')
-                  `mappend` mconcat (toB ds)
+                  `mappend` mconcat (digitsToBuilder ds)
          | otherwise ->
            let f 0 s     rs = mk0 (reverse s) `mappend` char7 '.' `mappend` mk0 rs
                f n s     [] = f (n-1) (char7 '0':s) []
                f n s (r:rs) = f (n-1) (r:s) rs
-            in f e [] (toB ds)
+            in f e [] (digitsToBuilder ds)
        Just p
          | e >= 0 ->
            let (ei, is') = roundTo 10 (p' + e) ds
-               (ls, rs) = splitAt (e + ei) (toB is')
+               (ls, rs) = splitAt (e + ei) (digitsToBuilder is')
             in mk0 ls `mappend` mkDot rs
          | otherwise ->
            let (ei, is') = roundTo 10 p' (replicate (-e) 0 ++ ds)
-               (b:bs) = toB (if ei > 0 then is' else 0:is')
+               (b:bs) = digitsToBuilder (if ei > 0 then is' else 0:is')
             in b `mappend` mkDot bs
            where p' = max p 0
     where
         mk0 ls = case ls of [] -> char7 '0'; _ -> mconcat ls
         mkDot rs = if null rs then mempty else char7 '.' `mappend` mconcat rs
         ds = digits m
-        toB = fmap (char7 . intToDigit)
+        digitsToBuilder = fmap (char7 . intToDigit)
 
 #if MIN_VERSION_base(4,6,0)
 dquot10 :: Word# -> Word#
