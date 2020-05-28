@@ -227,7 +227,7 @@ showFixed m e prec =
          | e <= 0 -> char7 '0'
                   `mappend` char7 '.'
                   `mappend` string7 (replicate (-e) '0')
-                  `mappend` foldr mappend mempty (toB ds)
+                  `mappend` mconcat (toB ds)
          | otherwise ->
            let f 0 s     rs = mk0 (reverse s) `mappend` char7 '.' `mappend` mk0 rs
                f n s     [] = f (n-1) (char7 '0':s) []
@@ -244,8 +244,8 @@ showFixed m e prec =
             in b `mappend` mkDot bs
            where p' = max p 0
     where
-        mk0 ls = case ls of [] -> char7 '0'; _ -> foldr mappend mempty ls
-        mkDot rs = if null rs then mempty else char7 '.' `mappend` foldr mappend mempty rs
+        mk0 ls = case ls of [] -> char7 '0'; _ -> mconcat ls
+        mkDot rs = if null rs then mempty else char7 '.' `mappend` mconcat rs
         ds = digits m
         toB = fmap (char7 . intToDigit)
 
