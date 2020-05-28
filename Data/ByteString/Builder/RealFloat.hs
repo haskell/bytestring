@@ -125,8 +125,10 @@ instance Show FloatingDecimal64 where
 instance Show FloatingDecimal32 where
   showsPrec p (FD32 m e) = showsPrec p m `mappend` showsPrec p '.' `mappend` showsPrec p e
 
--- extracts base-10 converted mantissa and exponent using ryu algorithm
--- NB: only valid if not NaN, +/-0, or +/-Inf
+-- extracts base-10 converted mantissa and exponent for floats using ryu
+-- algorithm
+-- NB: only valid if not NaN, +/-0, or +/-Inf. In practice, all calls should
+--     guarded by `specialStr`
 {-# INLINE ryu_f2s_fd #-}
 ryu_f2s_fd :: Float -> FloatingDecimal32
 ryu_f2s_fd f = unsafeDupablePerformIO $
@@ -137,6 +139,10 @@ ryu_f2s_fd f = unsafeDupablePerformIO $
         e <- peek eOut
         return $ FD32 m e
 
+-- extracts base-10 converted mantissa and exponent for doubles using ryu
+-- algorithm
+-- NB: only valid if not NaN, +/-0, or +/-Inf. In practice, all calls should
+--     guarded by `specialStr`
 {-# INLINE ryu_d2s_fd #-}
 ryu_d2s_fd :: Double -> FloatingDecimal64
 ryu_d2s_fd f = unsafeDupablePerformIO $
