@@ -265,7 +265,7 @@ showFixed m e prec =
         ds = digits m
         digitsToBuilder = fmap (char7 . intToDigit)
 
-#if MIN_VERSION_base(4,6,0)
+#if MIN_VERSION_base(4,6,0) && !defined(RYU_32_BIT_PLATFORM)
 dquot10 :: Word## -> Word##
 dquot10 w
   = let !(## rdx, _ ##) = w `timesWord2##` 0xCCCCCCCCCCCCCCCD####
