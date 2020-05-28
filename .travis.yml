@@ -4,7 +4,7 @@ env:
  # https://github.com/haskell/bytestring/issues/213
  # With Cabal 2.4 we also get improved syntax in cabal.project files,
  # supporting remote sources, and other goodies, so use it across the
- # board.  This branch is not GHC 7.x compatible, so 8.x-only.
+ # board.
  #
  - GHCVER=8.10.1 CABALVER=3.2
  - GHCVER=8.8.3 CABALVER=3.0
