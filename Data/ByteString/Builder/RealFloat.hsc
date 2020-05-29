@@ -56,12 +56,13 @@ doubleDec = formatDouble FFGeneric Nothing
 formatFloat :: FFFormat -> Maybe Int -> Float -> Builder
 formatFloat fmt prec f =
   case fmt of
-      FFGeneric
-        | Just b <- specialStr f -> b
-        | otherwise ->
-          if e' >= 0 && e' <= 7
-             then sign f `mappend` showFixed (fromIntegral m) e' prec
-             else byteString $ ryu_f2s_to_chars m e (f < 0)
+      FFGeneric ->
+        case specialStr f of
+          Just b -> b
+          Nothing ->
+            if e' >= 0 && e' <= 7
+               then sign f `mappend` showFixed (fromIntegral m) e' prec
+               else byteString $ ryu_f2s_to_chars m e (f < 0)
         where (FD32 m e) = ryu_f2s_fd f
               e' = fromIntegral e + decimalLength9 m
       FFExponent -> byteString $ ryu_f2s f
@@ -71,12 +72,13 @@ formatFloat fmt prec f =
 formatDouble :: FFFormat -> Maybe Int -> Double -> Builder
 formatDouble fmt prec f =
   case fmt of
-      FFGeneric
-        | Just b <- specialStr f -> b
-        | otherwise ->
-          if e' >= 0 && e' <= 7
-             then sign f `mappend` showFixed m e' prec
-             else byteString $ ryu_d2s_to_chars m e (f < 0)
+      FFGeneric ->
+        case specialStr f of
+          Just b -> b
+          Nothing ->
+            if e' >= 0 && e' <= 7
+               then sign f `mappend` showFixed m e' prec
+               else byteString $ ryu_d2s_to_chars m e (f < 0)
         where (FD64 m e) = ryu_d2s_fd f
               e' = fromIntegral e + decimalLength17 m
       FFExponent -> byteString $ ryu_d2s f
@@ -238,9 +240,10 @@ specialStr f
 -- show fixed floating point matching show / showFFloat output by dropping
 -- digits after exponentiation precision
 ryu_d2fixed :: Double -> Maybe Int -> Builder
-ryu_d2fixed f prec
-  | Just b <- specialStr f = b
-  | otherwise = sign f `mappend` showFixed m e' prec
+ryu_d2fixed f prec =
+  case specialStr f of
+    Just b -> b
+    Nothing -> sign f `mappend` showFixed m e' prec
   where (FD64 m e) = ryu_d2s_fd f
         olength = decimalLength17 m
         -- NB: exponent in exponential format is e' - 1
