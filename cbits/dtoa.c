@@ -1036,6 +1036,7 @@ static inline int to_chars(const floating_decimal_64 v, const bool sign, char* c
     result[index++] = (char) ('0' + exp);
   }
 
+  assert(index <= D2S_MAX_DIGITS);
   return index;
 }
 

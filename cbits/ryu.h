@@ -25,8 +25,40 @@
 #include <stdint.h>
 #include <string.h>
 
-#define F2S_MAX_DIGITS 16
-#define D2S_MAX_DIGITS 25
+// These constants are the sizes of the minimum sized buffer required to hold
+// all floats and doubles respectively. They are derived as follows:
+//
+// From 'In-and-Out Conversions' https://dl.acm.org/citation.cfm?id=362887, we
+// have that a conversion from a base-b n-digit number to a base-v m-digit
+// number such that the round-trip conversion is identity requires
+//
+//    v^(m-1) > b^n
+//
+// Specifically for binary floating point to decimal conversion, we must have
+//
+//    10^(m-1) > 2^n
+// => log(10^(m-1)) > log(2^n)
+// => (m-1) * log(10) > n * log(2)
+// => m-1 > n * log(2) / log(10)
+// => m-1 >= ceil(n * log(2) / log(10))
+// => m >= ceil(n * log(2) / log(10)) + 1
+//
+// And since 32 and 64-bit floats have 23 and 52 bits of mantissa (and then an
+// implicit leading-bit), we need
+//
+//    ceil(24 * log(2) / log(10)) + 1 => 9
+//    ceil(53 * log(2) / log(10)) + 1 => 17
+//
+// In addition, the exponent range from floats is [-45,38] and doubles is
+// [-324,308] (including subnormals) which are 3 and 4 digits respectively
+//
+// Thus we have,
+//
+//    floats: 1 (sign) + 9 (mantissa) + 1 (.) + 1 (e) + 3 (exponent) = 15
+//    doubles: 1 (sign) + 17 (mantissa) + 1 (.) + 1 (e) + 4 (exponent) = 24
+//
+#define F2S_MAX_DIGITS 15
+#define D2S_MAX_DIGITS 24
 
 #if defined(_M_IX86) || defined(_M_ARM)
 #define RYU_32_BIT_PLATFORM
