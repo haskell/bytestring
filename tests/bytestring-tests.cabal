@@ -67,6 +67,7 @@ executable test-builder
   other-modules:    Data.ByteString.Builder.Tests
                     Data.ByteString.Builder.Prim.Tests
                     Data.ByteString.Builder.Prim.TestUtils
+                    Data.ByteString.Builder.RealFloat
 
   build-depends:    base, ghc-prim,
                     deepseq,
@@ -98,6 +99,7 @@ executable test-builder
                     ../cbits/ftoa.c
                     ../cbits/dtoa.c
   include-dirs:     ../include
+                    ../cbits
   includes:         fpstring.h
   install-includes: fpstring.h
 
