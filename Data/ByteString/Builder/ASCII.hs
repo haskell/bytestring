@@ -36,9 +36,6 @@ module Data.ByteString.Builder.ASCII
     , word64Dec
     , wordDec
 
-    , char7
-    , string7
-
       -- *** Hexadecimal numbers
 
       -- | Encoding positive integers as hexadecimal numbers using lower-case
@@ -113,10 +110,6 @@ import GHC.Integer.GMP.Internals
 -- Decimal Encoding
 ------------------------------------------------------------------------------
 
--- | Encode a 'Char' using 'P.char7'.
-{-# INLINE char7 #-}
-char7 :: Char -> Builder
-char7 = P.primFixed P.char7
 
 -- | Encode a 'String' using 'P.char7'.
 {-# INLINE string7 #-}

@@ -12,8 +12,8 @@ module Data.ByteString.Builder.RealFloat
   ) where
 
 import Data.ByteString.Internal (ByteString(..), mallocByteString)
-import Data.ByteString.Builder.ASCII (char7, string7)
 import Data.ByteString.Builder.Internal (Builder, byteString)
+import qualified Data.ByteString.Builder.Prim  as P
 
 #if !(MIN_VERSION_base(4,8,0))
 import Data.Monoid
@@ -213,6 +213,16 @@ decimalLength17 v
   | v >= 100 = 3
   | v >= 10 = 2
   | otherwise = 1
+
+-- | Char7 encode a 'Char'.
+{-# INLINE char7 #-}
+char7 :: Char -> Builder
+char7 = P.primFixed P.char7
+
+-- | Char7 encode a 'String'.
+{-# INLINE string7 #-}
+string7 :: String -> Builder
+string7 = P.primMapListFixed P.char7
 
 sign :: RealFloat a => a -> Builder
 sign f = if f < 0 then char7 '-' else mempty

@@ -410,6 +410,20 @@ doubleBE :: Double -> Builder
 doubleBE = P.primFixed P.doubleBE
 
 ------------------------------------------------------------------------------
+-- ASCII encoding
+------------------------------------------------------------------------------
+
+-- | Char7 encode a 'Char'.
+{-# INLINE char7 #-}
+char7 :: Char -> Builder
+char7 = P.primFixed P.char7
+
+-- | Char7 encode a 'String'.
+{-# INLINE string7 #-}
+string7 :: String -> Builder
+string7 = P.primMapListFixed P.char7
+
+------------------------------------------------------------------------------
 -- ISO/IEC 8859-1 encoding
 ------------------------------------------------------------------------------
 
