@@ -633,9 +633,9 @@ primUnfoldrBounded w f x0 =
 -- using a 'BoundedPrim'. For example, we can write a 'Builder' that filters
 -- a strict 'S.ByteString' as follows.
 --
--- > import Data.ByteString.Builder.Primas P (word8, condB, emptyB)
+-- > import qualified Data.ByteString.Builder.Prim as P
 --
--- > filterBS p = P.condB p P.word8 P.emptyB
+-- > filterBS p = P.condB p (P.liftFixedToBounded P.word8) P.emptyB
 --
 {-# INLINE primMapByteStringBounded #-}
 primMapByteStringBounded :: BoundedPrim Word8 -> S.ByteString -> Builder
