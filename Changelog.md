@@ -8,6 +8,7 @@
  * Fix benchmark builds
  * Add GHC 8.10 to the CI matrix
  * Improve the performance of `sconcat` for lazy and strict bytestrings
+ * Don't perform unaligned writes when it isn't known to be safe (#133)
 
 0.10.10.0 July 2019 <duncan+haskell@dcoutts.me.uk> July 2019
 
