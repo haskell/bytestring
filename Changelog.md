@@ -1,12 +1,17 @@
 0.10.10.1 <ietf-dane@dukhovni.org> June 2020
 
- * Fix off-by-one infinite loop in primMapByteStringBounded (#203)
- * Don't perform unaligned writes when it isn't known to be safe (#133)
- * Improve the performance of sconcat for lazy and strict bytestrings (#142)
+ * Fix off-by-one infinite loop in primMapByteStringBounded ([#203])
+ * Don't perform unaligned writes when it isn't known to be safe ([#133])
+ * Improve the performance of sconcat for lazy and strict bytestrings ([#142])
  * Document inadvertent 0.10.6.0 behaviour change in findSubstrings
- * Fix benchmark builds (#52)
+ * Fix benchmark builds ([#52])
  * Documentation fixes
  * Test fixes
+
+[#52]: https://github.com/haskell/bytestring/issues/52
+[#133]: https://github.com/haskell/bytestring/pull/133
+[#142]: https://github.com/haskell/bytestring/pull/142
+[#203]: https://github.com/haskell/bytestring/issues/203
 
 0.10.10.0 July 2019 <duncan+haskell@dcoutts.me.uk> July 2019
 
