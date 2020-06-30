@@ -1,4 +1,4 @@
-0.10.10.1 <ietf-dane@dukhovni.org> June 2020
+0.10.10.1 – June 2020
 
  * Fix off-by-one infinite loop in primMapByteStringBounded ([#203])
  * Don't perform unaligned writes when it isn't known to be safe ([#133])
@@ -56,4 +56,3 @@
  * Fix strictness of lazy bytestring foldl'
  * Numerous minor documentation fixes
  * Various testsuite improvements
-
