@@ -113,7 +113,9 @@ module Data.ByteString (
         drop,                   -- :: Int -> ByteString -> ByteString
         splitAt,                -- :: Int -> ByteString -> (ByteString, ByteString)
         takeWhile,              -- :: (Word8 -> Bool) -> ByteString -> ByteString
+        takeWhileEnd,           -- :: (Word8 -> Bool) -> ByteString -> ByteString
         dropWhile,              -- :: (Word8 -> Bool) -> ByteString -> ByteString
+        dropWhileEnd,           -- :: (Word8 -> Bool) -> ByteString -> ByteString
         span,                   -- :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
         spanEnd,                -- :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
         break,                  -- :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
@@ -835,10 +837,22 @@ takeWhile :: (Word8 -> Bool) -> ByteString -> ByteString
 takeWhile f ps = unsafeTake (findIndexOrEnd (not . f) ps) ps
 {-# INLINE takeWhile #-}
 
+-- | 'takeWhileEnd', applied to a predicate @p@ and a ByteString @xs@, returns
+-- the longest suffix (possibly empty) of @xs@ of elements that satisfy @p@.
+takeWhileEnd :: (Word8 -> Bool) -> ByteString -> ByteString
+takeWhileEnd f ps = unsafeDrop (findFromEndUntil (not . f) ps) ps
+{-# INLINE takeWhileEnd #-}
+
 -- | 'dropWhile' @p xs@ returns the suffix remaining after 'takeWhile' @p xs@.
 dropWhile :: (Word8 -> Bool) -> ByteString -> ByteString
 dropWhile f ps = unsafeDrop (findIndexOrEnd (not . f) ps) ps
 {-# INLINE dropWhile #-}
+
+-- | 'dropWhileEnd' @p xs@ returns the prefix remaining after 'takeWhileEnd' @p
+-- xs@.
+dropWhileEnd :: (Word8 -> Bool) -> ByteString -> ByteString
+dropWhileEnd f ps = unsafeTake (findFromEndUntil (not . f) ps) ps
+{-# INLINE dropWhileEnd #-}
 
 -- instead of findIndexOrEnd, we could use memchr here.
 
