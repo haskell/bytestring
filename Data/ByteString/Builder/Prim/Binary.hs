@@ -272,9 +272,6 @@ int64LE :: FixedPrim Int64
 int64LE = fromIntegral >$< word64LE
 
 
--- TODO: Ensure that they are safe on architectures where an unaligned write is
--- an error.
-
 -- | Encode a single native machine 'Int'. The 'Int's is encoded in host order,
 -- host endian form, for the machine you are on. On a 64 bit machine the 'Int'
 -- is an 8 byte value, on a 32 bit machine, 4 bytes. Values encoded this way

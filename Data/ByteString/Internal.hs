@@ -270,8 +270,8 @@ packUptoLenChars len cs0 =
     go !_ !0 cs     = return (len,   cs)
     go !p !n (c:cs) = poke p (c2w c) >> go (p `plusPtr` 1) (n-1) cs
 
--- Unpacking bytestrings into lists effeciently is a tradeoff: on the one hand
--- we would like to write a tight loop that just blats the list into memory, on
+-- Unpacking bytestrings into lists efficiently is a tradeoff: on the one hand
+-- we would like to write a tight loop that just blasts the list into memory, on
 -- the other hand we want it to be unpacked lazily so we don't end up with a
 -- massive list data structure in memory.
 --

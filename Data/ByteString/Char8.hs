@@ -115,7 +115,10 @@ module Data.ByteString.Char8 (
         drop,                   -- :: Int -> ByteString -> ByteString
         splitAt,                -- :: Int -> ByteString -> (ByteString, ByteString)
         takeWhile,              -- :: (Char -> Bool) -> ByteString -> ByteString
+        takeWhileEnd,           -- :: (Char -> Bool) -> ByteString -> ByteString
         dropWhile,              -- :: (Char -> Bool) -> ByteString -> ByteString
+        dropWhileEnd,           -- :: (Char -> Bool) -> ByteString -> ByteString
+        dropSpace,              -- :: ByteString -> ByteString
         span,                   -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
         spanEnd,                -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
         break,                  -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
@@ -124,6 +127,7 @@ module Data.ByteString.Char8 (
         groupBy,                -- :: (Char -> Char -> Bool) -> ByteString -> [ByteString]
         inits,                  -- :: ByteString -> [ByteString]
         tails,                  -- :: ByteString -> [ByteString]
+        strip,                  -- :: ByteString -> ByteString
         stripPrefix,            -- :: ByteString -> ByteString -> Maybe ByteString
         stripSuffix,            -- :: ByteString -> ByteString -> Maybe ByteString
 
@@ -497,6 +501,13 @@ takeWhile :: (Char -> Bool) -> ByteString -> ByteString
 takeWhile f = B.takeWhile (f . w2c)
 {-# INLINE takeWhile #-}
 
+-- | 'takeWhileEnd', applied to a predicate @p@ and a ByteString @xs@,
+-- returns the longest suffix (possibly empty) of @xs@ of elements that
+-- satisfy @p@.
+takeWhileEnd :: (Char -> Bool) -> ByteString -> ByteString
+takeWhileEnd f = B.takeWhileEnd (f . w2c)
+{-# INLINE takeWhileEnd #-}
+
 -- | 'dropWhile' @p xs@ returns the suffix remaining after 'takeWhile' @p xs@.
 dropWhile :: (Char -> Bool) -> ByteString -> ByteString
 dropWhile f = B.dropWhile (f . w2c)
@@ -506,6 +517,12 @@ dropWhile f = B.dropWhile (f . w2c)
 "ByteString specialise dropWhile isSpace -> dropSpace"
     dropWhile isSpace = dropSpace
   #-}
+
+-- | 'dropWhile' @p xs@ returns the prefix remaining after 'takeWhileEnd' @p
+-- xs@.
+dropWhileEnd :: (Char -> Bool) -> ByteString -> ByteString
+dropWhileEnd f = B.dropWhileEnd (f . w2c)
+{-# INLINE dropWhileEnd #-}
 
 -- | 'break' @p@ is equivalent to @'span' ('not' . p)@.
 break :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
@@ -823,6 +840,10 @@ firstnonspace !ptr !n !m
     | n >= m    = return n
     | otherwise = do w <- peekElemOff ptr n
                      if isSpaceWord8 w then firstnonspace ptr (n+1) m else return n
+
+-- | Remove leading and trailing white space from a 'ByteString'.
+strip :: ByteString -> ByteString
+strip = dropWhile isSpace . dropWhileEnd isSpace
 
 {-
 -- | 'dropSpaceEnd' efficiently returns the 'ByteString' argument with
