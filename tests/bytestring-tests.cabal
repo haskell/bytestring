@@ -20,10 +20,20 @@ flag integer-simple
   default: False
 
 -- QC properties, with GHC RULES disabled
-executable prop-compiled
+test-suite prop-compiled
+  type:             exitcode-stdio-1.0
   main-is:          Properties.hs
   other-modules:    Rules
                     QuickCheckUtils
+                    Data.ByteString
+                    Data.ByteString.Char8
+                    Data.ByteString.Internal
+                    Data.ByteString.Lazy
+                    Data.ByteString.Lazy.Char8
+                    Data.ByteString.Lazy.Internal
+                    Data.ByteString.Short
+                    Data.ByteString.Short.Internal
+                    Data.ByteString.Unsafe
   hs-source-dirs:   . ..
   build-depends:    base, ghc-prim, deepseq, random, directory,
                     test-framework, test-framework-quickcheck2,
@@ -37,13 +47,14 @@ executable prop-compiled
   extensions:       BangPatterns
                     UnliftedFFITypes,
                     MagicHash,
-                    UnboxedTuples,
-                    DeriveDataTypeable
                     ScopedTypeVariables
                     NamedFieldPuns
 
 executable regressions
   main-is:          Regressions.hs
+  other-modules:    Data.ByteString
+                    Data.ByteString.Internal
+                    Data.ByteString.Unsafe
   hs-source-dirs:   . ..
   build-depends:    base, ghc-prim, deepseq, random, directory,
                     test-framework, test-framework-hunit, HUnit
@@ -56,18 +67,34 @@ executable regressions
   extensions:       BangPatterns
                     UnliftedFFITypes,
                     MagicHash,
-                    UnboxedTuples,
-                    DeriveDataTypeable
                     ScopedTypeVariables
                     NamedFieldPuns
 
-executable test-builder
+test-suite test-builder
+  type:             exitcode-stdio-1.0
   hs-source-dirs:   . .. builder
   main-is:          TestSuite.hs
   other-modules:    Data.ByteString.Builder.Tests
                     Data.ByteString.Builder.Prim.Tests
                     Data.ByteString.Builder.Prim.TestUtils
-
+                    Data.ByteString
+                    Data.ByteString.Builder
+                    Data.ByteString.Builder.ASCII
+                    Data.ByteString.Builder.Extra
+                    Data.ByteString.Builder.Internal
+                    Data.ByteString.Builder.Prim
+                    Data.ByteString.Builder.Prim.ASCII
+                    Data.ByteString.Builder.Prim.Binary
+                    Data.ByteString.Builder.Prim.Internal
+                    Data.ByteString.Builder.Prim.Internal.Base16
+                    Data.ByteString.Builder.Prim.Internal.Floating
+                    Data.ByteString.Builder.Prim.Internal.UncheckedShifts
+                    Data.ByteString.Internal
+                    Data.ByteString.Lazy
+                    Data.ByteString.Lazy.Internal
+                    Data.ByteString.Short
+                    Data.ByteString.Short.Internal
+                    Data.ByteString.Unsafe
   build-depends:    base, ghc-prim,
                     deepseq,
                     QuickCheck                 >= 2.10 && < 2.15,
@@ -79,20 +106,15 @@ executable test-builder
                     test-framework,
                     test-framework-hunit,
                     test-framework-quickcheck2  >= 0.3
-
   cpp-options:      -DHAVE_TEST_FRAMEWORK=1
-  ghc-options:      -Wall -fwarn-tabs -fhpc -threaded -rtsopts
-
+  ghc-options:      -Wall -fwarn-tabs -threaded -rtsopts
   extensions:       CPP, ForeignFunctionInterface
                     UnliftedFFITypes,
                     MagicHash,
-                    UnboxedTuples,
-                    DeriveDataTypeable
                     ScopedTypeVariables
                     Rank2Types
                     BangPatterns
                     NamedFieldPuns
-
   c-sources:        ../cbits/fpstring.c
                     ../cbits/itoa.c
   include-dirs:     ../include

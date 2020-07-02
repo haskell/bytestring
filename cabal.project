@@ -1,0 +1,3 @@
+packages: bytestring.cabal
+tests: False
+benchmarks: False
