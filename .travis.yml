@@ -50,6 +50,6 @@ script:
       cabal get "./$SRC.tar.gz";
       (cd "$SRC"; cabal v2-build);
    else
-      echo "expected '$SRC_TGZ' not found";
+      echo "expected '$SRC.tar.gz' not found";
       exit 1;
    fi
