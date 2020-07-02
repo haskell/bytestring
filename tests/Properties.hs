@@ -719,6 +719,8 @@ prop_splitAt i xs = --collect (i >= 0 && i < length xs) $
 
 prop_takeWhile f xs = L.takeWhile f (pack xs) == pack (takeWhile f xs)
 prop_dropWhile f xs = L.dropWhile f (pack xs) == pack (dropWhile f xs)
+prop_takeWhileEnd f = P.takeWhileEnd f `eq1` (P.reverse . P.takeWhile f . P.reverse)
+prop_dropWhileEnd f = P.dropWhileEnd f `eq1` (P.reverse . P.dropWhile f . P.reverse)
 
 prop_break f xs = L.break f (pack xs) ==
     let (a,b) = break f xs in (pack a, pack b)
@@ -1182,6 +1184,8 @@ prop_intersperseBB c xs = (intersperse c xs) == (P.unpack $ P.intersperse c (P.p
 
 prop_maximumBB xs = (not (null xs)) ==> (maximum xs) == (P.maximum ( P.pack xs ))
 prop_minimumBB xs = (not (null xs)) ==> (minimum xs) == (P.minimum ( P.pack xs ))
+
+prop_strip = C.strip `eq1` (C.dropSpace . C.reverse . C.dropSpace . C.reverse)
 
 -- prop_dropSpaceBB xs    = dropWhile isSpace xs == C.unpack (C.dropSpace (C.pack xs))
 -- prop_dropSpaceEndBB xs = (C.reverse . (C.dropWhile isSpace) . C.reverse) (C.pack xs) ==
@@ -2229,6 +2233,7 @@ bb_tests =
     , testProperty "intersperse"    prop_intersperseBB
     , testProperty "maximum"        prop_maximumBB
     , testProperty "minimum"        prop_minimumBB
+    , testProperty "strip"          prop_strip
 --  , testProperty "breakChar"      prop_breakCharBB
 --  , testProperty "spanChar 1"     prop_spanCharBB
 --  , testProperty "spanChar 2"     prop_spanChar_1BB
@@ -2400,6 +2405,8 @@ ll_tests =
     , testProperty "splitAt"            prop_drop1
     , testProperty "takeWhile"          prop_takeWhile
     , testProperty "dropWhile"          prop_dropWhile
+    , testProperty "takeWhileEnd"       prop_takeWhileEnd
+    , testProperty "dropWhileEnd"       prop_dropWhileEnd
     , testProperty "break"              prop_break
     , testProperty "span"               prop_span
     , testProperty "splitAt"            prop_splitAt

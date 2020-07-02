@@ -91,9 +91,14 @@ import Foreign.C.Types          (CInt, CSize, CULong)
 
 import Foreign.C.String         (CString)
 
-#if !(MIN_VERSION_base(4,11,0)) && MIN_VERSION_base(4,9,0)
-import Data.Semigroup           (Semigroup((<>)))
+#if MIN_VERSION_base(4,13,0)
+import Data.Semigroup           (Semigroup (sconcat))
+import Data.List.NonEmpty       (NonEmpty ((:|)))
+#elif MIN_VERSION_base(4,9,0)
+import Data.Semigroup           (Semigroup ((<>), sconcat))
+import Data.List.NonEmpty       (NonEmpty ((:|)))
 #endif
+
 #if !(MIN_VERSION_base(4,8,0))
 import Data.Monoid              (Monoid(..))
 #endif
@@ -156,6 +161,7 @@ instance Ord ByteString where
 #if MIN_VERSION_base(4,9,0)
 instance Semigroup ByteString where
     (<>)    = append
+    sconcat (b:|bs) = concat (b:bs)
 #endif
 
 instance Monoid ByteString where
@@ -264,8 +270,8 @@ packUptoLenChars len cs0 =
     go !_ !0 cs     = return (len,   cs)
     go !p !n (c:cs) = poke p (c2w c) >> go (p `plusPtr` 1) (n-1) cs
 
--- Unpacking bytestrings into lists effeciently is a tradeoff: on the one hand
--- we would like to write a tight loop that just blats the list into memory, on
+-- Unpacking bytestrings into lists efficiently is a tradeoff: on the one hand
+-- we would like to write a tight loop that just blasts the list into memory, on
 -- the other hand we want it to be unpacked lazily so we don't end up with a
 -- massive list data structure in memory.
 --
