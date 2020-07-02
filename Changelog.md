@@ -2,7 +2,7 @@
 
  * **Note:** There are several breaking changes planned to be included in v0.11.
    Please ensure that your package has appropriate upper bounds on bytestring,
-   to minimize avoidable breakage.
+   in order to minimize avoidable breakage.
  * Add `takeWhileEnd`, `dropWhileEnd` and `strip`  for strict bytestrings
 
 0.10.10.1 – June 2020
