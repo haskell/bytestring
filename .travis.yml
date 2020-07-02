@@ -37,7 +37,9 @@ install:
  - travis_retry cabal update
 
 script:
- - cabal v2-configure; cabal v2-build
+ - cabal v2-configure
+ - cabal v2-build
+ - cabal v2-haddock -O0
  - cabal v2-sdist -o .
  # Remove to enable build of sdist.
  - rm -f cabal.project
