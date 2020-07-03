@@ -31,9 +31,10 @@ flag integer-simple
   description: Use the simple integer library instead of GMP
   default: False
 
-executable bench-bytestring-builder
+benchmark bench-bytestring-builder
   hs-source-dirs:    . ..
   main-is:           BenchAll.hs
+  type:              exitcode-stdio-1.0
 
   build-depends:     base >= 4.4 && < 5
                    , ghc-prim
@@ -144,9 +145,10 @@ executable bench-bytestring-builder
 --                   PackageImports
 --                   ForeignFunctionInterface
 
-executable bench-builder-boundscheck
+benchmark bench-builder-boundscheck
   hs-source-dirs:   .. .
   main-is:          BoundsCheckFusion.hs
+  type:             exitcode-stdio-1.0
   build-depends:    base, deepseq, ghc-prim,
                     criterion
   c-sources:        ../cbits/fpstring.c
