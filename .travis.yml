@@ -5,6 +5,8 @@ env:
  # With Cabal 2.4 we also get improved syntax in cabal.project files,
  # supporting remote sources, and other goodies, so use it across the
  # board.
+ # For GHC >= 8.0 we use Cabal 3.2 which supports the --benchmark-options
+ # flag.
  #
  - GHCVER=7.0.4 CABALVER=2.4
  - GHCVER=7.2.2 CABALVER=2.4
@@ -12,11 +14,11 @@ env:
  - GHCVER=7.6.3 CABALVER=2.4
  - GHCVER=7.8.4 CABALVER=2.4
  - GHCVER=7.10.3 CABALVER=2.4
- - GHCVER=8.0.2 CABALVER=2.4
- - GHCVER=8.2.2 CABALVER=2.4
- - GHCVER=8.4.4 CABALVER=2.4
- - GHCVER=8.6.5 CABALVER=2.4
- - GHCVER=8.8.3 CABALVER=3.0
+ - GHCVER=8.0.2 CABALVER=3.2
+ - GHCVER=8.2.2 CABALVER=3.2
+ - GHCVER=8.4.4 CABALVER=3.2
+ - GHCVER=8.6.5 CABALVER=3.2
+ - GHCVER=8.8.3 CABALVER=3.2
  - GHCVER=8.10.1 CABALVER=3.2
 
  ### The head in "ppa", currently 8.7, is no longer worth testing.
@@ -44,6 +46,10 @@ script:
  # Remove to enable build of sdist.
  - rm -f cabal.project
  - (cd tests; cabal v2-configure; cabal v2-test)
+ # Build the benchmarks and run a single iteration.
+ - if [[ "$GHCVER" > 7.9 ]]; then
+      (cd bench; cabal bench -O0 --benchmark-options "--quick --min-duration=0 --include-first-iter");
+   fi
  # "cabal check" disabled due to -O2 warning
  - export SRC=$(cabal info . | awk '{print $2; exit}');
    if [ -f "$SRC.tar.gz" ]; then
