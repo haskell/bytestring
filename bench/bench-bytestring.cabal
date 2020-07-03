@@ -4,7 +4,7 @@ Synopsis:            Benchmarks for the lazy bytestring builder.
 Description:
     This package is not meant for public release. It fixes a problem with the
     current benchmarking support in cabal, which has trouble compiling because
-    criterion depends on bytestring. Here, we just include the whole source of
+    gauge depends on bytestring. Here, we just include the whole source of
     the bytestring library directly.
 
 License:             BSD3
@@ -39,7 +39,7 @@ benchmark bench-bytestring-builder
   build-depends:     base >= 4.4 && < 5
                    , ghc-prim
                    , deepseq       >= 1.2
-                   , criterion     >= 0.5
+                   , gauge         >= 0.2.5
                    , blaze-textual == 0.2.*
                    -- we require bytestring due to benchmarking against
                    -- blaze-textual, which uses blaze-builder
@@ -150,7 +150,7 @@ benchmark bench-builder-boundscheck
   main-is:          BoundsCheckFusion.hs
   type:             exitcode-stdio-1.0
   build-depends:    base, deepseq, ghc-prim,
-                    criterion
+                    gauge
   c-sources:        ../cbits/fpstring.c
                     ../cbits/itoa.c
   include-dirs:     ../include
