@@ -178,6 +178,8 @@ instance GHC.Exts.IsList ShortByteString where
   toList   = unpackBytes
 #endif
 
+-- | Beware: 'fromString' truncates multi-byte characters to octets.
+-- e.g. "枯朶に烏のとまりけり秋の暮" becomes �6k�nh~�Q��n�
 instance IsString ShortByteString where
     fromString = packChars
 
