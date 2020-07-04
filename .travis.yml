@@ -5,7 +5,7 @@ env:
  # With Cabal 2.4 we also get improved syntax in cabal.project files,
  # supporting remote sources, and other goodies, so use it across the
  # board.
- # For GHC >= 8.0 we use Cabal 3.2 which supports the --benchmark-options
+ # For GHC >= 7.10 we use Cabal 3.2 which supports the --benchmark-options
  # flag.
  #
  - GHCVER=7.0.4 CABALVER=2.4
@@ -13,7 +13,7 @@ env:
  - GHCVER=7.4.2 CABALVER=2.4
  - GHCVER=7.6.3 CABALVER=2.4
  - GHCVER=7.8.4 CABALVER=2.4
- - GHCVER=7.10.3 CABALVER=2.4
+ - GHCVER=7.10.3 CABALVER=3.2
  - GHCVER=8.0.2 CABALVER=3.2
  - GHCVER=8.2.2 CABALVER=3.2
  - GHCVER=8.4.4 CABALVER=3.2
