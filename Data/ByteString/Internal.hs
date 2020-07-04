@@ -39,11 +39,11 @@ module Data.ByteString.Internal (
         create,                 -- :: Int -> (Ptr Word8 -> IO ()) -> IO ByteString
         createUptoN,            -- :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
         createUptoN',           -- :: Int -> (Ptr Word8 -> IO (Int, a)) -> IO (ByteString, a)
-        createAndTrim,          -- :: Int -> (Ptr Word8 -> IO Int) -> IO  ByteString
+        createAndTrim,          -- :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
         createAndTrim',         -- :: Int -> (Ptr Word8 -> IO (Int, Int, a)) -> IO (ByteString, a)
-        unsafeCreate,           -- :: Int -> (Ptr Word8 -> IO ()) ->  ByteString
-        unsafeCreateUptoN,      -- :: Int -> (Ptr Word8 -> IO Int) ->  ByteString
-        unsafeCreateUptoN',     -- :: Int -> (Ptr Word8 -> IO (Int, a)) ->  (ByteString, a)
+        unsafeCreate,           -- :: Int -> (Ptr Word8 -> IO ()) -> ByteString
+        unsafeCreateUptoN,      -- :: Int -> (Ptr Word8 -> IO Int) -> ByteString
+        unsafeCreateUptoN',     -- :: Int -> (Ptr Word8 -> IO (Int, a)) -> (ByteString, a)
         mallocByteString,       -- :: Int -> IO (ForeignPtr a)
 
         -- * Conversion to and from ForeignPtrs
