@@ -282,5 +282,6 @@ unsafeUseAsCString (PS ps s _) ac = withForeignPtr ps $ \p -> ac (castPtr p `plu
 -- will break referential transparency. To avoid this, use
 -- 'useAsCStringLen', which makes a copy of the original 'ByteString'.
 --
+-- If 'empty' is given, it will pass ('nullPtr', 0).
 unsafeUseAsCStringLen :: ByteString -> (CStringLen -> IO a) -> IO a
 unsafeUseAsCStringLen (PS ps s l) f = withForeignPtr ps $ \p -> f (castPtr p `plusPtr` s,l)
