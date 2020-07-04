@@ -390,7 +390,7 @@ module Data.ByteString.Builder.Prim (
   -- for constructing 'Builder's from 'FixedPrim's. The fused variants of
   -- this function are provided because they allow for more efficient
   -- implementations. Our compilers are just not smart enough yet; and for some
-  -- of the employed optimizations (see the code of 'encodeByteStringWithF')
+  -- of the employed optimizations (see the code of 'primMapByteStringFixed')
   -- they will very likely never be.
   --
   -- Note that functions marked with \"/Heavy inlining./\" are forced to be
@@ -403,7 +403,7 @@ module Data.ByteString.Builder.Prim (
   --
   -- @
   -- byteStringHex :: S.ByteString -> Builder
-  -- byteStringHex = 'encodeByteStringWithF' 'word8HexFixed'
+  -- byteStringHex = 'primMapByteStringFixed' 'word8HexFixed'
   -- @
   --
   , primFixed
@@ -505,7 +505,7 @@ primUnfoldrFixed = primUnfoldrBounded . toB
 -- copying it to the buffer to be filled.
 --
 -- > mapToBuilder :: (Word8 -> Word8) -> S.ByteString -> Builder
--- > mapToBuilder f = encodeByteStringWithF (contramapF f word8)
+-- > mapToBuilder f = primMapByteStringFixed (contramapF f word8)
 --
 -- We can also use it to hex-encode a strict 'S.ByteString' as shown by the
 -- 'byteStringHex' example above.
