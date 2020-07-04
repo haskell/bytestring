@@ -67,7 +67,7 @@ module Data.ByteString.Builder.Internal (
 
   -- * Build signals and steps
   , BuildSignal
-  , BuildStep
+  , BuildStep(..)
   , finalBuildStep
 
   , done
@@ -77,7 +77,7 @@ module Data.ByteString.Builder.Internal (
   , fillWithBuildStep
 
   -- * The Builder monoid
-  , Builder
+  , Builder(..)
   , builder
   , runBuilder
   , runBuilderWith
@@ -114,7 +114,7 @@ module Data.ByteString.Builder.Internal (
   , L.chunkOverhead
 
   -- * The Put monad
-  , Put
+  , Put(..)
   , put
   , runPut
 
