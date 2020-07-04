@@ -100,7 +100,7 @@ import           Data.ByteString.Builder.Prim
 
 renderString :: String -\> Builder
 renderString cs =
-    B.charUtf8 \'\"\' \<\> E.'encodeListWithB' escape cs \<\> B.charUtf8 \'\"\'
+    B.charUtf8 \'\"\' \<\> E.'primMapListBounded' escape cs \<\> B.charUtf8 \'\"\'
   where
     escape :: E.'BoundedPrim' Char
     escape =
@@ -301,7 +301,7 @@ corresponding functions in future releases of this library.
 -- >
 -- > renderString :: String -> Builder
 -- > renderString cs =
--- >     charUtf8 '"' <> encodeListWithB escapedUtf8 cs <> charUtf8 '"'
+-- >     charUtf8 '"' <> primMapListBounded escapedUtf8 cs <> charUtf8 '"'
 -- >   where
 -- >     escapedUtf8 :: BoundedPrim Char
 -- >     escapedUtf8 =
