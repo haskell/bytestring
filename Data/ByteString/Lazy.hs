@@ -753,7 +753,7 @@ break f cs0 = break' cs0
 -- of the specified byte. It is more efficient than 'break' as it is
 -- implemented with @memchr(3)@. I.e.
 --
--- > break (=='c') "abcd" == breakByte 'c' "abcd"
+-- > break (==99) "abcd" == breakByte 99 "abcd" -- fromEnum 'c' == 99
 --
 breakByte :: Word8 -> ByteString -> (ByteString, ByteString)
 breakByte c (LPS ps) = case (breakByte' ps) of (a,b) -> (LPS a, LPS b)
@@ -769,7 +769,7 @@ breakByte c (LPS ps) = case (breakByte' ps) of (a,b) -> (LPS a, LPS b)
 -- occurence of a byte other than its argument. It is more efficient
 -- than 'span (==)'
 --
--- > span  (=='c') "abcd" == spanByte 'c' "abcd"
+-- > span  (==99) "abcd" == spanByte 99 "abcd" -- fromEnum 'c' == 99
 --
 spanByte :: Word8 -> ByteString -> (ByteString, ByteString)
 spanByte c (LPS ps) = case (spanByte' ps) of (a,b) -> (LPS a, LPS b)
@@ -792,8 +792,8 @@ span p = break (not . p)
 -- The resulting components do not contain the separators.  Two adjacent
 -- separators result in an empty component in the output.  eg.
 --
--- > splitWith (=='a') "aabbaca" == ["","","bb","c",""]
--- > splitWith (=='a') []        == []
+-- > splitWith (==97) "aabbaca" == ["","","bb","c",""] -- fromEnum 'a' == 97
+-- > splitWith (==97) []        == []
 --
 splitWith :: (Word8 -> Bool) -> ByteString -> [ByteString]
 splitWith _ Empty          = []
@@ -808,9 +808,9 @@ splitWith p (Chunk c0 cs0) = comb [] (S.splitWith p c0) cs0
 -- | /O(n)/ Break a 'ByteString' into pieces separated by the byte
 -- argument, consuming the delimiter. I.e.
 --
--- > split '\n' "a\nb\nd\ne" == ["a","b","d","e"]
--- > split 'a'  "aXaXaXa"    == ["","X","X","X",""]
--- > split 'x'  "x"          == ["",""]
+-- > split 10  "a\nb\nd\ne" == ["a","b","d","e"]   -- fromEnum '\n' == 10
+-- > split 97  "aXaXaXa"    == ["","X","X","X",""] -- fromEnum 'a' == 97
+-- > split 120 "x"          == ["",""]             -- fromEnum 'x' == 120
 --
 -- and
 --
