@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable, CPP, BangPatterns, RankNTypes,
              ForeignFunctionInterface, MagicHash, UnboxedTuples,
              UnliftedFFITypes #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 #if __GLASGOW_HASKELL__ >= 703
 {-# LANGUAGE Unsafe #-}
@@ -15,7 +16,7 @@
 -- Maintainer  : duncan@community.haskell.org
 -- Stability   : stable
 -- Portability : ghc only
--- 
+--
 -- Internal representation of ShortByteString
 --
 module Data.ByteString.Short.Internal (
@@ -170,6 +171,13 @@ instance Show ShortByteString where
 instance Read ShortByteString where
     readsPrec p str = [ (packChars x, y) | (x, y) <- readsPrec p str ]
 
+#if MIN_VERSION_base(4,7,0)
+instance GHC.Exts.IsList ShortByteString where
+  type Item ShortByteString = Word8
+  fromList = packBytes
+  toList   = unpackBytes
+#endif
+
 instance IsString ShortByteString where
     fromString = packChars
 
@@ -198,7 +206,7 @@ length (SBS _ len) = len
 null :: ShortByteString -> Bool
 null sbs = length sbs == 0
 
--- | /O(1)/ 'ShortByteString' index (subscript) operator, starting from 0. 
+-- | /O(1)/ 'ShortByteString' index (subscript) operator, starting from 0.
 index :: ShortByteString -> Int -> Word8
 index sbs i
   | i >= 0 && i < length sbs = unsafeIndex sbs i

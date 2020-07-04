@@ -1,6 +1,7 @@
 0.10.10.2 –
 
  * Add `takeWhileEnd`, `dropWhileEnd` and `strip`  for strict bytestrings
+ * Add `IsList` instances
 
 0.10.10.1 – June 2020
 
