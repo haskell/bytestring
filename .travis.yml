@@ -34,6 +34,8 @@ before_install:
  - travis_retry sudo apt-get install cabal-install-$CABALVER ghc-$GHCVER
  - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
  - cabal --version
+ - "GHCNUMVER=$(ghc --numeric-version|perl -ne '/^(\\d+)\\.(\\d+)\\.(\\d+)(\\.(\\d+))?$/; print(10000 * $1 + 100 * $2 + ($3 == 0 ? $5 != 1 : $3))')"
+ - echo $GHCNUMVER
 
 install:
  - travis_retry cabal update
@@ -47,7 +49,7 @@ script:
  - rm -f cabal.project
  - (cd tests; cabal v2-configure; cabal v2-test)
  # Build the benchmarks and run a single iteration.
- - if [[ "$GHCVER" > 7.9 ]]; then
+ - if [ "$GHCNUMVER" -ge 71000 ]; then
       (cd bench; cabal bench -O0 --benchmark-options "--quick --min-duration=0 --include-first-iter");
    fi
  # "cabal check" disabled due to -O2 warning
