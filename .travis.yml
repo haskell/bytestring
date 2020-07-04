@@ -50,7 +50,7 @@ script:
  - (cd tests; cabal v2-configure; cabal v2-test)
  # Build the benchmarks and run a single iteration.
  - if [ "$GHCNUMVER" -ge 71000 ]; then
-      (cd bench; cabal bench -O0 --benchmark-options "--quick --min-duration=0 --include-first-iter");
+      (cd bench; cabal v2-bench -O0 --benchmark-options "--quick --min-duration=0 --include-first-iter");
    fi
  # "cabal check" disabled due to -O2 warning
  - export SRC=$(cabal info . | awk '{print $2; exit}');
