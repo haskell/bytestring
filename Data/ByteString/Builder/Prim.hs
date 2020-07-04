@@ -506,7 +506,7 @@ primUnfoldrFixed = primUnfoldrBounded . toB
 -- copying it to the buffer to be filled.
 --
 -- > mapToBuilder :: (Word8 -> Word8) -> S.ByteString -> Builder
--- > mapToBuilder f = encodeByteStringWithF (contramapF f word8)
+-- > mapToBuilder f = primMapByteStringFixed (contramapF f word8)
 --
 -- We can also use it to hex-encode a strict 'S.ByteString' as shown by the
 -- 'Data.ByteString.Builder.ASCII.byteStringHex' example above.
