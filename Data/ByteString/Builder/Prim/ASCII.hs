@@ -112,7 +112,7 @@ foreign import ccall unsafe "static _hs_bytestring_long_long_int_dec" c_long_lon
 
 {-# INLINE encodeIntDecimal #-}
 encodeIntDecimal :: Integral a => Int -> BoundedPrim a
-encodeIntDecimal bound = boudedPrim bound $ c_int_dec . fromIntegral
+encodeIntDecimal bound = boundedPrim bound $ c_int_dec . fromIntegral
 
 -- | Decimal encoding of an 'Int8'.
 {-# INLINE int8Dec #-}
@@ -133,7 +133,7 @@ int32Dec = encodeIntDecimal 11
 -- | Decimal encoding of an 'Int64'.
 {-# INLINE int64Dec #-}
 int64Dec :: BoundedPrim Int64
-int64Dec = boudedPrim 20 $ c_long_long_int_dec . fromIntegral
+int64Dec = boundedPrim 20 $ c_long_long_int_dec . fromIntegral
 
 -- | Decimal encoding of an 'Int'.
 {-# INLINE intDec #-}
@@ -154,7 +154,7 @@ foreign import ccall unsafe "static _hs_bytestring_long_long_uint_dec" c_long_lo
 
 {-# INLINE encodeWordDecimal #-}
 encodeWordDecimal :: Integral a => Int -> BoundedPrim a
-encodeWordDecimal bound = boudedPrim bound $ c_uint_dec . fromIntegral
+encodeWordDecimal bound = boundedPrim bound $ c_uint_dec . fromIntegral
 
 -- | Decimal encoding of a 'Word8'.
 {-# INLINE word8Dec #-}
@@ -174,7 +174,7 @@ word32Dec = encodeWordDecimal 10
 -- | Decimal encoding of a 'Word64'.
 {-# INLINE word64Dec #-}
 word64Dec :: BoundedPrim Word64
-word64Dec = boudedPrim 20 $ c_long_long_uint_dec . fromIntegral
+word64Dec = boundedPrim 20 $ c_long_long_uint_dec . fromIntegral
 
 -- | Decimal encoding of a 'Word'.
 {-# INLINE wordDec #-}
@@ -199,7 +199,7 @@ foreign import ccall unsafe "static _hs_bytestring_long_long_uint_hex" c_long_lo
 {-# INLINE encodeWordHex #-}
 encodeWordHex :: forall a. (Storable a, Integral a) => BoundedPrim a
 encodeWordHex =
-    boudedPrim (2 * sizeOf (undefined :: a)) $ c_uint_hex  . fromIntegral
+    boundedPrim (2 * sizeOf (undefined :: a)) $ c_uint_hex  . fromIntegral
 
 -- | Hexadecimal encoding of a 'Word8'.
 {-# INLINE word8Hex #-}
@@ -219,7 +219,7 @@ word32Hex = encodeWordHex
 -- | Hexadecimal encoding of a 'Word64'.
 {-# INLINE word64Hex #-}
 word64Hex :: BoundedPrim Word64
-word64Hex = boudedPrim 16 $ c_long_long_uint_hex . fromIntegral
+word64Hex = boundedPrim 16 $ c_long_long_uint_hex . fromIntegral
 
 -- | Hexadecimal encoding of a 'Word'.
 {-# INLINE wordHex #-}
