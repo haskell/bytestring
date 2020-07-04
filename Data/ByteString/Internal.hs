@@ -38,10 +38,12 @@ module Data.ByteString.Internal (
         -- * Low level imperative construction
         create,                 -- :: Int -> (Ptr Word8 -> IO ()) -> IO ByteString
         createUptoN,            -- :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
+        createUptoN',           -- :: Int -> (Ptr Word8 -> IO (Int, a)) -> IO (ByteString, a)
         createAndTrim,          -- :: Int -> (Ptr Word8 -> IO Int) -> IO  ByteString
         createAndTrim',         -- :: Int -> (Ptr Word8 -> IO (Int, Int, a)) -> IO (ByteString, a)
         unsafeCreate,           -- :: Int -> (Ptr Word8 -> IO ()) ->  ByteString
         unsafeCreateUptoN,      -- :: Int -> (Ptr Word8 -> IO Int) ->  ByteString
+        unsafeCreateUptoN',     -- :: Int -> (Ptr Word8 -> IO (Int, a)) ->  (ByteString, a)
         mallocByteString,       -- :: Int -> IO (ForeignPtr a)
 
         -- * Conversion to and from ForeignPtrs
@@ -371,6 +373,7 @@ unsafeCreateUptoN :: Int -> (Ptr Word8 -> IO Int) -> ByteString
 unsafeCreateUptoN l f = unsafeDupablePerformIO (createUptoN l f)
 {-# INLINE unsafeCreateUptoN #-}
 
+-- | @since 0.10.12.0
 unsafeCreateUptoN' :: Int -> (Ptr Word8 -> IO (Int, a)) -> (ByteString, a)
 unsafeCreateUptoN' l f = unsafeDupablePerformIO (createUptoN' l f)
 {-# INLINE unsafeCreateUptoN' #-}
@@ -393,6 +396,8 @@ createUptoN l f = do
 {-# INLINE createUptoN #-}
 
 -- | Create ByteString of up to size @l@ and use action @f@ to fill it's contents which returns its true size.
+--
+-- @since 0.10.12.0
 createUptoN' :: Int -> (Ptr Word8 -> IO (Int, a)) -> IO (ByteString, a)
 createUptoN' l f = do
     fp <- mallocByteString l
