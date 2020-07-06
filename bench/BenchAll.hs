@@ -12,9 +12,9 @@
 -- Benchmark all 'Builder' functions.
 module Main (main) where
 
-import           Criterion.Main
 import           Data.Foldable                         (foldMap)
 import           Data.Monoid
+import           Gauge
 import           Prelude                               hiding (words)
 
 import qualified Data.ByteString                       as S
@@ -230,7 +230,7 @@ main = do
   mapM_ putStrLn sanityCheckInfo
   putStrLn ""
   wikiPage <- getDataFileName "wiki-haskell.html" >>= S.readFile
-  Criterion.Main.defaultMain
+  Gauge.defaultMain
     [ bgroup "Data.ByteString.Builder"
       [ bgroup "Small payload"
         [ benchB' "mempty"        ()  (const mempty)
