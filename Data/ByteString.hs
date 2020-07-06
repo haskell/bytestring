@@ -1114,6 +1114,7 @@ elemIndex c (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
 --
 elemIndexEnd :: Word8 -> ByteString -> Maybe Int
 elemIndexEnd = findIndexEnd . (==)
+{-# INLINE elemIndexEnd #-}
 
 -- | /O(n)/ The 'elemIndices' function extends 'elemIndex', by returning
 -- the indices of all elements equal to the query element, in ascending order.

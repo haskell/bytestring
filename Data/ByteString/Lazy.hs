@@ -918,6 +918,7 @@ elemIndex w cs0 = elemIndex' 0 cs0
 -- @since 0.10.6.0
 elemIndexEnd :: Word8 -> ByteString -> Maybe Int64
 elemIndexEnd = findIndexEnd . (==)
+{-# INLINE elemIndexEnd #-}
 
 -- | /O(n)/ The 'elemIndices' function extends 'elemIndex', by returning
 -- the indices of all elements equal to the query element, in ascending order.
