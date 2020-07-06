@@ -352,7 +352,7 @@ length cs = foldlChunks (\n c -> n + fromIntegral (S.length c)) 0 cs
 infixr 5 `cons`, `cons'` --same as list (:)
 infixl 5 `snoc`
 
--- | /O(1)/ 'cons' is analogous to '(:)' for lists.
+-- | /O(1)/ 'cons' is analogous to '(Prelude.:)' for lists.
 --
 cons :: Word8 -> ByteString -> ByteString
 cons c cs = Chunk (S.singleton c) cs
@@ -504,7 +504,7 @@ foldr k z = foldrChunks (flip (S.foldr k)) z
 {-# INLINE foldr #-}
 
 -- | 'foldl1' is a variant of 'foldl' that has no starting value
--- argument, and thus must be applied to non-empty 'ByteStrings'.
+-- argument, and thus must be applied to non-empty 'ByteString's.
 foldl1 :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldl1 _ Empty        = errorEmptyList "foldl1"
 foldl1 f (Chunk c cs) = foldl f (S.unsafeHead c) (Chunk (S.unsafeTail c) cs)
@@ -818,7 +818,7 @@ splitWith p (Chunk c0 cs0) = comb [] (S.splitWith p c0) cs0
 -- > split == splitWith . (==)
 --
 -- As for all splitting functions in this library, this function does
--- not copy the substrings, it just constructs new 'ByteStrings' that
+-- not copy the substrings, it just constructs new 'ByteString's that
 -- are slices of the original.
 --
 split :: Word8 -> ByteString -> [ByteString]

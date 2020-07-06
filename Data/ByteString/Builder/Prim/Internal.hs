@@ -95,9 +95,10 @@ infixl 4 >$<
 -- We can use it for example to prepend and/or append fixed values to an
 -- primitive.
 --
+-- > import Data.ByteString.Builder.Prim as P
 -- >showEncoding ((\x -> ('\'', (x, '\''))) >$< fixed3) 'x' = "'x'"
 -- >  where
--- >    fixed3 = char7 >*< char7 >*< char7
+-- >    fixed3 = P.char7 >*< P.char7 >*< P.char7
 --
 -- Note that the rather verbose syntax for composition stems from the
 -- requirement to be able to compute the size / size bound at compile time.
@@ -178,7 +179,7 @@ pairF (FP l1 io1) (FP l2 io2) =
 -- | Change a primitives such that it first applies a function to the value
 -- to be encoded.
 --
--- Note that primitives are 'Contrafunctors'
+-- Note that primitives are 'Contravariant'
 -- <http://hackage.haskell.org/package/contravariant>. Hence, the following
 -- laws hold.
 --
@@ -247,7 +248,7 @@ runB (BP _ io) = io
 -- | Change a 'BoundedPrim' such that it first applies a function to the
 -- value to be encoded.
 --
--- Note that 'BoundedPrim's are 'Contrafunctors'
+-- Note that 'BoundedPrim's are 'Contravariant'
 -- <http://hackage.haskell.org/package/contravariant>. Hence, the following
 -- laws hold.
 --
@@ -290,7 +291,7 @@ eitherB (BP b1 io1) (BP b2 io2) =
 -- Unicode codepoints above 127 as follows.
 --
 -- @
---charASCIIDrop = 'condB' (< \'\\128\') ('fromF' 'char7') 'emptyB'
+--charASCIIDrop = 'condB' (< \'\\128\') ('liftFixedToBounded' 'Data.ByteString.Builder.Prim.char7') 'emptyB'
 -- @
 {-# INLINE CONLIKE condB #-}
 condB :: (a -> Bool) -> BoundedPrim a -> BoundedPrim a -> BoundedPrim a
