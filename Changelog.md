@@ -2,6 +2,7 @@
 
  * Add `takeWhileEnd`, `dropWhileEnd` and `strip`  for strict bytestrings
  * Add `IsList` instances
+ * Deprecate `Data.ByteString.Lazy.Builder`
 
 0.10.10.1 – June 2020
 
