@@ -656,10 +656,12 @@ zipWith :: (Char -> Char -> a) -> ByteString -> ByteString -> [a]
 zipWith f = L.zipWith ((. w2c) . f . w2c)
 
 -- | 'lines' breaks a ByteString up into a list of ByteStrings at
--- newline Chars. The resulting strings do not contain newlines.
+-- newline Chars (@'\\n'@). The resulting strings do not contain newlines.
 --
 -- As of bytestring 0.9.0.3, this function is stricter than its
 -- list cousin.
+--
+-- Note that it __does not__ regard CR (@'\\r'@) as a newline character.
 --
 lines :: ByteString -> [ByteString]
 lines Empty          = []

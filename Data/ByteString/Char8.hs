@@ -867,7 +867,9 @@ lastnonspace ptr n
 -}
 
 -- | 'lines' breaks a ByteString up into a list of ByteStrings at
--- newline Chars. The resulting strings do not contain newlines.
+-- newline Chars (@'\\n'@). The resulting strings do not contain newlines.
+--
+-- Note that it __does not__ regard CR (@'\\r'@) as a newline character.
 --
 lines :: ByteString -> [ByteString]
 lines ps
