@@ -378,7 +378,7 @@ unsafeCreateUptoN' :: Int -> (Ptr Word8 -> IO (Int, a)) -> (ByteString, a)
 unsafeCreateUptoN' l f = unsafeDupablePerformIO (createUptoN' l f)
 {-# INLINE unsafeCreateUptoN' #-}
 
--- | Create ByteString of size @l@ and use action @f@ to fill it's contents.
+-- | Create ByteString of size @l@ and use action @f@ to fill its contents.
 create :: Int -> (Ptr Word8 -> IO ()) -> IO ByteString
 create l f = do
     fp <- mallocByteString l
@@ -386,8 +386,9 @@ create l f = do
     return $! PS fp 0 l
 {-# INLINE create #-}
 
--- | Create ByteString of up to size size @l@ and use action @f@ to fill it's
--- contents which returns its true size.
+-- | Given a maximum size @l@ and an action @f@ that fills the 'ByteString'
+-- starting at the given 'Ptr' and returns the actual utilized length,
+-- @`createUpToN'` l f@ returns the filled 'ByteString'.
 createUptoN :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
 createUptoN l f = do
     fp <- mallocByteString l
@@ -395,7 +396,8 @@ createUptoN l f = do
     assert (l' <= l) $ return $! PS fp 0 l'
 {-# INLINE createUptoN #-}
 
--- | Create ByteString of up to size @l@ and use action @f@ to fill it's contents which returns its true size.
+-- | Like 'createUpToN', but also returns an additional value created by the
+-- action.
 --
 -- @since 0.10.12.0
 createUptoN' :: Int -> (Ptr Word8 -> IO (Int, a)) -> IO (ByteString, a)
