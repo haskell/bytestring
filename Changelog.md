@@ -6,6 +6,7 @@
  * Add `takeWhileEnd`, `dropWhileEnd` and `strip`  for strict bytestrings
  * Define `findIndexEnd`
  * Add `IsList` instances
+ * Deprecate `Data.ByteString.Lazy.Builder`
  * Add `partition` to `Data.ByteString.Char8` and `Data.ByteString.Lazy.Char8`
 
 0.10.10.1 – June 2020
