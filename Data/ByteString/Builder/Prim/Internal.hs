@@ -20,7 +20,7 @@
 -- standard encodings of standard Haskell values.
 --
 -- If you need to write your own builder primitives, then be aware that you are
--- writing code with /all saftey belts off/; i.e.,
+-- writing code with /all safety belts off/; i.e.,
 -- *this is the code that might make your application vulnerable to buffer-overflow attacks!*
 -- The "Data.ByteString.Builder.Prim.Tests" module provides you with
 -- utilities for testing your encodings thoroughly.
@@ -42,7 +42,7 @@ module Data.ByteString.Builder.Prim.Internal (
 
   -- * Bounded-size builder primitives
   , BoundedPrim
-  , boudedPrim
+  , boundedPrim
   , sizeBound
   , runB
 
@@ -64,6 +64,8 @@ module Data.ByteString.Builder.Prim.Internal (
   , (>$<)
   , (>*<)
 
+  -- * Deprecated
+  , boudedPrim
   ) where
 
 import Foreign
@@ -231,6 +233,10 @@ data BoundedPrim a = BP {-# UNPACK #-} !Int (a -> Ptr Word8 -> IO (Ptr Word8))
 sizeBound :: BoundedPrim a -> Int
 sizeBound (BP b _) = b
 
+boundedPrim :: Int -> (a -> Ptr Word8 -> IO (Ptr Word8)) -> BoundedPrim a
+boundedPrim = BP
+
+{-# DEPRECATED boudedPrim "Use 'boundedPrim' instead" #-}
 boudedPrim :: Int -> (a -> Ptr Word8 -> IO (Ptr Word8)) -> BoundedPrim a
 boudedPrim = BP
 
