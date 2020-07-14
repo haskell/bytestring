@@ -10,7 +10,6 @@ import Test.QuickCheck
 import Text.Show.Functions
 
 import Control.Monad        ( liftM2 )
-import Control.Monad.Instances
 import Data.Char
 import Data.List
 import Data.Word

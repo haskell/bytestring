@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP, ForeignFunctionInterface, BangPatterns #-}
 {-# LANGUAGE UnliftedFFITypes, MagicHash,
             UnboxedTuples, DeriveDataTypeable #-}
+{-# LANGUAGE TypeFamilies #-}
 #if __GLASGOW_HASKELL__ >= 703
 {-# LANGUAGE Unsafe #-}
 #endif
@@ -117,6 +118,10 @@ import Data.Data                (Data(..), mkNoRepType)
 
 import GHC.Base                 (nullAddr#,realWorld#,unsafeChr)
 
+#if MIN_VERSION_base(4,7,0)
+import GHC.Exts                 (IsList(..))
+#endif
+
 #if MIN_VERSION_base(4,4,0)
 import GHC.CString              (unpackCString#)
 #else
@@ -188,6 +193,13 @@ instance Show ByteString where
 
 instance Read ByteString where
     readsPrec p str = [ (packChars x, y) | (x, y) <- readsPrec p str ]
+
+#if MIN_VERSION_base(4,7,0)
+instance IsList ByteString where
+  type Item ByteString = Word8
+  fromList = packBytes
+  toList   = unpackBytes
+#endif
 
 instance IsString ByteString where
     {-# INLINE fromString #-}
@@ -297,8 +309,8 @@ packUptoLenChars len cs0 =
     go !_ !0 cs     = return (len,   cs)
     go !p !n (c:cs) = poke p (c2w c) >> go (p `plusPtr` 1) (n-1) cs
 
--- Unpacking bytestrings into lists effeciently is a tradeoff: on the one hand
--- we would like to write a tight loop that just blats the list into memory, on
+-- Unpacking bytestrings into lists efficiently is a tradeoff: on the one hand
+-- we would like to write a tight loop that just blasts the list into memory, on
 -- the other hand we want it to be unpacked lazily so we don't end up with a
 -- massive list data structure in memory.
 --

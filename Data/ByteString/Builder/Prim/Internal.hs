@@ -20,7 +20,7 @@
 -- standard encodings of standard Haskell values.
 --
 -- If you need to write your own builder primitives, then be aware that you are
--- writing code with /all saftey belts off/; i.e.,
+-- writing code with /all safety belts off/; i.e.,
 -- *this is the code that might make your application vulnerable to buffer-overflow attacks!*
 -- The "Data.ByteString.Builder.Prim.Tests" module provides you with
 -- utilities for testing your encodings thoroughly.
@@ -42,7 +42,7 @@ module Data.ByteString.Builder.Prim.Internal (
 
   -- * Bounded-size builder primitives
   , BoundedPrim
-  , boudedPrim
+  , boundedPrim
   , sizeBound
   , runB
 
@@ -64,6 +64,8 @@ module Data.ByteString.Builder.Prim.Internal (
   , (>$<)
   , (>*<)
 
+  -- * Deprecated
+  , boudedPrim
   ) where
 
 import Foreign
@@ -198,7 +200,19 @@ liftFixedToBounded = toB
 
 {-# INLINE CONLIKE storableToF #-}
 storableToF :: forall a. Storable a => FixedPrim a
+-- Not all architectures are forgiving of unaligned accesses; whitelist ones
+-- which are known not to trap (either to the kernel for emulation, or crash).
+#if defined(i386_HOST_ARCH) || defined(x86_64_HOST_ARCH) \
+    || ((defined(arm_HOST_ARCH) || defined(aarch64_HOST_ARCH)) \
+        && defined(__ARM_FEATURE_UNALIGNED)) \
+    || defined(powerpc_HOST_ARCH) || defined(powerpc64_HOST_ARCH) \
+    || defined(powerpc64le_HOST_ARCH)
 storableToF = FP (sizeOf (undefined :: a)) (\x op -> poke (castPtr op) x)
+#else
+storableToF = FP (sizeOf (undefined :: a)) $ \x op ->
+    if (ptrToWordPtr op) `mod` (fromIntegral (alignment (undefined :: a))) == 0 then poke (castPtr op) x
+    else with x $ \tp -> copyBytes op (castPtr tp) (sizeOf (undefined :: a))
+#endif
 
 {-
 {-# INLINE CONLIKE liftIOF #-}
@@ -219,6 +233,10 @@ data BoundedPrim a = BP {-# UNPACK #-} !Int (a -> Ptr Word8 -> IO (Ptr Word8))
 sizeBound :: BoundedPrim a -> Int
 sizeBound (BP b _) = b
 
+boundedPrim :: Int -> (a -> Ptr Word8 -> IO (Ptr Word8)) -> BoundedPrim a
+boundedPrim = BP
+
+{-# DEPRECATED boudedPrim "Use 'boundedPrim' instead" #-}
 boudedPrim :: Int -> (a -> Ptr Word8 -> IO (Ptr Word8)) -> BoundedPrim a
 boudedPrim = BP
 

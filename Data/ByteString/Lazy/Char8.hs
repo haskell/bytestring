@@ -142,7 +142,7 @@ module Data.ByteString.Lazy.Char8 (
         -- ** Searching with a predicate
         find,                   -- :: (Char -> Bool) -> ByteString -> Maybe Char
         filter,                 -- :: (Char -> Bool) -> ByteString -> ByteString
---      partition               -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
+        partition,              -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
 
         -- * Indexing ByteStrings
         index,                  -- :: ByteString -> Int64 -> Char
@@ -577,6 +577,10 @@ notElem c = L.notElem (c2w c)
 filter :: (Char -> Bool) -> ByteString -> ByteString
 filter f = L.filter (f . w2c)
 {-# INLINE filter #-}
+
+partition :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
+partition f = L.partition (f . w2c)
+{-# INLINE partition #-}
 
 {-
 -- | /O(n)/ and /O(n\/c) space/ A first order equivalent of /filter .
