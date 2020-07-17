@@ -196,6 +196,8 @@ instance IsList ByteString where
   toList   = unpackBytes
 #endif
 
+-- | Beware: 'fromString' truncates multi-byte characters to octets.
+-- e.g. "枯朶に烏のとまりけり秋の暮" becomes �6k�nh~�Q��n�
 instance IsString ByteString where
     fromString = packChars
 
@@ -243,7 +245,7 @@ unsafePackLenChars len cs0 =
 -- boxed string. A unboxed string literal is compiled to a static @char
 -- []@ by GHC. Establishing the length of the string requires a call to
 -- @strlen(3)@, so the 'Addr#' must point to a null-terminated buffer (as
--- is the case with @\"string\"\#@ literals in GHC). Use 'unsafePackAddressLen'
+-- is the case with @\"string\"\#@ literals in GHC). Use 'Data.ByteString.Unsafe.unsafePackAddressLen'
 -- if you know the length of the string statically.
 --
 -- An example:
@@ -448,7 +450,7 @@ createAndTrim' l f = do
                             memcpy p' (p `plusPtr` off) l'
                     return (ps, res)
 
--- | Wrapper of 'mallocForeignPtrBytes' with faster implementation for GHC
+-- | Wrapper of 'Foreign.ForeignPtr.mallocForeignPtrBytes' with faster implementation for GHC
 --
 mallocByteString :: Int -> IO (ForeignPtr a)
 mallocByteString = mallocPlainForeignPtrBytes
@@ -588,7 +590,7 @@ overflowError fun = error $ "Data.ByteString." ++ fun ++ ": size overflow"
 
 ------------------------------------------------------------------------
 
--- | This \"function\" has a superficial similarity to 'unsafePerformIO' but
+-- | This \"function\" has a superficial similarity to 'System.IO.Unsafe.unsafePerformIO' but
 -- it is in fact a malevolent agent of chaos. It unpicks the seams of reality
 -- (and the 'IO' monad) so that the normal rules no longer apply. It lulls you
 -- into thinking it is reasonable, but when you are not looking it stabs you
@@ -619,7 +621,7 @@ accursedUnutterablePerformIO (IO m) = case m realWorld# of (# _, r #) -> r
 inlinePerformIO :: IO a -> a
 inlinePerformIO = accursedUnutterablePerformIO
 {-# INLINE inlinePerformIO #-}
-{-# DEPRECATED inlinePerformIO "If you think you know what you are doing, use 'unsafePerformIO'. If you are sure you know what you are doing, use 'unsafeDupablePerformIO'. If you enjoy sharing an address space with a malevolent agent of chaos, try 'accursedUnutterablePerformIO'." #-}
+{-# DEPRECATED inlinePerformIO "If you think you know what you are doing, use 'System.IO.Unsafe.unsafePerformIO'. If you are sure you know what you are doing, use 'unsafeDupablePerformIO'. If you enjoy sharing an address space with a malevolent agent of chaos, try 'accursedUnutterablePerformIO'." #-}
 
 -- ---------------------------------------------------------------------
 --

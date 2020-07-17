@@ -543,7 +543,7 @@ foldr' k v (PS fp off len) =
 {-# INLINE foldr' #-}
 
 -- | 'foldl1' is a variant of 'foldl' that has no starting value
--- argument, and thus must be applied to non-empty 'ByteStrings'.
+-- argument, and thus must be applied to non-empty 'ByteString's.
 -- An exception will be thrown in the case of an empty ByteString.
 foldl1 :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldl1 f ps
@@ -892,7 +892,7 @@ break p ps = case findIndexOrEnd p ps of n -> (unsafeTake n ps, unsafeDrop n ps)
 -- of the specified byte. It is more efficient than 'break' as it is
 -- implemented with @memchr(3)@. I.e.
 --
--- > break (=='c') "abcd" == breakByte 'c' "abcd"
+-- > break (==99) "abcd" == breakByte 99 "abcd" -- fromEnum 'c' == 99
 --
 breakByte :: Word8 -> ByteString -> (ByteString, ByteString)
 breakByte c p = case elemIndex c p of
@@ -917,7 +917,7 @@ span p ps = break (not . p) ps
 -- occurence of a byte other than its argument. It is more efficient
 -- than 'span (==)'
 --
--- > span  (=='c') "abcd" == spanByte 'c' "abcd"
+-- > span  (==99) "abcd" == spanByte 99 "abcd" -- fromEnum 'c' == 99
 --
 spanByte :: Word8 -> ByteString -> (ByteString, ByteString)
 spanByte c ps@(PS x s l) =
@@ -968,8 +968,8 @@ spanEnd  p ps = splitAt (findFromEndUntil (not.p) ps) ps
 -- The resulting components do not contain the separators.  Two adjacent
 -- separators result in an empty component in the output.  eg.
 --
--- > splitWith (=='a') "aabbaca" == ["","","bb","c",""]
--- > splitWith (=='a') []        == []
+-- > splitWith (==97) "aabbaca" == ["","","bb","c",""] -- fromEnum 'a' == 97
+-- > splitWith (==97) []        == []
 --
 splitWith :: (Word8 -> Bool) -> ByteString -> [ByteString]
 splitWith _pred (PS _  _   0) = []
@@ -1000,9 +1000,9 @@ splitWith pred_ (PS fp off len) = splitWith0 pred# off len fp
 -- | /O(n)/ Break a 'ByteString' into pieces separated by the byte
 -- argument, consuming the delimiter. I.e.
 --
--- > split '\n' "a\nb\nd\ne" == ["a","b","d","e"]
--- > split 'a'  "aXaXaXa"    == ["","X","X","X",""]
--- > split 'x'  "x"          == ["",""]
+-- > split 10  "a\nb\nd\ne" == ["a","b","d","e"]   -- fromEnum '\n' == 10
+-- > split 97  "aXaXaXa"    == ["","X","X","X",""] -- fromEnum 'a' == 97
+-- > split 120 "x"          == ["",""]             -- fromEnum 'x' == 120
 --
 -- and
 --
@@ -1010,7 +1010,7 @@ splitWith pred_ (PS fp off len) = splitWith0 pred# off len fp
 -- > split == splitWith . (==)
 --
 -- As for all splitting functions in this library, this function does
--- not copy the substrings, it just constructs new 'ByteStrings' that
+-- not copy the substrings, it just constructs new 'ByteString's that
 -- are slices of the original.
 --
 split :: Word8 -> ByteString -> [ByteString]

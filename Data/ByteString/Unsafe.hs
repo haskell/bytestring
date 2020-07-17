@@ -213,7 +213,7 @@ unsafePackCStringLen (ptr,len) = do
 --
 -- This function is also unsafe if you call its finalizer twice,
 -- which will result in a /double free/ error, or if you pass it
--- a 'CString' not allocated with 'malloc'.
+-- a 'CString' not allocated with 'Foreign.Marshal.Alloc.malloc'.
 --
 unsafePackMallocCString :: CString -> IO ByteString
 unsafePackMallocCString cstr = do
@@ -230,7 +230,7 @@ unsafePackMallocCString cstr = do
 --
 -- This function is also unsafe if you call its finalizer twice,
 -- which will result in a /double free/ error, or if you pass it
--- a 'CString' not allocated with 'malloc'.
+-- a 'CString' not allocated with 'Foreign.Marshal.Alloc.malloc'.
 --
 unsafePackMallocCStringLen :: CStringLen -> IO ByteString
 unsafePackMallocCStringLen (cstr, len) = do
@@ -252,13 +252,13 @@ unsafePackMallocCStringLen (cstr, len) = do
 -- 'ByteString's created by sharing (such as those produced via 'take'
 -- or 'drop') will also reflect these changes. Modifying the 'CString'
 -- will break referential transparency. To avoid this, use
--- 'useAsCString', which makes a copy of the original 'ByteString'.
+-- 'Data.ByteString.useAsCString', which makes a copy of the original 'ByteString'.
 --
 -- * 'CString's are often passed to functions that require them to be
 -- null-terminated. If the original 'ByteString' wasn't null terminated,
 -- neither will the 'CString' be. It is the programmers responsibility
 -- to guarantee that the 'ByteString' is indeed null terminated. If in
--- doubt, use 'useAsCString'.
+-- doubt, use 'Data.ByteString.useAsCString'.
 --
 -- * The memory may freed at any point after the subcomputation
 -- terminates, so the pointer to the storage must *not* be used
@@ -280,7 +280,8 @@ unsafeUseAsCString (PS ps s _) ac = withForeignPtr ps $ \p -> ac (castPtr p `plu
 -- 'ByteString's created by sharing (such as those produced via 'take'
 -- or 'drop') will also reflect these changes. Modifying the 'CStringLen'
 -- will break referential transparency. To avoid this, use
--- 'useAsCStringLen', which makes a copy of the original 'ByteString'.
+-- 'Data.ByteString.useAsCStringLen', which makes a copy of the original 'ByteString'.
 --
+-- If 'Data.ByteString.empty' is given, it will pass @('Foreign.Ptr.nullPtr', 0)@.
 unsafeUseAsCStringLen :: ByteString -> (CStringLen -> IO a) -> IO a
 unsafeUseAsCStringLen (PS ps s l) f = withForeignPtr ps $ \p -> f (castPtr p `plusPtr` s,l)

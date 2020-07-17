@@ -370,7 +370,7 @@ foldr' f = B.foldr' (\c a -> f (w2c c) a)
 {-# INLINE foldr' #-}
 
 -- | 'foldl1' is a variant of 'foldl' that has no starting value
--- argument, and thus must be applied to non-empty 'ByteStrings'.
+-- argument, and thus must be applied to non-empty 'ByteString's.
 foldl1 :: (Char -> Char -> Char) -> ByteString -> Char
 foldl1 f ps = w2c (B.foldl1 (\x y -> c2w (f (w2c x) (w2c y))) ps)
 {-# INLINE foldl1 #-}
@@ -601,7 +601,7 @@ breakEnd f = B.breakEnd (f . w2c)
 -- > split == splitWith . (==)
 --
 -- As for all splitting functions in this library, this function does
--- not copy the substrings, it just constructs new 'ByteStrings' that
+-- not copy the substrings, it just constructs new 'ByteString's that
 -- are slices of the original.
 --
 split :: Char -> ByteString -> [ByteString]
@@ -871,7 +871,9 @@ lastnonspace ptr n
 -}
 
 -- | 'lines' breaks a ByteString up into a list of ByteStrings at
--- newline Chars. The resulting strings do not contain newlines.
+-- newline Chars (@'\\n'@). The resulting strings do not contain newlines.
+--
+-- Note that it __does not__ regard CR (@'\\r'@) as a newline character.
 --
 lines :: ByteString -> [ByteString]
 lines ps

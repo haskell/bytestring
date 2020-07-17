@@ -443,7 +443,8 @@ flush = builder step
 --
 -- 'Put's are a generalization of 'Builder's. The typical use case is the
 -- implementation of an encoding that might fail (e.g., an interface to the
--- 'zlib' compression library or the conversion from Base64 encoded data to
+-- <https://hackage.haskell.org/package/zlib zlib>
+-- compression library or the conversion from Base64 encoded data to
 -- 8-bit data). For a 'Builder', the only way to handle and report such a
 -- failure is ignore it or call 'error'.  In contrast, 'Put' actions are
 -- expressive enough to allow reportng and handling such a failure in a pure
@@ -705,7 +706,7 @@ hPut h p = do
                     updateBufR op'
                     return $ fillHandle minSize nextStep
                     -- 'fillHandle' will flush the buffer (provided there is
-                    -- really less than 'minSize' space left) before executing
+                    -- really less than @minSize@ space left) before executing
                     -- the 'nextStep'.
 
                 insertChunkH op' bs nextStep = do
@@ -809,7 +810,8 @@ putToLazyByteStringWith strategy k p =
 -- Raw memory
 -------------
 
--- | Ensure that there are at least 'n' free bytes for the following 'Builder'.
+-- | @'ensureFree' n@ ensures that there are at least @n@ free bytes
+-- for the following 'Builder'.
 {-# INLINE ensureFree #-}
 ensureFree :: Int -> Builder
 ensureFree minFree =
@@ -1013,9 +1015,9 @@ customStrategy
   :: (Maybe (Buffer, Int) -> IO Buffer)
      -- ^ Buffer allocation function. If 'Nothing' is given, then a new first
      -- buffer should be allocated. If @'Just' (oldBuf, minSize)@ is given,
-     -- then a buffer with minimal size 'minSize' must be returned. The
-     -- strategy may reuse the 'oldBuffer', if it can guarantee that this
-     -- referentially transparent and 'oldBuffer' is large enough.
+     -- then a buffer with minimal size @minSize@ must be returned. The
+     -- strategy may reuse the @oldBuf@, if it can guarantee that this
+     -- referentially transparent and @oldBuf@ is large enough.
   -> Int
      -- ^ Default buffer size.
   -> (Int -> Int -> Bool)
@@ -1067,7 +1069,7 @@ safeStrategy firstSize bufSize =
 --
 -- This function is inlined despite its heavy code-size to allow fusing with
 -- the allocation strategy. For example, the default 'Builder' execution
--- function 'toLazyByteString' is defined as follows.
+-- function 'Data.ByteString.Builder.toLazyByteString' is defined as follows.
 --
 -- @
 -- {-\# NOINLINE toLazyByteString \#-}
@@ -1077,8 +1079,8 @@ safeStrategy firstSize bufSize =
 --
 -- where @L.empty@ is the zero-length lazy 'L.ByteString'.
 --
--- In most cases, the parameters used by 'toLazyByteString' give good
--- performance. A sub-performing case of 'toLazyByteString' is executing short
+-- In most cases, the parameters used by 'Data.ByteString.Builder.toLazyByteString' give good
+-- performance. A sub-performing case of 'Data.ByteString.Builder.toLazyByteString' is executing short
 -- (<128 bytes) 'Builder's. In this case, the allocation overhead for the first
 -- 4kb buffer and the trimming cost dominate the cost of executing the
 -- 'Builder'. You can avoid this problem using
