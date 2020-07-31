@@ -755,11 +755,11 @@ scanr1 f ps
 --
 -- This implemenation uses @memset(3)@
 replicate :: Int -> Word8 -> ByteString
-{-# INLINE replicate #-}
 replicate w c
     | w <= 0    = empty
     | otherwise = unsafeCreate w $ \ptr ->
                       memset ptr c (fromIntegral w) >> return ()
+{-# INLINE replicate #-}
 
 -- | /O(n)/, where /n/ is the length of the result.  The 'unfoldr'
 -- function is analogous to the List \'unfoldr\'.  'unfoldr' builds a

@@ -8,9 +8,13 @@
  * Add `IsList` instances
  * Deprecate `Data.ByteString.Lazy.Builder`
  * Add `partition` to `Data.ByteString.Char8` and `Data.ByteString.Lazy.Char8`
- * Add `unsafePackLiteral` to `Data.ByteString.Internal`. Where possible,
-   use known-key variant of C `strlen` from `GHC.CString` that supports
-   constant folding.
+ * Add `unsafePackLiteral` to `Data.ByteString.Internal`. When possible, use
+   [known-key](https://gitlab.haskell.org/ghc/ghc/-/wikis/commentary/compiler/wired-in)
+   variant of C's `strlen` from `GHC.CString` that supports constant folding.
+   This results in better generated code when an ASCII-only string literal
+   is desugared to `ByteString` by the `OverloadedStrings` extension. ([#191])
+
+[#191]: https://github.com/haskell/bytestring/pull/191
 
 0.10.10.1 – June 2020
 

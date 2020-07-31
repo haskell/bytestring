@@ -280,7 +280,7 @@ unsafePackAddress addr# = do
 -- | See 'unsafePackAddress'. This function has similar behavior. Prefer
 -- this function when the address in known to be an @Addr#@ literal. In
 -- that context, there is no need for the sequencing guarantees that 'IO'
--- provides. On GHC 8.12 and up, this function uses the @FinalPtr@ data
+-- provides. On GHC 9.0 and up, this function uses the @FinalPtr@ data
 -- constructor for @ForeignPtrContents@.
 unsafePackLiteral :: Addr# -> ByteString
 unsafePackLiteral addr# =
