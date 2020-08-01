@@ -952,6 +952,8 @@ findIndex k cs0 = findIndex' 0 cs0
 -- | The 'findIndexEnd' function takes a predicate and a 'ByteString' and
 -- returns the index of the last element in the ByteString
 -- satisfying the predicate.
+--
+-- @since 0.10.12.0
 findIndexEnd :: (Word8 -> Bool) -> ByteString -> Maybe Int64
 findIndexEnd k = findIndexEnd' 0
   where

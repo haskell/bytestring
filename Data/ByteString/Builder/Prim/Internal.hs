@@ -234,6 +234,7 @@ data BoundedPrim a = BP {-# UNPACK #-} !Int (a -> Ptr Word8 -> IO (Ptr Word8))
 sizeBound :: BoundedPrim a -> Int
 sizeBound (BP b _) = b
 
+-- | @since 0.10.12.0
 boundedPrim :: Int -> (a -> Ptr Word8 -> IO (Ptr Word8)) -> BoundedPrim a
 boundedPrim = BP
 
