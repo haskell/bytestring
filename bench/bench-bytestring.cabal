@@ -182,6 +182,7 @@ benchmark bench-builder-boundscheck
 benchmark bench-builder-csv
   hs-source-dirs:   .. .
   main-is:          CSV.hs
+  type:             exitcode-stdio-1.0
   build-depends:    base, deepseq, ghc-prim,
                     text,
                     gauge,
