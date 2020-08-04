@@ -189,6 +189,7 @@ module Data.ByteString.Lazy (
 --        defrag,                -- :: ByteString -> ByteString
 
         -- * I\/O with 'ByteString's
+        -- $IOChunk
 
         -- ** Standard input and output
         getContents,            -- :: IO ByteString
@@ -1282,7 +1283,8 @@ illegalBufferSize handle fn sz =
 -- | Read entire handle contents /lazily/ into a 'ByteString'. Chunks
 -- are read on demand, using the default chunk size.
 --
--- Once EOF is encountered, the Handle is closed.
+-- File handles are closed on EOF if all the file is read, or through
+-- garbage collection otherwise.
 --
 -- Note: the 'Handle' should be placed in binary mode with
 -- 'System.IO.hSetBinaryMode' for 'hGetContents' to
@@ -1308,7 +1310,11 @@ hGetNonBlocking :: Handle -> Int -> IO ByteString
 hGetNonBlocking = hGetNonBlockingN defaultChunkSize
 
 -- | Read an entire file /lazily/ into a 'ByteString'.
+--
 -- The Handle will be held open until EOF is encountered.
+--
+-- Note that this function's implementation relies on 'hGetContents'.
+-- The reader is advised to read its documentation.
 --
 readFile :: FilePath -> IO ByteString
 readFile f = openBinaryFile f ReadMode >>= hGetContents
@@ -1416,3 +1422,56 @@ findIndexOrEnd k (S.BS x l) =
                                   then return n
                                   else go (ptr `plusPtr` 1) (n+1)
 {-# INLINE findIndexOrEnd #-}
+
+-- $IOChunk
+--
+-- ⚠ Using lazy I\/O functions like 'readFile' or 'hGetContents'
+-- means that the order of operations such as closing the file handle
+-- is left at the discretion of the RTS.
+-- Hence, the developer can face some issues when:
+--
+-- * The program reads a file and writes the same file. This means that the file
+--   may be locked because the handler has not been released when 'writeFile' is executed.
+-- * The program reads thousands of files, but due to lazy evaluation, the OS's file descriptor
+--   limit is reached before the handlers can be released.
+--
+-- In order to avoid such unpleasant turn of events, results from lazy IO computation
+-- must be fully evaluated.
+--
+-- === __Dos and Don'ts of lazy IO__
+--
+-- > {-# LANGUAGE OverloadedStrings #-}
+-- > import qualified Data.ByteString as BS
+-- > import qualified Data.ByteString.Lazy as BL
+-- >
+-- > -- Naïve situation: lazily reading and writing the file.
+-- > -- This will fail because the file handle will not have been
+-- > -- closed at the moment of writing.
+-- > main1 :: IO ()
+-- > main1 = do
+-- >   contents <- BL.readFile "foo.txt"
+-- >   BL.writeFile "foo.txt" ("a" <> contents)
+-- >
+-- > -- Good intentions situation: lazily reading but forcing evaluation
+-- > -- of the Bytestring when writing. This will too fail, for the file handle
+-- > -- will not have been closed in time.
+-- > main2 :: IO ()
+-- > main2 = do
+-- >   contents <- BL.readFile "foo.txt"
+-- >   BS.writeFile "foo.txt" ("a" <> BL.toStrict contents)
+-- >
+-- > -- Fully Strict situation: Reading and writing are done with strict IO function.
+-- > -- This will not fail.
+-- > main3 :: IO ()
+-- > main3 = do
+-- >   contents <- BS.readFile "foo.txt"
+-- >   BS.writeFile "foo.txt" ("a" <> contents)
+-- >
+-- > -- Strict Read / Lazy Write situation: The fact that the file is read eagerly
+-- > -- enables us to write the file lazily, meaning there will be no conflict or lock.
+-- > main4 :: IO ()
+-- > main4 = do
+-- >   contents <- BS.readFile "foo.txt"
+-- >   BL.writeFile "foo.txt" ("a" <> BL.fromStrict contents)
+--
+-- See also: 'seq' and [deepseq](https://hackage.haskell.org/package/deepseq).
