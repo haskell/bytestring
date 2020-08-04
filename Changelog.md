@@ -10,6 +10,7 @@
  * [Add `createUpToN'` and `unsafeCreateUpToN'` to `Data.ByteString.Internal`](https://github.com/haskell/bytestring/pull/245)
  * [Add `boundedPrim` to `Data.ByteString.Builder.Prim.Internal` and deprecate `boudedPrim`](https://github.com/haskell/bytestring/pull/246)
  * [Deprecate the `Data.ByteString.Lazy.Builder` and `Data.ByteString.Lazy.Builder.{ASCII,Extras}` modules](https://github.com/haskell/bytestring/pull/250)
+ * [Fix documented complexity of `Data.ByteString.Lazy.length`](https://github.com/haskell/bytestring/pull/255)
  * [Assorted documentation fixes](https://github.com/haskell/bytestring/pull/248)
 
 [0.10.12.0]: https://github.com/haskell/bytestring/compare/0.10.10.1...0.10.12.0
