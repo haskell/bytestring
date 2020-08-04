@@ -344,7 +344,7 @@ null Empty = True
 null _     = False
 {-# INLINE null #-}
 
--- | /O(n\/c)/ 'length' returns the length of a ByteString as an 'Int64'
+-- | /O(c)/ 'length' returns the length of a ByteString as an 'Int64'
 length :: ByteString -> Int64
 length cs = foldlChunks (\n c -> n + fromIntegral (S.length c)) 0 cs
 {-# INLINE length #-}
