@@ -172,6 +172,7 @@ instance Read ShortByteString where
     readsPrec p str = [ (packChars x, y) | (x, y) <- readsPrec p str ]
 
 #if MIN_VERSION_base(4,7,0)
+-- | @since 0.10.12.0
 instance GHC.Exts.IsList ShortByteString where
   type Item ShortByteString = Word8
   fromList = packBytes

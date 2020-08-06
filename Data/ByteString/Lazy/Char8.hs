@@ -578,6 +578,7 @@ filter :: (Char -> Bool) -> ByteString -> ByteString
 filter f = L.filter (f . w2c)
 {-# INLINE filter #-}
 
+-- | @since 0.10.12.0
 partition :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
 partition f = L.partition (f . w2c)
 {-# INLINE partition #-}

@@ -840,6 +840,8 @@ takeWhile f ps = unsafeTake (findIndexOrEnd (not . f) ps) ps
 
 -- | 'takeWhileEnd', applied to a predicate @p@ and a ByteString @xs@, returns
 -- the longest suffix (possibly empty) of @xs@ of elements that satisfy @p@.
+--
+-- @since 0.10.12.0
 takeWhileEnd :: (Word8 -> Bool) -> ByteString -> ByteString
 takeWhileEnd f ps = unsafeDrop (findFromEndUntil (not . f) ps) ps
 {-# INLINE takeWhileEnd #-}
@@ -851,6 +853,8 @@ dropWhile f ps = unsafeDrop (findIndexOrEnd (not . f) ps) ps
 
 -- | 'dropWhileEnd' @p xs@ returns the prefix remaining after 'takeWhileEnd' @p
 -- xs@.
+--
+-- @since 0.10.12.0
 dropWhileEnd :: (Word8 -> Bool) -> ByteString -> ByteString
 dropWhileEnd f ps = unsafeTake (findFromEndUntil (not . f) ps) ps
 {-# INLINE dropWhileEnd #-}
@@ -1158,6 +1162,8 @@ findIndex k (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \f ->
 -- | /O(n)/ The 'findIndexEnd' function takes a predicate and a 'ByteString' and
 -- returns the index of the last element in the ByteString
 -- satisfying the predicate.
+--
+-- @since 0.10.12.0
 findIndexEnd :: (Word8 -> Bool) -> ByteString -> Maybe Int
 findIndexEnd k (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \ f -> go (f `plusPtr` s) (l-1)
   where

@@ -504,6 +504,8 @@ takeWhile f = B.takeWhile (f . w2c)
 -- | 'takeWhileEnd', applied to a predicate @p@ and a ByteString @xs@,
 -- returns the longest suffix (possibly empty) of @xs@ of elements that
 -- satisfy @p@.
+--
+-- @since 0.10.12.0
 takeWhileEnd :: (Char -> Bool) -> ByteString -> ByteString
 takeWhileEnd f = B.takeWhileEnd (f . w2c)
 {-# INLINE takeWhileEnd #-}
@@ -520,6 +522,8 @@ dropWhile f = B.dropWhile (f . w2c)
 
 -- | 'dropWhile' @p xs@ returns the prefix remaining after 'takeWhileEnd' @p
 -- xs@.
+--
+-- @since 0.10.12.0
 dropWhileEnd :: (Char -> Bool) -> ByteString -> ByteString
 dropWhileEnd f = B.dropWhileEnd (f . w2c)
 {-# INLINE dropWhileEnd #-}
@@ -706,6 +710,7 @@ filter :: (Char -> Bool) -> ByteString -> ByteString
 filter f = B.filter (f . w2c)
 {-# INLINE filter #-}
 
+-- | @since 0.10.12.0
 partition :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
 partition f = B.partition (f . w2c)
 {-# INLINE partition #-}
@@ -833,6 +838,7 @@ firstspace !ptr !n !m
 --
 -- > dropWhile isSpace == dropSpace
 --
+-- @since 0.10.12.0
 dropSpace :: ByteString -> ByteString
 dropSpace (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> do
     i <- firstnonspace (p `plusPtr` s) 0 l
@@ -846,6 +852,8 @@ firstnonspace !ptr !n !m
                      if isSpaceWord8 w then firstnonspace ptr (n+1) m else return n
 
 -- | Remove leading and trailing white space from a 'ByteString'.
+--
+-- @since 0.10.12.0
 strip :: ByteString -> ByteString
 strip = dropWhile isSpace . dropWhileEnd isSpace
 
