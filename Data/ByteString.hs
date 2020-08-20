@@ -1718,8 +1718,7 @@ hPutStr = hPut
 
 -- | Write a ByteString to a handle, appending a newline byte.
 --
--- This is not atomic.
--- Writing the bytestring argument is atomic. But other threads might write
+-- Unlike 'hPutStr', this is not atomic: other threads might write
 -- to the handle between writing of the bytestring and the newline.
 hPutStrLn :: Handle -> ByteString -> IO ()
 hPutStrLn h ps
@@ -1730,11 +1729,10 @@ hPutStrLn h ps
 putStr :: ByteString -> IO ()
 putStr = hPut stdout
 
--- | Write a ByteString to stdout, appending a newline byte
+-- | Write a ByteString to stdout, appending a newline byte.
 --
--- This is not atomic.
--- Writing the bytestring argument is atomic. But other threads might write
--- to the handle between writing of the bytestring and the newline.
+-- Unlike 'putStr', this is not atomic: other threads might write
+-- to stdout between writing of the bytestring and the newline.
 putStrLn :: ByteString -> IO ()
 putStrLn = hPutStrLn stdout
 
