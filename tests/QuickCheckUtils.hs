@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP, MultiParamTypeClasses,
-             FlexibleInstances, TypeSynonymInstances #-}
+             FlexibleInstances, FlexibleContexts,
+             TypeSynonymInstances #-}
 --
 -- Uses multi-param type classes
 --
@@ -9,7 +10,6 @@ import Test.QuickCheck
 import Text.Show.Functions
 
 import Control.Monad        ( liftM2 )
-import Control.Monad.Instances
 import Data.Char
 import Data.List
 import Data.Word
@@ -62,14 +62,36 @@ newtype CByteString = CByteString P.ByteString
   deriving Show
 
 instance Arbitrary CByteString where
-  arbitrary = fmap (CByteString . P.pack . map fromCChar) arbitrary
+  arbitrary = fmap (CByteString . P.pack . map fromCChar)
+                   arbitrary
     where
-      fromCChar :: CChar -> Word8
-      fromCChar = fromIntegral
+      fromCChar :: NonZero CChar -> Word8
+      fromCChar = fromIntegral . getNonZero
 
-instance Arbitrary CChar where
-  arbitrary = fmap (fromIntegral :: Int -> CChar)
-            $ oneof [choose (-128,-1), choose (1,127)]
+-- | 'Char', but only representing 8-bit characters.
+--
+newtype Char8 = Char8 Char
+  deriving (Eq, Ord, Show)
+
+instance Arbitrary Char8 where
+  arbitrary = fmap (Char8 . toChar) arbitrary
+    where
+      toChar :: Word8 -> Char
+      toChar = toEnum . fromIntegral
+
+instance CoArbitrary Char8 where
+  coarbitrary (Char8 c) = coarbitrary c
+
+-- | 'Char', but only representing 8-bit characters.
+--
+newtype String8 = String8 String
+  deriving (Eq, Ord, Show)
+
+instance Arbitrary String8 where
+  arbitrary = fmap (String8 . map toChar) arbitrary
+    where
+      toChar :: Word8 -> Char
+      toChar = toEnum . fromIntegral
 
 ------------------------------------------------------------------------
 --
@@ -89,7 +111,12 @@ instance Arbitrary CChar where
 --
 --
 class Model a b where
-  model :: a -> b  -- get the abstract vale from a concrete value
+  model :: a -> b  -- ^ Get the abstract value from a concrete value
+
+-- | Alias for 'model' that's a better name in the situations where we're
+-- really just converting functions that take or return Char8.
+castFn :: Model a b => a -> b
+castFn = model
 
 --
 -- Connecting our Lazy and Strict types to their models. We also check
@@ -102,7 +129,7 @@ instance Model P [W]    where model = P.unpack
 instance Model P [Char] where model = PC.unpack
 instance Model B [W]    where model = L.unpack  . checkInvariant
 instance Model B [Char] where model = LC.unpack . checkInvariant
-instance Model Char Word8 where model = fromIntegral . ord
+instance Model Char8 Char where model (Char8 c) = c
 
 -- Types are trivially modeled by themselves
 instance Model Bool  Bool         where model = id
@@ -123,6 +150,7 @@ instance NatTrans [] []             where eta = id
 instance NatTrans Maybe Maybe       where eta = id
 instance NatTrans ((->) X) ((->) X) where eta = id
 instance NatTrans ((->) Char) ((->) Char) where eta = id
+instance NatTrans ((->) Char8) ((->) Char) where eta f = f . Char8
 
 instance NatTrans ((->) W) ((->) W) where eta = id
 

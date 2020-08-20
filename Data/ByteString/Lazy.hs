@@ -171,6 +171,7 @@ module Data.ByteString.Lazy (
         elemIndexEnd,           -- :: Word8 -> ByteString -> Maybe Int64
         elemIndices,            -- :: Word8 -> ByteString -> [Int64]
         findIndex,              -- :: (Word8 -> Bool) -> ByteString -> Maybe Int64
+        findIndexEnd,           -- :: (Word8 -> Bool) -> ByteString -> Maybe Int64
         findIndices,            -- :: (Word8 -> Bool) -> ByteString -> [Int64]
         count,                  -- :: Word8 -> ByteString -> Int64
 
@@ -343,7 +344,7 @@ null Empty = True
 null _     = False
 {-# INLINE null #-}
 
--- | /O(n\/c)/ 'length' returns the length of a ByteString as an 'Int64'
+-- | /O(c)/ 'length' returns the length of a ByteString as an 'Int64'
 length :: ByteString -> Int64
 length cs = foldlChunks (\n c -> n + fromIntegral (S.length c)) 0 cs
 {-# INLINE length #-}
@@ -351,7 +352,7 @@ length cs = foldlChunks (\n c -> n + fromIntegral (S.length c)) 0 cs
 infixr 5 `cons`, `cons'` --same as list (:)
 infixl 5 `snoc`
 
--- | /O(1)/ 'cons' is analogous to '(:)' for lists.
+-- | /O(1)/ 'cons' is analogous to '(Prelude.:)' for lists.
 --
 cons :: Word8 -> ByteString -> ByteString
 cons c cs = Chunk (S.singleton c) cs
@@ -503,7 +504,7 @@ foldr k z = foldrChunks (flip (S.foldr k)) z
 {-# INLINE foldr #-}
 
 -- | 'foldl1' is a variant of 'foldl' that has no starting value
--- argument, and thus must be applied to non-empty 'ByteStrings'.
+-- argument, and thus must be applied to non-empty 'ByteString's.
 foldl1 :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldl1 _ Empty        = errorEmptyList "foldl1"
 foldl1 f (Chunk c cs) = foldl f (S.unsafeHead c) (Chunk (S.unsafeTail c) cs)
@@ -752,7 +753,7 @@ break f cs0 = break' cs0
 -- of the specified byte. It is more efficient than 'break' as it is
 -- implemented with @memchr(3)@. I.e.
 --
--- > break (=='c') "abcd" == breakByte 'c' "abcd"
+-- > break (==99) "abcd" == breakByte 99 "abcd" -- fromEnum 'c' == 99
 --
 breakByte :: Word8 -> ByteString -> (ByteString, ByteString)
 breakByte c (LPS ps) = case (breakByte' ps) of (a,b) -> (LPS a, LPS b)
@@ -768,7 +769,7 @@ breakByte c (LPS ps) = case (breakByte' ps) of (a,b) -> (LPS a, LPS b)
 -- occurence of a byte other than its argument. It is more efficient
 -- than 'span (==)'
 --
--- > span  (=='c') "abcd" == spanByte 'c' "abcd"
+-- > span  (==99) "abcd" == spanByte 99 "abcd" -- fromEnum 'c' == 99
 --
 spanByte :: Word8 -> ByteString -> (ByteString, ByteString)
 spanByte c (LPS ps) = case (spanByte' ps) of (a,b) -> (LPS a, LPS b)
@@ -791,8 +792,8 @@ span p = break (not . p)
 -- The resulting components do not contain the separators.  Two adjacent
 -- separators result in an empty component in the output.  eg.
 --
--- > splitWith (=='a') "aabbaca" == ["","","bb","c",""]
--- > splitWith (=='a') []        == []
+-- > splitWith (==97) "aabbaca" == ["","","bb","c",""] -- fromEnum 'a' == 97
+-- > splitWith (==97) []        == []
 --
 splitWith :: (Word8 -> Bool) -> ByteString -> [ByteString]
 splitWith _ Empty          = []
@@ -807,9 +808,9 @@ splitWith p (Chunk c0 cs0) = comb [] (S.splitWith p c0) cs0
 -- | /O(n)/ Break a 'ByteString' into pieces separated by the byte
 -- argument, consuming the delimiter. I.e.
 --
--- > split '\n' "a\nb\nd\ne" == ["a","b","d","e"]
--- > split 'a'  "aXaXaXa"    == ["","X","X","X",""]
--- > split 'x'  "x"          == ["",""]
+-- > split 10  "a\nb\nd\ne" == ["a","b","d","e"]   -- fromEnum '\n' == 10
+-- > split 97  "aXaXaXa"    == ["","X","X","X",""] -- fromEnum 'a' == 97
+-- > split 120 "x"          == ["",""]             -- fromEnum 'x' == 120
 --
 -- and
 --
@@ -817,7 +818,7 @@ splitWith p (Chunk c0 cs0) = comb [] (S.splitWith p c0) cs0
 -- > split == splitWith . (==)
 --
 -- As for all splitting functions in this library, this function does
--- not copy the substrings, it just constructs new 'ByteStrings' that
+-- not copy the substrings, it just constructs new 'ByteString's that
 -- are slices of the original.
 --
 split :: Word8 -> ByteString -> [ByteString]
@@ -916,13 +917,8 @@ elemIndex w cs0 = elemIndex' 0 cs0
 --
 -- @since 0.10.6.0
 elemIndexEnd :: Word8 -> ByteString -> Maybe Int64
-elemIndexEnd w = elemIndexEnd' 0
-  where
-    elemIndexEnd' _ Empty = Nothing
-    elemIndexEnd' n (Chunk c cs) =
-      let !n' = n + S.length c
-          !i  = fmap (fromIntegral . (n +)) $ S.elemIndexEnd w c
-      in elemIndexEnd' n' cs `mplus` i
+elemIndexEnd = findIndexEnd . (==)
+{-# INLINE elemIndexEnd #-}
 
 -- | /O(n)/ The 'elemIndices' function extends 'elemIndex', by returning
 -- the indices of all elements equal to the query element, in ascending order.
@@ -952,6 +948,21 @@ findIndex k cs0 = findIndex' 0 cs0
             Nothing -> findIndex' (n + fromIntegral (S.length c)) cs
             Just i  -> Just (n + fromIntegral i)
 {-# INLINE findIndex #-}
+
+-- | The 'findIndexEnd' function takes a predicate and a 'ByteString' and
+-- returns the index of the last element in the ByteString
+-- satisfying the predicate.
+--
+-- @since 0.10.12.0
+findIndexEnd :: (Word8 -> Bool) -> ByteString -> Maybe Int64
+findIndexEnd k = findIndexEnd' 0
+  where
+    findIndexEnd' _ Empty = Nothing
+    findIndexEnd' n (Chunk c cs) =
+      let !n' = n + S.length c
+          !i  = fmap (fromIntegral . (n +)) $ S.findIndexEnd k c
+      in findIndexEnd' n' cs `mplus` i
+{-# INLINE findIndexEnd #-}
 
 -- | /O(n)/ The 'find' function takes a predicate and a ByteString,
 -- and returns the first element in matching the predicate, or 'Nothing'

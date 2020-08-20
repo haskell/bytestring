@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable, CPP, BangPatterns, RankNTypes,
              ForeignFunctionInterface, MagicHash, UnboxedTuples,
              UnliftedFFITypes #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 #if __GLASGOW_HASKELL__ >= 703
 {-# LANGUAGE Unsafe #-}
@@ -15,7 +16,7 @@
 -- Maintainer  : duncan@community.haskell.org
 -- Stability   : stable
 -- Portability : ghc only
--- 
+--
 -- Internal representation of ShortByteString
 --
 module Data.ByteString.Short.Internal (
@@ -110,7 +111,7 @@ import Prelude ( Eq(..), Ord(..), Ordering(..), Read(..), Show(..)
 
 -- | A compact representation of a 'Word8' vector.
 --
--- It has a lower memory overhead than a 'ByteString' and and does not
+-- It has a lower memory overhead than a 'ByteString' and does not
 -- contribute to heap fragmentation. It can be converted to or from a
 -- 'ByteString' (at the cost of copying the string data). It supports very few
 -- other operations.
@@ -169,6 +170,16 @@ instance Show ShortByteString where
 instance Read ShortByteString where
     readsPrec p str = [ (packChars x, y) | (x, y) <- readsPrec p str ]
 
+#if MIN_VERSION_base(4,7,0)
+-- | @since 0.10.12.0
+instance GHC.Exts.IsList ShortByteString where
+  type Item ShortByteString = Word8
+  fromList = packBytes
+  toList   = unpackBytes
+#endif
+
+-- | Beware: 'fromString' truncates multi-byte characters to octets.
+-- e.g. "枯朶に烏のとまりけり秋の暮" becomes �6k�nh~�Q��n�
 instance IsString ShortByteString where
     fromString = packChars
 
@@ -197,7 +208,7 @@ length (SBS _ len) = len
 null :: ShortByteString -> Bool
 null sbs = length sbs == 0
 
--- | /O(1)/ 'ShortByteString' index (subscript) operator, starting from 0. 
+-- | /O(1)/ 'ShortByteString' index (subscript) operator, starting from 0.
 index :: ShortByteString -> Int -> Word8
 index sbs i
   | i >= 0 && i < length sbs = unsafeIndex sbs i

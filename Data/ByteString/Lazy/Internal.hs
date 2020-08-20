@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE TypeFamilies #-}
 #if __GLASGOW_HASKELL__ >= 703
 {-# LANGUAGE Unsafe #-}
 #endif
@@ -13,7 +14,7 @@
 -- Maintainer  : dons00@gmail.com, duncan@community.haskell.org
 -- Stability   : unstable
 -- Portability : non-portable
--- 
+--
 -- A module containing semi-public 'ByteString' internals. This exposes
 -- the 'ByteString' representation and low level construction functions.
 -- Modules which extend the 'ByteString' system will need to use this module
@@ -51,8 +52,12 @@ import qualified Data.ByteString          as S (length, take, drop)
 import Data.Word        (Word8)
 import Foreign.Storable (Storable(sizeOf))
 
-#if !(MIN_VERSION_base(4,11,0)) && MIN_VERSION_base(4,9,0)
-import Data.Semigroup   (Semigroup((<>)))
+#if MIN_VERSION_base(4,13,0)
+import Data.Semigroup   (Semigroup (sconcat))
+import Data.List.NonEmpty (NonEmpty ((:|)))
+#elif MIN_VERSION_base(4,9,0)
+import Data.Semigroup   (Semigroup ((<>), sconcat))
+import Data.List.NonEmpty (NonEmpty ((:|)))
 #endif
 #if !(MIN_VERSION_base(4,8,0))
 import Data.Monoid      (Monoid(..))
@@ -63,6 +68,10 @@ import Data.String      (IsString(..))
 
 import Data.Typeable            (Typeable)
 import Data.Data                (Data(..), mkNoRepType)
+
+#if MIN_VERSION_base(4,7,0)
+import GHC.Exts                 (IsList(..))
+#endif
 
 -- | A space-efficient representation of a 'Word8' vector, supporting many
 -- efficient operations.
@@ -84,6 +93,7 @@ instance Ord ByteString where
 #if MIN_VERSION_base(4,9,0)
 instance Semigroup ByteString where
     (<>)    = append
+    sconcat (b:|bs) = concat (b:bs)
 #endif
 
 instance Monoid ByteString where
@@ -105,6 +115,16 @@ instance Show ByteString where
 instance Read ByteString where
     readsPrec p str = [ (packChars x, y) | (x, y) <- readsPrec p str ]
 
+#if MIN_VERSION_base(4,7,0)
+-- | @since 0.10.12.0
+instance IsList ByteString where
+  type Item ByteString = Word8
+  fromList = packBytes
+  toList   = unpackBytes
+#endif
+
+-- | Beware: 'fromString' truncates multi-byte characters to octets.
+-- e.g. "枯朶に烏のとまりけり秋の暮" becomes �6k�nh~�Q��n�
 instance IsString ByteString where
     fromString = packChars
 
