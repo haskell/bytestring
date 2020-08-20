@@ -11,9 +11,9 @@
 module Main (main) where
 
 import Prelude hiding (words)
-import Criterion.Main
 import Data.Monoid
 import Data.Foldable (foldMap)
+import Gauge
 
 import qualified Data.ByteString                  as S
 import qualified Data.ByteString.Lazy             as L
@@ -80,7 +80,7 @@ main :: IO ()
 main = do
   mapM_ putStrLn sanityCheckInfo
   putStrLn ""
-  Criterion.Main.defaultMain
+  Gauge.defaultMain
     [ bgroup "Data.ByteString.Lazy.Builder"
         [ -- benchBInts "foldMap intHost" $
             -- foldMap (intHost . fromIntegral)

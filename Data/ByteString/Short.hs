@@ -11,7 +11,7 @@
 -- Maintainer  : duncan@community.haskell.org
 -- Stability   : stable
 -- Portability : ghc only
--- 
+--
 -- A compact representation suitable for storing short byte strings in memory.
 --
 -- In typical use cases it can be imported alongside "Data.ByteString", e.g.
@@ -36,20 +36,20 @@ module Data.ByteString.Short (
     -- | With GHC, the memory overheads are as follows, expressed in words and
     -- in bytes (words are 4 and 8 bytes on 32 or 64bit machines respectively).
     --
-    -- * 'ByteString' unshared: 9 words; 36 or 72 bytes.
+    -- * 'B.ByteString' unshared: 9 words; 36 or 72 bytes.
     --
-    -- * 'ByteString' shared substring: 5 words; 20 or 40 bytes.
+    -- * 'B.ByteString' shared substring: 5 words; 20 or 40 bytes.
     --
     -- * 'ShortByteString': 4 words; 16 or 32 bytes.
     --
-    -- For the string data itself, both 'ShortByteString' and 'ByteString' use
+    -- For the string data itself, both 'ShortByteString' and 'B.ByteString' use
     -- one byte per element, rounded up to the nearest word. For example,
     -- including the overheads, a length 10 'ShortByteString' would take
     -- @16 + 12 = 28@ bytes on a 32bit platform and @32 + 16 = 48@ bytes on a
     -- 64bit platform.
     --
     -- These overheads can all be reduced by 1 word (4 or 8 bytes) when the
-    -- 'ShortByteString' or 'ByteString' is unpacked into another constructor.
+    -- 'ShortByteString' or 'B.ByteString' is unpacked into another constructor.
     --
     -- For example:
     --
@@ -59,9 +59,9 @@ module Data.ByteString.Short (
     -- This will take @1 + 1 + 3@ words (the @ThingId@ constructor +
     -- unpacked @Int@ + unpacked @ShortByteString@), plus the words for the
     -- string data.
-    
+
     -- ** Heap fragmentation
-    -- | With GHC, the 'ByteString' representation uses /pinned/ memory,
+    -- | With GHC, the 'B.ByteString' representation uses /pinned/ memory,
     -- meaning it cannot be moved by the GC. This is usually the right thing to
     -- do for larger strings, but for small strings using pinned memory can
     -- lead to heap fragmentation which wastes space. The 'ShortByteString'
@@ -80,11 +80,11 @@ module Data.ByteString.Short (
     empty, null, length, index,
 
     -- * Low level conversions
-    -- ** Packing 'CString's and pointers
+    -- ** Packing 'Foreign.C.String.CString's and pointers
     packCString,
     packCStringLen,
 
-    -- ** Using ByteStrings as 'CString's
+    -- ** Using ByteStrings as 'Foreign.C.String.CString's
     useAsCString,
     useAsCStringLen
   ) where

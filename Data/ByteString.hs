@@ -113,7 +113,9 @@ module Data.ByteString (
         drop,                   -- :: Int -> ByteString -> ByteString
         splitAt,                -- :: Int -> ByteString -> (ByteString, ByteString)
         takeWhile,              -- :: (Word8 -> Bool) -> ByteString -> ByteString
+        takeWhileEnd,           -- :: (Word8 -> Bool) -> ByteString -> ByteString
         dropWhile,              -- :: (Word8 -> Bool) -> ByteString -> ByteString
+        dropWhileEnd,           -- :: (Word8 -> Bool) -> ByteString -> ByteString
         span,                   -- :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
         spanEnd,                -- :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
         break,                  -- :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
@@ -155,6 +157,7 @@ module Data.ByteString (
         elemIndexEnd,           -- :: Word8 -> ByteString -> Maybe Int
         findIndex,              -- :: (Word8 -> Bool) -> ByteString -> Maybe Int
         findIndices,            -- :: (Word8 -> Bool) -> ByteString -> [Int]
+        findIndexEnd,           -- :: (Word8 -> Bool) -> ByteString -> Maybe Int
         count,                  -- :: Word8 -> ByteString -> Int
 
         -- * Zipping and unzipping ByteStrings
@@ -538,7 +541,7 @@ foldr' k v (PS fp off len) =
 {-# INLINE foldr' #-}
 
 -- | 'foldl1' is a variant of 'foldl' that has no starting value
--- argument, and thus must be applied to non-empty 'ByteStrings'.
+-- argument, and thus must be applied to non-empty 'ByteString's.
 -- An exception will be thrown in the case of an empty ByteString.
 foldl1 :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldl1 f ps
@@ -833,10 +836,26 @@ takeWhile :: (Word8 -> Bool) -> ByteString -> ByteString
 takeWhile f ps = unsafeTake (findIndexOrEnd (not . f) ps) ps
 {-# INLINE takeWhile #-}
 
+-- | 'takeWhileEnd', applied to a predicate @p@ and a ByteString @xs@, returns
+-- the longest suffix (possibly empty) of @xs@ of elements that satisfy @p@.
+--
+-- @since 0.10.12.0
+takeWhileEnd :: (Word8 -> Bool) -> ByteString -> ByteString
+takeWhileEnd f ps = unsafeDrop (findFromEndUntil (not . f) ps) ps
+{-# INLINE takeWhileEnd #-}
+
 -- | 'dropWhile' @p xs@ returns the suffix remaining after 'takeWhile' @p xs@.
 dropWhile :: (Word8 -> Bool) -> ByteString -> ByteString
 dropWhile f ps = unsafeDrop (findIndexOrEnd (not . f) ps) ps
 {-# INLINE dropWhile #-}
+
+-- | 'dropWhileEnd' @p xs@ returns the prefix remaining after 'takeWhileEnd' @p
+-- xs@.
+--
+-- @since 0.10.12.0
+dropWhileEnd :: (Word8 -> Bool) -> ByteString -> ByteString
+dropWhileEnd f ps = unsafeTake (findFromEndUntil (not . f) ps) ps
+{-# INLINE dropWhileEnd #-}
 
 -- instead of findIndexOrEnd, we could use memchr here.
 
@@ -875,7 +894,7 @@ break p ps = case findIndexOrEnd p ps of n -> (unsafeTake n ps, unsafeDrop n ps)
 -- of the specified byte. It is more efficient than 'break' as it is
 -- implemented with @memchr(3)@. I.e.
 --
--- > break (=='c') "abcd" == breakByte 'c' "abcd"
+-- > break (==99) "abcd" == breakByte 99 "abcd" -- fromEnum 'c' == 99
 --
 breakByte :: Word8 -> ByteString -> (ByteString, ByteString)
 breakByte c p = case elemIndex c p of
@@ -900,7 +919,7 @@ span p ps = break (not . p) ps
 -- occurence of a byte other than its argument. It is more efficient
 -- than 'span (==)'
 --
--- > span  (=='c') "abcd" == spanByte 'c' "abcd"
+-- > span  (==99) "abcd" == spanByte 99 "abcd" -- fromEnum 'c' == 99
 --
 spanByte :: Word8 -> ByteString -> (ByteString, ByteString)
 spanByte c ps@(PS x s l) =
@@ -951,8 +970,8 @@ spanEnd  p ps = splitAt (findFromEndUntil (not.p) ps) ps
 -- The resulting components do not contain the separators.  Two adjacent
 -- separators result in an empty component in the output.  eg.
 --
--- > splitWith (=='a') "aabbaca" == ["","","bb","c",""]
--- > splitWith (=='a') []        == []
+-- > splitWith (==97) "aabbaca" == ["","","bb","c",""] -- fromEnum 'a' == 97
+-- > splitWith (==97) []        == []
 --
 splitWith :: (Word8 -> Bool) -> ByteString -> [ByteString]
 splitWith _pred (PS _  _   0) = []
@@ -983,9 +1002,9 @@ splitWith pred_ (PS fp off len) = splitWith0 pred# off len fp
 -- | /O(n)/ Break a 'ByteString' into pieces separated by the byte
 -- argument, consuming the delimiter. I.e.
 --
--- > split '\n' "a\nb\nd\ne" == ["a","b","d","e"]
--- > split 'a'  "aXaXaXa"    == ["","X","X","X",""]
--- > split 'x'  "x"          == ["",""]
+-- > split 10  "a\nb\nd\ne" == ["a","b","d","e"]   -- fromEnum '\n' == 10
+-- > split 97  "aXaXaXa"    == ["","X","X","X",""] -- fromEnum 'a' == 97
+-- > split 120 "x"          == ["",""]             -- fromEnum 'x' == 120
 --
 -- and
 --
@@ -993,7 +1012,7 @@ splitWith pred_ (PS fp off len) = splitWith0 pred# off len fp
 -- > split == splitWith . (==)
 --
 -- As for all splitting functions in this library, this function does
--- not copy the substrings, it just constructs new 'ByteStrings' that
+-- not copy the substrings, it just constructs new 'ByteString's that
 -- are slices of the original.
 --
 split :: Word8 -> ByteString -> [ByteString]
@@ -1096,14 +1115,7 @@ elemIndex c (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
 -- > (-) (length xs - 1) `fmap` elemIndex c (reverse xs)
 --
 elemIndexEnd :: Word8 -> ByteString -> Maybe Int
-elemIndexEnd ch (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
-    go (p `plusPtr` s) (l-1)
-  where
-    go !p !i | i < 0     = return Nothing
-             | otherwise = do ch' <- peekByteOff p i
-                              if ch == ch'
-                                  then return $ Just i
-                                  else go p (i-1)
+elemIndexEnd = findIndexEnd . (==)
 {-# INLINE elemIndexEnd #-}
 
 -- | /O(n)/ The 'elemIndices' function extends 'elemIndex', by returning
@@ -1132,7 +1144,7 @@ count w (PS x s m) = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
     fmap fromIntegral $ c_count (p `plusPtr` s) (fromIntegral m) w
 {-# INLINE count #-}
 
--- | The 'findIndex' function takes a predicate and a 'ByteString' and
+-- | /O(n)/ The 'findIndex' function takes a predicate and a 'ByteString' and
 -- returns the index of the first element in the ByteString
 -- satisfying the predicate.
 findIndex :: (Word8 -> Bool) -> ByteString -> Maybe Int
@@ -1145,7 +1157,22 @@ findIndex k (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \f ->
                                   else go (ptr `plusPtr` 1) (n+1)
 {-# INLINE findIndex #-}
 
--- | The 'findIndices' function extends 'findIndex', by returning the
+-- | /O(n)/ The 'findIndexEnd' function takes a predicate and a 'ByteString' and
+-- returns the index of the last element in the ByteString
+-- satisfying the predicate.
+--
+-- @since 0.10.12.0
+findIndexEnd :: (Word8 -> Bool) -> ByteString -> Maybe Int
+findIndexEnd k (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \ f -> go (f `plusPtr` s) (l-1)
+  where
+    go !ptr !n | n < 0     = return Nothing
+               | otherwise = do w <- peekByteOff ptr n
+                                if k w
+                                  then return (Just n)
+                                  else go ptr (n-1)
+{-# INLINE findIndexEnd #-}
+
+-- | /O(n)/ The 'findIndices' function extends 'findIndex', by returning the
 -- indices of all elements satisfying the predicate, in ascending order.
 findIndices :: (Word8 -> Bool) -> ByteString -> [Int]
 findIndices p ps = loop 0 ps
