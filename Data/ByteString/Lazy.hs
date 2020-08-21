@@ -909,7 +909,7 @@ indexMaybe cs0 i       = index' cs0 i
         index' (Chunk c cs) n
           | n >= fromIntegral (S.length c) =
               index' cs (n - fromIntegral (S.length c))
-          | otherwise       = Just $ S.unsafeIndex c (fromIntegral n)
+          | otherwise       = Just $! S.unsafeIndex c (fromIntegral n)
 
 -- | /O(1)/ 'ByteString' index, starting from 0, that returns 'Just' if:
 --

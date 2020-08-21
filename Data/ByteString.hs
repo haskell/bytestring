@@ -1108,7 +1108,7 @@ indexMaybe :: ByteString -> Int -> Maybe Word8
 indexMaybe ps n
     | n < 0          = Nothing
     | n >= length ps = Nothing
-    | otherwise      = Just $ ps `unsafeIndex` n
+    | otherwise      = Just $! ps `unsafeIndex` n
 {-# INLINE indexMaybe #-}
 
 -- | /O(1)/ 'ByteString' index, starting from 0, that returns 'Just' if:

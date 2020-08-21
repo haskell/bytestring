@@ -103,7 +103,7 @@ import GHC.ST         (ST(ST), runST)
 import GHC.Word
 
 import Prelude ( Eq(..), Ord(..), Ordering(..), Read(..), Show(..)
-               , ($), error, (++), (.)
+               , ($), ($!), error, (++), (.)
                , String, userError
                , Bool(..), (&&), otherwise
                , (+), (-), fromIntegral
@@ -223,7 +223,7 @@ index sbs i
 -- @since 0.11.0.0
 indexMaybe :: ShortByteString -> Int -> Maybe Word8
 indexMaybe sbs i
-  | i >= 0 && i < length sbs = Just $ unsafeIndex sbs i
+  | i >= 0 && i < length sbs = Just $! unsafeIndex sbs i
   | otherwise                = Nothing
 
 -- | /O(1)/ 'ShortByteString' index, starting from 0, that returns 'Just' if:
