@@ -741,11 +741,15 @@ prop_span xs a = (span (/=a) xs) == (let (x,y) = L.span (/=a) (pack xs) in (unpa
 prop_split c xs = (map L.unpack . map checkInvariant . L.split c $ xs)
                == (map P.unpack . P.split c . P.pack . L.unpack $ xs)
 
+prop_splitWith_empty f = L.splitWith f mempty == []
+
 prop_splitWith f xs = (l1 == l2 || l1 == l2+1) &&
         sum (map L.length splits) == L.length xs - l2
   where splits = L.splitWith f xs
         l1 = fromIntegral (length splits)
         l2 = L.length (L.filter f xs)
+
+prop_splitWith_D_empty f = D.splitWith f mempty == []
 
 prop_splitWith_D f xs = (l1 == l2 || l1 == l2+1) &&
         sum (map D.length splits) == D.length xs - l2
@@ -753,11 +757,15 @@ prop_splitWith_D f xs = (l1 == l2 || l1 == l2+1) &&
         l1 = fromIntegral (length splits)
         l2 = D.length (D.filter f xs)
 
+prop_splitWith_C_empty f = C.splitWith f mempty == []
+
 prop_splitWith_C f xs = (l1 == l2 || l1 == l2+1) &&
         sum (map C.length splits) == C.length xs - l2
   where splits = C.splitWith f xs
         l1 = fromIntegral (length splits)
         l2 = C.length (C.filter f xs)
+
+prop_split_empty c = L.split c mempty == []
 
 prop_joinsplit c xs = L.intercalate (pack [c]) (L.split c xs) == id xs
 
@@ -921,11 +929,15 @@ prop_wordsLC (String8 xs) =
 prop_unwordsSBB xss = C.unwords (map C.pack xss) == C.pack (unwords xss)
 prop_unwordsSLC xss = LC.unwords (map LC.pack xss) == LC.pack (unwords xss)
 
+prop_splitWithBB_empty f = P.splitWith f mempty == []
+
 prop_splitWithBB f xs = (l1 == l2 || l1 == l2+1) &&
         sum (map P.length splits) == P.length xs - l2
   where splits = P.splitWith f xs
         l1 = length splits
         l2 = P.length (P.filter f xs)
+
+prop_splitBB_empty c = P.split c mempty == []
 
 prop_joinsplitBB c xs = P.intercalate (P.pack [c]) (P.split c xs) == xs
 
@@ -2325,7 +2337,9 @@ bb_tests =
     , testProperty "unwords "       prop_unwordsSBB
     , testProperty "unwords "       prop_unwordsSLC
 --     , testProperty "wordstokens"    prop_wordstokensBB
+    , testProperty "splitWith_empty" prop_splitWithBB_empty
     , testProperty "splitWith"      prop_splitWithBB
+    , testProperty "split_empty"    prop_splitBB_empty
     , testProperty "joinsplit"      prop_joinsplitBB
     , testProperty "intercalate"    prop_intercalatePL
 --     , testProperty "lineIndices"    prop_lineIndices1BB
@@ -2428,9 +2442,13 @@ ll_tests =
 --  , testProperty "break/breakByte"    prop_breakByte
 --  , testProperty "span/spanByte"      prop_spanByte
     , testProperty "split"              prop_split
+    , testProperty "splitWith_empty"    prop_splitWith_empty
     , testProperty "splitWith"          prop_splitWith
+    , testProperty "splitWith_empty"    prop_splitWith_D_empty
     , testProperty "splitWith"          prop_splitWith_D
+    , testProperty "splitWith_empty"    prop_splitWith_C_empty
     , testProperty "splitWith"          prop_splitWith_C
+    , testProperty "split_empty"        prop_split_empty
     , testProperty "join.split/id"      prop_joinsplit
 --  , testProperty "join/joinByte"      prop_joinjoinByte
     , testProperty "group"              prop_group
