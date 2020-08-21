@@ -1,3 +1,8 @@
+[0.11.0.0] —
+ * [Add `indexMaybe` and synonym `(!?)` for indexing that returns `Maybe`](https://github.com/haskell/bytestring/pull/261)
+
+[0.11.0.0]: https://github.com/haskell/bytestring/compare/0.10.12.0...0.11.0.0
+
 [0.10.12.0] – August 2020
 
  * **Note:** There are several breaking changes planned to be included in v0.11.
@@ -9,7 +14,6 @@
  * [Add `IsList` instances for strict and lazy `ByteString` and for `ShortByteString`](https://github.com/haskell/bytestring/pull/219)
  * [Add `createUpToN'` and `unsafeCreateUpToN'` to `Data.ByteString.Internal`](https://github.com/haskell/bytestring/pull/245)
  * [Add `boundedPrim` to `Data.ByteString.Builder.Prim.Internal` and deprecate `boudedPrim`](https://github.com/haskell/bytestring/pull/246)
- * Add `indexMaybe` and synonym `(!?)` for indexing that returns `Maybe`
  * [Deprecate the `Data.ByteString.Lazy.Builder` and `Data.ByteString.Lazy.Builder.{ASCII,Extras}` modules](https://github.com/haskell/bytestring/pull/250)
  * [Fix documented complexity of `Data.ByteString.Lazy.length`](https://github.com/haskell/bytestring/pull/255)
  * [Assorted documentation fixes](https://github.com/haskell/bytestring/pull/248)

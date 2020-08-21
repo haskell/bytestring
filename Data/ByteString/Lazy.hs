@@ -901,7 +901,7 @@ index cs0 i         = index' cs0 i
 --
 -- > 0 <= n < length bs
 --
--- @since 0.10.10.1
+-- @since 0.11.0.0
 indexMaybe :: ByteString -> Int64 -> Maybe Word8
 indexMaybe _ i | i < 0 = Nothing
 indexMaybe cs0 i       = index' cs0 i
@@ -915,7 +915,7 @@ indexMaybe cs0 i       = index' cs0 i
 --
 -- > 0 <= n < length bs
 --
--- @since 0.10.10.1
+-- @since 0.11.0.0
 (!?) :: ByteString -> Int64 -> Maybe Word8
 (!?) = indexMaybe
 {-# INLINE (!?) #-}

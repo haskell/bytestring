@@ -650,16 +650,16 @@ index = (w2c .) . B.index
 --
 -- > 0 <= n < length bs
 --
--- @since 0.10.10.1
+-- @since 0.11.0.0
 indexMaybe :: ByteString -> Int -> Maybe Char
-indexMaybe = ((fmap w2c) .) . B.indexMaybe
+indexMaybe = (fmap w2c .) . B.indexMaybe
 {-# INLINE indexMaybe #-}
 
 -- | /O(1)/ 'ByteString' index, starting from 0, that returns 'Just' if:
 --
 -- > 0 <= n < length bs
 --
--- @since 0.10.10.1
+-- @since 0.11.0.0
 (!?) :: ByteString -> Int -> Maybe Char
 (!?) = indexMaybe
 {-# INLINE (!?) #-}
