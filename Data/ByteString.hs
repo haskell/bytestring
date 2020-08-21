@@ -1164,7 +1164,7 @@ findIndex k (BS x l) = accursedUnutterablePerformIO $ withForeignPtr x $ \f -> g
 --
 -- @since 0.10.12.0
 findIndexEnd :: (Word8 -> Bool) -> ByteString -> Maybe Int
-findIndexEnd k (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \ f -> go (f `plusPtr` s) (l-1)
+findIndexEnd k (BS x l) = accursedUnutterablePerformIO $ withForeignPtr x $ \ f -> go f (l-1)
   where
     go !ptr !n | n < 0     = return Nothing
                | otherwise = do w <- peekByteOff ptr n
