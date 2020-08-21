@@ -177,6 +177,7 @@ prop_dropWhileBP    = L.dropWhile            `eq2`  P.dropWhile
 prop_filterBP       = L.filter               `eq2`  P.filter
 prop_findBP         = L.find                 `eq2`  P.find
 prop_findIndexBP    = L.findIndex            `eq2`  ((fmap toInt64 .) . P.findIndex)
+prop_findIndexEndBP = L.findIndexEnd         `eq2`  ((fmap toInt64 .) . P.findIndexEnd)
 prop_findIndicesBP  = L.findIndices          `eq2`  ((fmap toInt64 .) . P.findIndices)
 prop_isPrefixOfBP   = L.isPrefixOf           `eq2`  P.isPrefixOf
 prop_stripPrefixBP  = L.stripPrefix          `eq2`  P.stripPrefix
@@ -194,6 +195,7 @@ prop_takeWhileBP    = L.takeWhile            `eq2`  P.takeWhile
 prop_elemBP         = L.elem                 `eq2`  P.elem
 prop_notElemBP      = L.notElem              `eq2`  P.notElem
 prop_elemIndexBP    = L.elemIndex            `eq2`  ((fmap toInt64 .) . P.elemIndex)
+prop_elemIndexEndBP = L.elemIndexEnd         `eq2`  ((fmap toInt64 .) . P.elemIndexEnd)
 prop_elemIndicesBP  = L.elemIndices          `eq2`  ((fmap toInt64 .) . P.elemIndices)
 prop_intersperseBP  = L.intersperse          `eq2`  P.intersperse
 prop_lengthBP       = L.length               `eq1`  (toInt64 . P.length)
@@ -295,21 +297,23 @@ prop_cycleLC  a   =
      ) :: Int -> B)
 
 
-prop_iterateLC =
-  forAll arbitrarySizedIntegral $
+prop_iterateLC :: Int -> (Char8 -> Char8) -> Char8 -> Bool
+prop_iterateLC n f (Char8 c) =
   eq3
-    ((\n f a -> LC.take (fromIntegral n) $
-        LC.iterate  f a) :: Int -> (Char -> Char) -> Char -> B)
-    ((\n f a -> fst $
-        C.unfoldrN n (\a -> Just (f a, f a)) a) :: Int -> (Char -> Char) -> Char -> P)
+    (\n f a -> LC.take (fromIntegral n) $ LC.iterate  f a)
+    (\n f a -> fst $ C.unfoldrN n (\a -> Just (f a, f a)) a)
+    n
+    (castFn f :: Char -> Char)
+    c
 
-prop_iterateLC_2   =
-  forAll arbitrarySizedIntegral $
+prop_iterateLC_2 :: Int -> (Char8 -> Char8) -> Char8 -> Bool
+prop_iterateLC_2 n f (Char8 c) =
   eq3
-    ((\n f a -> LC.take (fromIntegral n) $
-        LC.iterate  f a) :: Int -> (Char -> Char) -> Char -> B)
-    ((\n f a -> LC.take (fromIntegral n) $
-        LC.unfoldr (\a -> Just (f a, f a)) a) :: Int -> (Char -> Char) -> Char -> B)
+    (\n f a -> LC.take (fromIntegral (n :: Int)) $ LC.iterate f a)
+    (\n f a -> LC.take (fromIntegral (n :: Int)) $ LC.unfoldr (\a -> Just (f a, f a)) a)
+    n
+    (castFn f :: Char -> Char)
+    c
 
 prop_iterateL   =
   forAll arbitrarySizedIntegral $
@@ -362,6 +366,7 @@ prop_filterBL       = L.filter                `eq2` (filter    :: (W -> Bool ) -
 prop_findBL         = L.find                  `eq2` (find      :: (W -> Bool) -> [W] -> Maybe W)
 prop_findIndicesBL  = L.findIndices           `eq2` ((fmap toInt64 .) . findIndices:: (W -> Bool) -> [W] -> [Int64])
 prop_findIndexBL    = L.findIndex             `eq2` ((fmap toInt64 .) . findIndex :: (W -> Bool) -> [W] -> Maybe Int64)
+prop_findIndexEndBL = L.findIndexEnd          `eq2` ((fmap toInt64 .) . findIndexEnd :: (W -> Bool) -> [W] -> Maybe Int64)
 prop_isPrefixOfBL   = L.isPrefixOf            `eq2` (isPrefixOf:: [W] -> [W] -> Bool)
 prop_stripPrefixBL  = L.stripPrefix           `eq2` (stripPrefix:: [W] -> [W] -> Maybe [W])
 prop_isSuffixOfBL   = L.isSuffixOf            `eq2` (isSuffixOf:: [W] -> [W] -> Bool)
@@ -377,6 +382,7 @@ prop_takeWhileBL    = L.takeWhile             `eq2` (takeWhile :: (W -> Bool) ->
 prop_elemBL         = L.elem                  `eq2` (elem      :: W -> [W] -> Bool)
 prop_notElemBL      = L.notElem               `eq2` (notElem   :: W -> [W] -> Bool)
 prop_elemIndexBL    = L.elemIndex             `eq2` ((fmap toInt64 .) . elemIndex   :: W -> [W] -> Maybe Int64)
+prop_elemIndexEndBL = L.elemIndexEnd          `eq2` ((fmap toInt64 .) . elemIndexEnd:: W -> [W] -> Maybe Int64)
 prop_elemIndicesBL  = L.elemIndices           `eq2` ((fmap toInt64 .) . elemIndices :: W -> [W] -> [Int64])
 prop_linesBL        = D.lines                 `eq1` (lines     :: String -> [String])
 
@@ -413,13 +419,17 @@ prop_mapAccumRBL  = eq3
     (L.mapAccumR :: (X -> W -> (X,W)) -> X -> B   -> (X, B))
     (  mapAccumR :: (X -> W -> (X,W)) -> X -> [W] -> (X, [W]))
 
-prop_mapAccumRDL  = eq3
+prop_mapAccumRDL :: (X -> Char8 -> (X, Char8)) -> X -> B -> Bool
+prop_mapAccumRDL f = eq3
     (D.mapAccumR :: (X -> Char -> (X,Char)) -> X -> B   -> (X, B))
     (  mapAccumR :: (X -> Char -> (X,Char)) -> X -> [Char] -> (X, [Char]))
+    (castFn f)
 
-prop_mapAccumRCC  = eq3
+prop_mapAccumRCC :: (X -> Char8 -> (X, Char8)) -> X -> P -> Bool
+prop_mapAccumRCC f = eq3
     (C.mapAccumR :: (X -> Char -> (X,Char)) -> X -> P   -> (X, P))
     (  mapAccumR :: (X -> Char -> (X,Char)) -> X -> [Char] -> (X, [Char]))
+    (castFn f)
 
 prop_unfoldrBL =
   forAll arbitrarySizedIntegral $
@@ -466,6 +476,7 @@ prop_partitionPL  = P.partition `eq2`    (partition :: (W -> Bool ) -> [W] -> ([
 prop_partitionLL  = L.partition `eq2`    (partition :: (W -> Bool ) -> [W] -> ([W],[W]))
 prop_findPL       = P.find      `eq2`    (find      :: (W -> Bool) -> [W] -> Maybe W)
 prop_findIndexPL  = P.findIndex `eq2`    (findIndex :: (W -> Bool) -> [W] -> Maybe Int)
+prop_findIndexEndPL = P.findIndexEnd `eq2` (findIndexEnd :: (W -> Bool) -> [W] -> Maybe Int)
 prop_isPrefixOfPL = P.isPrefixOf`eq2`    (isPrefixOf:: [W] -> [W] -> Bool)
 prop_isSuffixOfPL = P.isSuffixOf`eq2`    (isSuffixOf:: [W] -> [W] -> Bool)
 prop_isInfixOfPL  = P.isInfixOf `eq2`    (isInfixOf:: [W] -> [W] -> Bool)
@@ -490,7 +501,10 @@ prop_zipCL        = C.zip        `eq2`   (zip :: [Char] -> [Char] -> [(Char,Char
 prop_zipLL        = L.zip        `eq2`   (zip :: [W] -> [W] -> [(W,W)])
 prop_unzipPL      = P.unzip      `eq1`   (unzip :: [(W,W)] -> ([W],[W]))
 prop_unzipLL      = L.unzip      `eq1`   (unzip :: [(W,W)] -> ([W],[W]))
-prop_unzipCL      = C.unzip      `eq1`   (unzip :: [(Char,Char)] -> ([Char],[Char]))
+
+prop_unzipCL :: [(Char8, Char8)] -> Bool
+prop_unzipCL xs   = (C.unzip     `eq1`   (unzip :: [(Char,Char)] -> ([Char],[Char])))
+                    [ (a,b) | (Char8 a, Char8 b) <- xs ]
 
 prop_foldl1PL     = P.foldl1    `eqnotnull2` (foldl1   :: (W -> W -> W) -> [W] -> W)
 prop_foldl1PL'    = P.foldl1'   `eqnotnull2` (foldl1' :: (W -> W -> W) -> [W] -> W)
@@ -506,9 +520,25 @@ prop_maximumPL    = P.maximum   `eqnotnull1` (maximum   :: [W] -> W)
 prop_minimumPL    = P.minimum   `eqnotnull1` (minimum   :: [W] -> W)
 prop_tailPL       = P.tail      `eqnotnull1` (tail      :: [W] -> [W])
 
-prop_scanl1CL     = C.scanl1    `eqnotnull2` (scanl1 :: (Char -> Char -> Char) -> [Char] -> [Char])
-prop_scanrCL      = C.scanr     `eqnotnull3` (scanr  :: (Char -> Char -> Char) -> Char -> [Char] -> [Char])
-prop_scanr1CL     = C.scanr1    `eqnotnull2` (scanr1 :: (Char -> Char -> Char) -> [Char] -> [Char])
+prop_scanl1CL :: (Char8 -> Char8 -> Char8) -> P -> Property
+prop_scanrCL  :: (Char8 -> Char8 -> Char8) -> Char8 -> P -> Property
+prop_scanr1CL :: (Char8 -> Char8 -> Char8) -> P -> Property
+
+prop_scanl1CL f = eqnotnull2
+    C.scanl1
+    (scanl1 :: (Char -> Char -> Char) -> [Char] -> [Char])
+    (castFn f)
+
+prop_scanrCL f (Char8 c) = eqnotnull3
+    C.scanr
+    (scanr  :: (Char -> Char -> Char) -> Char -> [Char] -> [Char])
+    (castFn f)
+    c
+
+prop_scanr1CL f = eqnotnull2
+    C.scanr1
+    (scanr1 :: (Char -> Char -> Char) -> [Char] -> [Char])
+    (castFn f)
 
 -- prop_zipWithPL'   = P.zipWith'  `eq3` (zipWith :: (W -> W -> W) -> [W] -> [W] -> [W])
 
@@ -578,7 +608,8 @@ prop_compare6 xs ys = (not (null ys)) ==> (pack (xs++ys)  `compare` pack xs) == 
 prop_compare7 x  y  = x  `compare` y  == (L.singleton x `compare` L.singleton y)
 prop_compare8 xs ys = xs `compare` ys == (L.pack xs `compare` L.pack ys)
 
-prop_compare7LL x  y  = x  `compare` y  == (LC.singleton x `compare` LC.singleton y)
+prop_compare7LL (Char8 x) (Char8 y) =
+                      x  `compare` y  == (LC.singleton x `compare` LC.singleton y)
 
 prop_empty1 = L.length L.empty == 0
 prop_empty2 = L.unpack L.empty == []
@@ -693,6 +724,8 @@ prop_splitAt i xs = --collect (i >= 0 && i < length xs) $
 
 prop_takeWhile f xs = L.takeWhile f (pack xs) == pack (takeWhile f xs)
 prop_dropWhile f xs = L.dropWhile f (pack xs) == pack (dropWhile f xs)
+prop_takeWhileEnd f = P.takeWhileEnd f `eq1` (P.reverse . P.takeWhile f . P.reverse)
+prop_dropWhileEnd f = P.dropWhileEnd f `eq1` (P.reverse . P.dropWhile f . P.reverse)
 
 prop_break f xs = L.break f (pack xs) ==
     let (a,b) = break f xs in (pack a, pack b)
@@ -730,7 +763,13 @@ prop_joinsplit c xs = L.intercalate (pack [c]) (L.split c xs) == id xs
 
 prop_group xs       = group xs == (map unpack . L.group . pack) xs
 prop_groupBy  f xs  = groupBy f xs == (map unpack . L.groupBy f . pack) xs
-prop_groupBy_LC  f xs  = groupBy f xs == (map LC.unpack . LC.groupBy f .  LC.pack) xs
+
+prop_groupBy_LC :: (Char8 -> Char8 -> Bool) -> String8 -> Bool
+prop_groupBy_LC f' (String8 xs) =
+    groupBy f xs == (map LC.unpack . LC.groupBy f .  LC.pack) xs
+  where
+    f :: Char -> Char -> Bool
+    f = castFn f'
 
 -- prop_joinjoinByte xs ys c = L.joinWithByte c xs ys == L.join (L.singleton c) [xs,ys]
 
@@ -739,24 +778,28 @@ prop_index xs =
     forAll indices $ \i -> (xs !! i) == L.pack xs `L.index` (fromIntegral i)
   where indices = choose (0, length xs -1)
 
-prop_index_D xs =
+prop_index_D (String8 xs) =
   not (null xs) ==>
     forAll indices $ \i -> (xs !! i) == D.pack xs `D.index` (fromIntegral i)
   where indices = choose (0, length xs -1)
 
-prop_index_C xs =
+prop_index_C (String8 xs) =
   not (null xs) ==>
     forAll indices $ \i -> (xs !! i) == C.pack xs `C.index` (fromIntegral i)
   where indices = choose (0, length xs -1)
 
 prop_elemIndex xs c = (elemIndex c xs) == fmap fromIntegral (L.elemIndex c (pack xs))
-prop_elemIndexCL xs c = (elemIndex c xs) == (C.elemIndex c (C.pack xs))
+
+prop_elemIndexCL :: String8 -> Char8 -> Bool
+prop_elemIndexCL (String8 xs) (Char8 c) =
+    (elemIndex c xs) == (C.elemIndex c (C.pack xs))
 
 prop_elemIndices xs c = elemIndices c xs == map fromIntegral (L.elemIndices c (pack xs))
 
 prop_count c xs = length (L.elemIndices c xs) == fromIntegral (L.count c xs)
 
 prop_findIndex xs f = (findIndex f xs) == fmap fromIntegral (L.findIndex f (pack xs))
+prop_findIndexEnd xs f = (findIndexEnd f xs) == fmap fromIntegral (L.findIndexEnd f (pack xs))
 prop_findIndicies xs f = (findIndices f xs) == map fromIntegral (L.findIndices f (pack xs))
 
 prop_elem    xs c = (c `elem` xs)    == (c `L.elem` (pack xs))
@@ -865,14 +908,14 @@ prop_breakSBB f xs = P.break f (P.pack xs) ==
 
 prop_breakspan_1BB xs c = P.break (== c) xs == P.span (/= c) xs
 
-prop_linesSBB xs = C.lines (C.pack xs) == map C.pack (lines xs)
+prop_linesSBB (String8 xs) = C.lines (C.pack xs) == map C.pack (lines xs)
 
 prop_unlinesSBB xss = C.unlines (map C.pack xss) == C.pack (unlines xss)
 
-prop_wordsSBB xs =
+prop_wordsSBB (String8 xs) =
     C.words (C.pack xs) == map C.pack (words xs)
 
-prop_wordsLC xs =
+prop_wordsLC (String8 xs) =
     LC.words (LC.pack xs) == map LC.pack (words xs)
 
 prop_unwordsSBB xss = C.unwords (map C.pack xss) == C.pack (unwords xss)
@@ -906,8 +949,8 @@ prop_linessplit2BB xs =
 
 prop_splitsplitWithBB c xs = P.split c xs == P.splitWith (== c) xs
 
-prop_bijectionBB  c = (P.w2c . P.c2w) c == id c
-prop_bijectionBB' w = (P.c2w . P.w2c) w == id w
+prop_bijectionBB  (Char8 c) = (P.w2c . P.c2w) c == id c
+prop_bijectionBB'        w  = (P.c2w . P.w2c) w == id w
 
 prop_packunpackBB  s = (P.unpack . P.pack) s == id s
 prop_packunpackBB' s = (P.pack . P.unpack) s == id s
@@ -924,13 +967,16 @@ prop_compare4BB xs  = (not (null xs)) ==> (P.pack xs  `compare` P.empty) == GT
 prop_compare5BB xs  = (not (null xs)) ==> (P.empty `compare` P.pack xs) == LT
 prop_compare6BB xs ys= (not (null ys)) ==> (P.pack (xs++ys)  `compare` P.pack xs) == GT
 
-prop_compare7BB x  y = x `compare` y == (C.singleton x `compare` C.singleton y)
+prop_compare7BB (Char8 x) (Char8 y) =
+                        x  `compare` y  == (C.singleton x `compare` C.singleton y)
 prop_compare8BB xs ys = xs `compare` ys == (P.pack xs `compare` P.pack ys)
 
 prop_consBB  c xs = P.unpack (P.cons c (P.pack xs)) == (c:xs)
-prop_cons1BB xs   = 'X' : xs == C.unpack ('X' `C.cons` (C.pack xs))
+prop_cons1BB (String8 xs)
+                  = 'X' : xs == C.unpack ('X' `C.cons` (C.pack xs))
 prop_cons2BB xs c = c : xs == P.unpack (c `P.cons` (P.pack xs))
-prop_cons3BB c    = C.unpack (C.singleton c) == (c:[])
+prop_cons3BB (Char8 c)
+                  = C.unpack (C.singleton c) == (c:[])
 prop_cons4BB c    = (c `P.cons` P.empty)  == P.pack (c:[])
 
 prop_snoc1BB xs c = xs ++ [c] == P.unpack ((P.pack xs) `P.snoc` c)
@@ -971,8 +1017,8 @@ prop_map2BB f g xs = P.map f (P.map g xs) == P.map (f . g) xs
 prop_map3BB f xs   = map f xs == (P.unpack . P.map f .  P.pack) xs
 -- prop_mapBB' f xs   = P.map' f (P.pack xs) == P.pack (map f xs)
 
-prop_filter1BB xs   = (filter (=='X') xs) == (C.unpack $ C.filter (=='X') (C.pack xs))
-prop_filter2BB p xs = (filter p xs) == (P.unpack $ P.filter p (P.pack xs))
+prop_filter1BB (String8 xs) = (filter (=='X') xs) == (C.unpack $ C.filter (=='X') (C.pack xs))
+prop_filter2BB p        xs  = (filter p       xs) == (P.unpack $ P.filter p (P.pack xs))
 
 prop_findBB p xs = find p xs == P.find p (P.pack xs)
 
@@ -1021,7 +1067,7 @@ prop_takeWhileBB xs a = (takeWhile (/= a) xs) == (P.unpack . (P.takeWhile (/= a)
 
 prop_dropWhileBB xs a = (dropWhile (/= a) xs) == (P.unpack . (P.dropWhile (/= a)) . P.pack) xs
 
-prop_dropWhileCC_isSpace xs =
+prop_dropWhileCC_isSpace (String8 xs) =
         (dropWhile isSpace xs) ==
        (C.unpack .  (C.dropWhile isSpace) . C.pack) xs
 
@@ -1065,30 +1111,34 @@ prop_concatMapBB xs = C.concatMap C.singleton xs == (C.pack . concatMap (:[]) . 
 prop_anyBB xs a = (any (== a) xs) == (P.any (== a) (P.pack xs))
 prop_allBB xs a = (all (== a) xs) == (P.all (== a) (P.pack xs))
 
-prop_linesBB xs = (lines xs) == ((map C.unpack) . C.lines . C.pack) xs
+prop_linesBB (String8 xs) =
+    (lines xs) == ((map C.unpack) . C.lines . C.pack) xs
 
-prop_unlinesBB xs = (unlines.lines) xs == (C.unpack. C.unlines . C.lines .C.pack) xs
-prop_unlinesLC xs = (unlines.lines) xs == (LC.unpack. LC.unlines .  LC.lines .LC.pack) xs
+prop_unlinesBB (String8 xs) =
+    (unlines.lines) xs == (C.unpack. C.unlines . C.lines .C.pack) xs
+prop_unlinesLC (String8 xs) =
+    (unlines.lines) xs == (LC.unpack. LC.unlines .  LC.lines .LC.pack) xs
 
-prop_wordsBB xs =
+prop_wordsBB (String8 xs) =
     (words xs) == ((map C.unpack) . C.words . C.pack) xs
 -- prop_wordstokensBB xs = C.words xs == C.tokens isSpace xs
 
-prop_unwordsBB xs =
+prop_unwordsBB (String8 xs) =
     (C.pack.unwords.words) xs == (C.unwords . C.words .C.pack) xs
 
 prop_groupBB xs   = group xs == (map P.unpack . P.group . P.pack) xs
 
 prop_groupByBB  xs = groupBy (==) xs == (map P.unpack . P.groupBy (==) . P.pack) xs
-prop_groupBy1CC xs = groupBy (==) xs == (map C.unpack . C.groupBy (==) . C.pack) xs
 prop_groupBy1BB xs = groupBy (/=) xs == (map P.unpack . P.groupBy (/=) . P.pack) xs
-prop_groupBy2CC xs = groupBy (/=) xs == (map C.unpack . C.groupBy (/=) . C.pack) xs
+prop_groupBy1CC (String8 xs) = groupBy (==) xs == (map C.unpack . C.groupBy (==) . C.pack) xs
+prop_groupBy2CC (String8 xs) = groupBy (/=) xs == (map C.unpack . C.groupBy (/=) . C.pack) xs
 
-prop_joinBB xs ys = (concat . (intersperse ys) . lines) xs ==
-               (C.unpack $ C.intercalate (C.pack ys) (C.lines (C.pack xs)))
+prop_joinBB (String8 xs) (String8 ys) =
+    (concat . (intersperse ys) . lines) xs ==
+    (C.unpack $ C.intercalate (C.pack ys) (C.lines (C.pack xs)))
 
-prop_elemIndex1BB xs   = (elemIndex 'X' xs) == (C.elemIndex 'X' (C.pack xs))
-prop_elemIndex2BB xs c = (elemIndex c xs) == (C.elemIndex c (C.pack xs))
+prop_elemIndex1BB (String8 xs)           = (elemIndex 'X' xs) == (C.elemIndex 'X' (C.pack xs))
+prop_elemIndex2BB (String8 xs) (Char8 c) = (elemIndex  c  xs) == (C.elemIndex  c  (C.pack xs))
 
 -- prop_lineIndices1BB xs = C.elemIndices '\n' xs == C.lineIndices xs
 
@@ -1119,6 +1169,8 @@ prop_elemIndicesBB xs c = elemIndices c xs == P.elemIndices c (P.pack xs)
 
 prop_findIndexBB xs a = (findIndex (==a) xs) == (P.findIndex (==a) (P.pack xs))
 
+prop_findIndexEndBB xs a = (findIndexEnd (==a) xs) == (P.findIndexEnd (==a) (P.pack xs))
+
 prop_findIndiciesBB xs c = (findIndices (==c) xs) == (P.findIndices (==c) (P.pack xs))
 
 -- example properties from QuickCheck.Batch
@@ -1140,6 +1192,8 @@ prop_intersperseBB c xs = (intersperse c xs) == (P.unpack $ P.intersperse c (P.p
 
 prop_maximumBB xs = (not (null xs)) ==> (maximum xs) == (P.maximum ( P.pack xs ))
 prop_minimumBB xs = (not (null xs)) ==> (minimum xs) == (P.minimum ( P.pack xs ))
+
+prop_strip = C.strip `eq1` (C.dropSpace . C.reverse . C.dropSpace . C.reverse)
 
 -- prop_dropSpaceBB xs    = dropWhile isSpace xs == C.unpack (C.dropSpace (C.pack xs))
 -- prop_dropSpaceEndBB xs = (C.reverse . (C.dropWhile isSpace) . C.reverse) (C.pack xs) ==
@@ -1198,31 +1252,47 @@ prop_initsBB xs = inits xs == map P.unpack (P.inits (P.pack xs))
 
 prop_tailsBB xs = tails xs == map P.unpack (P.tails (P.pack xs))
 
-prop_findSubstringsBB s x l
-    = C.findSubstrings (C.pack p) (C.pack s) == naive_findSubstrings p s
+-- The correspondence between the test 'ByteString' and naive test 'String'
+-- must be injective, otherwise the ByteString may find matches at positions
+-- that don't match in the "corresponding" string.  To that end, we start
+-- with and pack a Word8 array, rather than a unicode String.
+--
+prop_findSubstringsBB :: [Word8] -> Int -> Int -> Bool
+prop_findSubstringsBB ws x l
+    = let bstr = P.pack ws
+          -- we look for some random substring of the test string
+          slice = C.take l $ C.drop x bstr
+          str = C.unpack bstr
+          substr = C.unpack slice
+      in C.findSubstrings slice bstr == naive_findSubstrings substr str
   where
-    _ = l :: Int
-    _ = x :: Int
-
-    -- we look for some random substring of the test string
-    p = take (model l) $ drop (model x) s
-
     -- naive reference implementation
+    -- Note, overlapping matches have been broken since 2015, so at this
+    -- point just test for the current behaviour.
     naive_findSubstrings :: String -> String -> [Int]
-    naive_findSubstrings p s = [x | x <- [0..length s], p `isPrefixOf` drop x s]
+    naive_findSubstrings p q
+        | null p    = [0..length q]
+        | otherwise = go 0 (length p) p (length q) q
+    go n !lp p !lq q =
+        if (lp > lq)
+        then []
+        else if p `isPrefixOf` q
+        then n : go (n + lp) lp p (lq - lp) (drop lp q)
+        else go (n + 1) lp p (lq - 1) (tail q)
 
-prop_findSubstringBB s x l
-    = C.findSubstring (C.pack p) (C.pack s) == naive_findSubstring p s
+-- See above re injective string -> bytestring correspondence.
+prop_findSubstringBB :: [Word8] -> Int -> Int -> Bool
+prop_findSubstringBB ws x l
+    = let bstr = P.pack ws
+          -- we look for some random substring of the test string
+          slice = C.take l $ C.drop x bstr
+          str = C.unpack bstr
+          substr = C.unpack slice
+      in C.findSubstring slice bstr == naive_findSubstring substr str
   where
-    _ = l :: Int
-    _ = x :: Int
-
-    -- we look for some random substring of the test string
-    p = take (model l) $ drop (model x) s
-
     -- naive reference implementation
     naive_findSubstring :: String -> String -> Maybe Int
-    naive_findSubstring p s = listToMaybe [x | x <- [0..length s], p `isPrefixOf` drop x s]
+    naive_findSubstring p q = listToMaybe [x | x <- [0..length q], p `isPrefixOf` drop x q]
 
 -- correspondance between break and breakSubstring
 prop_breakSubstringBB c l
@@ -1253,14 +1323,14 @@ prop_readintLL n = (fst . fromJust . D.readInt . D.pack . show) n == (n :: Int)
 prop_readBB x = (read . show) x == (x :: P.ByteString)
 prop_readLL x = (read . show) x == (x :: L.ByteString)
 
-prop_readint2BB s =
+prop_readint2BB (String8 s) =
     let s' = filter (\c -> c `notElem` ['0'..'9']) s
     in C.readInt (C.pack s') == Nothing
 
 prop_readintegerBB n = (fst . fromJust . C.readInteger . C.pack . show) n == (n :: Integer)
 prop_readintegerLL n = (fst . fromJust . D.readInteger . D.pack . show) n == (n :: Integer)
 
-prop_readinteger2BB s =
+prop_readinteger2BB (String8 s) =
     let s' = filter (\c -> c `notElem` ['0'..'9']) s
     in C.readInteger (C.pack s') == Nothing
 
@@ -1274,7 +1344,8 @@ prop_readinteger2BB s =
 -- prop_joinjoinpathBB xs ys c = C.joinWithChar c xs ys == C.join (C.singleton c) [xs,ys]
 
 prop_zipBB  xs ys = zip xs ys == P.zip (P.pack xs) (P.pack ys)
-prop_zipLC  xs ys = zip xs ys == LC.zip (LC.pack xs) (LC.pack ys)
+prop_zipLC (String8 xs) (String8 ys)
+                  = zip xs ys == LC.zip (LC.pack xs) (LC.pack ys)
 prop_zip1BB xs ys = P.zip xs ys == zip (P.unpack xs) (P.unpack ys)
 
 prop_zipWithBB xs ys = P.zipWith (,) xs ys == P.zip xs ys
@@ -1301,8 +1372,11 @@ prop_unzipBB x = let (xs,ys) = unzip x in (P.pack xs, P.pack ys) == P.unzip x
 ------------------------------------------------------------------------
 
 -- Test IsString, Show, Read, pack, unpack
-prop_isstring x = C.unpack (fromString x :: C.ByteString) == x
-prop_isstring_lc x = LC.unpack (fromString x :: LC.ByteString) == x
+prop_isstring    :: String8 -> Bool
+prop_isstring_lc :: String8 -> Bool
+
+prop_isstring    (String8 x) = C.unpack  (fromString x :: C.ByteString) == x
+prop_isstring_lc (String8 x) = LC.unpack (fromString x :: LC.ByteString) == x
 
 prop_showP1 x = show x == show (C.unpack x)
 prop_showL1 x = show x == show (LC.unpack x)
@@ -1316,14 +1390,14 @@ prop_readL2 x = read (show x) == LC.pack (x :: String)
 prop_packunpack_s x = (P.unpack . P.pack) x == x
 prop_unpackpack_s x = (P.pack . P.unpack) x == x
 
-prop_packunpack_c x = (C.unpack . C.pack) x == x
-prop_unpackpack_c x = (C.pack . C.unpack) x == x
+prop_packunpack_c (String8 x) = (C.unpack . C.pack) x == x
+prop_unpackpack_c          x  = (C.pack . C.unpack) x == x
 
 prop_packunpack_l x = (L.unpack . L.pack) x == x
 prop_unpackpack_l x = (L.pack . L.unpack) x == x
 
-prop_packunpack_lc x = (LC.unpack . LC.pack) x == x
-prop_unpackpack_lc x = (LC.pack . LC.unpack) x == x
+prop_packunpack_lc (String8 x) = (LC.unpack . LC.pack) x == x
+prop_unpackpack_lc          x  = (LC.pack . LC.unpack) x == x
 
 prop_toFromChunks x = (L.fromChunks . L.toChunks) x == x
 prop_fromToChunks x = (L.toChunks . L.fromChunks) x == filter (not . P.null) x
@@ -1339,7 +1413,7 @@ prop_packUptoLenBytes cs =
        && P.pack (take n cs) == bs
        && drop n cs == cs'
 
-prop_packUptoLenChars cs =
+prop_packUptoLenChars (String8 cs) =
     forAll (choose (0, length cs + 1)) $ \n ->
       let (bs, cs') = P.packUptoLenChars n cs
        in P.length bs == min n (length cs)
@@ -1350,21 +1424,21 @@ prop_packUptoLenChars cs =
 prop_unpack_s cs =
     forAll (choose (0, length cs)) $ \n ->
       P.unpack (P.drop n $ P.pack cs) == drop n cs
-prop_unpack_c cs =
+prop_unpack_c (String8 cs) =
     forAll (choose (0, length cs)) $ \n ->
       C.unpack (C.drop n $ C.pack cs) == drop n cs
 
 prop_unpack_l  cs =
     forAll (choose (0, length cs)) $ \n ->
       L.unpack (L.drop (fromIntegral n) $ L.pack cs) == drop n cs
-prop_unpack_lc cs =
+prop_unpack_lc (String8 cs) =
     forAll (choose (0, length cs)) $ \n ->
       LC.unpack (L.drop (fromIntegral n) $ LC.pack cs) == drop n cs
 
 prop_unpackBytes cs =
     forAll (choose (0, length cs)) $ \n ->
       P.unpackBytes (P.drop n $ P.pack cs) == drop n cs
-prop_unpackChars cs =
+prop_unpackChars (String8 cs) =
     forAll (choose (0, length cs)) $ \n ->
       P.unpackChars (P.drop n $ C.pack cs) == drop n cs
 
@@ -1373,7 +1447,7 @@ prop_unpackBytes_l =
     forAll (choose (0, length cs)) $ \n ->
       L.unpackBytes (L.drop (fromIntegral n) $ L.pack cs) == drop n cs
 prop_unpackChars_l =
-    forAll (sized $ \n -> resize (n * 10) arbitrary) $ \cs ->
+    forAll (sized $ \n -> resize (n * 10) arbitrary) $ \(String8 cs) ->
     forAll (choose (0, length cs)) $ \n ->
       L.unpackChars (L.drop (fromIntegral n) $ LC.pack cs) == drop n cs
 
@@ -1381,8 +1455,8 @@ prop_unpackAppendBytesLazy cs' =
     forAll (sized $ \n -> resize (n * 10) arbitrary) $ \cs ->
     forAll (choose (0, 2)) $ \n ->
       P.unpackAppendBytesLazy (P.drop n $ P.pack cs) cs' == drop n cs ++ cs'
-prop_unpackAppendCharsLazy cs' =
-    forAll (sized $ \n -> resize (n * 10) arbitrary) $ \cs ->
+prop_unpackAppendCharsLazy (String8 cs') =
+    forAll (sized $ \n -> resize (n * 10) arbitrary) $ \(String8 cs) ->
     forAll (choose (0, 2)) $ \n ->
       P.unpackAppendCharsLazy (P.drop n $ C.pack cs) cs' == drop n cs ++ cs'
 
@@ -1390,7 +1464,7 @@ prop_unpackAppendBytesStrict cs cs' =
     forAll (choose (0, length cs)) $ \n ->
       P.unpackAppendBytesStrict (P.drop n $ P.pack cs) cs' == drop n cs ++ cs'
 
-prop_unpackAppendCharsStrict cs cs' =
+prop_unpackAppendCharsStrict (String8 cs) (String8 cs') =
     forAll (choose (0, length cs)) $ \n ->
       P.unpackAppendCharsStrict (P.drop n $ C.pack cs) cs' == drop n cs ++ cs'
 
@@ -1701,18 +1775,18 @@ io_tests =
     ]
 
 misc_tests =
-    [ testProperty "packunpack"             prop_packunpack_s
-    , testProperty "unpackpack"             prop_unpackpack_s
-    , testProperty "packunpack"             prop_packunpack_c
-    , testProperty "unpackpack"             prop_unpackpack_c
-    , testProperty "packunpack"             prop_packunpack_l
-    , testProperty "unpackpack"             prop_unpackpack_l
-    , testProperty "packunpack"             prop_packunpack_lc
-    , testProperty "unpackpack"             prop_unpackpack_lc
-    , testProperty "unpack"                 prop_unpack_s
-    , testProperty "unpack"                 prop_unpack_c
-    , testProperty "unpack"                 prop_unpack_l
-    , testProperty "unpack"                 prop_unpack_lc
+    [ testProperty "packunpack (bytes)"     prop_packunpack_s
+    , testProperty "unpackpack (bytes)"     prop_unpackpack_s
+    , testProperty "packunpack (chars)"     prop_packunpack_c
+    , testProperty "unpackpack (chars)"     prop_unpackpack_c
+    , testProperty "packunpack (lazy bytes)" prop_packunpack_l
+    , testProperty "unpackpack (lazy bytes)" prop_unpackpack_l
+    , testProperty "packunpack (lazy chars)" prop_packunpack_lc
+    , testProperty "unpackpack (lazy chars)" prop_unpackpack_lc
+    , testProperty "unpack (bytes)"         prop_unpack_s
+    , testProperty "unpack (chars)"         prop_unpack_c
+    , testProperty "unpack (lazy bytes)"    prop_unpack_l
+    , testProperty "unpack (lazy chars)"    prop_unpack_lc
     , testProperty "packUptoLenBytes"       prop_packUptoLenBytes
     , testProperty "packUptoLenChars"       prop_packUptoLenChars
     , testProperty "unpackBytes"            prop_unpackBytes
@@ -1765,6 +1839,7 @@ bl_tests =
     , testProperty "filter"      prop_filterBL
     , testProperty "find"        prop_findBL
     , testProperty "findIndex"   prop_findIndexBL
+    , testProperty "findIndexEnd"prop_findIndexEndBL
     , testProperty "findIndices" prop_findIndicesBL
     , testProperty "foldl"       prop_foldlBL
     , testProperty "foldl'"      prop_foldlBL'
@@ -1816,6 +1891,7 @@ bl_tests =
     , testProperty "notElem"     prop_notElemBL
     , testProperty "lines"       prop_linesBL
     , testProperty "elemIndex"   prop_elemIndexBL
+    , testProperty "elemIndexEnd"prop_elemIndexEndBL
     , testProperty "elemIndices" prop_elemIndicesBL
     , testProperty "concatMap"   prop_concatMapBL
     ]
@@ -1901,6 +1977,7 @@ bp_tests =
     , testProperty "filter"      prop_filterBP
     , testProperty "find"        prop_findBP
     , testProperty "findIndex"   prop_findIndexBP
+    , testProperty "findIndexEnd"prop_findIndexEndBP
     , testProperty "findIndices" prop_findIndicesBP
     , testProperty "foldl"       prop_foldlBP
     , testProperty "foldl'"      prop_foldlBP'
@@ -1952,6 +2029,7 @@ bp_tests =
     , testProperty "elem"        prop_elemBP
     , testProperty "notElem"     prop_notElemBP
     , testProperty "elemIndex"   prop_elemIndexBP
+    , testProperty "elemIndexEnd"prop_elemIndexEndBP
     , testProperty "elemIndices" prop_elemIndicesBP
     , testProperty "intersperse" prop_intersperseBP
     , testProperty "concatMap"   prop_concatMapBP
@@ -1975,6 +2053,7 @@ pl_tests =
     , testProperty "partition"   prop_partitionLL
     , testProperty "find"        prop_findPL
     , testProperty "findIndex"   prop_findIndexPL
+    , testProperty "findIndexEnd"prop_findIndexEndPL
     , testProperty "findIndices" prop_findIndicesPL
     , testProperty "foldl"       prop_foldlPL
     , testProperty "foldl'"      prop_foldlPL'
@@ -2155,6 +2234,7 @@ bb_tests =
     , testProperty "elemIndex 1"    prop_elemIndex1BB
     , testProperty "elemIndex 2"    prop_elemIndex2BB
     , testProperty "findIndex"      prop_findIndexBB
+    , testProperty "findIndexEnd"   prop_findIndexEndBB
     , testProperty "findIndicies"   prop_findIndiciesBB
     , testProperty "elemIndices"    prop_elemIndicesBB
     , testProperty "find"           prop_findBB
@@ -2167,6 +2247,7 @@ bb_tests =
     , testProperty "intersperse"    prop_intersperseBB
     , testProperty "maximum"        prop_maximumBB
     , testProperty "minimum"        prop_minimumBB
+    , testProperty "strip"          prop_strip
 --  , testProperty "breakChar"      prop_breakCharBB
 --  , testProperty "spanChar 1"     prop_spanCharBB
 --  , testProperty "spanChar 2"     prop_spanChar_1BB
@@ -2313,7 +2394,7 @@ ll_tests =
     , testProperty "reverse"            prop_reverse
     , testProperty "reverse1"           prop_reverse1
     , testProperty "reverse2"           prop_reverse2
---  , testProperty "transpose"          prop_transpose
+    , testProperty "transpose"          prop_transpose
     , testProperty "foldl"              prop_foldl
     , testProperty "foldl/reverse"      prop_foldl_1
     , testProperty "foldr"              prop_foldr
@@ -2331,13 +2412,15 @@ ll_tests =
     , testProperty "all"                prop_all
     , testProperty "maximum"            prop_maximum
     , testProperty "minimum"            prop_minimum
---  , testProperty "replicate 1"        prop_replicate1
+    , testProperty "replicate 1"        prop_replicate1
     , testProperty "replicate 2"        prop_replicate2
     , testProperty "take"               prop_take1
     , testProperty "drop"               prop_drop1
     , testProperty "splitAt"            prop_drop1
     , testProperty "takeWhile"          prop_takeWhile
     , testProperty "dropWhile"          prop_dropWhile
+    , testProperty "takeWhileEnd"       prop_takeWhileEnd
+    , testProperty "dropWhileEnd"       prop_dropWhileEnd
     , testProperty "break"              prop_break
     , testProperty "span"               prop_span
     , testProperty "splitAt"            prop_splitAt
@@ -2360,6 +2443,7 @@ ll_tests =
     , testProperty "elemIndices"        prop_elemIndices
     , testProperty "count/elemIndices"  prop_count
     , testProperty "findIndex"          prop_findIndex
+    , testProperty "findIndexEnd"       prop_findIndexEnd
     , testProperty "findIndices"        prop_findIndicies
     , testProperty "find"               prop_find
     , testProperty "find/findIndex"     prop_find_findIndex
@@ -2378,4 +2462,12 @@ ll_tests =
     , testProperty "isSpace"            prop_isSpaceWord8
     ]
 
+findIndexEnd :: (a -> Bool) -> [a] -> Maybe Int
+findIndexEnd p = go . findIndices p
+  where
+    go [] = Nothing
+    go (k:[]) = Just k
+    go (k:ks) = go ks
 
+elemIndexEnd :: Eq a => a -> [a] -> Maybe Int
+elemIndexEnd = findIndexEnd . (==)

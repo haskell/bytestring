@@ -2,7 +2,7 @@
 #if __GLASGOW_HASKELL__ >= 703
 {-# LANGUAGE Unsafe #-}
 #endif
-{-# OPTIONS_HADDOCK hide #-}
+{-# OPTIONS_HADDOCK not-home #-}
 -- |
 -- Copyright   : 2010-2011 Simon Meier, 2010 Jasper van der Jeugt
 -- License     : BSD3-style (see LICENSE)
@@ -20,7 +20,7 @@
 -- standard encodings of standard Haskell values.
 --
 -- If you need to write your own builder primitives, then be aware that you are
--- writing code with /all saftey belts off/; i.e.,
+-- writing code with /all safety belts off/; i.e.,
 -- *this is the code that might make your application vulnerable to buffer-overflow attacks!*
 -- The "Data.ByteString.Builder.Prim.Tests" module provides you with
 -- utilities for testing your encodings thoroughly.
@@ -42,7 +42,7 @@ module Data.ByteString.Builder.Prim.Internal (
 
   -- * Bounded-size builder primitives
   , BoundedPrim
-  , boudedPrim
+  , boundedPrim
   , sizeBound
   , runB
 
@@ -64,6 +64,8 @@ module Data.ByteString.Builder.Prim.Internal (
   , (>$<)
   , (>*<)
 
+  -- * Deprecated
+  , boudedPrim
   ) where
 
 import Foreign
@@ -93,9 +95,10 @@ infixl 4 >$<
 -- We can use it for example to prepend and/or append fixed values to an
 -- primitive.
 --
+-- > import Data.ByteString.Builder.Prim as P
 -- >showEncoding ((\x -> ('\'', (x, '\''))) >$< fixed3) 'x' = "'x'"
 -- >  where
--- >    fixed3 = char7 >*< char7 >*< char7
+-- >    fixed3 = P.char7 >*< P.char7 >*< P.char7
 --
 -- Note that the rather verbose syntax for composition stems from the
 -- requirement to be able to compute the size / size bound at compile time.
@@ -176,7 +179,7 @@ pairF (FP l1 io1) (FP l2 io2) =
 -- | Change a primitives such that it first applies a function to the value
 -- to be encoded.
 --
--- Note that primitives are 'Contrafunctors'
+-- Note that primitives are 'Contravariant'
 -- <http://hackage.haskell.org/package/contravariant>. Hence, the following
 -- laws hold.
 --
@@ -198,7 +201,19 @@ liftFixedToBounded = toB
 
 {-# INLINE CONLIKE storableToF #-}
 storableToF :: forall a. Storable a => FixedPrim a
+-- Not all architectures are forgiving of unaligned accesses; whitelist ones
+-- which are known not to trap (either to the kernel for emulation, or crash).
+#if defined(i386_HOST_ARCH) || defined(x86_64_HOST_ARCH) \
+    || ((defined(arm_HOST_ARCH) || defined(aarch64_HOST_ARCH)) \
+        && defined(__ARM_FEATURE_UNALIGNED)) \
+    || defined(powerpc_HOST_ARCH) || defined(powerpc64_HOST_ARCH) \
+    || defined(powerpc64le_HOST_ARCH)
 storableToF = FP (sizeOf (undefined :: a)) (\x op -> poke (castPtr op) x)
+#else
+storableToF = FP (sizeOf (undefined :: a)) $ \x op ->
+    if (ptrToWordPtr op) `mod` (fromIntegral (alignment (undefined :: a))) == 0 then poke (castPtr op) x
+    else with x $ \tp -> copyBytes op (castPtr tp) (sizeOf (undefined :: a))
+#endif
 
 {-
 {-# INLINE CONLIKE liftIOF #-}
@@ -219,6 +234,11 @@ data BoundedPrim a = BP {-# UNPACK #-} !Int (a -> Ptr Word8 -> IO (Ptr Word8))
 sizeBound :: BoundedPrim a -> Int
 sizeBound (BP b _) = b
 
+-- | @since 0.10.12.0
+boundedPrim :: Int -> (a -> Ptr Word8 -> IO (Ptr Word8)) -> BoundedPrim a
+boundedPrim = BP
+
+{-# DEPRECATED boudedPrim "Use 'boundedPrim' instead" #-}
 boudedPrim :: Int -> (a -> Ptr Word8 -> IO (Ptr Word8)) -> BoundedPrim a
 boudedPrim = BP
 
@@ -229,7 +249,7 @@ runB (BP _ io) = io
 -- | Change a 'BoundedPrim' such that it first applies a function to the
 -- value to be encoded.
 --
--- Note that 'BoundedPrim's are 'Contrafunctors'
+-- Note that 'BoundedPrim's are 'Contravariant'
 -- <http://hackage.haskell.org/package/contravariant>. Hence, the following
 -- laws hold.
 --
@@ -272,7 +292,7 @@ eitherB (BP b1 io1) (BP b2 io2) =
 -- Unicode codepoints above 127 as follows.
 --
 -- @
---charASCIIDrop = 'condB' (< '\128') ('fromF' 'char7') 'emptyB'
+--charASCIIDrop = 'condB' (< \'\\128\') ('liftFixedToBounded' 'Data.ByteString.Builder.Prim.char7') 'emptyB'
 -- @
 {-# INLINE CONLIKE condB #-}
 condB :: (a -> Bool) -> BoundedPrim a -> BoundedPrim a -> BoundedPrim a

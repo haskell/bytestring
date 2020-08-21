@@ -81,7 +81,7 @@ import Foreign
 --  * an IO action for writing the Builder's data into a user-supplied memory
 --    buffer.
 --
---  * a pre-existing chunks of data represented by a strict 'ByteString'
+--  * a pre-existing chunks of data represented by a strict 'S.ByteString'
 --
 -- While this is rather low level, it provides you with full flexibility in
 -- how the data is written out.

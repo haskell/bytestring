@@ -67,12 +67,12 @@ infixr 4 \<\>
 @
 
 CSV is a character-based representation of tables. For maximal modularity,
-we could first render 'Table's as 'String's and then encode this 'String'
+we could first render @Table@s as 'String's and then encode this 'String'
 using some Unicode character encoding. However, this sacrifices performance
 due to the intermediate 'String' representation being built and thrown away
 right afterwards. We get rid of this intermediate 'String' representation by
 fixing the character encoding to UTF-8 and using 'Builder's to convert
-'Table's directly to UTF-8 encoded CSV tables represented as lazy
+@Table@s directly to UTF-8 encoded CSV tables represented as lazy
 'L.ByteString's.
 
 @
@@ -105,10 +105,10 @@ Note that the ASCII encoding is a subset of the UTF-8 encoding,
 Using 'intDec' is more efficient than @'stringUtf8' . 'show'@,
   as it avoids constructing an intermediate 'String'.
 Avoiding this intermediate data structure significantly improves
-  performance because encoding 'Cell's is the core operation
+  performance because encoding @Cell@s is the core operation
   for rendering CSV-tables.
 See "Data.ByteString.Builder.Prim" for further
-  information on how to improve the performance of 'renderString'.
+  information on how to improve the performance of @renderString@.
 
 We demonstrate our UTF-8 CSV encoding function on the following table.
 
@@ -149,14 +149,14 @@ Looking again at the definitions above,
   we see that we took care to avoid intermediate data structures,
   as otherwise we would sacrifice performance.
 For example,
-  the following (arguably simpler) definition of 'renderRow' is about 20% slower.
+  the following (arguably simpler) definition of @renderRow@ is about 20% slower.
 
 >renderRow :: Row -> Builder
 >renderRow  = mconcat . intersperse (charUtf8 ',') . map renderCell
 
 Similarly, using /O(n)/ concatentations like '++' or the equivalent 'S.concat'
   operations on strict and lazy 'L.ByteString's should be avoided.
-The following definition of 'renderString' is also about 20% slower.
+The following definition of @renderString@ is also about 20% slower.
 
 >renderString :: String -> Builder
 >renderString cs = charUtf8 $ "\"" ++ concatMap escape cs ++ "\""
@@ -293,7 +293,8 @@ toLazyByteString = toLazyByteStringWith
 -- enough buffer.
 --
 -- It is recommended that the 'Handle' is set to binary and
--- 'BlockBuffering' mode. See 'hSetBinaryMode' and 'hSetBuffering'.
+-- 'System.IO.BlockBuffering' mode. See 'System.IO.hSetBinaryMode' and
+-- 'System.IO.hSetBuffering'.
 --
 -- This function is more efficient than @hPut . 'toLazyByteString'@ because in
 -- many cases no buffer allocation has to be done. Moreover, the results of

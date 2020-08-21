@@ -13,10 +13,10 @@
 -- Benchmark all 'Builder' functions.
 module Main (main) where
 
-import           Criterion.Main
 import           Data.Foldable                         (foldMap)
 import           Data.Monoid
 import           Data.String
+import           Gauge
 import           Prelude                               hiding (words)
 
 import qualified Data.ByteString                       as S
@@ -43,6 +43,7 @@ import           Paths_bench_bytestring
 import           Foreign
 
 import System.Random
+import Paths_bench_bytestring
 
 
 ------------------------------------------------------------------------------
@@ -137,7 +138,7 @@ benchFE name = benchBE name . P.liftFixedToBounded
 {-# INLINE benchBE #-}
 benchBE :: String -> BoundedPrim Int -> Benchmark
 benchBE name e =
-  bench (name ++" (" ++ show nRepl ++ ")") $ whnfIO $ benchIntEncodingB nRepl e
+  bench (name ++" (" ++ show nRepl ++ ")") $ whnfIO (benchIntEncodingB nRepl e)
 
 -- We use this construction of just looping through @n,n-1,..,1@ to ensure that
 -- we measure the speed of the encoding and not the speed of generating the
@@ -233,7 +234,7 @@ main = do
   mapM_ putStrLn sanityCheckInfo
   putStrLn ""
   wikiPage <- getDataFileName "wiki-haskell.html" >>= S.readFile
-  Criterion.Main.defaultMain
+  Gauge.defaultMain
     [ bgroup "Data.ByteString.Builder"
       [ bgroup "Small payload"
         [ benchB' "mempty"        ()  (const mempty)

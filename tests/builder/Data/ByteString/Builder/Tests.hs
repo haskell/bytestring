@@ -21,7 +21,7 @@ import           Control.Monad.Writer
 import           Foreign (Word, Word8, minusPtr)
 import           System.IO.Unsafe (unsafePerformIO)
 
-import           Data.Char (ord, chr)
+import           Data.Char (chr)
 import qualified Data.DList      as D
 import           Data.Foldable (asum, foldMap)
 
@@ -51,9 +51,8 @@ import           TestFramework
 #endif
 
 import           Test.QuickCheck
-                   ( Arbitrary(..), oneof, choose, listOf, elements )
-import           Test.QuickCheck.Property
-                   ( printTestCase, morallyDubiousIOProperty )
+                   ( Arbitrary(..), oneof, choose, listOf, elements
+                   , counterexample, ioProperty, UnicodeString(..) )
 
 
 tests :: [Test]
@@ -80,7 +79,7 @@ testBuilderRecipe =
     testProperty "toLazyByteStringWith" $ testRecipe <$> arbitrary
   where
     testRecipe r =
-        printTestCase msg $ x1 == x2
+        counterexample msg $ x1 == x2
       where
         x1 = renderRecipe r
         x2 = buildRecipe r
@@ -96,8 +95,23 @@ testHandlePutBuilder :: Test
 testHandlePutBuilder =
     testProperty "hPutBuilder" testRecipe
   where
-    testRecipe :: (String, String, String, Recipe) -> Bool
-    testRecipe args@(before, between, after, recipe) = unsafePerformIO $ do
+    testRecipe :: (UnicodeString, UnicodeString, UnicodeString, Recipe) -> Bool
+    testRecipe args =
+      unsafePerformIO $ do
+        let (UnicodeString a1, UnicodeString a2, UnicodeString a3, recipe) = args
+#if MIN_VERSION_base(4,5,0)
+            before  = a1
+            between = a2
+            after   = a3
+#else
+            -- See https://github.com/haskell/bytestring/issues/212
+            -- write -> read does not roundrip with GHC 7.2 and
+            -- characters in the \xEF00-\xEFFF range.
+            safeChr = \c -> c < '\xEF00' || c > '\xEFFF'
+            before  = filter safeChr a1
+            between = filter safeChr a2
+            after   = filter safeChr a3
+#endif
         tempDir <- getTemporaryDirectory
         (tempFile, tempH) <- openTempFile tempDir "TestBuilder"
         -- switch to UTF-8 encoding
@@ -299,7 +313,7 @@ instance Arbitrary Action where
       , W8  <$> arbitrary
       , W8S <$> listOf arbitrary
         -- ensure that larger character codes are also tested
-      , String <$> listOf ((\c -> chr (ord c * ord c)) <$> arbitrary)
+      , String . getUnicodeString <$> arbitrary
       , pure Flush
         -- never request more than 64kb free space
       , (EnsureFree . (`mod` 0xffff)) <$> arbitrary
@@ -455,7 +469,7 @@ testRunBuilder =
     testProperty "runBuilder" prop
   where
     prop actions =
-        morallyDubiousIOProperty $ do
+        ioProperty $ do
           let (builder, _) = recipeComponents recipe
               expected     = renderRecipe recipe
           actual <- bufferWriterOutput (runBuilder builder)

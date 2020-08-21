@@ -1,11 +1,12 @@
 {-# LANGUAGE DeriveDataTypeable, CPP, BangPatterns, RankNTypes,
              ForeignFunctionInterface, MagicHash, UnboxedTuples,
              UnliftedFFITypes #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 #if __GLASGOW_HASKELL__ >= 703
 {-# LANGUAGE Unsafe #-}
 #endif
-{-# OPTIONS_HADDOCK hide #-}
+{-# OPTIONS_HADDOCK not-home #-}
 
 -- |
 -- Module      : Data.ByteString.Short.Internal
@@ -15,7 +16,7 @@
 -- Maintainer  : duncan@community.haskell.org
 -- Stability   : stable
 -- Portability : ghc only
--- 
+--
 -- Internal representation of ShortByteString
 --
 module Data.ByteString.Short.Internal (
@@ -33,10 +34,19 @@ module Data.ByteString.Short.Internal (
     empty, null, length, index, unsafeIndex,
 
     -- * Low level operations
-    createFromPtr, copyToPtr
+    createFromPtr, copyToPtr,
+
+    -- * Low level conversions
+    -- ** Packing 'CString's and pointers
+    packCString,
+    packCStringLen,
+
+    -- ** Using ByteStrings as 'CString's
+    useAsCString,
+    useAsCStringLen
   ) where
 
-import Data.ByteString.Internal (ByteString(..), accursedUnutterablePerformIO)
+import Data.ByteString.Internal (ByteString(..), accursedUnutterablePerformIO, c_strlen)
 
 import Data.Typeable    (Typeable)
 import Data.Data        (Data(..), mkNoRepType)
@@ -47,6 +57,7 @@ import Data.Monoid      (Monoid(..))
 import Data.String      (IsString(..))
 import Control.DeepSeq  (NFData(..))
 import qualified Data.List as List (length)
+import Foreign.C.String (CString, CStringLen)
 #if MIN_VERSION_base(4,7,0)
 import Foreign.C.Types  (CSize(..), CInt(..))
 #elif MIN_VERSION_base(4,4,0)
@@ -54,6 +65,7 @@ import Foreign.C.Types  (CSize(..), CInt(..), CLong(..))
 #else
 import Foreign.C.Types  (CSize, CInt, CLong)
 #endif
+import Foreign.Marshal.Alloc (allocaBytes)
 import Foreign.Ptr
 import Foreign.ForeignPtr (touchForeignPtr)
 #if MIN_VERSION_base(4,5,0)
@@ -61,6 +73,7 @@ import Foreign.ForeignPtr.Unsafe (unsafeForeignPtrToPtr)
 #else
 import Foreign.ForeignPtr (unsafeForeignPtrToPtr)
 #endif
+import Foreign.Storable (pokeByteOff)
 
 #if MIN_VERSION_base(4,5,0)
 import qualified GHC.Exts
@@ -90,7 +103,8 @@ import GHC.ST         (ST(ST), runST)
 import GHC.Word
 
 import Prelude ( Eq(..), Ord(..), Ordering(..), Read(..), Show(..)
-               , ($), error, (++)
+               , ($), error, (++), (.)
+               , String, userError
                , Bool(..), (&&), otherwise
                , (+), (-), fromIntegral
                , return )
@@ -98,7 +112,7 @@ import Prelude ( Eq(..), Ord(..), Ordering(..), Read(..), Show(..)
 
 -- | A compact representation of a 'Word8' vector.
 --
--- It has a lower memory overhead than a 'ByteString' and and does not
+-- It has a lower memory overhead than a 'ByteString' and does not
 -- contribute to heap fragmentation. It can be converted to or from a
 -- 'ByteString' (at the cost of copying the string data). It supports very few
 -- other operations.
@@ -157,6 +171,16 @@ instance Show ShortByteString where
 instance Read ShortByteString where
     readsPrec p str = [ (packChars x, y) | (x, y) <- readsPrec p str ]
 
+#if MIN_VERSION_base(4,7,0)
+-- | @since 0.10.12.0
+instance GHC.Exts.IsList ShortByteString where
+  type Item ShortByteString = Word8
+  fromList = packBytes
+  toList   = unpackBytes
+#endif
+
+-- | Beware: 'fromString' truncates multi-byte characters to octets.
+-- e.g. "枯朶に烏のとまりけり秋の暮" becomes �6k�nh~�Q��n�
 instance IsString ShortByteString where
     fromString = packChars
 
@@ -185,7 +209,7 @@ length (SBS _ len) = len
 null :: ShortByteString -> Bool
 null sbs = length sbs == 0
 
--- | /O(1)/ 'ShortByteString' index (subscript) operator, starting from 0. 
+-- | /O(1)/ 'ShortByteString' index (subscript) operator, starting from 0.
 index :: ShortByteString -> Int -> Word8
 index sbs i
   | i >= 0 && i < length sbs = unsafeIndex sbs i
@@ -595,3 +619,60 @@ foreign import ccall unsafe "fpstring.h fps_memcpy_offsets"
                    -> ByteArray# -> CLong -> CSize -> IO ()
 #endif
 
+-- | /O(n)./ Construct a new @ShortByteString@ from a @CString@. The
+-- resulting @ShortByteString@ is an immutable copy of the original
+-- @CString@, and is managed on the Haskell heap. The original
+-- @CString@ must be null terminated.
+--
+-- @since 0.10.10.0
+packCString :: CString -> IO ShortByteString
+packCString cstr = do
+  len <- c_strlen cstr
+  packCStringLen (cstr, fromIntegral len)
+
+-- | /O(n)./ Construct a new @ShortByteString@ from a @CStringLen@. The
+-- resulting @ShortByteString@ is an immutable copy of the original @CStringLen@.
+-- The @ShortByteString@ is a normal Haskell value and will be managed on the
+-- Haskell heap.
+--
+-- @since 0.10.10.0
+packCStringLen :: CStringLen -> IO ShortByteString
+packCStringLen (cstr, len) | len >= 0 = createFromPtr cstr len
+packCStringLen (_, len) =
+  moduleErrorIO "packCStringLen" ("negative length: " ++ show len)
+
+-- | /O(n) construction./ Use a @ShortByteString@ with a function requiring a
+-- null-terminated @CString@.  The @CString@ is a copy and will be freed
+-- automatically; it must not be stored or used after the
+-- subcomputation finishes.
+--
+-- @since 0.10.10.0
+useAsCString :: ShortByteString -> (CString -> IO a) -> IO a
+useAsCString bs action =
+  allocaBytes (l+1) $ \buf -> do
+      copyToPtr bs 0 buf (fromIntegral l)
+      pokeByteOff buf l (0::Word8)
+      action buf
+  where l = length bs
+
+-- | /O(n) construction./ Use a @ShortByteString@ with a function requiring a @CStringLen@.
+-- As for @useAsCString@ this function makes a copy of the original @ShortByteString@.
+-- It must not be stored or used after the subcomputation finishes.
+--
+-- @since 0.10.10.0
+useAsCStringLen :: ShortByteString -> (CStringLen -> IO a) -> IO a
+useAsCStringLen bs action =
+  allocaBytes l $ \buf -> do
+      copyToPtr bs 0 buf (fromIntegral l)
+      action (buf, l)
+  where l = length bs
+
+-- ---------------------------------------------------------------------
+-- Internal utilities
+
+moduleErrorIO :: String -> String -> IO a
+moduleErrorIO fun msg = throwIO . userError $ moduleErrorMsg fun msg
+{-# NOINLINE moduleErrorIO #-}
+
+moduleErrorMsg :: String -> String -> String
+moduleErrorMsg fun msg = "Data.ByteString.Short." ++ fun ++ ':':' ':msg

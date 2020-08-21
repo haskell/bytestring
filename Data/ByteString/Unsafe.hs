@@ -125,7 +125,7 @@ unsafeDrop n (PS x s l) = assert (0 <= n && n <= l) $ PS x (s+n) (l-n)
 
 -- | /O(1)/ 'unsafePackAddressLen' provides constant-time construction of
 -- 'ByteString's, which is ideal for string literals. It packs a sequence
--- of bytes into a @ByteString@, given a raw 'Addr#' to the string, and
+-- of bytes into a 'ByteString', given a raw 'Addr#' to the string, and
 -- the length of the string.
 --
 -- This function is /unsafe/ in two ways:
@@ -134,8 +134,8 @@ unsafeDrop n (PS x s l) = assert (0 <= n && n <= l) $ PS x (s+n) (l-n)
 -- argument is incorrect, it is possible to overstep the end of the
 -- byte array.
 --
--- * if the underying Addr# is later modified, this change will be
--- reflected in resulting @ByteString@, breaking referential
+-- * if the underlying 'Addr#' is later modified, this change will be
+-- reflected in the resulting 'ByteString', breaking referential
 -- transparency.
 --
 -- If in doubt, don't use this function.
@@ -153,7 +153,7 @@ unsafePackAddressLen len addr# = do
 -- This function is /unsafe/, it is possible to break referential
 -- transparency by modifying the underlying buffer pointed to by the
 -- first argument. Any changes to the original buffer will be reflected
--- in the resulting @ByteString@.
+-- in the resulting 'ByteString'.
 --
 unsafePackCStringFinalizer :: Ptr Word8 -> Int -> IO () -> IO ByteString
 unsafePackCStringFinalizer p l f = do
@@ -165,7 +165,7 @@ unsafePackCStringFinalizer p l f = do
 -- references.
 --
 -- This function is /unsafe/, as there may be other
--- 'ByteStrings' referring to the same underlying pages. If you use
+-- 'ByteString's referring to the same underlying pages. If you use
 -- this, you need to have a proof of some kind that all 'ByteString's
 -- ever generated from the underlying byte array are no longer live.
 --
@@ -175,13 +175,13 @@ unsafeFinalize (PS p _ _) = FC.finalizeForeignPtr p
 ------------------------------------------------------------------------
 -- Packing CStrings into ByteStrings
 
--- | /O(n)/ Build a @ByteString@ from a @CString@. This value will have /no/
+-- | /O(n)/ Build a 'ByteString' from a 'CString'. This value will have /no/
 -- finalizer associated to it, and will not be garbage collected by
 -- Haskell. The ByteString length is calculated using /strlen(3)/,
 -- and thus the complexity is a /O(n)/.
 --
--- This function is /unsafe/. If the @CString@ is later modified, this
--- change will be reflected in the resulting @ByteString@, breaking
+-- This function is /unsafe/. If the 'CString' is later modified, this
+-- change will be reflected in the resulting 'ByteString', breaking
 -- referential transparency.
 --
 unsafePackCString :: CString -> IO ByteString
@@ -190,13 +190,13 @@ unsafePackCString cstr = do
     l <- c_strlen cstr
     return $! PS fp 0 (fromIntegral l)
 
--- | /O(1)/ Build a @ByteString@ from a @CStringLen@. This value will
+-- | /O(1)/ Build a 'ByteString' from a 'CStringLen'. This value will
 -- have /no/ finalizer associated with it, and will not be garbage
 -- collected by Haskell. This operation has /O(1)/ complexity as we
 -- already know the final size, so no /strlen(3)/ is required.
 --
--- This function is /unsafe/. If the original @CStringLen@ is later
--- modified, this change will be reflected in the resulting @ByteString@,
+-- This function is /unsafe/. If the original 'CStringLen' is later
+-- modified, this change will be reflected in the resulting 'ByteString',
 -- breaking referential transparency.
 --
 unsafePackCStringLen :: CStringLen -> IO ByteString
@@ -204,16 +204,16 @@ unsafePackCStringLen (ptr,len) = do
     fp <- newForeignPtr_ (castPtr ptr)
     return $! PS fp 0 (fromIntegral len)
 
--- | /O(n)/ Build a @ByteString@ from a malloced @CString@. This value will
+-- | /O(n)/ Build a 'ByteString' from a malloced 'CString'. This value will
 -- have a @free(3)@ finalizer associated to it.
 --
--- This function is /unsafe/. If the original @CString@ is later
--- modified, this change will be reflected in the resulting @ByteString@,
+-- This function is /unsafe/. If the original 'CString' is later
+-- modified, this change will be reflected in the resulting 'ByteString',
 -- breaking referential transparency.
 --
 -- This function is also unsafe if you call its finalizer twice,
 -- which will result in a /double free/ error, or if you pass it
--- a CString not allocated with 'malloc'.
+-- a 'CString' not allocated with 'Foreign.Marshal.Alloc.malloc'.
 --
 unsafePackMallocCString :: CString -> IO ByteString
 unsafePackMallocCString cstr = do
@@ -221,16 +221,16 @@ unsafePackMallocCString cstr = do
     len <- c_strlen cstr
     return $! PS fp 0 (fromIntegral len)
 
--- | /O(1)/ Build a @ByteString@ from a malloced @CStringLen@. This
+-- | /O(1)/ Build a 'ByteString' from a malloced 'CStringLen'. This
 -- value will have a @free(3)@ finalizer associated to it.
 --
--- This function is /unsafe/. If the original @CString@ is later
--- modified, this change will be reflected in the resulting @ByteString@,
+-- This function is /unsafe/. If the original 'CString' is later
+-- modified, this change will be reflected in the resulting 'ByteString',
 -- breaking referential transparency.
 --
 -- This function is also unsafe if you call its finalizer twice,
 -- which will result in a /double free/ error, or if you pass it
--- a CString not allocated with 'malloc'.
+-- a 'CString' not allocated with 'Foreign.Marshal.Alloc.malloc'.
 --
 unsafePackMallocCStringLen :: CStringLen -> IO ByteString
 unsafePackMallocCStringLen (cstr, len) = do
@@ -239,26 +239,26 @@ unsafePackMallocCStringLen (cstr, len) = do
 
 -- ---------------------------------------------------------------------
 
--- | /O(1) construction/ Use a @ByteString@ with a function requiring a
--- @CString@.
+-- | /O(1) construction/ Use a 'ByteString' with a function requiring a
+-- 'CString'.
 --
--- This function does zero copying, and merely unwraps a @ByteString@ to
--- appear as a @CString@. It is /unsafe/ in two ways:
+-- This function does zero copying, and merely unwraps a 'ByteString' to
+-- appear as a 'CString'. It is /unsafe/ in two ways:
 --
--- * After calling this function the @CString@ shares the underlying
--- byte buffer with the original @ByteString@. Thus modifying the
--- @CString@, either in C, or using poke, will cause the contents of the
--- @ByteString@ to change, breaking referential transparency. Other
--- @ByteStrings@ created by sharing (such as those produced via 'take'
--- or 'drop') will also reflect these changes. Modifying the @CString@
+-- * After calling this function the 'CString' shares the underlying
+-- byte buffer with the original 'ByteString'. Thus modifying the
+-- 'CString', either in C, or using poke, will cause the contents of the
+-- 'ByteString' to change, breaking referential transparency. Other
+-- 'ByteString's created by sharing (such as those produced via 'take'
+-- or 'drop') will also reflect these changes. Modifying the 'CString'
 -- will break referential transparency. To avoid this, use
--- @useAsCString@, which makes a copy of the original @ByteString@.
+-- 'Data.ByteString.useAsCString', which makes a copy of the original 'ByteString'.
 --
--- * @CStrings@ are often passed to functions that require them to be
--- null-terminated. If the original @ByteString@ wasn't null terminated,
--- neither will the @CString@ be. It is the programmers responsibility
--- to guarantee that the @ByteString@ is indeed null terminated. If in
--- doubt, use @useAsCString@.
+-- * 'CString's are often passed to functions that require them to be
+-- null-terminated. If the original 'ByteString' wasn't null terminated,
+-- neither will the 'CString' be. It is the programmers responsibility
+-- to guarantee that the 'ByteString' is indeed null terminated. If in
+-- doubt, use 'Data.ByteString.useAsCString'.
 --
 -- * The memory may freed at any point after the subcomputation
 -- terminates, so the pointer to the storage must *not* be used
@@ -267,20 +267,21 @@ unsafePackMallocCStringLen (cstr, len) = do
 unsafeUseAsCString :: ByteString -> (CString -> IO a) -> IO a
 unsafeUseAsCString (PS ps s _) ac = withForeignPtr ps $ \p -> ac (castPtr p `plusPtr` s)
 
--- | /O(1) construction/ Use a @ByteString@ with a function requiring a
--- @CStringLen@.
+-- | /O(1) construction/ Use a 'ByteString' with a function requiring a
+-- 'CStringLen'.
 --
--- This function does zero copying, and merely unwraps a @ByteString@ to
--- appear as a @CStringLen@. It is /unsafe/:
+-- This function does zero copying, and merely unwraps a 'ByteString' to
+-- appear as a 'CStringLen'. It is /unsafe/:
 --
--- * After calling this function the @CStringLen@ shares the underlying
--- byte buffer with the original @ByteString@. Thus modifying the
--- @CStringLen@, either in C, or using poke, will cause the contents of the
--- @ByteString@ to change, breaking referential transparency. Other
--- @ByteStrings@ created by sharing (such as those produced via 'take'
--- or 'drop') will also reflect these changes. Modifying the @CStringLen@
+-- * After calling this function the 'CStringLen' shares the underlying
+-- byte buffer with the original 'ByteString'. Thus modifying the
+-- 'CStringLen', either in C, or using poke, will cause the contents of the
+-- 'ByteString' to change, breaking referential transparency. Other
+-- 'ByteString's created by sharing (such as those produced via 'take'
+-- or 'drop') will also reflect these changes. Modifying the 'CStringLen'
 -- will break referential transparency. To avoid this, use
--- @useAsCStringLen@, which makes a copy of the original @ByteString@.
+-- 'Data.ByteString.useAsCStringLen', which makes a copy of the original 'ByteString'.
 --
+-- If 'Data.ByteString.empty' is given, it will pass @('Foreign.Ptr.nullPtr', 0)@.
 unsafeUseAsCStringLen :: ByteString -> (CStringLen -> IO a) -> IO a
 unsafeUseAsCStringLen (PS ps s l) f = withForeignPtr ps $ \p -> f (castPtr p `plusPtr` s,l)

@@ -1,10 +1,11 @@
 {-# LANGUAGE CPP, ForeignFunctionInterface, BangPatterns #-}
 {-# LANGUAGE UnliftedFFITypes, MagicHash,
             UnboxedTuples, DeriveDataTypeable #-}
+{-# LANGUAGE TypeFamilies #-}
 #if __GLASGOW_HASKELL__ >= 703
 {-# LANGUAGE Unsafe #-}
 #endif
-{-# OPTIONS_HADDOCK hide #-}
+{-# OPTIONS_HADDOCK not-home #-}
 
 -- |
 -- Module      : Data.ByteString.Internal
@@ -38,10 +39,12 @@ module Data.ByteString.Internal (
         -- * Low level imperative construction
         create,                 -- :: Int -> (Ptr Word8 -> IO ()) -> IO ByteString
         createUptoN,            -- :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
-        createAndTrim,          -- :: Int -> (Ptr Word8 -> IO Int) -> IO  ByteString
+        createUptoN',           -- :: Int -> (Ptr Word8 -> IO (Int, a)) -> IO (ByteString, a)
+        createAndTrim,          -- :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
         createAndTrim',         -- :: Int -> (Ptr Word8 -> IO (Int, Int, a)) -> IO (ByteString, a)
-        unsafeCreate,           -- :: Int -> (Ptr Word8 -> IO ()) ->  ByteString
-        unsafeCreateUptoN,      -- :: Int -> (Ptr Word8 -> IO Int) ->  ByteString
+        unsafeCreate,           -- :: Int -> (Ptr Word8 -> IO ()) -> ByteString
+        unsafeCreateUptoN,      -- :: Int -> (Ptr Word8 -> IO Int) -> ByteString
+        unsafeCreateUptoN',     -- :: Int -> (Ptr Word8 -> IO (Int, a)) -> (ByteString, a)
         mallocByteString,       -- :: Int -> IO (ForeignPtr a)
 
         -- * Conversion to and from ForeignPtrs
@@ -91,9 +94,14 @@ import Foreign.C.Types          (CInt, CSize, CULong)
 
 import Foreign.C.String         (CString)
 
-#if MIN_VERSION_base(4,9,0)
-import Data.Semigroup           (Semigroup((<>)))
+#if MIN_VERSION_base(4,13,0)
+import Data.Semigroup           (Semigroup (sconcat))
+import Data.List.NonEmpty       (NonEmpty ((:|)))
+#elif MIN_VERSION_base(4,9,0)
+import Data.Semigroup           (Semigroup ((<>), sconcat))
+import Data.List.NonEmpty       (NonEmpty ((:|)))
 #endif
+
 #if !(MIN_VERSION_base(4,8,0))
 import Data.Monoid              (Monoid(..))
 #endif
@@ -111,6 +119,10 @@ import Data.Typeable            (Typeable)
 import Data.Data                (Data(..), mkNoRepType)
 
 import GHC.Base                 (nullAddr#,realWorld#,unsafeChr)
+
+#if MIN_VERSION_base(4,7,0)
+import GHC.Exts                 (IsList(..))
+#endif
 
 #if MIN_VERSION_base(4,4,0)
 import GHC.CString              (unpackCString#)
@@ -156,6 +168,7 @@ instance Ord ByteString where
 #if MIN_VERSION_base(4,9,0)
 instance Semigroup ByteString where
     (<>)    = append
+    sconcat (b:|bs) = concat (b:bs)
 #endif
 
 instance Monoid ByteString where
@@ -176,6 +189,16 @@ instance Show ByteString where
 instance Read ByteString where
     readsPrec p str = [ (packChars x, y) | (x, y) <- readsPrec p str ]
 
+#if MIN_VERSION_base(4,7,0)
+-- | @since 0.10.12.0
+instance IsList ByteString where
+  type Item ByteString = Word8
+  fromList = packBytes
+  toList   = unpackBytes
+#endif
+
+-- | Beware: 'fromString' truncates multi-byte characters to octets.
+-- e.g. "枯朶に烏のとまりけり秋の暮" becomes �6k�nh~�Q��n�
 instance IsString ByteString where
     fromString = packChars
 
@@ -219,11 +242,11 @@ unsafePackLenChars len cs0 =
 -- | /O(n)/ Pack a null-terminated sequence of bytes, pointed to by an
 -- Addr\# (an arbitrary machine address assumed to point outside the
 -- garbage-collected heap) into a @ByteString@. A much faster way to
--- create an Addr\# is with an unboxed string literal, than to pack a
+-- create an 'Addr#' is with an unboxed string literal, than to pack a
 -- boxed string. A unboxed string literal is compiled to a static @char
 -- []@ by GHC. Establishing the length of the string requires a call to
--- @strlen(3)@, so the Addr# must point to a null-terminated buffer (as
--- is the case with "string"# literals in GHC). Use 'unsafePackAddressLen'
+-- @strlen(3)@, so the 'Addr#' must point to a null-terminated buffer (as
+-- is the case with @\"string\"\#@ literals in GHC). Use 'Data.ByteString.Unsafe.unsafePackAddressLen'
 -- if you know the length of the string statically.
 --
 -- An example:
@@ -231,10 +254,10 @@ unsafePackLenChars len cs0 =
 -- > literalFS = unsafePackAddress "literal"#
 --
 -- This function is /unsafe/. If you modify the buffer pointed to by the
--- original Addr# this modification will be reflected in the resulting
+-- original 'Addr#' this modification will be reflected in the resulting
 -- @ByteString@, breaking referential transparency.
 --
--- Note this also won't work if your Addr# has embedded '\0' characters in
+-- Note this also won't work if your 'Addr#' has embedded @\'\\0\'@ characters in
 -- the string, as @strlen@ will return too short a length.
 --
 unsafePackAddress :: Addr# -> IO ByteString
@@ -264,8 +287,8 @@ packUptoLenChars len cs0 =
     go !_ !0 cs     = return (len,   cs)
     go !p !n (c:cs) = poke p (c2w c) >> go (p `plusPtr` 1) (n-1) cs
 
--- Unpacking bytestrings into lists effeciently is a tradeoff: on the one hand
--- we would like to write a tight loop that just blats the list into memory, on
+-- Unpacking bytestrings into lists efficiently is a tradeoff: on the one hand
+-- we would like to write a tight loop that just blasts the list into memory, on
 -- the other hand we want it to be unpacked lazily so we don't end up with a
 -- massive list data structure in memory.
 --
@@ -365,11 +388,12 @@ unsafeCreateUptoN :: Int -> (Ptr Word8 -> IO Int) -> ByteString
 unsafeCreateUptoN l f = unsafeDupablePerformIO (createUptoN l f)
 {-# INLINE unsafeCreateUptoN #-}
 
+-- | @since 0.10.12.0
 unsafeCreateUptoN' :: Int -> (Ptr Word8 -> IO (Int, a)) -> (ByteString, a)
 unsafeCreateUptoN' l f = unsafeDupablePerformIO (createUptoN' l f)
 {-# INLINE unsafeCreateUptoN' #-}
 
--- | Create ByteString of size @l@ and use action @f@ to fill it's contents.
+-- | Create ByteString of size @l@ and use action @f@ to fill its contents.
 create :: Int -> (Ptr Word8 -> IO ()) -> IO ByteString
 create l f = do
     fp <- mallocByteString l
@@ -377,8 +401,9 @@ create l f = do
     return $! PS fp 0 l
 {-# INLINE create #-}
 
--- | Create ByteString of up to size size @l@ and use action @f@ to fill it's
--- contents which returns its true size.
+-- | Given a maximum size @l@ and an action @f@ that fills the 'ByteString'
+-- starting at the given 'Ptr' and returns the actual utilized length,
+-- @`createUpToN'` l f@ returns the filled 'ByteString'.
 createUptoN :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
 createUptoN l f = do
     fp <- mallocByteString l
@@ -386,7 +411,10 @@ createUptoN l f = do
     assert (l' <= l) $ return $! PS fp 0 l'
 {-# INLINE createUptoN #-}
 
--- | Create ByteString of up to size @l@ and use action @f@ to fill it's contents which returns its true size.
+-- | Like 'createUpToN', but also returns an additional value created by the
+-- action.
+--
+-- @since 0.10.12.0
 createUptoN' :: Int -> (Ptr Word8 -> IO (Int, a)) -> IO (ByteString, a)
 createUptoN' l f = do
     fp <- mallocByteString l
@@ -423,7 +451,7 @@ createAndTrim' l f = do
                             memcpy p' (p `plusPtr` off) l'
                     return (ps, res)
 
--- | Wrapper of 'mallocForeignPtrBytes' with faster implementation for GHC
+-- | Wrapper of 'Foreign.ForeignPtr.mallocForeignPtrBytes' with faster implementation for GHC
 --
 mallocByteString :: Int -> IO (ForeignPtr a)
 mallocByteString = mallocPlainForeignPtrBytes
@@ -563,7 +591,7 @@ overflowError fun = error $ "Data.ByteString." ++ fun ++ ": size overflow"
 
 ------------------------------------------------------------------------
 
--- | This \"function\" has a superficial similarity to 'unsafePerformIO' but
+-- | This \"function\" has a superficial similarity to 'System.IO.Unsafe.unsafePerformIO' but
 -- it is in fact a malevolent agent of chaos. It unpicks the seams of reality
 -- (and the 'IO' monad) so that the normal rules no longer apply. It lulls you
 -- into thinking it is reasonable, but when you are not looking it stabs you
@@ -594,7 +622,7 @@ accursedUnutterablePerformIO (IO m) = case m realWorld# of (# _, r #) -> r
 inlinePerformIO :: IO a -> a
 inlinePerformIO = accursedUnutterablePerformIO
 {-# INLINE inlinePerformIO #-}
-{-# DEPRECATED inlinePerformIO "If you think you know what you are doing, use 'unsafePerformIO'. If you are sure you know what you are doing, use 'unsafeDupablePerformIO'. If you enjoy sharing an address space with a malevolent agent of chaos, try 'accursedUnutterablePerformIO'." #-}
+{-# DEPRECATED inlinePerformIO "If you think you know what you are doing, use 'System.IO.Unsafe.unsafePerformIO'. If you are sure you know what you are doing, use 'unsafeDupablePerformIO'. If you enjoy sharing an address space with a malevolent agent of chaos, try 'accursedUnutterablePerformIO'." #-}
 
 -- ---------------------------------------------------------------------
 --

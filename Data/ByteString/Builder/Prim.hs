@@ -101,24 +101,24 @@ import           Data.ByteString.Builder.Prim
 
 renderString :: String -\> Builder
 renderString cs =
-    B.charUtf8 \'\"\' \<\> E.'encodeListWithB' escape cs \<\> B.charUtf8 \'\"\'
+    B.charUtf8 \'\"\' \<\> 'P.primMapListBounded' escape cs \<\> B.charUtf8 \'\"\'
   where
-    escape :: E.'BoundedPrim' Char
+    escape :: 'P.BoundedPrim' Char
     escape =
       'condB' (== \'\\\\\') (fixed2 (\'\\\\\', \'\\\\\')) $
       'condB' (== \'\\\"\') (fixed2 (\'\\\\\', \'\\\"\')) $
-      E.'charUtf8'
+      'charUtf8'
     &#160;
     {&#45;\# INLINE fixed2 \#&#45;}
-    fixed2 x = 'liftFixedToBounded' $ const x '>$<' E.'char7' '>*<' E.'char7'
+    fixed2 x = 'P.liftFixedToBounded' $ const x '>$<' 'P.char7' '>*<' 'P.char7'
 @
 
 The code should be mostly self-explanatory. The slightly awkward syntax is
 because the combinators are written such that the size-bound of the resulting
 'BoundedPrim' can be computed at compile time. We also explicitly inline the
-'fixed2' primitive, which encodes a fixed tuple of characters, to ensure that
+@fixed2@ primitive, which encodes a fixed tuple of characters, to ensure that
 the bound computation happens at compile time. When encoding the following list
-of 'String's, the optimized implementation of 'renderString' is two times
+of 'String's, the optimized implementation of @renderString@ is two times
 faster.
 
 @
@@ -141,23 +141,23 @@ exploits that the escaped character with the maximal Unicode codepoint is \'>\'.
 
 @
 {&#45;\# INLINE charUtf8HtmlEscaped \#&#45;}
-charUtf8HtmlEscaped :: E.BoundedPrim Char
+charUtf8HtmlEscaped :: 'BoundedPrim' Char
 charUtf8HtmlEscaped =
-    'condB' (>  \'\>\' ) E.'charUtf8' $
+    'condB' (>  \'\>\' ) 'charUtf8' $
     'condB' (== \'\<\' ) (fixed4 (\'&\',(\'l\',(\'t\',\';\')))) $        -- &lt;
     'condB' (== \'\>\' ) (fixed4 (\'&\',(\'g\',(\'t\',\';\')))) $        -- &gt;
     'condB' (== \'&\' ) (fixed5 (\'&\',(\'a\',(\'m\',(\'p\',\';\'))))) $  -- &amp;
     'condB' (== \'\"\' ) (fixed5 (\'&\',(\'\#\',(\'3\',(\'4\',\';\'))))) $  -- &\#34;
     'condB' (== \'\\\'\') (fixed5 (\'&\',(\'\#\',(\'3\',(\'9\',\';\'))))) $  -- &\#39;
-    ('liftFixedToBounded' E.'char7')         -- fallback for 'Char's smaller than \'\>\'
+    ('liftFixedToBounded' 'char7')         -- fallback for 'Char's smaller than \'\>\'
   where
     {&#45;\# INLINE fixed4 \#&#45;}
     fixed4 x = 'liftFixedToBounded' $ const x '>$<'
-      E.char7 '>*<' E.char7 '>*<' E.char7 '>*<' E.char7
+      char7 '>*<' char7 '>*<' char7 '>*<' char7
     &#160;
     {&#45;\# INLINE fixed5 \#&#45;}
     fixed5 x = 'liftFixedToBounded' $ const x '>$<'
-      E.char7 '>*<' E.char7 '>*<' E.char7 '>*<' E.char7 '>*<' E.char7
+      char7 '>*<' char7 '>*<' char7 '>*<' char7 '>*<' char7
 @
 
 This module currently does not expose functions that require the special
@@ -302,7 +302,7 @@ corresponding functions in future releases of this library.
 -- >
 -- > renderString :: String -> Builder
 -- > renderString cs =
--- >     charUtf8 '"' <> encodeListWithB escapedUtf8 cs <> charUtf8 '"'
+-- >     charUtf8 '"' <> primMapListBounded escapedUtf8 cs <> charUtf8 '"'
 -- >   where
 -- >     escapedUtf8 :: BoundedPrim Char
 -- >     escapedUtf8 =
@@ -378,7 +378,8 @@ module Data.ByteString.Builder.Prim (
   , FixedPrim
 
   -- ** Combinators
-  -- | The combinators for 'FixedPrim's are implemented such that the 'size'
+  -- | The combinators for 'FixedPrim's are implemented such that the
+  -- 'Data.ByteString.Builder.Prim.size'
   -- of the resulting 'FixedPrim' is computed at compile time.
   --
   -- The '(>*<)' and '(>$<)' pairing and mapping operators can be used
@@ -391,7 +392,7 @@ module Data.ByteString.Builder.Prim (
   -- for constructing 'Builder's from 'FixedPrim's. The fused variants of
   -- this function are provided because they allow for more efficient
   -- implementations. Our compilers are just not smart enough yet; and for some
-  -- of the employed optimizations (see the code of 'encodeByteStringWithF')
+  -- of the employed optimizations (see the code of 'primMapByteStringFixed')
   -- they will very likely never be.
   --
   -- Note that functions marked with \"/Heavy inlining./\" are forced to be
@@ -399,12 +400,12 @@ module Data.ByteString.Builder.Prim (
   -- but are rather heavy in terms of code size. We recommend to define a
   -- top-level function for every concrete instantiation of such a function in
   -- order to share its code. A typical example is the function
-  -- 'byteStringHex' from "Data.ByteString.Builder.ASCII", which is
-  -- implemented as follows.
+  -- 'Data.ByteString.Builder.byteStringHex' from "Data.ByteString.Builder.ASCII",
+  -- which is implemented as follows.
   --
   -- @
   -- byteStringHex :: S.ByteString -> Builder
-  -- byteStringHex = 'encodeByteStringWithF' 'word8HexFixed'
+  -- byteStringHex = 'primMapByteStringFixed' 'word8HexFixed'
   -- @
   --
   , primFixed
@@ -512,10 +513,10 @@ primUnfoldrFixed = primUnfoldrBounded . toB
 -- copying it to the buffer to be filled.
 --
 -- > mapToBuilder :: (Word8 -> Word8) -> S.ByteString -> Builder
--- > mapToBuilder f = encodeByteStringWithF (contramapF f word8)
+-- > mapToBuilder f = primMapByteStringFixed (contramapF f word8)
 --
 -- We can also use it to hex-encode a strict 'S.ByteString' as shown by the
--- 'byteStringHex' example above.
+-- 'Data.ByteString.Builder.ASCII.byteStringHex' example above.
 {-# INLINE primMapByteStringFixed #-}
 primMapByteStringFixed :: FixedPrim Word8 -> (S.ByteString -> Builder)
 primMapByteStringFixed = primMapByteStringBounded . toB
@@ -582,13 +583,7 @@ primBounded w x =
 -- TODO: The same rules for 'putBuilder (..) >> putBuilder (..)'
 
 -- | Create a 'Builder' that encodes a list of values consecutively using a
--- 'BoundedPrim' for each element. This function is more efficient than the
--- canonical
---
--- > filter p =
--- >  B.toLazyByteString .
--- >  E.encodeLazyByteStringWithF (E.ifF p E.word8) E.emptyF)
--- >
+-- 'BoundedPrim' for each element. This function is more efficient than
 --
 -- > mconcat . map (primBounded w)
 --
@@ -640,9 +635,9 @@ primUnfoldrBounded w f x0 =
 -- using a 'BoundedPrim'. For example, we can write a 'Builder' that filters
 -- a strict 'S.ByteString' as follows.
 --
--- > import Data.ByteString.Builder.Primas P (word8, condB, emptyB)
+-- > import qualified Data.ByteString.Builder.Prim as P
 --
--- > filterBS p = P.condB p P.word8 P.emptyB
+-- > filterBS p = P.condB p (P.liftFixedToBounded P.word8) P.emptyB
 --
 {-# INLINE primMapByteStringBounded #-}
 primMapByteStringBounded :: BoundedPrim Word8 -> S.ByteString -> Builder
@@ -659,7 +654,7 @@ primMapByteStringBounded w =
               touchForeignPtr ifp -- input buffer consumed
               k br
 
-          | op0 `plusPtr` bound < ope =
+          | op0 `plusPtr` bound <= ope =
               goPartial (ip0 `plusPtr` min outRemaining inpRemaining)
 
           | otherwise  = return $ bufferFull bound op0 (goBS ip0)
@@ -755,7 +750,7 @@ char8 = (fromIntegral . ord) >$< word8
 -- | UTF-8 encode a 'Char'.
 {-# INLINE charUtf8 #-}
 charUtf8 :: BoundedPrim Char
-charUtf8 = boudedPrim 4 (encodeCharUtf8 f1 f2 f3 f4)
+charUtf8 = boundedPrim 4 (encodeCharUtf8 f1 f2 f3 f4)
   where
     pokeN n io op  = io op >> return (op `plusPtr` n)
 

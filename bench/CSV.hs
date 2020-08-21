@@ -7,12 +7,12 @@
 -- Stability   : experimental
 -- Portability : tested on GHC only
 --
--- Running example for documentation of Data.ByteString.Lazy.Builder
+-- Running example for documentation of Data.ByteString.Builder
 --
 module Main (main) where
 
 -- **************************************************************************
--- CamHac 2011: An introduction to Data.ByteString.Lazy.Builder
+-- CamHac 2011: An introduction to Data.ByteString.Builder
 -- **************************************************************************
 
 
@@ -39,7 +39,7 @@ module Main (main) where
 
 
 
-{- Data.ByteString.Lazy.Builder
+{- Data.ByteString.Builder
  ------------------------------
 
  A solution to the "Encoding Problem"  (based on the code of blaze-builder).
@@ -109,20 +109,21 @@ module Main (main) where
 
 import qualified Data.ByteString                     as S
 import qualified Data.ByteString.Lazy                as L
+-- bytestring used by Data.Text.Lazy
+import qualified "bytestring" Data.ByteString.Lazy   as BaseL
 
-import           Data.ByteString.Lazy.Builder                         as B
-import           Data.ByteString.Lazy.Builder.ASCII                   as B
+import           Data.ByteString.Builder                         as B
 
 import Data.Monoid
 import Data.Foldable (foldMap)
 
-import Criterion.Main
+import Gauge.Main
 import Control.DeepSeq
 
 
 -- To be used in a later optimization
-import           Data.ByteString.Lazy.Builder.BasicEncoding ( (>*<), (>$<) )
-import qualified Data.ByteString.Lazy.Builder.BasicEncoding         as E
+import           Data.ByteString.Builder.Prim.Internal ( (>*<), (>$<) )
+import qualified Data.ByteString.Builder.Prim         as E
 
 -- To be used in a later comparison
 import qualified Data.DList                                      as D
@@ -134,7 +135,6 @@ import qualified Data.Text.Lazy.Builder                          as TB
 import qualified Data.Text.Lazy.Builder.Int                      as TB
 
 import Data.Char (ord)
-import qualified Data.Binary.Builder                             as BinB
 
 
 ------------------------------------------------------------------------------
@@ -209,15 +209,9 @@ benchStringUtf8 = bench "utf8 + renderTable maxiTable" $
 -- Builder based rendering
 ------------------------------------------------------------------------------
 
--- better syntax for `mappend`
-infixr 4 <>
-(<>) :: Monoid m => m -> m -> m
-(<>) = mappend
-
 -- As a reminder:
 --
--- import  Data.ByteString.Lazy.Builder       as B
--- import  Data.ByteString.Lazy.Builder.Utf8  as B
+-- import  Data.ByteString.Builder       as B
 
 renderStringB :: String -> Builder
 renderStringB cs = B.charUtf8 '"' <> foldMap escape cs <> B.charUtf8 '"'
@@ -291,13 +285,13 @@ benchNF = bench "nf maxiTable" $ nf id maxiTable
      - compositional: coalesce buffer-checks, ...
 
        E.encodeIfB :: (a -> Bool)
-                   -> BoundedEncoding a -> BoundedEncoding a -> BoundedEncoding a
-       E.charUtf8  :: BoundedEncoding Char
-       (>*<)       :: BoundedEncoding a -> BoundedEncoding b -> BoundedEncoding (a, b)
+                   -> BoundedPrim a -> BoundedPrim a -> BoundedPrim a
+       E.charUtf8  :: BoundedPrim Char
+       (>*<)       :: BoundedPrim a -> BoundedPrim b -> BoundedPrim (a, b)
 
-       (>$<)       :: (b -> a) -> BoundedEncoding a -> BoundedEncoding b
+       (>$<)       :: (b -> a) -> BoundedPrim a -> BoundedPrim b
 
-       ^ BoundedEncodings are contrafunctors; like most data-sinks
+       ^ BoundedPrims are contrafunctors; like most data-sinks
 
 
      - Implementation relies heavily on inlining to compute bounds and
@@ -306,12 +300,12 @@ benchNF = bench "nf maxiTable" $ nf id maxiTable
 
 renderStringBE :: String -> Builder
 renderStringBE cs =
-    B.charUtf8 '"' <> E.encodeListWithB escape cs <> B.charUtf8 '"'
+    B.charUtf8 '"' <> E.primMapListBounded escape cs <> B.charUtf8 '"'
   where
-    escape :: E.BoundedEncoding Char
+    escape :: E.BoundedPrim Char
     escape =
-      E.ifB (== '\\') (const ('\\', '\\') >$< E.charUtf8 >*< E.charUtf8) $
-      E.ifB (== '\"') (const ('\\', '\"') >$< E.charUtf8 >*< E.charUtf8) $
+      E.condB (== '\\') (const ('\\', '\\') >$< E.charUtf8 >*< E.charUtf8) $
+      E.condB (== '\"') (const ('\\', '\"') >$< E.charUtf8 >*< E.charUtf8) $
       E.charUtf8
 
 renderCellBE :: Cell -> Builder
@@ -389,42 +383,6 @@ benchDListUtf8String = bench "utf8-light + renderTable maxiTable" $
 -}
 
 ------------------------------------------------------------------------------
--- Data.Binary.Builder based rendering
-------------------------------------------------------------------------------
-
--- Note that as of binary-0.6.0.0 the binary builder is the same as the one
--- provided by the bytestring library.
-
-{-# INLINE char8BinB #-}
-char8BinB :: Char -> BinB.Builder
-char8BinB = BinB.singleton . fromIntegral . ord
-
-renderStringBinB :: String -> BinB.Builder
-renderStringBinB cs = char8BinB '"' <> foldMap escape cs <> char8BinB '"'
-  where
-    escape '\\' = char8BinB '\\' <> char8BinB '\\'
-    escape '\"' = char8BinB '\\' <> char8BinB '"'
-    escape c    = char8BinB c
-
-renderCellBinB :: Cell -> BinB.Builder
-renderCellBinB (StringC cs) = renderStringBinB cs
-renderCellBinB (IntC i)     = B.intDec i
-
-renderRowBinB :: Row -> BinB.Builder
-renderRowBinB []     = mempty
-renderRowBinB (c:cs) =
-    renderCellBinB c <> mconcat [ char8BinB ',' <> renderCellBinB c' | c' <- cs ]
-
-renderTableBinB :: Table -> BinB.Builder
-renderTableBinB rs = mconcat [renderRowBinB r <> char8BinB '\n' | r <- rs]
-
--- 1.22 ms
-benchBinaryBuilderChar8 :: Benchmark
-benchBinaryBuilderChar8 = bench "char8 + renderTableBinB maxiTable" $
-  nf (L.length . BinB.toLazyByteString . renderTableBinB) maxiTable
-
-
-------------------------------------------------------------------------------
 -- Text Builder
 ------------------------------------------------------------------------------
 
@@ -455,7 +413,7 @@ benchTextBuilder = bench "renderTableTB maxiTable" $
 -- 1.10 ms
 benchTextBuilderUtf8 :: Benchmark
 benchTextBuilderUtf8 = bench "utf8 + renderTableTB maxiTable" $
-  nf (L.length . TL.encodeUtf8 . TB.toLazyText . renderTableTB) maxiTable
+  nf (BaseL.length . TL.encodeUtf8 . TB.toLazyText . renderTableTB) maxiTable
 
 ------------------------------------------------------------------------------
 -- Benchmarking
@@ -475,7 +433,6 @@ main = do
       , benchStringUtf8
       , benchDListUtf8
       , benchDListUtf8Light
-      , benchBinaryBuilderChar8
       , benchTextBuilder
       , benchTextBuilderUtf8
       , benchBuilderUtf8
