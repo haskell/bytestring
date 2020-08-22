@@ -2,6 +2,9 @@
 {-# LANGUAGE UnliftedFFITypes, MagicHash,
             UnboxedTuples, DeriveDataTypeable #-}
 {-# LANGUAGE TypeFamilies #-}
+#if __GLASGOW_HASKELL__ >= 800
+{-# LANGUAGE PatternSynonyms, ViewPatterns #-}
+#endif
 #if __GLASGOW_HASKELL__ >= 703
 {-# LANGUAGE Unsafe #-}
 #endif
@@ -27,7 +30,12 @@
 module Data.ByteString.Internal (
 
         -- * The @ByteString@ type and representation
-        ByteString(..),         -- instances: Eq, Ord, Show, Read, Data, Typeable
+        ByteString
+        ( BS
+#if __GLASGOW_HASKELL__ >= 800
+        , PS -- backwards compatibility shim
+#endif
+        ), -- instances: Eq, Ord, Show, Read, Data, Typeable
 
         -- * Conversion with lists: packing and unpacking
         packBytes, packUptoLenBytes, unsafePackLenBytes,
@@ -50,6 +58,8 @@ module Data.ByteString.Internal (
         -- * Conversion to and from ForeignPtrs
         fromForeignPtr,         -- :: ForeignPtr Word8 -> Int -> Int -> ByteString
         toForeignPtr,           -- :: ByteString -> (ForeignPtr Word8, Int, Int)
+        fromForeignPtr0,        -- :: ForeignPtr Word8 -> Int -> ByteString
+        toForeignPtr0,          -- :: ByteString -> (ForeignPtr Word8, Int)
 
         -- * Utilities
         nullForeignPtr,         -- :: ForeignPtr Word8
@@ -76,7 +86,10 @@ module Data.ByteString.Internal (
 
         -- * Deprecated and unmentionable
         accursedUnutterablePerformIO, -- :: IO a -> a
-        inlinePerformIO               -- :: IO a -> a
+        inlinePerformIO,              -- :: IO a -> a
+
+        -- * Exported compatibility shim
+        plusForeignPtr
   ) where
 
 import Prelude hiding (concat, null)
@@ -105,6 +118,7 @@ import Data.List.NonEmpty       (NonEmpty ((:|)))
 #if !(MIN_VERSION_base(4,8,0))
 import Data.Monoid              (Monoid(..))
 #endif
+
 
 import Control.DeepSeq          (NFData(rnf))
 
@@ -140,10 +154,36 @@ import GHC.IOBase               (IO(IO),RawBuffer,unsafeDupablePerformIO)
 
 import GHC.ForeignPtr           (ForeignPtr(ForeignPtr)
                                 ,newForeignPtr_, mallocPlainForeignPtrBytes)
+#if MIN_VERSION_base(4,10,0)
+import GHC.ForeignPtr           (plusForeignPtr)
+#else
+import GHC.Types                (Int (..))
+import GHC.Prim                 (plusAddr#)
+#endif
+
 import GHC.Ptr                  (Ptr(..), castPtr)
 
 -- CFILES stuff is Hugs only
 {-# CFILES cbits/fpstring.c #-}
+
+#if !MIN_VERSION_base(4,10,0)
+-- |Advances the given address by the given offset in bytes.
+--
+-- The new 'ForeignPtr' shares the finalizer of the original,
+-- equivalent from a finalization standpoint to just creating another
+-- reference to the original. That is, the finalizer will not be
+-- called before the new 'ForeignPtr' is unreachable, nor will it be
+-- called an additional time due to this call, and the finalizer will
+-- be called with the same address that it would have had this call
+-- not happened, *not* the new address.
+plusForeignPtr :: ForeignPtr a -> Int -> ForeignPtr b
+plusForeignPtr (ForeignPtr addr guts) (I# offset) = ForeignPtr (plusAddr# addr offset) guts
+{-# INLINE [0] plusForeignPtr #-}
+{-# RULES
+"ByteString plusForeignPtr/0" forall fp .
+   plusForeignPtr fp 0 = fp
+ #-}
+#endif
 
 -- -----------------------------------------------------------------------------
 
@@ -154,10 +194,30 @@ import GHC.Ptr                  (Ptr(..), castPtr)
 -- "Data.ByteString.Char8" it can be interpreted as containing 8-bit
 -- characters.
 --
-data ByteString = PS {-# UNPACK #-} !(ForeignPtr Word8) -- payload
-                     {-# UNPACK #-} !Int                -- offset
+data ByteString = BS {-# UNPACK #-} !(ForeignPtr Word8) -- payload
                      {-# UNPACK #-} !Int                -- length
     deriving (Typeable)
+
+
+#if __GLASGOW_HASKELL__ >= 800
+-- |
+-- @'PS' foreignPtr offset length@ represents a 'ByteString' with data
+-- backed by a given @foreignPtr@, starting at a given @offset@ in bytes
+-- and of a specified @length@.
+--
+-- This pattern is used to emulate the legacy 'ByteString' data
+-- constructor, so that pre-existing code generally doesn't need to
+-- change to benefit from the simplified 'BS' constructor and can
+-- continue to function unchanged.
+--
+-- /Note:/ Matching with this constructor will always be given a 0 'offset',
+-- as the base will be manipulated by 'plusForeignPtr' instead.
+--
+pattern PS :: ForeignPtr Word8 -> Int -> Int -> ByteString
+pattern PS fp zero len <- BS fp (((,) 0) -> (zero, len)) where
+  PS fp o len = BS (plusForeignPtr fp o) len
+{-# COMPLETE PS #-}
+#endif
 
 instance Eq  ByteString where
     (==)    = eq
@@ -172,7 +232,7 @@ instance Semigroup ByteString where
 #endif
 
 instance Monoid ByteString where
-    mempty  = PS nullForeignPtr 0 0
+    mempty  = BS nullForeignPtr 0
 #if MIN_VERSION_base(4,9,0)
     mappend = (<>)
 #else
@@ -181,7 +241,7 @@ instance Monoid ByteString where
     mconcat = concat
 
 instance NFData ByteString where
-    rnf PS{} = ()
+    rnf BS{} = ()
 
 instance Show ByteString where
     showsPrec p ps r = showsPrec p (unpackChars ps) r
@@ -264,7 +324,7 @@ unsafePackAddress :: Addr# -> IO ByteString
 unsafePackAddress addr# = do
     p <- newForeignPtr_ (castPtr cstr)
     l <- c_strlen cstr
-    return $ PS p 0 (fromIntegral l)
+    return $ BS p (fromIntegral l)
   where
     cstr :: CString
     cstr = Ptr addr#
@@ -305,22 +365,22 @@ unpackChars :: ByteString -> [Char]
 unpackChars bs = unpackAppendCharsLazy bs []
 
 unpackAppendBytesLazy :: ByteString -> [Word8] -> [Word8]
-unpackAppendBytesLazy (PS fp off len) xs
-  | len <= 100 = unpackAppendBytesStrict (PS fp off len) xs
-  | otherwise  = unpackAppendBytesStrict (PS fp off 100) remainder
+unpackAppendBytesLazy (BS fp len) xs
+  | len <= 100 = unpackAppendBytesStrict (BS fp len) xs
+  | otherwise  = unpackAppendBytesStrict (BS fp 100) remainder
   where
-    remainder  = unpackAppendBytesLazy (PS fp (off+100) (len-100)) xs
+    remainder  = unpackAppendBytesLazy (BS (plusForeignPtr fp 100) (len-100)) xs
 
   -- Why 100 bytes you ask? Because on a 64bit machine the list we allocate
   -- takes just shy of 4k which seems like a reasonable amount.
   -- (5 words per list element, 8 bytes per word, 100 elements = 4000 bytes)
 
 unpackAppendCharsLazy :: ByteString -> [Char] -> [Char]
-unpackAppendCharsLazy (PS fp off len) cs
-  | len <= 100 = unpackAppendCharsStrict (PS fp off len) cs
-  | otherwise  = unpackAppendCharsStrict (PS fp off 100) remainder
+unpackAppendCharsLazy (BS fp len) cs
+  | len <= 100 = unpackAppendCharsStrict (BS fp len) cs
+  | otherwise  = unpackAppendCharsStrict (BS fp 100) remainder
   where
-    remainder  = unpackAppendCharsLazy (PS fp (off+100) (len-100)) cs
+    remainder  = unpackAppendCharsLazy (BS (plusForeignPtr fp 100) (len-100)) cs
 
 -- For these unpack functions, since we're unpacking the whole list strictly we
 -- build up the result list in an accumulator. This means we have to build up
@@ -328,9 +388,9 @@ unpackAppendCharsLazy (PS fp off len) cs
 -- buffer and loops down until we hit the sentinal:
 
 unpackAppendBytesStrict :: ByteString -> [Word8] -> [Word8]
-unpackAppendBytesStrict (PS fp off len) xs =
+unpackAppendBytesStrict (BS fp len) xs =
     accursedUnutterablePerformIO $ withForeignPtr fp $ \base ->
-      loop (base `plusPtr` (off-1)) (base `plusPtr` (off-1+len)) xs
+      loop (base `plusPtr` (-1)) (base `plusPtr` (-1+len)) xs
   where
     loop !sentinal !p acc
       | p == sentinal = return acc
@@ -338,9 +398,9 @@ unpackAppendBytesStrict (PS fp off len) xs =
                            loop sentinal (p `plusPtr` (-1)) (x:acc)
 
 unpackAppendCharsStrict :: ByteString -> [Char] -> [Char]
-unpackAppendCharsStrict (PS fp off len) xs =
+unpackAppendCharsStrict (BS fp len) xs =
     accursedUnutterablePerformIO $ withForeignPtr fp $ \base ->
-      loop (base `plusPtr` (off-1)) (base `plusPtr` (off-1+len)) xs
+      loop (base `plusPtr` (-1)) (base `plusPtr` (-1+len)) xs
   where
     loop !sentinal !p acc
       | p == sentinal = return acc
@@ -366,13 +426,24 @@ fromForeignPtr :: ForeignPtr Word8
                -> Int -- ^ Offset
                -> Int -- ^ Length
                -> ByteString
-fromForeignPtr = PS
+fromForeignPtr fp o len = BS (plusForeignPtr fp o) len
 {-# INLINE fromForeignPtr #-}
+
+fromForeignPtr0 :: ForeignPtr Word8
+               -> Int -- ^ Length
+               -> ByteString
+fromForeignPtr0 = BS
+{-# INLINE fromForeignPtr0 #-}
 
 -- | /O(1)/ Deconstruct a ForeignPtr from a ByteString
 toForeignPtr :: ByteString -> (ForeignPtr Word8, Int, Int) -- ^ (ptr, offset, length)
-toForeignPtr (PS ps s l) = (ps, s, l)
+toForeignPtr (BS ps l) = (ps, 0, l)
 {-# INLINE toForeignPtr #-}
+
+-- | /O(1)/ Deconstruct a ForeignPtr from a ByteString
+toForeignPtr0 :: ByteString -> (ForeignPtr Word8, Int) -- ^ (ptr, length)
+toForeignPtr0 (BS ps l) = (ps, l)
+{-# INLINE toForeignPtr0 #-}
 
 -- | A way of creating ByteStrings outside the IO monad. The @Int@
 -- argument gives the final size of the ByteString.
@@ -398,7 +469,7 @@ create :: Int -> (Ptr Word8 -> IO ()) -> IO ByteString
 create l f = do
     fp <- mallocByteString l
     withForeignPtr fp $ \p -> f p
-    return $! PS fp 0 l
+    return $! BS fp l
 {-# INLINE create #-}
 
 -- | Given a maximum size @l@ and an action @f@ that fills the 'ByteString'
@@ -408,7 +479,7 @@ createUptoN :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
 createUptoN l f = do
     fp <- mallocByteString l
     l' <- withForeignPtr fp $ \p -> f p
-    assert (l' <= l) $ return $! PS fp 0 l'
+    assert (l' <= l) $ return $! BS fp l'
 {-# INLINE createUptoN #-}
 
 -- | Like 'createUpToN', but also returns an additional value created by the
@@ -419,7 +490,7 @@ createUptoN' :: Int -> (Ptr Word8 -> IO (Int, a)) -> IO (ByteString, a)
 createUptoN' l f = do
     fp <- mallocByteString l
     (l', res) <- withForeignPtr fp $ \p -> f p
-    assert (l' <= l) $ return (PS fp 0 l', res)
+    assert (l' <= l) $ return (BS fp l', res)
 {-# INLINE createUptoN' #-}
 
 -- | Given the maximum size needed and a function to make the contents
@@ -436,7 +507,7 @@ createAndTrim l f = do
     withForeignPtr fp $ \p -> do
         l' <- f p
         if assert (l' <= l) $ l' >= l
-            then return $! PS fp 0 l
+            then return $! BS fp l
             else create l' $ \p' -> memcpy p' p l'
 {-# INLINE createAndTrim #-}
 
@@ -446,7 +517,7 @@ createAndTrim' l f = do
     withForeignPtr fp $ \p -> do
         (off, l', res) <- f p
         if assert (l' <= l) $ l' >= l
-            then return (PS fp 0 l, res)
+            then return (BS fp l, res)
             else do ps <- create l' $ \p' ->
                             memcpy p' (p `plusPtr` off) l'
                     return (ps, res)
@@ -461,32 +532,32 @@ mallocByteString = mallocPlainForeignPtrBytes
 -- Implementations for Eq, Ord and Monoid instances
 
 eq :: ByteString -> ByteString -> Bool
-eq a@(PS fp off len) b@(PS fp' off' len')
-  | len /= len'              = False    -- short cut on length
-  | fp == fp' && off == off' = True     -- short cut for the same string
-  | otherwise                = compareBytes a b == EQ
+eq a@(BS fp len) b@(BS fp' len')
+  | len /= len' = False    -- short cut on length
+  | fp == fp'   = True     -- short cut for the same string
+  | otherwise   = compareBytes a b == EQ
 {-# INLINE eq #-}
 -- ^ still needed
 
 compareBytes :: ByteString -> ByteString -> Ordering
-compareBytes (PS _   _    0)    (PS _   _    0)    = EQ  -- short cut for empty strings
-compareBytes (PS fp1 off1 len1) (PS fp2 off2 len2) =
+compareBytes (BS _   0)    (BS _   0)    = EQ  -- short cut for empty strings
+compareBytes (BS fp1 len1) (BS fp2 len2) =
     accursedUnutterablePerformIO $
       withForeignPtr fp1 $ \p1 ->
       withForeignPtr fp2 $ \p2 -> do
-        i <- memcmp (p1 `plusPtr` off1) (p2 `plusPtr` off2) (min len1 len2)
+        i <- memcmp p1 p2 (min len1 len2)
         return $! case i `compare` 0 of
                     EQ  -> len1 `compare` len2
                     x   -> x
 
 append :: ByteString -> ByteString -> ByteString
-append (PS _   _    0)    b                  = b
-append a                  (PS _   _    0)    = a
-append (PS fp1 off1 len1) (PS fp2 off2 len2) =
+append (BS _   0)    b                  = b
+append a             (BS _   0)    = a
+append (BS fp1 len1) (BS fp2 len2) =
     unsafeCreate (len1+len2) $ \destptr1 -> do
       let destptr2 = destptr1 `plusPtr` len1
-      withForeignPtr fp1 $ \p1 -> memcpy destptr1 (p1 `plusPtr` off1) len1
-      withForeignPtr fp2 $ \p2 -> memcpy destptr2 (p2 `plusPtr` off2) len2
+      withForeignPtr fp1 $ \p1 -> memcpy destptr1 p1 len1
+      withForeignPtr fp2 $ \p2 -> memcpy destptr2 p2 len2
 
 concat :: [ByteString] -> ByteString
 concat = \bss0 -> goLen0 bss0 bss0
@@ -509,26 +580,26 @@ concat = \bss0 -> goLen0 bss0 bss0
   where
     -- It's still possible that the result is empty
     goLen0 _    []                     = mempty
-    goLen0 bss0 (PS _ _ 0     :bss)    = goLen0 bss0 bss
+    goLen0 bss0 (BS _ 0     :bss)    = goLen0 bss0 bss
     goLen0 bss0 (bs           :bss)    = goLen1 bss0 bs bss
 
     -- It's still possible that the result is a single chunk
     goLen1 _    bs []                  = bs
-    goLen1 bss0 bs (PS _ _ 0  :bss)    = goLen1 bss0 bs bss
-    goLen1 bss0 bs (PS _ _ len:bss)    = goLen bss0 (checkedAdd "concat" len' len) bss
-      where PS _ _ len' = bs
+    goLen1 bss0 bs (BS _ 0  :bss)    = goLen1 bss0 bs bss
+    goLen1 bss0 bs (BS _ len:bss)    = goLen bss0 (checkedAdd "concat" len' len) bss
+      where BS _ len' = bs
 
     -- General case, just find the total length we'll need
-    goLen bss0 !total (PS _ _ len:bss) = goLen bss0 total' bss
+    goLen bss0 !total (BS _ len:bss) = goLen bss0 total' bss
       where total' = checkedAdd "concat" total len
     goLen bss0 total [] =
       unsafeCreate total $ \ptr -> goCopy bss0 ptr
 
     -- Copy the data
     goCopy []                  !_   = return ()
-    goCopy (PS _  _   0  :bss) !ptr = goCopy bss ptr
-    goCopy (PS fp off len:bss) !ptr = do
-      withForeignPtr fp $ \p -> memcpy ptr (p `plusPtr` off) len
+    goCopy (BS _  0  :bss) !ptr = goCopy bss ptr
+    goCopy (BS fp len:bss) !ptr = do
+      withForeignPtr fp $ \p -> memcpy ptr p len
       goCopy bss (ptr `plusPtr` len)
 {-# NOINLINE concat #-}
 

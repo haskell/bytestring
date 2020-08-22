@@ -203,7 +203,7 @@ newBuffer size = do
 {-# INLINE byteStringFromBuffer #-}
 byteStringFromBuffer :: Buffer -> S.ByteString
 byteStringFromBuffer (Buffer fpbuf (BufferRange op _)) =
-    S.PS fpbuf 0 (op `minusPtr` unsafeForeignPtrToPtr fpbuf)
+    S.BS fpbuf (op `minusPtr` unsafeForeignPtrToPtr fpbuf)
 
 -- | Prepend the filled part of a 'Buffer' to a lazy 'L.ByteString'
 -- trimming it if necessary.
@@ -859,7 +859,7 @@ byteStringThreshold :: Int -> S.ByteString -> Builder
 byteStringThreshold maxCopySize =
     \bs -> builder $ step bs
   where
-    step !bs@(S.PS _ _ len) !k br@(BufferRange !op _)
+    step !bs@(S.BS _ len) !k br@(BufferRange !op _)
       | len <= maxCopySize = byteStringCopyStep bs k br
       | otherwise          = return $ insertChunk op bs k
 
@@ -875,7 +875,7 @@ byteStringCopy = \bs -> builder $ byteStringCopyStep bs
 
 {-# INLINE byteStringCopyStep #-}
 byteStringCopyStep :: S.ByteString -> BuildStep a -> BuildStep a
-byteStringCopyStep (S.PS ifp ioff isize) !k0 br0@(BufferRange op ope)
+byteStringCopyStep (S.BS ifp isize) !k0 br0@(BufferRange op ope)
     -- Ensure that the common case is not recursive and therefore yields
     -- better code.
     | op' <= ope = do copyBytes op ip isize
@@ -884,7 +884,7 @@ byteStringCopyStep (S.PS ifp ioff isize) !k0 br0@(BufferRange op ope)
     | otherwise  = do wrappedBytesCopyStep (BufferRange ip ipe) k br0
   where
     op'  = op `plusPtr` isize
-    ip   = unsafeForeignPtrToPtr ifp `plusPtr` ioff
+    ip   = unsafeForeignPtrToPtr ifp
     ipe  = ip `plusPtr` isize
     k br = do touchForeignPtr ifp  -- input consumed: OK to release here
               k0 br
@@ -1149,7 +1149,7 @@ buildStepToCIOS !(AllocationStrategy nextBuffer bufSize trim) =
               -- FIXME: We could reuse the trimmed buffer here.
               return $ Yield1 bs (mkCIOS False)
           | otherwise            =
-              return $ Yield1 (S.PS fpbuf 0 chunkSize) (mkCIOS False)
+              return $ Yield1 (S.BS fpbuf chunkSize) (mkCIOS False)
           where
             chunkSize = op' `minusPtr` pbuf
             size      = pe  `minusPtr` pbuf

@@ -638,10 +638,10 @@ primMapByteStringBounded w =
     \bs -> builder $ step bs
   where
     bound = I.sizeBound w
-    step (S.PS ifp ioff isize) !k =
-        goBS (unsafeForeignPtrToPtr ifp `plusPtr` ioff)
+    step (S.BS ifp isize) !k =
+        goBS (unsafeForeignPtrToPtr ifp)
       where
-        !ipe = unsafeForeignPtrToPtr ifp `plusPtr` (ioff + isize)
+        !ipe = unsafeForeignPtrToPtr ifp `plusPtr` isize
         goBS !ip0 !br@(BufferRange op0 ope)
           | ip0 >= ipe = do
               touchForeignPtr ifp -- input buffer consumed

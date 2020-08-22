@@ -66,7 +66,6 @@ import Foreign.C.Types  (CSize(..), CInt(..), CLong(..))
 import Foreign.C.Types  (CSize, CInt, CLong)
 #endif
 import Foreign.Marshal.Alloc (allocaBytes)
-import Foreign.Ptr
 import Foreign.ForeignPtr (touchForeignPtr)
 #if MIN_VERSION_base(4,5,0)
 import Foreign.ForeignPtr.Unsafe (unsafeForeignPtrToPtr)
@@ -250,10 +249,10 @@ toShort :: ByteString -> ShortByteString
 toShort !bs = unsafeDupablePerformIO (toShortIO bs)
 
 toShortIO :: ByteString -> IO ShortByteString
-toShortIO (PS fptr off len) = do
+toShortIO (BS fptr len) = do
     mba <- stToIO (newByteArray len)
     let ptr = unsafeForeignPtrToPtr fptr
-    stToIO (copyAddrToByteArray (ptr `plusPtr` off) mba 0 len)
+    stToIO (copyAddrToByteArray ptr mba 0 len)
     touchForeignPtr fptr
     BA# ba# <- stToIO (unsafeFreezeByteArray mba)
     return (SBS ba# LEN(len))
@@ -272,7 +271,7 @@ fromShortIO sbs = do
     stToIO (copyByteArray (asBA sbs) 0 mba 0 len)
     let fp = ForeignPtr (byteArrayContents# (unsafeCoerce# mba#))
                         (PlainPtr mba#)
-    return (PS fp 0 len)
+    return (BS fp len)
 #else
     -- Before base 4.6 ForeignPtrContents is not exported from GHC.ForeignPtr
     -- so we cannot get direct access to the mbarr#
@@ -281,7 +280,7 @@ fromShortIO sbs = do
     let ptr = unsafeForeignPtrToPtr fptr
     stToIO (copyByteArrayToAddr (asBA sbs) 0 ptr len)
     touchForeignPtr fptr
-    return (PS fptr 0 len)
+    return (BS fptr len)
 #endif
 
 

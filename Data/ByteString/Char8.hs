@@ -817,12 +817,12 @@ unsafeHead  = w2c . B.unsafeHead
 -- > break isSpace == breakSpace
 --
 breakSpace :: ByteString -> (ByteString,ByteString)
-breakSpace (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> do
-    i <- firstspace (p `plusPtr` s) 0 l
+breakSpace (BS x l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> do
+    i <- firstspace p 0 l
     return $! case () of {_
-        | i == 0    -> (empty, PS x s l)
-        | i == l    -> (PS x s l, empty)
-        | otherwise -> (PS x s i, PS x (s+i) (l-i))
+        | i == 0    -> (empty, BS x l)
+        | i == l    -> (BS x l, empty)
+        | otherwise -> (BS x i, BS (plusForeignPtr x i) (l-i))
     }
 {-# INLINE breakSpace #-}
 
@@ -840,9 +840,9 @@ firstspace !ptr !n !m
 --
 -- @since 0.10.12.0
 dropSpace :: ByteString -> ByteString
-dropSpace (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> do
-    i <- firstnonspace (p `plusPtr` s) 0 l
-    return $! if i == l then empty else PS x (s+i) (l-i)
+dropSpace (BS x l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> do
+    i <- firstnonspace p 0 l
+    return $! if i == l then empty else BS (plusForeignPtr x i) (l-i)
 {-# INLINE dropSpace #-}
 
 firstnonspace :: Ptr Word8 -> Int -> Int -> IO Int
