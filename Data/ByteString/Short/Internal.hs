@@ -225,6 +225,7 @@ indexMaybe :: ShortByteString -> Int -> Maybe Word8
 indexMaybe sbs i
   | i >= 0 && i < length sbs = Just $! unsafeIndex sbs i
   | otherwise                = Nothing
+{-# INLINE indexMaybe #-}
 
 -- | /O(1)/ 'ShortByteString' index, starting from 0, that returns 'Just' if:
 --
@@ -233,6 +234,7 @@ indexMaybe sbs i
 -- @since 0.11.0.0
 (!?) :: ShortByteString -> Int -> Maybe Word8
 (!?) = indexMaybe
+{-# INLINE (!?) #-}
 
 unsafeIndex :: ShortByteString -> Int -> Word8
 unsafeIndex sbs = indexWord8Array (asBA sbs)
