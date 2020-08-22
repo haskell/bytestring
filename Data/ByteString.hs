@@ -753,7 +753,7 @@ scanr1 f ps
 --
 -- > replicate w c = unfoldr w (\u -> Just (u,u)) c
 --
--- This implemenation uses @memset(3)@
+-- This implementation uses @memset(3)@
 replicate :: Int -> Word8 -> ByteString
 replicate w c
     | w <= 0    = empty
@@ -1317,7 +1317,7 @@ stripPrefix bs1@(BS _ l1) bs2
 --
 -- > isSuffixOf x y == reverse x `isPrefixOf` reverse y
 --
--- However, the real implemenation uses memcmp to compare the end of the
+-- However, the real implementation uses memcmp to compare the end of the
 -- string only, with no reverse required..
 isSuffixOf :: ByteString -> ByteString -> Bool
 isSuffixOf (BS x1 l1) (BS x2 l2)
