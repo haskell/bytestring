@@ -151,8 +151,6 @@ module Data.ByteString.Lazy (
 
         -- ** Search for arbitrary substrings
 --        isSubstringOf,          -- :: ByteString -> ByteString -> Bool
---        findSubstring,          -- :: ByteString -> ByteString -> Maybe Int
---        findSubstrings,         -- :: ByteString -> ByteString -> [Int]
 
         -- * Searching ByteStrings
 

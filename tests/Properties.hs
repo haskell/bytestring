@@ -1252,48 +1252,6 @@ prop_initsBB xs = inits xs == map P.unpack (P.inits (P.pack xs))
 
 prop_tailsBB xs = tails xs == map P.unpack (P.tails (P.pack xs))
 
--- The correspondence between the test 'ByteString' and naive test 'String'
--- must be injective, otherwise the ByteString may find matches at positions
--- that don't match in the "corresponding" string.  To that end, we start
--- with and pack a Word8 array, rather than a unicode String.
---
-prop_findSubstringsBB :: [Word8] -> Int -> Int -> Bool
-prop_findSubstringsBB ws x l
-    = let bstr = P.pack ws
-          -- we look for some random substring of the test string
-          slice = C.take l $ C.drop x bstr
-          str = C.unpack bstr
-          substr = C.unpack slice
-      in C.findSubstrings slice bstr == naive_findSubstrings substr str
-  where
-    -- naive reference implementation
-    -- Note, overlapping matches have been broken since 2015, so at this
-    -- point just test for the current behaviour.
-    naive_findSubstrings :: String -> String -> [Int]
-    naive_findSubstrings p q
-        | null p    = [0..length q]
-        | otherwise = go 0 (length p) p (length q) q
-    go n !lp p !lq q =
-        if (lp > lq)
-        then []
-        else if p `isPrefixOf` q
-        then n : go (n + lp) lp p (lq - lp) (drop lp q)
-        else go (n + 1) lp p (lq - 1) (tail q)
-
--- See above re injective string -> bytestring correspondence.
-prop_findSubstringBB :: [Word8] -> Int -> Int -> Bool
-prop_findSubstringBB ws x l
-    = let bstr = P.pack ws
-          -- we look for some random substring of the test string
-          slice = C.take l $ C.drop x bstr
-          str = C.unpack bstr
-          substr = C.unpack slice
-      in C.findSubstring slice bstr == naive_findSubstring substr str
-  where
-    -- naive reference implementation
-    naive_findSubstring :: String -> String -> Maybe Int
-    naive_findSubstring p q = listToMaybe [x | x <- [0..length q], p `isPrefixOf` drop x q]
-
 -- correspondance between break and breakSubstring
 prop_breakSubstringBB c l
     = P.break (== c) l == P.breakSubstring (P.singleton c) l
@@ -1303,12 +1261,6 @@ prop_breakSubstring_isInfixOf s l
                                      else case P.breakSubstring s l of
                                             (x,y) | P.null y  -> False
                                                   | otherwise -> True
-
-prop_breakSubstring_findSubstring s l
-    = P.findSubstring s l == if P.null s then Just 0
-                                       else case P.breakSubstring s l of
-                                            (x,y) | P.null y  -> Nothing
-                                                  | otherwise -> Just (P.length x)
 
 prop_replicate1BB c = forAll arbitrarySizedIntegral $ \n ->
                       P.unpack (P.replicate n c) == replicate n c
@@ -2277,10 +2229,7 @@ bb_tests =
     , testProperty "copy"           prop_copyLL
     , testProperty "inits"          prop_initsBB
     , testProperty "tails"          prop_tailsBB
-    , testProperty "findSubstrings "prop_findSubstringsBB
-    , testProperty "findSubstring "prop_findSubstringBB
     , testProperty "breakSubstring 1"prop_breakSubstringBB
-    , testProperty "breakSubstring 2"prop_breakSubstring_findSubstring
     , testProperty "breakSubstring 3"prop_breakSubstring_isInfixOf
 
     , testProperty "replicate1"     prop_replicate1BB

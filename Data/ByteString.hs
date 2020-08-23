@@ -138,8 +138,6 @@ module Data.ByteString (
 
         -- ** Search for arbitrary substrings
         breakSubstring,         -- :: ByteString -> ByteString -> (ByteString,ByteString)
-        findSubstring,          -- :: ByteString -> ByteString -> Maybe Int
-        findSubstrings,         -- :: ByteString -> ByteString -> [Int]
 
         -- * Searching ByteStrings
 
@@ -1336,10 +1334,9 @@ stripSuffix bs1@(BS _ l1) bs2@(BS _ l2)
    | bs1 `isSuffixOf` bs2 = Just (unsafeTake (l2 - l1) bs2)
    | otherwise = Nothing
 
--- | Check whether one string is a substring of another. @isInfixOf
--- p s@ is equivalent to @not (null (findSubstrings p s))@.
+-- | Check whether one string is a substring of another.
 isInfixOf :: ByteString -> ByteString -> Bool
-isInfixOf p s = isJust (findSubstring p s)
+isInfixOf p s = null p || not (null $ snd $ breakSubstring p s)
 
 -- | Break a string on a substring, returning a pair of the part of the
 -- string prior to the match, and the rest of the string.
@@ -1347,14 +1344,6 @@ isInfixOf p s = isJust (findSubstring p s)
 -- The following relationships hold:
 --
 -- > break (== c) l == breakSubstring (singleton c) l
---
--- and:
---
--- > findSubstring s l ==
--- >    if null s then Just 0
--- >              else case breakSubstring s l of
--- >                       (x,y) | null y    -> Nothing
--- >                             | otherwise -> Just (length x)
 --
 -- For example, to tokenise a string, dropping delimiters:
 --
@@ -1424,51 +1413,6 @@ breakSubstring pat =
             b  = fromIntegral (unsafeIndex src i)
             w' = mask .&. ((w `shiftL` 8) .|. b)
     {-# INLINE shift #-}
-
--- | Get the first index of a substring in another string,
---   or 'Nothing' if the string is not found.
---   @findSubstring p s@ is equivalent to @listToMaybe (findSubstrings p s)@.
-findSubstring :: ByteString -- ^ String to search for.
-              -> ByteString -- ^ String to seach in.
-              -> Maybe Int
-findSubstring pat src
-    | null pat && null src = Just 0
-    | null b = Nothing
-    | otherwise = Just (length a)
-  where (a, b) = breakSubstring pat src
-
-{-# DEPRECATED findSubstring "findSubstring is deprecated in favour of breakSubstring." #-}
-
--- | Find the indices of all non-overlapping occurences of a substring in a
--- string.
---
--- Note, prior to @0.10.6.0@ this function returned the indices of all
--- possibly-overlapping matches.
-findSubstrings :: ByteString -- ^ String to search for.
-               -> ByteString -- ^ String to seach in.
-               -> [Int]
-findSubstrings pat src
-    | null pat        = [0 .. ls]
-    | otherwise       = search 0
-  where
-    lp = length pat
-    ls = length src
-    search !n
-        | (n > ls - lp) || null b = []
-        | otherwise = let k = n + length a
-                      in  k : search (k + lp)
-      where
-        (a, b) = breakSubstring pat (unsafeDrop n src)
-
--- In
--- [0.10.6.0](<https://github.com/haskell/bytestring/commit/2160e091e215fecc9177d55a37cd50fc253ba86a?w=1>)
--- 'findSubstrings' was refactored to call an improved 'breakString'
--- implementation, but the refactored code no longer matches overlapping
--- strings.  The behaviour change appears to be inadvertent, but the function
--- had already been deprecated for more than seven years.  At this time
--- (@0.10.10.1@), the deprecation was twelve years in the past.
---
-{-# DEPRECATED findSubstrings "findSubstrings is deprecated in favour of breakSubstring." #-}
 
 -- ---------------------------------------------------------------------
 -- Zipping

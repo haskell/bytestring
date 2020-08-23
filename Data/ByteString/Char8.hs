@@ -148,8 +148,6 @@ module Data.ByteString.Char8 (
 
         -- ** Search for arbitrary substrings
         breakSubstring,         -- :: ByteString -> ByteString -> (ByteString,ByteString)
-        findSubstring,          -- :: ByteString -> ByteString -> Maybe Int
-        findSubstrings,         -- :: ByteString -> ByteString -> [Int]
 
         -- * Searching ByteStrings
 
@@ -249,7 +247,7 @@ import Data.ByteString (empty,null,length,tail,init,append
                        ,concat,take,drop,splitAt,intercalate
                        ,sort,isPrefixOf,isSuffixOf,isInfixOf
                        ,stripPrefix,stripSuffix
-                       ,findSubstring,findSubstrings,breakSubstring,copy,group
+                       ,breakSubstring,copy,group
 
                        ,getLine, getContents, putStr, interact
                        ,readFile, writeFile, appendFile
