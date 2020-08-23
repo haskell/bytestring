@@ -596,6 +596,7 @@ breakEnd f = B.breakEnd (f . w2c)
 -- > split '\n' "a\nb\nd\ne" == ["a","b","d","e"]
 -- > split 'a'  "aXaXaXa"    == ["","X","X","X",""]
 -- > split 'x'  "x"          == ["",""]
+-- > split undefined ""      == []  -- and not [""]
 --
 -- and
 --
@@ -616,6 +617,7 @@ split = B.split . c2w
 -- separators result in an empty component in the output.  eg.
 --
 -- > splitWith (=='a') "aabbaca" == ["","","bb","c",""]
+-- > splitWith undefined ""      == []  -- and not [""]
 --
 splitWith :: (Char -> Bool) -> ByteString -> [ByteString]
 splitWith f = B.splitWith (f . w2c)

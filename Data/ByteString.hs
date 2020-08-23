@@ -971,7 +971,7 @@ spanEnd  p ps = splitAt (findFromEndUntil (not.p) ps) ps
 -- separators result in an empty component in the output.  eg.
 --
 -- > splitWith (==97) "aabbaca" == ["","","bb","c",""] -- fromEnum 'a' == 97
--- > splitWith (==97) []        == []
+-- > splitWith undefined ""     == []                  -- and not [""]
 --
 splitWith :: (Word8 -> Bool) -> ByteString -> [ByteString]
 splitWith _pred (BS _  0) = []
@@ -1005,6 +1005,7 @@ splitWith pred_ (BS fp len) = splitWith0 pred# 0 len fp
 -- > split 10  "a\nb\nd\ne" == ["a","b","d","e"]   -- fromEnum '\n' == 10
 -- > split 97  "aXaXaXa"    == ["","X","X","X",""] -- fromEnum 'a' == 97
 -- > split 120 "x"          == ["",""]             -- fromEnum 'x' == 120
+-- > split undefined ""     == []                  -- and not [""]
 --
 -- and
 --

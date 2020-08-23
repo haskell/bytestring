@@ -791,7 +791,7 @@ span p = break (not . p)
 -- separators result in an empty component in the output.  eg.
 --
 -- > splitWith (==97) "aabbaca" == ["","","bb","c",""] -- fromEnum 'a' == 97
--- > splitWith (==97) []        == []
+-- > splitWith undefined ""     == []                  -- and not [""]
 --
 splitWith :: (Word8 -> Bool) -> ByteString -> [ByteString]
 splitWith _ Empty          = []
@@ -809,6 +809,7 @@ splitWith p (Chunk c0 cs0) = comb [] (S.splitWith p c0) cs0
 -- > split 10  "a\nb\nd\ne" == ["a","b","d","e"]   -- fromEnum '\n' == 10
 -- > split 97  "aXaXaXa"    == ["","X","X","X",""] -- fromEnum 'a' == 97
 -- > split 120 "x"          == ["",""]             -- fromEnum 'x' == 120
+-- > split undefined ""     == []                  -- and not [""]
 --
 -- and
 --
