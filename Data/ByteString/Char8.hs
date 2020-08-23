@@ -866,9 +866,9 @@ strip = dropWhile isSpace . dropWhileEnd isSpace
 -- but it is more efficient than using multiple reverses.
 --
 dropSpaceEnd :: ByteString -> ByteString
-dropSpaceEnd (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> do
-    i <- lastnonspace (p `plusPtr` s) (l-1)
-    return $! if i == (-1) then empty else PS x s (i+1)
+dropSpaceEnd (BS x l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> do
+    i <- lastnonspace p (l-1)
+    return $! if i == (-1) then empty else BS x (i+1)
 {-# INLINE dropSpaceEnd #-}
 
 lastnonspace :: Ptr Word8 -> Int -> IO Int
@@ -893,19 +893,18 @@ lines ps
 
 {-
 -- Just as fast, but more complex. Should be much faster, I thought.
+-- XXX: This version is not even correct.
 lines :: ByteString -> [ByteString]
-lines (PS _ _ 0) = []
-lines (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> do
-        let ptr = p `plusPtr` s
-
-            loop n = do
-                let q = memchr (ptr `plusPtr` n) 0x0a (fromIntegral (l-n))
-                if q == nullPtr
-                    then return [PS x (s+n) (l-n)]
-                    else do let i = q `minusPtr` ptr
-                            ls <- loop (i+1)
-                            return $! PS x (s+n) (i-n) : ls
-        loop 0
+lines (BS _ 0) = []
+lines (BS x l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> loop 0
+  where
+    loop n = do
+        let q = memchr (p `plusPtr` n) 0x0a (fromIntegral (l-n))
+        if q == nullPtr
+            then return [BS (plusForeignPtr x n) (l-n)]
+            else do let i = q `minusPtr` p
+                    ls <- loop (i+1)
+                    return $! PS (plusForeignPtr x n) (i-n) : ls
 -}
 
 -- | 'unlines' is an inverse operation to 'lines'.  It joins lines,
