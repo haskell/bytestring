@@ -1,9 +1,7 @@
-{-# LANGUAGE CPP, BangPatterns #-}
+{-# LANGUAGE BangPatterns #-}
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
 {-# OPTIONS_HADDOCK prune #-}
-#if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE Trustworthy #-}
-#endif
 
 -- |
 -- Module      : Data.ByteString.Lazy
@@ -227,10 +225,6 @@ import qualified Data.ByteString.Internal as S
 import qualified Data.ByteString.Unsafe as S
 import Data.ByteString.Lazy.Internal
 
-#if !(MIN_VERSION_base(4,8,0))
-import Control.Applicative      ((<$>))
-import Data.Monoid              (Monoid(..))
-#endif
 import Control.Monad            (mplus)
 import Data.Word                (Word8)
 import Data.Int                 (Int64)

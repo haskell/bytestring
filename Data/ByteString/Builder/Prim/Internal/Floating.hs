@@ -1,8 +1,5 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-#if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE Trustworthy #-}
-#endif
 -- |
 -- Copyright   : (c) 2010 Simon Meier
 --

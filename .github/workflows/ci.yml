@@ -11,13 +11,13 @@ defaults:
     shell: bash
 
 jobs:
-  build-old:
+  ghcprep:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: true
       matrix:
         os: [ubuntu-latest]
-        ghc: ['7.0.4', '7.2.2', '7.4.2', '7.6.3', '7.8.4']
+        ghc: ['8.0', '8.2', '8.4', '8.6', '8.8', '8.10', '9.0']
     steps:
     - uses: actions/checkout@v2
     - name: Update cabal package database
@@ -34,24 +34,15 @@ jobs:
         sudo add-apt-repository ppa:hvr/ghc -y
         sudo apt-get update
         sudo apt-get install ghc-${{ matrix.ghc }}
-    - name: Test
-      run: |
-        cabal sdist -z -o .
-        cabal get bytestring-*.tar.gz
-        cd bytestring-*/
-        cp ../cabal.project .
-        cabal test -w /opt/ghc/bin/ghc-${{ matrix.ghc }} --test-show-details=direct
-    - name: Haddock
-      run: cabal haddock -w /opt/ghc/bin/ghc-${{ matrix.ghc }}
 
   build:
-    needs: build-old
+    needs: ghcprep
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: true
       matrix:
         os: [ubuntu-latest]
-        ghc: ['7.10', '8.0', '8.2', '8.4', '8.6', '8.8', '8.10', '9.0']
+        ghc: ['8.0', '8.2', '8.4', '8.6', '8.8', '8.10', '9.0']
         include:
         - os: windows-latest
           ghc: 'latest'

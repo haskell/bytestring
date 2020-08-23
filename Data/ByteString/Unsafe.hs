@@ -1,8 +1,5 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE MagicHash #-}
-#if __GLASGOW_HASKELL__ >= 703
 {-# LANGUAGE Unsafe #-}
-#endif
 
 -- |
 -- Module      : Data.ByteString.Unsafe

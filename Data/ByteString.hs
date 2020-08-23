@@ -1,11 +1,8 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TupleSections #-}
 {-# OPTIONS_HADDOCK prune #-}
-#if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE Trustworthy #-}
-#endif
 
 -- |
 -- Module      : Data.ByteString
@@ -222,16 +219,9 @@ import Prelude hiding           (reverse,head,tail,last,init,null
                                 ,readFile,writeFile,appendFile,replicate
                                 ,getContents,getLine,putStr,putStrLn,interact
                                 ,zip,zipWith,unzip,notElem
-#if !MIN_VERSION_base(4,6,0)
-                                ,catch
-#endif
                                 )
 
-#if MIN_VERSION_base(4,7,0)
 import Data.Bits                (finiteBitSize, shiftL, (.|.), (.&.))
-#else
-import Data.Bits                (bitSize, shiftL, (.|.), (.&.))
-#endif
 
 import Data.ByteString.Internal
 import Data.ByteString.Lazy.Internal (fromStrict, toStrict)
@@ -247,11 +237,7 @@ import Control.Monad            (when, void)
 import Foreign.C.String         (CString, CStringLen)
 import Foreign.C.Types          (CSize)
 import Foreign.ForeignPtr       (ForeignPtr, withForeignPtr, touchForeignPtr)
-#if MIN_VERSION_base(4,5,0)
 import Foreign.ForeignPtr.Unsafe(unsafeForeignPtrToPtr)
-#else
-import Foreign.ForeignPtr       (unsafeForeignPtrToPtr)
-#endif
 import Foreign.Marshal.Alloc    (allocaBytes)
 import Foreign.Marshal.Array    (allocaArray)
 import Foreign.Ptr
@@ -264,11 +250,6 @@ import System.IO                (stdin,stdout,hClose,hFileSize
                                 ,IOMode(..),hGetBufSome)
 import System.IO.Error          (mkIOError, illegalOperationErrorType)
 
-#if !(MIN_VERSION_base(4,8,0))
-import Control.Applicative      ((<$>))
-import Data.Monoid              (Monoid(..))
-#endif
-
 import Data.IORef
 import GHC.IO.Handle.Internals
 import GHC.IO.Handle.Types
@@ -280,10 +261,6 @@ import Foreign.Marshal.Utils    (copyBytes)
 
 import GHC.Base                 (build)
 import GHC.Word hiding (Word8)
-
-#if !(MIN_VERSION_base(4,7,0))
-finiteBitSize = bitSize
-#endif
 
 -- -----------------------------------------------------------------------------
 -- Introducing and eliminating 'ByteString's
@@ -604,21 +581,12 @@ any f (BS x len) = accursedUnutterablePerformIO $ unsafeWithForeignPtr x g
                                       else go (p `plusPtr` 1)
 {-# INLINE [1] any #-}
 
-#if MIN_VERSION_base(4,9,0)
 {-# RULES
 "ByteString specialise any (x ==)" forall x.
     any (x `eqWord8`) = anyByte x
 "ByteString specialise any (== x)" forall x.
     any (`eqWord8` x) = anyByte x
   #-}
-#else
-{-# RULES
-"ByteString specialise any (x ==)" forall x.
-    any (x ==) = anyByte x
-"ByteString specialise any (== x)" forall x.
-    any (== x) = anyByte x
-  #-}
-#endif
 
 -- | Is any element of 'ByteString' equal to c?
 anyByte :: Word8 -> ByteString -> Bool
@@ -645,21 +613,12 @@ all f (BS x len) = accursedUnutterablePerformIO $ unsafeWithForeignPtr x g
                                   else return False
 {-# INLINE [1] all #-}
 
-#if MIN_VERSION_base(4,9,0)
 {-# RULES
 "ByteString specialise all (x /=)" forall x.
     all (x `neWord8`) = not . anyByte x
 "ByteString specialise all (/= x)" forall x.
     all (`neWord8` x) = not . anyByte x
   #-}
-#else
-{-# RULES
-"ByteString specialise all (x /=)" forall x.
-    all (x /=) = not . anyByte x
-"ByteString specialise all (/= x)" forall x.
-    all (/= x) = not . anyByte x
-  #-}
-#endif
 
 ------------------------------------------------------------------------
 
@@ -950,7 +909,6 @@ takeWhile :: (Word8 -> Bool) -> ByteString -> ByteString
 takeWhile f ps = unsafeTake (findIndexOrLength (not . f) ps) ps
 {-# INLINE [1] takeWhile #-}
 
-#if MIN_VERSION_base(4,9,0)
 {-# RULES
 "ByteString specialise takeWhile (x /=)" forall x.
     takeWhile (x `neWord8`) = fst . breakByte x
@@ -961,18 +919,6 @@ takeWhile f ps = unsafeTake (findIndexOrLength (not . f) ps) ps
 "ByteString specialise takeWhile (== x)" forall x.
     takeWhile (`eqWord8` x) = fst . spanByte x
   #-}
-#else
-{-# RULES
-"ByteString specialise takeWhile (x /=)" forall x.
-    takeWhile (x /=) = fst . breakByte x
-"ByteString specialise takeWhile (/= x)" forall x.
-    takeWhile (/= x) = fst . breakByte x
-"ByteString specialise takeWhile (x ==)" forall x.
-    takeWhile (x ==) = fst . spanByte x
-"ByteString specialise takeWhile (== x)" forall x.
-    takeWhile (== x) = fst . spanByte x
-  #-}
-#endif
 
 -- | Returns the longest (possibly empty) suffix of elements
 -- satisfying the predicate.
@@ -991,7 +937,6 @@ dropWhile :: (Word8 -> Bool) -> ByteString -> ByteString
 dropWhile f ps = unsafeDrop (findIndexOrLength (not . f) ps) ps
 {-# INLINE [1] dropWhile #-}
 
-#if MIN_VERSION_base(4,9,0)
 {-# RULES
 "ByteString specialise dropWhile (x /=)" forall x.
     dropWhile (x `neWord8`) = snd . breakByte x
@@ -1002,18 +947,6 @@ dropWhile f ps = unsafeDrop (findIndexOrLength (not . f) ps) ps
 "ByteString specialise dropWhile (== x)" forall x.
     dropWhile (`eqWord8` x) = snd . spanByte x
   #-}
-#else
-{-# RULES
-"ByteString specialise dropWhile (x /=)" forall x.
-    dropWhile (x /=) = snd . breakByte x
-"ByteString specialise dropWhile (/= x)" forall x.
-    dropWhile (/= x) = snd . breakByte x
-"ByteString specialise dropWhile (x ==)" forall x.
-    dropWhile (x ==) = snd . spanByte x
-"ByteString specialise dropWhile (== x)" forall x.
-    dropWhile (== x) = snd . spanByte x
-  #-}
-#endif
 
 -- | Similar to 'P.dropWhileEnd',
 -- drops the longest (possibly empty) suffix of elements
@@ -1043,21 +976,12 @@ break p ps = case findIndexOrLength p ps of n -> (unsafeTake n ps, unsafeDrop n 
 {-# INLINE [1] break #-}
 
 -- See bytestring #70
-#if MIN_VERSION_base(4,9,0)
 {-# RULES
 "ByteString specialise break (x ==)" forall x.
     break (x `eqWord8`) = breakByte x
 "ByteString specialise break (== x)" forall x.
     break (`eqWord8` x) = breakByte x
   #-}
-#else
-{-# RULES
-"ByteString specialise break (x ==)" forall x.
-    break (x ==) = breakByte x
-"ByteString specialise break (== x)" forall x.
-    break (== x) = breakByte x
-  #-}
-#endif
 
 -- INTERNAL:
 
@@ -1111,21 +1035,12 @@ spanByte c ps@(BS x l) =
 {-# INLINE spanByte #-}
 
 -- See bytestring #70
-#if MIN_VERSION_base(4,9,0)
 {-# RULES
 "ByteString specialise span (x ==)" forall x.
     span (x `eqWord8`) = spanByte x
 "ByteString specialise span (== x)" forall x.
     span (`eqWord8` x) = spanByte x
   #-}
-#else
-{-# RULES
-"ByteString specialise span (x ==)" forall x.
-    span (x ==) = spanByte x
-"ByteString specialise span (== x)" forall x.
-    span (== x) = spanByte x
-  #-}
-#endif
 
 -- | Returns the longest (possibly empty) suffix of elements
 -- satisfying the predicate and the remainder of the string.
@@ -1387,21 +1302,12 @@ findIndices p = loop 0
 {-# INLINE [1] findIndices #-}
 
 
-#if MIN_VERSION_base(4,9,0)
 {-# RULES
 "ByteString specialise findIndex (x ==)" forall x. findIndex (x`eqWord8`) = elemIndex x
 "ByteString specialise findIndex (== x)" forall x. findIndex (`eqWord8`x) = elemIndex x
 "ByteString specialise findIndices (x ==)" forall x. findIndices (x`eqWord8`) = elemIndices x
 "ByteString specialise findIndices (== x)" forall x. findIndices (`eqWord8`x) = elemIndices x
   #-}
-#else
-{-# RULES
-"ByteString specialise findIndex (x ==)" forall x. findIndex (x==) = elemIndex x
-"ByteString specialise findIndex (== x)" forall x. findIndex (==x) = elemIndex x
-"ByteString specialise findIndices (x ==)" forall x. findIndices (x==) = elemIndices x
-"ByteString specialise findIndices (== x)" forall x. findIndices (==x) = elemIndices x
-  #-}
-#endif
 
 -- ---------------------------------------------------------------------
 -- Searching ByteStrings

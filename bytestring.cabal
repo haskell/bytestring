@@ -54,9 +54,13 @@ Author:              Don Stewart,
 Maintainer:          Haskell Bytestring Team <andrew.lelechenko@gmail.com>, Core Libraries Committee
 Homepage:            https://github.com/haskell/bytestring
 Bug-reports:         https://github.com/haskell/bytestring/issues
-Tested-With:         GHC==8.10.1, GHC==8.8.3, GHC==8.6.5, GHC==8.4.4, GHC==8.2.2,
-                     GHC==8.0.2, GHC==7.10.3, GHC==7.8.4, GHC==7.6.3, GHC==7.4.2,
-                     GHC==7.2.2, GHC==7.0.4
+Tested-With:         GHC==9.0.1,
+                     GHC==8.10.4,
+                     GHC==8.8.4,
+                     GHC==8.6.5,
+                     GHC==8.4.4,
+                     GHC==8.2.2,
+                     GHC==8.0.2
 Build-Type:          Simple
 Cabal-Version:       >= 1.10
 extra-source-files:  README.md Changelog.md
@@ -70,7 +74,7 @@ flag integer-simple
   default: False
 
 library
-  build-depends:     base >= 4.3 && < 5, ghc-prim, deepseq
+  build-depends:     base >= 4.9 && < 5, ghc-prim, deepseq
 
   exposed-modules:   Data.ByteString
                      Data.ByteString.Char8
@@ -89,12 +93,11 @@ library
                      -- perhaps only exposed temporarily
                      Data.ByteString.Builder.Internal
                      Data.ByteString.Builder.Prim.Internal
-  other-modules:
-                     Data.ByteString.Builder.ASCII
-                     Data.ByteString.Builder.Prim.Binary
+  other-modules:     Data.ByteString.Builder.ASCII
                      Data.ByteString.Builder.Prim.ASCII
-                     Data.ByteString.Builder.Prim.Internal.Floating
+                     Data.ByteString.Builder.Prim.Binary
                      Data.ByteString.Builder.Prim.Internal.Base16
+                     Data.ByteString.Builder.Prim.Internal.Floating
 
   default-language:  Haskell2010
   other-extensions:  CPP,
@@ -143,9 +146,18 @@ library
 test-suite prop-compiled
   type:             exitcode-stdio-1.0
   main-is:          Properties.hs
-  other-modules:    Rules
+  other-modules:    Data.ByteString
+                    Data.ByteString.Char8
+                    Data.ByteString.Internal
+                    Data.ByteString.Lazy
+                    Data.ByteString.Lazy.Char8
+                    Data.ByteString.Lazy.Internal
+                    Data.ByteString.Short
+                    Data.ByteString.Short.Internal
+                    Data.ByteString.Unsafe
                     QuickCheckUtils
-  hs-source-dirs:   tests
+                    Rules
+  hs-source-dirs:   tests .
   build-depends:    base, bytestring, ghc-prim, deepseq,
                     tasty, tasty-quickcheck
   ghc-options:      -fwarn-unused-binds
@@ -155,21 +167,50 @@ test-suite prop-compiled
 test-suite lazy-hclose
   type:             exitcode-stdio-1.0
   main-is:          LazyHClose.hs
-  hs-source-dirs:   tests
+  hs-source-dirs:   tests .
   build-depends:    base, bytestring, ghc-prim, deepseq,
                     tasty, tasty-quickcheck
   ghc-options:      -fwarn-unused-binds
                     -threaded -rtsopts
   default-language: Haskell2010
+  other-modules:    Data.ByteString
+                    Data.ByteString.Char8
+                    Data.ByteString.Internal
+                    Data.ByteString.Lazy
+                    Data.ByteString.Lazy.Char8
+                    Data.ByteString.Lazy.Internal
+                    Data.ByteString.Short
+                    Data.ByteString.Short.Internal
+                    Data.ByteString.Unsafe
 
 test-suite test-builder
   type:             exitcode-stdio-1.0
-  hs-source-dirs:   tests/builder
+  hs-source-dirs:   tests/builder .
   main-is:          TestSuite.hs
-  other-modules:    Data.ByteString.Builder.Tests
-                    Data.ByteString.Builder.Prim.Tests
+  other-modules:    Data.ByteString
+                    Data.ByteString.Builder
+                    Data.ByteString.Builder.ASCII
+                    Data.ByteString.Builder.Extra
+                    Data.ByteString.Builder.Internal
+                    Data.ByteString.Builder.Prim
+                    Data.ByteString.Builder.Prim.ASCII
+                    Data.ByteString.Builder.Prim.Binary
+                    Data.ByteString.Builder.Prim.Internal
+                    Data.ByteString.Builder.Prim.Internal.Base16
+                    Data.ByteString.Builder.Prim.Internal.Floating
                     Data.ByteString.Builder.Prim.TestUtils
+                    Data.ByteString.Builder.Prim.Tests
+                    Data.ByteString.Builder.Tests
+                    Data.ByteString.Char8
+                    Data.ByteString.Internal
+                    Data.ByteString.Lazy
+                    Data.ByteString.Lazy.Char8
+                    Data.ByteString.Lazy.Internal
+                    Data.ByteString.Short
+                    Data.ByteString.Short.Internal
+                    Data.ByteString.Unsafe
   build-depends:    base, bytestring, ghc-prim,
+                    byteorder,
                     deepseq,
                     dlist                      >= 0.5 && < 0.9,
                     transformers               >= 0.3,
@@ -183,15 +224,32 @@ test-suite test-builder
 
 benchmark bytestring-bench
   main-is:          BenchAll.hs
-  other-modules:    BenchBoundsCheckFusion
+  other-modules:    Data.ByteString
+                    Data.ByteString.Builder
+                    Data.ByteString.Builder.ASCII
+                    Data.ByteString.Builder.Extra
+                    Data.ByteString.Builder.Internal
+                    Data.ByteString.Builder.Prim
+                    Data.ByteString.Builder.Prim.ASCII
+                    Data.ByteString.Builder.Prim.Binary
+                    Data.ByteString.Builder.Prim.Internal
+                    Data.ByteString.Builder.Prim.Internal.Base16
+                    Data.ByteString.Builder.Prim.Internal.Floating
+                    Data.ByteString.Char8
+                    Data.ByteString.Internal
+                    Data.ByteString.Lazy
+                    Data.ByteString.Lazy.Internal
+                    Data.ByteString.Short
+                    Data.ByteString.Short.Internal
+                    Data.ByteString.Unsafe
+                    BenchBoundsCheckFusion
                     BenchCSV
                     BenchIndices
   type:             exitcode-stdio-1.0
-  hs-source-dirs:   bench
+  hs-source-dirs:   bench .
   default-language: Haskell2010
   ghc-options:      -O2
-  build-depends:    base,
-                    bytestring,
+  build-depends:    base, bytestring, ghc-prim,
                     deepseq,
                     dlist,
                     tasty-bench,
