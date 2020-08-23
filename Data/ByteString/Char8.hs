@@ -460,7 +460,7 @@ scanr1 f = B.scanr1 (\a b -> c2w (f (w2c a) (w2c b)))
 --
 -- > replicate w c = unfoldr w (\u -> Just (u,u)) c
 --
--- This implemenation uses @memset(3)@
+-- This implementation uses @memset(3)@
 replicate :: Int -> Char -> ByteString
 replicate n = B.replicate n . c2w
 {-# INLINE replicate #-}
