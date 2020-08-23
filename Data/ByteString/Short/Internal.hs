@@ -31,7 +31,7 @@ module Data.ByteString.Short.Internal (
     unpack,
 
     -- * Other operations
-    empty, null, length, index, unsafeIndex,
+    empty, null, length, index, indexMaybe, (!?), unsafeIndex,
 
     -- * Low level operations
     createFromPtr, copyToPtr,
@@ -102,11 +102,12 @@ import GHC.ST         (ST(ST), runST)
 import GHC.Word
 
 import Prelude ( Eq(..), Ord(..), Ordering(..), Read(..), Show(..)
-               , ($), error, (++), (.)
+               , ($), ($!), error, (++), (.)
                , String, userError
                , Bool(..), (&&), otherwise
                , (+), (-), fromIntegral
-               , return )
+               , return
+               , Maybe(..) )
 
 
 -- | A compact representation of a 'Word8' vector.
@@ -213,6 +214,26 @@ index :: ShortByteString -> Int -> Word8
 index sbs i
   | i >= 0 && i < length sbs = unsafeIndex sbs i
   | otherwise                = indexError sbs i
+
+-- | /O(1)/ 'ShortByteString' index, starting from 0, that returns 'Just' if:
+--
+-- > 0 <= n < length bs
+--
+-- @since 0.11.0.0
+indexMaybe :: ShortByteString -> Int -> Maybe Word8
+indexMaybe sbs i
+  | i >= 0 && i < length sbs = Just $! unsafeIndex sbs i
+  | otherwise                = Nothing
+{-# INLINE indexMaybe #-}
+
+-- | /O(1)/ 'ShortByteString' index, starting from 0, that returns 'Just' if:
+--
+-- > 0 <= n < length bs
+--
+-- @since 0.11.0.0
+(!?) :: ShortByteString -> Int -> Maybe Word8
+(!?) = indexMaybe
+{-# INLINE (!?) #-}
 
 unsafeIndex :: ShortByteString -> Int -> Word8
 unsafeIndex sbs = indexWord8Array (asBA sbs)

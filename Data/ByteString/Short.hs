@@ -77,7 +77,7 @@ module Data.ByteString.Short (
     unpack,
 
     -- * Other operations
-    empty, null, length, index,
+    empty, null, length, index, indexMaybe, (!?),
 
     -- * Low level conversions
     -- ** Packing 'Foreign.C.String.CString's and pointers

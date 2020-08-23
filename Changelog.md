@@ -1,3 +1,8 @@
+[0.11.0.0] —
+ * [Add `indexMaybe` and synonym `(!?)` for indexing that returns `Maybe`](https://github.com/haskell/bytestring/pull/261)
+
+[0.11.0.0]: https://github.com/haskell/bytestring/compare/0.10.12.0...0.11.0.0
+
 [0.10.12.0] – August 2020
 
  * **Note:** There are several breaking changes planned to be included in v0.11.

@@ -796,6 +796,39 @@ prop_index_C (String8 xs) =
     forAll indices $ \i -> (xs !! i) == C.pack xs `C.index` (fromIntegral i)
   where indices = choose (0, length xs -1)
 
+-- | Test 'indexMaybe' for Lazy and Strict 'ByteString's.
+--   If we are testing within the bounds it should return a 'Just' value.
+--   If we are testing outside of the bounds it should return a 'Nothing' value.
+prop_indexMaybe_Just_L xs =
+  not (null xs) ==>
+    forAll indices $ \i -> isJust (ys `L.indexMaybe` (fromIntegral i))
+  where
+    ys = L.pack xs
+    indices = choose (0, length xs -1)
+
+prop_indexMaybe_Just_P xs =
+  not (null xs) ==>
+    forAll indices $ \i -> isJust (ys `P.indexMaybe` (fromIntegral i))
+  where
+    ys = P.pack xs
+    indices = choose (0, length xs -1)
+
+prop_indexMaybe_Nothing_L xs =
+  not (null xs) ==>
+    forAll indices $ \i -> isNothing (ys `L.indexMaybe` (fromIntegral i))
+  where
+      ys = L.pack xs
+      outOfBounds = choose (-100, length xs + 100)
+      indices = suchThat outOfBounds (\n -> n < 0 || n >= length xs)
+
+prop_indexMaybe_Nothing_P xs =
+  not (null xs) ==>
+    forAll indices $ \i -> isNothing (ys `P.indexMaybe` (fromIntegral i))
+  where
+    ys = P.pack xs
+    outOfBounds = choose (-100, length xs + 100)
+    indices = suchThat outOfBounds (\n -> n < 0 || n >= length xs)
+
 prop_elemIndex xs c = (elemIndex c xs) == fmap fromIntegral (L.elemIndex c (pack xs))
 
 prop_elemIndexCL :: String8 -> Char8 -> Bool
@@ -2406,6 +2439,10 @@ ll_tests =
     , testProperty "index"              prop_index
     , testProperty "index"              prop_index_D
     , testProperty "index"              prop_index_C
+    , testProperty "indexMaybe"         prop_indexMaybe_Just_P
+    , testProperty "indexMaybe"         prop_indexMaybe_Just_L
+    , testProperty "indexMaybe"         prop_indexMaybe_Nothing_P
+    , testProperty "indexMaybe"         prop_indexMaybe_Nothing_L
     , testProperty "elemIndex"          prop_elemIndex
     , testProperty "elemIndices"        prop_elemIndices
     , testProperty "count/elemIndices"  prop_count
