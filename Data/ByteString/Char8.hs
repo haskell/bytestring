@@ -892,19 +892,23 @@ lines ps
     where search = elemIndex '\n'
 
 {-
--- Just as fast, but more complex. Should be much faster, I thought.
--- XXX: This version is not even correct.
-lines :: ByteString -> [ByteString]
+-- Could be faster, now passes tests...
 lines (BS _ 0) = []
-lines (BS x l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> loop 0
+lines (BS x l) = go x l
   where
-    loop n = do
-        let q = memchr (p `plusPtr` n) 0x0a (fromIntegral (l-n))
+    nl = c2w '\n'
+    -- It is important to remain lazy in the tail of the list.  The caller
+    -- might only want the first few lines.
+    go !f !len = accursedUnutterablePerformIO $ withForeignPtr f $ \p -> do
+        q <- memchr p nl $! fromIntegral len
         if q == nullPtr
-            then return [BS (plusForeignPtr x n) (l-n)]
-            else do let i = q `minusPtr` p
-                    ls <- loop (i+1)
-                    return $! PS (plusForeignPtr x n) (i-n) : ls
+            then return [BS f len]
+            else do
+                let !i = q `minusPtr` p
+                    !j = i + 1
+                if j < len
+                    then return $ BS f i : go (plusForeignPtr f j) (len - j)
+                    else return [BS f i]
 -}
 
 -- | 'unlines' is an inverse operation to 'lines'.  It joins lines,
