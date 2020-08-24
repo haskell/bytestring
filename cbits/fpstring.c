@@ -88,3 +88,11 @@ void * fps_memcpy_offsets(void       *dst, unsigned long dst_off,
                           const void *src, unsigned long src_off, size_t n) {
     return memcpy(dst + dst_off, src + src_off, n);
 }
+
+int fps_compare(const void *a, const void *b) {
+  return *(unsigned char*)a - *(unsigned char*)b;
+}
+
+void fps_sort(unsigned char *p, unsigned long len) {
+  return qsort(p, len, 1, fps_compare);
+}

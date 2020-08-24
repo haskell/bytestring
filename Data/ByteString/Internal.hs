@@ -80,6 +80,7 @@ module Data.ByteString.Internal (
         c_maximum,              -- :: Ptr Word8 -> CInt -> IO Word8
         c_minimum,              -- :: Ptr Word8 -> CInt -> IO Word8
         c_count,                -- :: Ptr Word8 -> CInt -> Word8 -> IO CInt
+        c_sort,                 -- :: Ptr Word8 -> CInt -> IO ()
 
         -- * Chars
         w2c, c2w, isSpaceWord8, isSpaceChar8,
@@ -758,3 +759,6 @@ foreign import ccall unsafe "static fpstring.h fps_minimum" c_minimum
 
 foreign import ccall unsafe "static fpstring.h fps_count" c_count
     :: Ptr Word8 -> CULong -> Word8 -> IO CULong
+
+foreign import ccall unsafe "static fpstring.h fps_sort" c_sort
+    :: Ptr Word8 -> CULong -> IO ()
