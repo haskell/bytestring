@@ -886,9 +886,9 @@ strip = dropWhile isSpace . dropWhileEnd isSpace
 -- but it is more efficient than using multiple reverses.
 --
 dropSpaceEnd :: ByteString -> ByteString
-dropSpaceEnd (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> do
-    i <- lastnonspace (p `plusPtr` s) (l-1)
-    return $! if i == (-1) then empty else PS x s (i+1)
+dropSpaceEnd (BS x l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> do
+    i <- lastnonspace p (l-1)
+    return $! if i == (-1) then empty else BS x (i+1)
 {-# INLINE dropSpaceEnd #-}
 
 lastnonspace :: Ptr Word8 -> Int -> IO Int
@@ -912,20 +912,23 @@ lines ps
     where search = elemIndex '\n'
 
 {-
--- Just as fast, but more complex. Should be much faster, I thought.
-lines :: ByteString -> [ByteString]
-lines (PS _ _ 0) = []
-lines (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> do
-        let ptr = p `plusPtr` s
-
-            loop n = do
-                let q = memchr (ptr `plusPtr` n) 0x0a (fromIntegral (l-n))
-                if q == nullPtr
-                    then return [PS x (s+n) (l-n)]
-                    else do let i = q `minusPtr` ptr
-                            ls <- loop (i+1)
-                            return $! PS x (s+n) (i-n) : ls
-        loop 0
+-- Could be faster, now passes tests...
+lines (BS _ 0) = []
+lines (BS x l) = go x l
+  where
+    nl = c2w '\n'
+    -- It is important to remain lazy in the tail of the list.  The caller
+    -- might only want the first few lines.
+    go !f !len = accursedUnutterablePerformIO $ withForeignPtr f $ \p -> do
+        q <- memchr p nl $! fromIntegral len
+        if q == nullPtr
+            then return [BS f len]
+            else do
+                let !i = q `minusPtr` p
+                    !j = i + 1
+                if j < len
+                    then return $ BS f i : go (plusForeignPtr f j) (len - j)
+                    else return [BS f i]
 -}
 
 -- | 'unlines' is an inverse operation to 'lines'.  It joins lines,

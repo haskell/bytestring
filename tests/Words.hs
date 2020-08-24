@@ -35,14 +35,14 @@ instance Ord OrdString where
     compare (OrdString p) (OrdString q) = compareBytes p q
 
 compareBytes :: ByteString -> ByteString -> Ordering
-compareBytes (PS fp1 off1 len1) (PS fp2 off2 len2)
-    | len1 == 0  && len2 == 0                     = EQ  -- short cut for empty strings
-    | fp1 == fp2 && off1 == off2 && len1 == len2  = EQ  -- short cut for the same string
+compareBytes (BS fp1 len1) (BS fp2 len2)
+    | len1 == 0  && len2 == 0     = EQ  -- short cut for empty strings
+    | fp1 == fp2 && len1 == len2  = EQ  -- short cut for the same string
 --  | max len1 len2 > 1                           = inlinePerformIO $
     | otherwise                                   = inlinePerformIO $
     withForeignPtr fp1 $ \p1 ->
     withForeignPtr fp2 $ \p2 -> do
-        i <- memcmp (p1 `plusPtr` off1) (p2 `plusPtr` off2) (fromIntegral $ min len1 len2)
+        i <- memcmp p1 p2 (fromIntegral $ min len1 len2)
         return $! case i `compare` 0 of
                     EQ  -> len1 `compare` len2
                     x   -> x

@@ -1507,7 +1507,7 @@ tails :: ByteString -> [ByteString]
 tails p | null p    = [empty]
         | otherwise = p : tails (unsafeTail p)
 
--- less efficent spacewise: tails (PS x s l) = [PS x (s+n) (l-n) | n <- [0..l]]
+-- less efficent spacewise: tails (BS x l) = [BS (plusForeignPtr x n) (l-n) | n <- [0..l]]
 
 -- ---------------------------------------------------------------------
 -- ** Ordered 'ByteString's
