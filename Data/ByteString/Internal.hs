@@ -164,9 +164,9 @@ import GHC.Prim                 (plusAddr#)
 #if __GLASGOW_HASKELL__ >= 811
 import GHC.CString              (cstringLength#)
 import GHC.ForeignPtr           (ForeignPtrContents(FinalPtr))
-#elses
-import GHC.Ptr                  (Ptr(..), castPtr)
 #endif
+
+import GHC.Ptr                  (Ptr(..), castPtr)
 
 -- CFILES stuff is Hugs only
 {-# CFILES cbits/fpstring.c #-}
@@ -348,10 +348,10 @@ unsafePackAddress addr# = do
 unsafePackLiteral :: Addr# -> ByteString
 unsafePackLiteral addr# =
 #if __GLASGOW_HASKELL__ >= 811
-  PS (ForeignPtr addr# FinalPtr) 0 (I# (cstringLength# addr#))
+  BS (ForeignPtr addr# FinalPtr) (I# (cstringLength# addr#))
 #else
   let len = accursedUnutterablePerformIO (c_strlen (Ptr addr#))
-   in PS (accursedUnutterablePerformIO (newForeignPtr_ (Ptr addr#))) 0 (fromIntegral len)
+   in BS (accursedUnutterablePerformIO (newForeignPtr_ (Ptr addr#))) (fromIntegral len)
 #endif
 {-# INLINE unsafePackLiteral #-}
 
