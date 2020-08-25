@@ -101,9 +101,9 @@ import Foreign.Ptr              (Ptr, FunPtr, plusPtr)
 import Foreign.Storable         (Storable(..))
 
 #if MIN_VERSION_base(4,5,0) || __GLASGOW_HASKELL__ >= 703
-import Foreign.C.Types          (CInt(..), CSize(..), CULong(..))
+import Foreign.C.Types          (CInt(..), CSize(..))
 #else
-import Foreign.C.Types          (CInt, CSize, CULong)
+import Foreign.C.Types          (CInt, CSize)
 #endif
 
 import Foreign.C.String         (CString)

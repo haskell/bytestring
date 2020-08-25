@@ -587,7 +587,7 @@ copyAddrToByteArray0 src dst len s =
         = copyAddrToByteArray0 src dst    len s  #-}
 
 foreign import ccall unsafe "fpstring.h fps_memcpy_offsets"
-  memcpy_AddrToByteArray :: MutableByteArray# s -> CLong -> Addr# -> CLong -> CSize -> IO ()
+  memcpy_AddrToByteArray :: MutableByteArray# s -> CSize -> Addr# -> CSize -> CSize -> IO ()
 
 foreign import ccall unsafe "string.h memcpy"
   memcpy_AddrToByteArray0 :: MutableByteArray# s -> Addr# -> CSize -> IO ()
@@ -608,7 +608,7 @@ copyByteArrayToAddr0 src dst len s =
         = copyByteArrayToAddr0 src    dst len s  #-}
 
 foreign import ccall unsafe "fpstring.h fps_memcpy_offsets"
-  memcpy_ByteArrayToAddr :: Addr# -> CLong -> ByteArray# -> CLong -> CSize -> IO ()
+  memcpy_ByteArrayToAddr :: Addr# -> CSize -> ByteArray# -> CSize -> CSize -> IO ()
 
 foreign import ccall unsafe "string.h memcpy"
   memcpy_ByteArrayToAddr0 :: Addr# -> ByteArray# -> CSize -> IO ()
@@ -635,8 +635,7 @@ copyByteArray# src src_off dst dst_off len s =
     unST_ st s = case unST st s of (# s, _ #) -> s
 
 foreign import ccall unsafe "fpstring.h fps_memcpy_offsets"
-  memcpy_ByteArray :: MutableByteArray# s -> CLong
-                   -> ByteArray# -> CLong -> CSize -> IO ()
+  memcpy_ByteArray :: MutableByteArray# s -> CSize -> ByteArray# -> CSize -> CSize -> IO ()
 #endif
 
 -- | /O(n)./ Construct a new @ShortByteString@ from a @CString@. The
