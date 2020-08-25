@@ -573,7 +573,7 @@ copyByteArrayToAddr# = GHC.Exts.copyByteArrayToAddr#
 #else
 
 copyAddrToByteArray# src dst dst_off len s =
-  unIO_ (memcpy_AddrToByteArray dst (clong dst_off) src 0 (csize len)) s
+  unIO_ (memcpy_AddrToByteArray dst (csize dst_off) src 0 (csize len)) s
 
 copyAddrToByteArray0 :: Addr# -> MutableByteArray# s -> Int#
                      -> State# RealWorld -> State# RealWorld
@@ -594,7 +594,7 @@ foreign import ccall unsafe "string.h memcpy"
 
 
 copyByteArrayToAddr# src src_off dst len s =
-  unIO_ (memcpy_ByteArrayToAddr dst 0 src (clong src_off) (csize len)) s
+  unIO_ (memcpy_ByteArrayToAddr dst 0 src (csize src_off) (csize len)) s
 
 copyByteArrayToAddr0 :: ByteArray# -> Addr# -> Int#
                      -> State# RealWorld -> State# RealWorld
@@ -617,9 +617,6 @@ foreign import ccall unsafe "string.h memcpy"
 unIO_ :: IO () -> State# RealWorld -> State# RealWorld
 unIO_ io s = case unIO io s of (# s, _ #) -> s
 
-clong :: Int# -> CLong
-clong i# = fromIntegral (I# i#)
-
 csize :: Int# -> CSize
 csize i# = fromIntegral (I# i#)
 #endif
@@ -629,7 +626,7 @@ copyByteArray# = GHC.Exts.copyByteArray#
 #else
 copyByteArray# src src_off dst dst_off len s =
     unST_ (unsafeIOToST
-      (memcpy_ByteArray dst (clong dst_off) src (clong src_off) (csize len))) s
+      (memcpy_ByteArray dst (csize dst_off) src (csize src_off) (csize len))) s
   where
     unST (ST st) = st
     unST_ st s = case unST st s of (# s, _ #) -> s
