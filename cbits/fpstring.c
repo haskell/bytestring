@@ -90,7 +90,7 @@ void * fps_memcpy_offsets(void       *dst, unsigned long dst_off,
 }
 
 int fps_compare(const void *a, const void *b) {
-  return *(unsigned char*)a - *(unsigned char*)b;
+  return (int)*(unsigned char*)a - (int)*(unsigned char*)b;
 }
 
 void fps_sort(unsigned char *p, unsigned long len) {
