@@ -1,5 +1,10 @@
 [0.11.0.0] —
  * [Add `indexMaybe` and synonym `(!?)` for indexing that returns `Maybe`](https://github.com/haskell/bytestring/pull/261)
+ * Add `unsafePackLiteral` to `Data.ByteString.Internal`. When possible, use
+   [known-key](https://gitlab.haskell.org/ghc/ghc/-/wikis/commentary/compiler/wired-in)
+   variant of C's `strlen` from `GHC.CString` that supports constant folding.
+   This results in better generated code when an ASCII-only string literal
+   is desugared to `ByteString` by the `OverloadedStrings` extension. ([#191])
 
 [0.11.0.0]: https://github.com/haskell/bytestring/compare/0.10.12.0...0.11.0.0
 

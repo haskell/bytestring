@@ -759,6 +759,7 @@ replicate w c
     | w <= 0    = empty
     | otherwise = unsafeCreate w $ \ptr ->
                       memset ptr c (fromIntegral w) >> return ()
+{-# INLINE replicate #-}
 
 -- | /O(n)/, where /n/ is the length of the result.  The 'unfoldr'
 -- function is analogous to the List \'unfoldr\'.  'unfoldr' builds a
