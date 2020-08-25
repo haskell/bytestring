@@ -329,7 +329,7 @@ unsafePackLenChars len cs0 =
 unsafePackAddress :: Addr# -> IO ByteString
 unsafePackAddress addr# = do
 #if __GLASGOW_HASKELL__ >= 811
-    return (PS (ForeignPtr addr# FinalPtr) 0 (I# (cstringLength# addr#)))
+    return (BS (ForeignPtr addr# FinalPtr) (I# (cstringLength# addr#)))
 #else
     p <- newForeignPtr_ (castPtr cstr)
     l <- c_strlen cstr
