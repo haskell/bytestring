@@ -75,12 +75,12 @@ module Data.ByteString.Internal (
         memset,                 -- :: Ptr Word8 -> Word8 -> CSize -> IO (Ptr Word8)
 
         -- * cbits functions
-        c_reverse,              -- :: Ptr Word8 -> Ptr Word8 -> CInt -> IO ()
-        c_intersperse,          -- :: Ptr Word8 -> Ptr Word8 -> CInt -> Word8 -> IO ()
-        c_maximum,              -- :: Ptr Word8 -> CInt -> IO Word8
-        c_minimum,              -- :: Ptr Word8 -> CInt -> IO Word8
-        c_count,                -- :: Ptr Word8 -> CInt -> Word8 -> IO CInt
-        c_sort,                 -- :: Ptr Word8 -> CInt -> IO ()
+        c_reverse,              -- :: Ptr Word8 -> Ptr Word8 -> CSize -> IO ()
+        c_intersperse,          -- :: Ptr Word8 -> Ptr Word8 -> CSize -> Word8 -> IO ()
+        c_maximum,              -- :: Ptr Word8 -> CSize -> IO Word8
+        c_minimum,              -- :: Ptr Word8 -> CSize -> IO Word8
+        c_count,                -- :: Ptr Word8 -> CSize -> Word8 -> IO CInt
+        c_sort,                 -- :: Ptr Word8 -> CSize -> IO ()
 
         -- * Chars
         w2c, c2w, isSpaceWord8, isSpaceChar8,
@@ -746,19 +746,19 @@ memset p w s = c_memset p (fromIntegral w) s
 --
 
 foreign import ccall unsafe "static fpstring.h fps_reverse" c_reverse
-    :: Ptr Word8 -> Ptr Word8 -> CULong -> IO ()
+    :: Ptr Word8 -> Ptr Word8 -> CSize -> IO ()
 
 foreign import ccall unsafe "static fpstring.h fps_intersperse" c_intersperse
-    :: Ptr Word8 -> Ptr Word8 -> CULong -> Word8 -> IO ()
+    :: Ptr Word8 -> Ptr Word8 -> CSize -> Word8 -> IO ()
 
 foreign import ccall unsafe "static fpstring.h fps_maximum" c_maximum
-    :: Ptr Word8 -> CULong -> IO Word8
+    :: Ptr Word8 -> CSize -> IO Word8
 
 foreign import ccall unsafe "static fpstring.h fps_minimum" c_minimum
-    :: Ptr Word8 -> CULong -> IO Word8
+    :: Ptr Word8 -> CSize -> IO Word8
 
 foreign import ccall unsafe "static fpstring.h fps_count" c_count
-    :: Ptr Word8 -> CULong -> Word8 -> IO CULong
+    :: Ptr Word8 -> CSize -> Word8 -> IO CULong
 
 foreign import ccall unsafe "static fpstring.h fps_sort" c_sort
-    :: Ptr Word8 -> CULong -> IO ()
+    :: Ptr Word8 -> CSize -> IO ()
