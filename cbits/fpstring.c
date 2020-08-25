@@ -32,7 +32,7 @@
 #include "fpstring.h"
 
 /* copy a string in reverse */
-void fps_reverse(unsigned char *q, unsigned char *p, unsigned long n) {
+void fps_reverse(unsigned char *q, unsigned char *p, size_t n) {
     p += n-1;
     while (n-- != 0)
         *q++ = *p--;
@@ -42,7 +42,7 @@ void fps_reverse(unsigned char *q, unsigned char *p, unsigned long n) {
    of the duplicated string */
 void fps_intersperse(unsigned char *q,
                      unsigned char *p,
-                     unsigned long n,
+                     size_t n,
                      unsigned char c) {
 
     while (n > 1) {
@@ -55,7 +55,7 @@ void fps_intersperse(unsigned char *q,
 }
 
 /* find maximum char in a packed string */
-unsigned char fps_maximum(unsigned char *p, unsigned long len) {
+unsigned char fps_maximum(unsigned char *p, size_t len) {
     unsigned char *q, c = *p;
     for (q = p; q < p + len; q++)
         if (*q > c)
@@ -64,7 +64,7 @@ unsigned char fps_maximum(unsigned char *p, unsigned long len) {
 }
 
 /* find minimum char in a packed string */
-unsigned char fps_minimum(unsigned char *p, unsigned long  len) {
+unsigned char fps_minimum(unsigned char *p, size_t len) {
     unsigned char *q, c = *p;
     for (q = p; q < p + len; q++)
         if (*q < c)
@@ -73,7 +73,7 @@ unsigned char fps_minimum(unsigned char *p, unsigned long  len) {
 }
 
 /* count the number of occurences of a char in a string */
-unsigned long fps_count(unsigned char *p, unsigned long len, unsigned char w) {
+size_t fps_count(unsigned char *p, size_t len, unsigned char w) {
     unsigned long c;
     for (c = 0; len-- != 0; ++p)
         if (*p == w)
@@ -84,7 +84,14 @@ unsigned long fps_count(unsigned char *p, unsigned long len, unsigned char w) {
 /* This wrapper is here so that we can copy a sub-range of a ByteArray#.
    We cannot construct a pointer to the interior of an unpinned ByteArray#,
    except by doing an unsafe ffi call, and adjusting the pointer C-side. */
-void * fps_memcpy_offsets(void       *dst, unsigned long dst_off,
-                          const void *src, unsigned long src_off, size_t n) {
+void * fps_memcpy_offsets(void *dst, size_t dst_off, const void *src, size_t src_off, size_t n) {
     return memcpy(dst + dst_off, src + src_off, n);
+}
+
+int fps_compare(const void *a, const void *b) {
+  return (int)*(unsigned char*)a - (int)*(unsigned char*)b;
+}
+
+void fps_sort(unsigned char *p, size_t len) {
+  return qsort(p, len, 1, fps_compare);
 }

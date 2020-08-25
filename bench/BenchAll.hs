@@ -18,6 +18,7 @@ import           Gauge
 import           Prelude                               hiding (words)
 
 import qualified Data.ByteString                       as S
+import qualified Data.ByteString.Char8                 as S8
 import qualified Data.ByteString.Lazy                  as L
 
 import           Data.ByteString.Builder
@@ -225,6 +226,9 @@ sanityCheckInfo =
       ]
   ]
 
+sortInputs :: [S.ByteString]
+sortInputs = map (`S.take` S.pack [122, 121 .. 32]) [10..25]
+
 main :: IO ()
 main = do
   mapM_ putStrLn sanityCheckInfo
@@ -387,4 +391,5 @@ main = do
         , bench "balancedSlow"    $ partitionLazy (\x -> hashWord8 x < w 128)
         ]
       ]
+    , bgroup "sort" $ map (\s -> bench (S8.unpack s) $ nf S.sort s) sortInputs
     ]

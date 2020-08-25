@@ -1515,7 +1515,12 @@ tails p | null p    = [empty]
 
 -- | /O(n)/ Sort a ByteString efficiently, using counting sort.
 sort :: ByteString -> ByteString
-sort (BS input l) = unsafeCreate l $ \p -> allocaArray 256 $ \arr -> do
+sort (BS input l)
+  -- qsort outperforms counting sort for small arrays
+  | l <= 20 = unsafeCreate l $ \ptr -> withForeignPtr input $ \inp -> do
+    memcpy ptr inp (fromIntegral l)
+    c_sort ptr (fromIntegral l)
+  | otherwise = unsafeCreate l $ \p -> allocaArray 256 $ \arr -> do
 
     _ <- memset (castPtr arr) 0 (256 * fromIntegral (sizeOf (undefined :: CSize)))
     withForeignPtr input (\x -> countOccurrences arr x l)
