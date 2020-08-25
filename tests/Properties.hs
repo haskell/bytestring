@@ -741,11 +741,15 @@ prop_span xs a = (span (/=a) xs) == (let (x,y) = L.span (/=a) (pack xs) in (unpa
 prop_split c xs = (map L.unpack . map checkInvariant . L.split c $ xs)
                == (map P.unpack . P.split c . P.pack . L.unpack $ xs)
 
+prop_splitWith_empty f = L.splitWith f mempty == []
+
 prop_splitWith f xs = (l1 == l2 || l1 == l2+1) &&
         sum (map L.length splits) == L.length xs - l2
   where splits = L.splitWith f xs
         l1 = fromIntegral (length splits)
         l2 = L.length (L.filter f xs)
+
+prop_splitWith_D_empty f = D.splitWith f mempty == []
 
 prop_splitWith_D f xs = (l1 == l2 || l1 == l2+1) &&
         sum (map D.length splits) == D.length xs - l2
@@ -753,11 +757,15 @@ prop_splitWith_D f xs = (l1 == l2 || l1 == l2+1) &&
         l1 = fromIntegral (length splits)
         l2 = D.length (D.filter f xs)
 
+prop_splitWith_C_empty f = C.splitWith f mempty == []
+
 prop_splitWith_C f xs = (l1 == l2 || l1 == l2+1) &&
         sum (map C.length splits) == C.length xs - l2
   where splits = C.splitWith f xs
         l1 = fromIntegral (length splits)
         l2 = C.length (C.filter f xs)
+
+prop_split_empty c = L.split c mempty == []
 
 prop_joinsplit c xs = L.intercalate (pack [c]) (L.split c xs) == id xs
 
@@ -787,6 +795,39 @@ prop_index_C (String8 xs) =
   not (null xs) ==>
     forAll indices $ \i -> (xs !! i) == C.pack xs `C.index` (fromIntegral i)
   where indices = choose (0, length xs -1)
+
+-- | Test 'indexMaybe' for Lazy and Strict 'ByteString's.
+--   If we are testing within the bounds it should return a 'Just' value.
+--   If we are testing outside of the bounds it should return a 'Nothing' value.
+prop_indexMaybe_Just_L xs =
+  not (null xs) ==>
+    forAll indices $ \i -> isJust (ys `L.indexMaybe` (fromIntegral i))
+  where
+    ys = L.pack xs
+    indices = choose (0, length xs -1)
+
+prop_indexMaybe_Just_P xs =
+  not (null xs) ==>
+    forAll indices $ \i -> isJust (ys `P.indexMaybe` (fromIntegral i))
+  where
+    ys = P.pack xs
+    indices = choose (0, length xs -1)
+
+prop_indexMaybe_Nothing_L xs =
+  not (null xs) ==>
+    forAll indices $ \i -> isNothing (ys `L.indexMaybe` (fromIntegral i))
+  where
+      ys = L.pack xs
+      outOfBounds = choose (-100, length xs + 100)
+      indices = suchThat outOfBounds (\n -> n < 0 || n >= length xs)
+
+prop_indexMaybe_Nothing_P xs =
+  not (null xs) ==>
+    forAll indices $ \i -> isNothing (ys `P.indexMaybe` (fromIntegral i))
+  where
+    ys = P.pack xs
+    outOfBounds = choose (-100, length xs + 100)
+    indices = suchThat outOfBounds (\n -> n < 0 || n >= length xs)
 
 prop_elemIndex xs c = (elemIndex c xs) == fmap fromIntegral (L.elemIndex c (pack xs))
 
@@ -921,11 +962,15 @@ prop_wordsLC (String8 xs) =
 prop_unwordsSBB xss = C.unwords (map C.pack xss) == C.pack (unwords xss)
 prop_unwordsSLC xss = LC.unwords (map LC.pack xss) == LC.pack (unwords xss)
 
+prop_splitWithBB_empty f = P.splitWith f mempty == []
+
 prop_splitWithBB f xs = (l1 == l2 || l1 == l2+1) &&
         sum (map P.length splits) == P.length xs - l2
   where splits = P.splitWith f xs
         l1 = length splits
         l2 = P.length (P.filter f xs)
+
+prop_splitBB_empty c = P.split c mempty == []
 
 prop_joinsplitBB c xs = P.intercalate (P.pack [c]) (P.split c xs) == xs
 
@@ -1252,48 +1297,6 @@ prop_initsBB xs = inits xs == map P.unpack (P.inits (P.pack xs))
 
 prop_tailsBB xs = tails xs == map P.unpack (P.tails (P.pack xs))
 
--- The correspondence between the test 'ByteString' and naive test 'String'
--- must be injective, otherwise the ByteString may find matches at positions
--- that don't match in the "corresponding" string.  To that end, we start
--- with and pack a Word8 array, rather than a unicode String.
---
-prop_findSubstringsBB :: [Word8] -> Int -> Int -> Bool
-prop_findSubstringsBB ws x l
-    = let bstr = P.pack ws
-          -- we look for some random substring of the test string
-          slice = C.take l $ C.drop x bstr
-          str = C.unpack bstr
-          substr = C.unpack slice
-      in C.findSubstrings slice bstr == naive_findSubstrings substr str
-  where
-    -- naive reference implementation
-    -- Note, overlapping matches have been broken since 2015, so at this
-    -- point just test for the current behaviour.
-    naive_findSubstrings :: String -> String -> [Int]
-    naive_findSubstrings p q
-        | null p    = [0..length q]
-        | otherwise = go 0 (length p) p (length q) q
-    go n !lp p !lq q =
-        if (lp > lq)
-        then []
-        else if p `isPrefixOf` q
-        then n : go (n + lp) lp p (lq - lp) (drop lp q)
-        else go (n + 1) lp p (lq - 1) (tail q)
-
--- See above re injective string -> bytestring correspondence.
-prop_findSubstringBB :: [Word8] -> Int -> Int -> Bool
-prop_findSubstringBB ws x l
-    = let bstr = P.pack ws
-          -- we look for some random substring of the test string
-          slice = C.take l $ C.drop x bstr
-          str = C.unpack bstr
-          substr = C.unpack slice
-      in C.findSubstring slice bstr == naive_findSubstring substr str
-  where
-    -- naive reference implementation
-    naive_findSubstring :: String -> String -> Maybe Int
-    naive_findSubstring p q = listToMaybe [x | x <- [0..length q], p `isPrefixOf` drop x q]
-
 -- correspondance between break and breakSubstring
 prop_breakSubstringBB c l
     = P.break (== c) l == P.breakSubstring (P.singleton c) l
@@ -1303,12 +1306,6 @@ prop_breakSubstring_isInfixOf s l
                                      else case P.breakSubstring s l of
                                             (x,y) | P.null y  -> False
                                                   | otherwise -> True
-
-prop_breakSubstring_findSubstring s l
-    = P.findSubstring s l == if P.null s then Just 0
-                                       else case P.breakSubstring s l of
-                                            (x,y) | P.null y  -> Nothing
-                                                  | otherwise -> Just (P.length x)
 
 prop_replicate1BB c = forAll arbitrarySizedIntegral $ \n ->
                       P.unpack (P.replicate n c) == replicate n c
@@ -2277,10 +2274,7 @@ bb_tests =
     , testProperty "copy"           prop_copyLL
     , testProperty "inits"          prop_initsBB
     , testProperty "tails"          prop_tailsBB
-    , testProperty "findSubstrings "prop_findSubstringsBB
-    , testProperty "findSubstring "prop_findSubstringBB
     , testProperty "breakSubstring 1"prop_breakSubstringBB
-    , testProperty "breakSubstring 2"prop_breakSubstring_findSubstring
     , testProperty "breakSubstring 3"prop_breakSubstring_isInfixOf
 
     , testProperty "replicate1"     prop_replicate1BB
@@ -2325,7 +2319,9 @@ bb_tests =
     , testProperty "unwords "       prop_unwordsSBB
     , testProperty "unwords "       prop_unwordsSLC
 --     , testProperty "wordstokens"    prop_wordstokensBB
+    , testProperty "splitWith_empty" prop_splitWithBB_empty
     , testProperty "splitWith"      prop_splitWithBB
+    , testProperty "split_empty"    prop_splitBB_empty
     , testProperty "joinsplit"      prop_joinsplitBB
     , testProperty "intercalate"    prop_intercalatePL
 --     , testProperty "lineIndices"    prop_lineIndices1BB
@@ -2428,9 +2424,13 @@ ll_tests =
 --  , testProperty "break/breakByte"    prop_breakByte
 --  , testProperty "span/spanByte"      prop_spanByte
     , testProperty "split"              prop_split
+    , testProperty "splitWith_empty"    prop_splitWith_empty
     , testProperty "splitWith"          prop_splitWith
+    , testProperty "splitWith_empty"    prop_splitWith_D_empty
     , testProperty "splitWith"          prop_splitWith_D
+    , testProperty "splitWith_empty"    prop_splitWith_C_empty
     , testProperty "splitWith"          prop_splitWith_C
+    , testProperty "split_empty"        prop_split_empty
     , testProperty "join.split/id"      prop_joinsplit
 --  , testProperty "join/joinByte"      prop_joinjoinByte
     , testProperty "group"              prop_group
@@ -2439,6 +2439,10 @@ ll_tests =
     , testProperty "index"              prop_index
     , testProperty "index"              prop_index_D
     , testProperty "index"              prop_index_C
+    , testProperty "indexMaybe"         prop_indexMaybe_Just_P
+    , testProperty "indexMaybe"         prop_indexMaybe_Just_L
+    , testProperty "indexMaybe"         prop_indexMaybe_Nothing_P
+    , testProperty "indexMaybe"         prop_indexMaybe_Nothing_L
     , testProperty "elemIndex"          prop_elemIndex
     , testProperty "elemIndices"        prop_elemIndices
     , testProperty "count/elemIndices"  prop_count

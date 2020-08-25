@@ -116,12 +116,15 @@ instance Read ByteString where
     readsPrec p str = [ (packChars x, y) | (x, y) <- readsPrec p str ]
 
 #if MIN_VERSION_base(4,7,0)
+-- | @since 0.10.12.0
 instance IsList ByteString where
   type Item ByteString = Word8
   fromList = packBytes
   toList   = unpackBytes
 #endif
 
+-- | Beware: 'fromString' truncates multi-byte characters to octets.
+-- e.g. "枯朶に烏のとまりけり秋の暮" becomes �6k�nh~�Q��n�
 instance IsString ByteString where
     fromString = packChars
 
@@ -165,12 +168,12 @@ unpackChars (Chunk c cs) = S.unpackAppendCharsLazy c (unpackChars cs)
 --
 invariant :: ByteString -> Bool
 invariant Empty                     = True
-invariant (Chunk (S.PS _ _ len) cs) = len > 0 && invariant cs
+invariant (Chunk (S.BS _ len) cs) = len > 0 && invariant cs
 
 -- | In a form that checks the invariant lazily.
 checkInvariant :: ByteString -> ByteString
 checkInvariant Empty = Empty
-checkInvariant (Chunk c@(S.PS _ _ len) cs)
+checkInvariant (Chunk c@(S.BS _ len) cs)
     | len > 0   = Chunk c (checkInvariant cs)
     | otherwise = error $ "Data.ByteString.Lazy: invariant violation:"
                ++ show (Chunk c cs)
@@ -179,8 +182,8 @@ checkInvariant (Chunk c@(S.PS _ _ len) cs)
 
 -- | Smart constructor for 'Chunk'. Guarantees the data type invariant.
 chunk :: S.ByteString -> ByteString -> ByteString
-chunk c@(S.PS _ _ len) cs | len == 0  = cs
-                          | otherwise = Chunk c cs
+chunk c@(S.BS _ len) cs | len == 0  = cs
+                        | otherwise = Chunk c cs
 {-# INLINE chunk #-}
 
 -- | Consume the chunks of a lazy ByteString with a natural right fold.

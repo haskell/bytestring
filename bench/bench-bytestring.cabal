@@ -179,18 +179,22 @@ benchmark bench-builder-boundscheck
         Data.ByteString.Unsafe
         Paths_bench_bytestring
 
---executable bench-builder-csv
---  hs-source-dirs:   .. .
---  main-is:          CSV.hs
---  build-depends:    base, deepseq, ghc-prim,
---                    text, binary,
---                    criterion
---  c-sources:        ../cbits/fpstring.c
---                    ../cbits/itoa.c
---  include-dirs:     ../include
---  ghc-options:      -O2
---                    -fmax-simplifier-iterations=10
---                    -fdicts-cheap
---                    -fspec-constr-count=6
---  default-language: Haskell98
-
+benchmark bench-builder-csv
+  hs-source-dirs:   .. .
+  main-is:          CSV.hs
+  type:             exitcode-stdio-1.0
+  build-depends:    base, deepseq, ghc-prim,
+                    text,
+                    gauge,
+                    utf8-string,
+                    utf8-light,
+                    bytestring,
+                    dlist
+  c-sources:        ../cbits/fpstring.c
+                    ../cbits/itoa.c
+  include-dirs:     ../include
+  ghc-options:      -O2
+                    -fmax-simplifier-iterations=10
+                    -fdicts-cheap
+                    -fspec-constr-count=6
+  default-language: Haskell2010

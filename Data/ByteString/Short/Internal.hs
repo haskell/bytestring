@@ -31,7 +31,7 @@ module Data.ByteString.Short.Internal (
     unpack,
 
     -- * Other operations
-    empty, null, length, index, unsafeIndex,
+    empty, null, length, index, indexMaybe, (!?), unsafeIndex,
 
     -- * Low level operations
     createFromPtr, copyToPtr,
@@ -66,7 +66,6 @@ import Foreign.C.Types  (CSize(..), CInt(..), CLong(..))
 import Foreign.C.Types  (CSize, CInt, CLong)
 #endif
 import Foreign.Marshal.Alloc (allocaBytes)
-import Foreign.Ptr
 import Foreign.ForeignPtr (touchForeignPtr)
 #if MIN_VERSION_base(4,5,0)
 import Foreign.ForeignPtr.Unsafe (unsafeForeignPtrToPtr)
@@ -103,11 +102,12 @@ import GHC.ST         (ST(ST), runST)
 import GHC.Word
 
 import Prelude ( Eq(..), Ord(..), Ordering(..), Read(..), Show(..)
-               , ($), error, (++), (.)
+               , ($), ($!), error, (++), (.)
                , String, userError
                , Bool(..), (&&), otherwise
                , (+), (-), fromIntegral
-               , return )
+               , return
+               , Maybe(..) )
 
 
 -- | A compact representation of a 'Word8' vector.
@@ -172,12 +172,15 @@ instance Read ShortByteString where
     readsPrec p str = [ (packChars x, y) | (x, y) <- readsPrec p str ]
 
 #if MIN_VERSION_base(4,7,0)
+-- | @since 0.10.12.0
 instance GHC.Exts.IsList ShortByteString where
   type Item ShortByteString = Word8
   fromList = packBytes
   toList   = unpackBytes
 #endif
 
+-- | Beware: 'fromString' truncates multi-byte characters to octets.
+-- e.g. "枯朶に烏のとまりけり秋の暮" becomes �6k�nh~�Q��n�
 instance IsString ShortByteString where
     fromString = packChars
 
@@ -211,6 +214,26 @@ index :: ShortByteString -> Int -> Word8
 index sbs i
   | i >= 0 && i < length sbs = unsafeIndex sbs i
   | otherwise                = indexError sbs i
+
+-- | /O(1)/ 'ShortByteString' index, starting from 0, that returns 'Just' if:
+--
+-- > 0 <= n < length bs
+--
+-- @since 0.11.0.0
+indexMaybe :: ShortByteString -> Int -> Maybe Word8
+indexMaybe sbs i
+  | i >= 0 && i < length sbs = Just $! unsafeIndex sbs i
+  | otherwise                = Nothing
+{-# INLINE indexMaybe #-}
+
+-- | /O(1)/ 'ShortByteString' index, starting from 0, that returns 'Just' if:
+--
+-- > 0 <= n < length bs
+--
+-- @since 0.11.0.0
+(!?) :: ShortByteString -> Int -> Maybe Word8
+(!?) = indexMaybe
+{-# INLINE (!?) #-}
 
 unsafeIndex :: ShortByteString -> Int -> Word8
 unsafeIndex sbs = indexWord8Array (asBA sbs)
@@ -247,10 +270,10 @@ toShort :: ByteString -> ShortByteString
 toShort !bs = unsafeDupablePerformIO (toShortIO bs)
 
 toShortIO :: ByteString -> IO ShortByteString
-toShortIO (PS fptr off len) = do
+toShortIO (BS fptr len) = do
     mba <- stToIO (newByteArray len)
     let ptr = unsafeForeignPtrToPtr fptr
-    stToIO (copyAddrToByteArray (ptr `plusPtr` off) mba 0 len)
+    stToIO (copyAddrToByteArray ptr mba 0 len)
     touchForeignPtr fptr
     BA# ba# <- stToIO (unsafeFreezeByteArray mba)
     return (SBS ba# LEN(len))
@@ -269,7 +292,7 @@ fromShortIO sbs = do
     stToIO (copyByteArray (asBA sbs) 0 mba 0 len)
     let fp = ForeignPtr (byteArrayContents# (unsafeCoerce# mba#))
                         (PlainPtr mba#)
-    return (PS fp 0 len)
+    return (BS fp len)
 #else
     -- Before base 4.6 ForeignPtrContents is not exported from GHC.ForeignPtr
     -- so we cannot get direct access to the mbarr#
@@ -278,7 +301,7 @@ fromShortIO sbs = do
     let ptr = unsafeForeignPtrToPtr fptr
     stToIO (copyByteArrayToAddr (asBA sbs) 0 ptr len)
     touchForeignPtr fptr
-    return (PS fptr 0 len)
+    return (BS fptr len)
 #endif
 
 

@@ -138,8 +138,6 @@ module Data.ByteString (
 
         -- ** Search for arbitrary substrings
         breakSubstring,         -- :: ByteString -> ByteString -> (ByteString,ByteString)
-        findSubstring,          -- :: ByteString -> ByteString -> Maybe Int
-        findSubstrings,         -- :: ByteString -> ByteString -> [Int]
 
         -- * Searching ByteStrings
 
@@ -154,6 +152,8 @@ module Data.ByteString (
 
         -- * Indexing ByteStrings
         index,                  -- :: ByteString -> Int -> Word8
+        indexMaybe,             -- :: ByteString -> Int -> Maybe Word8
+        (!?),                   -- :: ByteString -> Int -> Maybe Word8
         elemIndex,              -- :: Word8 -> ByteString -> Maybe Int
         elemIndices,            -- :: Word8 -> ByteString -> [Int]
         elemIndexEnd,           -- :: Word8 -> ByteString -> Maybe Int
@@ -295,7 +295,7 @@ finiteBitSize = bitSize
 
 -- | /O(1)/ The empty 'ByteString'
 empty :: ByteString
-empty = PS nullForeignPtr 0 0
+empty = BS nullForeignPtr 0
 
 -- | /O(1)/ Convert a 'Word8' into a 'ByteString'
 singleton :: Word8 -> ByteString
@@ -352,13 +352,13 @@ unpackFoldr bs k z = foldr k z bs
 
 -- | /O(1)/ Test whether a ByteString is empty.
 null :: ByteString -> Bool
-null (PS _ _ l) = assert (l >= 0) $ l <= 0
+null (BS _ l) = assert (l >= 0) $ l <= 0
 {-# INLINE null #-}
 
 -- ---------------------------------------------------------------------
 -- | /O(1)/ 'length' returns the length of a ByteString as an 'Int'.
 length :: ByteString -> Int
-length (PS _ _ l) = assert (l >= 0) l
+length (BS _ l) = assert (l >= 0) l
 {-# INLINE length #-}
 
 ------------------------------------------------------------------------
@@ -369,15 +369,15 @@ infixl 5 `snoc`
 -- | /O(n)/ 'cons' is analogous to (:) for lists, but of different
 -- complexity, as it requires making a copy.
 cons :: Word8 -> ByteString -> ByteString
-cons c (PS x s l) = unsafeCreate (l+1) $ \p -> withForeignPtr x $ \f -> do
+cons c (BS x l) = unsafeCreate (l+1) $ \p -> withForeignPtr x $ \f -> do
         poke p c
-        memcpy (p `plusPtr` 1) (f `plusPtr` s) (fromIntegral l)
+        memcpy (p `plusPtr` 1) f (fromIntegral l)
 {-# INLINE cons #-}
 
 -- | /O(n)/ Append a byte to the end of a 'ByteString'
 snoc :: ByteString -> Word8 -> ByteString
-snoc (PS x s l) c = unsafeCreate (l+1) $ \p -> withForeignPtr x $ \f -> do
-        memcpy p (f `plusPtr` s) (fromIntegral l)
+snoc (BS x l) c = unsafeCreate (l+1) $ \p -> withForeignPtr x $ \f -> do
+        memcpy p f (fromIntegral l)
         poke (p `plusPtr` l) c
 {-# INLINE snoc #-}
 
@@ -386,54 +386,54 @@ snoc (PS x s l) c = unsafeCreate (l+1) $ \p -> withForeignPtr x $ \f -> do
 -- | /O(1)/ Extract the first element of a ByteString, which must be non-empty.
 -- An exception will be thrown in the case of an empty ByteString.
 head :: ByteString -> Word8
-head (PS x s l)
+head (BS x l)
     | l <= 0    = errorEmptyList "head"
-    | otherwise = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> peekByteOff p s
+    | otherwise = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> peek p
 {-# INLINE head #-}
 
 -- | /O(1)/ Extract the elements after the head of a ByteString, which must be non-empty.
 -- An exception will be thrown in the case of an empty ByteString.
 tail :: ByteString -> ByteString
-tail (PS p s l)
+tail (BS p l)
     | l <= 0    = errorEmptyList "tail"
-    | otherwise = PS p (s+1) (l-1)
+    | otherwise = BS (plusForeignPtr p 1) (l-1)
 {-# INLINE tail #-}
 
 -- | /O(1)/ Extract the head and tail of a ByteString, returning Nothing
 -- if it is empty.
 uncons :: ByteString -> Maybe (Word8, ByteString)
-uncons (PS x s l)
+uncons (BS x l)
     | l <= 0    = Nothing
     | otherwise = Just (accursedUnutterablePerformIO $ withForeignPtr x
-                                                     $ \p -> peekByteOff p s,
-                        PS x (s+1) (l-1))
+                                                     $ \p -> peek p,
+                        BS (plusForeignPtr x 1) (l-1))
 {-# INLINE uncons #-}
 
 -- | /O(1)/ Extract the last element of a ByteString, which must be finite and non-empty.
 -- An exception will be thrown in the case of an empty ByteString.
 last :: ByteString -> Word8
-last ps@(PS x s l)
+last ps@(BS x l)
     | null ps   = errorEmptyList "last"
     | otherwise = accursedUnutterablePerformIO $
-                    withForeignPtr x $ \p -> peekByteOff p (s+l-1)
+                    withForeignPtr x $ \p -> peekByteOff p (l-1)
 {-# INLINE last #-}
 
 -- | /O(1)/ Return all the elements of a 'ByteString' except the last one.
 -- An exception will be thrown in the case of an empty ByteString.
 init :: ByteString -> ByteString
-init ps@(PS p s l)
+init ps@(BS p l)
     | null ps   = errorEmptyList "init"
-    | otherwise = PS p s (l-1)
+    | otherwise = BS p (l-1)
 {-# INLINE init #-}
 
 -- | /O(1)/ Extract the 'init' and 'last' of a ByteString, returning Nothing
 -- if it is empty.
 unsnoc :: ByteString -> Maybe (ByteString, Word8)
-unsnoc (PS x s l)
+unsnoc (BS x l)
     | l <= 0    = Nothing
-    | otherwise = Just (PS x s (l-1),
+    | otherwise = Just (BS x (l-1),
                         accursedUnutterablePerformIO $
-                          withForeignPtr x $ \p -> peekByteOff p (s+l-1))
+                          withForeignPtr x $ \p -> peekByteOff p (l-1))
 {-# INLINE unsnoc #-}
 
 -- | /O(n)/ Append two ByteStrings
@@ -447,8 +447,8 @@ append = mappend
 -- | /O(n)/ 'map' @f xs@ is the ByteString obtained by applying @f@ to each
 -- element of @xs@.
 map :: (Word8 -> Word8) -> ByteString -> ByteString
-map f (PS fp s len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a ->
-    create len $ map_ 0 (a `plusPtr` s)
+map f (BS fp len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a ->
+    create len $ map_ 0 a
   where
     map_ :: Int -> Ptr Word8 -> Ptr Word8 -> IO ()
     map_ !n !p1 !p2
@@ -461,18 +461,18 @@ map f (PS fp s len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a ->
 
 -- | /O(n)/ 'reverse' @xs@ efficiently returns the elements of @xs@ in reverse order.
 reverse :: ByteString -> ByteString
-reverse (PS x s l) = unsafeCreate l $ \p -> withForeignPtr x $ \f ->
-        c_reverse p (f `plusPtr` s) (fromIntegral l)
+reverse (BS x l) = unsafeCreate l $ \p -> withForeignPtr x $ \f ->
+        c_reverse p f (fromIntegral l)
 
 -- | /O(n)/ The 'intersperse' function takes a 'Word8' and a
 -- 'ByteString' and \`intersperses\' that byte between the elements of
 -- the 'ByteString'.  It is analogous to the intersperse function on
 -- Lists.
 intersperse :: Word8 -> ByteString -> ByteString
-intersperse c ps@(PS x s l)
+intersperse c ps@(BS x l)
     | length ps < 2  = ps
     | otherwise      = unsafeCreate (2*l-1) $ \p -> withForeignPtr x $ \f ->
-        c_intersperse p (f `plusPtr` s) (fromIntegral l) c
+        c_intersperse p f (fromIntegral l) c
 
 -- | The 'transpose' function transposes the rows and columns of its
 -- 'ByteString' argument.
@@ -487,9 +487,9 @@ transpose ps = P.map pack . List.transpose . P.map unpack $ ps
 -- ByteString using the binary operator, from left to right.
 --
 foldl :: (a -> Word8 -> a) -> a -> ByteString -> a
-foldl f z (PS fp off len) =
+foldl f z (BS fp len) =
       let p = unsafeForeignPtrToPtr fp
-       in go (p `plusPtr` (off+len-1)) (p `plusPtr` (off-1))
+       in go (p `plusPtr` (len-1)) (p `plusPtr` (-1))
     where
       -- not tail recursive; traverses array right to left
       go !p !q | p == q    = z
@@ -503,9 +503,9 @@ foldl f z (PS fp off len) =
 -- | 'foldl'' is like 'foldl', but strict in the accumulator.
 --
 foldl' :: (a -> Word8 -> a) -> a -> ByteString -> a
-foldl' f v (PS fp off len) =
+foldl' f v (BS fp len) =
       accursedUnutterablePerformIO $ withForeignPtr fp $ \p ->
-        go v (p `plusPtr` off) (p `plusPtr` (off+len))
+        go v p (p `plusPtr` len)
     where
       -- tail recursive; traverses array left to right
       go !z !p !q | p == q    = return z
@@ -517,9 +517,9 @@ foldl' f v (PS fp off len) =
 -- (typically the right-identity of the operator), and a ByteString,
 -- reduces the ByteString using the binary operator, from right to left.
 foldr :: (Word8 -> a -> a) -> a -> ByteString -> a
-foldr k z (PS fp off len) =
+foldr k z (BS fp len) =
       let p = unsafeForeignPtrToPtr fp
-       in go (p `plusPtr` off) (p `plusPtr` (off+len))
+       in go p (p `plusPtr` len)
     where
       -- not tail recursive; traverses array left to right
       go !p !q | p == q    = z
@@ -532,9 +532,9 @@ foldr k z (PS fp off len) =
 
 -- | 'foldr'' is like 'foldr', but strict in the accumulator.
 foldr' :: (Word8 -> a -> a) -> a -> ByteString -> a
-foldr' k v (PS fp off len) =
+foldr' k v (BS fp len) =
       accursedUnutterablePerformIO $ withForeignPtr fp $ \p ->
-        go v (p `plusPtr` (off+len-1)) (p `plusPtr` (off-1))
+        go v (p `plusPtr` (len-1)) (p `plusPtr` (-1))
     where
       -- tail recursive; traverses array right to left
       go !z !p !q | p == q    = return z
@@ -543,7 +543,7 @@ foldr' k v (PS fp off len) =
 {-# INLINE foldr' #-}
 
 -- | 'foldl1' is a variant of 'foldl' that has no starting value
--- argument, and thus must be applied to non-empty 'ByteStrings'.
+-- argument, and thus must be applied to non-empty 'ByteString's.
 -- An exception will be thrown in the case of an empty ByteString.
 foldl1 :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldl1 f ps
@@ -592,9 +592,9 @@ concatMap f = concat . foldr ((:) . f) []
 -- | /O(n)/ Applied to a predicate and a ByteString, 'any' determines if
 -- any element of the 'ByteString' satisfies the predicate.
 any :: (Word8 -> Bool) -> ByteString -> Bool
-any _ (PS _ _ 0) = False
-any f (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \ptr ->
-        go (ptr `plusPtr` s) (ptr `plusPtr` (s+l))
+any _ (BS _ 0) = False
+any f (BS x l) = accursedUnutterablePerformIO $ withForeignPtr x $ \ptr ->
+        go ptr (ptr `plusPtr` l)
     where
         go !p !q | p == q    = return False
                  | otherwise = do c <- peek p
@@ -607,9 +607,9 @@ any f (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \ptr ->
 -- | /O(n)/ Applied to a predicate and a 'ByteString', 'all' determines
 -- if all elements of the 'ByteString' satisfy the predicate.
 all :: (Word8 -> Bool) -> ByteString -> Bool
-all _ (PS _ _ 0) = True
-all f (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \ptr ->
-        go (ptr `plusPtr` s) (ptr `plusPtr` (s+l))
+all _ (BS _ 0) = True
+all f (BS x l) = accursedUnutterablePerformIO $ withForeignPtr x $ \ptr ->
+        go ptr (ptr `plusPtr` l)
     where
         go !p !q | p == q     = return True  -- end of list
                  | otherwise  = do c <- peek p
@@ -624,20 +624,20 @@ all f (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \ptr ->
 -- This function will fuse.
 -- An exception will be thrown in the case of an empty ByteString.
 maximum :: ByteString -> Word8
-maximum xs@(PS x s l)
+maximum xs@(BS x l)
     | null xs   = errorEmptyList "maximum"
     | otherwise = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
-                      c_maximum (p `plusPtr` s) (fromIntegral l)
+                      c_maximum p (fromIntegral l)
 {-# INLINE maximum #-}
 
 -- | /O(n)/ 'minimum' returns the minimum value from a 'ByteString'
 -- This function will fuse.
 -- An exception will be thrown in the case of an empty ByteString.
 minimum :: ByteString -> Word8
-minimum xs@(PS x s l)
+minimum xs@(BS x l)
     | null xs   = errorEmptyList "minimum"
     | otherwise = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
-                      c_minimum (p `plusPtr` s) (fromIntegral l)
+                      c_minimum p (fromIntegral l)
 {-# INLINE minimum #-}
 
 ------------------------------------------------------------------------
@@ -647,10 +647,10 @@ minimum xs@(PS x s l)
 -- passing an accumulating parameter from left to right, and returning a
 -- final value of this accumulator together with the new list.
 mapAccumL :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
-mapAccumL f acc (PS fp o len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a -> do
+mapAccumL f acc (BS fp len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a -> do
     gp   <- mallocByteString len
-    acc' <- withForeignPtr gp $ \p -> mapAccumL_ acc 0 (a `plusPtr` o) p
-    return (acc', PS gp 0 len)
+    acc' <- withForeignPtr gp $ \p -> mapAccumL_ acc 0 a p
+    return (acc', BS gp len)
   where
     mapAccumL_ !s !n !p1 !p2
        | n >= len = return s
@@ -666,10 +666,10 @@ mapAccumL f acc (PS fp o len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a 
 -- passing an accumulating parameter from right to left, and returning a
 -- final value of this accumulator together with the new ByteString.
 mapAccumR :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
-mapAccumR f acc (PS fp o len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a -> do
+mapAccumR f acc (BS fp len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a -> do
     gp   <- mallocByteString len
-    acc' <- withForeignPtr gp $ \p -> mapAccumR_ acc (len-1) (a `plusPtr` o) p
-    return $! (acc', PS gp 0 len)
+    acc' <- withForeignPtr gp $ \p -> mapAccumR_ acc (len-1) a p
+    return $! (acc', BS gp len)
   where
     mapAccumR_ !s !n !p !q
        | n <  0    = return s
@@ -694,10 +694,10 @@ mapAccumR f acc (PS fp o len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a 
 --
 scanl :: (Word8 -> Word8 -> Word8) -> Word8 -> ByteString -> ByteString
 
-scanl f v (PS fp s len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a ->
+scanl f v (BS fp len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a ->
     create (len+1) $ \q -> do
         poke q v
-        scanl_ v 0 (a `plusPtr` s) (q `plusPtr` 1)
+        scanl_ v 0 a (q `plusPtr` 1)
   where
     scanl_ !z !n !p !q
         | n >= len  = return ()
@@ -724,10 +724,10 @@ scanl1 f ps
 
 -- | scanr is the right-to-left dual of scanl.
 scanr :: (Word8 -> Word8 -> Word8) -> Word8 -> ByteString -> ByteString
-scanr f v (PS fp s len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a ->
+scanr f v (BS fp len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a ->
     create (len+1) $ \q -> do
         poke (q `plusPtr` len) v
-        scanr_ v (len-1) (a `plusPtr` s) q
+        scanr_ v (len-1) a q
   where
     scanr_ !z !n !p !q
         | n <  0    = return ()
@@ -753,7 +753,7 @@ scanr1 f ps
 --
 -- > replicate w c = unfoldr w (\u -> Just (u,u)) c
 --
--- This implemenation uses @memset(3)@
+-- This implementation uses @memset(3)@
 replicate :: Int -> Word8 -> ByteString
 replicate w c
     | w <= 0    = empty
@@ -809,27 +809,27 @@ unfoldrN i f x0
 -- | /O(1)/ 'take' @n@, applied to a ByteString @xs@, returns the prefix
 -- of @xs@ of length @n@, or @xs@ itself if @n > 'length' xs@.
 take :: Int -> ByteString -> ByteString
-take n ps@(PS x s l)
+take n ps@(BS x l)
     | n <= 0    = empty
     | n >= l    = ps
-    | otherwise = PS x s n
+    | otherwise = BS x n
 {-# INLINE take #-}
 
 -- | /O(1)/ 'drop' @n xs@ returns the suffix of @xs@ after the first @n@
 -- elements, or @[]@ if @n > 'length' xs@.
 drop  :: Int -> ByteString -> ByteString
-drop n ps@(PS x s l)
+drop n ps@(BS x l)
     | n <= 0    = ps
     | n >= l    = empty
-    | otherwise = PS x (s+n) (l-n)
+    | otherwise = BS (plusForeignPtr x n) (l-n)
 {-# INLINE drop #-}
 
 -- | /O(1)/ 'splitAt' @n xs@ is equivalent to @('take' n xs, 'drop' n xs)@.
 splitAt :: Int -> ByteString -> (ByteString, ByteString)
-splitAt n ps@(PS x s l)
+splitAt n ps@(BS x l)
     | n <= 0    = (empty, ps)
     | n >= l    = (ps, empty)
-    | otherwise = (PS x s n, PS x (s+n) (l-n))
+    | otherwise = (BS x n, BS (plusForeignPtr x n) (l-n))
 {-# INLINE splitAt #-}
 
 -- | 'takeWhile', applied to a predicate @p@ and a ByteString @xs@,
@@ -841,6 +841,8 @@ takeWhile f ps = unsafeTake (findIndexOrEnd (not . f) ps) ps
 
 -- | 'takeWhileEnd', applied to a predicate @p@ and a ByteString @xs@, returns
 -- the longest suffix (possibly empty) of @xs@ of elements that satisfy @p@.
+--
+-- @since 0.10.12.0
 takeWhileEnd :: (Word8 -> Bool) -> ByteString -> ByteString
 takeWhileEnd f ps = unsafeDrop (findFromEndUntil (not . f) ps) ps
 {-# INLINE takeWhileEnd #-}
@@ -852,6 +854,8 @@ dropWhile f ps = unsafeDrop (findIndexOrEnd (not . f) ps) ps
 
 -- | 'dropWhileEnd' @p xs@ returns the prefix remaining after 'takeWhileEnd' @p
 -- xs@.
+--
+-- @since 0.10.12.0
 dropWhileEnd :: (Word8 -> Bool) -> ByteString -> ByteString
 dropWhileEnd f ps = unsafeTake (findFromEndUntil (not . f) ps) ps
 {-# INLINE dropWhileEnd #-}
@@ -893,7 +897,7 @@ break p ps = case findIndexOrEnd p ps of n -> (unsafeTake n ps, unsafeDrop n ps)
 -- of the specified byte. It is more efficient than 'break' as it is
 -- implemented with @memchr(3)@. I.e.
 --
--- > break (=='c') "abcd" == breakByte 'c' "abcd"
+-- > break (==99) "abcd" == breakByte 99 "abcd" -- fromEnum 'c' == 99
 --
 breakByte :: Word8 -> ByteString -> (ByteString, ByteString)
 breakByte c p = case elemIndex c p of
@@ -918,13 +922,13 @@ span p ps = break (not . p) ps
 -- occurence of a byte other than its argument. It is more efficient
 -- than 'span (==)'
 --
--- > span  (=='c') "abcd" == spanByte 'c' "abcd"
+-- > span  (==99) "abcd" == spanByte 99 "abcd" -- fromEnum 'c' == 99
 --
 spanByte :: Word8 -> ByteString -> (ByteString, ByteString)
-spanByte c ps@(PS x s l) =
+spanByte c ps@(BS x l) =
     accursedUnutterablePerformIO $
       withForeignPtr x $ \p ->
-        go (p `plusPtr` s) 0
+        go p 0
   where
     go !p !i | i >= l    = return (ps, empty)
              | otherwise = do c' <- peekByteOff p i
@@ -969,12 +973,12 @@ spanEnd  p ps = splitAt (findFromEndUntil (not.p) ps) ps
 -- The resulting components do not contain the separators.  Two adjacent
 -- separators result in an empty component in the output.  eg.
 --
--- > splitWith (=='a') "aabbaca" == ["","","bb","c",""]
--- > splitWith (=='a') []        == []
+-- > splitWith (==97) "aabbaca" == ["","","bb","c",""] -- fromEnum 'a' == 97
+-- > splitWith undefined ""     == []                  -- and not [""]
 --
 splitWith :: (Word8 -> Bool) -> ByteString -> [ByteString]
-splitWith _pred (PS _  _   0) = []
-splitWith pred_ (PS fp off len) = splitWith0 pred# off len fp
+splitWith _pred (BS _  0) = []
+splitWith pred_ (BS fp len) = splitWith0 pred# 0 len fp
   where pred# c# = pred_ (W8# c#)
 
         splitWith0 !pred' !off' !len' !fp' =
@@ -989,11 +993,11 @@ splitWith pred_ (PS fp off len) = splitWith0 pred# off len fp
                   -> IO [ByteString]
 
         splitLoop pred' p idx' off' len' fp'
-            | idx' >= len'  = return [PS fp' off' idx']
+            | idx' >= len'  = return [BS (plusForeignPtr fp' off') idx']
             | otherwise = do
                 w <- peekElemOff p (off'+idx')
                 if pred' (case w of W8# w# -> w#)
-                   then return (PS fp' off' idx' :
+                   then return (BS (plusForeignPtr fp' off') idx' :
                               splitWith0 pred' (off'+idx'+1) (len'-idx'-1) fp')
                    else splitLoop pred' p (idx'+1) off' len' fp'
 {-# INLINE splitWith #-}
@@ -1001,9 +1005,10 @@ splitWith pred_ (PS fp off len) = splitWith0 pred# off len fp
 -- | /O(n)/ Break a 'ByteString' into pieces separated by the byte
 -- argument, consuming the delimiter. I.e.
 --
--- > split '\n' "a\nb\nd\ne" == ["a","b","d","e"]
--- > split 'a'  "aXaXaXa"    == ["","X","X","X",""]
--- > split 'x'  "x"          == ["",""]
+-- > split 10  "a\nb\nd\ne" == ["a","b","d","e"]   -- fromEnum '\n' == 10
+-- > split 97  "aXaXaXa"    == ["","X","X","X",""] -- fromEnum 'a' == 97
+-- > split 120 "x"          == ["",""]             -- fromEnum 'x' == 120
+-- > split undefined ""     == []                  -- and not [""]
 --
 -- and
 --
@@ -1011,22 +1016,22 @@ splitWith pred_ (PS fp off len) = splitWith0 pred# off len fp
 -- > split == splitWith . (==)
 --
 -- As for all splitting functions in this library, this function does
--- not copy the substrings, it just constructs new 'ByteStrings' that
+-- not copy the substrings, it just constructs new 'ByteString's that
 -- are slices of the original.
 --
 split :: Word8 -> ByteString -> [ByteString]
-split _ (PS _ _ 0) = []
-split w (PS x s l) = loop 0
+split _ (BS _ 0) = []
+split w (BS x l) = loop 0
     where
         loop !n =
             let q = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
-                      memchr (p `plusPtr` (s+n))
+                      memchr (p `plusPtr` n)
                              w (fromIntegral (l-n))
             in if q == nullPtr
-                then [PS x (s+n) (l-n)]
+                then [BS (plusForeignPtr x n) (l-n)]
                 else let i = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
-                               return (q `minusPtr` (p `plusPtr` s))
-                      in PS x (s+n) (i-n) : loop (i+1)
+                               return (q `minusPtr` p)
+                      in BS (plusForeignPtr x n) (i-n) : loop (i+1)
 
 {-# INLINE split #-}
 
@@ -1072,12 +1077,12 @@ intercalate s = concat . List.intersperse s
 -- with a char. Around 4 times faster than the generalised join.
 --
 intercalateWithByte :: Word8 -> ByteString -> ByteString -> ByteString
-intercalateWithByte c f@(PS ffp s l) g@(PS fgp t m) = unsafeCreate len $ \ptr ->
+intercalateWithByte c f@(BS ffp l) g@(BS fgp m) = unsafeCreate len $ \ptr ->
     withForeignPtr ffp $ \fp ->
     withForeignPtr fgp $ \gp -> do
-        memcpy ptr (fp `plusPtr` s) (fromIntegral l)
+        memcpy ptr fp (fromIntegral l)
         poke (ptr `plusPtr` l) c
-        memcpy (ptr `plusPtr` (l + 1)) (gp `plusPtr` t) (fromIntegral m)
+        memcpy (ptr `plusPtr` (l + 1)) gp (fromIntegral m)
     where
       len = length f + length g + 1
 {-# INLINE intercalateWithByte #-}
@@ -1094,15 +1099,35 @@ index ps n
     | otherwise      = ps `unsafeIndex` n
 {-# INLINE index #-}
 
+-- | /O(1)/ 'ByteString' index, starting from 0, that returns 'Just' if:
+--
+-- > 0 <= n < length bs
+--
+-- @since 0.11.0.0
+indexMaybe :: ByteString -> Int -> Maybe Word8
+indexMaybe ps n
+    | n < 0          = Nothing
+    | n >= length ps = Nothing
+    | otherwise      = Just $! ps `unsafeIndex` n
+{-# INLINE indexMaybe #-}
+
+-- | /O(1)/ 'ByteString' index, starting from 0, that returns 'Just' if:
+--
+-- > 0 <= n < length bs
+--
+-- @since 0.11.0.0
+(!?) :: ByteString -> Int -> Maybe Word8
+(!?) = indexMaybe
+{-# INLINE (!?) #-}
+
 -- | /O(n)/ The 'elemIndex' function returns the index of the first
 -- element in the given 'ByteString' which is equal to the query
 -- element, or 'Nothing' if there is no such element.
 -- This implementation uses memchr(3).
 elemIndex :: Word8 -> ByteString -> Maybe Int
-elemIndex c (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> do
-    let p' = p `plusPtr` s
-    q <- memchr p' c (fromIntegral l)
-    return $! if q == nullPtr then Nothing else Just $! q `minusPtr` p'
+elemIndex c (BS x l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> do
+    q <- memchr p c (fromIntegral l)
+    return $! if q == nullPtr then Nothing else Just $! q `minusPtr` p
 {-# INLINE elemIndex #-}
 
 -- | /O(n)/ The 'elemIndexEnd' function returns the last index of the
@@ -1121,15 +1146,15 @@ elemIndexEnd = findIndexEnd . (==)
 -- the indices of all elements equal to the query element, in ascending order.
 -- This implementation uses memchr(3).
 elemIndices :: Word8 -> ByteString -> [Int]
-elemIndices w (PS x s l) = loop 0
+elemIndices w (BS x l) = loop 0
     where
         loop !n = let q = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
-                           memchr (p `plusPtr` (n+s))
+                           memchr (p `plusPtr` n)
                                                 w (fromIntegral (l - n))
                   in if q == nullPtr
                         then []
                         else let i = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
-                                       return (q `minusPtr` (p `plusPtr` s))
+                                       return (q `minusPtr` p)
                              in i : loop (i+1)
 {-# INLINE elemIndices #-}
 
@@ -1139,15 +1164,15 @@ elemIndices w (PS x s l) = loop 0
 --
 -- But more efficiently than using length on the intermediate list.
 count :: Word8 -> ByteString -> Int
-count w (PS x s m) = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
-    fmap fromIntegral $ c_count (p `plusPtr` s) (fromIntegral m) w
+count w (BS x m) = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
+    fmap fromIntegral $ c_count p (fromIntegral m) w
 {-# INLINE count #-}
 
 -- | /O(n)/ The 'findIndex' function takes a predicate and a 'ByteString' and
 -- returns the index of the first element in the ByteString
 -- satisfying the predicate.
 findIndex :: (Word8 -> Bool) -> ByteString -> Maybe Int
-findIndex k (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \f -> go (f `plusPtr` s) 0
+findIndex k (BS x l) = accursedUnutterablePerformIO $ withForeignPtr x $ \f -> go f 0
   where
     go !ptr !n | n >= l    = return Nothing
                | otherwise = do w <- peek ptr
@@ -1159,8 +1184,10 @@ findIndex k (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \f ->
 -- | /O(n)/ The 'findIndexEnd' function takes a predicate and a 'ByteString' and
 -- returns the index of the last element in the ByteString
 -- satisfying the predicate.
+--
+-- @since 0.10.12.0
 findIndexEnd :: (Word8 -> Bool) -> ByteString -> Maybe Int
-findIndexEnd k (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \ f -> go (f `plusPtr` s) (l-1)
+findIndexEnd k (BS x l) = accursedUnutterablePerformIO $ withForeignPtr x $ \ f -> go f (l-1)
   where
     go !ptr !n | n < 0     = return Nothing
                | otherwise = do w <- peekByteOff ptr n
@@ -1195,10 +1222,10 @@ notElem c ps = not (elem c ps)
 -- returns a ByteString containing those characters that satisfy the
 -- predicate.
 filter :: (Word8 -> Bool) -> ByteString -> ByteString
-filter k ps@(PS x s l)
+filter k ps@(BS x l)
     | null ps   = ps
     | otherwise = unsafePerformIO $ createAndTrim l $ \p -> withForeignPtr x $ \f -> do
-        t <- go (f `plusPtr` s) p (f `plusPtr` (s + l))
+        t <- go f p (f `plusPtr` l)
         return $! t `minusPtr` p -- actual length
     where
         go !f !t !end | f == end  = return t
@@ -1258,8 +1285,8 @@ partition f s = unsafeDupablePerformIO $
               mid <- sep 0 p end
               rev mid end
               let i = mid `minusPtr` p
-              return (PS fp' 0 i,
-                      PS fp' i (len - i))
+              return (BS fp' i,
+                      BS (plusForeignPtr fp' i) (len - i))
   where
     len  = length s
     incr = (`plusPtr` 1)
@@ -1288,12 +1315,12 @@ partition f s = unsafeDupablePerformIO $
 -- |/O(n)/ The 'isPrefixOf' function takes two ByteStrings and returns 'True'
 -- if the first is a prefix of the second.
 isPrefixOf :: ByteString -> ByteString -> Bool
-isPrefixOf (PS x1 s1 l1) (PS x2 s2 l2)
+isPrefixOf (BS x1 l1) (BS x2 l2)
     | l1 == 0   = True
     | l2 < l1   = False
     | otherwise = accursedUnutterablePerformIO $ withForeignPtr x1 $ \p1 ->
         withForeignPtr x2 $ \p2 -> do
-            i <- memcmp (p1 `plusPtr` s1) (p2 `plusPtr` s2) (fromIntegral l1)
+            i <- memcmp p1 p2 (fromIntegral l1)
             return $! i == 0
 
 -- | /O(n)/ The 'stripPrefix' function takes two ByteStrings and returns 'Just'
@@ -1302,7 +1329,7 @@ isPrefixOf (PS x1 s1 l1) (PS x2 s2 l2)
 --
 -- @since 0.10.8.0
 stripPrefix :: ByteString -> ByteString -> Maybe ByteString
-stripPrefix bs1@(PS _ _ l1) bs2
+stripPrefix bs1@(BS _ l1) bs2
    | bs1 `isPrefixOf` bs2 = Just (unsafeDrop l1 bs2)
    | otherwise = Nothing
 
@@ -1313,29 +1340,28 @@ stripPrefix bs1@(PS _ _ l1) bs2
 --
 -- > isSuffixOf x y == reverse x `isPrefixOf` reverse y
 --
--- However, the real implemenation uses memcmp to compare the end of the
+-- However, the real implementation uses memcmp to compare the end of the
 -- string only, with no reverse required..
 isSuffixOf :: ByteString -> ByteString -> Bool
-isSuffixOf (PS x1 s1 l1) (PS x2 s2 l2)
+isSuffixOf (BS x1 l1) (BS x2 l2)
     | l1 == 0   = True
     | l2 < l1   = False
     | otherwise = accursedUnutterablePerformIO $ withForeignPtr x1 $ \p1 ->
         withForeignPtr x2 $ \p2 -> do
-            i <- memcmp (p1 `plusPtr` s1) (p2 `plusPtr` s2 `plusPtr` (l2 - l1)) (fromIntegral l1)
+            i <- memcmp p1 (p2 `plusPtr` (l2 - l1)) (fromIntegral l1)
             return $! i == 0
 
 -- | /O(n)/ The 'stripSuffix' function takes two ByteStrings and returns 'Just'
 -- the remainder of the second iff the first is its suffix, and otherwise
 -- 'Nothing'.
 stripSuffix :: ByteString -> ByteString -> Maybe ByteString
-stripSuffix bs1@(PS _ _ l1) bs2@(PS _ _ l2)
+stripSuffix bs1@(BS _ l1) bs2@(BS _ l2)
    | bs1 `isSuffixOf` bs2 = Just (unsafeTake (l2 - l1) bs2)
    | otherwise = Nothing
 
--- | Check whether one string is a substring of another. @isInfixOf
--- p s@ is equivalent to @not (null (findSubstrings p s))@.
+-- | Check whether one string is a substring of another.
 isInfixOf :: ByteString -> ByteString -> Bool
-isInfixOf p s = isJust (findSubstring p s)
+isInfixOf p s = null p || not (null $ snd $ breakSubstring p s)
 
 -- | Break a string on a substring, returning a pair of the part of the
 -- string prior to the match, and the rest of the string.
@@ -1343,14 +1369,6 @@ isInfixOf p s = isJust (findSubstring p s)
 -- The following relationships hold:
 --
 -- > break (== c) l == breakSubstring (singleton c) l
---
--- and:
---
--- > findSubstring s l ==
--- >    if null s then Just 0
--- >              else case breakSubstring s l of
--- >                       (x,y) | null y    -> Nothing
--- >                             | otherwise -> Just (length x)
 --
 -- For example, to tokenise a string, dropping delimiters:
 --
@@ -1421,51 +1439,6 @@ breakSubstring pat =
             w' = mask .&. ((w `shiftL` 8) .|. b)
     {-# INLINE shift #-}
 
--- | Get the first index of a substring in another string,
---   or 'Nothing' if the string is not found.
---   @findSubstring p s@ is equivalent to @listToMaybe (findSubstrings p s)@.
-findSubstring :: ByteString -- ^ String to search for.
-              -> ByteString -- ^ String to seach in.
-              -> Maybe Int
-findSubstring pat src
-    | null pat && null src = Just 0
-    | null b = Nothing
-    | otherwise = Just (length a)
-  where (a, b) = breakSubstring pat src
-
-{-# DEPRECATED findSubstring "findSubstring is deprecated in favour of breakSubstring." #-}
-
--- | Find the indices of all non-overlapping occurences of a substring in a
--- string.
---
--- Note, prior to @0.10.6.0@ this function returned the indices of all
--- possibly-overlapping matches.
-findSubstrings :: ByteString -- ^ String to search for.
-               -> ByteString -- ^ String to seach in.
-               -> [Int]
-findSubstrings pat src
-    | null pat        = [0 .. ls]
-    | otherwise       = search 0
-  where
-    lp = length pat
-    ls = length src
-    search !n
-        | (n > ls - lp) || null b = []
-        | otherwise = let k = n + length a
-                      in  k : search (k + lp)
-      where
-        (a, b) = breakSubstring pat (unsafeDrop n src)
-
--- In
--- [0.10.6.0](<https://github.com/haskell/bytestring/commit/2160e091e215fecc9177d55a37cd50fc253ba86a?w=1>)
--- 'findSubstrings' was refactored to call an improved 'breakString'
--- implementation, but the refactored code no longer matches overlapping
--- strings.  The behaviour change appears to be inadvertent, but the function
--- had already been deprecated for more than seven years.  At this time
--- (@0.10.10.1@), the deprecation was twelve years in the past.
---
-{-# DEPRECATED findSubstrings "findSubstrings is deprecated in favour of breakSubstring." #-}
-
 -- ---------------------------------------------------------------------
 -- Zipping
 
@@ -1495,10 +1468,10 @@ zipWith f ps qs
 -- performed on the result of zipWith.
 --
 zipWith' :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString -> ByteString
-zipWith' f (PS fp s l) (PS fq t m) = unsafeDupablePerformIO $
+zipWith' f (BS fp l) (BS fq m) = unsafeDupablePerformIO $
     withForeignPtr fp $ \a ->
     withForeignPtr fq $ \b ->
-    create len $ zipWith_ 0 (a `plusPtr` s) (b `plusPtr` t)
+    create len $ zipWith_ 0 a b
   where
     zipWith_ :: Int -> Ptr Word8 -> Ptr Word8 -> Ptr Word8 -> IO ()
     zipWith_ !n !p1 !p2 !r
@@ -1528,24 +1501,24 @@ unzip ls = (pack (P.map fst ls), pack (P.map snd ls))
 
 -- | /O(n)/ Return all initial segments of the given 'ByteString', shortest first.
 inits :: ByteString -> [ByteString]
-inits (PS x s l) = [PS x s n | n <- [0..l]]
+inits (BS x l) = [BS x n | n <- [0..l]]
 
 -- | /O(n)/ Return all final segments of the given 'ByteString', longest first.
 tails :: ByteString -> [ByteString]
 tails p | null p    = [empty]
         | otherwise = p : tails (unsafeTail p)
 
--- less efficent spacewise: tails (PS x s l) = [PS x (s+n) (l-n) | n <- [0..l]]
+-- less efficent spacewise: tails (BS x l) = [BS (plusForeignPtr x n) (l-n) | n <- [0..l]]
 
 -- ---------------------------------------------------------------------
 -- ** Ordered 'ByteString's
 
 -- | /O(n)/ Sort a ByteString efficiently, using counting sort.
 sort :: ByteString -> ByteString
-sort (PS input s l) = unsafeCreate l $ \p -> allocaArray 256 $ \arr -> do
+sort (BS input l) = unsafeCreate l $ \p -> allocaArray 256 $ \arr -> do
 
     _ <- memset (castPtr arr) 0 (256 * fromIntegral (sizeOf (undefined :: CSize)))
-    withForeignPtr input (\x -> countOccurrences arr (x `plusPtr` s) l)
+    withForeignPtr input (\x -> countOccurrences arr x l)
 
     let go 256 !_   = return ()
         go i   !ptr = do n <- peekElemOff arr i
@@ -1574,10 +1547,10 @@ sort (PS input s l) = unsafeCreate l $ \p -> allocaArray 256 $ \arr -> do
 -- automatically; it must not be stored or used after the
 -- subcomputation finishes.
 useAsCString :: ByteString -> (CString -> IO a) -> IO a
-useAsCString (PS fp o l) action =
+useAsCString (BS fp l) action =
  allocaBytes (l+1) $ \buf ->
    withForeignPtr fp $ \p -> do
-     memcpy buf (p `plusPtr` o) (fromIntegral l)
+     memcpy buf p (fromIntegral l)
      pokeByteOff buf l (0::Word8)
      action (castPtr buf)
 
@@ -1585,7 +1558,7 @@ useAsCString (PS fp o l) action =
 -- As for @useAsCString@ this function makes a copy of the original @ByteString@.
 -- It must not be stored or used after the subcomputation finishes.
 useAsCStringLen :: ByteString -> (CStringLen -> IO a) -> IO a
-useAsCStringLen p@(PS _ _ l) f = useAsCString p $ \cstr -> f (cstr,l)
+useAsCStringLen p@(BS _ l) f = useAsCString p $ \cstr -> f (cstr,l)
 
 ------------------------------------------------------------------------
 
@@ -1617,8 +1590,8 @@ packCStringLen (_, len) =
 -- is needed in the rest of the program.
 --
 copy :: ByteString -> ByteString
-copy (PS x s l) = unsafeCreate l $ \p -> withForeignPtr x $ \f ->
-    memcpy p (f `plusPtr` s) (fromIntegral l)
+copy (BS x l) = unsafeCreate l $ \p -> withForeignPtr x $ \f ->
+    memcpy p f (fromIntegral l)
 
 -- ---------------------------------------------------------------------
 -- Line IO
@@ -1691,8 +1664,8 @@ mkBigPS _ pss = return $! concat (P.reverse pss)
 
 -- | Outputs a 'ByteString' to the specified 'Handle'.
 hPut :: Handle -> ByteString -> IO ()
-hPut _ (PS _  _ 0) = return ()
-hPut h (PS ps s l) = withForeignPtr ps $ \p-> hPutBuf h (p `plusPtr` s) l
+hPut _ (BS _  0) = return ()
+hPut h (BS ps l) = withForeignPtr ps $ \p-> hPutBuf h p l
 
 -- | Similar to 'hPut' except that it will never block. Instead it returns
 -- any tail that did not get written. This tail may be 'empty' in the case that
@@ -1703,15 +1676,18 @@ hPut h (PS ps s l) = withForeignPtr ps $ \p-> hPutBuf h (p `plusPtr` s) l
 -- function does not work correctly; it behaves identically to 'hPut'.
 --
 hPutNonBlocking :: Handle -> ByteString -> IO ByteString
-hPutNonBlocking h bs@(PS ps s l) = do
-  bytesWritten <- withForeignPtr ps $ \p-> hPutBufNonBlocking h (p `plusPtr` s) l
+hPutNonBlocking h bs@(BS ps l) = do
+  bytesWritten <- withForeignPtr ps $ \p-> hPutBufNonBlocking h p l
   return $! drop bytesWritten bs
 
 -- | A synonym for @hPut@, for compatibility
 hPutStr :: Handle -> ByteString -> IO ()
 hPutStr = hPut
 
--- | Write a ByteString to a handle, appending a newline byte
+-- | Write a ByteString to a handle, appending a newline byte.
+--
+-- Unlike 'hPutStr', this is not atomic: other threads might write
+-- to the handle between writing of the bytestring and the newline.
 hPutStrLn :: Handle -> ByteString -> IO ()
 hPutStrLn h ps
     | length ps < 1024 = hPut h (ps `snoc` 0x0a)
@@ -1721,7 +1697,10 @@ hPutStrLn h ps
 putStr :: ByteString -> IO ()
 putStr = hPut stdout
 
--- | Write a ByteString to stdout, appending a newline byte
+-- | Write a ByteString to stdout, appending a newline byte.
+--
+-- Unlike 'putStr', this is not atomic: other threads might write
+-- to stdout between writing of the bytestring and the newline.
 putStrLn :: ByteString -> IO ()
 putStrLn = hPutStrLn stdout
 
@@ -1829,7 +1808,7 @@ hGetContentsSizeHint hnd =
     readChunks chunks sz sz' = do
       fp        <- mallocByteString sz
       readcount <- withForeignPtr fp $ \buf -> hGetBuf hnd buf sz
-      let chunk = PS fp 0 readcount
+      let chunk = BS fp readcount
       -- We rely on the hGetBuf behaviour (not hGetBufSome) where it reads up
       -- to the size we ask for, or EOF. So short reads indicate EOF.
       if readcount < sz && sz > 0
@@ -1887,10 +1866,10 @@ appendFile = modifyFile AppendMode
 -- | 'findIndexOrEnd' is a variant of findIndex, that returns the length
 -- of the string if no element is found, rather than Nothing.
 findIndexOrEnd :: (Word8 -> Bool) -> ByteString -> Int
-findIndexOrEnd k (PS x s l) =
+findIndexOrEnd k (BS x l) =
     accursedUnutterablePerformIO $
       withForeignPtr x $ \f ->
-        go (f `plusPtr` s) 0
+        go f 0
   where
     go !ptr !n | n >= l    = return l
                | otherwise = do w <- peek ptr
@@ -1918,7 +1897,7 @@ moduleErrorMsg fun msg = "Data.ByteString." ++ fun ++ ':':' ':msg
 
 -- Find from the end of the string using predicate
 findFromEndUntil :: (Word8 -> Bool) -> ByteString -> Int
-findFromEndUntil f ps@(PS x s l)
+findFromEndUntil f ps@(BS x l)
   | null ps = 0
   | f (unsafeLast ps) = l
-  | otherwise = findFromEndUntil f (PS x s (l - 1))
+  | otherwise = findFromEndUntil f (BS x (l - 1))

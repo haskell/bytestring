@@ -151,8 +151,6 @@ module Data.ByteString.Lazy (
 
         -- ** Search for arbitrary substrings
 --        isSubstringOf,          -- :: ByteString -> ByteString -> Bool
---        findSubstring,          -- :: ByteString -> ByteString -> Maybe Int
---        findSubstrings,         -- :: ByteString -> ByteString -> [Int]
 
         -- * Searching ByteStrings
 
@@ -167,6 +165,8 @@ module Data.ByteString.Lazy (
 
         -- * Indexing ByteStrings
         index,                  -- :: ByteString -> Int64 -> Word8
+        indexMaybe,             -- :: ByteString -> Int64 -> Maybe Word8
+        (!?),                   -- :: ByteString -> Int64 -> Maybe Word8
         elemIndex,              -- :: Word8 -> ByteString -> Maybe Int64
         elemIndexEnd,           -- :: Word8 -> ByteString -> Maybe Int64
         elemIndices,            -- :: Word8 -> ByteString -> [Int64]
@@ -310,10 +310,10 @@ toStrict = \cs -> goLen0 cs cs
 
     -- Copy the data
     goCopy Empty                        !_   = return ()
-    goCopy (Chunk (S.PS _  _   0  ) cs) !ptr = goCopy cs ptr
-    goCopy (Chunk (S.PS fp off len) cs) !ptr = do
+    goCopy (Chunk (S.BS _  0  ) cs) !ptr = goCopy cs ptr
+    goCopy (Chunk (S.BS fp len) cs) !ptr = do
       withForeignPtr fp $ \p -> do
-        S.memcpy ptr (p `plusPtr` off) len
+        S.memcpy ptr p len
         goCopy cs (ptr `plusPtr` len)
 -- See the comment on Data.ByteString.Internal.concat for some background on
 -- this implementation.
@@ -344,7 +344,7 @@ null Empty = True
 null _     = False
 {-# INLINE null #-}
 
--- | /O(n\/c)/ 'length' returns the length of a ByteString as an 'Int64'
+-- | /O(c)/ 'length' returns the length of a ByteString as an 'Int64'
 length :: ByteString -> Int64
 length cs = foldlChunks (\n c -> n + fromIntegral (S.length c)) 0 cs
 {-# INLINE length #-}
@@ -352,7 +352,7 @@ length cs = foldlChunks (\n c -> n + fromIntegral (S.length c)) 0 cs
 infixr 5 `cons`, `cons'` --same as list (:)
 infixl 5 `snoc`
 
--- | /O(1)/ 'cons' is analogous to '(:)' for lists.
+-- | /O(1)/ 'cons' is analogous to '(Prelude.:)' for lists.
 --
 cons :: Word8 -> ByteString -> ByteString
 cons c cs = Chunk (S.singleton c) cs
@@ -465,10 +465,10 @@ intersperse _ Empty        = Empty
 intersperse w (Chunk c cs) = Chunk (S.intersperse w c)
                                    (foldrChunks (Chunk . intersperse') Empty cs)
   where intersperse' :: P.ByteString -> P.ByteString
-        intersperse' (S.PS fp o l) =
+        intersperse' (S.BS fp l) =
           S.unsafeCreate (2*l) $ \p' -> withForeignPtr fp $ \p -> do
             poke p' w
-            S.c_intersperse (p' `plusPtr` 1) (p `plusPtr` o) (fromIntegral l) w
+            S.c_intersperse (p' `plusPtr` 1) p (fromIntegral l) w
 
 -- | The 'transpose' function transposes the rows and columns of its
 -- 'ByteString' argument.
@@ -504,7 +504,7 @@ foldr k z = foldrChunks (flip (S.foldr k)) z
 {-# INLINE foldr #-}
 
 -- | 'foldl1' is a variant of 'foldl' that has no starting value
--- argument, and thus must be applied to non-empty 'ByteStrings'.
+-- argument, and thus must be applied to non-empty 'ByteString's.
 foldl1 :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldl1 _ Empty        = errorEmptyList "foldl1"
 foldl1 f (Chunk c cs) = foldl f (S.unsafeHead c) (Chunk (S.unsafeTail c) cs)
@@ -753,7 +753,7 @@ break f cs0 = break' cs0
 -- of the specified byte. It is more efficient than 'break' as it is
 -- implemented with @memchr(3)@. I.e.
 --
--- > break (=='c') "abcd" == breakByte 'c' "abcd"
+-- > break (==99) "abcd" == breakByte 99 "abcd" -- fromEnum 'c' == 99
 --
 breakByte :: Word8 -> ByteString -> (ByteString, ByteString)
 breakByte c (LPS ps) = case (breakByte' ps) of (a,b) -> (LPS a, LPS b)
@@ -769,7 +769,7 @@ breakByte c (LPS ps) = case (breakByte' ps) of (a,b) -> (LPS a, LPS b)
 -- occurence of a byte other than its argument. It is more efficient
 -- than 'span (==)'
 --
--- > span  (=='c') "abcd" == spanByte 'c' "abcd"
+-- > span  (==99) "abcd" == spanByte 99 "abcd" -- fromEnum 'c' == 99
 --
 spanByte :: Word8 -> ByteString -> (ByteString, ByteString)
 spanByte c (LPS ps) = case (spanByte' ps) of (a,b) -> (LPS a, LPS b)
@@ -792,8 +792,8 @@ span p = break (not . p)
 -- The resulting components do not contain the separators.  Two adjacent
 -- separators result in an empty component in the output.  eg.
 --
--- > splitWith (=='a') "aabbaca" == ["","","bb","c",""]
--- > splitWith (=='a') []        == []
+-- > splitWith (==97) "aabbaca" == ["","","bb","c",""] -- fromEnum 'a' == 97
+-- > splitWith undefined ""     == []                  -- and not [""]
 --
 splitWith :: (Word8 -> Bool) -> ByteString -> [ByteString]
 splitWith _ Empty          = []
@@ -808,9 +808,10 @@ splitWith p (Chunk c0 cs0) = comb [] (S.splitWith p c0) cs0
 -- | /O(n)/ Break a 'ByteString' into pieces separated by the byte
 -- argument, consuming the delimiter. I.e.
 --
--- > split '\n' "a\nb\nd\ne" == ["a","b","d","e"]
--- > split 'a'  "aXaXaXa"    == ["","X","X","X",""]
--- > split 'x'  "x"          == ["",""]
+-- > split 10  "a\nb\nd\ne" == ["a","b","d","e"]   -- fromEnum '\n' == 10
+-- > split 97  "aXaXaXa"    == ["","X","X","X",""] -- fromEnum 'a' == 97
+-- > split 120 "x"          == ["",""]             -- fromEnum 'x' == 120
+-- > split undefined ""     == []                  -- and not [""]
 --
 -- and
 --
@@ -818,7 +819,7 @@ splitWith p (Chunk c0 cs0) = comb [] (S.splitWith p c0) cs0
 -- > split == splitWith . (==)
 --
 -- As for all splitting functions in this library, this function does
--- not copy the substrings, it just constructs new 'ByteStrings' that
+-- not copy the substrings, it just constructs new 'ByteString's that
 -- are slices of the original.
 --
 split :: Word8 -> ByteString -> [ByteString]
@@ -895,6 +896,29 @@ index cs0 i         = index' cs0 i
               index' cs (n - fromIntegral (S.length c))
           | otherwise       = S.unsafeIndex c (fromIntegral n)
 
+-- | /O(c)/ 'ByteString' index, starting from 0, that returns 'Just' if:
+--
+-- > 0 <= n < length bs
+--
+-- @since 0.11.0.0
+indexMaybe :: ByteString -> Int64 -> Maybe Word8
+indexMaybe _ i | i < 0 = Nothing
+indexMaybe cs0 i       = index' cs0 i
+  where index' Empty _ = Nothing
+        index' (Chunk c cs) n
+          | n >= fromIntegral (S.length c) =
+              index' cs (n - fromIntegral (S.length c))
+          | otherwise       = Just $! S.unsafeIndex c (fromIntegral n)
+
+-- | /O(1)/ 'ByteString' index, starting from 0, that returns 'Just' if:
+--
+-- > 0 <= n < length bs
+--
+-- @since 0.11.0.0
+(!?) :: ByteString -> Int64 -> Maybe Word8
+(!?) = indexMaybe
+{-# INLINE (!?) #-}
+
 -- | /O(n)/ The 'elemIndex' function returns the index of the first
 -- element in the given 'ByteString' which is equal to the query
 -- element, or 'Nothing' if there is no such element.
@@ -952,6 +976,8 @@ findIndex k cs0 = findIndex' 0 cs0
 -- | The 'findIndexEnd' function takes a predicate and a 'ByteString' and
 -- returns the index of the last element in the ByteString
 -- satisfying the predicate.
+--
+-- @since 0.10.12.0
 findIndexEnd :: (Word8 -> Bool) -> ByteString -> Maybe Int64
 findIndexEnd k = findIndexEnd' 0
   where
@@ -1369,9 +1395,9 @@ revChunks cs = L.foldl' (flip chunk) Empty cs
 -- | 'findIndexOrEnd' is a variant of findIndex, that returns the length
 -- of the string if no element is found, rather than Nothing.
 findIndexOrEnd :: (Word8 -> Bool) -> P.ByteString -> Int
-findIndexOrEnd k (S.PS x s l) =
+findIndexOrEnd k (S.BS x l) =
     S.accursedUnutterablePerformIO $
-      withForeignPtr x $ \f -> go (f `plusPtr` s) 0
+      withForeignPtr x $ \f -> go f 0
   where
     go !ptr !n | n >= l    = return l
                | otherwise = do w <- peek ptr
