@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP, BangPatterns, ScopedTypeVariables #-}
+{-# LANGUAGE MagicHash, UnboxedTuples, PatternGuards #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 #if __GLASGOW_HASKELL__ == 700
 -- This is needed as a workaround for an old bug in GHC 7.0.1 (Trac #4498)
@@ -438,6 +439,9 @@ module Data.ByteString.Builder.Prim (
   -- a decimal number with UTF-8 encoded characters.
   , charUtf8
 
+  , cstring
+  , cstringUtf8
+
 {-
   -- * Testing support
   -- | The following four functions are intended for testing use
@@ -473,6 +477,7 @@ import           Data.ByteString.Builder.Prim.ASCII
 #if MIN_VERSION_base(4,4,0)
 #if MIN_VERSION_base(4,7,0)
 import           Foreign
+import           Foreign.C.Types
 #else
 import           Foreign hiding (unsafeForeignPtrToPtr)
 #endif
@@ -480,6 +485,8 @@ import           Foreign.ForeignPtr.Unsafe (unsafeForeignPtrToPtr)
 #else
 import           Foreign
 #endif
+import           GHC.Exts
+import           GHC.IO
 
 ------------------------------------------------------------------------------
 -- Creating Builders from bounded primitives
@@ -673,6 +680,60 @@ primMapLazyByteStringBounded w =
 
 
 ------------------------------------------------------------------------------
+-- Raw CString encoding
+------------------------------------------------------------------------------
+
+#if !MIN_VERSION_base(4,7,0)
+-- eqWord# et al. return Bools prior to GHC 7.6
+isTrue# :: Bool -> Bool
+isTrue# x = x
+#endif
+
+-- | A null-terminated ASCII encoded 'CString'. Null characters are not representable.
+cstring :: Addr# -> Builder
+cstring =
+    \addr0 -> builder $ step addr0
+  where
+    step :: Addr# -> BuildStep r -> BuildStep r
+    step !addr !k !br@(BufferRange op0@(Ptr op0#) ope)
+      | isTrue# (ch `eqWord#` 0##) = k br
+      | op0 == ope =
+          return $ bufferFull defaultChunkSize op0 (step addr k)
+      | otherwise = do
+          IO $ \s -> case writeWord8OffAddr# op0# 0# ch s of
+                       s' -> (# s', () #)
+          let br' = BufferRange (op0 `plusPtr` 1) ope
+          step (addr `plusAddr#` 1#) k br'
+      where
+        !ch = indexWord8OffAddr# addr 0#
+
+-- | A null-terminated UTF-8 encoded 'CString'. Null characters can be encoded as
+-- @0xc0 0x80@.
+cstringUtf8 :: Addr# -> Builder
+cstringUtf8 =
+    \addr0 -> builder $ step addr0
+  where
+    step :: Addr# -> BuildStep r -> BuildStep r
+    step !addr !k !br@(BufferRange op0@(Ptr op0#) ope)
+      | isTrue# (ch `eqWord#` 0##) = k br
+      | op0 == ope =
+          return $ bufferFull defaultChunkSize op0 (step addr k)
+        -- NULL is encoded as 0xc0 0x80
+      | isTrue# (ch `eqWord#` 0xc0##)
+      , isTrue# (indexWord8OffAddr# addr 1# `eqWord#` 0x80##) = do
+          IO $ \s -> case writeWord8OffAddr# op0# 0# 0## s of
+                       s' -> (# s', () #)
+          let br' = BufferRange (op0 `plusPtr` 1) ope
+          step (addr `plusAddr#` 2#) k br'
+      | otherwise = do
+          IO $ \s -> case writeWord8OffAddr# op0# 0# ch s of
+                       s' -> (# s', () #)
+          let br' = BufferRange (op0 `plusPtr` 1) ope
+          step (addr `plusAddr#` 1#) k br'
+      where
+        !ch = indexWord8OffAddr# addr 0#
+
+------------------------------------------------------------------------------
 -- Char8 encoding
 ------------------------------------------------------------------------------
 
@@ -736,4 +797,3 @@ encodeCharUtf8 f1 f2 f3 f4 c = case ord c of
                x3 = fromIntegral $ ((x `shiftR` 6) .&. 0x3F) + 0x80
                x4 = fromIntegral $ (x .&. 0x3F) + 0x80
            in f4 x1 x2 x3 x4
-

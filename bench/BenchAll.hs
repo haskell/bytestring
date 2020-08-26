@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns        #-}
 {-# LANGUAGE PackageImports      #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE MagicHash           #-}
 -- |
 -- Copyright   : (c) 2011 Simon Meier
 -- License     : BSD3-style (see LICENSE)
@@ -14,6 +15,7 @@ module Main (main) where
 
 import           Data.Foldable                         (foldMap)
 import           Data.Monoid
+import           Data.String
 import           Gauge
 import           Prelude                               hiding (words)
 
@@ -36,6 +38,8 @@ import qualified Blaze.ByteString.Builder          as Blaze
 import qualified Blaze.Text                        as Blaze
 import qualified "bytestring" Data.ByteString      as OldS
 import qualified "bytestring" Data.ByteString.Lazy as OldL
+
+import           Paths_bench_bytestring
 
 import           Foreign
 
@@ -240,6 +244,10 @@ main = do
         [ benchB' "mempty"        ()  (const mempty)
         , benchB' "ensureFree 8"  ()  (const (ensureFree 8))
         , benchB' "intHost 1"     1   intHost
+        , benchB' "UTF-8 String (naive)" "hello world\0" fromString
+        , benchB' "UTF-8 String"  () $ \() -> P.cstringUtf8 "hello world\0"#
+        , benchB' "String (naive)" "hello world!" fromString
+        , benchB' "String"        () $ \() -> P.cstring "hello world!"#
         ]
 
       , bgroup "Encoding wrappers"
