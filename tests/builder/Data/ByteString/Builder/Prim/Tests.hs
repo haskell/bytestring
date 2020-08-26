@@ -34,12 +34,12 @@ tests = concat [ testsBinary, testsASCII, testsChar8, testsUtf8
 testCString :: Test
 testCString = testProperty "cstring" $
     toLazyByteString (BP.cstring "hello world!"#) ==
-      LC.pack "hello" <> L.singleton 0x20 <> LC.pack "world!"
+      LC.pack "hello" `L.append` L.singleton 0x20 `L.append` LC.pack "world!"
 
 testCStringUtf8 :: Test
 testCStringUtf8 = testProperty "cstringUtf8" $
     toLazyByteString (BP.cstringUtf8 "hello\xc0\x80world!"#) ==
-      LC.pack "hello" <> L.singleton 0x00 <> LC.pack "world!"
+      LC.pack "hello" `L.append` L.singleton 0x00 `L.append` LC.pack "world!"
 
 ------------------------------------------------------------------------------
 -- Binary
