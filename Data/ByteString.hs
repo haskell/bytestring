@@ -1320,7 +1320,7 @@ findIndex k (BS x l) = accursedUnutterablePerformIO $ withForeignPtr x $ \f -> g
                                 if k w
                                   then return (Just n)
                                   else go (ptr `plusPtr` 1) (n+1)
-{-# INLINE findIndex #-}
+{-# INLINE [1] findIndex #-}
 
 -- | /O(n)/ The 'findIndexEnd' function takes a predicate and a 'ByteString' and
 -- returns the index of the last element in the ByteString
@@ -1342,9 +1342,29 @@ findIndexEnd k (BS x l) = accursedUnutterablePerformIO $ withForeignPtr x $ \ f 
 findIndices :: (Word8 -> Bool) -> ByteString -> [Int]
 findIndices p ps = loop 0 ps
    where
-     loop !n !qs | null qs           = []
-                 | p (unsafeHead qs) = n : loop (n+1) (unsafeTail qs)
-                 | otherwise         =     loop (n+1) (unsafeTail qs)
+     loop !n !qs = case findIndex p qs of
+                     Just !i -> 
+                        let !j = n+i
+                         in j : loop (j+1) (unsafeDrop (i+1) qs)
+                     Nothing -> []
+{-# INLINE [1] findIndices #-}
+
+
+#if MIN_VERSION_base(4,9,0)
+{-# RULES
+"ByteString specialise findIndex (x ==)" forall x. findIndex (x`eqWord8`) = elemIndex x
+"ByteString specialise findIndex (== x)" forall x. findIndex (`eqWord8`x) = elemIndex x
+"ByteString specialise findIndices (x ==)" forall x. findIndices (x`eqWord8`) = elemIndices x
+"ByteString specialise findIndices (== x)" forall x. findIndices (`eqWord8`x) = elemIndices x
+  #-}
+#else
+{-# RULES
+"ByteString specialise findIndex (x ==)" forall x. findIndex (x==) = elemIndex x
+"ByteString specialise findIndex (== x)" forall x. findIndex (==x) = elemIndex x
+"ByteString specialise findIndices (x ==)" forall x. findIndices (x==) = elemIndices x
+"ByteString specialise findIndices (== x)" forall x. findIndices (==x) = elemIndices x
+  #-}
+#endif
 
 -- ---------------------------------------------------------------------
 -- Searching ByteStrings
