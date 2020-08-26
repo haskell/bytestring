@@ -693,12 +693,38 @@ elemIndices = B.elemIndices . c2w
 -- returns the index of the first element in the ByteString satisfying the predicate.
 findIndex :: (Char -> Bool) -> ByteString -> Maybe Int
 findIndex f = B.findIndex (f . w2c)
-{-# INLINE findIndex #-}
+{-# INLINE [1] findIndex #-}
 
 -- | The 'findIndices' function extends 'findIndex', by returning the
 -- indices of all elements satisfying the predicate, in ascending order.
 findIndices :: (Char -> Bool) -> ByteString -> [Int]
 findIndices f = B.findIndices (f . w2c)
+{-# INLINE [1] findIndices #-}
+
+#if MIN_VERSION_base(4,9,0)
+{-# RULES
+"ByteString specialise findIndex (x==)" forall x.
+    findIndex (x `eqChar`) = elemIndex x
+"ByteString specialise findIndex (==x)" forall x.
+    findIndex (`eqChar` x) = elemIndex x
+"ByteString specialise findIndices (x==)" forall x.
+    findIndices (x `eqChar`) = elemIndices x
+"ByteString specialise findIndices (==x)" forall x.
+    findIndices (`eqChar` x) = elemIndices x
+  #-}
+#else
+{-# RULES
+"ByteString specialise findIndex (x==)" forall x.
+    findIndex (x==) = elemIndex x
+"ByteString specialise findIndex (==x)" forall x.
+    findIndex (==x) = elemIndex x
+"ByteString specialise findIndices (x==)" forall x.
+    findIndices (x==) = elemIndices x
+"ByteString specialise findIndices (==x)" forall x.
+    findIndices (==x) = elemIndices x
+  #-}
+#endif
+
 
 -- | count returns the number of times its argument appears in the ByteString
 --

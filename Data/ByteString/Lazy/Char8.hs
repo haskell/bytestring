@@ -572,6 +572,7 @@ findIndex f = L.findIndex (f . w2c)
 -- indices of all elements satisfying the predicate, in ascending order.
 findIndices :: (Char -> Bool) -> ByteString -> [Int64]
 findIndices f = L.findIndices (f . w2c)
+{-# INLINE findIndices #-}
 
 -- | count returns the number of times its argument appears in the ByteString
 --

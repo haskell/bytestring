@@ -1009,6 +1009,7 @@ findIndices k cs0 = findIndices' 0 cs0
   where findIndices' _ Empty        = []
         findIndices' n (Chunk c cs) = L.map ((+n).fromIntegral) (S.findIndices k c)
                              ++ findIndices' (n + fromIntegral (S.length c)) cs
+{-# INLINE findIndices #-}
 
 -- ---------------------------------------------------------------------
 -- Searching ByteStrings
