@@ -724,7 +724,7 @@ cstringUtf8 =
           IO $ \s -> case writeWord8OffAddr# op0# 0# 0## s of
                        s' -> (# s', () #)
           let br' = BufferRange (op0 `plusPtr` 1) ope
-          step (addr `plusAddr#` 1#) k br'
+          step (addr `plusAddr#` 2#) k br'
       | otherwise = do
           IO $ \s -> case writeWord8OffAddr# op0# 0# ch s of
                        s' -> (# s', () #)
