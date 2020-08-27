@@ -74,7 +74,7 @@ unsigned char fps_minimum(unsigned char *p, size_t len) {
 
 /* count the number of occurences of a char in a string */
 size_t fps_count(unsigned char *p, size_t len, unsigned char w) {
-    unsigned long c;
+    size_t c;
     for (c = 0; len-- != 0; ++p)
         if (*p == w)
             ++c;
