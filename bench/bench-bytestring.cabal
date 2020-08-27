@@ -198,3 +198,22 @@ benchmark bench-builder-csv
                     -fdicts-cheap
                     -fspec-constr-count=6
   default-language: Haskell2010
+
+benchmark bench-strict-indices
+  hs-source-dirs:   .. .
+  main-is:          BenchIndices.hs
+  other-modules: Data.ByteString
+                 Data.ByteString.Internal
+                 Data.ByteString.Unsafe 
+  type:             exitcode-stdio-1.0
+  build-depends:     base >= 4.4 && < 5
+                   , ghc-prim
+                   , deepseq       >= 1.2
+                   , gauge         >= 0.2.5
+                   -- we require bytestring due to benchmarking against
+                   -- blaze-textual, which uses blaze-builder
+  ghc-options:      -O2
+                    -fmax-simplifier-iterations=10
+                    -fdicts-cheap
+                    -fspec-constr-count=6
+  default-language: Haskell2010
