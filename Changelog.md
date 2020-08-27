@@ -4,12 +4,8 @@
  * [Remove deprecated functions `findSubstring` and `findSubstrings`](https://github.com/haskell/bytestring/pull/181)
  * [Speed up sorting of short strings](https://github.com/haskell/bytestring/pull/267)
  * [Improve handling of literal strings in `Data.ByteString.Builder`](https://github.com/haskell/bytestring/pull/132)
- * [Add `unsafePackLiteral` to `Data.ByteString.Internal`](https://github.com/haskell/bytestring/pull/191)
-   When possible, use
-   [known-key](https://gitlab.haskell.org/ghc/ghc/-/wikis/commentary/compiler/wired-in)
-   variant of C's `strlen` from `GHC.CString` that supports constant folding.
-   This results in better generated code when an ASCII-only string literal
-   is desugared to `ByteString` by the `OverloadedStrings` extension.
+ * [Compute length at compile time for literal strings](https://github.com/haskell/bytestring/pull/191)
+   * This improves optimization opportunities for functions that scrutinize the length of a `ByteString`.
  * [Add `indexMaybe` and synonym `(!?)` for indexing that returns `Maybe`](https://github.com/haskell/bytestring/pull/261)
 
 [0.11.0.0]: https://github.com/haskell/bytestring/compare/0.10.12.0...0.11.0.0
