@@ -1,5 +1,6 @@
 [0.11.0.0] — September 2020
  * [Change internal representation of `ByteString`, removing offset](https://github.com/haskell/bytestring/pull/175)
+   * The old `PS` constructor has been turned into a pattern synonym that is available with GHC >= 8.0 for backwards compatibility.
  * [Remove deprecated functions `findSubstring` and `findSubstrings`](https://github.com/haskell/bytestring/pull/181)
  * [Speed up sorting of short strings](https://github.com/haskell/bytestring/pull/267)
  * [Improve handling of literal strings in `Data.ByteString.Builder`](https://github.com/haskell/bytestring/pull/132)
