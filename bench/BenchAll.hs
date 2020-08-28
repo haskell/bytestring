@@ -233,6 +233,9 @@ sanityCheckInfo =
 sortInputs :: [S.ByteString]
 sortInputs = map (`S.take` S.pack [122, 121 .. 32]) [10..25]
 
+foldInputs :: [S.ByteString]
+foldInputs = map (\k -> S.pack $ concat $ replicate (2 ^ k) [32..127]) [0..9]
+
 main :: IO ()
 main = do
   mapM_ putStrLn sanityCheckInfo
@@ -400,4 +403,20 @@ main = do
         ]
       ]
     , bgroup "sort" $ map (\s -> bench (S8.unpack s) $ nf S.sort s) sortInputs
+    , bgroup "folds"
+      [ bgroup "foldl'" $ map (\s -> bench (show $ S.length s) $
+          nf (S.foldl' (\acc x -> acc + fromIntegral x) (0 :: Int)) s) foldInputs
+      , bgroup "foldr'" $ map (\s -> bench (show $ S.length s) $
+          nf (S.foldr' (\x acc -> fromIntegral x + acc) (0 :: Int)) s) foldInputs
+      , bgroup "mapAccumL" $ map (\s -> bench (show $ S.length s) $
+          nf (S.mapAccumL (\acc x -> (acc + fromIntegral x, succ x)) (0 :: Int)) s) foldInputs
+      , bgroup "mapAccumR" $ map (\s -> bench (show $ S.length s) $
+          nf (S.mapAccumR (\acc x -> (fromIntegral x + acc, succ x)) (0 :: Int)) s) foldInputs
+      , bgroup "scanl" $ map (\s -> bench (show $ S.length s) $
+          nf (S.scanl (+) 0) s) foldInputs
+      , bgroup "scanr" $ map (\s -> bench (show $ S.length s) $
+          nf (S.scanr (+) 0) s) foldInputs
+      , bgroup "filter" $ map (\s -> bench (show $ S.length s) $
+          nf (S.filter odd) s) foldInputs
+      ]
     ]
