@@ -1108,9 +1108,15 @@ prop_foldr1_3BB xs =
     (not . P.null) xs ==>
     P.foldr1 const xs == P.head xs
 
-prop_takeWhileBB xs a = (takeWhile (/= a) xs) == (P.unpack . (P.takeWhile (/= a)) . P.pack) xs
+prop_takeWhileBB_ne xs a =
+  (takeWhile (/= a) xs) == (P.unpack . (P.takeWhile (/= a)) . P.pack) xs
+prop_takeWhileBB_eq xs a =
+  (takeWhile (== a) xs) == (P.unpack . (P.takeWhile (== a)) . P.pack) xs
 
-prop_dropWhileBB xs a = (dropWhile (/= a) xs) == (P.unpack . (P.dropWhile (/= a)) . P.pack) xs
+prop_dropWhileBB_ne xs a =
+  (dropWhile (/= a) xs) == (P.unpack . (P.dropWhile (/= a)) . P.pack) xs
+prop_dropWhileBB_eq xs a =
+  (dropWhile (== a) xs) == (P.unpack . (P.dropWhile (== a)) . P.pack) xs
 
 prop_dropWhileCC_isSpace (String8 xs) =
         (dropWhile isSpace xs) ==
@@ -2196,9 +2202,11 @@ bb_tests =
     , testProperty "any"            prop_anyBB
     , testProperty "take"           prop_takeBB
     , testProperty "drop"           prop_dropBB
-    , testProperty "takeWhile"      prop_takeWhileBB
-    , testProperty "dropWhile"      prop_dropWhileBB
-    , testProperty "dropWhile"      prop_dropWhileCC_isSpace
+    , testProperty "takeWhile_ne"   prop_takeWhileBB_ne
+    , testProperty "takeWhile_eq"   prop_takeWhileBB_eq
+    , testProperty "dropWhile_ne"   prop_dropWhileBB_ne
+    , testProperty "dropWhile_eq"   prop_dropWhileBB_eq
+    , testProperty "dropWhile_isSpace" prop_dropWhileCC_isSpace
     , testProperty "splitAt"        prop_splitAtBB
     , testProperty "span"           prop_spanBB
     , testProperty "break"          prop_breakBB
