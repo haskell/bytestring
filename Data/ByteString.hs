@@ -836,7 +836,31 @@ splitAt n ps@(BS x l)
 -- satisfy @p@.
 takeWhile :: (Word8 -> Bool) -> ByteString -> ByteString
 takeWhile f ps = unsafeTake (findIndexOrEnd (not . f) ps) ps
-{-# INLINE takeWhile #-}
+{-# INLINE [1] takeWhile #-}
+
+#if MIN_VERSION_base(4,9,0)
+{-# RULES
+"ByteString specialise takeWhile (x /=)" forall x.
+    takeWhile (x `neWord8`) = fst . breakByte x
+"ByteString specialise takeWhile (/= x)" forall x.
+    takeWhile (`neWord8` x) = fst . breakByte x
+"ByteString specialise takeWhile (x ==)" forall x.
+    takeWhile (x `eqWord8`) = fst . spanByte x
+"ByteString specialise takeWhile (== x)" forall x.
+    takeWhile (`eqWord8` x) = fst . spanByte x
+  #-}
+#else
+{-# RULES
+"ByteString specialise takeWhile (x /=)" forall x.
+    takeWhile (x /=) = fst . breakByte x
+"ByteString specialise takeWhile (/= x)" forall x.
+    takeWhile (/= x) = fst . breakByte x
+"ByteString specialise takeWhile (x ==)" forall x.
+    takeWhile (x ==) = fst . spanByte x
+"ByteString specialise takeWhile (== x)" forall x.
+    takeWhile (== x) = fst . spanByte x
+  #-}
+#endif
 
 -- | 'takeWhileEnd', applied to a predicate @p@ and a ByteString @xs@, returns
 -- the longest suffix (possibly empty) of @xs@ of elements that satisfy @p@.
@@ -849,7 +873,31 @@ takeWhileEnd f ps = unsafeDrop (findFromEndUntil (not . f) ps) ps
 -- | 'dropWhile' @p xs@ returns the suffix remaining after 'takeWhile' @p xs@.
 dropWhile :: (Word8 -> Bool) -> ByteString -> ByteString
 dropWhile f ps = unsafeDrop (findIndexOrEnd (not . f) ps) ps
-{-# INLINE dropWhile #-}
+{-# INLINE [1] dropWhile #-}
+
+#if MIN_VERSION_base(4,9,0)
+{-# RULES
+"ByteString specialise dropWhile (x /=)" forall x.
+    dropWhile (x `neWord8`) = snd . breakByte x
+"ByteString specialise dropWhile (/= x)" forall x.
+    dropWhile (`neWord8` x) = snd . breakByte x
+"ByteString specialise dropWhile (x ==)" forall x.
+    dropWhile (x `eqWord8`) = snd . spanByte x
+"ByteString specialise dropWhile (== x)" forall x.
+    dropWhile (`eqWord8` x) = snd . spanByte x
+  #-}
+#else
+{-# RULES
+"ByteString specialise dropWhile (x /=)" forall x.
+    dropWhile (x /=) = snd . breakByte x
+"ByteString specialise dropWhile (/= x)" forall x.
+    dropWhile (/= x) = snd . breakByte x
+"ByteString specialise dropWhile (x ==)" forall x.
+    dropWhile (x ==) = snd . spanByte x
+"ByteString specialise dropWhile (== x)" forall x.
+    dropWhile (== x) = snd . spanByte x
+  #-}
+#endif
 
 -- | 'dropWhileEnd' @p xs@ returns the prefix remaining after 'takeWhileEnd' @p
 -- xs@.
