@@ -15,7 +15,7 @@ import           Data.Monoid
 import           Data.String
 import           Gauge
 import           Prelude                               hiding (words)
-import           GHC.Word                              (Word8, eqWord8)
+import           Data.Word                             (Word8)
 
 import qualified Data.ByteString                       as S
 import qualified Data.ByteString.Unsafe                as S
@@ -99,7 +99,7 @@ bench_find_index_second bs =
 {-# INLINE bench_find_index_second #-}
 
 bench_elem_index_second :: S.ByteString -> Maybe Int
-bench_elem_index_second bs = 
+bench_elem_index_second bs =
   let nl = 0xa
    in case S.elemIndex nl bs of
         Just !i -> S.elemIndex nl (S.unsafeDrop (i+1) bs)
@@ -116,7 +116,7 @@ bench_elem_indices_second = safeHead . tail . bench_elem_indices
 
 nilEq :: Word8 -> Word8 -> Bool
 {-# NOINLINE nilEq #-}
-nilEq = eqWord8
+nilEq = (==)
 
 bench_find_indices_inline :: S.ByteString -> [Int]
 bench_find_indices_inline = S.findIndices (== 0xa)
