@@ -7,7 +7,7 @@
 -- Stability   : experimental
 -- Portability : tested on GHC only
 --
--- Benchmark all 'Builder' functions.
+-- Benchmark elemIndex, findIndex, elemIndices, and findIndices
 module Main (main) where
 
 import           Data.Foldable                         (foldMap)
@@ -35,7 +35,6 @@ absurdlong = S.replicate 200 0x61 <> S.singleton 0xa
           <> S.replicate 200 0x64 <> S.singleton 0xa
           <> S.replicate 200 0x65 <> S.singleton 0xa
           <> S.replicate 999999 0x66
-{-# NOINLINE absurdlong #-}
 
 main :: IO ()
 main = do
