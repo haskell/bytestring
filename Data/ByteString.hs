@@ -832,9 +832,9 @@ splitAt n ps@(BS x l)
     | otherwise = (BS x n, BS (plusForeignPtr x n) (l-n))
 {-# INLINE splitAt #-}
 
--- | Similar to 'P.takeWhile', applied to a predicate @p@ and a ByteString @xs@
--- returns the longest (possibly empty) prefix of @xs@, elements of which
--- satisfy @p@.
+-- | Similar to 'P.takeWhile',
+-- returns the longest (possibly empty) prefix of elements
+-- satisfying the predicate.
 takeWhile :: (Word8 -> Bool) -> ByteString -> ByteString
 takeWhile f ps = unsafeTake (findIndexOrEnd (not . f) ps) ps
 {-# INLINE [1] takeWhile #-}
@@ -863,9 +863,8 @@ takeWhile f ps = unsafeTake (findIndexOrEnd (not . f) ps) ps
   #-}
 #endif
 
--- | Applied to a predicate @p@ and a ByteString @xs@
--- returns the longest (possibly empty) suffix of @xs@, elements of which
--- satisfy @p@.
+-- | Returns the longest (possibly empty) suffix of elements
+-- satisfying the predicate.
 --
 -- @'takeWhileEnd' p@ is equivalent to @'reverse' . 'takeWhile' p . 'reverse'@.
 --
@@ -874,9 +873,9 @@ takeWhileEnd :: (Word8 -> Bool) -> ByteString -> ByteString
 takeWhileEnd f ps = unsafeDrop (findFromEndUntil (not . f) ps) ps
 {-# INLINE takeWhileEnd #-}
 
--- | Similar to 'P.dropWhile', applied to a predicate @p@ and a ByteString @xs@
--- drops the longest (possibly empty) prefix of @xs@, elements of which
--- satisfy @p@, and returns the remainder.
+-- | Similar to 'P.dropWhile',
+-- drops the longest (possibly empty) prefix of elements
+-- satisfying the predicate and returns the remainder.
 dropWhile :: (Word8 -> Bool) -> ByteString -> ByteString
 dropWhile f ps = unsafeDrop (findIndexOrEnd (not . f) ps) ps
 {-# INLINE [1] dropWhile #-}
@@ -905,9 +904,9 @@ dropWhile f ps = unsafeDrop (findIndexOrEnd (not . f) ps) ps
   #-}
 #endif
 
--- | Similar to 'P.dropWhileEnd', applied to a predicate @p@ and a ByteString @xs@
--- drops the longest (possibly empty) suffix of @xs@, elements of which
--- satisfy @p@, and returns the remainder.
+-- | Similar to 'P.dropWhileEnd',
+-- drops the longest (possibly empty) suffix of elements
+-- satisfying the predicate and returns the remainder.
 --
 -- @'dropWhileEnd' p@ is equivalent to @'reverse' . 'dropWhile' p . 'reverse'@.
 --
@@ -918,9 +917,9 @@ dropWhileEnd f ps = unsafeTake (findFromEndUntil (not . f) ps) ps
 
 -- instead of findIndexOrEnd, we could use memchr here.
 
--- | Similar to 'P.break', applied to a predicate @p@ and a ByteString @xs@,
--- returns the longest (possibly empty) prefix of @xs@, elements of which __do not__
--- satisfy @p@, and the remainder of the string.
+-- | Similar to 'P.break',
+-- returns the longest (possibly empty) prefix of elements which __do not__
+-- satisfy the predicate and the remainder of the string.
 --
 -- 'break' @p@ is equivalent to @'span' (not . p)@ and to @('takeWhile' (not . p) &&& 'dropWhile' (not . p))@.
 --
@@ -966,18 +965,17 @@ breakByte c p = case elemIndex c p of
 {-# INLINE breakByte #-}
 {-# DEPRECATED breakByte "It is an internal function and should never have been exported. Use 'break (== x)' instead. (There are rewrite rules that handle this special case of 'break'.)" #-}
 
--- | Applied to a predicate @p@ and a ByteString @xs@,
--- returns the longest (possibly empty) suffix of @xs@, elements of which __do not__
--- satisfy @p@, and the remainder of the string.
+-- | Returns the longest (possibly empty) suffix of elements which __do not__
+-- satisfy the predicate and the remainder of the string.
 --
 -- 'breakEnd' @p@ is equivalent to @'spanEnd' (not . p)@ and to @('takeWhileEnd' (not . p) &&& 'dropWhileEnd' (not . p))@.
 --
 breakEnd :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
 breakEnd  p ps = splitAt (findFromEndUntil p ps) ps
 
--- | Similar to 'P.span', applied to a predicate @p@ and a ByteString @xs@,
--- returns the longest (possibly empty) prefix of @xs@, elements of which
--- satisfy @p@, and the remainder of the string.
+-- | Similar to 'P.span',
+-- returns the longest (possibly empty) prefix of elements
+-- satisfying the predicate and the remainder of the string.
 --
 -- 'span' @p@ is equivalent to @'break' (not . p)@ and to @('takeWhile' p &&& 'dropWhile' p)@.
 --
@@ -1021,9 +1019,8 @@ spanByte c ps@(BS x l) =
   #-}
 #endif
 
--- | Applied to a predicate @p@ and a ByteString @xs@,
--- returns the longest (possibly empty) suffix of @xs@, elements of which
--- satisfy @p@, and the remainder of the string.
+-- | Returns the longest (possibly empty) suffix of elements
+-- satisfying the predicate and the remainder of the string.
 --
 -- 'spanEnd' @p@ is equivalent to @'breakEnd' (not . p)@ and to @('takeWhileEnd' p &&& 'dropWhileEnd' p)@.
 --
