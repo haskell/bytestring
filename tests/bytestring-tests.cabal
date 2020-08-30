@@ -91,6 +91,7 @@ test-suite test-builder
                     Data.ByteString.Builder.Prim.Internal.UncheckedShifts
                     Data.ByteString.Internal
                     Data.ByteString.Lazy
+                    Data.ByteString.Lazy.Char8
                     Data.ByteString.Lazy.Internal
                     Data.ByteString.Short
                     Data.ByteString.Short.Internal
