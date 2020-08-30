@@ -709,8 +709,8 @@ splitAt i cs0 = splitAt' i cs0
                    in (Chunk c cs', cs'')
 
 
--- | 'takeWhile', applied to a predicate @p@ and a ByteString @xs@,
--- returns the longest prefix (possibly empty) of @xs@ of elements that
+-- | Similar to 'P.takeWhile', applied to a predicate @p@ and a ByteString @xs@
+-- returns the longest (possibly empty) prefix of @xs@, elements of which
 -- satisfy @p@.
 takeWhile :: (Word8 -> Bool) -> ByteString -> ByteString
 takeWhile f cs0 = takeWhile' cs0
@@ -721,7 +721,9 @@ takeWhile f cs0 = takeWhile' cs0
             n | n < S.length c -> Chunk (S.take n c) Empty
               | otherwise      -> Chunk c (takeWhile' cs)
 
--- | 'dropWhile' @p xs@ returns the suffix remaining after 'takeWhile' @p xs@.
+-- | Similar to 'P.dropWhile', applied to a predicate @p@ and a ByteString @xs@
+-- drops the longest (possibly empty) prefix of @xs@, elements of which
+-- satisfy @p@, and returns the remainder.
 dropWhile :: (Word8 -> Bool) -> ByteString -> ByteString
 dropWhile f cs0 = dropWhile' cs0
   where dropWhile' Empty        = Empty
@@ -730,7 +732,12 @@ dropWhile f cs0 = dropWhile' cs0
             n | n < S.length c -> Chunk (S.drop n c) cs
               | otherwise      -> dropWhile' cs
 
--- | 'break' @p@ is equivalent to @'span' ('not' . p)@.
+-- | Similar to 'P.break', applied to a predicate @p@ and a ByteString @xs@,
+-- returns the longest (possibly empty) prefix of @xs@, elements of which __do not__
+-- satisfy @p@, and the remainder of the string.
+--
+-- 'break' @p@ is equivalent to @'span' (not . p)@ and to @('takeWhile' (not . p) &&& 'dropWhile' (not . p))@.
+--
 break :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
 break f cs0 = break' cs0
   where break' Empty        = (Empty, Empty)
@@ -782,8 +789,12 @@ spanByte c (LPS ps) = case (spanByte' ps) of (a,b) -> (LPS a, LPS b)
                       | otherwise  -> (x' : [], x'' : xs)
 -}
 
--- | 'span' @p xs@ breaks the ByteString into two segments. It is
--- equivalent to @('takeWhile' p xs, 'dropWhile' p xs)@
+-- | Similar to 'P.span', applied to a predicate @p@ and a ByteString @xs@,
+-- returns the longest (possibly empty) prefix of @xs@, elements of which
+-- satisfy @p@, and the remainder of the string.
+--
+-- 'span' @p@ is equivalent to @'break' (not . p)@ and to @('takeWhile' p &&& 'dropWhile' p)@.
+--
 span :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
 span p = break (not . p)
 
