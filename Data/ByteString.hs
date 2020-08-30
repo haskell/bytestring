@@ -1147,14 +1147,12 @@ elemIndexEnd = findIndexEnd . (==)
 elemIndices :: Word8 -> ByteString -> [Int]
 elemIndices w (BS x l) = loop 0
     where
-        loop !n = let q = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
-                           memchr (p `plusPtr` n)
-                                                w (fromIntegral (l - n))
-                  in if q == nullPtr
-                        then []
-                        else let i = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
-                                       return (q `minusPtr` p)
-                             in i : loop (i+1)
+        loop !n = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> do
+            q <- memchr (p `plusPtr` n) w (fromIntegral (l - n))
+            if q == nullPtr
+                then return []
+                else let !i = q `minusPtr` p
+                      in return $ i : loop (i + 1)
 {-# INLINE elemIndices #-}
 
 -- | count returns the number of times its argument appears in the ByteString
