@@ -1,11 +1,9 @@
 {-# LANGUAGE BangPatterns        #-}
 -- |
--- Copyright   : (c) 2011 Simon Meier
+-- Copyright   : (c) 2020 Peter Duchovni
 -- License     : BSD3-style (see LICENSE)
 --
--- Maintainer  : Simon Meier <iridcode@gmail.com>
--- Stability   : experimental
--- Portability : tested on GHC only
+-- Maintainer  : Peter Duchovni <caufeminecraft+github@gmail.com>
 --
 -- Benchmark elemIndex, findIndex, elemIndices, and findIndices
 module Main (main) where
