@@ -1311,7 +1311,7 @@ hGetNonBlocking = hGetNonBlockingN defaultChunkSize
 
 -- | Read an entire file /lazily/ into a 'ByteString'.
 --
--- The Handle will be held open until EOF is encountered.
+-- The 'Handle' will be held open until EOF is encountered.
 --
 -- Note that this function's implementation relies on 'hGetContents'.
 -- The reader is advised to read its documentation.
@@ -1435,43 +1435,56 @@ findIndexOrEnd k (S.BS x l) =
 -- * The program reads thousands of files, but due to lazy evaluation, the OS's file descriptor
 --   limit is reached before the handlers can be released.
 --
--- In order to avoid such unpleasant turn of events, results from lazy IO computation
--- must be fully evaluated.
+-- === Why?
 --
--- === __Dos and Don'ts of lazy IO__
+-- Consider the following program:
 --
--- > {-# LANGUAGE OverloadedStrings #-}
+-- > import qualified Data.ByteString.Lazy as BL
+-- > main = do
+-- >   _ <- BL.readFile "foo.txt"
+-- >   BL.writeFile "foo.txt" mempty
+--
+-- Usual rules about 'IO' monad are that side effects happen
+-- sequentially and in full. That said, one would reasonably expect that
+-- reading a full file via 'readFile' executes all three actions
+-- (open a file handle, read content, close the file handle) before
+-- passing control to 'writeFile'. This expectation holds
+-- for strict "Data.ByteString" API. However, for lazy 'ByteString'
+-- the program above fails with "openBinaryFile: resource busy (file is locked)".
+--
+-- The thing is that "Data.ByteString.Lazy" is specifically designed
+-- to handle large or unbounded streams of data without requiring
+-- it to be resident in memory at once. This requirement cannot be satisfied
+-- if 'readFile' follows usual rules about 'IO': evaluating all side effects
+-- requires us to read file in full before closing its handle. This is why
+-- 'readFile' (and 'hGetContents' in general) is implemented
+-- via 'unsafeInterleaveIO', which bends the rules allowing 'IO' side effects
+-- to interleave on discretion of Haskell runtime. That's exactly what happens
+-- in the example above: 'readFile' opens a file handle, but since its result
+-- is not forced (and actually ignored),
+-- runtime assumes that side effects of reading contents
+-- and closing the file handle can be freely interleaved with further 'IO' effects,
+-- such as effects of 'writeFile'. So when 'writeFile' kicks in, @foo.txt@
+-- is still open for reading and cannot be opened for writing, causing
+-- the error quoted.
+--
+-- === How to enforce the order of effects?
+--
+-- If data is small enough to fit in memory,
+-- consider using strict 'Data.ByteString.readFile',
+-- potentially applying 'fromStrict' afterwards. E. g.,
+--
 -- > import qualified Data.ByteString as BS
 -- > import qualified Data.ByteString.Lazy as BL
--- >
--- > -- Naïve situation: lazily reading and writing the file.
--- > -- This will fail because the file handle will not have been
--- > -- closed at the moment of writing.
--- > main1 :: IO ()
--- > main1 = do
--- >   contents <- BL.readFile "foo.txt"
--- >   BL.writeFile "foo.txt" ("a" <> contents)
--- >
--- > -- Good intentions situation: lazily reading but forcing evaluation
--- > -- of the Bytestring when writing. This will too fail, for the file handle
--- > -- will not have been closed in time.
--- > main2 :: IO ()
--- > main2 = do
--- >   contents <- BL.readFile "foo.txt"
--- >   BS.writeFile "foo.txt" ("a" <> BL.toStrict contents)
--- >
--- > -- Fully Strict situation: Reading and writing are done with strict IO function.
--- > -- This will not fail.
--- > main3 :: IO ()
--- > main3 = do
--- >   contents <- BS.readFile "foo.txt"
--- >   BS.writeFile "foo.txt" ("a" <> contents)
--- >
--- > -- Strict Read / Lazy Write situation: The fact that the file is read eagerly
--- > -- enables us to write the file lazily, meaning there will be no conflict or lock.
--- > main4 :: IO ()
--- > main4 = do
--- >   contents <- BS.readFile "foo.txt"
--- >   BL.writeFile "foo.txt" ("a" <> BL.fromStrict contents)
+-- > main = do
+-- >   _ <- BS.readFile "foo.txt"
+-- >   BL.writeFile "foo.txt" mempty
 --
--- See also: 'seq' and [deepseq](https://hackage.haskell.org/package/deepseq).
+-- If you are dealing with large or unbound data,
+-- consider reaching out for a specialised package, such as
+-- <http://hackage.haskell.org/package/conduit conduit>,
+-- <http://hackage.haskell.org/package/machines-bytestring machines-bytestring>,
+-- <http://hackage.haskell.org/package/pipes-bytestring pipes-bytestring>,
+-- <http://hackage.haskell.org/package/streaming-bytestring streaming-bytestring>,
+-- <http://hackage.haskell.org/package/streamly-bytestring streamly-bytestring>,
+-- etc.
