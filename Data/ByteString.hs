@@ -738,10 +738,18 @@ mapAccumR f acc (BS fp len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a ->
 --
 -- Note that
 --
--- > last (scanl f z xs) == foldl f z xs.
+-- > head (scanl f z xs) == z
+-- > last (scanl f z xs) == foldl f z xs
 --
-scanl :: (Word8 -> Word8 -> Word8) -> Word8 -> ByteString -> ByteString
-
+scanl
+    :: (Word8 -> Word8 -> Word8)
+    -- ^ accumulator -> element -> new accumulator
+    -> Word8
+    -- ^ starting value of accumulator
+    -> ByteString
+    -- ^ input of length n
+    -> ByteString
+    -- ^ output of length n+1
 scanl f v (BS fp len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a ->
     create (len+1) $ \q -> do
         poke q v
@@ -772,8 +780,25 @@ scanl1 f ps
     | otherwise = scanl f (unsafeHead ps) (unsafeTail ps)
 {-# INLINE scanl1 #-}
 
--- | scanr is the right-to-left dual of scanl.
-scanr :: (Word8 -> Word8 -> Word8) -> Word8 -> ByteString -> ByteString
+-- | 'scanr' is similar to 'foldr', but returns a list of successive
+-- reduced values from the right.
+--
+-- > scanr f z [..., x{n-1}, xn] == [..., x{n-1} `f` (xn `f` z), xn `f` z, z]
+--
+-- Note that
+--
+-- > head (scanr f z xs) == foldr f z xs
+-- > last (scanr f z xs) == z
+--
+scanr
+    :: (Word8 -> Word8 -> Word8)
+    -- ^ element -> accumulator -> new accumulator
+    -> Word8
+    -- ^ starting value of accumulator
+    -> ByteString
+    -- ^ input of length n
+    -> ByteString
+    -- ^ output of length n+1
 scanr f v (BS fp len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a ->
     create (len+1) $ \q -> do
         poke (q `plusPtr` len) v
