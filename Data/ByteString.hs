@@ -604,7 +604,30 @@ any f (BS x len) = accursedUnutterablePerformIO $ withForeignPtr x g
               | otherwise = do c <- peek p
                                if f c then return True
                                       else go (p `plusPtr` 1)
-{-# INLINE any #-}
+{-# INLINE [1] any #-}
+
+#if MIN_VERSION_base(4,9,0)
+{-# RULES
+"ByteString specialise any (x ==)" forall x.
+    any (x `eqWord8`) = anyByte x
+"ByteString specialise any (== x)" forall x.
+    any (`eqWord8` x) = anyByte x
+  #-}
+#else
+{-# RULES
+"ByteString specialise any (x ==)" forall x.
+    any (x ==) = anyByte x
+"ByteString specialise any (== x)" forall x.
+    any (== x) = anyByte x
+  #-}
+#endif
+
+-- | Is any element of 'ByteString' equal to c?
+anyByte :: Word8 -> ByteString -> Bool
+anyByte c (BS x l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> do
+    q <- memchr p c (fromIntegral l)
+    return $! q /= nullPtr
+{-# INLINE anyByte #-}
 
 -- todo fuse
 
@@ -622,7 +645,23 @@ all f (BS x len) = accursedUnutterablePerformIO $ withForeignPtr x g
                                if f c
                                   then go (p `plusPtr` 1)
                                   else return False
-{-# INLINE all #-}
+{-# INLINE [1] all #-}
+
+#if MIN_VERSION_base(4,9,0)
+{-# RULES
+"ByteString specialise all (x /=)" forall x.
+    all (x `neWord8`) = not . anyByte x
+"ByteString specialise all (/= x)" forall x.
+    all (`neWord8` x) = not . anyByte x
+  #-}
+#else
+{-# RULES
+"ByteString specialise all (x /=)" forall x.
+    all (x /=) = not . anyByte x
+"ByteString specialise all (/= x)" forall x.
+    all (/= x) = not . anyByte x
+  #-}
+#endif
 
 ------------------------------------------------------------------------
 
