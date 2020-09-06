@@ -697,14 +697,14 @@ mapAccumL f acc (BS fp len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a ->
     acc' <- withForeignPtr gp (go a)
     return (acc', BS gp len)
   where
-    go p ptr = mapAccumL_ acc 0
+    go src dst = mapAccumL_ acc 0
       where
         mapAccumL_ !s !n
            | n >= len = return s
            | otherwise = do
-                x <- peekByteOff p n
+                x <- peekByteOff src n
                 let (s', y) = f s x
-                pokeByteOff ptr n y
+                pokeByteOff dst n y
                 mapAccumL_ s' (n+1)
 {-# INLINE mapAccumL #-}
 
@@ -718,13 +718,13 @@ mapAccumR f acc (BS fp len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a ->
     acc' <- withForeignPtr gp (go a)
     return $! (acc', BS gp len)
   where
-    go p ptr = mapAccumR_ acc (len-1)
+    go src dst = mapAccumR_ acc (len-1)
       where
         mapAccumR_ !s (-1) = return s
         mapAccumR_ !s !n   = do
-            x  <- peekByteOff p n
+            x  <- peekByteOff src n
             let (s', y) = f s x
-            pokeByteOff ptr n y
+            pokeByteOff dst n y
             mapAccumR_ s' (n-1)
 {-# INLINE mapAccumR #-}
 
@@ -745,17 +745,16 @@ scanl :: (Word8 -> Word8 -> Word8) -> Word8 -> ByteString -> ByteString
 scanl f v (BS fp len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a ->
     create (len+1) $ \q -> do
         poke q v
-        go a q
+        go a (q `plusPtr` 1)
   where
-    go p ptr = scanl_ v 0
+    go src dst = scanl_ v 0
       where
-        q = ptr `plusPtr` 1
         scanl_ !z !n
             | n >= len  = return ()
             | otherwise = do
-                x <- peekByteOff p n
+                x <- peekByteOff src n
                 let z' = f z x
-                pokeByteOff q n z'
+                pokeByteOff dst n z'
                 scanl_ z' (n+1)
 {-# INLINE scanl #-}
 
