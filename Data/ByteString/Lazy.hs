@@ -607,8 +607,18 @@ mapAccumR f s0 = go s0
 --
 -- Note that
 --
--- > last (scanl f z xs) == foldl f z xs.
-scanl :: (Word8 -> Word8 -> Word8) -> Word8 -> ByteString -> ByteString
+-- > head (scanl f z xs) == z
+-- > last (scanl f z xs) == foldl f z xs
+--
+scanl
+    :: (Word8 -> Word8 -> Word8)
+    -- ^ accumulator -> element -> new accumulator
+    -> Word8
+    -- ^ starting value of accumulator
+    -> ByteString
+    -- ^ input of length n
+    -> ByteString
+    -- ^ output of length n+1
 scanl f z = snd . foldl k (z,singleton z)
  where
     k (c,acc) a = let n = f c a in (n, acc `snoc` n)
