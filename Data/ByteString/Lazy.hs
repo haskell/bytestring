@@ -1444,33 +1444,33 @@ findIndexOrEnd k (S.BS x l) =
 -- >   _ <- BL.readFile "foo.txt"
 -- >   BL.writeFile "foo.txt" mempty
 --
--- Usual rules about 'IO' monad are that side effects happen
--- sequentially and in full. That said, one would reasonably expect that
--- reading a full file via 'readFile' executes all three actions
--- (open a file handle, read content, close the file handle) before
--- passing control to 'writeFile'. This expectation holds
--- for strict "Data.ByteString" API. However, for lazy 'ByteString'
--- the program above fails with "openBinaryFile: resource busy (file is locked)".
+-- Generally, in the 'IO' monad side effects happen 
+-- sequentially and in full. Therefore, one might reasonably expect that
+-- reading the whole file via 'readFile' executes all three actions
+-- (open the file handle, read its content, close the file handle) before
+-- control moves to the following 'writeFile' action. This expectation holds
+-- for the strict "Data.ByteString" API. However, the above lazy 'ByteString' variant
+-- of the program fails with "openBinaryFile: resource busy (file is locked)".
 --
--- The thing is that "Data.ByteString.Lazy" is specifically designed
--- to handle large or unbounded streams of data without requiring
--- it to be resident in memory at once. This requirement cannot be satisfied
--- if 'readFile' follows usual rules about 'IO': evaluating all side effects
--- requires us to read file in full before closing its handle. This is why
+-- The reason for this is that "Data.ByteString.Lazy" is specifically designed
+-- to handle large or unbounded streams of data incrementally, without requiring all the data
+-- to be resident in memory at the same time. Incremental processing would not be possible
+-- if 'readFile' were to follow the usual rules of 'IO': evaluating all side effects
+-- would require reading file in full and closing its handle before returning from 'readFile'. This is why
 -- 'readFile' (and 'hGetContents' in general) is implemented
--- via 'unsafeInterleaveIO', which bends the rules allowing 'IO' side effects
--- to interleave on discretion of Haskell runtime. That's exactly what happens
--- in the example above: 'readFile' opens a file handle, but since its result
--- is not forced (and actually ignored),
--- runtime assumes that side effects of reading contents
--- and closing the file handle can be freely interleaved with further 'IO' effects,
--- such as effects of 'writeFile'. So when 'writeFile' kicks in, @foo.txt@
--- is still open for reading and cannot be opened for writing, causing
--- the error quoted.
+-- via 'unsafeInterleaveIO', which allows 'IO' side effects to be delayed and
+-- interleaved with subsequent processing of the return value.
+-- That's exactly what happens
+-- in the example above: 'readFile' opens a file handle, but since the content
+-- is not fully consumed, the file handle remains open, allowing the content to
+-- read __on demand__ (never in this case, since the return value is ignored).
+-- So when 'writeFile' is executed next, @foo.txt@ is still open for reading and
+-- the RTS takes care to avoid simultaneously opening it for writing, instead
+-- returning the error shown above.
 --
 -- === How to enforce the order of effects?
 --
--- If data is small enough to fit in memory,
+-- If the content is small enough to fit in memory,
 -- consider using strict 'Data.ByteString.readFile',
 -- potentially applying 'fromStrict' afterwards. E. g.,
 --
@@ -1480,7 +1480,7 @@ findIndexOrEnd k (S.BS x l) =
 -- >   _ <- BS.readFile "foo.txt"
 -- >   BL.writeFile "foo.txt" mempty
 --
--- If you are dealing with large or unbound data,
+-- If you are dealing with large or unbounded data streams,
 -- consider reaching out for a specialised package, such as
 -- <http://hackage.haskell.org/package/conduit conduit>,
 -- <http://hackage.haskell.org/package/machines-bytestring machines-bytestring>,
