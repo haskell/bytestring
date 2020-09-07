@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE MagicHash, UnboxedTuples,
-            NamedFieldPuns, BangPatterns #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# OPTIONS_HADDOCK prune #-}
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE Trustworthy #-}
@@ -281,7 +281,6 @@ import GHC.IO                   (unsafePerformIO, unsafeDupablePerformIO)
 import Data.Char                (ord)
 import Foreign.Marshal.Utils    (copyBytes)
 
-import GHC.Prim                 (Word#)
 import GHC.Base                 (build)
 import GHC.Word hiding (Word8)
 
@@ -1123,12 +1122,9 @@ spanEnd  p ps = splitAt (findFromEndUntil (not.p) ps) ps
 -- > splitWith undefined ""     == []                  -- and not [""]
 --
 splitWith :: (Word8 -> Bool) -> ByteString -> [ByteString]
-splitWith _pred (BS _  0) = []
-splitWith pred_ (BS fp len) = splitWith0 0 len fp
-  where pred# :: (Word# -> Bool)
-        pred# c# = pred_ (W8# c#)
-
-        splitWith0 !off' !len' !fp' =
+splitWith _ (BS _  0) = []
+splitWith predicate (BS fp len) = splitWith0 0 len fp
+  where splitWith0 !off' !len' !fp' =
           accursedUnutterablePerformIO $
             withForeignPtr fp $ \p ->
               splitLoop p 0 off' len' fp'
@@ -1143,7 +1139,7 @@ splitWith pred_ (BS fp len) = splitWith0 0 len fp
                 | idx' >= len'  = return [BS (plusForeignPtr fp' off') idx']
                 | otherwise = do
                     w <- peekElemOff p (off'+idx')
-                    if pred# (case w of W8# w# -> w#)
+                    if predicate w
                        then return (BS (plusForeignPtr fp' off') idx' :
                                   splitWith0 (off'+idx'+1) (len'-idx'-1) fp')
                        else go (idx'+1)
