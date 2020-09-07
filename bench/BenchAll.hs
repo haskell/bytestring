@@ -234,7 +234,7 @@ sortInputs :: [S.ByteString]
 sortInputs = map (`S.take` S.pack [122, 121 .. 32]) [10..25]
 
 foldInputs :: [S.ByteString]
-foldInputs = map (\k -> S.pack $ concat $ replicate (2 ^ k) [32..127]) [0..9]
+foldInputs = map (\k -> S.pack $ if k <= 6 then take (2 ^ k) [32..95] else concat (replicate (2 ^ (k - 6)) [32..95])) [0..16]
 
 main :: IO ()
 main = do
