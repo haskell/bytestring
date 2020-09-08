@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE TypeFamilies #-}
 #if __GLASGOW_HASKELL__ >= 703
@@ -41,15 +42,18 @@ module Data.ByteString.Lazy.Internal (
         -- * Conversion with lists: packing and unpacking
         packBytes, packChars,
         unpackBytes, unpackChars,
+        -- * Conversions with strict ByteString
+        fromStrict, toStrict,
 
   ) where
 
 import Prelude hiding (concat)
 
 import qualified Data.ByteString.Internal as S
-import qualified Data.ByteString          as S (length, take, drop)
 
-import Data.Word        (Word8)
+import Data.Word (Word8)
+import Foreign.ForeignPtr (withForeignPtr)
+import Foreign.Ptr (plusPtr)
 import Foreign.Storable (Storable(sizeOf))
 
 #if MIN_VERSION_base(4,13,0)
@@ -236,26 +240,26 @@ eq :: ByteString -> ByteString -> Bool
 eq Empty Empty = True
 eq Empty _     = False
 eq _     Empty = False
-eq (Chunk a as) (Chunk b bs) =
-  case compare (S.length a) (S.length b) of
-    LT -> a == S.take (S.length a) b && eq as (Chunk (S.drop (S.length a) b) bs)
-    EQ -> a == b                     && eq as bs
-    GT -> S.take (S.length b) a == b && eq (Chunk (S.drop (S.length b) a) as) bs
+eq (Chunk a@(S.BS ap al) as) (Chunk b@(S.BS bp bl) bs) =
+  case compare al bl of
+    LT -> a == S.BS bp al && eq as (Chunk (S.BS (S.plusForeignPtr bp al) (bl - al)) bs)
+    EQ -> a == b && eq as bs
+    GT -> S.BS ap bl == b && eq (Chunk (S.BS (S.plusForeignPtr ap bl) (al - bl)) as) bs
 
 cmp :: ByteString -> ByteString -> Ordering
 cmp Empty Empty = EQ
 cmp Empty _     = LT
 cmp _     Empty = GT
-cmp (Chunk a as) (Chunk b bs) =
-  case compare (S.length a) (S.length b) of
-    LT -> case compare a (S.take (S.length a) b) of
-            EQ     -> cmp as (Chunk (S.drop (S.length a) b) bs)
+cmp (Chunk a@(S.BS ap al) as) (Chunk b@(S.BS bp bl) bs) =
+  case compare al bl of
+    LT -> case compare a (S.BS bp al) of
+            EQ     -> cmp as (Chunk (S.BS (S.plusForeignPtr bp al) (bl - al)) bs)
             result -> result
     EQ -> case compare a b of
             EQ     -> cmp as bs
             result -> result
-    GT -> case compare (S.take (S.length b) a) b of
-            EQ     -> cmp (Chunk (S.drop (S.length b) a) as) bs
+    GT -> case compare (S.BS ap bl) b of
+            EQ     -> cmp (Chunk (S.BS (S.plusForeignPtr ap bl) (al - bl)) as) bs
             result -> result
 
 append :: ByteString -> ByteString -> ByteString
@@ -268,3 +272,51 @@ concat css0 = to css0
     go (Chunk c cs) css = Chunk c (go cs css)
     to []               = Empty
     to (cs:css)         = go cs css
+
+------------------------------------------------------------------------
+-- Conversions
+
+-- |/O(1)/ Convert a strict 'ByteString' into a lazy 'ByteString'.
+fromStrict :: S.ByteString -> ByteString
+fromStrict (S.BS _ 0) = Empty
+fromStrict bs = Chunk bs Empty
+
+-- |/O(n)/ Convert a lazy 'ByteString' into a strict 'ByteString'.
+--
+-- Note that this is an /expensive/ operation that forces the whole lazy
+-- ByteString into memory and then copies all the data. If possible, try to
+-- avoid converting back and forth between strict and lazy bytestrings.
+--
+toStrict :: ByteString -> S.ByteString
+toStrict = \cs -> goLen0 cs cs
+    -- We pass the original [ByteString] (bss0) through as an argument through
+    -- goLen0, goLen1, and goLen since we will need it again in goCopy. Passing
+    -- it as an explicit argument avoids capturing it in these functions'
+    -- closures which would result in unnecessary closure allocation.
+  where
+    -- It's still possible that the result is empty
+    goLen0 _   Empty                 = S.BS S.nullForeignPtr 0
+    goLen0 cs0 (Chunk (S.BS _ 0) cs) = goLen0 cs0 cs
+    goLen0 cs0 (Chunk c cs)          = goLen1 cs0 c cs
+
+    -- It's still possible that the result is a single chunk
+    goLen1 _   bs Empty = bs
+    goLen1 cs0 bs (Chunk (S.BS _ 0) cs) = goLen1 cs0 bs cs
+    goLen1 cs0 (S.BS _ bl) (Chunk (S.BS _ cl) cs) =
+        goLen cs0 (S.checkedAdd "Lazy.concat" bl cl) cs
+
+    -- General case, just find the total length we'll need
+    goLen cs0 !total (Chunk (S.BS _ cl) cs) =
+      goLen cs0 (S.checkedAdd "Lazy.concat" total cl) cs
+    goLen cs0 total Empty =
+      S.unsafeCreate total $ \ptr -> goCopy cs0 ptr
+
+    -- Copy the data
+    goCopy Empty                    !_   = return ()
+    goCopy (Chunk (S.BS _  0  ) cs) !ptr = goCopy cs ptr
+    goCopy (Chunk (S.BS fp len) cs) !ptr = do
+      withForeignPtr fp $ \p -> do
+        S.memcpy ptr p len
+        goCopy cs (ptr `plusPtr` len)
+-- See the comment on Data.ByteString.Internal.concat for some background on
+-- this implementation.
