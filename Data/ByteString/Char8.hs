@@ -52,6 +52,8 @@ module Data.ByteString.Char8 (
         singleton,              -- :: Char   -> ByteString
         pack,                   -- :: String -> ByteString
         unpack,                 -- :: ByteString -> String
+        B.fromStrict,           -- :: ByteString -> Lazy.ByteString
+        B.toStrict,             -- :: Lazy.ByteString -> ByteString
 
         -- * Basic interface
         cons,                   -- :: Char -> ByteString -> ByteString

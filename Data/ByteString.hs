@@ -50,6 +50,8 @@ module Data.ByteString (
         singleton,              -- :: Word8   -> ByteString
         pack,                   -- :: [Word8] -> ByteString
         unpack,                 -- :: ByteString -> [Word8]
+        fromStrict,             -- :: ByteString -> Lazy.ByteString
+        toStrict,               -- :: Lazy.ByteString -> ByteString
 
         -- * Basic interface
         cons,                   -- :: Word8 -> ByteString -> ByteString
@@ -233,6 +235,7 @@ import Data.Bits                (bitSize, shiftL, (.|.), (.&.))
 #endif
 
 import Data.ByteString.Internal
+import Data.ByteString.Lazy.Internal (fromStrict, toStrict)
 import Data.ByteString.Unsafe
 
 import qualified Data.List as List

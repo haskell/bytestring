@@ -199,7 +199,7 @@ module Data.ByteString.Lazy.Char8 (
 
 -- Functions transparently exported
 import Data.ByteString.Lazy
-        (fromChunks, toChunks, fromStrict, toStrict
+        (fromChunks, toChunks
         ,empty,null,length,tail,init,append,reverse,transpose,cycle
         ,concat,take,drop,splitAt,intercalate
         ,isPrefixOf,isSuffixOf,group,inits,tails,copy

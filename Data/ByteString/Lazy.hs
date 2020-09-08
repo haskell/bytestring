@@ -272,53 +272,6 @@ fromChunks cs = L.foldr chunk Empty cs
 toChunks :: ByteString -> [P.ByteString]
 toChunks cs = foldrChunks (:) [] cs
 
--- |/O(1)/ Convert a strict 'ByteString' into a lazy 'ByteString'.
-fromStrict :: P.ByteString -> ByteString
-fromStrict bs | S.null bs = Empty
-              | otherwise = Chunk bs Empty
-
--- |/O(n)/ Convert a lazy 'ByteString' into a strict 'ByteString'.
---
--- Note that this is an /expensive/ operation that forces the whole lazy
--- ByteString into memory and then copies all the data. If possible, try to
--- avoid converting back and forth between strict and lazy bytestrings.
---
-toStrict :: ByteString -> S.ByteString
-toStrict = \cs -> goLen0 cs cs
-    -- We pass the original [ByteString] (bss0) through as an argument through
-    -- goLen0, goLen1, and goLen since we will need it again in goCopy. Passing
-    -- it as an explicit argument avoids capturing it in these functions'
-    -- closures which would result in unnecessary closure allocation.
-  where
-    -- It's still possible that the result is empty
-    goLen0 _   Empty                   = S.empty
-    goLen0 cs0 (Chunk c cs) | S.null c = goLen0 cs0 cs
-    goLen0 cs0 (Chunk c cs)            = goLen1 cs0 c cs
-
-    -- It's still possible that the result is a single chunk
-    goLen1 _   bs Empty                = bs
-    goLen1 cs0 bs (Chunk c cs)
-      | S.null c                   = goLen1 cs0 bs cs
-      | otherwise                  =
-        goLen cs0 (S.checkedAdd "Lazy.concat" (S.length bs) (S.length c)) cs
-
-    -- General case, just find the total length we'll need
-    goLen cs0 !total (Chunk c cs)      = goLen cs0 total' cs
-      where
-        total' = S.checkedAdd "Lazy.concat" total (S.length c)
-    goLen cs0 total Empty =
-      S.unsafeCreate total $ \ptr -> goCopy cs0 ptr
-
-    -- Copy the data
-    goCopy Empty                        !_   = return ()
-    goCopy (Chunk (S.BS _  0  ) cs) !ptr = goCopy cs ptr
-    goCopy (Chunk (S.BS fp len) cs) !ptr = do
-      withForeignPtr fp $ \p -> do
-        S.memcpy ptr p len
-        goCopy cs (ptr `plusPtr` len)
--- See the comment on Data.ByteString.Internal.concat for some background on
--- this implementation.
-
 ------------------------------------------------------------------------
 
 {-
