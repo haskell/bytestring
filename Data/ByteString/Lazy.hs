@@ -1450,13 +1450,13 @@ findIndexOrEnd k (S.BS x l) =
 -- (open the file handle, read its content, close the file handle) before
 -- control moves to the following 'writeFile' action. This expectation holds
 -- for the strict "Data.ByteString" API. However, the above lazy 'ByteString' variant
--- of the program fails with "openBinaryFile: resource busy (file is locked)".
+-- of the program fails with @openBinaryFile: resource busy (file is locked)@.
 --
 -- The reason for this is that "Data.ByteString.Lazy" is specifically designed
 -- to handle large or unbounded streams of data incrementally, without requiring all the data
 -- to be resident in memory at the same time. Incremental processing would not be possible
 -- if 'readFile' were to follow the usual rules of 'IO': evaluating all side effects
--- would require reading file in full and closing its handle before returning from 'readFile'. This is why
+-- would require reading the file in full and closing its handle before returning from 'readFile'. This is why
 -- 'readFile' (and 'hGetContents' in general) is implemented
 -- via 'unsafeInterleaveIO', which allows 'IO' side effects to be delayed and
 -- interleaved with subsequent processing of the return value.
