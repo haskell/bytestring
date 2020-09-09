@@ -76,7 +76,7 @@ bench_find_index_second bs =
 
 bench_elem_index_second :: S.ByteString -> Maybe Int
 bench_elem_index_second bs =
-   in case S.elemIndex nl bs of
+    case S.elemIndex nl bs of
         Just !i -> S.elemIndex nl (S.unsafeDrop (i+1) bs)
         Nothing -> Nothing
 {-# INLINE bench_elem_index_second #-}
