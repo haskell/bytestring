@@ -734,10 +734,6 @@ prop_breakspan xs c = L.break (==c) xs == L.span (/=c) xs
 
 prop_span xs a = (span (/=a) xs) == (let (x,y) = L.span (/=a) (pack xs) in (unpack x, unpack y))
 
--- prop_breakByte xs c = L.break (== c) xs == L.breakByte c xs
-
--- prop_spanByte c xs = (L.span (==c) xs) == L.spanByte c xs
-
 prop_split c xs = (map L.unpack . map checkInvariant . L.split c $ xs)
                == (map P.unpack . P.split c . P.pack . L.unpack $ xs)
 
@@ -1365,12 +1361,6 @@ prop_unzipBB x = let (xs,ys) = unzip x in (P.pack xs, P.pack ys) == P.unzip x
 
 -- prop_join_spec c s1 s2 =
 --  P.join (P.singleton c) (s1 : s2 : []) == P.joinWithByte c s1 s2
-
--- prop_break_spec x s =
---     P.break ((==) x) s == P.breakByte x s
-
--- prop_span_spec x s =
---     P.span ((==) x) s == P.spanByte x s
 
 ------------------------------------------------------------------------
 
@@ -2347,8 +2337,6 @@ bb_tests =
     , testProperty "unzip"          prop_unzipBB
     , testProperty "concatMap"      prop_concatMapBB
 --  , testProperty "join/joinByte"  prop_join_spec
---  , testProperty "span/spanByte"  prop_span_spec
---  , testProperty "break/breakByte"prop_break_spec
     ]
 
 
@@ -2429,8 +2417,6 @@ ll_tests =
     , testProperty "span"               prop_span
     , testProperty "splitAt"            prop_splitAt
     , testProperty "break/span"         prop_breakspan
---  , testProperty "break/breakByte"    prop_breakByte
---  , testProperty "span/spanByte"      prop_spanByte
     , testProperty "split"              prop_split
     , testProperty "splitWith_empty"    prop_splitWith_empty
     , testProperty "splitWith"          prop_splitWith

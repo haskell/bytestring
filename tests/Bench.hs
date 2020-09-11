@@ -131,14 +131,6 @@ tests =
         [F ({-# SCC "split"         #-}     app $ B.split 0x0a)
         ,F ({-# SCC "lazy split"    #-}     app $ L.split 0x0a)
     ])
---  , ("breakByte",
---      [F ({-# SCC "breakChar"     #-}     app $ B.breakByte 122)
---      ,F ({-# SCC "lazy breakChar" #-}    app $ L.breakByte 122)
---  ])
---  , ("spanByte",
---      [F ({-# SCC "spanChar"      #-}     app $ B.spanByte 122)
---      ,F ({-# SCC "lazy spanChar" #-}     app $ L.spanByte 122)
---  ])
     , ("reverse",
         [F ({-# SCC "reverse"       #-}     app B.reverse)
         ,F ({-# SCC "lazy reverse"  #-}     app L.reverse)
