@@ -204,9 +204,6 @@ module Data.ByteString (
         hPut,                   -- :: Handle -> ByteString -> IO ()
         hPutNonBlocking,        -- :: Handle -> ByteString -> IO ByteString
         hPutStr,                -- :: Handle -> ByteString -> IO ()
-
-        breakByte
-
   ) where
 
 import qualified Prelude as P
@@ -1037,7 +1034,6 @@ breakByte c p = case elemIndex c p of
     Nothing -> (p,empty)
     Just n  -> (unsafeTake n p, unsafeDrop n p)
 {-# INLINE breakByte #-}
-{-# DEPRECATED breakByte "It is an internal function and should never have been exported. Use 'break (== x)' instead. (There are rewrite rules that handle this special case of 'break'.)" #-}
 
 -- | Returns the longest (possibly empty) suffix of elements which __do not__
 -- satisfy the predicate and the remainder of the string.
