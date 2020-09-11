@@ -81,7 +81,7 @@ main = do
   mapM_ putStrLn sanityCheckInfo
   putStrLn ""
   Gauge.defaultMain
-    [ bgroup "Data.ByteString.Lazy.Builder"
+    [ bgroup "Data.ByteString.Builder"
         [ -- benchBInts "foldMap intHost" $
             -- foldMap (intHost . fromIntegral)
 

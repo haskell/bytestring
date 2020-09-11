@@ -17,6 +17,6 @@ tests =
   [ testGroup "Data.ByteString.Builder"
        Data.ByteString.Builder.Tests.tests
 
-  , testGroup "Data.ByteString.Lazy.Builder.BasicEncoding"
+  , testGroup "Data.ByteString.Builder.BasicEncoding"
        Data.ByteString.Builder.Prim.Tests.tests
   ]
