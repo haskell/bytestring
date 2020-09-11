@@ -194,7 +194,6 @@ module Data.ByteString.Lazy (
         -- ** Standard input and output
         getContents,            -- :: IO ByteString
         putStr,                 -- :: ByteString -> IO ()
-        putStrLn,               -- :: ByteString -> IO ()
         interact,               -- :: (ByteString -> ByteString) -> IO ()
 
         -- ** Files
@@ -1381,15 +1380,6 @@ hPutStr = hPut
 putStr :: ByteString -> IO ()
 putStr = hPut stdout
 
--- | Write a ByteString to stdout, appending a newline byte
---
-putStrLn :: ByteString -> IO ()
-putStrLn ps = hPut stdout ps >> hPut stdout (singleton 0x0a)
-
-{-# DEPRECATED putStrLn
-    "Use Data.ByteString.Lazy.Char8.putStrLn instead. (Functions that rely on ASCII encodings belong in Data.ByteString.Lazy.Char8)"
-  #-}
-
 -- | The interact function takes a function of type @ByteString -> ByteString@
 -- as its argument. The entire input from the standard input device is passed
 -- to this function as its argument, and the resulting string is output on the
@@ -1455,7 +1445,7 @@ findIndexOrEnd k (S.BS x l) =
 -- >   _ <- BL.readFile "foo.txt"
 -- >   BL.writeFile "foo.txt" mempty
 --
--- Generally, in the 'IO' monad side effects happen 
+-- Generally, in the 'IO' monad side effects happen
 -- sequentially and in full. Therefore, one might reasonably expect that
 -- reading the whole file via 'readFile' executes all three actions
 -- (open the file handle, read its content, close the file handle) before
