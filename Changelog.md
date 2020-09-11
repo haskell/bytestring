@@ -10,7 +10,7 @@
  * [Add rewrite rules for `{take,drop}While ({=,/}= x)`](https://github.com/haskell/bytestring/pull/275)
  * [Add rewrite rules for `any (== x)` and `all (/= x)`](https://github.com/haskell/bytestring/pull/273)
  * [Add rewrite rules for `findInd{ex,ices} (== x)`](https://github.com/haskell/bytestring/pull/270)
- * [Improve folds to pass less argument on each recursive invocation](https://github.com/haskell/bytestring/pull/273)
+ * [Improve folds to pass fewer arguments on each recursive invocation](https://github.com/haskell/bytestring/pull/273)
  * [Improve performance of `findIndices`](https://github.com/haskell/bytestring/pull/270)
 
 [0.11.0.0]: https://github.com/haskell/bytestring/compare/0.10.12.0...0.11.0.0
