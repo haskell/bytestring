@@ -87,7 +87,6 @@ module Data.ByteString.Internal (
 
         -- * Deprecated and unmentionable
         accursedUnutterablePerformIO, -- :: IO a -> a
-        inlinePerformIO,              -- :: IO a -> a
 
         -- * Exported compatibility shim
         plusForeignPtr
@@ -718,11 +717,6 @@ overflowError fun = error $ "Data.ByteString." ++ fun ++ ": size overflow"
 {-# INLINE accursedUnutterablePerformIO #-}
 accursedUnutterablePerformIO :: IO a -> a
 accursedUnutterablePerformIO (IO m) = case m realWorld# of (# _, r #) -> r
-
-inlinePerformIO :: IO a -> a
-inlinePerformIO = accursedUnutterablePerformIO
-{-# INLINE inlinePerformIO #-}
-{-# DEPRECATED inlinePerformIO "If you think you know what you are doing, use 'System.IO.Unsafe.unsafePerformIO'. If you are sure you know what you are doing, use 'unsafeDupablePerformIO'. If you enjoy sharing an address space with a malevolent agent of chaos, try 'accursedUnutterablePerformIO'." #-}
 
 -- ---------------------------------------------------------------------
 --

@@ -69,7 +69,7 @@ eq a@(S.BS p l) b@(S.BS p' l')
          | p == p'   = True     -- short cut for the same string
          | otherwise = compare a b == EQ
   where
-    compare (S.BS fp1 len1) (S.BS fp2 len2) = S.inlinePerformIO $
+    compare (S.BS fp1 len1) (S.BS fp2 len2) = S.accursedUnutterablePerformIO $
         withForeignPtr fp1 $ \p1 ->
             withForeignPtr fp2 $ \p2 ->
                 cmp p1 p2 0 len1 len2
