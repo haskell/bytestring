@@ -190,7 +190,6 @@ module Data.ByteString (
         getLine,                -- :: IO ByteString
         getContents,            -- :: IO ByteString
         putStr,                 -- :: ByteString -> IO ()
-        putStrLn,               -- :: ByteString -> IO ()
         interact,               -- :: (ByteString -> ByteString) -> IO ()
 
         -- ** Files
@@ -207,7 +206,6 @@ module Data.ByteString (
         hPut,                   -- :: Handle -> ByteString -> IO ()
         hPutNonBlocking,        -- :: Handle -> ByteString -> IO ByteString
         hPutStr,                -- :: Handle -> ByteString -> IO ()
-        hPutStrLn,              -- :: Handle -> ByteString -> IO ()
 
         breakByte
 
@@ -1346,7 +1344,7 @@ findIndices :: (Word8 -> Bool) -> ByteString -> [Int]
 findIndices p ps = loop 0 ps
    where
      loop !n !qs = case findIndex p qs of
-                     Just !i -> 
+                     Just !i ->
                         let !j = n+i
                          in j : loop (j+1) (unsafeDrop (i+1) qs)
                      Nothing -> []
@@ -1857,32 +1855,9 @@ hPutNonBlocking h bs@(BS ps l) = do
 hPutStr :: Handle -> ByteString -> IO ()
 hPutStr = hPut
 
--- | Write a ByteString to a handle, appending a newline byte.
---
--- Unlike 'hPutStr', this is not atomic: other threads might write
--- to the handle between writing of the bytestring and the newline.
-hPutStrLn :: Handle -> ByteString -> IO ()
-hPutStrLn h ps
-    | length ps < 1024 = hPut h (ps `snoc` 0x0a)
-    | otherwise        = hPut h ps >> hPut h (singleton (0x0a)) -- don't copy
-
 -- | Write a ByteString to stdout
 putStr :: ByteString -> IO ()
 putStr = hPut stdout
-
--- | Write a ByteString to stdout, appending a newline byte.
---
--- Unlike 'putStr', this is not atomic: other threads might write
--- to stdout between writing of the bytestring and the newline.
-putStrLn :: ByteString -> IO ()
-putStrLn = hPutStrLn stdout
-
-{-# DEPRECATED hPutStrLn
-    "Use Data.ByteString.Char8.hPutStrLn instead. (Functions that rely on ASCII encodings belong in Data.ByteString.Char8)"
-  #-}
-{-# DEPRECATED putStrLn
-    "Use Data.ByteString.Char8.putStrLn instead. (Functions that rely on ASCII encodings belong in Data.ByteString.Char8)"
-  #-}
 
 ------------------------------------------------------------------------
 -- Low level IO
