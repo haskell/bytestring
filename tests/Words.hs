@@ -38,8 +38,8 @@ compareBytes :: ByteString -> ByteString -> Ordering
 compareBytes (BS fp1 len1) (BS fp2 len2)
     | len1 == 0  && len2 == 0     = EQ  -- short cut for empty strings
     | fp1 == fp2 && len1 == len2  = EQ  -- short cut for the same string
---  | max len1 len2 > 1                           = inlinePerformIO $
-    | otherwise                                   = inlinePerformIO $
+--  | max len1 len2 > 1                           = accursedUnutterablePerformIO $
+    | otherwise                                   = accursedUnutterablePerformIO $
     withForeignPtr fp1 $ \p1 ->
     withForeignPtr fp2 $ \p2 -> do
         i <- memcmp p1 p2 (fromIntegral $ min len1 len2)
@@ -49,7 +49,7 @@ compareBytes (BS fp1 len1) (BS fp2 len2)
 
 
 {-
-    | otherwise                                   = inlinePerformIO $
+    | otherwise                                   = accursedUnutterablePerformIO $
     withForeignPtr fp1 $ \p1 ->
         withForeignPtr fp2 $ \p2 ->
             cmp (p1 `plusPtr` off1)

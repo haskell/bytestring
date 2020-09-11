@@ -40,11 +40,11 @@ compareBytes :: ByteString -> ByteString -> Ordering
 compareBytes (BS fp1 len1) (BS fp2 len2)
 --    | len1 == 0  && len2 == 0     = EQ  -- short cut for empty strings
 --    | fp1 == fp2 && len1 == len2  = EQ  -- short cut for the same string
-    | otherwise                                   = inlinePerformIO $
+    | otherwise                                   = accursedUnutterablePerformIO $
     withForeignPtr fp1 $ \p1 ->
         withForeignPtr fp2 $ \p2 ->
             cmp p1 p2 0 len1 len2
- 
+
 cmp :: Ptr Word8 -> Ptr Word8 -> Int -> Int -> Int-> IO Ordering
 cmp p1 p2 n len1 len2
       | n == len1 = if n == len2 then return EQ else return LT
@@ -56,11 +56,11 @@ cmp p1 p2 n len1 len2
                 EQ -> cmp p1 p2 (n+1) len1 len2
                 LT -> return LT
                 GT -> return GT
- 
+
 compareBytesC (BS x1 l1) (BS x2 l2)
     | l1 == 0  && l2 == 0   = EQ  -- short cut for empty strings
     | x1 == x2 && l1 == l2  = EQ  -- short cut for the same string
-    | otherwise                         = inlinePerformIO $
+    | otherwise                         = accursedUnutterablePerformIO $
         withForeignPtr x1 $ \p1 ->
         withForeignPtr x2 $ \p2 -> do
             i <- memcmp p1 p2 (fromIntegral $ min l1 l2)
