@@ -13,7 +13,8 @@ module Data.ByteString.Builder.RealFloat
 
 import Data.ByteString.Internal (ByteString(..), mallocByteString)
 import Data.ByteString.Builder.Internal (Builder, byteString)
-import qualified Data.ByteString.Builder.Prim  as P
+import qualified Data.ByteString.Builder.Prim as P
+import qualified Data.ByteString.Builder.Prim.Internal as P
 
 #if !(MIN_VERSION_base(4,8,0))
 import Data.Monoid
@@ -30,7 +31,7 @@ import Foreign.C.Types (CFloat, CDouble, CInt, CUInt, CULong, CUChar)
 
 import Foreign.ForeignPtr (ForeignPtr, withForeignPtr)
 import Foreign.Marshal.Alloc (alloca)
-import Foreign.Ptr (Ptr)
+import Foreign.Ptr (Ptr, plusPtr)
 import Foreign.Storable (peek)
 import GHC.Word (Word8, Word32, Word64(..))
 import GHC.Int (Int32)
@@ -62,10 +63,10 @@ formatFloat fmt prec f =
           Nothing ->
             if e' >= 0 && e' <= 7
                then sign f `mappend` showFixed (fromIntegral m) e' prec
-               else byteString $ ryu_f2s_to_chars m e (f < 0)
+               else P.primBounded (ryu_f2s_to_chars m e (f < 0)) ()
         where (FD32 m e) = ryu_f2s_fd f
               e' = fromIntegral e + decimalLength9 m
-      FFExponent -> byteString $ ryu_f2s f
+      FFExponent -> P.primBounded ryu_f2s f
       FFFixed -> ryu_d2fixed (realToFrac f) prec
 
 {-# INLINABLE formatDouble #-}
@@ -78,10 +79,10 @@ formatDouble fmt prec f =
           Nothing ->
             if e' >= 0 && e' <= 7
                then sign f `mappend` showFixed m e' prec
-               else byteString $ ryu_d2s_to_chars m e (f < 0)
+               else P.primBounded (ryu_d2s_to_chars m e (f < 0)) ()
         where (FD64 m e) = ryu_d2s_fd f
               e' = fromIntegral e + decimalLength17 m
-      FFExponent -> byteString $ ryu_d2s f
+      FFExponent -> P.primBounded ryu_d2s f
       FFFixed -> ryu_d2fixed f prec
 
 
@@ -115,18 +116,14 @@ d2s_max_digits :: Int
 d2s_max_digits = #const D2S_MAX_DIGITS
 
 {-# INLINE ryu_f2s #-}
-ryu_f2s :: Float -> ByteString
-ryu_f2s f = unsafeDupablePerformIO $ do
-    fp <- mallocByteString f2s_max_digits :: IO (ForeignPtr Word8)
-    withForeignPtr fp $ \p ->
-      PS fp 0 . fromIntegral <$> c_ryu_f2s (realToFrac f) p
+ryu_f2s :: P.BoundedPrim Float
+ryu_f2s = P.boudedPrim f2s_max_digits $ \f p -> do
+  plusPtr p . fromIntegral <$> c_ryu_f2s (realToFrac f) p
 
 {-# INLINE ryu_d2s #-}
-ryu_d2s :: Double -> ByteString
-ryu_d2s f = unsafeDupablePerformIO $ do
-    fp <- mallocByteString d2s_max_digits :: IO (ForeignPtr Word8)
-    withForeignPtr fp $ \p ->
-      PS fp 0 . fromIntegral <$> c_ryu_d2s (realToFrac f) p
+ryu_d2s :: P.BoundedPrim Double
+ryu_d2s = P.boudedPrim d2s_max_digits $ \f p -> do
+  plusPtr p . fromIntegral <$> c_ryu_d2s (realToFrac f) p
 
 data FloatingDecimal64 = FD64 !Word64 !Int32
 data FloatingDecimal32 = FD32 !Word32 !Int32
@@ -169,18 +166,14 @@ asCBool :: Bool -> CUChar
 asCBool x = if x then 1 else 0
 
 {-# INLINE ryu_f2s_to_chars #-}
-ryu_f2s_to_chars :: Word32 -> Int32 -> Bool -> ByteString
-ryu_f2s_to_chars m e s = unsafeDupablePerformIO $ do
-    fp <- mallocByteString f2s_max_digits :: IO (ForeignPtr Word8)
-    withForeignPtr fp $ \p ->
-      PS fp 0 . fromIntegral <$> c_ryu_f2s_to_chars (fromIntegral m) (fromIntegral e) (asCBool s) p
+ryu_f2s_to_chars :: Word32 -> Int32 -> Bool -> P.BoundedPrim ()
+ryu_f2s_to_chars m e s = P.boudedPrim f2s_max_digits $ \_ p -> do
+  plusPtr p . fromIntegral <$> c_ryu_f2s_to_chars (fromIntegral m) (fromIntegral e) (asCBool s) p
 
 {-# INLINE ryu_d2s_to_chars #-}
-ryu_d2s_to_chars :: Word64 -> Int32 -> Bool -> ByteString
-ryu_d2s_to_chars m e s = unsafeDupablePerformIO $ do
-    fp <- mallocByteString d2s_max_digits :: IO (ForeignPtr Word8)
-    withForeignPtr fp $ \p ->
-      PS fp 0 . fromIntegral <$> c_ryu_d2s_to_chars (fromIntegral m) (fromIntegral e) (asCBool s) p
+ryu_d2s_to_chars :: Word64 -> Int32 -> Bool -> P.BoundedPrim ()
+ryu_d2s_to_chars m e s = P.boudedPrim d2s_max_digits $ \_ p -> do
+  plusPtr p . fromIntegral <$> c_ryu_d2s_to_chars (fromIntegral m) (fromIntegral e) (asCBool s) p
 
 
 -- auxiliary fixed format printing functions
