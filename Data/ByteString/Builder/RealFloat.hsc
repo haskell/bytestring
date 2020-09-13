@@ -117,12 +117,12 @@ d2s_max_digits = #const D2S_MAX_DIGITS
 
 {-# INLINE ryu_f2s #-}
 ryu_f2s :: P.BoundedPrim Float
-ryu_f2s = P.boudedPrim f2s_max_digits $ \f p -> do
+ryu_f2s = P.boundedPrim f2s_max_digits $ \f p -> do
   plusPtr p . fromIntegral <$> c_ryu_f2s (realToFrac f) p
 
 {-# INLINE ryu_d2s #-}
 ryu_d2s :: P.BoundedPrim Double
-ryu_d2s = P.boudedPrim d2s_max_digits $ \f p -> do
+ryu_d2s = P.boundedPrim d2s_max_digits $ \f p -> do
   plusPtr p . fromIntegral <$> c_ryu_d2s (realToFrac f) p
 
 data FloatingDecimal64 = FD64 !Word64 !Int32
@@ -167,12 +167,12 @@ asCBool x = if x then 1 else 0
 
 {-# INLINE ryu_f2s_to_chars #-}
 ryu_f2s_to_chars :: Word32 -> Int32 -> Bool -> P.BoundedPrim ()
-ryu_f2s_to_chars m e s = P.boudedPrim f2s_max_digits $ \_ p -> do
+ryu_f2s_to_chars m e s = P.boundedPrim f2s_max_digits $ \_ p -> do
   plusPtr p . fromIntegral <$> c_ryu_f2s_to_chars (fromIntegral m) (fromIntegral e) (asCBool s) p
 
 {-# INLINE ryu_d2s_to_chars #-}
 ryu_d2s_to_chars :: Word64 -> Int32 -> Bool -> P.BoundedPrim ()
-ryu_d2s_to_chars m e s = P.boudedPrim d2s_max_digits $ \_ p -> do
+ryu_d2s_to_chars m e s = P.boundedPrim d2s_max_digits $ \_ p -> do
   plusPtr p . fromIntegral <$> c_ryu_d2s_to_chars (fromIntegral m) (fromIntegral e) (asCBool s) p
 
 
