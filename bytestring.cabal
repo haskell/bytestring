@@ -1,5 +1,5 @@
 Name:                bytestring
-Version:             0.10.10.0
+Version:             0.11.0.0
 Synopsis:            Fast, compact, strict and lazy byte strings with a list interface
 Description:
     An efficient compact, immutable byte string type (both strict and lazy)
@@ -139,7 +139,10 @@ library
   install-includes:  fpstring.h
 
    -- flags for the decimal integer serialization code
-  if impl(ghc >= 6.11)
+  if impl(ghc >= 8.11)
+    build-depends: ghc-bignum >= 1.0
+
+  if impl(ghc >= 6.11) && impl(ghc < 8.11)
     if !flag(integer-simple)
       cpp-options: -DINTEGER_GMP
       build-depends: integer-gmp >= 0.2
@@ -147,113 +150,3 @@ library
   if impl(ghc >= 6.9) && impl(ghc < 6.11)
     cpp-options: -DINTEGER_GMP
     build-depends: integer >= 0.1 && < 0.2
-
-
--- QC properties, with GHC RULES disabled
-test-suite prop-compiled
-  type:             exitcode-stdio-1.0
-  main-is:          Properties.hs
-  other-modules:    Rules
-                    QuickCheckUtils
-                    TestFramework
-                    Data.ByteString
-                    Data.ByteString.Char8
-                    Data.ByteString.Internal
-                    Data.ByteString.Lazy
-                    Data.ByteString.Lazy.Char8
-                    Data.ByteString.Lazy.Internal
-                    Data.ByteString.Short
-                    Data.ByteString.Short.Internal
-                    Data.ByteString.Unsafe
-  hs-source-dirs:   . tests
-  build-depends:    base, ghc-prim, deepseq, random, directory,
-                    test-framework, test-framework-quickcheck2,
-                    QuickCheck >= 2.10 && < 2.15
-  c-sources:        cbits/fpstring.c
-  include-dirs:     include
-  ghc-options:      -fwarn-unused-binds
-                    -fno-enable-rewrite-rules
-                    -threaded -rtsopts
-  cpp-options:      -DHAVE_TEST_FRAMEWORK=1
-  default-language: Haskell98
-  -- older ghc had issues with language pragmas guarded by cpp
-  if impl(ghc < 7)
-    default-extensions: CPP, MagicHash, UnboxedTuples,
-                        DeriveDataTypeable, BangPatterns,
-                        NamedFieldPuns
-
-test-suite regressions
-  -- temporarily disabled as it allocates too much memory
-  buildable:        False
-  type:             exitcode-stdio-1.0
-  main-is:          Regressions.hs
-  hs-source-dirs:   . tests
-  build-depends:    base, ghc-prim, deepseq, random, directory,
-                    test-framework, test-framework-hunit, HUnit
-  c-sources:        cbits/fpstring.c
-  include-dirs:     include
-  ghc-options:      -fwarn-unused-binds
-                    -fno-enable-rewrite-rules
-                    -threaded -rtsopts
-  default-language: Haskell98
-  -- older ghc had issues with language pragmas guarded by cpp
-  if impl(ghc < 7)
-    default-extensions: CPP, MagicHash, UnboxedTuples,
-                        DeriveDataTypeable, BangPatterns,
-                        NamedFieldPuns
-
-test-suite test-builder
-  type:             exitcode-stdio-1.0
-  hs-source-dirs:   . tests tests/builder
-  main-is:          TestSuite.hs
-  other-modules:    Data.ByteString
-                    Data.ByteString.Internal
-                    Data.ByteString.Lazy
-                    Data.ByteString.Lazy.Internal
-                    Data.ByteString.Short
-                    Data.ByteString.Short.Internal
-                    Data.ByteString.Unsafe
-                    Data.ByteString.Builder
-                    Data.ByteString.Builder.ASCII
-                    Data.ByteString.Builder.Extra
-                    Data.ByteString.Builder.Internal
-                    Data.ByteString.Builder.Prim
-                    Data.ByteString.Builder.Prim.ASCII
-                    Data.ByteString.Builder.Prim.Binary
-                    Data.ByteString.Builder.Prim.Internal
-                    Data.ByteString.Builder.Prim.Internal.Base16
-                    Data.ByteString.Builder.Prim.Internal.Floating
-                    Data.ByteString.Builder.Prim.Internal.UncheckedShifts
-                    Data.ByteString.Builder.Prim.TestUtils
-                    Data.ByteString.Builder.Prim.Tests
-                    Data.ByteString.Builder.Tests
-                    TestFramework
-  build-depends:    base, ghc-prim,
-                    deepseq,
-                    QuickCheck                 >= 2.10 && < 2.15,
-                    byteorder                  == 1.0.*,
-                    dlist                      >= 0.5 && < 0.9,
-                    directory,
-                    mtl                        >= 2.0 && < 2.3,
-                    HUnit,
-                    test-framework,
-                    test-framework-hunit,
-                    test-framework-quickcheck2
-
-  ghc-options:      -Wall -fwarn-tabs -threaded -rtsopts
-  cpp-options:      -DHAVE_TEST_FRAMEWORK=1
-
-  default-language: Haskell98
-  -- older ghc had issues with language pragmas guarded by cpp
-  if impl(ghc < 7)
-    default-extensions: CPP, MagicHash, UnboxedTuples,
-                        DeriveDataTypeable, BangPatterns,
-                        NamedFieldPuns
-
-  c-sources:        cbits/fpstring.c
-                    cbits/itoa.c
-                    cbits/ftoa.c
-                    cbits/dtoa.c
-  include-dirs:     include
-  includes:         fpstring.h
-  install-includes: fpstring.h

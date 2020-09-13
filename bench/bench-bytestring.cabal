@@ -4,7 +4,7 @@ Synopsis:            Benchmarks for the lazy bytestring builder.
 Description:
     This package is not meant for public release. It fixes a problem with the
     current benchmarking support in cabal, which has trouble compiling because
-    criterion depends on bytestring. Here, we just include the whole source of
+    gauge depends on bytestring. Here, we just include the whole source of
     the bytestring library directly.
 
 License:             BSD3
@@ -31,14 +31,15 @@ flag integer-simple
   description: Use the simple integer library instead of GMP
   default: False
 
-executable bench-bytestring-builder
+benchmark bench-bytestring-builder
   hs-source-dirs:    . ..
   main-is:           BenchAll.hs
+  type:              exitcode-stdio-1.0
 
   build-depends:     base >= 4.4 && < 5
                    , ghc-prim
                    , deepseq       >= 1.2
-                   , criterion     >= 0.5
+                   , gauge         >= 0.2.5
                    , blaze-textual == 0.2.*
                    -- we require bytestring due to benchmarking against
                    -- blaze-textual, which uses blaze-builder
@@ -148,11 +149,12 @@ executable bench-bytestring-builder
 --                   PackageImports
 --                   ForeignFunctionInterface
 
-executable bench-builder-boundscheck
+benchmark bench-builder-boundscheck
   hs-source-dirs:   .. .
   main-is:          BoundsCheckFusion.hs
+  type:             exitcode-stdio-1.0
   build-depends:    base, deepseq, ghc-prim,
-                    criterion
+                    gauge
   c-sources:        ../cbits/fpstring.c
                     ../cbits/itoa.c
                     ../cbits/ftoa.c
@@ -185,18 +187,42 @@ executable bench-builder-boundscheck
         Data.ByteString.Unsafe
         Paths_bench_bytestring
 
---executable bench-builder-csv
---  hs-source-dirs:   .. .
---  main-is:          CSV.hs
---  build-depends:    base, deepseq, ghc-prim,
---                    text, binary,
---                    criterion
---  c-sources:        ../cbits/fpstring.c
---                    ../cbits/itoa.c
---  include-dirs:     ../include
---  ghc-options:      -O2
---                    -fmax-simplifier-iterations=10
---                    -fdicts-cheap
---                    -fspec-constr-count=6
---  default-language: Haskell98
+benchmark bench-builder-csv
+  hs-source-dirs:   .. .
+  main-is:          CSV.hs
+  type:             exitcode-stdio-1.0
+  build-depends:    base, deepseq, ghc-prim,
+                    text,
+                    gauge,
+                    utf8-string,
+                    utf8-light,
+                    bytestring,
+                    dlist
+  c-sources:        ../cbits/fpstring.c
+                    ../cbits/itoa.c
+  include-dirs:     ../include
+  ghc-options:      -O2
+                    -fmax-simplifier-iterations=10
+                    -fdicts-cheap
+                    -fspec-constr-count=6
+  default-language: Haskell2010
 
+benchmark bench-strict-indices
+  hs-source-dirs:   .. .
+  main-is:          BenchIndices.hs
+  other-modules:    Data.ByteString
+                    Data.ByteString.Internal
+                    Data.ByteString.Unsafe 
+  type:             exitcode-stdio-1.0
+  c-sources:        ../cbits/fpstring.c
+                    ../cbits/itoa.c
+  include-dirs:     ../include
+  build-depends:    base >= 4.4 && < 5
+                  , ghc-prim
+                  , deepseq       >= 1.2
+                  , gauge         >= 0.2.5
+  ghc-options:      -O2
+                    -fmax-simplifier-iterations=10
+                    -fdicts-cheap
+                    -fspec-constr-count=6
+  default-language: Haskell2010

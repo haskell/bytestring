@@ -82,28 +82,38 @@ import qualified Data.ByteString.Builder.Prim                   as P
 import           Foreign
 
 
-#if defined(INTEGER_GMP)
+#if __GLASGOW_HASKELL__ >= 811
 
-#if !(MIN_VERSION_base(4,8,0))
+import GHC.Num.Integer
+#define HAS_INTEGER_CONSTR 1
+#define quotRemInteger integerQuotRem#
+
+#elif defined(INTEGER_GMP)
+
+#define HAS_INTEGER_CONSTR 1
+#define IS S#
+
+# if !(MIN_VERSION_base(4,8,0))
 import           Data.Monoid (mappend)
 # endif
-import           Foreign.C.Types
-
-import qualified Data.ByteString.Builder.Prim.Internal          as P
-import           Data.ByteString.Builder.Prim.Internal.UncheckedShifts
-                   ( caseWordSize_32_64 )
 
 # if __GLASGOW_HASKELL__ < 710
 import           GHC.Num     (quotRemInteger)
 # endif
-import           GHC.Types   (Int(..))
-
 
 # if __GLASGOW_HASKELL__ < 611
 import GHC.Integer.Internals
 # else
 import GHC.Integer.GMP.Internals
 # endif
+#endif
+
+#if HAS_INTEGER_CONSTR
+import qualified Data.ByteString.Builder.Prim.Internal          as P
+import           Data.ByteString.Builder.Prim.Internal.UncheckedShifts
+                   ( caseWordSize_32_64 )
+import           Foreign.C.Types
+import           GHC.Types   (Int(..))
 #endif
 
 ------------------------------------------------------------------------------
@@ -285,7 +295,7 @@ lazyByteStringHex = P.primMapLazyByteStringFixed P.word8HexFixed
 -- Fast decimal 'Integer' encoding.
 ------------------------------------------------------------------------------
 
-#if defined(INTEGER_GMP)
+#if HAS_INTEGER_CONSTR
 -- An optimized version of the integer serialization code
 -- in blaze-textual (c) 2011 MailRank, Inc. Bryan O'Sullivan
 -- <bos@mailrank.com>. It is 2.5x faster on Int-sized integers and 4.5x faster
@@ -304,7 +314,7 @@ maxPow10 = toInteger $ (10 :: Int) ^ caseWordSize_32_64 (9 :: Int) 18
 
 -- | Decimal encoding of an 'Integer' using the ASCII digits.
 integerDec :: Integer -> Builder
-integerDec (S# i#) = intDec (I# i#)
+integerDec (IS i#) = intDec (I# i#)
 integerDec i
     | i < 0     = P.primFixed P.char8 '-' `mappend` go (-i)
     | otherwise =                                   go ( i)

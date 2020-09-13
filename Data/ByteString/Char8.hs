@@ -115,7 +115,10 @@ module Data.ByteString.Char8 (
         drop,                   -- :: Int -> ByteString -> ByteString
         splitAt,                -- :: Int -> ByteString -> (ByteString, ByteString)
         takeWhile,              -- :: (Char -> Bool) -> ByteString -> ByteString
+        takeWhileEnd,           -- :: (Char -> Bool) -> ByteString -> ByteString
         dropWhile,              -- :: (Char -> Bool) -> ByteString -> ByteString
+        dropWhileEnd,           -- :: (Char -> Bool) -> ByteString -> ByteString
+        dropSpace,              -- :: ByteString -> ByteString
         span,                   -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
         spanEnd,                -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
         break,                  -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
@@ -124,6 +127,7 @@ module Data.ByteString.Char8 (
         groupBy,                -- :: (Char -> Char -> Bool) -> ByteString -> [ByteString]
         inits,                  -- :: ByteString -> [ByteString]
         tails,                  -- :: ByteString -> [ByteString]
+        strip,                  -- :: ByteString -> ByteString
         stripPrefix,            -- :: ByteString -> ByteString -> Maybe ByteString
         stripSuffix,            -- :: ByteString -> ByteString -> Maybe ByteString
 
@@ -144,8 +148,6 @@ module Data.ByteString.Char8 (
 
         -- ** Search for arbitrary substrings
         breakSubstring,         -- :: ByteString -> ByteString -> (ByteString,ByteString)
-        findSubstring,          -- :: ByteString -> ByteString -> Maybe Int
-        findSubstrings,         -- :: ByteString -> ByteString -> [Int]
 
         -- * Searching ByteStrings
 
@@ -156,10 +158,12 @@ module Data.ByteString.Char8 (
         -- ** Searching with a predicate
         find,                   -- :: (Char -> Bool) -> ByteString -> Maybe Char
         filter,                 -- :: (Char -> Bool) -> ByteString -> ByteString
---      partition               -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
+        partition,              -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
 
         -- * Indexing ByteStrings
         index,                  -- :: ByteString -> Int -> Char
+        indexMaybe,             -- :: ByteString -> Int -> Maybe Char
+        (!?),                   -- :: ByteString -> Int -> Maybe Char
         elemIndex,              -- :: Char -> ByteString -> Maybe Int
         elemIndices,            -- :: Char -> ByteString -> [Int]
         elemIndexEnd,           -- :: Char -> ByteString -> Maybe Int
@@ -245,7 +249,7 @@ import Data.ByteString (empty,null,length,tail,init,append
                        ,concat,take,drop,splitAt,intercalate
                        ,sort,isPrefixOf,isSuffixOf,isInfixOf
                        ,stripPrefix,stripSuffix
-                       ,findSubstring,findSubstrings,breakSubstring,copy,group
+                       ,breakSubstring,copy,group
 
                        ,getLine, getContents, putStr, interact
                        ,readFile, writeFile, appendFile
@@ -366,7 +370,7 @@ foldr' f = B.foldr' (\c a -> f (w2c c) a)
 {-# INLINE foldr' #-}
 
 -- | 'foldl1' is a variant of 'foldl' that has no starting value
--- argument, and thus must be applied to non-empty 'ByteStrings'.
+-- argument, and thus must be applied to non-empty 'ByteString's.
 foldl1 :: (Char -> Char -> Char) -> ByteString -> Char
 foldl1 f ps = w2c (B.foldl1 (\x y -> c2w (f (w2c x) (w2c y))) ps)
 {-# INLINE foldl1 #-}
@@ -458,7 +462,7 @@ scanr1 f = B.scanr1 (\a b -> c2w (f (w2c a) (w2c b)))
 --
 -- > replicate w c = unfoldr w (\u -> Just (u,u)) c
 --
--- This implemenation uses @memset(3)@
+-- This implementation uses @memset(3)@
 replicate :: Int -> Char -> ByteString
 replicate n = B.replicate n . c2w
 {-# INLINE replicate #-}
@@ -497,6 +501,15 @@ takeWhile :: (Char -> Bool) -> ByteString -> ByteString
 takeWhile f = B.takeWhile (f . w2c)
 {-# INLINE takeWhile #-}
 
+-- | 'takeWhileEnd', applied to a predicate @p@ and a ByteString @xs@,
+-- returns the longest suffix (possibly empty) of @xs@ of elements that
+-- satisfy @p@.
+--
+-- @since 0.10.12.0
+takeWhileEnd :: (Char -> Bool) -> ByteString -> ByteString
+takeWhileEnd f = B.takeWhileEnd (f . w2c)
+{-# INLINE takeWhileEnd #-}
+
 -- | 'dropWhile' @p xs@ returns the suffix remaining after 'takeWhile' @p xs@.
 dropWhile :: (Char -> Bool) -> ByteString -> ByteString
 dropWhile f = B.dropWhile (f . w2c)
@@ -506,6 +519,14 @@ dropWhile f = B.dropWhile (f . w2c)
 "ByteString specialise dropWhile isSpace -> dropSpace"
     dropWhile isSpace = dropSpace
   #-}
+
+-- | 'dropWhile' @p xs@ returns the prefix remaining after 'takeWhileEnd' @p
+-- xs@.
+--
+-- @since 0.10.12.0
+dropWhileEnd :: (Char -> Bool) -> ByteString -> ByteString
+dropWhileEnd f = B.dropWhileEnd (f . w2c)
+{-# INLINE dropWhileEnd #-}
 
 -- | 'break' @p@ is equivalent to @'span' ('not' . p)@.
 break :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
@@ -577,6 +598,7 @@ breakEnd f = B.breakEnd (f . w2c)
 -- > split '\n' "a\nb\nd\ne" == ["a","b","d","e"]
 -- > split 'a'  "aXaXaXa"    == ["","X","X","X",""]
 -- > split 'x'  "x"          == ["",""]
+-- > split undefined ""      == []  -- and not [""]
 --
 -- and
 --
@@ -584,7 +606,7 @@ breakEnd f = B.breakEnd (f . w2c)
 -- > split == splitWith . (==)
 --
 -- As for all splitting functions in this library, this function does
--- not copy the substrings, it just constructs new 'ByteStrings' that
+-- not copy the substrings, it just constructs new 'ByteString's that
 -- are slices of the original.
 --
 split :: Char -> ByteString -> [ByteString]
@@ -597,6 +619,7 @@ split = B.split . c2w
 -- separators result in an empty component in the output.  eg.
 --
 -- > splitWith (=='a') "aabbaca" == ["","","bb","c",""]
+-- > splitWith undefined ""      == []  -- and not [""]
 --
 splitWith :: (Char -> Bool) -> ByteString -> [ByteString]
 splitWith f = B.splitWith (f . w2c)
@@ -622,6 +645,24 @@ groupBy k = B.groupBy (\a b -> k (w2c a) (w2c b))
 index :: ByteString -> Int -> Char
 index = (w2c .) . B.index
 {-# INLINE index #-}
+
+-- | /O(1)/ 'ByteString' index, starting from 0, that returns 'Just' if:
+--
+-- > 0 <= n < length bs
+--
+-- @since 0.11.0.0
+indexMaybe :: ByteString -> Int -> Maybe Char
+indexMaybe = (fmap w2c .) . B.indexMaybe
+{-# INLINE indexMaybe #-}
+
+-- | /O(1)/ 'ByteString' index, starting from 0, that returns 'Just' if:
+--
+-- > 0 <= n < length bs
+--
+-- @since 0.11.0.0
+(!?) :: ByteString -> Int -> Maybe Char
+(!?) = indexMaybe
+{-# INLINE (!?) #-}
 
 -- | /O(n)/ The 'elemIndex' function returns the index of the first
 -- element in the given 'ByteString' which is equal (by memchr) to the
@@ -652,12 +693,38 @@ elemIndices = B.elemIndices . c2w
 -- returns the index of the first element in the ByteString satisfying the predicate.
 findIndex :: (Char -> Bool) -> ByteString -> Maybe Int
 findIndex f = B.findIndex (f . w2c)
-{-# INLINE findIndex #-}
+{-# INLINE [1] findIndex #-}
 
 -- | The 'findIndices' function extends 'findIndex', by returning the
 -- indices of all elements satisfying the predicate, in ascending order.
 findIndices :: (Char -> Bool) -> ByteString -> [Int]
 findIndices f = B.findIndices (f . w2c)
+{-# INLINE [1] findIndices #-}
+
+#if MIN_VERSION_base(4,9,0)
+{-# RULES
+"ByteString specialise findIndex (x==)" forall x.
+    findIndex (x `eqChar`) = elemIndex x
+"ByteString specialise findIndex (==x)" forall x.
+    findIndex (`eqChar` x) = elemIndex x
+"ByteString specialise findIndices (x==)" forall x.
+    findIndices (x `eqChar`) = elemIndices x
+"ByteString specialise findIndices (==x)" forall x.
+    findIndices (`eqChar` x) = elemIndices x
+  #-}
+#else
+{-# RULES
+"ByteString specialise findIndex (x==)" forall x.
+    findIndex (x==) = elemIndex x
+"ByteString specialise findIndex (==x)" forall x.
+    findIndex (==x) = elemIndex x
+"ByteString specialise findIndices (x==)" forall x.
+    findIndices (x==) = elemIndices x
+"ByteString specialise findIndices (==x)" forall x.
+    findIndices (==x) = elemIndices x
+  #-}
+#endif
+
 
 -- | count returns the number of times its argument appears in the ByteString
 --
@@ -688,6 +755,11 @@ notElem c = B.notElem (c2w c)
 filter :: (Char -> Bool) -> ByteString -> ByteString
 filter f = B.filter (f . w2c)
 {-# INLINE filter #-}
+
+-- | @since 0.10.12.0
+partition :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
+partition f = B.partition (f . w2c)
+{-# INLINE partition #-}
 
 {-
 -- | /O(n)/ and /O(n\/c) space/ A first order equivalent of /filter .
@@ -791,12 +863,12 @@ unsafeHead  = w2c . B.unsafeHead
 -- > break isSpace == breakSpace
 --
 breakSpace :: ByteString -> (ByteString,ByteString)
-breakSpace (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> do
-    i <- firstspace (p `plusPtr` s) 0 l
+breakSpace (BS x l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> do
+    i <- firstspace p 0 l
     return $! case () of {_
-        | i == 0    -> (empty, PS x s l)
-        | i == l    -> (PS x s l, empty)
-        | otherwise -> (PS x s i, PS x (s+i) (l-i))
+        | i == 0    -> (empty, BS x l)
+        | i == l    -> (BS x l, empty)
+        | otherwise -> (BS x i, BS (plusForeignPtr x i) (l-i))
     }
 {-# INLINE breakSpace #-}
 
@@ -812,10 +884,11 @@ firstspace !ptr !n !m
 --
 -- > dropWhile isSpace == dropSpace
 --
+-- @since 0.10.12.0
 dropSpace :: ByteString -> ByteString
-dropSpace (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> do
-    i <- firstnonspace (p `plusPtr` s) 0 l
-    return $! if i == l then empty else PS x (s+i) (l-i)
+dropSpace (BS x l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> do
+    i <- firstnonspace p 0 l
+    return $! if i == l then empty else BS (plusForeignPtr x i) (l-i)
 {-# INLINE dropSpace #-}
 
 firstnonspace :: Ptr Word8 -> Int -> Int -> IO Int
@@ -823,6 +896,12 @@ firstnonspace !ptr !n !m
     | n >= m    = return n
     | otherwise = do w <- peekElemOff ptr n
                      if isSpaceWord8 w then firstnonspace ptr (n+1) m else return n
+
+-- | Remove leading and trailing white space from a 'ByteString'.
+--
+-- @since 0.10.12.0
+strip :: ByteString -> ByteString
+strip = dropWhile isSpace . dropWhileEnd isSpace
 
 {-
 -- | 'dropSpaceEnd' efficiently returns the 'ByteString' argument with
@@ -833,9 +912,9 @@ firstnonspace !ptr !n !m
 -- but it is more efficient than using multiple reverses.
 --
 dropSpaceEnd :: ByteString -> ByteString
-dropSpaceEnd (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> do
-    i <- lastnonspace (p `plusPtr` s) (l-1)
-    return $! if i == (-1) then empty else PS x s (i+1)
+dropSpaceEnd (BS x l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> do
+    i <- lastnonspace p (l-1)
+    return $! if i == (-1) then empty else BS x (i+1)
 {-# INLINE dropSpaceEnd #-}
 
 lastnonspace :: Ptr Word8 -> Int -> IO Int
@@ -846,7 +925,9 @@ lastnonspace ptr n
 -}
 
 -- | 'lines' breaks a ByteString up into a list of ByteStrings at
--- newline Chars. The resulting strings do not contain newlines.
+-- newline Chars (@'\\n'@). The resulting strings do not contain newlines.
+--
+-- Note that it __does not__ regard CR (@'\\r'@) as a newline character.
 --
 lines :: ByteString -> [ByteString]
 lines ps
@@ -857,20 +938,23 @@ lines ps
     where search = elemIndex '\n'
 
 {-
--- Just as fast, but more complex. Should be much faster, I thought.
-lines :: ByteString -> [ByteString]
-lines (PS _ _ 0) = []
-lines (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> do
-        let ptr = p `plusPtr` s
-
-            loop n = do
-                let q = memchr (ptr `plusPtr` n) 0x0a (fromIntegral (l-n))
-                if q == nullPtr
-                    then return [PS x (s+n) (l-n)]
-                    else do let i = q `minusPtr` ptr
-                            ls <- loop (i+1)
-                            return $! PS x (s+n) (i-n) : ls
-        loop 0
+-- Could be faster, now passes tests...
+lines (BS _ 0) = []
+lines (BS x l) = go x l
+  where
+    nl = c2w '\n'
+    -- It is important to remain lazy in the tail of the list.  The caller
+    -- might only want the first few lines.
+    go !f !len = accursedUnutterablePerformIO $ withForeignPtr f $ \p -> do
+        q <- memchr p nl $! fromIntegral len
+        if q == nullPtr
+            then return [BS f len]
+            else do
+                let !i = q `minusPtr` p
+                    !j = i + 1
+                if j < len
+                    then return $ BS f i : go (plusForeignPtr f j) (len - j)
+                    else return [BS f i]
 -}
 
 -- | 'unlines' is an inverse operation to 'lines'.  It joins lines,

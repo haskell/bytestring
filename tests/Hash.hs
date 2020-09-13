@@ -64,16 +64,15 @@ mulHi a b = fromIntegral (r `shiftR` 32)
 newtype OrdString = OrdString S.ByteString
      deriving Show
 
-eq a@(S.PS p s l) b@(S.PS p' s' l')
-         | l /= l'            = False    -- short cut on length
-         | p == p' && s == s' = True     -- short cut for the same string
-         | otherwise          = compare a b == EQ
+eq a@(S.BS p l) b@(S.BS p' l')
+         | l /= l'   = False    -- short cut on length
+         | p == p'   = True     -- short cut for the same string
+         | otherwise = compare a b == EQ
   where
-    compare (S.PS fp1 off1 len1) (S.PS fp2 off2 len2) = S.inlinePerformIO $
+    compare (S.BS fp1 len1) (S.BS fp2 len2) = S.inlinePerformIO $
         withForeignPtr fp1 $ \p1 ->
             withForeignPtr fp2 $ \p2 ->
-                cmp (p1 `plusPtr` off1)
-                    (p2 `plusPtr` off2) 0 len1 len2
+                cmp p1 p2 0 len1 len2
 
 cmp :: Ptr Word8 -> Ptr Word8 -> Int -> Int -> Int-> IO Ordering
 cmp !p1 !p2 !n len1 len2

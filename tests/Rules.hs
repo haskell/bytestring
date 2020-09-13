@@ -11,6 +11,7 @@ import qualified Data.ByteString.Lazy        as L
 import qualified Data.ByteString.Lazy.Char8  as D
 import Data.List
 import Data.Char
+import Data.Word
 
 import QuickCheckUtils
 
@@ -21,7 +22,15 @@ import TestFramework
 #endif
 
 
-prop_break_C x = C.break ((==) x) `eq1` break ((==) x)
+prop_break_C :: Word8 -> C.ByteString -> Bool
+prop_break_C w = C.break ((==) x) `eq1` break ((==) x)
+  where
+    -- Make sure we're not testing non-octet character values, for which
+    -- C.break is not isomorphic to breaking the corresponding string,
+    -- Instead start with a byte, and make a character out of that.
+    x = chr $ fromIntegral w
+
+prop_break_P :: Word8 -> C.ByteString -> Bool
 prop_break_P x = P.break ((==) x) `eq1` break ((==) x)
 prop_intercalate_P c = (\s1 s2 -> P.intercalate (P.singleton c) (s1 : s2 : []))
                         `eq2`

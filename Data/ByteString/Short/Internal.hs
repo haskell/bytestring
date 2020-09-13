@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable, CPP, BangPatterns, RankNTypes,
              ForeignFunctionInterface, MagicHash, UnboxedTuples,
              UnliftedFFITypes #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 #if __GLASGOW_HASKELL__ >= 703
 {-# LANGUAGE Unsafe #-}
@@ -15,7 +16,7 @@
 -- Maintainer  : duncan@community.haskell.org
 -- Stability   : stable
 -- Portability : ghc only
--- 
+--
 -- Internal representation of ShortByteString
 --
 module Data.ByteString.Short.Internal (
@@ -30,7 +31,7 @@ module Data.ByteString.Short.Internal (
     unpack,
 
     -- * Other operations
-    empty, null, length, index, unsafeIndex,
+    empty, null, length, index, indexMaybe, (!?), unsafeIndex,
 
     -- * Low level operations
     createFromPtr, copyToPtr,
@@ -65,7 +66,6 @@ import Foreign.C.Types  (CSize(..), CInt(..), CLong(..))
 import Foreign.C.Types  (CSize, CInt, CLong)
 #endif
 import Foreign.Marshal.Alloc (allocaBytes)
-import Foreign.Ptr
 import Foreign.ForeignPtr (touchForeignPtr)
 #if MIN_VERSION_base(4,5,0)
 import Foreign.ForeignPtr.Unsafe (unsafeForeignPtrToPtr)
@@ -102,11 +102,12 @@ import GHC.ST         (ST(ST), runST)
 import GHC.Word
 
 import Prelude ( Eq(..), Ord(..), Ordering(..), Read(..), Show(..)
-               , ($), error, (++), (.)
+               , ($), ($!), error, (++), (.)
                , String, userError
                , Bool(..), (&&), otherwise
                , (+), (-), fromIntegral
-               , return )
+               , return
+               , Maybe(..) )
 
 
 -- | A compact representation of a 'Word8' vector.
@@ -170,6 +171,16 @@ instance Show ShortByteString where
 instance Read ShortByteString where
     readsPrec p str = [ (packChars x, y) | (x, y) <- readsPrec p str ]
 
+#if MIN_VERSION_base(4,7,0)
+-- | @since 0.10.12.0
+instance GHC.Exts.IsList ShortByteString where
+  type Item ShortByteString = Word8
+  fromList = packBytes
+  toList   = unpackBytes
+#endif
+
+-- | Beware: 'fromString' truncates multi-byte characters to octets.
+-- e.g. "枯朶に烏のとまりけり秋の暮" becomes �6k�nh~�Q��n�
 instance IsString ShortByteString where
     fromString = packChars
 
@@ -198,11 +209,31 @@ length (SBS _ len) = len
 null :: ShortByteString -> Bool
 null sbs = length sbs == 0
 
--- | /O(1)/ 'ShortByteString' index (subscript) operator, starting from 0. 
+-- | /O(1)/ 'ShortByteString' index (subscript) operator, starting from 0.
 index :: ShortByteString -> Int -> Word8
 index sbs i
   | i >= 0 && i < length sbs = unsafeIndex sbs i
   | otherwise                = indexError sbs i
+
+-- | /O(1)/ 'ShortByteString' index, starting from 0, that returns 'Just' if:
+--
+-- > 0 <= n < length bs
+--
+-- @since 0.11.0.0
+indexMaybe :: ShortByteString -> Int -> Maybe Word8
+indexMaybe sbs i
+  | i >= 0 && i < length sbs = Just $! unsafeIndex sbs i
+  | otherwise                = Nothing
+{-# INLINE indexMaybe #-}
+
+-- | /O(1)/ 'ShortByteString' index, starting from 0, that returns 'Just' if:
+--
+-- > 0 <= n < length bs
+--
+-- @since 0.11.0.0
+(!?) :: ShortByteString -> Int -> Maybe Word8
+(!?) = indexMaybe
+{-# INLINE (!?) #-}
 
 unsafeIndex :: ShortByteString -> Int -> Word8
 unsafeIndex sbs = indexWord8Array (asBA sbs)
@@ -239,10 +270,10 @@ toShort :: ByteString -> ShortByteString
 toShort !bs = unsafeDupablePerformIO (toShortIO bs)
 
 toShortIO :: ByteString -> IO ShortByteString
-toShortIO (PS fptr off len) = do
+toShortIO (BS fptr len) = do
     mba <- stToIO (newByteArray len)
     let ptr = unsafeForeignPtrToPtr fptr
-    stToIO (copyAddrToByteArray (ptr `plusPtr` off) mba 0 len)
+    stToIO (copyAddrToByteArray ptr mba 0 len)
     touchForeignPtr fptr
     BA# ba# <- stToIO (unsafeFreezeByteArray mba)
     return (SBS ba# LEN(len))
@@ -261,7 +292,7 @@ fromShortIO sbs = do
     stToIO (copyByteArray (asBA sbs) 0 mba 0 len)
     let fp = ForeignPtr (byteArrayContents# (unsafeCoerce# mba#))
                         (PlainPtr mba#)
-    return (PS fp 0 len)
+    return (BS fp len)
 #else
     -- Before base 4.6 ForeignPtrContents is not exported from GHC.ForeignPtr
     -- so we cannot get direct access to the mbarr#
@@ -270,7 +301,7 @@ fromShortIO sbs = do
     let ptr = unsafeForeignPtrToPtr fptr
     stToIO (copyByteArrayToAddr (asBA sbs) 0 ptr len)
     touchForeignPtr fptr
-    return (PS fptr 0 len)
+    return (BS fptr len)
 #endif
 
 
@@ -542,7 +573,7 @@ copyByteArrayToAddr# = GHC.Exts.copyByteArrayToAddr#
 #else
 
 copyAddrToByteArray# src dst dst_off len s =
-  unIO_ (memcpy_AddrToByteArray dst (clong dst_off) src 0 (csize len)) s
+  unIO_ (memcpy_AddrToByteArray dst (csize dst_off) src 0 (csize len)) s
 
 copyAddrToByteArray0 :: Addr# -> MutableByteArray# s -> Int#
                      -> State# RealWorld -> State# RealWorld
@@ -556,14 +587,14 @@ copyAddrToByteArray0 src dst len s =
         = copyAddrToByteArray0 src dst    len s  #-}
 
 foreign import ccall unsafe "fpstring.h fps_memcpy_offsets"
-  memcpy_AddrToByteArray :: MutableByteArray# s -> CLong -> Addr# -> CLong -> CSize -> IO ()
+  memcpy_AddrToByteArray :: MutableByteArray# s -> CSize -> Addr# -> CSize -> CSize -> IO ()
 
 foreign import ccall unsafe "string.h memcpy"
   memcpy_AddrToByteArray0 :: MutableByteArray# s -> Addr# -> CSize -> IO ()
 
 
 copyByteArrayToAddr# src src_off dst len s =
-  unIO_ (memcpy_ByteArrayToAddr dst 0 src (clong src_off) (csize len)) s
+  unIO_ (memcpy_ByteArrayToAddr dst 0 src (csize src_off) (csize len)) s
 
 copyByteArrayToAddr0 :: ByteArray# -> Addr# -> Int#
                      -> State# RealWorld -> State# RealWorld
@@ -577,7 +608,7 @@ copyByteArrayToAddr0 src dst len s =
         = copyByteArrayToAddr0 src    dst len s  #-}
 
 foreign import ccall unsafe "fpstring.h fps_memcpy_offsets"
-  memcpy_ByteArrayToAddr :: Addr# -> CLong -> ByteArray# -> CLong -> CSize -> IO ()
+  memcpy_ByteArrayToAddr :: Addr# -> CSize -> ByteArray# -> CSize -> CSize -> IO ()
 
 foreign import ccall unsafe "string.h memcpy"
   memcpy_ByteArrayToAddr0 :: Addr# -> ByteArray# -> CSize -> IO ()
@@ -585,9 +616,6 @@ foreign import ccall unsafe "string.h memcpy"
 
 unIO_ :: IO () -> State# RealWorld -> State# RealWorld
 unIO_ io s = case unIO io s of (# s, _ #) -> s
-
-clong :: Int# -> CLong
-clong i# = fromIntegral (I# i#)
 
 csize :: Int# -> CSize
 csize i# = fromIntegral (I# i#)
@@ -598,14 +626,13 @@ copyByteArray# = GHC.Exts.copyByteArray#
 #else
 copyByteArray# src src_off dst dst_off len s =
     unST_ (unsafeIOToST
-      (memcpy_ByteArray dst (clong dst_off) src (clong src_off) (csize len))) s
+      (memcpy_ByteArray dst (csize dst_off) src (csize src_off) (csize len))) s
   where
     unST (ST st) = st
     unST_ st s = case unST st s of (# s, _ #) -> s
 
 foreign import ccall unsafe "fpstring.h fps_memcpy_offsets"
-  memcpy_ByteArray :: MutableByteArray# s -> CLong
-                   -> ByteArray# -> CLong -> CSize -> IO ()
+  memcpy_ByteArray :: MutableByteArray# s -> CSize -> ByteArray# -> CSize -> CSize -> IO ()
 #endif
 
 -- | /O(n)./ Construct a new @ShortByteString@ from a @CString@. The

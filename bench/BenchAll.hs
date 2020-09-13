@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns        #-}
 {-# LANGUAGE PackageImports      #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE MagicHash           #-}
 -- |
 -- Copyright   : (c) 2011 Simon Meier
 -- License     : BSD3-style (see LICENSE)
@@ -12,12 +13,14 @@
 -- Benchmark all 'Builder' functions.
 module Main (main) where
 
-import           Criterion.Main
 import           Data.Foldable                         (foldMap)
 import           Data.Monoid
+import           Data.String
+import           Gauge
 import           Prelude                               hiding (words)
 
 import qualified Data.ByteString                       as S
+import qualified Data.ByteString.Char8                 as S8
 import qualified Data.ByteString.Lazy                  as L
 
 import           Data.ByteString.Builder
@@ -35,6 +38,8 @@ import qualified Blaze.ByteString.Builder          as Blaze
 import qualified Blaze.Text                        as Blaze
 import qualified "bytestring" Data.ByteString      as OldS
 import qualified "bytestring" Data.ByteString.Lazy as OldL
+
+import           Paths_bench_bytestring
 
 import           Foreign
 
@@ -225,17 +230,27 @@ sanityCheckInfo =
       ]
   ]
 
+sortInputs :: [S.ByteString]
+sortInputs = map (`S.take` S.pack [122, 121 .. 32]) [10..25]
+
+foldInputs :: [S.ByteString]
+foldInputs = map (\k -> S.pack $ if k <= 6 then take (2 ^ k) [32..95] else concat (replicate (2 ^ (k - 6)) [32..95])) [0..16]
+
 main :: IO ()
 main = do
   mapM_ putStrLn sanityCheckInfo
   putStrLn ""
   wikiPage <- getDataFileName "wiki-haskell.html" >>= S.readFile
-  Criterion.Main.defaultMain
+  Gauge.defaultMain
     [ bgroup "Data.ByteString.Builder"
       [ bgroup "Small payload"
         [ benchB' "mempty"        ()  (const mempty)
         , benchB' "ensureFree 8"  ()  (const (ensureFree 8))
         , benchB' "intHost 1"     1   intHost
+        , benchB' "UTF-8 String (naive)" "hello world\0" fromString
+        , benchB' "UTF-8 String"  () $ \() -> P.cstringUtf8 "hello world\0"#
+        , benchB' "String (naive)" "hello world!" fromString
+        , benchB' "String"        () $ \() -> P.cstring "hello world!"#
         ]
 
       , bgroup "Encoding wrappers"
@@ -279,80 +294,6 @@ main = do
         , benchB "foldMap integerDec (large)"                     largeIntegerData        $ foldMap integerDec
         , benchBlaze "foldMap integerDec (small) (blaze-textual)" smallIntegerData        $ foldMap Blaze.integral
         , benchBlaze "foldMap integerDec (large) (blaze-textual)" largeIntegerData        $ foldMap Blaze.integral
-        ]
-      ]
-
-    , bgroup "substrings"
-      [ bgroup "easy"
-        [ bench "easy1"    . nf (uncurry S.findSubstrings)
-                          $ easySubstrings 1 1000000
-        , bench "easy4"    . nf (uncurry S.findSubstrings)
-                          $ easySubstrings 4 1000000
-        , bench "easy16"   . nf (uncurry S.findSubstrings)
-                          $ easySubstrings 16 1000000
-        , bench "easy64"   . nf (uncurry S.findSubstrings)
-                          $ easySubstrings 64 1000000
-        , bench "easy128"  . nf (uncurry S.findSubstrings)
-                          $ easySubstrings 128 1000000
-        , bench "easy1024" . nf (uncurry S.findSubstrings)
-                          $ easySubstrings 1024 1000000
-        ]
-      , bgroup "random"
-        [ bench "random1"    . nf (uncurry S.findSubstrings)
-                          $ randomSubstrings 1 1000000
-        , bench "random4"    . nf (uncurry S.findSubstrings)
-                          $ randomSubstrings 4 1000000
-        , bench "random16"   . nf (uncurry S.findSubstrings)
-                          $ randomSubstrings 16 1000000
-        , bench "random64"   . nf (uncurry S.findSubstrings)
-                          $ randomSubstrings 64 1000000
-        , bench "random128"  . nf (uncurry S.findSubstrings)
-                          $ randomSubstrings 128 1000000
-        , bench "random1024" . nf (uncurry S.findSubstrings)
-                          $ randomSubstrings 1024 1000000
-
-        ]
-      , bgroup "hard"
-        [ bench "hard1"    . nf (uncurry S.findSubstrings)
-                          $ hardSubstrings 1 1000000
-        , bench "hard4"    . nf (uncurry S.findSubstrings)
-                          $ hardSubstrings 4 1000000
-        , bench "hard16"   . nf (uncurry S.findSubstrings)
-                          $ hardSubstrings 16 1000000
-        , bench "hard64"   . nf (uncurry S.findSubstrings)
-                          $ hardSubstrings 64 1000000
-        , bench "hard128"  . nf (uncurry S.findSubstrings)
-                          $ hardSubstrings 128 1000000
-        , bench "hard1024" . nf (uncurry S.findSubstrings)
-                          $ hardSubstrings 1024 1000000
-        ]
-      , bgroup "pathological"
-        [ bench "pathological1"    . nf (uncurry S.findSubstrings)
-                          $ pathologicalSubstrings 1 1000000
-        , bench "pathological4"    . nf (uncurry S.findSubstrings)
-                          $ pathologicalSubstrings 4 1000000
-        , bench "pathological16"   . nf (uncurry S.findSubstrings)
-                          $ pathologicalSubstrings 16 1000000
-        , bench "pathological64"   . nf (uncurry S.findSubstrings)
-                          $ pathologicalSubstrings 64 1000000
-        , bench "pathological128"  . nf (uncurry S.findSubstrings)
-                          $ pathologicalSubstrings 128 1000000
-        , bench "pathological1024" . nf (uncurry S.findSubstrings)
-                          $ pathologicalSubstrings 1024 1000000
-        ]
-      , bgroup "html"
-        [ bench "html1"    . nfIO . fmap (uncurry S.findSubstrings)
-                          $ htmlSubstrings wikiPage 1 1000000
-        , bench "html4"    . nfIO . fmap (uncurry S.findSubstrings)
-                          $ htmlSubstrings wikiPage 4 1000000
-        , bench "html16"   . nfIO . fmap (uncurry S.findSubstrings)
-                          $ htmlSubstrings wikiPage 16 1000000
-        , bench "html64"   . nfIO . fmap (uncurry S.findSubstrings)
-                          $ htmlSubstrings wikiPage 64 1000000
-        , bench "html128"  . nfIO . fmap (uncurry S.findSubstrings)
-                          $ htmlSubstrings wikiPage 128 1000000
-        , bench "html1024" . nfIO . fmap (uncurry S.findSubstrings)
-                          $ htmlSubstrings wikiPage 1024 1000000
         ]
       ]
 
@@ -462,5 +403,22 @@ main = do
         , bench "mostlyFalseSlow" $ partitionLazy (\x -> hashWord8 x < w 10)
         , bench "balancedSlow"    $ partitionLazy (\x -> hashWord8 x < w 128)
         ]
+      ]
+    , bgroup "sort" $ map (\s -> bench (S8.unpack s) $ nf S.sort s) sortInputs
+    , bgroup "folds"
+      [ bgroup "foldl'" $ map (\s -> bench (show $ S.length s) $
+          nf (S.foldl' (\acc x -> acc + fromIntegral x) (0 :: Int)) s) foldInputs
+      , bgroup "foldr'" $ map (\s -> bench (show $ S.length s) $
+          nf (S.foldr' (\x acc -> fromIntegral x + acc) (0 :: Int)) s) foldInputs
+      , bgroup "mapAccumL" $ map (\s -> bench (show $ S.length s) $
+          nf (S.mapAccumL (\acc x -> (acc + fromIntegral x, succ x)) (0 :: Int)) s) foldInputs
+      , bgroup "mapAccumR" $ map (\s -> bench (show $ S.length s) $
+          nf (S.mapAccumR (\acc x -> (fromIntegral x + acc, succ x)) (0 :: Int)) s) foldInputs
+      , bgroup "scanl" $ map (\s -> bench (show $ S.length s) $
+          nf (S.scanl (+) 0) s) foldInputs
+      , bgroup "scanr" $ map (\s -> bench (show $ S.length s) $
+          nf (S.scanr (+) 0) s) foldInputs
+      , bgroup "filter" $ map (\s -> bench (show $ S.length s) $
+          nf (S.filter odd) s) foldInputs
       ]
     ]

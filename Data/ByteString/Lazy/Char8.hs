@@ -142,10 +142,12 @@ module Data.ByteString.Lazy.Char8 (
         -- ** Searching with a predicate
         find,                   -- :: (Char -> Bool) -> ByteString -> Maybe Char
         filter,                 -- :: (Char -> Bool) -> ByteString -> ByteString
---      partition               -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
+        partition,              -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
 
         -- * Indexing ByteStrings
         index,                  -- :: ByteString -> Int64 -> Char
+        indexMaybe,             -- :: ByteString -> Int64 -> Maybe Char
+        (!?),                   -- :: ByteString -> Int64 -> Maybe Char
         elemIndex,              -- :: Char -> ByteString -> Maybe Int64
         elemIndices,            -- :: Char -> ByteString -> [Int64]
         findIndex,              -- :: (Char -> Bool) -> ByteString -> Maybe Int64
@@ -196,7 +198,7 @@ module Data.ByteString.Lazy.Char8 (
   ) where
 
 -- Functions transparently exported
-import Data.ByteString.Lazy 
+import Data.ByteString.Lazy
         (fromChunks, toChunks, fromStrict, toStrict
         ,empty,null,length,tail,init,append,reverse,transpose,cycle
         ,concat,take,drop,splitAt,intercalate
@@ -219,7 +221,7 @@ import Data.ByteString.Internal (w2c, c2w, isSpaceWord8)
 import Data.Int (Int64)
 import qualified Data.List as List
 
-import Prelude hiding           
+import Prelude hiding
         (reverse,head,tail,last,init,null,length,map,lines,foldl,foldr,unlines
         ,concat,any,take,drop,splitAt,takeWhile,dropWhile,span,break,elem,filter
         ,unwords,words,maximum,minimum,all,concatMap,scanl,scanl1,foldl1,foldr1
@@ -235,7 +237,7 @@ singleton :: Char -> ByteString
 singleton = L.singleton . c2w
 {-# INLINE singleton #-}
 
--- | /O(n)/ Convert a 'String' into a 'ByteString'. 
+-- | /O(n)/ Convert a 'String' into a 'ByteString'.
 pack :: [Char] -> ByteString
 pack = packChars
 
@@ -246,7 +248,7 @@ unpack = unpackChars
 infixr 5 `cons`, `cons'` --same as list (:)
 infixl 5 `snoc`
 
--- | /O(1)/ 'cons' is analogous to '(:)' for lists.
+-- | /O(1)/ 'cons' is analogous to '(Prelude.:)' for lists.
 cons :: Char -> ByteString -> ByteString
 cons = L.cons . c2w
 {-# INLINE cons #-}
@@ -332,7 +334,7 @@ foldr f = L.foldr (\c a -> f (w2c c) a)
 {-# INLINE foldr #-}
 
 -- | 'foldl1' is a variant of 'foldl' that has no starting value
--- argument, and thus must be applied to non-empty 'ByteStrings'.
+-- argument, and thus must be applied to non-empty 'ByteString's.
 foldl1 :: (Char -> Char -> Char) -> ByteString -> Char
 foldl1 f ps = w2c (L.foldl1 (\x y -> c2w (f (w2c x) (w2c y))) ps)
 {-# INLINE foldl1 #-}
@@ -465,7 +467,7 @@ span f = L.span (f . w2c)
 -- | 'breakChar' breaks its ByteString argument at the first occurence
 -- of the specified Char. It is more efficient than 'break' as it is
 -- implemented with @memchr(3)@. I.e.
--- 
+--
 -- > break (=='c') "abcd" == breakChar 'c' "abcd"
 --
 breakChar :: Char -> ByteString -> (ByteString, ByteString)
@@ -493,14 +495,15 @@ spanChar = L.spanByte . c2w
 -- > split '\n' "a\nb\nd\ne" == ["a","b","d","e"]
 -- > split 'a'  "aXaXaXa"    == ["","X","X","X"]
 -- > split 'x'  "x"          == ["",""]
--- 
+-- > split undefined ""      == []  -- and not [""]
+--
 -- and
 --
 -- > intercalate [c] . split c == id
 -- > split == splitWith . (==)
--- 
+--
 -- As for all splitting functions in this library, this function does
--- not copy the substrings, it just constructs new 'ByteStrings' that
+-- not copy the substrings, it just constructs new 'ByteString's that
 -- are slices of the original.
 --
 split :: Char -> ByteString -> [ByteString]
@@ -513,6 +516,7 @@ split = L.split . c2w
 -- separators result in an empty component in the output.  eg.
 --
 -- > splitWith (=='a') "aabbaca" == ["","","bb","c",""]
+-- > splitWith undefined ""      == []  -- and not [""]
 --
 splitWith :: (Char -> Bool) -> ByteString -> [ByteString]
 splitWith f = L.splitWith (f . w2c)
@@ -526,6 +530,24 @@ groupBy k = L.groupBy (\a b -> k (w2c a) (w2c b))
 index :: ByteString -> Int64 -> Char
 index = (w2c .) . L.index
 {-# INLINE index #-}
+
+-- | /O(1)/ 'ByteString' index, starting from 0, that returns 'Just' if:
+--
+-- > 0 <= n < length bs
+--
+-- @since 0.11.0.0
+indexMaybe :: ByteString -> Int64 -> Maybe Char
+indexMaybe = (fmap w2c .) . L.indexMaybe
+{-# INLINE indexMaybe #-}
+
+-- | /O(1)/ 'ByteString' index, starting from 0, that returns 'Just' if:
+--
+-- > 0 <= n < length bs
+--
+-- @since 0.11.0.0
+(!?) :: ByteString -> Int64 -> Maybe Char
+(!?) = indexMaybe
+{-# INLINE (!?) #-}
 
 -- | /O(n)/ The 'elemIndex' function returns the index of the first
 -- element in the given 'ByteString' which is equal (by memchr) to the
@@ -550,6 +572,7 @@ findIndex f = L.findIndex (f . w2c)
 -- indices of all elements satisfying the predicate, in ascending order.
 findIndices :: (Char -> Bool) -> ByteString -> [Int64]
 findIndices f = L.findIndices (f . w2c)
+{-# INLINE findIndices #-}
 
 -- | count returns the number of times its argument appears in the ByteString
 --
@@ -577,6 +600,11 @@ notElem c = L.notElem (c2w c)
 filter :: (Char -> Bool) -> ByteString -> ByteString
 filter f = L.filter (f . w2c)
 {-# INLINE filter #-}
+
+-- | @since 0.10.12.0
+partition :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
+partition f = L.partition (f . w2c)
+{-# INLINE partition #-}
 
 {-
 -- | /O(n)/ and /O(n\/c) space/ A first order equivalent of /filter .
@@ -656,10 +684,12 @@ zipWith :: (Char -> Char -> a) -> ByteString -> ByteString -> [a]
 zipWith f = L.zipWith ((. w2c) . f . w2c)
 
 -- | 'lines' breaks a ByteString up into a list of ByteStrings at
--- newline Chars. The resulting strings do not contain newlines.
+-- newline Chars (@'\\n'@). The resulting strings do not contain newlines.
 --
--- As of bytestring 0.9.0.3, this function is stricter than its 
+-- As of bytestring 0.9.0.3, this function is stricter than its
 -- list cousin.
+--
+-- Note that it __does not__ regard CR (@'\\r'@) as a newline character.
 --
 lines :: ByteString -> [ByteString]
 lines Empty          = []

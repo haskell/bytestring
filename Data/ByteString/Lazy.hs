@@ -151,8 +151,6 @@ module Data.ByteString.Lazy (
 
         -- ** Search for arbitrary substrings
 --        isSubstringOf,          -- :: ByteString -> ByteString -> Bool
---        findSubstring,          -- :: ByteString -> ByteString -> Maybe Int
---        findSubstrings,         -- :: ByteString -> ByteString -> [Int]
 
         -- * Searching ByteStrings
 
@@ -167,10 +165,13 @@ module Data.ByteString.Lazy (
 
         -- * Indexing ByteStrings
         index,                  -- :: ByteString -> Int64 -> Word8
+        indexMaybe,             -- :: ByteString -> Int64 -> Maybe Word8
+        (!?),                   -- :: ByteString -> Int64 -> Maybe Word8
         elemIndex,              -- :: Word8 -> ByteString -> Maybe Int64
         elemIndexEnd,           -- :: Word8 -> ByteString -> Maybe Int64
         elemIndices,            -- :: Word8 -> ByteString -> [Int64]
         findIndex,              -- :: (Word8 -> Bool) -> ByteString -> Maybe Int64
+        findIndexEnd,           -- :: (Word8 -> Bool) -> ByteString -> Maybe Int64
         findIndices,            -- :: (Word8 -> Bool) -> ByteString -> [Int64]
         count,                  -- :: Word8 -> ByteString -> Int64
 
@@ -188,6 +189,7 @@ module Data.ByteString.Lazy (
 --        defrag,                -- :: ByteString -> ByteString
 
         -- * I\/O with 'ByteString's
+        -- $IOChunk
 
         -- ** Standard input and output
         getContents,            -- :: IO ByteString
@@ -309,10 +311,10 @@ toStrict = \cs -> goLen0 cs cs
 
     -- Copy the data
     goCopy Empty                        !_   = return ()
-    goCopy (Chunk (S.PS _  _   0  ) cs) !ptr = goCopy cs ptr
-    goCopy (Chunk (S.PS fp off len) cs) !ptr = do
+    goCopy (Chunk (S.BS _  0  ) cs) !ptr = goCopy cs ptr
+    goCopy (Chunk (S.BS fp len) cs) !ptr = do
       withForeignPtr fp $ \p -> do
-        S.memcpy ptr (p `plusPtr` off) len
+        S.memcpy ptr p len
         goCopy cs (ptr `plusPtr` len)
 -- See the comment on Data.ByteString.Internal.concat for some background on
 -- this implementation.
@@ -343,7 +345,7 @@ null Empty = True
 null _     = False
 {-# INLINE null #-}
 
--- | /O(n\/c)/ 'length' returns the length of a ByteString as an 'Int64'
+-- | /O(c)/ 'length' returns the length of a ByteString as an 'Int64'
 length :: ByteString -> Int64
 length cs = foldlChunks (\n c -> n + fromIntegral (S.length c)) 0 cs
 {-# INLINE length #-}
@@ -351,7 +353,7 @@ length cs = foldlChunks (\n c -> n + fromIntegral (S.length c)) 0 cs
 infixr 5 `cons`, `cons'` --same as list (:)
 infixl 5 `snoc`
 
--- | /O(1)/ 'cons' is analogous to '(:)' for lists.
+-- | /O(1)/ 'cons' is analogous to '(Prelude.:)' for lists.
 --
 cons :: Word8 -> ByteString -> ByteString
 cons c cs = Chunk (S.singleton c) cs
@@ -464,10 +466,10 @@ intersperse _ Empty        = Empty
 intersperse w (Chunk c cs) = Chunk (S.intersperse w c)
                                    (foldrChunks (Chunk . intersperse') Empty cs)
   where intersperse' :: P.ByteString -> P.ByteString
-        intersperse' (S.PS fp o l) =
+        intersperse' (S.BS fp l) =
           S.unsafeCreate (2*l) $ \p' -> withForeignPtr fp $ \p -> do
             poke p' w
-            S.c_intersperse (p' `plusPtr` 1) (p `plusPtr` o) (fromIntegral l) w
+            S.c_intersperse (p' `plusPtr` 1) p (fromIntegral l) w
 
 -- | The 'transpose' function transposes the rows and columns of its
 -- 'ByteString' argument.
@@ -503,7 +505,7 @@ foldr k z = foldrChunks (flip (S.foldr k)) z
 {-# INLINE foldr #-}
 
 -- | 'foldl1' is a variant of 'foldl' that has no starting value
--- argument, and thus must be applied to non-empty 'ByteStrings'.
+-- argument, and thus must be applied to non-empty 'ByteString's.
 foldl1 :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldl1 _ Empty        = errorEmptyList "foldl1"
 foldl1 f (Chunk c cs) = foldl f (S.unsafeHead c) (Chunk (S.unsafeTail c) cs)
@@ -605,8 +607,18 @@ mapAccumR f s0 = go s0
 --
 -- Note that
 --
--- > last (scanl f z xs) == foldl f z xs.
-scanl :: (Word8 -> Word8 -> Word8) -> Word8 -> ByteString -> ByteString
+-- > head (scanl f z xs) == z
+-- > last (scanl f z xs) == foldl f z xs
+--
+scanl
+    :: (Word8 -> Word8 -> Word8)
+    -- ^ accumulator -> element -> new accumulator
+    -> Word8
+    -- ^ starting value of accumulator
+    -> ByteString
+    -- ^ input of length n
+    -> ByteString
+    -- ^ output of length n+1
 scanl f z = snd . foldl k (z,singleton z)
  where
     k (c,acc) a = let n = f c a in (n, acc `snoc` n)
@@ -708,9 +720,9 @@ splitAt i cs0 = splitAt' i cs0
                    in (Chunk c cs', cs'')
 
 
--- | 'takeWhile', applied to a predicate @p@ and a ByteString @xs@,
--- returns the longest prefix (possibly empty) of @xs@ of elements that
--- satisfy @p@.
+-- | Similar to 'P.takeWhile',
+-- returns the longest (possibly empty) prefix of elements
+-- satisfying the predicate.
 takeWhile :: (Word8 -> Bool) -> ByteString -> ByteString
 takeWhile f cs0 = takeWhile' cs0
   where takeWhile' Empty        = Empty
@@ -720,7 +732,9 @@ takeWhile f cs0 = takeWhile' cs0
             n | n < S.length c -> Chunk (S.take n c) Empty
               | otherwise      -> Chunk c (takeWhile' cs)
 
--- | 'dropWhile' @p xs@ returns the suffix remaining after 'takeWhile' @p xs@.
+-- | Similar to 'P.dropWhile',
+-- drops the longest (possibly empty) prefix of elements
+-- satisfying the predicate and returns the remainder.
 dropWhile :: (Word8 -> Bool) -> ByteString -> ByteString
 dropWhile f cs0 = dropWhile' cs0
   where dropWhile' Empty        = Empty
@@ -729,7 +743,12 @@ dropWhile f cs0 = dropWhile' cs0
             n | n < S.length c -> Chunk (S.drop n c) cs
               | otherwise      -> dropWhile' cs
 
--- | 'break' @p@ is equivalent to @'span' ('not' . p)@.
+-- | Similar to 'P.break',
+-- returns the longest (possibly empty) prefix of elements which __do not__
+-- satisfy the predicate and the remainder of the string.
+--
+-- 'break' @p@ is equivalent to @'span' (not . p)@ and to @('takeWhile' (not . p) &&& 'dropWhile' (not . p))@.
+--
 break :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
 break f cs0 = break' cs0
   where break' Empty        = (Empty, Empty)
@@ -752,7 +771,7 @@ break f cs0 = break' cs0
 -- of the specified byte. It is more efficient than 'break' as it is
 -- implemented with @memchr(3)@. I.e.
 --
--- > break (=='c') "abcd" == breakByte 'c' "abcd"
+-- > break (==99) "abcd" == breakByte 99 "abcd" -- fromEnum 'c' == 99
 --
 breakByte :: Word8 -> ByteString -> (ByteString, ByteString)
 breakByte c (LPS ps) = case (breakByte' ps) of (a,b) -> (LPS a, LPS b)
@@ -768,7 +787,7 @@ breakByte c (LPS ps) = case (breakByte' ps) of (a,b) -> (LPS a, LPS b)
 -- occurence of a byte other than its argument. It is more efficient
 -- than 'span (==)'
 --
--- > span  (=='c') "abcd" == spanByte 'c' "abcd"
+-- > span  (==99) "abcd" == spanByte 99 "abcd" -- fromEnum 'c' == 99
 --
 spanByte :: Word8 -> ByteString -> (ByteString, ByteString)
 spanByte c (LPS ps) = case (spanByte' ps) of (a,b) -> (LPS a, LPS b)
@@ -781,8 +800,12 @@ spanByte c (LPS ps) = case (spanByte' ps) of (a,b) -> (LPS a, LPS b)
                       | otherwise  -> (x' : [], x'' : xs)
 -}
 
--- | 'span' @p xs@ breaks the ByteString into two segments. It is
--- equivalent to @('takeWhile' p xs, 'dropWhile' p xs)@
+-- | Similar to 'P.span',
+-- returns the longest (possibly empty) prefix of elements
+-- satisfying the predicate and the remainder of the string.
+--
+-- 'span' @p@ is equivalent to @'break' (not . p)@ and to @('takeWhile' p &&& 'dropWhile' p)@.
+--
 span :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
 span p = break (not . p)
 
@@ -791,8 +814,8 @@ span p = break (not . p)
 -- The resulting components do not contain the separators.  Two adjacent
 -- separators result in an empty component in the output.  eg.
 --
--- > splitWith (=='a') "aabbaca" == ["","","bb","c",""]
--- > splitWith (=='a') []        == []
+-- > splitWith (==97) "aabbaca" == ["","","bb","c",""] -- fromEnum 'a' == 97
+-- > splitWith undefined ""     == []                  -- and not [""]
 --
 splitWith :: (Word8 -> Bool) -> ByteString -> [ByteString]
 splitWith _ Empty          = []
@@ -807,9 +830,10 @@ splitWith p (Chunk c0 cs0) = comb [] (S.splitWith p c0) cs0
 -- | /O(n)/ Break a 'ByteString' into pieces separated by the byte
 -- argument, consuming the delimiter. I.e.
 --
--- > split '\n' "a\nb\nd\ne" == ["a","b","d","e"]
--- > split 'a'  "aXaXaXa"    == ["","X","X","X",""]
--- > split 'x'  "x"          == ["",""]
+-- > split 10  "a\nb\nd\ne" == ["a","b","d","e"]   -- fromEnum '\n' == 10
+-- > split 97  "aXaXaXa"    == ["","X","X","X",""] -- fromEnum 'a' == 97
+-- > split 120 "x"          == ["",""]             -- fromEnum 'x' == 120
+-- > split undefined ""     == []                  -- and not [""]
 --
 -- and
 --
@@ -817,7 +841,7 @@ splitWith p (Chunk c0 cs0) = comb [] (S.splitWith p c0) cs0
 -- > split == splitWith . (==)
 --
 -- As for all splitting functions in this library, this function does
--- not copy the substrings, it just constructs new 'ByteStrings' that
+-- not copy the substrings, it just constructs new 'ByteString's that
 -- are slices of the original.
 --
 split :: Word8 -> ByteString -> [ByteString]
@@ -894,6 +918,29 @@ index cs0 i         = index' cs0 i
               index' cs (n - fromIntegral (S.length c))
           | otherwise       = S.unsafeIndex c (fromIntegral n)
 
+-- | /O(c)/ 'ByteString' index, starting from 0, that returns 'Just' if:
+--
+-- > 0 <= n < length bs
+--
+-- @since 0.11.0.0
+indexMaybe :: ByteString -> Int64 -> Maybe Word8
+indexMaybe _ i | i < 0 = Nothing
+indexMaybe cs0 i       = index' cs0 i
+  where index' Empty _ = Nothing
+        index' (Chunk c cs) n
+          | n >= fromIntegral (S.length c) =
+              index' cs (n - fromIntegral (S.length c))
+          | otherwise       = Just $! S.unsafeIndex c (fromIntegral n)
+
+-- | /O(1)/ 'ByteString' index, starting from 0, that returns 'Just' if:
+--
+-- > 0 <= n < length bs
+--
+-- @since 0.11.0.0
+(!?) :: ByteString -> Int64 -> Maybe Word8
+(!?) = indexMaybe
+{-# INLINE (!?) #-}
+
 -- | /O(n)/ The 'elemIndex' function returns the index of the first
 -- element in the given 'ByteString' which is equal to the query
 -- element, or 'Nothing' if there is no such element.
@@ -916,13 +963,8 @@ elemIndex w cs0 = elemIndex' 0 cs0
 --
 -- @since 0.10.6.0
 elemIndexEnd :: Word8 -> ByteString -> Maybe Int64
-elemIndexEnd w = elemIndexEnd' 0
-  where
-    elemIndexEnd' _ Empty = Nothing
-    elemIndexEnd' n (Chunk c cs) =
-      let !n' = n + S.length c
-          !i  = fmap (fromIntegral . (n +)) $ S.elemIndexEnd w c
-      in elemIndexEnd' n' cs `mplus` i
+elemIndexEnd = findIndexEnd . (==)
+{-# INLINE elemIndexEnd #-}
 
 -- | /O(n)/ The 'elemIndices' function extends 'elemIndex', by returning
 -- the indices of all elements equal to the query element, in ascending order.
@@ -953,6 +995,21 @@ findIndex k cs0 = findIndex' 0 cs0
             Just i  -> Just (n + fromIntegral i)
 {-# INLINE findIndex #-}
 
+-- | The 'findIndexEnd' function takes a predicate and a 'ByteString' and
+-- returns the index of the last element in the ByteString
+-- satisfying the predicate.
+--
+-- @since 0.10.12.0
+findIndexEnd :: (Word8 -> Bool) -> ByteString -> Maybe Int64
+findIndexEnd k = findIndexEnd' 0
+  where
+    findIndexEnd' _ Empty = Nothing
+    findIndexEnd' n (Chunk c cs) =
+      let !n' = n + S.length c
+          !i  = fmap (fromIntegral . (n +)) $ S.findIndexEnd k c
+      in findIndexEnd' n' cs `mplus` i
+{-# INLINE findIndexEnd #-}
+
 -- | /O(n)/ The 'find' function takes a predicate and a ByteString,
 -- and returns the first element in matching the predicate, or 'Nothing'
 -- if there is no such element.
@@ -974,6 +1031,7 @@ findIndices k cs0 = findIndices' 0 cs0
   where findIndices' _ Empty        = []
         findIndices' n (Chunk c cs) = L.map ((+n).fromIntegral) (S.findIndices k c)
                              ++ findIndices' (n + fromIntegral (S.length c)) cs
+{-# INLINE findIndices #-}
 
 -- ---------------------------------------------------------------------
 -- Searching ByteStrings
@@ -1236,7 +1294,8 @@ illegalBufferSize handle fn sz =
 -- | Read entire handle contents /lazily/ into a 'ByteString'. Chunks
 -- are read on demand, using the default chunk size.
 --
--- Once EOF is encountered, the Handle is closed.
+-- File handles are closed on EOF if all the file is read, or through
+-- garbage collection otherwise.
 --
 -- Note: the 'Handle' should be placed in binary mode with
 -- 'System.IO.hSetBinaryMode' for 'hGetContents' to
@@ -1262,7 +1321,11 @@ hGetNonBlocking :: Handle -> Int -> IO ByteString
 hGetNonBlocking = hGetNonBlockingN defaultChunkSize
 
 -- | Read an entire file /lazily/ into a 'ByteString'.
--- The Handle will be held open until EOF is encountered.
+--
+-- The 'Handle' will be held open until EOF is encountered.
+--
+-- Note that this function's implementation relies on 'hGetContents'.
+-- The reader is advised to read its documentation.
 --
 readFile :: FilePath -> IO ByteString
 readFile f = openBinaryFile f ReadMode >>= hGetContents
@@ -1360,9 +1423,9 @@ revChunks cs = L.foldl' (flip chunk) Empty cs
 -- | 'findIndexOrEnd' is a variant of findIndex, that returns the length
 -- of the string if no element is found, rather than Nothing.
 findIndexOrEnd :: (Word8 -> Bool) -> P.ByteString -> Int
-findIndexOrEnd k (S.PS x s l) =
+findIndexOrEnd k (S.BS x l) =
     S.accursedUnutterablePerformIO $
-      withForeignPtr x $ \f -> go (f `plusPtr` s) 0
+      withForeignPtr x $ \f -> go f 0
   where
     go !ptr !n | n >= l    = return l
                | otherwise = do w <- peek ptr
@@ -1370,3 +1433,69 @@ findIndexOrEnd k (S.PS x s l) =
                                   then return n
                                   else go (ptr `plusPtr` 1) (n+1)
 {-# INLINE findIndexOrEnd #-}
+
+-- $IOChunk
+--
+-- ⚠ Using lazy I\/O functions like 'readFile' or 'hGetContents'
+-- means that the order of operations such as closing the file handle
+-- is left at the discretion of the RTS.
+-- Hence, the developer can face some issues when:
+--
+-- * The program reads a file and writes the same file. This means that the file
+--   may be locked because the handler has not been released when 'writeFile' is executed.
+-- * The program reads thousands of files, but due to lazy evaluation, the OS's file descriptor
+--   limit is reached before the handlers can be released.
+--
+-- === Why?
+--
+-- Consider the following program:
+--
+-- > import qualified Data.ByteString.Lazy as BL
+-- > main = do
+-- >   _ <- BL.readFile "foo.txt"
+-- >   BL.writeFile "foo.txt" mempty
+--
+-- Generally, in the 'IO' monad side effects happen 
+-- sequentially and in full. Therefore, one might reasonably expect that
+-- reading the whole file via 'readFile' executes all three actions
+-- (open the file handle, read its content, close the file handle) before
+-- control moves to the following 'writeFile' action. This expectation holds
+-- for the strict "Data.ByteString" API. However, the above lazy 'ByteString' variant
+-- of the program fails with @openBinaryFile: resource busy (file is locked)@.
+--
+-- The reason for this is that "Data.ByteString.Lazy" is specifically designed
+-- to handle large or unbounded streams of data incrementally, without requiring all the data
+-- to be resident in memory at the same time. Incremental processing would not be possible
+-- if 'readFile' were to follow the usual rules of 'IO': evaluating all side effects
+-- would require reading the file in full and closing its handle before returning from 'readFile'. This is why
+-- 'readFile' (and 'hGetContents' in general) is implemented
+-- via 'unsafeInterleaveIO', which allows 'IO' side effects to be delayed and
+-- interleaved with subsequent processing of the return value.
+-- That's exactly what happens
+-- in the example above: 'readFile' opens a file handle, but since the content
+-- is not fully consumed, the file handle remains open, allowing the content to
+-- read __on demand__ (never in this case, since the return value is ignored).
+-- So when 'writeFile' is executed next, @foo.txt@ is still open for reading and
+-- the RTS takes care to avoid simultaneously opening it for writing, instead
+-- returning the error shown above.
+--
+-- === How to enforce the order of effects?
+--
+-- If the content is small enough to fit in memory,
+-- consider using strict 'Data.ByteString.readFile',
+-- potentially applying 'fromStrict' afterwards. E. g.,
+--
+-- > import qualified Data.ByteString as BS
+-- > import qualified Data.ByteString.Lazy as BL
+-- > main = do
+-- >   _ <- BS.readFile "foo.txt"
+-- >   BL.writeFile "foo.txt" mempty
+--
+-- If you are dealing with large or unbounded data streams,
+-- consider reaching out for a specialised package, such as
+-- <http://hackage.haskell.org/package/conduit conduit>,
+-- <http://hackage.haskell.org/package/machines-bytestring machines-bytestring>,
+-- <http://hackage.haskell.org/package/pipes-bytestring pipes-bytestring>,
+-- <http://hackage.haskell.org/package/streaming-bytestring streaming-bytestring>,
+-- <http://hackage.haskell.org/package/streamly-bytestring streamly-bytestring>,
+-- etc.

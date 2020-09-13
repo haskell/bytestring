@@ -1,13 +1,44 @@
-0.10.10.1 <ietf-dane@dukhovni.org> May 2020
+[0.11.0.0] —
+ * [Add `indexMaybe` and synonym `(!?)` for indexing that returns `Maybe`](https://github.com/haskell/bytestring/pull/261)
+ * Add `unsafePackLiteral` to `Data.ByteString.Internal`. When possible, use
+   [known-key](https://gitlab.haskell.org/ghc/ghc/-/wikis/commentary/compiler/wired-in)
+   variant of C's `strlen` from `GHC.CString` that supports constant folding.
+   This results in better generated code when an ASCII-only string literal
+   is desugared to `ByteString` by the `OverloadedStrings` extension. ([#191])
 
- * Fix off-by-one infinite loop in primMapByteStringBounded.
+[0.11.0.0]: https://github.com/haskell/bytestring/compare/0.10.12.0...0.11.0.0
+
+[0.10.12.0] – August 2020
+
+ * **Note:** There are several breaking changes planned to be included in v0.11.
+   Please ensure that your packages have appropriate upper bounds on bytestring,
+   in order to minimize avoidable breakage.
+ * [Add `takeWhileEnd` and `dropWhileEnd` to `Data.ByteString` and `Data.ByteString.Char8`, and add `dropSpace` and `strip` to `Data.ByteString.Char8`](https://github.com/haskell/bytestring/pull/121)
+ * [Add `findIndexEnd` to `Data.ByteString` and `Data.ByteString.Lazy`](https://github.com/haskell/bytestring/pull/155)
+ * [Add `partition` to `Data.ByteString.Char8` and `Data.ByteString.Lazy.Char8`](https://github.com/haskell/bytestring/pull/251)
+ * [Add `IsList` instances for strict and lazy `ByteString` and for `ShortByteString`](https://github.com/haskell/bytestring/pull/219)
+ * [Add `createUpToN'` and `unsafeCreateUpToN'` to `Data.ByteString.Internal`](https://github.com/haskell/bytestring/pull/245)
+ * [Add `boundedPrim` to `Data.ByteString.Builder.Prim.Internal` and deprecate `boudedPrim`](https://github.com/haskell/bytestring/pull/246)
+ * [Deprecate the `Data.ByteString.Lazy.Builder` and `Data.ByteString.Lazy.Builder.{ASCII,Extras}` modules](https://github.com/haskell/bytestring/pull/250)
+ * [Fix documented complexity of `Data.ByteString.Lazy.length`](https://github.com/haskell/bytestring/pull/255)
+ * [Assorted documentation fixes](https://github.com/haskell/bytestring/pull/248)
+
+[0.10.12.0]: https://github.com/haskell/bytestring/compare/0.10.10.1...0.10.12.0
+
+0.10.10.1 – June 2020
+
+ * Fix off-by-one infinite loop in primMapByteStringBounded ([#203])
+ * Don't perform unaligned writes when it isn't known to be safe ([#133])
+ * Improve the performance of sconcat for lazy and strict bytestrings ([#142])
  * Document inadvertent 0.10.6.0 behaviour change in findSubstrings
- * Fix findSubString and findSubstrings tests
- * Work around hPutBuilder test failure for GHC < 7.4
- * Fix GHC Travis CI 7.0 builds
- * Fix benchmark builds
- * Add GHC 8.10 to the CI matrix
- * Improve the performance of `sconcat` for lazy and strict bytestrings
+ * Fix benchmark builds ([#52])
+ * Documentation fixes
+ * Test fixes
+
+[#52]: https://github.com/haskell/bytestring/issues/52
+[#133]: https://github.com/haskell/bytestring/pull/133
+[#142]: https://github.com/haskell/bytestring/pull/142
+[#203]: https://github.com/haskell/bytestring/issues/203
 
 0.10.10.0 July 2019 <duncan+haskell@dcoutts.me.uk> July 2019
 
@@ -52,4 +83,3 @@
  * Fix strictness of lazy bytestring foldl'
  * Numerous minor documentation fixes
  * Various testsuite improvements
-
