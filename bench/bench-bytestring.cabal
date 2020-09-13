@@ -57,6 +57,7 @@ executable bench-bytestring-builder
         Data.ByteString.Builder.Prim.Internal.Base16
         Data.ByteString.Builder.Prim.Internal.Floating
         Data.ByteString.Builder.Prim.Internal.UncheckedShifts
+        Data.ByteString.Builder.RealFloat
         Data.ByteString.Internal
         Data.ByteString.Lazy
         Data.ByteString.Lazy.Internal
@@ -71,6 +72,7 @@ executable bench-bytestring-builder
                      ../cbits/ftoa.c
                      ../cbits/dtoa.c
   include-dirs:      ../include
+                     ../cbits
   includes:          fpstring.h
   install-includes:  fpstring.h
 
@@ -156,6 +158,7 @@ executable bench-builder-boundscheck
                     ../cbits/ftoa.c
                     ../cbits/dtoa.c
   include-dirs:     ../include
+                    ../cbits
   ghc-options:      -O2
                     -fmax-simplifier-iterations=10
                     -fdicts-cheap
@@ -174,6 +177,7 @@ executable bench-builder-boundscheck
         Data.ByteString.Builder.Prim.Internal.Base16
         Data.ByteString.Builder.Prim.Internal.Floating
         Data.ByteString.Builder.Prim.Internal.UncheckedShifts
+        Data.ByteString.Builder.RealFloat
         Data.ByteString.Internal
         Data.ByteString.Lazy
         Data.ByteString.Lazy.Internal
