@@ -1,10 +1,25 @@
-[0.11.0.0] —
+[0.11.0.0] — September 2020
+ * [Change internal representation of `ByteString`, removing offset](https://github.com/haskell/bytestring/pull/175)
+   * The old `PS` constructor has been turned into a pattern synonym that is available with GHC >= 8.0 for backwards compatibility.
+ * [Fill `ForeignPtrContents` of `nullForeignPtr` with `FinalPtr` instead of a bottom](https://github.com/haskell/bytestring/pull/284)
+   * Note that `bytestring < 0.11` will be unbuildable with GHC >= 9.0.
+ * [Remove deprecated functions `findSubstring` and `findSubstrings`](https://github.com/haskell/bytestring/pull/181)
+ * [Speed up sorting of short strings](https://github.com/haskell/bytestring/pull/267)
+ * [Improve handling of literal strings in `Data.ByteString.Builder`](https://github.com/haskell/bytestring/pull/132)
+ * [Compute length at compile time for literal strings](https://github.com/haskell/bytestring/pull/191)
+   * This improves optimization opportunities for functions that scrutinize the length of a `ByteString`.
  * [Add `indexMaybe` and synonym `(!?)` for indexing that returns `Maybe`](https://github.com/haskell/bytestring/pull/261)
- * Add `unsafePackLiteral` to `Data.ByteString.Internal`. When possible, use
-   [known-key](https://gitlab.haskell.org/ghc/ghc/-/wikis/commentary/compiler/wired-in)
-   variant of C's `strlen` from `GHC.CString` that supports constant folding.
-   This results in better generated code when an ASCII-only string literal
-   is desugared to `ByteString` by the `OverloadedStrings` extension. ([#191])
+ * [Add rewrite rules for `{take,drop}While ({=,/}= x)`](https://github.com/haskell/bytestring/pull/275)
+ * [Add rewrite rules for `any (== x)` and `all (/= x)`](https://github.com/haskell/bytestring/pull/273)
+ * [Add rewrite rules for `findInd{ex,ices} (== x)`](https://github.com/haskell/bytestring/pull/270)
+ * [Improve folds to pass fewer arguments on each recursive invocation](https://github.com/haskell/bytestring/pull/273)
+ * [Improve performance of `findIndices`](https://github.com/haskell/bytestring/pull/270)
+ * [Re-export `Data.ByteString.Lazy.{from,to}Strict` from `Data.ByteString`](https://github.com/haskell/bytestring/pull/281)
+ * [Remove deprecated modules and functions](https://github.com/haskell/bytestring/pull/286)
+   * Use `Data.ByteString.Builder{,.Extra}` instead of `Data.ByteString.Lazy.Builder{,.ASCII,.Extras}`.
+   * Use `Data.ByteString.Char8.{,h}putStrLn` instead of `Data.ByteString.{,h}putStrLn` and `Data.ByteString.Lazy.Char8.putStrLn` instead of `Data.ByteString.Char8.putStrLn`.
+   * Use `Data.ByteString.break (== x)` instead of `Data.ByteString.breakByte x`.
+   * Use `Data.ByteString.Internal.accursedUnutterablePerformIO` instead of `Data.ByteString.Internal.inlinePerformIO`.
 
 [0.11.0.0]: https://github.com/haskell/bytestring/compare/0.10.12.0...0.11.0.0
 
