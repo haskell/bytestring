@@ -70,7 +70,7 @@ flag integer-simple
   default: False
 
 library
-  build-depends:     base >= 4.2 && < 5, ghc-prim, deepseq
+  build-depends:     base >= 4.3 && < 5, ghc-prim, deepseq
 
   exposed-modules:   Data.ByteString
                      Data.ByteString.Char8
