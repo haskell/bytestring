@@ -17,7 +17,7 @@ Requirements:
 
   * Cabal 1.10 or greater
   * cabal-install
-  * GHC 6.12 or greater
+  * GHC 7.0 or greater
 
 Building:
 ```
