@@ -112,6 +112,7 @@ module Data.ByteString (
 
         -- ** Breaking strings
         take,                   -- :: Int -> ByteString -> ByteString
+        takeEnd,                -- :: Int -> ByteString -> ByteString
         drop,                   -- :: Int -> ByteString -> ByteString
         dropEnd,                -- :: Int -> ByteString -> ByteString
         splitAt,                -- :: Int -> ByteString -> (ByteString, ByteString)
@@ -890,6 +891,14 @@ take n ps@(BS x l)
     | otherwise = BS x n
 {-# INLINE take #-}
 
+-- | 'takeEnd' @n xs@ is equivalent to @'takeEnd' 'drop' ('length' xs - n) xs@.
+takeEnd :: Int -> ByteString -> ByteString
+takeEnd n ps@(BS _ len)
+    | n <= 0    = empty
+    | n >= len  = ps
+    | otherwise = drop (len - n) ps
+{-# INLINE takeEnd #-}
+
 -- | /O(1)/ 'drop' @n xs@ returns the suffix of @xs@ after the first @n@
 -- elements, or @[]@ if @n > 'length' xs@.
 drop  :: Int -> ByteString -> ByteString
@@ -901,7 +910,10 @@ drop n ps@(BS x l)
 
 -- | 'dropEnd' @n xs@ is equivalent to @'take' ('length' xs - n) xs@.
 dropEnd :: Int -> ByteString -> ByteString
-dropEnd n xs = take (length xs - n) xs
+dropEnd n ps@(BS _ len)
+    | n <= 0    = ps
+    | n >= len  = empty
+    | otherwise = take (len - n) ps
 {-# INLINE dropEnd #-}
 
 -- | /O(1)/ 'splitAt' @n xs@ is equivalent to @('take' n xs, 'drop' n xs)@.
