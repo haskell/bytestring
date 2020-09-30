@@ -990,9 +990,9 @@ dropWhileEnd :: (Word8 -> Bool) -> ByteString -> ByteString
 dropWhileEnd f ps = unsafeTake (findFromEndUntil (not . f) ps) ps
 {-# INLINE dropWhileEnd #-}
 
--- | 'dropEnd' @n xs@ is equivalent to @('take' ('length' $ xs - n ) xs@.
+-- | 'dropEnd' @n xs@ is equivalent to @'take' ('length' xs - n) xs@.
 dropEnd :: Int -> ByteString -> ByteString
-dropEnd n xs = unsafeTake (length xs - n) xs
+dropEnd n xs = take (length xs - n) xs
 {-# INLINE dropEnd #-}
 
 -- instead of findIndexOrEnd, we could use memchr here.
