@@ -142,7 +142,7 @@ instance Data ByteString where
 -- Packing and unpacking from lists
 
 packBytes :: [Word8] -> ByteString
-packBytes [] = mempty
+packBytes [] = Empty
 packBytes cs0 =
     packChunks 32 cs0
   where
@@ -151,7 +151,7 @@ packBytes cs0 =
       (bs, cs') -> Chunk bs (packChunks (min (n * 2) smallChunkSize) cs')
 
 packChars :: [Char] -> ByteString
-packChars [] = mempty
+packChars [] = Empty
 packChars cs0 = packChunks 32 cs0
   where
     packChunks n cs = case S.packUptoLenChars n cs of
