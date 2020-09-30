@@ -891,7 +891,7 @@ take n ps@(BS x l)
     | otherwise = BS x n
 {-# INLINE take #-}
 
--- | 'takeEnd' @n xs@ is equivalent to @'takeEnd' 'drop' ('length' xs - n) xs@.
+-- | 'takeEnd' @n xs@ is equivalent to @'drop' ('length' xs - n) xs@.
 takeEnd :: Int -> ByteString -> ByteString
 takeEnd n ps@(BS _ len)
     | n <= 0    = empty
