@@ -726,6 +726,7 @@ prop_takeWhile f xs = L.takeWhile f (pack xs) == pack (takeWhile f xs)
 prop_dropWhile f xs = L.dropWhile f (pack xs) == pack (dropWhile f xs)
 prop_takeWhileEnd f = P.takeWhileEnd f `eq1` (P.reverse . P.takeWhile f . P.reverse)
 prop_dropWhileEnd f = P.dropWhileEnd f `eq1` (P.reverse . P.dropWhile f . P.reverse)
+prop_dropEnd i xs = L.dropEnd (fromIntegral i) (pack xs) == pack (take (length xs - i) xs)
 
 prop_break f xs = L.break f (pack xs) ==
     let (a,b) = break f xs in (pack a, pack b)
@@ -2413,6 +2414,7 @@ ll_tests =
     , testProperty "dropWhile"          prop_dropWhile
     , testProperty "takeWhileEnd"       prop_takeWhileEnd
     , testProperty "dropWhileEnd"       prop_dropWhileEnd
+    , testProperty "dropEnd"            prop_dropEnd
     , testProperty "break"              prop_break
     , testProperty "span"               prop_span
     , testProperty "splitAt"            prop_splitAt

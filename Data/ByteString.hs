@@ -118,6 +118,7 @@ module Data.ByteString (
         takeWhileEnd,           -- :: (Word8 -> Bool) -> ByteString -> ByteString
         dropWhile,              -- :: (Word8 -> Bool) -> ByteString -> ByteString
         dropWhileEnd,           -- :: (Word8 -> Bool) -> ByteString -> ByteString
+        dropEnd,                -- :: Int -> ByteString -> ByteString
         span,                   -- :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
         spanEnd,                -- :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
         break,                  -- :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
@@ -988,6 +989,11 @@ dropWhile f ps = unsafeDrop (findIndexOrEnd (not . f) ps) ps
 dropWhileEnd :: (Word8 -> Bool) -> ByteString -> ByteString
 dropWhileEnd f ps = unsafeTake (findFromEndUntil (not . f) ps) ps
 {-# INLINE dropWhileEnd #-}
+
+-- | 'dropEnd' @n xs@ is equivalent to @('take' ('length' $ xs - n ) xs@.
+dropEnd :: Int -> ByteString -> ByteString
+dropEnd n xs = unsafeTake (length xs - n) xs
+{-# INLINE dropEnd #-}
 
 -- instead of findIndexOrEnd, we could use memchr here.
 
