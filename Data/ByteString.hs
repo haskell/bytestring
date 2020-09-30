@@ -113,12 +113,12 @@ module Data.ByteString (
         -- ** Breaking strings
         take,                   -- :: Int -> ByteString -> ByteString
         drop,                   -- :: Int -> ByteString -> ByteString
+        dropEnd,                -- :: Int -> ByteString -> ByteString
         splitAt,                -- :: Int -> ByteString -> (ByteString, ByteString)
         takeWhile,              -- :: (Word8 -> Bool) -> ByteString -> ByteString
         takeWhileEnd,           -- :: (Word8 -> Bool) -> ByteString -> ByteString
         dropWhile,              -- :: (Word8 -> Bool) -> ByteString -> ByteString
         dropWhileEnd,           -- :: (Word8 -> Bool) -> ByteString -> ByteString
-        dropEnd,                -- :: Int -> ByteString -> ByteString
         span,                   -- :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
         spanEnd,                -- :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
         break,                  -- :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
@@ -899,6 +899,11 @@ drop n ps@(BS x l)
     | otherwise = BS (plusForeignPtr x n) (l-n)
 {-# INLINE drop #-}
 
+-- | 'dropEnd' @n xs@ is equivalent to @'take' ('length' xs - n) xs@.
+dropEnd :: Int -> ByteString -> ByteString
+dropEnd n xs = take (length xs - n) xs
+{-# INLINE dropEnd #-}
+
 -- | /O(1)/ 'splitAt' @n xs@ is equivalent to @('take' n xs, 'drop' n xs)@.
 splitAt :: Int -> ByteString -> (ByteString, ByteString)
 splitAt n ps@(BS x l)
@@ -989,11 +994,6 @@ dropWhile f ps = unsafeDrop (findIndexOrEnd (not . f) ps) ps
 dropWhileEnd :: (Word8 -> Bool) -> ByteString -> ByteString
 dropWhileEnd f ps = unsafeTake (findFromEndUntil (not . f) ps) ps
 {-# INLINE dropWhileEnd #-}
-
--- | 'dropEnd' @n xs@ is equivalent to @'take' ('length' xs - n) xs@.
-dropEnd :: Int -> ByteString -> ByteString
-dropEnd n xs = take (length xs - n) xs
-{-# INLINE dropEnd #-}
 
 -- instead of findIndexOrEnd, we could use memchr here.
 
