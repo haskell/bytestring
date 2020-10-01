@@ -891,12 +891,25 @@ take n ps@(BS x l)
     | otherwise = BS x n
 {-# INLINE take #-}
 
--- | 'takeEnd' @n xs@ is equivalent to @'drop' ('length' xs - n) xs@.
+-- | /O(1)/ 'takeEnd' @n xs@ is equivalent to @'drop' ('length' xs - n) xs@.
+-- Takes 'n' elements from end of bytestring.
+--
+-- >>> takeEnd 3 $ pack (c2w <$> "abcdefg")
+-- "efg"
+-- >>> takeEnd 0 $ pack (c2w <$> "abcdefg")
+-- ""
+-- >>> takeEnd 4 $ pack (c2w <$> "abc")
+-- "abc"
 takeEnd :: Int -> ByteString -> ByteString
 takeEnd n ps@(BS _ len)
     | n <= 0    = empty
     | n >= len  = ps
-    | otherwise = drop (len - n) ps
+    | otherwise = drop' (len - n) ps
+    where
+      drop' i xs@(BS x l)
+        | i <= 0    = xs
+        | i >= l    = empty
+        | otherwise = BS (plusForeignPtr x i) (l-i)
 {-# INLINE takeEnd #-}
 
 -- | /O(1)/ 'drop' @n xs@ returns the suffix of @xs@ after the first @n@
@@ -908,12 +921,25 @@ drop n ps@(BS x l)
     | otherwise = BS (plusForeignPtr x n) (l-n)
 {-# INLINE drop #-}
 
--- | 'dropEnd' @n xs@ is equivalent to @'take' ('length' xs - n) xs@.
+-- | /O(1)/ 'dropEnd' @n xs@ is equivalent to @'take' ('length' xs - n) xs@.
+-- Drops 'n' elements from end of bytestring.
+--
+-- >>> dropEnd 3 $ pack (c2w <$> "abcdefg")
+-- "abcd"
+-- >>> dropEnd 0 $ pack (c2w <$> "abcdefg")
+-- "abcdefg"
+-- >>> dropEnd 4 $ pack (c2w <$> "abc")
+-- ""
 dropEnd :: Int -> ByteString -> ByteString
 dropEnd n ps@(BS _ len)
     | n <= 0    = ps
     | n >= len  = empty
-    | otherwise = take (len - n) ps
+    | otherwise = take' (len - n) ps
+    where
+      take' i xs@(BS x l)
+        | i <= 0    = empty
+        | i >= l    = xs
+        | otherwise = BS x i
 {-# INLINE dropEnd #-}
 
 -- | /O(1)/ 'splitAt' @n xs@ is equivalent to @('take' n xs, 'drop' n xs)@.
