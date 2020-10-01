@@ -901,15 +901,10 @@ take n ps@(BS x l)
 -- >>> takeEnd 4 $ pack (c2w <$> "abc")
 -- "abc"
 takeEnd :: Int -> ByteString -> ByteString
-takeEnd n ps@(BS _ len)
-    | n <= 0    = empty
-    | n >= len  = ps
-    | otherwise = drop' (len - n) ps
-    where
-      drop' i xs@(BS x l)
-        | i <= 0    = xs
-        | i >= l    = empty
-        | otherwise = BS (plusForeignPtr x i) (l-i)
+takeEnd n ps@(BS x len)
+  | (len - n) <= 0   = ps
+  | (len - n) >= len = empty
+  | otherwise        = BS (plusForeignPtr x (len - n)) n
 {-# INLINE takeEnd #-}
 
 -- | /O(1)/ 'drop' @n xs@ returns the suffix of @xs@ after the first @n@
@@ -931,15 +926,10 @@ drop n ps@(BS x l)
 -- >>> dropEnd 4 $ pack (c2w <$> "abc")
 -- ""
 dropEnd :: Int -> ByteString -> ByteString
-dropEnd n ps@(BS _ len)
+dropEnd n ps@(BS x len)
     | n <= 0    = ps
     | n >= len  = empty
-    | otherwise = take' (len - n) ps
-    where
-      take' i xs@(BS x l)
-        | i <= 0    = empty
-        | i >= l    = xs
-        | otherwise = BS x i
+    | otherwise = BS x (len - n)
 {-# INLINE dropEnd #-}
 
 -- | /O(1)/ 'splitAt' @n xs@ is equivalent to @('take' n xs, 'drop' n xs)@.
