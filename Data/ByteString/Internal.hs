@@ -157,9 +157,10 @@ import GHC.ForeignPtr           (ForeignPtr(ForeignPtr)
 #if MIN_VERSION_base(4,10,0)
 import GHC.ForeignPtr           (plusForeignPtr)
 #else
-import GHC.Types                (Int (..))
 import GHC.Prim                 (plusAddr#)
 #endif
+
+import GHC.Types                (Int (..))
 
 #if __GLASGOW_HASKELL__ >= 811
 import GHC.CString              (cstringLength#)
