@@ -478,3 +478,7 @@ stringUtf8 = P.primMapListBounded P.charUtf8
 
 instance IsString Builder where
     fromString = stringUtf8
+
+instance Show Builder where
+    showsPrec p bd = showParen (p > 10) $
+        showString "lazyByteString " . shows (toLazyByteString bd)
