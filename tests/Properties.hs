@@ -540,7 +540,7 @@ prop_scanr1CL f = eqnotnull2
     (scanr1 :: (Char -> Char -> Char) -> [Char] -> [Char])
     (castFn f)
 
--- prop_zipWithPL'   = P.zipWith'  `eq3` (zipWith :: (W -> W -> W) -> [W] -> [W] -> [W])
+prop_packZipWithPL   = P.packZipWith  `eq3` (zipWith :: (W -> W -> W) -> [W] -> [W] -> [W])
 
 prop_zipWithPL    = (P.zipWith  :: (W -> W -> X) -> P   -> P   -> [X]) `eq3`
                       (zipWith  :: (W -> W -> X) -> [W] -> [W] -> [X])
@@ -1350,7 +1350,7 @@ prop_zip1BB xs ys = P.zip xs ys == zip (P.unpack xs) (P.unpack ys)
 prop_zipWithBB xs ys = P.zipWith (,) xs ys == P.zip xs ys
 prop_zipWithCC xs ys = C.zipWith (,) xs ys == C.zip xs ys
 prop_zipWithLC xs ys = LC.zipWith (,) xs ys == LC.zip xs ys
--- prop_zipWith'BB xs ys = P.pack (P.zipWith (+) xs ys) == P.zipWith' (+) xs ys
+prop_packZipWithBB xs ys = P.pack (P.zipWith (+) xs ys) == P.packZipWith (+) xs ys
 
 prop_unzipBB x = let (xs,ys) = unzip x in (P.pack xs, P.pack ys) == P.unzip x
 
@@ -2079,7 +2079,7 @@ pl_tests =
     , testProperty "zipWith"          prop_zipWithPL
 --  , testProperty "zipWith"          prop_zipWithCL
     , testProperty "zipWith rules"   prop_zipWithPL_rules
---  , testProperty "zipWith/zipWith'" prop_zipWithPL'
+    , testProperty "zipWith/packZipWith" prop_packZipWithPL
 
     , testProperty "isPrefixOf"  prop_isPrefixOfPL
     , testProperty "isSuffixOf"  prop_isSuffixOfPL
@@ -2333,7 +2333,7 @@ bb_tests =
     , testProperty "zipWith"        prop_zipWithBB
     , testProperty "zipWith"        prop_zipWithCC
     , testProperty "zipWith"        prop_zipWithLC
---  , testProperty "zipWith'"       prop_zipWith'BB
+    , testProperty "packZipWith"       prop_packZipWithBB
     , testProperty "unzip"          prop_unzipBB
     , testProperty "concatMap"      prop_concatMapBB
 --  , testProperty "join/joinByte"  prop_join_spec
