@@ -272,7 +272,6 @@ import GHC.Char (eqChar)
 import qualified Data.List as List (intersperse)
 
 import System.IO    (Handle,stdout)
-import GHC.IO       (unsafeDupablePerformIO)
 import Foreign
 
 
@@ -843,7 +842,9 @@ zipWith f = B.zipWith ((. w2c) . f . w2c)
 -- | A specialised version of `zipWith` for the common case of a
 -- simultaneous map over two ByteStrings, to build a 3rd.
 packZipWith :: (Char -> Char -> Char) -> ByteString -> ByteString -> ByteString
-packZipWith f bs bt = B.packZipWith (c2w . f . w2c) bs bt
+packZipWith f = B.packZipWith f'
+    where
+        f' c1 c2 = c2w $ f (w2c c1) (w2c c2)
 {-# INLINE packZipWith #-}
 
 -- | 'unzip' transforms a list of pairs of Chars into a pair of
