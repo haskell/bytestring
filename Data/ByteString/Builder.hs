@@ -480,5 +480,4 @@ instance IsString Builder where
     fromString = stringUtf8
 
 instance Show Builder where
-    showsPrec p bd = showParen (p > 10) $
-        showString "lazyByteString " . shows (toLazyByteString bd)
+    showsPrec p bd = shows (toLazyByteString bd)
