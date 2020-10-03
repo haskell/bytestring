@@ -1140,9 +1140,9 @@ packZipWith _ Empty _ = Empty
 packZipWith _ _ Empty = Empty
 packZipWith f (Chunk a@(S.BS _ al) as) (Chunk b@(S.BS _ bl) bs) = Chunk (S.packZipWith f a b) $
     case compare al bl of
-        LT -> packZipWith f as $ Chunk (S.drop (bl - al) b) bs
+        LT -> packZipWith f as $ Chunk (S.drop al b) bs
         EQ -> packZipWith f as bs
-        GT -> packZipWith f (Chunk (S.drop (al - bl) a) as) bs
+        GT -> packZipWith f (Chunk (S.drop bl a) as) bs
 {-# INLINE packZipWith #-}
 
 -- | /O(n)/ 'unzip' transforms a list of pairs of bytes into a pair of
