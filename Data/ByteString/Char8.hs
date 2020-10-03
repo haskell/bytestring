@@ -843,23 +843,7 @@ zipWith f = B.zipWith ((. w2c) . f . w2c)
 -- | A specialised version of `zipWith` for the common case of a
 -- simultaneous map over two ByteStrings, to build a 3rd.
 packZipWith :: (Char -> Char -> Char) -> ByteString -> ByteString -> ByteString
-packZipWith f (BS fp l) (BS fq m) = unsafeDupablePerformIO $
-    withForeignPtr fp $ \a ->
-    withForeignPtr fq $ \b ->
-    create len $ go a b
-  where
-    go p1 p2 = zipWith_ 0
-      where
-        zipWith_ :: Int -> Ptr Word8 -> IO ()
-        zipWith_ !n !r
-           | n >= len = return ()
-           | otherwise = do
-                x <- peekByteOff p1 n
-                y <- peekByteOff p2 n
-                pokeByteOff r n (f x y)
-                zipWith_ (n+1) r
-
-    len = min l m
+packZipWith f bs bt = B.packZipWith (c2w . f . w2c) bs bt
 {-# INLINE packZipWith #-}
 
 -- | 'unzip' transforms a list of pairs of Chars into a pair of
