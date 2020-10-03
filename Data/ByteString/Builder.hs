@@ -480,4 +480,4 @@ instance IsString Builder where
     fromString = stringUtf8
 
 instance Show Builder where
-    showsPrec _ = shows . toLazyByteString
+    show = show . toLazyByteString
