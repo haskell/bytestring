@@ -1624,11 +1624,8 @@ zipWith f ps qs
 {-# NOINLINE [1] zipWith #-}
 
 --
--- | A specialised version of zipWith for the common case of a
--- simultaneous map over two bytestrings, to build a 3rd. Rewrite rules
--- are used to automatically covert zipWith into packZipWith when a pack is
--- performed on the result of zipWith.
---
+-- | A specialised version of `zipWith` for the common case of a
+-- simultaneous map over two ByteStrings, to build a 3rd.
 packZipWith :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString -> ByteString
 packZipWith f (BS fp l) (BS fq m) = unsafeDupablePerformIO $
     withForeignPtr fp $ \a ->
