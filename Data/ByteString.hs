@@ -902,9 +902,9 @@ take n ps@(BS x l)
 -- "abc"
 takeEnd :: Int -> ByteString -> ByteString
 takeEnd n ps@(BS x len)
-  | (len - n) <= 0   = ps
-  | (len - n) >= len = empty
-  | otherwise        = BS (plusForeignPtr x (len - n)) n
+  | n >= len  = ps
+  | n <= 0    = empty
+  | otherwise = BS (plusForeignPtr x (len - n)) n
 {-# INLINE takeEnd #-}
 
 -- | /O(1)/ 'drop' @n xs@ returns the suffix of @xs@ after the first @n@
