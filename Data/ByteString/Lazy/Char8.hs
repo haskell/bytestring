@@ -706,7 +706,7 @@ zipWith f = L.zipWith ((. w2c) . f . w2c)
 -- | /O(n)/ 'unzip' transforms a list of pairs of Chars into a pair of
 -- ByteStrings. Note that this performs two 'pack' operations.
 unzip :: [(Char,Char)] -> (ByteString, ByteString)
-unzip ls = (pack (fst <$> ls), pack (snd <$> ls))
+unzip ls = (pack $ fmap fst ls, pack $ fmap snd ls)
 
 -- | 'lines' breaks a ByteString up into a list of ByteStrings at
 -- newline Chars (@'\\n'@). The resulting strings do not contain newlines.
