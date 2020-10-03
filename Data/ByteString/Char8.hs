@@ -176,6 +176,7 @@ module Data.ByteString.Char8 (
         -- * Zipping and unzipping ByteStrings
         zip,                    -- :: ByteString -> ByteString -> [(Char,Char)]
         zipWith,                -- :: (Char -> Char -> c) -> ByteString -> ByteString -> [c]
+        packZipWith,            -- :: (Char -> Char -> Char) -> ByteString -> ByteString -> ByteString
         unzip,                  -- :: [(Char,Char)] -> (ByteString,ByteString)
 
         -- * Ordered ByteStrings
@@ -271,6 +272,7 @@ import GHC.Char (eqChar)
 import qualified Data.List as List (intersperse)
 
 import System.IO    (Handle,stdout)
+import GHC.IO       (unsafeDupablePerformIO)
 import Foreign
 
 
@@ -836,6 +838,29 @@ zip ps qs
 -- of corresponding sums.
 zipWith :: (Char -> Char -> a) -> ByteString -> ByteString -> [a]
 zipWith f = B.zipWith ((. w2c) . f . w2c)
+
+--
+-- | A specialised version of `zipWith` for the common case of a
+-- simultaneous map over two ByteStrings, to build a 3rd.
+packZipWith :: (Char -> Char -> Char) -> ByteString -> ByteString -> ByteString
+packZipWith f (BS fp l) (BS fq m) = unsafeDupablePerformIO $
+    withForeignPtr fp $ \a ->
+    withForeignPtr fq $ \b ->
+    create len $ go a b
+  where
+    go p1 p2 = zipWith_ 0
+      where
+        zipWith_ :: Int -> Ptr Word8 -> IO ()
+        zipWith_ !n !r
+           | n >= len = return ()
+           | otherwise = do
+                x <- peekByteOff p1 n
+                y <- peekByteOff p2 n
+                pokeByteOff r n (f x y)
+                zipWith_ (n+1) r
+
+    len = min l m
+{-# INLINE packZipWith #-}
 
 -- | 'unzip' transforms a list of pairs of Chars into a pair of
 -- ByteStrings. Note that this performs two 'pack' operations.
