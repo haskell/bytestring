@@ -2077,7 +2077,6 @@ pl_tests =
     , testProperty "unzip"       prop_unzipLL
     , testProperty "unzip"       prop_unzipCL
     , testProperty "zipWith"          prop_zipWithPL
---  , testProperty "zipWith"          prop_zipWithCL
     , testProperty "zipWith rules"   prop_zipWithPL_rules
     , testProperty "zipWith/packZipWith" prop_packZipWithPL
 
