@@ -892,7 +892,7 @@ take n ps@(BS x l)
 {-# INLINE take #-}
 
 -- | /O(1)/ 'takeEnd' @n xs@ is equivalent to @'drop' ('length' xs - n) xs@.
--- Takes 'n' elements from end of bytestring.
+-- Takes @n@ elements from end of bytestring.
 --
 -- >>> takeEnd 3 $ pack (c2w <$> "abcdefg")
 -- "efg"
@@ -917,7 +917,7 @@ drop n ps@(BS x l)
 {-# INLINE drop #-}
 
 -- | /O(1)/ 'dropEnd' @n xs@ is equivalent to @'take' ('length' xs - n) xs@.
--- Drops 'n' elements from end of bytestring.
+-- Drops @n@ elements from end of bytestring.
 --
 -- >>> dropEnd 3 $ pack (c2w <$> "abcdefg")
 -- "abcd"
