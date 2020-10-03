@@ -18,12 +18,12 @@ import           Control.Applicative
 import           Control.Monad.State
 import           Control.Monad.Writer
 
-import           Foreign (Word, Word8, minusPtr)
+import           Foreign (Word8, minusPtr)
 import           System.IO.Unsafe (unsafePerformIO)
 
 import           Data.Char (chr)
 import qualified Data.DList      as D
-import           Data.Foldable (asum, foldMap)
+import           Data.Foldable (asum)
 
 import qualified Data.ByteString          as S
 import qualified Data.ByteString.Internal as S
