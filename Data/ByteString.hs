@@ -896,9 +896,9 @@ take n ps@(BS x l)
 --
 -- >>> takeEnd 3 "abcdefg"
 -- "efg"
--- >>> takeEnd 0 $ pack (c2w <$> "abcdefg")
+-- >>> takeEnd 0 "abcdefg"
 -- ""
--- >>> takeEnd 4 $ pack (c2w <$> "abc")
+-- >>> takeEnd 4 "abc"
 -- "abc"
 takeEnd :: Int -> ByteString -> ByteString
 takeEnd n ps@(BS x len)
@@ -916,14 +916,14 @@ drop n ps@(BS x l)
     | otherwise = BS (plusForeignPtr x n) (l-n)
 {-# INLINE drop #-}
 
--- | /O(1)/ 'dropEnd' @n xs@ is equivalent to @'take' ('length' xs - n) xs@.
+-- | /O(1)/ @'dropEnd' n xs@ is equivalent to @'take' ('length' xs - n) xs@.
 -- Drops @n@ elements from end of bytestring.
 --
--- >>> dropEnd 3 $ pack (c2w <$> "abcdefg")
+-- >>> dropEnd 3 "abcdefg"
 -- "abcd"
--- >>> dropEnd 0 $ pack (c2w <$> "abcdefg")
+-- >>> dropEnd 0 "abcdefg"
 -- "abcdefg"
--- >>> dropEnd 4 $ pack (c2w <$> "abc")
+-- >>> dropEnd 4 "abc"
 -- ""
 dropEnd :: Int -> ByteString -> ByteString
 dropEnd n ps@(BS x len)
