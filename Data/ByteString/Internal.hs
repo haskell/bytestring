@@ -153,19 +153,27 @@ import GHC.IOBase               (IO(IO),RawBuffer,unsafeDupablePerformIO)
 #endif
 
 import GHC.ForeignPtr           (ForeignPtr(ForeignPtr)
-                                ,newForeignPtr_, mallocPlainForeignPtrBytes)
+#if __GLASGOW_HASKELL__ < 900
+                                , newForeignPtr_
+#endif
+                                , mallocPlainForeignPtrBytes)
+
 #if MIN_VERSION_base(4,10,0)
 import GHC.ForeignPtr           (plusForeignPtr)
 #else
-import GHC.Types                (Int (..))
 import GHC.Prim                 (plusAddr#)
 #endif
 
 #if __GLASGOW_HASKELL__ >= 811
 import GHC.CString              (cstringLength#)
 import GHC.ForeignPtr           (ForeignPtrContents(FinalPtr))
-#endif
+#else
 import GHC.Ptr                  (Ptr(..), castPtr)
+#endif
+
+#if (__GLASGOW_HASKELL__ < 802) || (__GLASGOW_HASKELL__ >= 811)
+import GHC.Types                (Int (..))
+#endif
 
 -- CFILES stuff is Hugs only
 {-# CFILES cbits/fpstring.c #-}
