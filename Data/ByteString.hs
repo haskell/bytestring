@@ -891,7 +891,7 @@ take n ps@(BS x l)
     | otherwise = BS x n
 {-# INLINE take #-}
 
--- | /O(1)/ 'takeEnd' @n xs@ is equivalent to @'drop' ('length' xs - n) xs@.
+-- | /O(1)/ @'takeEnd' n xs@ is equivalent to @'drop' ('length' xs - n) xs@.
 -- Takes @n@ elements from end of bytestring.
 --
 -- >>> takeEnd 3 "abcdefg"
