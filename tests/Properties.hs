@@ -607,6 +607,7 @@ prop_compare6 xs ys = (not (null ys)) ==> (pack (xs++ys)  `compare` pack xs) == 
 
 prop_compare7 x  y  = x  `compare` y  == (L.singleton x `compare` L.singleton y)
 prop_compare8 xs ys = xs `compare` ys == (L.pack xs `compare` L.pack ys)
+prop_compare9       = (L.singleton 255 `compare` L.singleton 127) == GT
 
 prop_compare7LL (Char8 x) (Char8 y) =
                       x  `compare` y  == (LC.singleton x `compare` LC.singleton y)
@@ -648,6 +649,7 @@ prop_init xs  =
 prop_append1 xs    = (xs ++ xs) == (unpack $ pack xs `L.append` pack xs)
 prop_append2 xs ys = (xs ++ ys) == (unpack $ pack xs `L.append` pack ys)
 prop_append3 xs ys = L.append xs ys == pack (unpack xs ++ unpack ys)
+prop_appendLazy xs = L.head (L.pack [xs] `L.append` error "Tail should be lazy") == xs
 
 prop_map1 f xs   = L.map f (pack xs)    == pack (map f xs)
 prop_map2 f g xs = L.map f (L.map g xs) == L.map (f . g) xs
@@ -2357,6 +2359,7 @@ ll_tests =
     , testProperty "compare 6"          prop_compare6
     , testProperty "compare 7"          prop_compare7
     , testProperty "compare 8"          prop_compare8
+    , testProperty "compare 9"          prop_compare9
     , testProperty "empty 1"            prop_empty1
     , testProperty "empty 2"            prop_empty2
     , testProperty "pack/unpack"        prop_packunpack
@@ -2376,6 +2379,7 @@ ll_tests =
     , testProperty "last"               prop_last
     , testProperty "init"               prop_init
     , testProperty "append 1"           prop_append1
+    , testProperty "appendLazy"         prop_appendLazy
     , testProperty "append 2"           prop_append2
     , testProperty "append 3"           prop_append3
     , testProperty "map 1"              prop_map1
