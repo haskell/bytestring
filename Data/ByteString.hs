@@ -894,7 +894,7 @@ take n ps@(BS x l)
 -- | /O(1)/ 'takeEnd' @n xs@ is equivalent to @'drop' ('length' xs - n) xs@.
 -- Takes @n@ elements from end of bytestring.
 --
--- >>> takeEnd 3 $ pack (c2w <$> "abcdefg")
+-- >>> takeEnd 3 "abcdefg"
 -- "efg"
 -- >>> takeEnd 0 $ pack (c2w <$> "abcdefg")
 -- ""
