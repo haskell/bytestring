@@ -717,7 +717,10 @@ prop_replicate1 c =
 prop_replicate2 c = unpack (L.replicate 0 c) == replicate 0 c
 
 prop_take1 i xs = L.take (fromIntegral i) (pack xs) == pack (take i xs)
+prop_takeEnd i xs = P.takeEnd i xs == P.drop (P.length xs - i) xs
+
 prop_drop1 i xs = L.drop (fromIntegral i) (pack xs) == pack (drop i xs)
+prop_dropEnd i xs = P.dropEnd i xs == P.take (P.length xs - i) xs
 
 prop_splitAt i xs = --collect (i >= 0 && i < length xs) $
     L.splitAt (fromIntegral i) (pack xs) == let (a,b) = splitAt i xs in (pack a, pack b)
@@ -2407,7 +2410,9 @@ ll_tests =
     , testProperty "replicate 1"        prop_replicate1
     , testProperty "replicate 2"        prop_replicate2
     , testProperty "take"               prop_take1
+    , testProperty "takeEnd"            prop_takeEnd
     , testProperty "drop"               prop_drop1
+    , testProperty "dropEnd"            prop_dropEnd
     , testProperty "splitAt"            prop_drop1
     , testProperty "takeWhile"          prop_takeWhile
     , testProperty "dropWhile"          prop_dropWhile

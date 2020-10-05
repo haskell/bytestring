@@ -114,7 +114,9 @@ module Data.ByteString.Char8 (
 
         -- ** Breaking strings
         take,                   -- :: Int -> ByteString -> ByteString
+        takeEnd,                -- :: Int -> ByteString -> ByteString
         drop,                   -- :: Int -> ByteString -> ByteString
+        dropEnd,                -- :: Int -> ByteString -> ByteString
         splitAt,                -- :: Int -> ByteString -> (ByteString, ByteString)
         takeWhile,              -- :: (Char -> Bool) -> ByteString -> ByteString
         takeWhileEnd,           -- :: (Char -> Bool) -> ByteString -> ByteString
@@ -248,9 +250,9 @@ import qualified Data.ByteString.Unsafe as B
 -- Listy functions transparently exported
 import Data.ByteString (empty,null,length,tail,init,append
                        ,inits,tails,reverse,transpose
-                       ,concat,take,drop,splitAt,intercalate
-                       ,sort,isPrefixOf,isSuffixOf,isInfixOf
-                       ,stripPrefix,stripSuffix
+                       ,concat,take,takeEnd,drop,dropEnd,splitAt
+                       ,intercalate,sort,isPrefixOf,isSuffixOf
+                       ,isInfixOf,stripPrefix,stripSuffix
                        ,breakSubstring,copy,group
 
                        ,getLine, getContents, putStr, interact
