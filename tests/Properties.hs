@@ -1335,6 +1335,14 @@ prop_readinteger2BB (String8 s) =
     let s' = filter (\c -> c `notElem` ['0'..'9']) s
     in C.readInteger (C.pack s') == Nothing
 
+
+-- Ensure that readInt and readInteger over lazy ByteStrings are not
+-- excessively strict.
+prop_readIntSafe         = (fst . fromJust . D.readInt) (Chunk (C.pack "1z") Empty)         == 1
+prop_readIntUnsafe       = (fst . fromJust . D.readInt) (Chunk (C.pack "2z") undefined)     == 2
+prop_readIntegerSafe     = (fst . fromJust . D.readInteger) (Chunk (C.pack "1z") Empty)     == 1
+prop_readIntegerUnsafe   = (fst . fromJust . D.readInteger) (Chunk (C.pack "2z") undefined) == 2
+
 -- prop_filterChar1BB c xs = (filter (==c) xs) == ((C.unpack . C.filterChar c . C.pack) xs)
 -- prop_filterChar2BB c xs = (C.filter (==c) (C.pack xs)) == (C.filterChar c (C.pack xs))
 -- prop_filterChar3BB c xs = C.filterChar c xs == C.replicate (C.count c xs) c
@@ -2289,6 +2297,12 @@ bb_tests =
     , testProperty "Lazy.readInt"   prop_readintLL
     , testProperty "Lazy.readInt"   prop_readintLL
     , testProperty "Lazy.readInteger" prop_readintegerLL
+
+    , testProperty "readIntSafe"       prop_readIntSafe
+    , testProperty "readIntUnsafe"     prop_readIntUnsafe
+    , testProperty "readIntegerSafe"   prop_readIntegerSafe
+    , testProperty "readIntegerUnsafe" prop_readIntegerUnsafe
+
     , testProperty "mconcat 1"      prop_append1LL_monoid
     , testProperty "mconcat 2"      prop_append2LL_monoid
     , testProperty "mconcat 3"      prop_append3LL_monoid
