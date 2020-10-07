@@ -439,6 +439,8 @@ prop_unfoldrBL =
     ((\n f a ->                  take n $
           unfoldr f a) :: Int -> (X -> Maybe (W,X)) -> X -> [W])
 
+prop_packZipWithBL   = L.packZipWith `eq3` (zipWith :: (W -> W -> W) -> [W] -> [W] -> [W])
+
 --
 -- And finally, check correspondance between Data.ByteString and List
 --
@@ -1350,7 +1352,12 @@ prop_zip1BB xs ys = P.zip xs ys == zip (P.unpack xs) (P.unpack ys)
 prop_zipWithBB xs ys = P.zipWith (,) xs ys == P.zip xs ys
 prop_zipWithCC xs ys = C.zipWith (,) xs ys == C.zip xs ys
 prop_zipWithLC xs ys = LC.zipWith (,) xs ys == LC.zip xs ys
-prop_packZipWithBB xs ys = P.pack (P.zipWith (+) xs ys) == P.packZipWith (+) xs ys
+
+prop_packZipWithBB f xs ys = P.pack (P.zipWith f xs ys) == P.packZipWith f xs ys
+prop_packZipWithLL f xs ys = L.pack (L.zipWith f xs ys) == L.packZipWith f xs ys
+prop_packZipWithBC f xs ys = C.pack (C.zipWith f xs ys) == C.packZipWith f xs ys
+prop_packZipWithLC f xs ys = LC.pack (LC.zipWith f xs ys) == LC.packZipWith f xs ys
+
 
 prop_unzipBB x = let (xs,ys) = unzip x in (P.pack xs, P.pack ys) == P.unzip x
 
@@ -1887,6 +1894,7 @@ bl_tests =
     , testProperty "elemIndexEnd"prop_elemIndexEndBL
     , testProperty "elemIndices" prop_elemIndicesBL
     , testProperty "concatMap"   prop_concatMapBL
+    , testProperty "zipWith/packZipWithLazy" prop_packZipWithBL
     ]
 
 ------------------------------------------------------------------------
@@ -2332,7 +2340,10 @@ bb_tests =
     , testProperty "zipWith"        prop_zipWithBB
     , testProperty "zipWith"        prop_zipWithCC
     , testProperty "zipWith"        prop_zipWithLC
-    , testProperty "packZipWith"       prop_packZipWithBB
+    , testProperty "packZipWith"    prop_packZipWithBB
+    , testProperty "packZipWith"    prop_packZipWithLL
+    , testProperty "packZipWith"    prop_packZipWithBC
+    , testProperty "packZipWith"    prop_packZipWithLC
     , testProperty "unzip"          prop_unzipBB
     , testProperty "concatMap"      prop_concatMapBB
 --  , testProperty "join/joinByte"  prop_join_spec
