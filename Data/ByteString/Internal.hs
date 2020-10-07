@@ -96,7 +96,7 @@ import Prelude hiding (concat, null)
 import qualified Data.List as List
 
 import Foreign.ForeignPtr       (ForeignPtr, withForeignPtr)
-import Foreign.Ptr              (Ptr, FunPtr, plusPtr)
+import Foreign.Ptr              (Ptr, FunPtr, plusPtr, minusPtr)
 import Foreign.Storable         (Storable(..))
 
 #if MIN_VERSION_base(4,5,0) || __GLASGOW_HASKELL__ >= 703
@@ -365,19 +365,21 @@ unsafePackLiteral addr# =
 
 packUptoLenBytes :: Int -> [Word8] -> (ByteString, [Word8])
 packUptoLenBytes len xs0 =
-    unsafeCreateUptoN' len $ \p -> go p len xs0
-  where
-    go !_ !n []     = return (len-n, [])
-    go !_ !0 xs     = return (len,   xs)
-    go !p !n (x:xs) = poke p x >> go (p `plusPtr` 1) (n-1) xs
+    unsafeCreateUptoN' len $ \p0 ->
+      let p_end = plusPtr p0 len
+          go !p []              = return (p `minusPtr` p0, [])
+          go !p xs | p == p_end = return (len, xs)
+          go !p (x:xs)          = poke p x >> go (p `plusPtr` 1) xs
+      in go p0 xs0
 
 packUptoLenChars :: Int -> [Char] -> (ByteString, [Char])
 packUptoLenChars len cs0 =
-    unsafeCreateUptoN' len $ \p -> go p len cs0
-  where
-    go !_ !n []     = return (len-n, [])
-    go !_ !0 cs     = return (len,   cs)
-    go !p !n (c:cs) = poke p (c2w c) >> go (p `plusPtr` 1) (n-1) cs
+    unsafeCreateUptoN' len $ \p0 ->
+      let p_end = plusPtr p0 len
+          go !p []              = return (p `minusPtr` p0, [])
+          go !p cs | p == p_end = return (len, cs)
+          go !p (c:cs)          = poke p (c2w c) >> go (p `plusPtr` 1) cs
+      in go p0 cs0
 
 -- Unpacking bytestrings into lists efficiently is a tradeoff: on the one hand
 -- we would like to write a tight loop that just blasts the list into memory, on
