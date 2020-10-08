@@ -838,7 +838,6 @@ zip ps qs
 zipWith :: (Char -> Char -> a) -> ByteString -> ByteString -> [a]
 zipWith f = B.zipWith ((. w2c) . f . w2c)
 
---
 -- | A specialised version of `zipWith` for the common case of a
 -- simultaneous map over two ByteStrings, to build a 3rd.
 packZipWith :: (Char -> Char -> Char) -> ByteString -> ByteString -> ByteString

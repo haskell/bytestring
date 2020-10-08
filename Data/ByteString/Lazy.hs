@@ -1132,7 +1132,6 @@ zipWith f (Chunk a as) (Chunk b bs) = go a as b bs
     to _ (Chunk x' xs) y ys            | not (S.null y) = go x' xs y  ys
     to _ (Chunk x' xs) _ (Chunk y' ys)                  = go x' xs y' ys
 
---
 -- | A specialised version of `zipWith` for the common case of a
 -- simultaneous map over two ByteStrings, to build a 3rd.
 packZipWith :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString -> ByteString
