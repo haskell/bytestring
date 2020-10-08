@@ -102,6 +102,7 @@ module Data.ByteString.Lazy (
         all,                    -- :: (Word8 -> Bool) -> ByteString -> Bool
         maximum,                -- :: ByteString -> Word8
         minimum,                -- :: ByteString -> Word8
+        compareLength,          -- :: ByteString -> Int -> Ordering
 
         -- * Building ByteStrings
         -- ** Scans
@@ -525,6 +526,18 @@ minimum (Chunk c cs) = foldlChunks (\n c' -> n `min` S.minimum c')
                                      (S.minimum c) cs
 {-# INLINE minimum #-}
 
+-- | /O(n)/ 'compareLength' compares the length of a 'ByteString' 
+-- to an 'Int'   
+compareLength :: ByteString -> Int -> Ordering
+compareLength s toCmp = go 0 s
+  where
+    go currLen Empty        = compare currLen toCmp
+    go currLen (Chunk c cs) = let nextLen = currLen + S.length c
+                               in if nextLen > toCmp 
+                                    then GT 
+                                    else go nextLen cs
+{-# INLINE compareLength #-}
+
 -- | The 'mapAccumL' function behaves like a combination of 'map' and
 -- 'foldl'; it applies a function to each element of a ByteString,
 -- passing an accumulating parameter from left to right, and returning a
@@ -547,7 +560,7 @@ mapAccumR f s0 = go s0
     go s Empty        = (s, Empty)
     go s (Chunk c cs) = (s'', Chunk c' cs')
         where (s'', c') = S.mapAccumR f s' c
-              (s', cs') = go s cs
+              (s', cs') = go s cs        
 
 -- ---------------------------------------------------------------------
 -- Building ByteStrings
