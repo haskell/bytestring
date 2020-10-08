@@ -560,7 +560,7 @@ mapAccumR f s0 = go s0
     go s Empty        = (s, Empty)
     go s (Chunk c cs) = (s'', Chunk c' cs')
         where (s'', c') = S.mapAccumR f s' c
-              (s', cs') = go s cs        
+              (s', cs') = go s cs
 
 -- ---------------------------------------------------------------------
 -- Building ByteStrings
