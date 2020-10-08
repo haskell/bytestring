@@ -2084,9 +2084,9 @@ pl_tests =
     , testProperty "unzip"       prop_unzipPL
     , testProperty "unzip"       prop_unzipLL
     , testProperty "unzip"       prop_unzipCL
-    , testProperty "zipWith"          prop_zipWithPL
-    , testProperty "zipWith rules"   prop_zipWithPL_rules
-    , testProperty "zipWith/packZipWith" prop_packZipWithPL
+    , testProperty "zipWithPL"          prop_zipWithPL
+    , testProperty "zipWithPL rules"   prop_zipWithPL_rules
+    , testProperty "packZipWithPL" prop_packZipWithPL
 
     , testProperty "isPrefixOf"  prop_isPrefixOfPL
     , testProperty "isSuffixOf"  prop_isSuffixOfPL
@@ -2337,13 +2337,13 @@ bb_tests =
     , testProperty "zip"            prop_zipBB
     , testProperty "zip"            prop_zipLC
     , testProperty "zip1"           prop_zip1BB
-    , testProperty "zipWith"        prop_zipWithBB
-    , testProperty "zipWith"        prop_zipWithCC
-    , testProperty "zipWith"        prop_zipWithLC
-    , testProperty "packZipWith"    prop_packZipWithBB
-    , testProperty "packZipWith"    prop_packZipWithLL
-    , testProperty "packZipWith"    prop_packZipWithBC
-    , testProperty "packZipWith"    prop_packZipWithLC
+    , testProperty "zipWithBB"        prop_zipWithBB
+    , testProperty "zipWithCC"        prop_zipWithCC
+    , testProperty "zipWithLC"        prop_zipWithLC
+    , testProperty "packZipWithBB"    prop_packZipWithBB
+    , testProperty "packZipWithLL"    prop_packZipWithLL
+    , testProperty "packZipWithBC"    prop_packZipWithBC
+    , testProperty "packZipWithLC"    prop_packZipWithLC
     , testProperty "unzip"          prop_unzipBB
     , testProperty "concatMap"      prop_concatMapBB
 --  , testProperty "join/joinByte"  prop_join_spec
