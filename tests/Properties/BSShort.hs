@@ -5,6 +5,7 @@ module Properties.BSShort
 ) where
 
 import Data.String
+import Data.Monoid
 
 
 import qualified Data.ByteString            as P
