@@ -108,10 +108,10 @@ import Foreign.C.Types          (CInt, CSize)
 import Foreign.C.String         (CString)
 
 #if MIN_VERSION_base(4,13,0)
-import Data.Semigroup           (Semigroup (sconcat))
+import Data.Semigroup           (Semigroup (sconcat, stimes))
 import Data.List.NonEmpty       (NonEmpty ((:|)))
 #elif MIN_VERSION_base(4,9,0)
-import Data.Semigroup           (Semigroup ((<>), sconcat))
+import Data.Semigroup           (Semigroup ((<>), sconcat, stimes))
 import Data.List.NonEmpty       (NonEmpty ((:|)))
 #endif
 
@@ -241,6 +241,7 @@ instance Ord ByteString where
 instance Semigroup ByteString where
     (<>)    = append
     sconcat (b:|bs) = concat (b:bs)
+    stimes = times
 #endif
 
 instance Monoid ByteString where
@@ -647,6 +648,19 @@ concat = \bss0 -> goLen0 bss0 bss0
 "ByteString concat [bs] -> bs" forall x.
    concat [x] = x
  #-}
+
+-- | Repeats given ByteString n times. More efficient than default definition.
+times :: Integral a => a -> ByteString -> ByteString
+times n (BS fp len) =
+  unsafeCreate (len * (fromIntegral n)) $ \destptr ->
+    withForeignPtr fp $ \p -> 
+      go p destptr (fromIntegral n)
+  where
+    go :: Ptr Word8 -> Ptr Word8 -> Int -> IO ()
+    go _ _ 0 = return ()
+    go fromptr destptr i = do
+      memcpy fromptr destptr len
+      go fromptr (destptr `plusPtr` len) (i-1)
 
 -- | Add two non-negative numbers. Errors out on overflow.
 checkedAdd :: String -> Int -> Int -> Int
