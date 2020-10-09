@@ -2,6 +2,7 @@ module Shared where
 
 import Data.Int (Int64)
 import Data.List (findIndices, stripPrefix)
+import Control.Applicative ((<$>))
 
 import QuickCheckUtils
 
