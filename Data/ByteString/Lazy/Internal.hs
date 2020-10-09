@@ -57,10 +57,10 @@ import Foreign.Ptr (plusPtr)
 import Foreign.Storable (Storable(sizeOf))
 
 #if MIN_VERSION_base(4,13,0)
-import Data.Semigroup   (Semigroup (sconcat))
+import Data.Semigroup   (Semigroup (sconcat, stimes))
 import Data.List.NonEmpty (NonEmpty ((:|)))
 #elif MIN_VERSION_base(4,9,0)
-import Data.Semigroup   (Semigroup ((<>), sconcat))
+import Data.Semigroup   (Semigroup ((<>), sconcat, stimes))
 import Data.List.NonEmpty (NonEmpty ((:|)))
 #endif
 #if !(MIN_VERSION_base(4,8,0))
@@ -98,6 +98,7 @@ instance Ord ByteString where
 instance Semigroup ByteString where
     (<>)    = append
     sconcat (b:|bs) = concat (b:bs)
+    stimes = times
 #endif
 
 instance Monoid ByteString where
@@ -274,6 +275,14 @@ concat css0 = to css0
     go (Chunk c cs) css = Chunk c (go cs css)
     to []               = Empty
     to (cs:css)         = go cs css
+
+-- | Repeats ByteString n times. More efficient than default implementation.
+times :: Integral a => a -> ByteString -> ByteString
+times _ Empty = Empty
+times n lbs0@(Chunk bs lbs) = Chunk bs (go lbs)
+  where
+    go Empty = times (n-1) lbs0
+    go (Chunk c cs) = Chunk c (go cs)
 
 ------------------------------------------------------------------------
 -- Conversions
