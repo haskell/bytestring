@@ -23,9 +23,7 @@ flag integer-simple
 test-suite prop-compiled
   type:             exitcode-stdio-1.0
   main-is:          Properties.hs
-  other-modules:    Rules
-                    QuickCheckUtils
-                    Data.ByteString
+  other-modules:    Data.ByteString
                     Data.ByteString.Char8
                     Data.ByteString.Internal
                     Data.ByteString.Lazy
@@ -34,6 +32,17 @@ test-suite prop-compiled
                     Data.ByteString.Short
                     Data.ByteString.Short.Internal
                     Data.ByteString.Unsafe
+                    QuickCheckUtils
+                    Shared
+                    Properties.Misc
+                    Properties.BSLazyModelList
+                    Properties.BSLazyChar8ModelBSChar8
+                    Properties.BSLazyModelBS
+                    Properties.BSModelList
+                    Properties.BSExtra
+                    Properties.MiscLL
+                    Properties.IO
+                    Properties.BSShort
   hs-source-dirs:   . ..
   build-depends:    base, ghc-prim, deepseq, random, directory,
                     test-framework, test-framework-quickcheck2,

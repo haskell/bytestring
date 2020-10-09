@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 
-module Rules where
+module Properties.Rules where
+
 --
 -- Tests to ensure rules are firing.
 --
@@ -17,6 +18,7 @@ import QuickCheckUtils
 
 #if defined(HAVE_TEST_FRAMEWORK)
 import Test.Framework.Providers.QuickCheck2
+import Test.Framework
 #else
 import TestFramework
 #endif
@@ -39,7 +41,7 @@ prop_intercalate_P c = (\s1 s2 -> P.intercalate (P.singleton c) (s1 : s2 : []))
 prop_break_isSpace_C = C.break isSpace `eq1` break isSpace
 prop_dropWhile_isSpace_C = C.dropWhile isSpace `eq1` dropWhile isSpace
 
-rules =
+rules = testGroup "Tests to ensure Rules are firing"
     [ testProperty "break (==)"        prop_break_C
     , testProperty "break (==)"        prop_break_P
     , testProperty "break isSpace"     prop_break_isSpace_C
