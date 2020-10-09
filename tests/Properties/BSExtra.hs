@@ -8,6 +8,8 @@ module Properties.BSExtra
 import Data.List
 import Data.Maybe
 import Data.Char
+import Data.Monoid
+import Control.Applicative
 
 import qualified Data.ByteString.Lazy as L
 
