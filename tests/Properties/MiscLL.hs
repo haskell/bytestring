@@ -8,6 +8,8 @@ import Data.List
 import Data.Word
 import Data.Char
 import Data.Maybe
+import Data.Monoid
+import Control.Applicative
 
 import Data.ByteString.Lazy (ByteString(..), pack , unpack)
 import qualified Data.ByteString.Lazy as L
