@@ -1377,12 +1377,13 @@ prop_packZipWithLC f xs ys = LC.pack (LC.zipWith f xs ys) == LC.packZipWith f xs
 
 prop_unzipBB x = let (xs,ys) = unzip x in (P.pack xs, P.pack ys) == P.unzip x
 
-
+#if MIN_VERSION_base(4,9,0)
 prop_stimesBB :: NonNegative Int -> P.ByteString -> Bool
 prop_stimesBB (NonNegative i) bs = stimes i bs == mtimesDefault i bs
 
 prop_stimesLL :: NonNegative Int -> L.ByteString -> Bool
 prop_stimesLL (NonNegative i) bs = stimes i bs == mtimesDefault i bs
+#endif
 
 -- prop_zipwith_spec f p q =
 --   P.pack (P.zipWith f p q) == P.zipWith' f p q
@@ -2375,8 +2376,10 @@ bb_tests =
     , testProperty "unzip"          prop_unzipBB
     , testProperty "concatMap"      prop_concatMapBB
 --  , testProperty "join/joinByte"  prop_join_spec
+#if MIN_VERSION_base(4,9,0)
     , testProperty "stimes strict"  prop_stimesBB
     , testProperty "stimes lazy"    prop_stimesLL
+#endif
     ]
 
 
