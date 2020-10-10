@@ -656,7 +656,7 @@ times n (BS fp len)
   | n == 0 = BS nullForeignPtr 0 -- definition of empty in Data.ByteString
   | otherwise = unsafeCreate size $ \destptr ->
     withForeignPtr fp $ \p -> do
-      memcpy p destptr len
+      memcpy destptr p len
       fillFrom destptr len
   where
     size = len * (fromIntegral n)
@@ -664,9 +664,9 @@ times n (BS fp len)
     fillFrom :: Ptr Word8 -> Int -> IO ()
     fillFrom destptr copied
       | 2 * copied < size = do
-        memcpy destptr (destptr `plusPtr` copied) copied
+        memcpy (destptr `plusPtr` copied) destptr copied
         fillFrom destptr (copied * 2)
-      | otherwise = memcpy destptr (destptr `plusPtr` copied) (size - copied)
+      | otherwise = memcpy (destptr `plusPtr` copied) destptr (size - copied)
 
 -- | Add two non-negative numbers. Errors out on overflow.
 checkedAdd :: String -> Int -> Int -> Int
