@@ -529,13 +529,11 @@ minimum (Chunk c cs) = foldlChunks (\n c' -> n `min` S.minimum c')
 -- | /O(n)/ 'compareLength' compares the length of a 'ByteString' 
 -- to an 'Int'   
 compareLength :: ByteString -> Int -> Ordering
-compareLength s toCmp = go 0 s
+compareLength s toCmp = go toCmp s
   where
-    go currLen Empty        = compare currLen toCmp
-    go currLen (Chunk c cs) = let nextLen = currLen + S.length c
-                               in if nextLen > toCmp 
-                                    then GT 
-                                    else go nextLen cs
+    go remainingLen _ | remainingLen < 0 = GT
+    go remainingLen Empty                = compare 0 remainingLen
+    go remainingLen (Chunk c cs)         = go (remainingLen - S.length c) cs
 {-# INLINE compareLength #-}
 
 -- | The 'mapAccumL' function behaves like a combination of 'map' and
