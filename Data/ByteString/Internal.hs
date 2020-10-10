@@ -651,8 +651,9 @@ concat = \bss0 -> goLen0 bss0 bss0
 
 -- | Repeats given ByteString n times. More efficient than default definition.
 times :: Integral a => a -> ByteString -> ByteString
-times n (BS fp len) =
-  unsafeCreate size $ \destptr ->
+times n (BS fp len)
+  | n <= 0 = error "stimes: positive multiplier expected"
+  | otherwise = unsafeCreate size $ \destptr ->
     withForeignPtr fp $ \p -> do
       memcpy p destptr len
       fillFrom destptr len
