@@ -652,15 +652,19 @@ concat = \bss0 -> goLen0 bss0 bss0
 -- | Repeats given ByteString n times. More efficient than default definition.
 times :: Integral a => a -> ByteString -> ByteString
 times n (BS fp len) =
-  unsafeCreate (len * (fromIntegral n)) $ \destptr ->
-    withForeignPtr fp $ \p -> 
-      go p destptr (fromIntegral n)
+  unsafeCreate size $ \destptr ->
+    withForeignPtr fp $ \p -> do
+      memcpy p destptr len
+      fill_from destptr len
   where
-    go :: Ptr Word8 -> Ptr Word8 -> Int -> IO ()
-    go _ _ 0 = return ()
-    go fromptr destptr i = do
-      memcpy fromptr destptr len
-      go fromptr (destptr `plusPtr` len) (i-1)
+    size = len * (fromIntegral n)
+
+    fill_from :: Ptr Word8 -> Int -> IO ()
+    fill_from destptr copied
+      | 2 * copied < size = do
+        memcpy destptr (destptr `plusPtr` copied) copied
+        fill_from destptr (copied * 2)
+      | otherwise = memcpy destptr (destptr `plusPtr` copied) (size - copied)
 
 -- | Add two non-negative numbers. Errors out on overflow.
 checkedAdd :: String -> Int -> Int -> Int
