@@ -711,8 +711,10 @@ prop_maximum xs = (not (null xs)) ==> (maximum xs) == (L.maximum ( pack xs ))
 prop_minimum xs = (not (null xs)) ==> (minimum xs) == (L.minimum ( pack xs ))
 
 prop_compareLength1 xs  =  (L.pack xs         `L.compareLength` length xs) == EQ
-prop_compareLength2 xs c = (L.pack (xs++[c]) `L.compareLength` length xs) == GT
-prop_compareLength3 xs c = (L.pack xs `L.compareLength` length (xs++[c])) == LT
+prop_compareLength2 xs c = (L.pack (xs ++ [c]) `L.compareLength` length xs) == GT
+prop_compareLength3 xs c = (L.pack xs `L.compareLength` length (xs ++ [c])) == LT
+prop_compareLength4 xs c = ((L.pack xs `L.append` L.pack [c] `L.append` L.pack [undefined]) 
+                            `L.compareLength` length xs) == GT
 
 prop_replicate1 c =
     forAll arbitrary $ \(Positive n) ->
@@ -2414,6 +2416,7 @@ ll_tests =
     , testProperty "compareLength 1"    prop_compareLength1
     , testProperty "compareLength 2"    prop_compareLength2
     , testProperty "compareLength 3"    prop_compareLength3
+    , testProperty "compareLength 4"    prop_compareLength4
     , testProperty "replicate 1"        prop_replicate1
     , testProperty "replicate 2"        prop_replicate2
     , testProperty "take"               prop_take1
