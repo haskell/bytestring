@@ -534,6 +534,41 @@ compareLength Empty toCmp         = compare 0 toCmp
 compareLength (Chunk c cs) toCmp  = compareLength cs (toCmp - S.length c)
 {-# INLINE compareLength #-}
 
+{-# RULES 
+"ByteString.Lazy compareN/length -> compareLength" [~1] forall t n.
+  compare (length t) n = compareLength t (fromIntegral n)
+  #-}
+
+{-# RULES 
+"ByteString.Lazy ==N/length -> compareLength/==EQ" [~1] forall t n.
+   length t == n = compareLength t (fromIntegral n) == EQ
+  #-}
+
+{-# RULES 
+"ByteString.Lazy /=N/length -> compareLength//=EQ" [~1] forall t n.
+   length t /= n = compareLength t (fromIntegral n) /= EQ
+  #-}
+
+{-# RULES 
+"ByteString.Lazy <N/length -> compareLength/==LT" [~1] forall t n.
+   length t < n = compareLength t (fromIntegral n) == LT
+  #-}
+
+{-# RULES 
+"ByteString.Lazy <=N/length -> compareLength//=GT" [~1] forall t n.
+   length t <= n = compareLength t (fromIntegral n) /= GT
+  #-}
+
+{-# RULES 
+"ByteString.Lazy >N/length -> compareLength/==GT" [~1] forall t n.
+   length t > n = compareLength t (fromIntegral n) == GT
+  #-}
+
+{-# RULES 
+"ByteString.Lazy >=N/length -> compareLength//=LT" [~1] forall t n.
+   length t >= n = compareLength t (fromIntegral n) /= LT
+  #-}
+
 -- | The 'mapAccumL' function behaves like a combination of 'map' and
 -- 'foldl'; it applies a function to each element of a ByteString,
 -- passing an accumulating parameter from left to right, and returning a
