@@ -655,15 +655,15 @@ times n (BS fp len) =
   unsafeCreate size $ \destptr ->
     withForeignPtr fp $ \p -> do
       memcpy p destptr len
-      fill_from destptr len
+      fillFrom destptr len
   where
     size = len * (fromIntegral n)
 
-    fill_from :: Ptr Word8 -> Int -> IO ()
-    fill_from destptr copied
+    fillFrom :: Ptr Word8 -> Int -> IO ()
+    fillFrom destptr copied
       | 2 * copied < size = do
         memcpy destptr (destptr `plusPtr` copied) copied
-        fill_from destptr (copied * 2)
+        fillFrom destptr (copied * 2)
       | otherwise = memcpy destptr (destptr `plusPtr` copied) (size - copied)
 
 -- | Add two non-negative numbers. Errors out on overflow.
