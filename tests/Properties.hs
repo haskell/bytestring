@@ -715,6 +715,7 @@ prop_compareLength2 xs c = (L.pack (xs ++ [c]) `L.compareLength` length xs) == G
 prop_compareLength3 xs c = (L.pack xs `L.compareLength` length (xs ++ [c])) == LT
 prop_compareLength4 xs c = ((L.pack xs `L.append` L.pack [c] `L.append` L.pack [undefined]) 
                             `L.compareLength` length xs) == GT
+prop_compareLength5 xs l = L.compareLength xs l == compare (L.length xs) (fromIntegral l)
 
 prop_replicate1 c =
     forAll arbitrary $ \(Positive n) ->
@@ -2417,6 +2418,7 @@ ll_tests =
     , testProperty "compareLength 2"    prop_compareLength2
     , testProperty "compareLength 3"    prop_compareLength3
     , testProperty "compareLength 4"    prop_compareLength4
+    , testProperty "compareLength 5"    prop_compareLength5
     , testProperty "replicate 1"        prop_replicate1
     , testProperty "replicate 2"        prop_replicate2
     , testProperty "take"               prop_take1
