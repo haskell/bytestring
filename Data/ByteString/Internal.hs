@@ -652,7 +652,7 @@ concat = \bss0 -> goLen0 bss0 bss0
 -- | Repeats given ByteString n times. More efficient than default definition.
 times :: Integral a => a -> ByteString -> ByteString
 times n (BS fp len)
-  | n < 0 = error "stimes: positive multiplier expected"
+  | n < 0 = error "stimes: non-negative multiplier expected"
   | n == 0 = BS nullForeignPtr 0 -- definition of empty in Data.ByteString
   | otherwise = unsafeCreate size $ \destptr ->
     withForeignPtr fp $ \p -> do
