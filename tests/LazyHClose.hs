@@ -12,6 +12,7 @@ import System.IO
 import Data.ByteString.Internal
 import Foreign.ForeignPtr
 
+main :: IO ()
 main = do
     writeFile "a" "x"
 
