@@ -1378,11 +1378,11 @@ prop_packZipWithLC f xs ys = LC.pack (LC.zipWith f xs ys) == LC.packZipWith f xs
 prop_unzipBB x = let (xs,ys) = unzip x in (P.pack xs, P.pack ys) == P.unzip x
 
 
-prop_stimesBB :: Int -> P.ByteString -> Bool
-prop_stimesBB i bs = stimes i bs == mtimesDefault i bs
+prop_stimesBB :: Int -> P.ByteString -> Property
+prop_stimesBB i bs = (i >= 0) ==> stimes i bs == mtimesDefault i bs
 
-prop_stimesLL :: Int -> L.ByteString -> Bool
-prop_stimesLL i bs = stimes i bs == mtimesDefault i bs
+prop_stimesLL :: Int -> L.ByteString -> Property
+prop_stimesLL i bs = (i >= 0) ==> stimes i bs == mtimesDefault i bs
 
 -- prop_zipwith_spec f p q =
 --   P.pack (P.zipWith f p q) == P.zipWith' f p q
