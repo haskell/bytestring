@@ -281,7 +281,7 @@ times :: Integral a => a -> ByteString -> ByteString
 times 0 _ = Empty
 times _ Empty = Empty
 times n lbs0@(Chunk bs lbs) 
-  | n < 0 = error "stimes: positive multiplier expected"
+  | n < 0 = error "stimes: non-negative multiplier expected"
   | otherwise = Chunk bs (go lbs)
   where
     go Empty = times (n-1) lbs0
