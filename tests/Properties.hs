@@ -26,6 +26,7 @@ import Data.Word
 import Data.Maybe
 import Data.Int (Int64)
 import Data.Monoid
+import Data.Semigroup
 
 import Text.Printf
 import Data.String
@@ -1377,6 +1378,12 @@ prop_packZipWithLC f xs ys = LC.pack (LC.zipWith f xs ys) == LC.packZipWith f xs
 prop_unzipBB x = let (xs,ys) = unzip x in (P.pack xs, P.pack ys) == P.unzip x
 
 
+prop_stimesBB :: Int -> P.ByteString -> Bool
+prop_stimesBB i bs = stimes i bs == mtimesDefault i bs
+
+prop_stimesLL :: Int -> L.ByteString -> Bool
+prop_stimesLL i bs = stimes i bs == mtimesDefault i bs
+
 -- prop_zipwith_spec f p q =
 --   P.pack (P.zipWith f p q) == P.zipWith' f p q
 --   where _ = f :: Word8 -> Word8 -> Word8
@@ -2368,6 +2375,8 @@ bb_tests =
     , testProperty "unzip"          prop_unzipBB
     , testProperty "concatMap"      prop_concatMapBB
 --  , testProperty "join/joinByte"  prop_join_spec
+    , testProperty "stimes strict"  prop_stimesBB
+    , testProperty "stimes lazy"    prop_stimesLL
     ]
 
 
