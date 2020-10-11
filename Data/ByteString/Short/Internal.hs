@@ -236,7 +236,7 @@ asBA (SBS ba#) = BA# ba#
 
 create :: Int -> (forall s. MBA s -> ST s ()) -> ShortByteString
 create len fill =
-    runST (do
+    runST $ do
       mba <- newByteArray len
       fill mba
       BA# ba# <- unsafeFreezeByteArray mba
