@@ -26,7 +26,9 @@ import Data.Word
 import Data.Maybe
 import Data.Int (Int64)
 import Data.Monoid
+#if MIN_VERSION_base(4,9,0)
 import Data.Semigroup
+#endif
 
 import Text.Printf
 import Data.String
