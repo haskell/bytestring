@@ -1229,11 +1229,11 @@ group xs
 
 -- | The 'groupBy' function is the non-overloaded version of 'group'.
 groupBy :: (Word8 -> Word8 -> Bool) -> ByteString -> [ByteString]
-groupBy k xs = case uncons xs of
-  Nothing     -> []
-  Just (h, t) -> take n xs : groupBy k (drop n xs)
+groupBy k xs
+    | null xs   = []
+    | otherwise = unsafeTake n xs : groupBy k (unsafeDrop n xs)
     where
-        n = 1 + findIndexOrEnd (not . k h) t
+        n = 1 + findIndexOrEnd (not . k (unsafeHead xs)) (unsafeTail xs)
 
 -- | /O(n)/ The 'intercalate' function takes a 'ByteString' and a list of
 -- 'ByteString's and concatenates the list after interspersing the first
@@ -1862,7 +1862,7 @@ mkPS buf start end =
 
 mkBigPS :: Int -> [ByteString] -> IO ByteString
 mkBigPS _ [ps] = return ps
-mkBigPS _ pss  = return $! concat (P.reverse pss)
+mkBigPS _ pss = return $! concat (P.reverse pss)
 
 -- ---------------------------------------------------------------------
 -- Block IO
