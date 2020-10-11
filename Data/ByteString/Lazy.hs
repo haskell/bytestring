@@ -178,6 +178,7 @@ module Data.ByteString.Lazy (
         -- * Zipping and unzipping ByteStrings
         zip,                    -- :: ByteString -> ByteString -> [(Word8,Word8)]
         zipWith,                -- :: (Word8 -> Word8 -> c) -> ByteString -> ByteString -> [c]
+        packZipWith,            -- :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString -> ByteString
         unzip,                  -- :: [(Word8,Word8)] -> (ByteString,ByteString)
 
         -- * Ordered ByteStrings
@@ -1130,6 +1131,18 @@ zipWith f (Chunk a as) (Chunk b bs) = go a as b bs
     to x xs            _ (Chunk y' ys) | not (S.null x) = go x  xs y' ys
     to _ (Chunk x' xs) y ys            | not (S.null y) = go x' xs y  ys
     to _ (Chunk x' xs) _ (Chunk y' ys)                  = go x' xs y' ys
+
+-- | A specialised version of `zipWith` for the common case of a
+-- simultaneous map over two ByteStrings, to build a 3rd.
+packZipWith :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString -> ByteString
+packZipWith _ Empty _ = Empty
+packZipWith _ _ Empty = Empty
+packZipWith f (Chunk a@(S.BS _ al) as) (Chunk b@(S.BS _ bl) bs) = Chunk (S.packZipWith f a b) $
+    case compare al bl of
+        LT -> packZipWith f as $ Chunk (S.drop al b) bs
+        EQ -> packZipWith f as bs
+        GT -> packZipWith f (Chunk (S.drop bl a) as) bs
+{-# INLINE packZipWith #-}
 
 -- | /O(n)/ 'unzip' transforms a list of pairs of bytes into a pair of
 -- ByteStrings. Note that this performs two 'pack' operations.

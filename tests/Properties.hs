@@ -439,6 +439,8 @@ prop_unfoldrBL =
     ((\n f a ->                  take n $
           unfoldr f a) :: Int -> (X -> Maybe (W,X)) -> X -> [W])
 
+prop_packZipWithBL   = L.packZipWith `eq3` (zipWith :: (W -> W -> W) -> [W] -> [W] -> [W])
+
 --
 -- And finally, check correspondance between Data.ByteString and List
 --
@@ -540,7 +542,7 @@ prop_scanr1CL f = eqnotnull2
     (scanr1 :: (Char -> Char -> Char) -> [Char] -> [Char])
     (castFn f)
 
--- prop_zipWithPL'   = P.zipWith'  `eq3` (zipWith :: (W -> W -> W) -> [W] -> [W] -> [W])
+prop_packZipWithPL   = P.packZipWith  `eq3` (zipWith :: (W -> W -> W) -> [W] -> [W] -> [W])
 
 prop_zipWithPL    = (P.zipWith  :: (W -> W -> X) -> P   -> P   -> [X]) `eq3`
                       (zipWith  :: (W -> W -> X) -> [W] -> [W] -> [X])
@@ -1363,7 +1365,12 @@ prop_zip1BB xs ys = P.zip xs ys == zip (P.unpack xs) (P.unpack ys)
 prop_zipWithBB xs ys = P.zipWith (,) xs ys == P.zip xs ys
 prop_zipWithCC xs ys = C.zipWith (,) xs ys == C.zip xs ys
 prop_zipWithLC xs ys = LC.zipWith (,) xs ys == LC.zip xs ys
--- prop_zipWith'BB xs ys = P.pack (P.zipWith (+) xs ys) == P.zipWith' (+) xs ys
+
+prop_packZipWithBB f xs ys = P.pack (P.zipWith f xs ys) == P.packZipWith f xs ys
+prop_packZipWithLL f xs ys = L.pack (L.zipWith f xs ys) == L.packZipWith f xs ys
+prop_packZipWithBC f xs ys = C.pack (C.zipWith f xs ys) == C.packZipWith f xs ys
+prop_packZipWithLC f xs ys = LC.pack (LC.zipWith f xs ys) == LC.packZipWith f xs ys
+
 
 prop_unzipBB x = let (xs,ys) = unzip x in (P.pack xs, P.pack ys) == P.unzip x
 
@@ -1900,6 +1907,7 @@ bl_tests =
     , testProperty "elemIndexEnd"prop_elemIndexEndBL
     , testProperty "elemIndices" prop_elemIndicesBL
     , testProperty "concatMap"   prop_concatMapBL
+    , testProperty "zipWith/packZipWithLazy" prop_packZipWithBL
     ]
 
 ------------------------------------------------------------------------
@@ -2089,10 +2097,9 @@ pl_tests =
     , testProperty "unzip"       prop_unzipPL
     , testProperty "unzip"       prop_unzipLL
     , testProperty "unzip"       prop_unzipCL
-    , testProperty "zipWith"          prop_zipWithPL
---  , testProperty "zipWith"          prop_zipWithCL
-    , testProperty "zipWith rules"   prop_zipWithPL_rules
---  , testProperty "zipWith/zipWith'" prop_zipWithPL'
+    , testProperty "zipWithPL"          prop_zipWithPL
+    , testProperty "zipWithPL rules"   prop_zipWithPL_rules
+    , testProperty "packZipWithPL" prop_packZipWithPL
 
     , testProperty "isPrefixOf"  prop_isPrefixOfPL
     , testProperty "isSuffixOf"  prop_isSuffixOfPL
@@ -2349,10 +2356,13 @@ bb_tests =
     , testProperty "zip"            prop_zipBB
     , testProperty "zip"            prop_zipLC
     , testProperty "zip1"           prop_zip1BB
-    , testProperty "zipWith"        prop_zipWithBB
-    , testProperty "zipWith"        prop_zipWithCC
-    , testProperty "zipWith"        prop_zipWithLC
---  , testProperty "zipWith'"       prop_zipWith'BB
+    , testProperty "zipWithBB"        prop_zipWithBB
+    , testProperty "zipWithCC"        prop_zipWithCC
+    , testProperty "zipWithLC"        prop_zipWithLC
+    , testProperty "packZipWithBB"    prop_packZipWithBB
+    , testProperty "packZipWithLL"    prop_packZipWithLL
+    , testProperty "packZipWithBC"    prop_packZipWithBC
+    , testProperty "packZipWithLC"    prop_packZipWithLC
     , testProperty "unzip"          prop_unzipBB
     , testProperty "concatMap"      prop_concatMapBB
 --  , testProperty "join/joinByte"  prop_join_spec

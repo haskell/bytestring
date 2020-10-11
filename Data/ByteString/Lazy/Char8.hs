@@ -157,6 +157,7 @@ module Data.ByteString.Lazy.Char8 (
         -- * Zipping and unzipping ByteStrings
         zip,                    -- :: ByteString -> ByteString -> [(Char,Char)]
         zipWith,                -- :: (Char -> Char -> c) -> ByteString -> ByteString -> [c]
+        packZipWith,            -- :: (Char -> Char -> Char) -> ByteString -> ByteString -> ByteString
 --      unzip,                  -- :: [(Char,Char)] -> (ByteString,ByteString)
 
         -- * Ordered ByteStrings
@@ -682,6 +683,14 @@ zip ps qs
 -- of corresponding sums.
 zipWith :: (Char -> Char -> a) -> ByteString -> ByteString -> [a]
 zipWith f = L.zipWith ((. w2c) . f . w2c)
+
+-- | A specialised version of `zipWith` for the common case of a
+-- simultaneous map over two ByteStrings, to build a 3rd.
+packZipWith :: (Char -> Char -> Char) -> ByteString -> ByteString -> ByteString
+packZipWith f = L.packZipWith f'
+    where
+        f' c1 c2 = c2w $ f (w2c c1) (w2c c2)
+{-# INLINE packZipWith #-}
 
 -- | 'lines' breaks a ByteString up into a list of ByteStrings at
 -- newline Chars (@'\\n'@). The resulting strings do not contain newlines.

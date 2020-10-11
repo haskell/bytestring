@@ -169,6 +169,7 @@ module Data.ByteString (
         -- * Zipping and unzipping ByteStrings
         zip,                    -- :: ByteString -> ByteString -> [(Word8,Word8)]
         zipWith,                -- :: (Word8 -> Word8 -> c) -> ByteString -> ByteString -> [c]
+        packZipWith,            -- :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString -> ByteString
         unzip,                  -- :: [(Word8,Word8)] -> (ByteString,ByteString)
 
         -- * Ordered ByteStrings
@@ -1656,14 +1657,10 @@ zipWith f ps qs
     | otherwise = f (unsafeHead ps) (unsafeHead qs) : zipWith f (unsafeTail ps) (unsafeTail qs)
 {-# NOINLINE [1] zipWith #-}
 
---
--- | A specialised version of zipWith for the common case of a
--- simultaneous map over two bytestrings, to build a 3rd. Rewrite rules
--- are used to automatically covert zipWith into zipWith' when a pack is
--- performed on the result of zipWith.
---
-zipWith' :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString -> ByteString
-zipWith' f (BS fp l) (BS fq m) = unsafeDupablePerformIO $
+-- | A specialised version of `zipWith` for the common case of a
+-- simultaneous map over two ByteStrings, to build a 3rd.
+packZipWith :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString -> ByteString
+packZipWith f (BS fp l) (BS fq m) = unsafeDupablePerformIO $
     withForeignPtr fp $ \a ->
     withForeignPtr fq $ \b ->
     create len $ go a b
@@ -1680,11 +1677,11 @@ zipWith' f (BS fp l) (BS fq m) = unsafeDupablePerformIO $
                 zipWith_ (n+1) r
 
     len = min l m
-{-# INLINE zipWith' #-}
+{-# INLINE packZipWith #-}
 
 {-# RULES
 "ByteString specialise zipWith" forall (f :: Word8 -> Word8 -> Word8) p q .
-    zipWith f p q = unpack (zipWith' f p q)
+    zipWith f p q = unpack (packZipWith f p q)
   #-}
 
 -- | /O(n)/ 'unzip' transforms a list of pairs of bytes into a pair of
