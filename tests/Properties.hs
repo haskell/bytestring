@@ -1212,6 +1212,14 @@ prop_elemIndexEnd1LL c xs = (L.elemIndexEnd c (L.pack xs)) ==
 prop_elemIndexEnd2LL c xs = (L.elemIndexEnd c (L.pack xs)) ==
                            ((-) (fromIntegral (length xs) - 1) `fmap` L.elemIndex c (L.pack $ reverse xs))
 
+prop_elemIndexEnd1LC c xs = (LC.elemIndexEnd c (LC.pack xs)) ==
+                           (case LC.elemIndex c (LC.pack (reverse xs)) of
+                                 Nothing -> Nothing
+                                 Just i  -> Just (fromIntegral (length xs) -1 -i))
+
+prop_elemIndexEnd2LC c xs = (LC.elemIndexEnd c (LC.pack xs)) ==
+                           ((-) (fromIntegral (length xs) - 1) `fmap` LC.elemIndex c (LC.pack $ reverse xs))
+
 prop_elemIndicesBB xs c = elemIndices c xs == P.elemIndices c (P.pack xs)
 
 prop_findIndexBB xs a = (findIndex (==a) xs) == (P.findIndex (==a) (P.pack xs))
@@ -1353,6 +1361,8 @@ prop_zipWithLC xs ys = LC.zipWith (,) xs ys == LC.zip xs ys
 -- prop_zipWith'BB xs ys = P.pack (P.zipWith (+) xs ys) == P.zipWith' (+) xs ys
 
 prop_unzipBB x = let (xs,ys) = unzip x in (P.pack xs, P.pack ys) == P.unzip x
+
+prop_unzipLC x = let (xs,ys) = unzip x in (LC.pack xs, LC.pack ys) == LC.unzip x
 
 
 -- prop_zipwith_spec f p q =
@@ -2256,6 +2266,8 @@ bb_tests =
     , testProperty "elemIndexEnd 2" prop_elemIndexEnd2BB
     , testProperty "elemIndexEnd 1" prop_elemIndexEnd1LL
     , testProperty "elemIndexEnd 2" prop_elemIndexEnd2LL
+    , testProperty "elemIndexEnd 1" prop_elemIndexEnd1LC
+    , testProperty "elemIndexEnd 2" prop_elemIndexEnd2LC
 --  , testProperty "words'"         prop_wordsBB'
 --  , testProperty "lines'"         prop_linesBB'
 --  , testProperty "dropSpaceEnd"   prop_dropSpaceEndBB
@@ -2334,6 +2346,7 @@ bb_tests =
     , testProperty "zipWith"        prop_zipWithCC
     , testProperty "zipWith"        prop_zipWithLC
 --  , testProperty "zipWith'"       prop_zipWith'BB
+    , testProperty "unzip"          prop_unzipLC
     , testProperty "unzip"          prop_unzipBB
     , testProperty "concatMap"      prop_concatMapBB
 --  , testProperty "join/joinByte"  prop_join_spec
