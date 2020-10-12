@@ -564,17 +564,17 @@ foldl1' f ps = case uncons ps of
 -- and thus must be applied to non-empty 'ByteString's
 -- An exception will be thrown in the case of an empty ByteString.
 foldr1 :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
-foldr1 f ps = case unsnoc ps of
-  Nothing     -> errorEmptyList "foldr1"
-  Just (i, l) -> foldr f l i
+foldr1 f ps
+    | null ps   = errorEmptyList "foldr1"
+    | otherwise = foldr f (unsafeLast ps) (unsafeInit ps)
 {-# INLINE foldr1 #-}
 
 -- | 'foldr1'' is a variant of 'foldr1', but is strict in the
 -- accumulator.
 foldr1' :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
-foldr1' f ps = case unsnoc ps of
-  Nothing     -> errorEmptyList "foldr1"
-  Just (i, l) -> foldr' f l i
+foldr1' f ps
+    | null ps   = errorEmptyList "foldr1"
+    | otherwise = foldr' f (unsafeLast ps) (unsafeInit ps)
 {-# INLINE foldr1' #-}
 
 -- ---------------------------------------------------------------------
