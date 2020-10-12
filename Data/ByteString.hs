@@ -267,11 +267,7 @@ import System.IO.Error          (mkIOError, illegalOperationErrorType)
 import Data.Monoid              (Monoid(..))
 #endif
 
-#if MIN_VERSION_base(4,3,0)
 import System.IO                (hGetBufSome)
-#else
-import System.IO                (hWaitForInput, hIsEOF)
-#endif
 
 import Data.IORef
 import GHC.IO.Handle.Internals
@@ -1927,22 +1923,7 @@ hGetNonBlocking h i
 --
 hGetSome :: Handle -> Int -> IO ByteString
 hGetSome hh i
-#if MIN_VERSION_base(4,3,0)
     | i >  0    = createAndTrim i $ \p -> hGetBufSome hh p i
-#else
-    | i >  0    = let
-                   loop = do
-                     s <- hGetNonBlocking hh i
-                     if not (null s)
-                        then return s
-                        else do eof <- hIsEOF hh
-                                if eof then return s
-                                       else hWaitForInput hh (-1) >> loop
-                                         -- for this to work correctly, the
-                                         -- Handle should be in binary mode
-                                         -- (see GHC ticket #3808)
-                  in loop
-#endif
     | i == 0    = return empty
     | otherwise = illegalBufferSize hh "hGetSome" i
 
