@@ -526,7 +526,7 @@ minimum (Chunk c cs) = foldlChunks (\n c' -> n `min` S.minimum c')
                                      (S.minimum c) cs
 {-# INLINE minimum #-}
 
--- | /O(n)/ 'compareLength' compares the length of a 'ByteString' 
+-- | /O(c)/ 'compareLength' compares the length of a 'ByteString' 
 -- to an 'Int64'   
 compareLength :: ByteString -> Int64 -> Ordering
 compareLength _ toCmp | toCmp < 0 = GT
