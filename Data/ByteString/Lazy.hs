@@ -535,38 +535,74 @@ compareLength (Chunk c cs) toCmp  = compareLength cs (toCmp - fromIntegral (S.le
 {-# INLINE compareLength #-}
 
 {-# RULES 
-"ByteString.Lazy compareN/length -> compareLength" [~1] forall t n.
+"ByteString.Lazy length/compareN -> compareLength" [~1] forall t n.
   compare (length t) n = compareLength t n
   #-}
 
 {-# RULES 
-"ByteString.Lazy ==N/length -> compareLength/==EQ" [~1] forall t n.
+"ByteString.Lazy compareN/length -> compareLength" [~1] forall t n.
+  compare n (length t) = toEnum $ (2-) $ fromEnum $ compareLength t n
+  #-}
+
+{-# RULES 
+"ByteString.Lazy length/==N -> compareLength/==EQ" [~1] forall t n.
    length t == n = compareLength t n == EQ
   #-}
 
 {-# RULES 
-"ByteString.Lazy /=N/length -> compareLength//=EQ" [~1] forall t n.
+"ByteString.Lazy N==/length -> compareLength/==EQ" [~1] forall t n.
+   n == length t = compareLength t n == EQ
+  #-}
+
+{-# RULES 
+"ByteString.Lazy length//=N -> compareLength//=EQ" [~1] forall t n.
    length t /= n = compareLength t n /= EQ
   #-}
 
 {-# RULES 
-"ByteString.Lazy <N/length -> compareLength/==LT" [~1] forall t n.
+"ByteString.Lazy N/=/length -> compareLength//=EQ" [~1] forall t n.
+   n /= length t = compareLength t n /= EQ
+  #-}
+
+{-# RULES 
+"ByteString.Lazy length/<N -> compareLength/==LT" [~1] forall t n.
    length t < n = compareLength t n == LT
   #-}
 
 {-# RULES 
-"ByteString.Lazy <=N/length -> compareLength//=GT" [~1] forall t n.
+"ByteString.Lazy >N/length -> compareLength/==LT" [~1] forall t n.
+   n > length t = compareLength t n == LT
+  #-}
+
+{-# RULES 
+"ByteString.Lazy length/<=N -> compareLength//=GT" [~1] forall t n.
    length t <= n = compareLength t n /= GT
   #-}
 
 {-# RULES 
-"ByteString.Lazy >N/length -> compareLength/==GT" [~1] forall t n.
+"ByteString.Lazy <=N/length -> compareLength//=GT" [~1] forall t n.
+   n >= length t = compareLength t n /= GT
+  #-}
+
+{-# RULES 
+"ByteString.Lazy length/>N -> compareLength/==GT" [~1] forall t n.
    length t > n = compareLength t n == GT
   #-}
 
 {-# RULES 
-"ByteString.Lazy >=N/length -> compareLength//=LT" [~1] forall t n.
+"ByteString.Lazy <N/length -> compareLength/==GT" [~1] forall t n.
+   n < length t = compareLength t n == GT
+  #-}
+
+
+{-# RULES 
+"ByteString.Lazy length/>=N -> compareLength//=LT" [~1] forall t n.
    length t >= n = compareLength t n /= LT
+  #-}
+
+{-# RULES 
+"ByteString.Lazy >=N/length -> compareLength//=LT" [~1] forall t n.
+   n <= length t = compareLength t n /= LT
   #-}
 
 -- | The 'mapAccumL' function behaves like a combination of 'map' and
