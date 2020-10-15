@@ -526,6 +526,13 @@ minimum (Chunk c cs) = foldlChunks (\n c' -> n `min` S.minimum c')
                                      (S.minimum c) cs
 {-# INLINE minimum #-}
 
+-- Unexported helper-function.
+-- Required for rewrite rules for 'compareLength'
+negateOrdering :: Ordering -> Ordering
+negateOrdering LT = GT
+negateOrdering EQ = EQ
+negateOrdering GT = LT
+
 -- | /O(c)/ 'compareLength' compares the length of a 'ByteString' 
 -- to an 'Int64'   
 compareLength :: ByteString -> Int64 -> Ordering
@@ -541,7 +548,7 @@ compareLength (Chunk c cs) toCmp  = compareLength cs (toCmp - fromIntegral (S.le
 
 {-# RULES 
 "ByteString.Lazy compareN/length -> compareLength" [~1] forall t n.
-  compare n (length t) = toEnum $ (2-) $ fromEnum $ compareLength t n
+  compare n (length t) = negateOrdering $ compareLength t n
   #-}
 
 {-# RULES 
