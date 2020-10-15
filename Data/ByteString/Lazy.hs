@@ -526,13 +526,6 @@ minimum (Chunk c cs) = foldlChunks (\n c' -> n `min` S.minimum c')
                                      (S.minimum c) cs
 {-# INLINE minimum #-}
 
--- Unexported helper-function.
--- Required for rewrite rules for 'compareLength'
-negateOrdering :: Ordering -> Ordering
-negateOrdering LT = GT
-negateOrdering EQ = EQ
-negateOrdering GT = LT
-
 -- | /O(c)/ 'compareLength' compares the length of a 'ByteString' 
 -- to an 'Int64'   
 compareLength :: ByteString -> Int64 -> Ordering
@@ -1430,6 +1423,12 @@ interact transformer = putStr . transformer =<< getContents
 
 -- ---------------------------------------------------------------------
 -- Internal utilities
+
+-- Required for rewrite rules for 'compareLength'
+negateOrdering :: Ordering -> Ordering
+negateOrdering LT = GT
+negateOrdering EQ = EQ
+negateOrdering GT = LT
 
 -- Common up near identical calls to `error' to reduce the number
 -- constant strings created when compiled:
