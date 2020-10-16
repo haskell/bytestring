@@ -81,6 +81,7 @@ module Data.ByteString.Lazy.Char8 (
         all,                    -- :: (Char -> Bool) -> ByteString -> Bool
         maximum,                -- :: ByteString -> Char
         minimum,                -- :: ByteString -> Char
+        compareLength,          -- :: ByteString -> Int -> Ordering
 
         -- * Building ByteStrings
         -- ** Scans
@@ -208,7 +209,7 @@ import Data.ByteString.Lazy
         ,hGetContents, hGet, hPut, getContents
         ,hGetNonBlocking, hPutNonBlocking
         ,putStr, hPutStr, interact
-        ,readFile,writeFile,appendFile)
+        ,readFile,writeFile,appendFile,compareLength)
 
 -- Functions we need to wrap.
 import qualified Data.ByteString.Lazy as L

@@ -102,6 +102,7 @@ module Data.ByteString.Lazy (
         all,                    -- :: (Word8 -> Bool) -> ByteString -> Bool
         maximum,                -- :: ByteString -> Word8
         minimum,                -- :: ByteString -> Word8
+        compareLength,          -- :: ByteString -> Int64 -> Ordering
 
         -- * Building ByteStrings
         -- ** Scans
@@ -301,7 +302,7 @@ null _     = False
 -- | /O(c)/ 'length' returns the length of a ByteString as an 'Int64'
 length :: ByteString -> Int64
 length cs = foldlChunks (\n c -> n + fromIntegral (S.length c)) 0 cs
-{-# INLINE length #-}
+{-# INLINE [1] length #-}
 
 infixr 5 `cons`, `cons'` --same as list (:)
 infixl 5 `snoc`
@@ -525,6 +526,85 @@ minimum Empty        = errorEmptyList "minimum"
 minimum (Chunk c cs) = foldlChunks (\n c' -> n `min` S.minimum c')
                                      (S.minimum c) cs
 {-# INLINE minimum #-}
+
+-- | /O(c)/ 'compareLength' compares the length of a 'ByteString' 
+-- to an 'Int64'   
+compareLength :: ByteString -> Int64 -> Ordering
+compareLength _ toCmp | toCmp < 0 = GT
+compareLength Empty toCmp         = compare 0 toCmp
+compareLength (Chunk c cs) toCmp  = compareLength cs (toCmp - fromIntegral (S.length c))
+{-# INLINE compareLength #-}
+
+{-# RULES 
+"ByteString.Lazy length/compareN -> compareLength" [~1] forall t n.
+  compare (length t) n = compareLength t n
+  #-}
+
+{-# RULES 
+"ByteString.Lazy compareN/length -> compareLength" [~1] forall t n.
+  compare n (length t) = negateOrdering $ compareLength t n
+  #-}
+
+{-# RULES 
+"ByteString.Lazy length/==N -> compareLength/==EQ" [~1] forall t n.
+   length t == n = compareLength t n == EQ
+  #-}
+
+{-# RULES 
+"ByteString.Lazy N==/length -> compareLength/==EQ" [~1] forall t n.
+   n == length t = compareLength t n == EQ
+  #-}
+
+{-# RULES 
+"ByteString.Lazy length//=N -> compareLength//=EQ" [~1] forall t n.
+   length t /= n = compareLength t n /= EQ
+  #-}
+
+{-# RULES 
+"ByteString.Lazy N/=/length -> compareLength//=EQ" [~1] forall t n.
+   n /= length t = compareLength t n /= EQ
+  #-}
+
+{-# RULES 
+"ByteString.Lazy length/<N -> compareLength/==LT" [~1] forall t n.
+   length t < n = compareLength t n == LT
+  #-}
+
+{-# RULES 
+"ByteString.Lazy >N/length -> compareLength/==LT" [~1] forall t n.
+   n > length t = compareLength t n == LT
+  #-}
+
+{-# RULES 
+"ByteString.Lazy length/<=N -> compareLength//=GT" [~1] forall t n.
+   length t <= n = compareLength t n /= GT
+  #-}
+
+{-# RULES 
+"ByteString.Lazy <=N/length -> compareLength//=GT" [~1] forall t n.
+   n >= length t = compareLength t n /= GT
+  #-}
+
+{-# RULES 
+"ByteString.Lazy length/>N -> compareLength/==GT" [~1] forall t n.
+   length t > n = compareLength t n == GT
+  #-}
+
+{-# RULES 
+"ByteString.Lazy <N/length -> compareLength/==GT" [~1] forall t n.
+   n < length t = compareLength t n == GT
+  #-}
+
+
+{-# RULES 
+"ByteString.Lazy length/>=N -> compareLength//=LT" [~1] forall t n.
+   length t >= n = compareLength t n /= LT
+  #-}
+
+{-# RULES 
+"ByteString.Lazy >=N/length -> compareLength//=LT" [~1] forall t n.
+   n <= length t = compareLength t n /= LT
+  #-}
 
 -- | The 'mapAccumL' function behaves like a combination of 'map' and
 -- 'foldl'; it applies a function to each element of a ByteString,
@@ -1348,6 +1428,12 @@ interact transformer = putStr . transformer =<< getContents
 
 -- ---------------------------------------------------------------------
 -- Internal utilities
+
+-- Required for rewrite rules for 'compareLength'
+negateOrdering :: Ordering -> Ordering
+negateOrdering LT = GT
+negateOrdering EQ = EQ
+negateOrdering GT = LT
 
 -- Common up near identical calls to `error' to reduce the number
 -- constant strings created when compiled:
