@@ -267,6 +267,7 @@ import Data.ByteString (empty,null,length,tail,init,append
 import Data.ByteString.Internal
 
 import Data.Char    ( isSpace )
+import Data.Word    ( Word )
 #if MIN_VERSION_base(4,9,0)
 -- See bytestring #70
 import GHC.Char (eqChar)
@@ -991,34 +992,87 @@ unwords = intercalate (singleton ' ')
 -- ---------------------------------------------------------------------
 -- Reading from ByteStrings
 
--- | readInt reads an Int from the beginning of the ByteString.  If there is no
--- integer at the beginning of the string, it returns Nothing, otherwise
--- it just returns the int read, and the rest of the string.
+-- | Bounds for Word# multiplication by 10 without overflow, and
+-- absolute values of Int bounds.
+intmaxWord, intminWord, intmaxQuot10, intmaxRem10, intminQuot10, intminRem10 :: Word
+intmaxWord = fromIntegral (maxBound :: Int)
+intminWord = fromIntegral (negate (minBound :: Int))
+(intmaxQuot10, intmaxRem10) = intmaxWord `quotRem` 10
+(intminQuot10, intminRem10) = intminWord `quotRem` 10
+
+-- | Try to read an 'Int' value from the 'ByteString', returning @Just (val,
+-- str)@ on success, where @val@ is the value read and @str@ is the rest of the
+-- input string.  If the sequence of digits decodes to a value larger than can
+-- be represented by an 'Int', the returned value will be 'Nothing'.
 --
--- Note: This function will overflow the Int for large integers.
+-- 'readInt' does not ignore leading whitespace, the value must start
+-- immediately at the beginning of the input stream.
+--
+-- ==== __Example__
+-- >>> case readInt str of
+-- >>>     Just (n, rest)  -> print n >> gladly rest
+-- >>>     Nothing         -> sadly Nothing
+--
 readInt :: ByteString -> Maybe (Int, ByteString)
-readInt as
-    | null as   = Nothing
-    | otherwise =
-        case unsafeHead as of
-            '-' -> loop True  0 0 (B.unsafeTail as)
-            '+' -> loop False 0 0 (B.unsafeTail as)
-            _   -> loop False 0 0 as
+{-# INLINABLE readInt #-}
+readInt bs | B.null bs = Nothing
+           | otherwise = case B.unsafeHead bs of
+                 0x2b              -> readDec True  (B.unsafeTail bs)
+                 0x2d              -> readDec False (B.unsafeTail bs)
+                 w | w - 0x30 <= 9 -> readDec True bs
+                   | otherwise     -> Nothing
+  where
+    -- | Read a decimal 'Int' without overflow.  The caller has already
+    -- read any explicit sign (setting @positive@ to 'False' as needed).
+    -- Here we just deal with the digits.
+    {-# INLINE readDec #-}
+    readDec !positive (B.BS fp len) = B.accursedUnutterablePerformIO $ do
+        withForeignPtr fp $ \ptr -> do
+            let end = ptr `plusPtr` len
+            (!n, !a, !inRange) <- if positive
+                then digits intmaxQuot10 intmaxRem10 end ptr 0 0
+                else digits intminQuot10 intminRem10 end ptr 0 0
+            if inRange
+                then if n < len 
+                     then let rest = B.BS (fp `B.plusForeignPtr` n) (len - n)
+                           in return $! result n a rest
+                     else return $! result n a B.empty
+                else return Nothing
+      where
+        -- | Process as many digits as we can, returning the additional
+        -- number of digits found, the final accumulater, and whether
+        -- the input decimal did not overflow prior to processing all
+        -- the provided digits (end of input or non-digit encountered).
+        digits !maxq !maxr !e !ptr = go ptr
+          where
+            go :: Ptr Word8 -> Int -> Word -> IO (Int, Word, Bool)
+            go !p !b !a | p == e = return (b, a, True)
+            go !p !b !a = do
+                !byte <- peek p
+                let !w = byte - 0x30
+                    !d = fromIntegral w
+                if w > 9 -- No more digits
+                    then return (b, a, True)
+                    else if a < maxq -- Look for more
+                    then go (p `plusPtr` 1) (b + 1) (a * 10 + d)
+                    else if a > maxq -- overflow
+                    then return (b, a, False)
+                    else if d <= maxr -- Ideally this will be the last digit
+                    then go (p `plusPtr` 1) (b + 1) (a * 10 + d)
+                    else return (b, a, False) -- overflow
 
-    where loop :: Bool -> Int -> Int -> ByteString -> Maybe (Int, ByteString)
-          loop neg !i !n !ps
-              | null ps   = end neg i n ps
-              | otherwise =
-                  case B.unsafeHead ps of
-                    w | w >= 0x30
-                     && w <= 0x39 -> loop neg (i+1)
-                                          (n * 10 + (fromIntegral w - 0x30))
-                                          (B.unsafeTail ps)
-                      | otherwise -> end neg i n ps
+        -- | Plausible success, provided we got at least one digit!
+        result !nbytes !acc str
+            | nbytes > 0 = let !i = w2int acc in Just (i, str)
+            | otherwise  = Nothing
 
-          end _    0 _ _  = Nothing
-          end True _ n ps = Just (negate n, ps)
-          end _    _ n ps = Just (n, ps)
+        -- This assumes that @negate . fromIntegral@ correctly produces
+        -- @minBound :: Int@ when given its positive 'Word' value as an
+        -- input.  This is true in both 2s-complement and 1s-complement
+        -- arithmetic, so seems like a safe bet.  Tests cover this case,
+        -- though the CI may not run on sufficiently exotic CPUs.
+        w2int !n | positive = fromIntegral n
+                 | otherwise = negate $! fromIntegral n
 
 -- | readInteger reads an Integer from the beginning of the ByteString.  If
 -- there is no integer at the beginning of the string, it returns Nothing,

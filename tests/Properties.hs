@@ -1354,6 +1354,85 @@ prop_readIntSafe         = (fst . fromJust . D.readInt) (Chunk (C.pack "1z") Emp
 prop_readIntUnsafe       = (fst . fromJust . D.readInt) (Chunk (C.pack "2z") undefined)     == 2
 prop_readIntegerSafe     = (fst . fromJust . D.readInteger) (Chunk (C.pack "1z") Empty)     == 1
 prop_readIntegerUnsafe   = (fst . fromJust . D.readInteger) (Chunk (C.pack "2z") undefined) == 2
+prop_readIntBoundsCC     = let !smax   = show (maxBound :: Int)
+                               !smin   = show (minBound :: Int)
+                               !smax1  = show (fromIntegral (maxBound :: Int) + 1 :: Integer)
+                               !smin1  = show (fromIntegral (minBound :: Int) - 1 :: Integer)
+                               !smax10 = show (fromIntegral (maxBound :: Int) + 10 :: Integer)
+                               !smin10 = show (fromIntegral (minBound :: Int) - 10 :: Integer)
+                            --
+                            in C.readInt (spack smax) == good maxBound
+                            && C.readInt (spack smin) == good minBound
+                            --
+                            && C.readInt (spackPlus smax) == good maxBound
+                            && C.readInt (spackMinus smax) == good (negate maxBound)
+                            --
+                            && C.readInt (spackZeros smax) == good maxBound
+                            && C.readInt (spackZeros smin) == good minBound
+                            --
+                            && C.readInt (spack smax1 ) == Nothing
+                            && C.readInt (spack smin1 ) == Nothing
+                            --
+                            && C.readInt (spack smax10) == Nothing
+                            && C.readInt (spack smin10) == Nothing
+                            --
+                            && C.readInt (spackLong smax) == Nothing
+                            && C.readInt (spackLong smin) == Nothing
+  where
+    tailStr      = " tail"
+    zeroStr      = "000000000000000000000000000"
+    spack s      = C.pack $ s ++ tailStr
+    spackPlus s  = C.pack $ '+' : (s ++ tailStr)
+    spackMinus s = C.pack $ '-' : (s ++ tailStr)
+    spackLong s  = C.pack $ s ++ zeroStr ++ tailStr
+    spackZeros s = case s of
+                    '+':num -> C.pack $ '+' : zeroStr ++ num ++ tailStr
+                    '-':num -> C.pack $ '-' : zeroStr ++ num ++ tailStr
+                    num     -> C.pack $ zeroStr ++ num ++ tailStr
+    good i       = Just (i, C.pack tailStr)
+prop_readIntBoundsLC     = let !smax   = show (maxBound :: Int)
+                               !smin   = show (minBound :: Int)
+                               !smax1  = show (fromIntegral (maxBound :: Int) + 1 :: Integer)
+                               !smin1  = show (fromIntegral (minBound :: Int) - 1 :: Integer)
+                               !smax10 = show (fromIntegral (maxBound :: Int) + 10 :: Integer)
+                               !smin10 = show (fromIntegral (minBound :: Int) - 10 :: Integer)
+                            -- Plain min/maxBound
+                            in LC.readInt (spack smax) == good maxBound
+                            && LC.readInt (spack smin) == good minBound
+                            -- With explicit [+-] sign for maxBound
+                            && LC.readInt (spackPlus smax) == good maxBound
+                            && LC.readInt (spackMinus smax) == good (negate maxBound)
+                            -- With leading zeros
+                            && LC.readInt (spackZeros smax) == good maxBound
+                            && LC.readInt (spackZeros smin) == good minBound
+                            -- Overflow in last digit
+                            && LC.readInt (spack smax1 ) == Nothing
+                            && LC.readInt (spack smin1 ) == Nothing
+                            -- Overflow in 2nd-last digit
+                            && LC.readInt (spack smax10) == Nothing
+                            && LC.readInt (spack smin10) == Nothing
+                            -- Overflow across chunk boundary
+                            && LC.readInt (spackLong1 smax) == Nothing
+                            && LC.readInt (spackLong1 smin) == Nothing
+                            -- Overflow within chunk
+                            && LC.readInt (spackLong2 smax) == Nothing
+                            && LC.readInt (spackLong2 smin) == Nothing
+                            -- Sign with no digits
+                            && LC.readInt (LC.pack "+ foo") == Nothing
+                            && LC.readInt (LC.pack "-bar") == Nothing
+  where
+    tailStr      = " tail"
+    zeroStr      = "000000000000000000000000000"
+    spack s      = LC.pack $ s ++ tailStr
+    spackPlus s  = LC.singleton '+' `D.append` LC.pack s `D.append` LC.pack tailStr
+    spackMinus s = LC.singleton '-' `D.append` LC.pack s `D.append` LC.pack tailStr
+    spackLong1 s = LC.pack s `D.append` LC.pack zeroStr `D.append` LC.pack tailStr
+    spackLong2 s = LC.pack (s ++ zeroStr) `D.append` LC.pack tailStr
+    spackZeros s = case s of
+                    '+':num -> LC.pack ('+' : zeroStr) `D.append` LC.pack (num ++ tailStr)
+                    '-':num -> LC.pack ('-' : zeroStr) `D.append` LC.pack (num ++ tailStr)
+                    num     -> LC.pack $ zeroStr ++ num ++ tailStr
+    good i       = Just (i, LC.pack tailStr)
 
 -- prop_filterChar1BB c xs = (filter (==c) xs) == ((C.unpack . C.filterChar c . C.pack) xs)
 -- prop_filterChar2BB c xs = (C.filter (==c) (C.pack xs)) == (C.filterChar c (C.pack xs))
@@ -2317,6 +2396,8 @@ bb_tests =
 
     , testProperty "readIntSafe"       prop_readIntSafe
     , testProperty "readIntUnsafe"     prop_readIntUnsafe
+    , testProperty "readIntBoundsCC"   prop_readIntBoundsCC
+    , testProperty "readIntBoundsLC"   prop_readIntBoundsLC
     , testProperty "readIntegerSafe"   prop_readIntegerSafe
     , testProperty "readIntegerUnsafe" prop_readIntegerUnsafe
 

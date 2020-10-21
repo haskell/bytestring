@@ -75,6 +75,7 @@ executable regressions
   main-is:          Regressions.hs
   other-modules:    Data.ByteString
                     Data.ByteString.Internal
+                    Data.ByteString.Lazy.Internal
                     Data.ByteString.Unsafe
   hs-source-dirs:   . ..
   build-depends:    base, ghc-prim, deepseq, random, directory,
