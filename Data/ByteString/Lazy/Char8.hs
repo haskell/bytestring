@@ -215,13 +215,18 @@ import Data.ByteString.Lazy
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString as S (ByteString) -- typename only
 import qualified Data.ByteString as B
+import qualified Data.ByteString.Internal as BI
 import qualified Data.ByteString.Unsafe as B
 import Data.ByteString.Lazy.Internal
 
 import Data.ByteString.Internal (w2c, c2w, isSpaceWord8)
 
 import Data.Int (Int64)
+import Data.Word (Word8, Word)
 import qualified Data.List as List
+import Foreign.Ptr (Ptr, plusPtr)
+import Foreign.ForeignPtr (withForeignPtr)
+import Foreign.Storable (peek)
 
 import Prelude hiding
         (reverse,head,tail,last,init,null,length,map,lines,foldl,foldr,unlines
@@ -792,43 +797,122 @@ unwords :: [ByteString] -> ByteString
 unwords = intercalate (singleton ' ')
 {-# INLINE unwords #-}
 
--- | readInt reads an Int from the beginning of the ByteString.  If
--- there is no integer at the beginning of the string, it returns
--- Nothing, otherwise it just returns the int read, and the rest of the
--- string.
+-- | Bounds for Word# multiplication by 10 without overflow, and
+-- absolute values of Int bounds.
+intmaxWord, intminWord, intmaxQuot10, intmaxRem10, intminQuot10, intminRem10 :: Word
+intmaxWord = fromIntegral (maxBound :: Int)
+intminWord = fromIntegral (negate (minBound :: Int))
+(intmaxQuot10, intmaxRem10) = intmaxWord `quotRem` 10
+(intminQuot10, intminRem10) = intminWord `quotRem` 10
+
+-- | Try to read an 'Int' value from the 'ByteString', returning @Just (val,
+-- str)@ on success, where @val@ is the value read and @str@ is the rest of the
+-- input string.  If the sequence of digits decodes to a value larger than can
+-- be represented by an 'Int', the returned value will be 'Nothing'.
 --
--- Note: This function will overflow the Int for large integers.
-
+-- This function will not read an /unreasonably/ long stream of leading
+-- zero digits when trying to decode a number.  When reading the first
+-- non-zero digit would require requesting a new chunk and ~32KB of
+-- leading zeros have already been read, the conversion is aborted and
+-- 'Nothing' is returned.
+--
+-- 'readInt' does not ignore leading whitespace, the value must start
+-- immediately at the beginning of the input stream.
+--
+-- ==== __Example__
+-- >>> case readInt str of
+-- >>>     Just (n, rest)  -> print n >> gladly rest
+-- >>>     Nothing         -> sadly Nothing
+--
 readInt :: ByteString -> Maybe (Int, ByteString)
-{-# INLINE readInt #-}
-readInt Empty        = Nothing
-readInt (Chunk x xs) = case w2c (B.unsafeHead x) of
-    '-' -> loop True  0 0 (B.unsafeTail x) xs
-    '+' -> loop False 0 0 (B.unsafeTail x) xs
-    _   -> loop False 0 0 x xs
+{-# INLINABLE readInt #-}
+readInt = start
+  where
+    start Empty     = Nothing
+    start bs@(Chunk c cs)
+        | B.null c  = start cs
+        | otherwise = case B.unsafeHead c of
+             0x2b              -> readDec True  $ Chunk (B.tail c) cs
+             0x2d              -> readDec False $ Chunk (B.tail c) cs
+             w | w - 0x30 <= 9 -> readDec True bs
+               | otherwise     -> Nothing
 
-    where loop :: Bool -> Int -> Int
-                -> S.ByteString -> ByteString -> Maybe (Int, ByteString)
-          loop neg !i !n !c cs
-              | B.null c = case cs of
-                             Empty          -> end  neg i n c  cs
-                             (Chunk c' cs') -> loop neg i n c' cs'
-              | otherwise =
-                  case B.unsafeHead c of
-                    w | w >= 0x30
-                     && w <= 0x39 -> loop neg (i+1)
-                                          (n * 10 + (fromIntegral w - 0x30))
-                                          (B.unsafeTail c) cs
-                      | otherwise -> end neg i n c cs
+    -- | Read a decimal 'Int' without overflow.  The caller has already
+    -- read any explicit sign (setting @positive@ to 'False' as needed).
+    -- Here we just deal with the digits.
+    --
+    -- In order to avoid reading an unreasonable number of zero bytes before
+    -- ultimately reporting an overflow, a limit of ~32kB is imposed on the
+    -- number of bytes to read before giving up on /unreasonably long/ input
+    -- that is padded with so many zeros, that it could only be a memory
+    -- exhaustion attack.  Callers who want to trim very long runs of
+    -- zeros could note the sign, and skip leading zeros before calling
+    -- function.  Few if any should want that.
+    {-# INLINE readDec #-}
+    readDec !positive = loop 0 0
+      where
+        loop !nbytes !acc = \ str -> case str of
+            Empty -> result nbytes acc str
+            Chunk c cs -> case B.length c of
+                0 -> loop nbytes acc cs -- skip empty segment
+                l -> case accumWord acc c of
+                     (0, !_, !inrange) -- no more digits or overflow
+                         | inrange   -> result nbytes acc str
+                         | otherwise -> Nothing
+                     (!n, !a, !inrange)
+                         | not inrange -> Nothing
+                         | n < l -- input not entirely digits
+                           -> result (nbytes + n) a $ Chunk (B.drop n c) cs
+                         | a > 0 || nbytes + n < defaultChunkSize
+                           -- if all zeros, not yet too many
+                           -> loop (nbytes + n) a cs
+                         | otherwise
+                           -- too many zeros
+                           -> Nothing
 
-          {-# INLINE end #-}
-          end _   0 _ _  _ = Nothing
-          end neg _ n c cs = e
-                where n' = if neg then negate n else n
-                      c' = chunk c cs
-                      e  = n' `seq` c' `seq` Just (n',c')
-         --                  in n' `seq` c' `seq` JustS n' c'
+        -- | Process as many digits as we can, returning the additional
+        -- number of digits found, the updated accumulater, and whether
+        -- the input decimal did not overflow prior to processing all
+        -- the provided digits (end of input or non-digit encountered).
+        accumWord acc (BI.BS fp len) =
+            BI.accursedUnutterablePerformIO $ do
+                withForeignPtr fp $ \ptr -> do
+                    let end = ptr `plusPtr` len
+                    x@(!_, !_, !_) <- if positive
+                        then digits intmaxQuot10 intmaxRem10 end ptr 0 acc
+                        else digits intminQuot10 intminRem10 end ptr 0 acc
+                    return x
+          where
+            digits !maxq !maxr !e !ptr = go ptr
+              where
+                go :: Ptr Word8 -> Int -> Word -> IO (Int, Word, Bool)
+                go !p !b !a | p == e = return (b, a, True)
+                go !p !b !a = do
+                    !byte <- peek p
+                    let !w = byte - 0x30
+                        !d = fromIntegral w
+                    if w > 9 -- No more digits
+                        then return (b, a, True)
+                        else if a < maxq -- Look for more
+                        then go (p `plusPtr` 1) (b + 1) (a * 10 + d)
+                        else if a > maxq -- overflow
+                        then return (b, a, False)
+                        else if d <= maxr -- Ideally this will be the last digit
+                        then go (p `plusPtr` 1) (b + 1) (a * 10 + d)
+                        else return (b, a, False) -- overflow
 
+        -- | Plausible success, provided we got at least one digit!
+        result !nbytes !acc str
+            | nbytes > 0 = let !i = w2int acc in Just (i, str)
+            | otherwise  = Nothing
+
+        -- This assumes that @negate . fromIntegral@ correctly produces
+        -- @minBound :: Int@ when given its positive 'Word' value as an
+        -- input.  This is true in both 2s-complement and 1s-complement
+        -- arithmetic, so seems like a safe bet.  Tests cover this case,
+        -- though the CI may not run on sufficiently exotic CPUs.
+        w2int !n | positive = fromIntegral n
+                 | otherwise = negate $! fromIntegral n
 
 -- | readInteger reads an Integer from the beginning of the ByteString.  If
 -- there is no integer at the beginning of the string, it returns Nothing,
