@@ -361,6 +361,10 @@ main = do
       , benchFE "floatHexFixed"    $ fromIntegral >$< P.floatHexFixed
       , benchFE "doubleHexFixed"   $ fromIntegral >$< P.doubleHexFixed
       ]
+    , bgroup "intersperse"
+      [ bench "intersperse" $ whnf (S.intersperse 32) byteStringData
+      , bench "intersperse (unaligned)" $ whnf (S.intersperse 32) (S.drop 1 byteStringData)
+      ]
     , bgroup "partition"
       [
         bgroup "strict"
