@@ -649,11 +649,11 @@ concat = \bss0 -> goLen0 bss0 bss0
    concat [x] = x
  #-}
 
--- | Repeats given ByteString n times. More efficient than default definition.
+-- | /O(log n)/ Repeats the given ByteString n times.
 times :: Integral a => a -> ByteString -> ByteString
 times n (BS fp len)
   | n < 0 = error "stimes: non-negative multiplier expected"
-  | n == 0 = BS nullForeignPtr 0 -- definition of empty in Data.ByteString
+  | n == 0 = mempty
   | otherwise = unsafeCreate size $ \destptr ->
     withForeignPtr fp $ \p -> do
       memcpy destptr p len

@@ -276,11 +276,11 @@ concat css0 = to css0
     to []               = Empty
     to (cs:css)         = go cs css
 
--- | Repeats ByteString n times. More efficient than default implementation.
+-- | Repeats the given ByteString n times.
 times :: Integral a => a -> ByteString -> ByteString
 times 0 _ = Empty
 times _ Empty = Empty
-times n lbs0@(Chunk bs lbs) 
+times n lbs0@(Chunk bs lbs)
   | n < 0 = error "stimes: non-negative multiplier expected"
   | otherwise = Chunk bs (go lbs)
   where
