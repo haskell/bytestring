@@ -43,11 +43,6 @@ test-suite prop-compiled
   ghc-options:      -fwarn-unused-binds
                     -fno-enable-rewrite-rules
                     -threaded -rtsopts
-  extensions:       BangPatterns
-                    UnliftedFFITypes,
-                    MagicHash,
-                    ScopedTypeVariables
-                    NamedFieldPuns
 
 test-suite lazy-hclose
   type:             exitcode-stdio-1.0
@@ -73,6 +68,7 @@ executable regressions
   main-is:          Regressions.hs
   other-modules:    Data.ByteString
                     Data.ByteString.Internal
+                    Data.ByteString.Lazy.Internal
                     Data.ByteString.Unsafe
   hs-source-dirs:   . ..
   build-depends:    base, ghc-prim, deepseq, random, directory,
@@ -82,11 +78,6 @@ executable regressions
   ghc-options:      -fwarn-unused-binds
                     -fno-enable-rewrite-rules
                     -threaded -rtsopts
-  extensions:       BangPatterns
-                    UnliftedFFITypes,
-                    MagicHash,
-                    ScopedTypeVariables
-                    NamedFieldPuns
 
 test-suite test-builder
   type:             exitcode-stdio-1.0
@@ -126,13 +117,6 @@ test-suite test-builder
                     test-framework-hunit,
                     test-framework-quickcheck2  >= 0.3
   ghc-options:      -Wall -fwarn-tabs -threaded -rtsopts
-  extensions:       CPP, ForeignFunctionInterface
-                    UnliftedFFITypes,
-                    MagicHash,
-                    ScopedTypeVariables
-                    Rank2Types
-                    BangPatterns
-                    NamedFieldPuns
   c-sources:        ../cbits/fpstring.c
                     ../cbits/itoa.c
   include-dirs:     ../include

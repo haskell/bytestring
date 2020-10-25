@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 -- |
 -- Copyright   : (c) 2011 Simon Meier
 -- License     : BSD3-style (see LICENSE)
@@ -69,18 +70,14 @@ import qualified Data.ByteString               as S
 import qualified Data.ByteString.Internal      as S
 import qualified Data.ByteString.Builder.Prim.Internal as I
 
+import           Data.Bits (Bits(..))
 import           Data.Char (chr, ord)
-
+import           Data.Int
+import           Data.Word
+import           Foreign (Storable(..), castPtr, minusPtr, with)
 import           Numeric (showHex)
-
-#if MIN_VERSION_base(4,4,0)
-import Foreign hiding (unsafePerformIO)
-import System.IO.Unsafe (unsafePerformIO)
-#else
-import Foreign
-#endif
-
 import           System.ByteOrder
+import           System.IO.Unsafe (unsafePerformIO)
 
 import           Test.HUnit (assertBool)
 import           Test.Framework

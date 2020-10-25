@@ -1,3 +1,5 @@
+{-# LANGUAGE BangPatterns     #-}
+{-# LANGUAGE CPP              #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -13,16 +15,18 @@
 
 module Data.ByteString.Builder.Tests (tests) where
 
-
 import           Control.Applicative
-import           Control.Monad.State
-import           Control.Monad.Writer
+import           Control.Monad (unless)
+import           Control.Monad.State (StateT, evalStateT, put, get)
+import           Control.Monad.Trans (lift)
+import           Control.Monad.Writer (execWriter, tell)
 
-import           Foreign (Word, Word8, minusPtr)
+import           Foreign (minusPtr)
 
 import           Data.Char (chr)
 import qualified Data.DList      as D
-import           Data.Foldable (asum, foldMap)
+import           Data.Foldable
+import           Data.Word
 
 import qualified Data.ByteString          as S
 import qualified Data.ByteString.Internal as S
@@ -124,7 +128,7 @@ testHandlePutBuilder =
         _ <- evaluate (L.length $ lbs)
         removeFile tempFile
         -- compare to pure builder implementation
-        let lbsRef = toLazyByteString $ mconcat
+        let lbsRef = toLazyByteString $ fold
               [stringUtf8 before, b, stringUtf8 between, b, stringUtf8 after]
         -- report
         let msg = unlines
@@ -160,7 +164,7 @@ testHandlePutBuilderChar8 =
         _ <- evaluate (L.length $ lbs)
         removeFile tempFile
         -- compare to pure builder implementation
-        let lbsRef = toLazyByteString $ mconcat
+        let lbsRef = toLazyByteString $ fold
               [string8 before, b, string8 between, b, string8 after]
         -- report
         let msg = unlines
@@ -207,8 +211,8 @@ data Recipe = Recipe Strategy Int Int L.ByteString [Action]
 
 renderRecipe :: Recipe -> [Word8]
 renderRecipe (Recipe _ firstSize _ cont as) =
-    D.toList $ execWriter (evalStateT (mapM_ renderAction as) firstSize)
-                 `mappend` renderLBS cont
+    D.toList $ execWriter (evalStateT (traverse_ renderAction as) firstSize)
+                 `D.append` renderLBS cont
   where
     renderAction (SBS Hex bs)   = tell $ foldMap hexWord8 $ S.unpack bs
     renderAction (SBS _ bs)     = tell $ D.fromList $ S.unpack bs
@@ -218,8 +222,8 @@ renderRecipe (Recipe _ firstSize _ cont as) =
     renderAction (W8 w)         = tell $ return w
     renderAction (W8S ws)       = tell $ D.fromList ws
     renderAction (String cs)    = tell $ foldMap (D.fromList . charUtf8_list) cs
-    renderAction Flush          = tell $ mempty
-    renderAction (EnsureFree _) = tell $ mempty
+    renderAction Flush          = tell $ D.empty
+    renderAction (EnsureFree _) = tell $ D.empty
     renderAction (FDec f)       = tell $ D.fromList $ encodeASCII $ show f
     renderAction (DDec d)       = tell $ D.fromList $ encodeASCII $ show d
     renderAction (ModState i)   = do
@@ -271,7 +275,7 @@ recipeComponents (Recipe how firstSize otherSize cont as) =
         strategy Safe      = safeStrategy
         strategy Untrimmed = untrimmedStrategy
 
-    b = fromPut $ evalStateT (mapM_ buildAction as) firstSize
+    b = fromPut $ evalStateT (traverse_ buildAction as) firstSize
 
 
 -- 'Arbitary' instances
@@ -385,7 +389,7 @@ test_encodeUnfoldrF =
 
 test_encodeUnfoldrB :: Test
 test_encodeUnfoldrB =
-    compareImpls "encodeUnfoldrB charUtf8" (concatMap charUtf8_list) encode
+    compareImpls "encodeUnfoldrB charUtf8" (foldMap charUtf8_list) encode
   where
     toLBS = toLazyByteStringWith (safeStrategy 23 101) L.empty
     encode =
@@ -470,7 +474,7 @@ testRunBuilder =
           actual <- bufferWriterOutput (runBuilder builder)
           return (S.unpack actual == expected)
       where
-        recipe = Recipe Safe 0 0 mempty actions
+        recipe = Recipe Safe 0 0 L.empty actions
 
 bufferWriterOutput :: BufferWriter -> IO S.ByteString
 bufferWriterOutput bwrite0 = do
@@ -507,7 +511,7 @@ testBuilderConstr name ref mkBuilder =
   where
     check x =
         (ws ++ ws) ==
-        (L.unpack $ toLazyByteString $ mkBuilder x `mappend` mkBuilder x)
+        (L.unpack $ toLazyByteString $ mkBuilder x `BI.append` mkBuilder x)
       where
         ws = ref x
 
@@ -559,7 +563,7 @@ testsBinary =
 testsASCII :: [Test]
 testsASCII =
   [ testBuilderConstr "char7" char7_list char7
-  , testBuilderConstr "string7" (concatMap char7_list) string7
+  , testBuilderConstr "string7" (foldMap char7_list) string7
 
   , testBuilderConstr "int8Dec"   dec_list int8Dec
   , testBuilderConstr "int16Dec"  dec_list int16Dec
@@ -602,11 +606,11 @@ testsASCII =
 testsChar8 :: [Test]
 testsChar8 =
   [ testBuilderConstr "charChar8" char8_list char8
-  , testBuilderConstr "stringChar8" (concatMap char8_list) string8
+  , testBuilderConstr "stringChar8" (foldMap char8_list) string8
   ]
 
 testsUtf8 :: [Test]
 testsUtf8 =
   [ testBuilderConstr "charUtf8" charUtf8_list charUtf8
-  , testBuilderConstr "stringUtf8" (concatMap charUtf8_list) stringUtf8
+  , testBuilderConstr "stringUtf8" (foldMap charUtf8_list) stringUtf8
   ]
