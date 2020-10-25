@@ -19,7 +19,6 @@ import           Control.Monad.State
 import           Control.Monad.Writer
 
 import           Foreign (Word, Word8, minusPtr)
-import           System.IO.Unsafe (unsafePerformIO)
 
 import           Data.Char (chr)
 import qualified Data.DList      as D
@@ -52,7 +51,7 @@ import           TestFramework
 
 import           Test.QuickCheck
                    ( Arbitrary(..), oneof, choose, listOf, elements
-                   , counterexample, ioProperty, UnicodeString(..) )
+                   , counterexample, ioProperty, UnicodeString(..), Property )
 
 
 tests :: [Test]
@@ -95,9 +94,9 @@ testHandlePutBuilder :: Test
 testHandlePutBuilder =
     testProperty "hPutBuilder" testRecipe
   where
-    testRecipe :: (UnicodeString, UnicodeString, UnicodeString, Recipe) -> Bool
+    testRecipe :: (UnicodeString, UnicodeString, UnicodeString, Recipe) -> Property
     testRecipe args =
-      unsafePerformIO $ do
+      ioProperty $ do
         let (UnicodeString a1, UnicodeString a2, UnicodeString a3, recipe) = args
 #if MIN_VERSION_base(4,5,0)
             before  = a1
@@ -146,8 +145,8 @@ testHandlePutBuilderChar8 :: Test
 testHandlePutBuilderChar8 =
     testProperty "char8 hPutBuilder" testRecipe
   where
-    testRecipe :: (String, String, String, Recipe) -> Bool
-    testRecipe args@(before, between, after, recipe) = unsafePerformIO $ do
+    testRecipe :: (String, String, String, Recipe) -> Property
+    testRecipe args@(before, between, after, recipe) = ioProperty $ do
         tempDir <- getTemporaryDirectory
         (tempFile, tempH) <- openTempFile tempDir "TestBuilder"
         -- switch to binary / latin1 encoding
