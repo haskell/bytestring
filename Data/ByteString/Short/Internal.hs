@@ -86,6 +86,10 @@ import GHC.Exts ( Int(I#), Int#, Ptr(Ptr), Addr#, Char(C#)
                 , byteArrayContents#
                 , unsafeCoerce#
 #endif
+#if MIN_VERSION_base(4,10,0)
+                , isByteArrayPinned#
+                , isTrue#
+#endif
                 , sizeofByteArray#
                 , indexWord8Array#, indexCharArray#
                 , writeWord8Array#, writeCharArray#
@@ -266,6 +270,14 @@ toShortIO (BS fptr len) = do
 -- | /O(n)/. Convert a 'ShortByteString' into a 'ByteString'.
 --
 fromShort :: ShortByteString -> ByteString
+#if MIN_VERSION_base(4,10,0)
+fromShort (SBS b#)
+  | isTrue# (isByteArrayPinned# b#) = BS fp len
+  where
+    addr# = byteArrayContents# b#
+    fp = ForeignPtr addr# (PlainPtr (unsafeCoerce# b#))
+    len = I# (sizeofByteArray# b#)
+#endif
 fromShort !sbs = unsafeDupablePerformIO (fromShortIO sbs)
 
 fromShortIO :: ShortByteString -> IO ByteString
