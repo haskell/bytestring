@@ -992,14 +992,6 @@ unwords = intercalate (singleton ' ')
 -- ---------------------------------------------------------------------
 -- Reading from ByteStrings
 
--- | Bounds for Word# multiplication by 10 without overflow, and
--- absolute values of Int bounds.
-intmaxWord, intminWord, intmaxQuot10, intmaxRem10, intminQuot10, intminRem10 :: Word
-intmaxWord = fromIntegral (maxBound :: Int)
-intminWord = fromIntegral (negate (minBound :: Int))
-(intmaxQuot10, intmaxRem10) = intmaxWord `quotRem` 10
-(intminQuot10, intminRem10) = intminWord `quotRem` 10
-
 -- | Try to read an 'Int' value from the 'ByteString', returning @Just (val,
 -- str)@ on success, where @val@ is the value read and @str@ is the rest of the
 -- input string.  If the sequence of digits decodes to a value larger than can
@@ -1015,12 +1007,11 @@ intminWord = fromIntegral (negate (minBound :: Int))
 --
 readInt :: ByteString -> Maybe (Int, ByteString)
 {-# INLINABLE readInt #-}
-readInt bs | B.null bs = Nothing
-           | otherwise = case B.unsafeHead bs of
-                 0x2b              -> readDec True  (B.unsafeTail bs)
-                 0x2d              -> readDec False (B.unsafeTail bs)
-                 w | w - 0x30 <= 9 -> readDec True bs
-                   | otherwise     -> Nothing
+readInt bs = case B.uncons bs of
+    Just (w, rest) | w - 0x30 <= 9 -> readDec True bs
+                   | w == 0x2b     -> readDec True rest
+                   | w == 0x2d     -> readDec False rest
+    _                              -> Nothing
   where
     -- | Read a decimal 'Int' without overflow.  The caller has already
     -- read any explicit sign (setting @positive@ to 'False' as needed).
@@ -1040,7 +1031,7 @@ readInt bs | B.null bs = Nothing
                 else return Nothing
       where
         -- | Process as many digits as we can, returning the additional
-        -- number of digits found, the final accumulater, and whether
+        -- number of digits found, the final accumulator, and whether
         -- the input decimal did not overflow prior to processing all
         -- the provided digits (end of input or non-digit encountered).
         digits !maxq !maxr !e !ptr = go ptr

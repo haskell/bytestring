@@ -219,7 +219,9 @@ import qualified Data.ByteString.Internal as BI
 import qualified Data.ByteString.Unsafe as B
 import Data.ByteString.Lazy.Internal
 
-import Data.ByteString.Internal (w2c, c2w, isSpaceWord8)
+import Data.ByteString.Internal (c2w,w2c,isSpaceWord8
+                                ,intmaxQuot10,intmaxRem10
+                                ,intminQuot10,intminRem10)
 
 import Data.Int (Int64)
 import Data.Word (Word8, Word)
@@ -797,14 +799,6 @@ unwords :: [ByteString] -> ByteString
 unwords = intercalate (singleton ' ')
 {-# INLINE unwords #-}
 
--- | Bounds for Word# multiplication by 10 without overflow, and
--- absolute values of Int bounds.
-intmaxWord, intminWord, intmaxQuot10, intmaxRem10, intminQuot10, intminRem10 :: Word
-intmaxWord = fromIntegral (maxBound :: Int)
-intminWord = fromIntegral (negate (minBound :: Int))
-(intmaxQuot10, intmaxRem10) = intmaxWord `quotRem` 10
-(intminQuot10, intminRem10) = intminWord `quotRem` 10
-
 -- | Try to read an 'Int' value from the 'ByteString', returning @Just (val,
 -- str)@ on success, where @val@ is the value read and @str@ is the rest of the
 -- input string.  If the sequence of digits decodes to a value larger than can
@@ -826,16 +820,12 @@ intminWord = fromIntegral (negate (minBound :: Int))
 --
 readInt :: ByteString -> Maybe (Int, ByteString)
 {-# INLINABLE readInt #-}
-readInt = start
+readInt bs = case L.uncons bs of
+    Just (w, rest) | w - 0x30 <= 9 -> readDec True bs
+                   | w == 0x2b     -> readDec True rest
+                   | w == 0x2d     -> readDec False rest
+    _                              -> Nothing
   where
-    start Empty     = Nothing
-    start bs@(Chunk c cs)
-        | B.null c  = start cs
-        | otherwise = case B.unsafeHead c of
-             0x2b              -> readDec True  $ Chunk (B.tail c) cs
-             0x2d              -> readDec False $ Chunk (B.tail c) cs
-             w | w - 0x30 <= 9 -> readDec True bs
-               | otherwise     -> Nothing
 
     -- | Read a decimal 'Int' without overflow.  The caller has already
     -- read any explicit sign (setting @positive@ to 'False' as needed).
@@ -871,7 +861,7 @@ readInt = start
                            -> Nothing
 
         -- | Process as many digits as we can, returning the additional
-        -- number of digits found, the updated accumulater, and whether
+        -- number of digits found, the updated accumulator, and whether
         -- the input decimal did not overflow prior to processing all
         -- the provided digits (end of input or non-digit encountered).
         accumWord acc (BI.BS fp len) =
