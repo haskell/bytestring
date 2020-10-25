@@ -39,13 +39,9 @@ import qualified Blaze.Text                        as Blaze
 import qualified "bytestring" Data.ByteString      as OldS
 import qualified "bytestring" Data.ByteString.Lazy as OldL
 
-import           Paths_bench_bytestring
-
 import           Foreign
 
 import System.Random
-import Paths_bench_bytestring
-
 
 ------------------------------------------------------------------------------
 -- Benchmark support
@@ -239,8 +235,6 @@ foldInputs = map (\k -> S.pack $ if k <= 6 then take (2 ^ k) [32..95] else conca
 main :: IO ()
 main = do
   mapM_ putStrLn sanityCheckInfo
-  putStrLn ""
-  wikiPage <- getDataFileName "wiki-haskell.html" >>= S.readFile
   Gauge.defaultMain
     [ bgroup "Data.ByteString.Builder"
       [ bgroup "Small payload"

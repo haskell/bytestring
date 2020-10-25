@@ -81,6 +81,7 @@ module Data.ByteString.Lazy.Char8 (
         all,                    -- :: (Char -> Bool) -> ByteString -> Bool
         maximum,                -- :: ByteString -> Char
         minimum,                -- :: ByteString -> Char
+        compareLength,          -- :: ByteString -> Int -> Ordering
 
         -- * Building ByteStrings
         -- ** Scans
@@ -159,7 +160,8 @@ module Data.ByteString.Lazy.Char8 (
         -- * Zipping and unzipping ByteStrings
         zip,                    -- :: ByteString -> ByteString -> [(Char,Char)]
         zipWith,                -- :: (Char -> Char -> c) -> ByteString -> ByteString -> [c]
-        unzip,                  -- :: [(Char,Char)] -> (ByteString,ByteString)
+        packZipWith,            -- :: (Char -> Char -> Char) -> ByteString -> ByteString -> ByteString
+--      unzip,                  -- :: [(Char,Char)] -> (ByteString,ByteString)
 
         -- * Ordered ByteStrings
 --        sort,                   -- :: ByteString -> ByteString
@@ -209,7 +211,7 @@ import Data.ByteString.Lazy
         ,hGetContents, hGet, hPut, getContents
         ,hGetNonBlocking, hPutNonBlocking
         ,putStr, hPutStr, interact
-        ,readFile,writeFile,appendFile)
+        ,readFile,writeFile,appendFile,compareLength)
 
 -- Functions we need to wrap.
 import qualified Data.ByteString.Lazy as L
@@ -703,10 +705,13 @@ zip ps qs
 zipWith :: (Char -> Char -> a) -> ByteString -> ByteString -> [a]
 zipWith f = L.zipWith ((. w2c) . f . w2c)
 
--- | /O(n)/ 'unzip' transforms a list of pairs of Chars into a pair of
--- ByteStrings. Note that this performs two 'pack' operations.
-unzip :: [(Char,Char)] -> (ByteString, ByteString)
-unzip ls = (pack $ fmap fst ls, pack $ fmap snd ls)
+-- | A specialised version of `zipWith` for the common case of a
+-- simultaneous map over two ByteStrings, to build a 3rd.
+packZipWith :: (Char -> Char -> Char) -> ByteString -> ByteString -> ByteString
+packZipWith f = L.packZipWith f'
+    where
+        f' c1 c2 = c2w $ f (w2c c1) (w2c c2)
+{-# INLINE packZipWith #-}
 
 -- | 'lines' breaks a ByteString up into a list of ByteStrings at
 -- newline Chars (@'\\n'@). The resulting strings do not contain newlines.

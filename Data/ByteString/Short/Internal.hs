@@ -86,9 +86,7 @@ import GHC.Exts ( Int(I#), Int#, Ptr(Ptr), Addr#, Char(C#)
                 , byteArrayContents#
                 , unsafeCoerce#
 #endif
-#if MIN_VERSION_base(4,3,0)
                 , sizeofByteArray#
-#endif
                 , indexWord8Array#, indexCharArray#
                 , writeWord8Array#, writeCharArray#
                 , unsafeFreezeByteArray# )
@@ -124,16 +122,6 @@ import Prelude ( Eq(..), Ord(..), Ordering(..), Read(..), Show(..)
 -- more flexible and it supports a wide range of operations.
 --
 data ShortByteString = SBS ByteArray#
-#if !(MIN_VERSION_base(4,3,0))
-           {-# UNPACK #-} !Int  -- ^ Prior to ghc-7.0.x, 'ByteArray#'s reported
-                                -- their length rounded up to the nearest word.
-                                -- This means we have to store the true length
-                                -- separately, wasting a word.
-#define LEN(x) (x)
-#else
-#define _len   /* empty */
-#define LEN(x) /* empty */
-#endif
     deriving Typeable
 
 -- The ByteArray# representation is always word sized and aligned but with a
@@ -199,11 +187,7 @@ empty = create 0 (\_ -> return ())
 
 -- | /O(1)/ The length of a 'ShortByteString'.
 length :: ShortByteString -> Int
-#if MIN_VERSION_base(4,3,0)
 length (SBS barr#) = I# (sizeofByteArray# barr#)
-#else
-length (SBS _ len) = len
-#endif
 
 -- | /O(1)/ Test whether a 'ShortByteString' is empty.
 null :: ShortByteString -> Bool
@@ -248,15 +232,15 @@ indexError sbs i =
 -- Internal utils
 
 asBA :: ShortByteString -> BA
-asBA (SBS ba# _len) = BA# ba#
+asBA (SBS ba#) = BA# ba#
 
 create :: Int -> (forall s. MBA s -> ST s ()) -> ShortByteString
 create len fill =
-    runST (do
+    runST $ do
       mba <- newByteArray len
       fill mba
       BA# ba# <- unsafeFreezeByteArray mba
-      return (SBS ba# LEN(len)))
+      return (SBS ba#)
 {-# INLINE create #-}
 
 ------------------------------------------------------------------------
@@ -276,7 +260,7 @@ toShortIO (BS fptr len) = do
     stToIO (copyAddrToByteArray ptr mba 0 len)
     touchForeignPtr fptr
     BA# ba# <- stToIO (unsafeFreezeByteArray mba)
-    return (SBS ba# LEN(len))
+    return (SBS ba#)
 
 
 -- | /O(n)/. Convert a 'ShortByteString' into a 'ByteString'.
@@ -476,7 +460,7 @@ createFromPtr !ptr len =
       mba <- newByteArray len
       copyAddrToByteArray ptr mba 0 len
       BA# ba# <- unsafeFreezeByteArray mba
-      return (SBS ba# LEN(len))
+      return (SBS ba#)
 
 
 ------------------------------------------------------------------------

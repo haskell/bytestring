@@ -102,6 +102,7 @@ module Data.ByteString.Lazy (
         all,                    -- :: (Word8 -> Bool) -> ByteString -> Bool
         maximum,                -- :: ByteString -> Word8
         minimum,                -- :: ByteString -> Word8
+        compareLength,          -- :: ByteString -> Int64 -> Ordering
 
         -- * Building ByteStrings
         -- ** Scans
@@ -178,6 +179,7 @@ module Data.ByteString.Lazy (
         -- * Zipping and unzipping ByteStrings
         zip,                    -- :: ByteString -> ByteString -> [(Word8,Word8)]
         zipWith,                -- :: (Word8 -> Word8 -> c) -> ByteString -> ByteString -> [c]
+        packZipWith,            -- :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString -> ByteString
         unzip,                  -- :: [(Word8,Word8)] -> (ByteString,ByteString)
 
         -- * Ordered ByteStrings
@@ -300,7 +302,7 @@ null _     = False
 -- | /O(c)/ 'length' returns the length of a ByteString as an 'Int64'
 length :: ByteString -> Int64
 length cs = foldlChunks (\n c -> n + fromIntegral (S.length c)) 0 cs
-{-# INLINE length #-}
+{-# INLINE [1] length #-}
 
 infixr 5 `cons`, `cons'` --same as list (:)
 infixl 5 `snoc`
@@ -524,6 +526,85 @@ minimum Empty        = errorEmptyList "minimum"
 minimum (Chunk c cs) = foldlChunks (\n c' -> n `min` S.minimum c')
                                      (S.minimum c) cs
 {-# INLINE minimum #-}
+
+-- | /O(c)/ 'compareLength' compares the length of a 'ByteString' 
+-- to an 'Int64'   
+compareLength :: ByteString -> Int64 -> Ordering
+compareLength _ toCmp | toCmp < 0 = GT
+compareLength Empty toCmp         = compare 0 toCmp
+compareLength (Chunk c cs) toCmp  = compareLength cs (toCmp - fromIntegral (S.length c))
+{-# INLINE compareLength #-}
+
+{-# RULES 
+"ByteString.Lazy length/compareN -> compareLength" [~1] forall t n.
+  compare (length t) n = compareLength t n
+  #-}
+
+{-# RULES 
+"ByteString.Lazy compareN/length -> compareLength" [~1] forall t n.
+  compare n (length t) = negateOrdering $ compareLength t n
+  #-}
+
+{-# RULES 
+"ByteString.Lazy length/==N -> compareLength/==EQ" [~1] forall t n.
+   length t == n = compareLength t n == EQ
+  #-}
+
+{-# RULES 
+"ByteString.Lazy N==/length -> compareLength/==EQ" [~1] forall t n.
+   n == length t = compareLength t n == EQ
+  #-}
+
+{-# RULES 
+"ByteString.Lazy length//=N -> compareLength//=EQ" [~1] forall t n.
+   length t /= n = compareLength t n /= EQ
+  #-}
+
+{-# RULES 
+"ByteString.Lazy N/=/length -> compareLength//=EQ" [~1] forall t n.
+   n /= length t = compareLength t n /= EQ
+  #-}
+
+{-# RULES 
+"ByteString.Lazy length/<N -> compareLength/==LT" [~1] forall t n.
+   length t < n = compareLength t n == LT
+  #-}
+
+{-# RULES 
+"ByteString.Lazy >N/length -> compareLength/==LT" [~1] forall t n.
+   n > length t = compareLength t n == LT
+  #-}
+
+{-# RULES 
+"ByteString.Lazy length/<=N -> compareLength//=GT" [~1] forall t n.
+   length t <= n = compareLength t n /= GT
+  #-}
+
+{-# RULES 
+"ByteString.Lazy <=N/length -> compareLength//=GT" [~1] forall t n.
+   n >= length t = compareLength t n /= GT
+  #-}
+
+{-# RULES 
+"ByteString.Lazy length/>N -> compareLength/==GT" [~1] forall t n.
+   length t > n = compareLength t n == GT
+  #-}
+
+{-# RULES 
+"ByteString.Lazy <N/length -> compareLength/==GT" [~1] forall t n.
+   n < length t = compareLength t n == GT
+  #-}
+
+
+{-# RULES 
+"ByteString.Lazy length/>=N -> compareLength//=LT" [~1] forall t n.
+   length t >= n = compareLength t n /= LT
+  #-}
+
+{-# RULES 
+"ByteString.Lazy >=N/length -> compareLength//=LT" [~1] forall t n.
+   n <= length t = compareLength t n /= LT
+  #-}
 
 -- | The 'mapAccumL' function behaves like a combination of 'map' and
 -- 'foldl'; it applies a function to each element of a ByteString,
@@ -1131,6 +1212,18 @@ zipWith f (Chunk a as) (Chunk b bs) = go a as b bs
     to _ (Chunk x' xs) y ys            | not (S.null y) = go x' xs y  ys
     to _ (Chunk x' xs) _ (Chunk y' ys)                  = go x' xs y' ys
 
+-- | A specialised version of `zipWith` for the common case of a
+-- simultaneous map over two ByteStrings, to build a 3rd.
+packZipWith :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString -> ByteString
+packZipWith _ Empty _ = Empty
+packZipWith _ _ Empty = Empty
+packZipWith f (Chunk a@(S.BS _ al) as) (Chunk b@(S.BS _ bl) bs) = Chunk (S.packZipWith f a b) $
+    case compare al bl of
+        LT -> packZipWith f as $ Chunk (S.drop al b) bs
+        EQ -> packZipWith f as bs
+        GT -> packZipWith f (Chunk (S.drop bl a) as) bs
+{-# INLINE packZipWith #-}
+
 -- | /O(n)/ 'unzip' transforms a list of pairs of bytes into a pair of
 -- ByteStrings. Note that this performs two 'pack' operations.
 unzip :: [(Word8,Word8)] -> (ByteString,ByteString)
@@ -1186,10 +1279,6 @@ copy cs = foldrChunks (Chunk . S.copy) Empty cs
 -- available then they will be returned immediately as a smaller chunk.
 --
 -- The handle is closed on EOF.
---
--- Note: the 'Handle' should be placed in binary mode with
--- 'System.IO.hSetBinaryMode' for 'hGetContentsN' to
--- work correctly.
 --
 hGetContentsN :: Int -> Handle -> IO ByteString
 hGetContentsN k h = lazyRead -- TODO close on exceptions
@@ -1248,10 +1337,6 @@ illegalBufferSize handle fn sz =
 --
 -- File handles are closed on EOF if all the file is read, or through
 -- garbage collection otherwise.
---
--- Note: the 'Handle' should be placed in binary mode with
--- 'System.IO.hSetBinaryMode' for 'hGetContents' to
--- work correctly.
 --
 hGetContents :: Handle -> IO ByteString
 hGetContents = hGetContentsN defaultChunkSize
@@ -1343,6 +1428,12 @@ interact transformer = putStr . transformer =<< getContents
 
 -- ---------------------------------------------------------------------
 -- Internal utilities
+
+-- Required for rewrite rules for 'compareLength'
+negateOrdering :: Ordering -> Ordering
+negateOrdering LT = GT
+negateOrdering EQ = EQ
+negateOrdering GT = LT
 
 -- Common up near identical calls to `error' to reduce the number
 -- constant strings created when compiled:

@@ -21,8 +21,6 @@ Tested-With:         GHC==7.0.3
 Build-Type:          Simple
 Cabal-Version:       >= 1.10
 
-data-files:          wiki-haskell.html
-
 source-repository head
   type:     darcs
   location: http://darcs.haskell.org/bytestring/
@@ -63,7 +61,6 @@ benchmark bench-bytestring-builder
         Data.ByteString.Lazy.Internal
         Data.ByteString.Short.Internal
         Data.ByteString.Unsafe
-        Paths_bench_bytestring
 
   -- cabal complains about ../ dirs. However, this is better than symlinks,
   -- which probably don't work on windows.
@@ -177,7 +174,6 @@ benchmark bench-builder-boundscheck
         Data.ByteString.Lazy.Internal
         Data.ByteString.Short.Internal
         Data.ByteString.Unsafe
-        Paths_bench_bytestring
 
 benchmark bench-builder-csv
   hs-source-dirs:   .. .
@@ -204,7 +200,7 @@ benchmark bench-strict-indices
   main-is:          BenchIndices.hs
   other-modules:    Data.ByteString
                     Data.ByteString.Internal
-                    Data.ByteString.Unsafe 
+                    Data.ByteString.Unsafe
   type:             exitcode-stdio-1.0
   c-sources:        ../cbits/fpstring.c
                     ../cbits/itoa.c

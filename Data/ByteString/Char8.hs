@@ -114,7 +114,9 @@ module Data.ByteString.Char8 (
 
         -- ** Breaking strings
         take,                   -- :: Int -> ByteString -> ByteString
+        takeEnd,                -- :: Int -> ByteString -> ByteString
         drop,                   -- :: Int -> ByteString -> ByteString
+        dropEnd,                -- :: Int -> ByteString -> ByteString
         splitAt,                -- :: Int -> ByteString -> (ByteString, ByteString)
         takeWhile,              -- :: (Char -> Bool) -> ByteString -> ByteString
         takeWhileEnd,           -- :: (Char -> Bool) -> ByteString -> ByteString
@@ -176,6 +178,7 @@ module Data.ByteString.Char8 (
         -- * Zipping and unzipping ByteStrings
         zip,                    -- :: ByteString -> ByteString -> [(Char,Char)]
         zipWith,                -- :: (Char -> Char -> c) -> ByteString -> ByteString -> [c]
+        packZipWith,            -- :: (Char -> Char -> Char) -> ByteString -> ByteString -> ByteString
         unzip,                  -- :: [(Char,Char)] -> (ByteString,ByteString)
 
         -- * Ordered ByteStrings
@@ -248,9 +251,9 @@ import qualified Data.ByteString.Unsafe as B
 -- Listy functions transparently exported
 import Data.ByteString (empty,null,length,tail,init,append
                        ,inits,tails,reverse,transpose
-                       ,concat,take,drop,splitAt,intercalate
-                       ,sort,isPrefixOf,isSuffixOf,isInfixOf
-                       ,stripPrefix,stripSuffix
+                       ,concat,take,takeEnd,drop,dropEnd,splitAt
+                       ,intercalate,sort,isPrefixOf,isSuffixOf
+                       ,isInfixOf,stripPrefix,stripSuffix
                        ,breakSubstring,copy,group
 
                        ,getLine, getContents, putStr, interact
@@ -836,6 +839,14 @@ zip ps qs
 -- of corresponding sums.
 zipWith :: (Char -> Char -> a) -> ByteString -> ByteString -> [a]
 zipWith f = B.zipWith ((. w2c) . f . w2c)
+
+-- | A specialised version of `zipWith` for the common case of a
+-- simultaneous map over two ByteStrings, to build a 3rd.
+packZipWith :: (Char -> Char -> Char) -> ByteString -> ByteString -> ByteString
+packZipWith f = B.packZipWith f'
+    where
+        f' c1 c2 = c2w $ f (w2c c1) (w2c c2)
+{-# INLINE packZipWith #-}
 
 -- | 'unzip' transforms a list of pairs of Chars into a pair of
 -- ByteStrings. Note that this performs two 'pack' operations.

@@ -112,7 +112,9 @@ module Data.ByteString (
 
         -- ** Breaking strings
         take,                   -- :: Int -> ByteString -> ByteString
+        takeEnd,                -- :: Int -> ByteString -> ByteString
         drop,                   -- :: Int -> ByteString -> ByteString
+        dropEnd,                -- :: Int -> ByteString -> ByteString
         splitAt,                -- :: Int -> ByteString -> (ByteString, ByteString)
         takeWhile,              -- :: (Word8 -> Bool) -> ByteString -> ByteString
         takeWhileEnd,           -- :: (Word8 -> Bool) -> ByteString -> ByteString
@@ -167,6 +169,7 @@ module Data.ByteString (
         -- * Zipping and unzipping ByteStrings
         zip,                    -- :: ByteString -> ByteString -> [(Word8,Word8)]
         zipWith,                -- :: (Word8 -> Word8 -> c) -> ByteString -> ByteString -> [c]
+        packZipWith,            -- :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString -> ByteString
         unzip,                  -- :: [(Word8,Word8)] -> (ByteString,ByteString)
 
         -- * Ordered ByteStrings
@@ -264,11 +267,7 @@ import System.IO.Error          (mkIOError, illegalOperationErrorType)
 import Data.Monoid              (Monoid(..))
 #endif
 
-#if MIN_VERSION_base(4,3,0)
 import System.IO                (hGetBufSome)
-#else
-import System.IO                (hWaitForInput, hIsEOF)
-#endif
 
 import Data.IORef
 import GHC.IO.Handle.Internals
@@ -889,6 +888,22 @@ take n ps@(BS x l)
     | otherwise = BS x n
 {-# INLINE take #-}
 
+-- | /O(1)/ @'takeEnd' n xs@ is equivalent to @'drop' ('length' xs - n) xs@.
+-- Takes @n@ elements from end of bytestring.
+--
+-- >>> takeEnd 3 "abcdefg"
+-- "efg"
+-- >>> takeEnd 0 "abcdefg"
+-- ""
+-- >>> takeEnd 4 "abc"
+-- "abc"
+takeEnd :: Int -> ByteString -> ByteString
+takeEnd n ps@(BS x len)
+  | n >= len  = ps
+  | n <= 0    = empty
+  | otherwise = BS (plusForeignPtr x (len - n)) n
+{-# INLINE takeEnd #-}
+
 -- | /O(1)/ 'drop' @n xs@ returns the suffix of @xs@ after the first @n@
 -- elements, or @[]@ if @n > 'length' xs@.
 drop  :: Int -> ByteString -> ByteString
@@ -897,6 +912,22 @@ drop n ps@(BS x l)
     | n >= l    = empty
     | otherwise = BS (plusForeignPtr x n) (l-n)
 {-# INLINE drop #-}
+
+-- | /O(1)/ @'dropEnd' n xs@ is equivalent to @'take' ('length' xs - n) xs@.
+-- Drops @n@ elements from end of bytestring.
+--
+-- >>> dropEnd 3 "abcdefg"
+-- "abcd"
+-- >>> dropEnd 0 "abcdefg"
+-- "abcdefg"
+-- >>> dropEnd 4 "abc"
+-- ""
+dropEnd :: Int -> ByteString -> ByteString
+dropEnd n ps@(BS x len)
+    | n <= 0    = ps
+    | n >= len  = empty
+    | otherwise = BS x (len - n)
+{-# INLINE dropEnd #-}
 
 -- | /O(1)/ 'splitAt' @n xs@ is equivalent to @('take' n xs, 'drop' n xs)@.
 splitAt :: Int -> ByteString -> (ByteString, ByteString)
@@ -1622,14 +1653,10 @@ zipWith f ps qs
     | otherwise = f (unsafeHead ps) (unsafeHead qs) : zipWith f (unsafeTail ps) (unsafeTail qs)
 {-# NOINLINE [1] zipWith #-}
 
---
--- | A specialised version of zipWith for the common case of a
--- simultaneous map over two bytestrings, to build a 3rd. Rewrite rules
--- are used to automatically covert zipWith into zipWith' when a pack is
--- performed on the result of zipWith.
---
-zipWith' :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString -> ByteString
-zipWith' f (BS fp l) (BS fq m) = unsafeDupablePerformIO $
+-- | A specialised version of `zipWith` for the common case of a
+-- simultaneous map over two ByteStrings, to build a 3rd.
+packZipWith :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString -> ByteString
+packZipWith f (BS fp l) (BS fq m) = unsafeDupablePerformIO $
     withForeignPtr fp $ \a ->
     withForeignPtr fq $ \b ->
     create len $ go a b
@@ -1646,11 +1673,11 @@ zipWith' f (BS fp l) (BS fq m) = unsafeDupablePerformIO $
                 zipWith_ (n+1) r
 
     len = min l m
-{-# INLINE zipWith' #-}
+{-# INLINE packZipWith #-}
 
 {-# RULES
 "ByteString specialise zipWith" forall (f :: Word8 -> Word8 -> Word8) p q .
-    zipWith f p q = unpack (zipWith' f p q)
+    zipWith f p q = unpack (packZipWith f p q)
   #-}
 
 -- | /O(n)/ 'unzip' transforms a list of pairs of bytes into a pair of
@@ -1896,22 +1923,7 @@ hGetNonBlocking h i
 --
 hGetSome :: Handle -> Int -> IO ByteString
 hGetSome hh i
-#if MIN_VERSION_base(4,3,0)
     | i >  0    = createAndTrim i $ \p -> hGetBufSome hh p i
-#else
-    | i >  0    = let
-                   loop = do
-                     s <- hGetNonBlocking hh i
-                     if not (null s)
-                        then return s
-                        else do eof <- hIsEOF hh
-                                if eof then return s
-                                       else hWaitForInput hh (-1) >> loop
-                                         -- for this to work correctly, the
-                                         -- Handle should be in binary mode
-                                         -- (see GHC ticket #3808)
-                  in loop
-#endif
     | i == 0    = return empty
     | otherwise = illegalBufferSize hh "hGetSome" i
 

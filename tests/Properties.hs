@@ -439,6 +439,8 @@ prop_unfoldrBL =
     ((\n f a ->                  take n $
           unfoldr f a) :: Int -> (X -> Maybe (W,X)) -> X -> [W])
 
+prop_packZipWithBL   = L.packZipWith `eq3` (zipWith :: (W -> W -> W) -> [W] -> [W] -> [W])
+
 --
 -- And finally, check correspondance between Data.ByteString and List
 --
@@ -540,7 +542,7 @@ prop_scanr1CL f = eqnotnull2
     (scanr1 :: (Char -> Char -> Char) -> [Char] -> [Char])
     (castFn f)
 
--- prop_zipWithPL'   = P.zipWith'  `eq3` (zipWith :: (W -> W -> W) -> [W] -> [W] -> [W])
+prop_packZipWithPL   = P.packZipWith  `eq3` (zipWith :: (W -> W -> W) -> [W] -> [W] -> [W])
 
 prop_zipWithPL    = (P.zipWith  :: (W -> W -> X) -> P   -> P   -> [X]) `eq3`
                       (zipWith  :: (W -> W -> X) -> [W] -> [W] -> [X])
@@ -607,6 +609,7 @@ prop_compare6 xs ys = (not (null ys)) ==> (pack (xs++ys)  `compare` pack xs) == 
 
 prop_compare7 x  y  = x  `compare` y  == (L.singleton x `compare` L.singleton y)
 prop_compare8 xs ys = xs `compare` ys == (L.pack xs `compare` L.pack ys)
+prop_compare9       = (L.singleton 255 `compare` L.singleton 127) == GT
 
 prop_compare7LL (Char8 x) (Char8 y) =
                       x  `compare` y  == (LC.singleton x `compare` LC.singleton y)
@@ -648,6 +651,7 @@ prop_init xs  =
 prop_append1 xs    = (xs ++ xs) == (unpack $ pack xs `L.append` pack xs)
 prop_append2 xs ys = (xs ++ ys) == (unpack $ pack xs `L.append` pack ys)
 prop_append3 xs ys = L.append xs ys == pack (unpack xs ++ unpack ys)
+prop_appendLazy xs = L.head (L.pack [xs] `L.append` error "Tail should be lazy") == xs
 
 prop_map1 f xs   = L.map f (pack xs)    == pack (map f xs)
 prop_map2 f g xs = L.map f (L.map g xs) == L.map (f . g) xs
@@ -710,6 +714,13 @@ prop_all xs a = (all (== a) xs) == (L.all (== a) (pack xs))
 prop_maximum xs = (not (null xs)) ==> (maximum xs) == (L.maximum ( pack xs ))
 prop_minimum xs = (not (null xs)) ==> (minimum xs) == (L.minimum ( pack xs ))
 
+prop_compareLength1 xs  =  (L.pack xs         `L.compareLength` fromIntegral (length xs)) == EQ
+prop_compareLength2 xs c = (L.pack (xs ++ [c]) `L.compareLength` fromIntegral (length xs)) == GT
+prop_compareLength3 xs c = (L.pack xs `L.compareLength` fromIntegral (length (xs ++ [c]))) == LT
+prop_compareLength4 xs c = ((L.pack xs `L.append` L.pack [c] `L.append` L.pack [undefined])
+                            `L.compareLength` fromIntegral (length xs)) == GT
+prop_compareLength5 xs l = L.compareLength xs l == compare (L.length xs) l
+
 prop_replicate1 c =
     forAll arbitrary $ \(Positive n) ->
     unpack (L.replicate (fromIntegral n) c) == replicate n c
@@ -717,7 +728,10 @@ prop_replicate1 c =
 prop_replicate2 c = unpack (L.replicate 0 c) == replicate 0 c
 
 prop_take1 i xs = L.take (fromIntegral i) (pack xs) == pack (take i xs)
+prop_takeEnd i xs = P.takeEnd i xs == P.drop (P.length xs - i) xs
+
 prop_drop1 i xs = L.drop (fromIntegral i) (pack xs) == pack (drop i xs)
+prop_dropEnd i xs = P.dropEnd i xs == P.take (P.length xs - i) xs
 
 prop_splitAt i xs = --collect (i >= 0 && i < length xs) $
     L.splitAt (fromIntegral i) (pack xs) == let (a,b) = splitAt i xs in (pack a, pack b)
@@ -1337,6 +1351,14 @@ prop_readinteger2BB (String8 s) =
     let s' = filter (\c -> c `notElem` ['0'..'9']) s
     in C.readInteger (C.pack s') == Nothing
 
+
+-- Ensure that readInt and readInteger over lazy ByteStrings are not
+-- excessively strict.
+prop_readIntSafe         = (fst . fromJust . D.readInt) (Chunk (C.pack "1z") Empty)         == 1
+prop_readIntUnsafe       = (fst . fromJust . D.readInt) (Chunk (C.pack "2z") undefined)     == 2
+prop_readIntegerSafe     = (fst . fromJust . D.readInteger) (Chunk (C.pack "1z") Empty)     == 1
+prop_readIntegerUnsafe   = (fst . fromJust . D.readInteger) (Chunk (C.pack "2z") undefined) == 2
+
 -- prop_filterChar1BB c xs = (filter (==c) xs) == ((C.unpack . C.filterChar c . C.pack) xs)
 -- prop_filterChar2BB c xs = (C.filter (==c) (C.pack xs)) == (C.filterChar c (C.pack xs))
 -- prop_filterChar3BB c xs = C.filterChar c xs == C.replicate (C.count c xs) c
@@ -1354,7 +1376,12 @@ prop_zip1BB xs ys = P.zip xs ys == zip (P.unpack xs) (P.unpack ys)
 prop_zipWithBB xs ys = P.zipWith (,) xs ys == P.zip xs ys
 prop_zipWithCC xs ys = C.zipWith (,) xs ys == C.zip xs ys
 prop_zipWithLC xs ys = LC.zipWith (,) xs ys == LC.zip xs ys
--- prop_zipWith'BB xs ys = P.pack (P.zipWith (+) xs ys) == P.zipWith' (+) xs ys
+
+prop_packZipWithBB f xs ys = P.pack (P.zipWith f xs ys) == P.packZipWith f xs ys
+prop_packZipWithLL f xs ys = L.pack (L.zipWith f xs ys) == L.packZipWith f xs ys
+prop_packZipWithBC f xs ys = C.pack (C.zipWith f xs ys) == C.packZipWith f xs ys
+prop_packZipWithLC f xs ys = LC.pack (LC.zipWith f xs ys) == LC.packZipWith f xs ys
+
 
 prop_unzipBB x = let (xs,ys) = unzip x in (P.pack xs, P.pack ys) == P.unzip x
 
@@ -1893,6 +1920,7 @@ bl_tests =
     , testProperty "elemIndexEnd"prop_elemIndexEndBL
     , testProperty "elemIndices" prop_elemIndicesBL
     , testProperty "concatMap"   prop_concatMapBL
+    , testProperty "zipWith/packZipWithLazy" prop_packZipWithBL
     ]
 
 ------------------------------------------------------------------------
@@ -2082,10 +2110,9 @@ pl_tests =
     , testProperty "unzip"       prop_unzipPL
     , testProperty "unzip"       prop_unzipLL
     , testProperty "unzip"       prop_unzipCL
-    , testProperty "zipWith"          prop_zipWithPL
---  , testProperty "zipWith"          prop_zipWithCL
-    , testProperty "zipWith rules"   prop_zipWithPL_rules
---  , testProperty "zipWith/zipWith'" prop_zipWithPL'
+    , testProperty "zipWithPL"          prop_zipWithPL
+    , testProperty "zipWithPL rules"   prop_zipWithPL_rules
+    , testProperty "packZipWithPL" prop_packZipWithPL
 
     , testProperty "isPrefixOf"  prop_isPrefixOfPL
     , testProperty "isSuffixOf"  prop_isSuffixOfPL
@@ -2294,6 +2321,12 @@ bb_tests =
     , testProperty "Lazy.readInt"   prop_readintLL
     , testProperty "Lazy.readInt"   prop_readintLL
     , testProperty "Lazy.readInteger" prop_readintegerLL
+
+    , testProperty "readIntSafe"       prop_readIntSafe
+    , testProperty "readIntUnsafe"     prop_readIntUnsafe
+    , testProperty "readIntegerSafe"   prop_readIntegerSafe
+    , testProperty "readIntegerUnsafe" prop_readIntegerUnsafe
+
     , testProperty "mconcat 1"      prop_append1LL_monoid
     , testProperty "mconcat 2"      prop_append2LL_monoid
     , testProperty "mconcat 3"      prop_append3LL_monoid
@@ -2337,11 +2370,13 @@ bb_tests =
     , testProperty "zip"            prop_zipBB
     , testProperty "zip"            prop_zipLC
     , testProperty "zip1"           prop_zip1BB
-    , testProperty "zipWith"        prop_zipWithBB
-    , testProperty "zipWith"        prop_zipWithCC
-    , testProperty "zipWith"        prop_zipWithLC
---  , testProperty "zipWith'"       prop_zipWith'BB
-    , testProperty "unzip"          prop_unzipLC
+    , testProperty "zipWithBB"        prop_zipWithBB
+    , testProperty "zipWithCC"        prop_zipWithCC
+    , testProperty "zipWithLC"        prop_zipWithLC
+    , testProperty "packZipWithBB"    prop_packZipWithBB
+    , testProperty "packZipWithLL"    prop_packZipWithLL
+    , testProperty "packZipWithBC"    prop_packZipWithBC
+    , testProperty "packZipWithLC"    prop_packZipWithLC
     , testProperty "unzip"          prop_unzipBB
     , testProperty "concatMap"      prop_concatMapBB
 --  , testProperty "join/joinByte"  prop_join_spec
@@ -2365,6 +2400,7 @@ ll_tests =
     , testProperty "compare 6"          prop_compare6
     , testProperty "compare 7"          prop_compare7
     , testProperty "compare 8"          prop_compare8
+    , testProperty "compare 9"          prop_compare9
     , testProperty "empty 1"            prop_empty1
     , testProperty "empty 2"            prop_empty2
     , testProperty "pack/unpack"        prop_packunpack
@@ -2384,6 +2420,7 @@ ll_tests =
     , testProperty "last"               prop_last
     , testProperty "init"               prop_init
     , testProperty "append 1"           prop_append1
+    , testProperty "appendLazy"         prop_appendLazy
     , testProperty "append 2"           prop_append2
     , testProperty "append 3"           prop_append3
     , testProperty "map 1"              prop_map1
@@ -2412,10 +2449,17 @@ ll_tests =
     , testProperty "all"                prop_all
     , testProperty "maximum"            prop_maximum
     , testProperty "minimum"            prop_minimum
+    , testProperty "compareLength 1"    prop_compareLength1
+    , testProperty "compareLength 2"    prop_compareLength2
+    , testProperty "compareLength 3"    prop_compareLength3
+    , testProperty "compareLength 4"    prop_compareLength4
+    , testProperty "compareLength 5"    prop_compareLength5
     , testProperty "replicate 1"        prop_replicate1
     , testProperty "replicate 2"        prop_replicate2
     , testProperty "take"               prop_take1
+    , testProperty "takeEnd"            prop_takeEnd
     , testProperty "drop"               prop_drop1
+    , testProperty "dropEnd"            prop_dropEnd
     , testProperty "splitAt"            prop_drop1
     , testProperty "takeWhile"          prop_takeWhile
     , testProperty "dropWhile"          prop_dropWhile
