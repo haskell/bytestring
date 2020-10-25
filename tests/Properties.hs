@@ -32,7 +32,6 @@ import Data.String
 
 import System.Environment
 import System.IO
-import System.IO.Unsafe
 
 import Data.ByteString.Lazy (ByteString(..), pack , unpack)
 import qualified Data.ByteString.Lazy as L
@@ -717,7 +716,7 @@ prop_minimum xs = (not (null xs)) ==> (minimum xs) == (L.minimum ( pack xs ))
 prop_compareLength1 xs  =  (L.pack xs         `L.compareLength` fromIntegral (length xs)) == EQ
 prop_compareLength2 xs c = (L.pack (xs ++ [c]) `L.compareLength` fromIntegral (length xs)) == GT
 prop_compareLength3 xs c = (L.pack xs `L.compareLength` fromIntegral (length (xs ++ [c]))) == LT
-prop_compareLength4 xs c = ((L.pack xs `L.append` L.pack [c] `L.append` L.pack [undefined]) 
+prop_compareLength4 xs c = ((L.pack xs `L.append` L.pack [c] `L.append` L.pack [undefined])
                             `L.compareLength` fromIntegral (length xs)) == GT
 prop_compareLength5 xs l = L.compareLength xs l == compare (L.length xs) l
 
@@ -1492,21 +1491,21 @@ prop_unpackAppendCharsStrict (String8 cs) (String8 cs') =
 -- Unsafe functions
 
 -- Test unsafePackAddress
-prop_unsafePackAddress (CByteString x) = unsafePerformIO $ do
+prop_unsafePackAddress (CByteString x) = ioProperty $ do
         let (p,_,_) = P.toForeignPtr (x `P.snoc` 0)
         y <- withForeignPtr p $ \(Ptr addr) ->
             P.unsafePackAddress addr
         return (y == x)
 
 -- Test unsafePackAddressLen
-prop_unsafePackAddressLen x = unsafePerformIO $ do
+prop_unsafePackAddressLen x = ioProperty $ do
         let i = P.length x
             (p,_,_) = P.toForeignPtr (x `P.snoc` 0)
         y <- withForeignPtr p $ \(Ptr addr) ->
             P.unsafePackAddressLen i addr
         return (y == x)
 
-prop_unsafeUseAsCString x = unsafePerformIO $ do
+prop_unsafeUseAsCString x = ioProperty $ do
         let n = P.length x
         y <- P.unsafeUseAsCString x $ \cstr ->
                     sequence [ do a <- peekElemOff cstr i
@@ -1515,7 +1514,7 @@ prop_unsafeUseAsCString x = unsafePerformIO $ do
                              | i <- [0.. n-1]     ]
         return (and y)
 
-prop_unsafeUseAsCStringLen x = unsafePerformIO $ do
+prop_unsafeUseAsCStringLen x = ioProperty $ do
         let n = P.length x
         y <- P.unsafeUseAsCStringLen x $ \(cstr,_) ->
                     sequence [ do a <- peekElemOff cstr i
@@ -1526,7 +1525,7 @@ prop_unsafeUseAsCStringLen x = unsafePerformIO $ do
 
 prop_internal_invariant x = L.invariant x
 
-prop_useAsCString x = unsafePerformIO $ do
+prop_useAsCString x = ioProperty $ do
         let n = P.length x
         y <- P.useAsCString x $ \cstr ->
                     sequence [ do a <- peekElemOff cstr i
@@ -1535,23 +1534,23 @@ prop_useAsCString x = unsafePerformIO $ do
                              | i <- [0.. n-1]     ]
         return (and y)
 
-prop_packCString (CByteString x) = unsafePerformIO $ do
+prop_packCString (CByteString x) = ioProperty $ do
         y <- P.useAsCString x $ P.unsafePackCString
         return (y == x)
 
-prop_packCString_safe (CByteString x) = unsafePerformIO $ do
+prop_packCString_safe (CByteString x) = ioProperty $ do
         y <- P.useAsCString x $ P.packCString
         return (y == x)
 
-prop_packCStringLen x = unsafePerformIO $ do
+prop_packCStringLen x = ioProperty $ do
         y <- P.useAsCStringLen x $ P.unsafePackCStringLen
         return (y == x && P.length y == P.length x)
 
-prop_packCStringLen_safe x = unsafePerformIO $ do
+prop_packCStringLen_safe x = ioProperty $ do
         y <- P.useAsCStringLen x $ P.packCStringLen
         return (y == x && P.length y == P.length x)
 
-prop_packMallocCString (CByteString x) = unsafePerformIO $ do
+prop_packMallocCString (CByteString x) = ioProperty $ do
 
          let (fp,_,_) = P.toForeignPtr x
          ptr <- mallocArray0 (P.length x) :: IO (Ptr Word8)
@@ -1564,11 +1563,11 @@ prop_packMallocCString (CByteString x) = unsafePerformIO $ do
 
 prop_unsafeFinalize    x =
     P.length x > 0 ==>
-      unsafePerformIO $ do
+      ioProperty $ do
         x <- P.unsafeFinalize x
         return (x == ())
 
-prop_packCStringFinaliser x = unsafePerformIO $ do
+prop_packCStringFinaliser x = ioProperty $ do
         y <- P.useAsCString x $ \cstr -> P.unsafePackCStringFinalizer (castPtr cstr) (P.length x) (return ())
         return (y == x)
 
@@ -1578,7 +1577,7 @@ prop_fromForeignPtr x = (let (a,b,c) = (P.toForeignPtr x)
 ------------------------------------------------------------------------
 -- IO
 
-prop_read_write_file_P x = unsafePerformIO $ do
+prop_read_write_file_P x = ioProperty $ do
     tid <- myThreadId
     let f = "qc-test-"++show tid
     bracket
@@ -1587,7 +1586,7 @@ prop_read_write_file_P x = unsafePerformIO $ do
         (const $ do y <- P.readFile f
                     return (x==y))
 
-prop_read_write_file_C x = unsafePerformIO $ do
+prop_read_write_file_C x = ioProperty $ do
     tid <- myThreadId
     let f = "qc-test-"++show tid
     bracket
@@ -1596,7 +1595,7 @@ prop_read_write_file_C x = unsafePerformIO $ do
         (const $ do y <- C.readFile f
                     return (x==y))
 
-prop_read_write_file_L x = unsafePerformIO $ do
+prop_read_write_file_L x = ioProperty $ do
     tid <- myThreadId
     let f = "qc-test-"++show tid
     bracket
@@ -1605,7 +1604,7 @@ prop_read_write_file_L x = unsafePerformIO $ do
         (const $ do y <- L.readFile f
                     return (x==y))
 
-prop_read_write_file_D x = unsafePerformIO $ do
+prop_read_write_file_D x = ioProperty $ do
     tid <- myThreadId
     let f = "qc-test-"++show tid
     bracket
@@ -1616,7 +1615,7 @@ prop_read_write_file_D x = unsafePerformIO $ do
 
 ------------------------------------------------------------------------
 
-prop_append_file_P x y = unsafePerformIO $ do
+prop_append_file_P x y = ioProperty $ do
     tid <- myThreadId
     let f = "qc-test-"++show tid
     bracket
@@ -1626,7 +1625,7 @@ prop_append_file_P x y = unsafePerformIO $ do
         (const $ do z <- P.readFile f
                     return (z==(x `P.append` y)))
 
-prop_append_file_C x y = unsafePerformIO $ do
+prop_append_file_C x y = ioProperty $ do
     tid <- myThreadId
     let f = "qc-test-"++show tid
     bracket
@@ -1636,7 +1635,7 @@ prop_append_file_C x y = unsafePerformIO $ do
         (const $ do z <- C.readFile f
                     return (z==(x `C.append` y)))
 
-prop_append_file_L x y = unsafePerformIO $ do
+prop_append_file_L x y = ioProperty $ do
     tid <- myThreadId
     let f = "qc-test-"++show tid
     bracket
@@ -1646,7 +1645,7 @@ prop_append_file_L x y = unsafePerformIO $ do
         (const $ do z <- L.readFile f
                     return (z==(x `L.append` y)))
 
-prop_append_file_D x y = unsafePerformIO $ do
+prop_append_file_D x y = ioProperty $ do
     tid <- myThreadId
     let f = "qc-test-"++show tid
     bracket
