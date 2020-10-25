@@ -111,7 +111,7 @@ test-suite test-builder
                     byteorder                  == 1.0.*,
                     dlist                      >= 0.5 && < 0.9,
                     directory,
-                    mtl                        >= 2.0 && < 2.3,
+                    transformers               >= 0.3,
                     HUnit,
                     test-framework,
                     test-framework-hunit,
