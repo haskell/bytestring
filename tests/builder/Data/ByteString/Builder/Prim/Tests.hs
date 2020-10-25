@@ -1,5 +1,3 @@
-{-# LANGUAGE CPP, ScopedTypeVariables, MagicHash #-}
-
 -- |
 -- Copyright   : (c) 2011 Simon Meier
 -- License     : BSD3-style (see LICENSE)
@@ -19,13 +17,8 @@ import           Data.ByteString.Builder
 import qualified Data.ByteString.Builder.Prim          as BP
 import           Data.ByteString.Builder.Prim.TestUtils
 
-#if defined(HAVE_TEST_FRAMEWORK)
 import           Test.Framework
 import           Test.Framework.Providers.QuickCheck2
-#else
-import           TestFramework
-#endif
-
 
 tests :: [Test]
 tests = concat [ testsBinary, testsASCII, testsChar8, testsUtf8

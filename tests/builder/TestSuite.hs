@@ -1,13 +1,8 @@
-{-# LANGUAGE CPP #-}
 module Main where
 
 import qualified Data.ByteString.Builder.Tests
 import qualified Data.ByteString.Builder.Prim.Tests
-#if defined(HAVE_TEST_FRAMEWORK)
 import           Test.Framework (defaultMain, Test, testGroup)
-#else
-import           TestFramework
-#endif
 
 main :: IO ()
 main = defaultMain tests

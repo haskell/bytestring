@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, FlexibleContexts, ScopedTypeVariables, BangPatterns #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
@@ -42,12 +42,8 @@ import           System.IO (hSetEncoding, utf8)
 import           System.Directory
 import           Foreign (ForeignPtr, withForeignPtr, castPtr)
 
-#if defined(HAVE_TEST_FRAMEWORK)
 import           Test.Framework
 import           Test.Framework.Providers.QuickCheck2
-#else
-import           TestFramework
-#endif
 
 import           Test.QuickCheck
                    ( Arbitrary(..), oneof, choose, listOf, elements
