@@ -62,5 +62,6 @@ main = do
          L.writeFile "b" (L8.pack "abc")
          renameFile "b" "a"
 
+    removeFile "a"
 
 n = 1000
