@@ -1754,7 +1754,7 @@ short_tests =
 -- The entry point
 
 main :: IO ()
-main = defaultMainWithArgs tests ["-o 3"] -- timeout if a test runs for >3 secs
+main = defaultMain tests
 
 --
 -- And now a list of all the properties to test.
