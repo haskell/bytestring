@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP, ScopedTypeVariables, BangPatterns #-}
 --
 -- Must have rules off, otherwise the rewrite rules will replace the rhs
 -- with the lhs, and we only end up testing lhs == lhs
@@ -51,12 +50,8 @@ import Prelude hiding (abs)
 
 import Rules
 import QuickCheckUtils
-#if defined(HAVE_TEST_FRAMEWORK)
 import Test.Framework
 import Test.Framework.Providers.QuickCheck2
-#else
-import TestFramework
-#endif
 
 toInt64 :: Int -> Int64
 toInt64 = fromIntegral

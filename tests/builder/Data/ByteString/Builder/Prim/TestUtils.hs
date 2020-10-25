@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP, ScopedTypeVariables #-}
 -- |
 -- Copyright   : (c) 2011 Simon Meier
 -- License     : BSD3-style (see LICENSE)
@@ -83,14 +82,10 @@ import Foreign
 
 import           System.ByteOrder
 
-#if defined(HAVE_TEST_FRAMEWORK)
 import           Test.HUnit (assertBool)
 import           Test.Framework
 import           Test.Framework.Providers.HUnit
 import           Test.Framework.Providers.QuickCheck2
-#else
-import           TestFramework
-#endif
 import           Test.QuickCheck (Arbitrary(..))
 
 -- Helper functions

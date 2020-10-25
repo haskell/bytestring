@@ -40,7 +40,6 @@ test-suite prop-compiled
                     QuickCheck >= 2.10 && < 2.15
   c-sources:        ../cbits/fpstring.c
   include-dirs:     ../include
-  cpp-options:      -DHAVE_TEST_FRAMEWORK=1
   ghc-options:      -fwarn-unused-binds
                     -fno-enable-rewrite-rules
                     -threaded -rtsopts
@@ -66,7 +65,6 @@ test-suite lazy-hclose
                     QuickCheck >= 2.10 && < 2.15
   c-sources:        ../cbits/fpstring.c
   include-dirs:     ../include
-  cpp-options:      -DHAVE_TEST_FRAMEWORK=1
   ghc-options:      -fwarn-unused-binds
                     -fno-enable-rewrite-rules
                     -threaded -rtsopts
@@ -81,7 +79,6 @@ executable regressions
                     test-framework, test-framework-hunit, HUnit
   c-sources:        ../cbits/fpstring.c
   include-dirs:     ../include
-  cpp-options:      -DHAVE_TEST_FRAMEWORK=1
   ghc-options:      -fwarn-unused-binds
                     -fno-enable-rewrite-rules
                     -threaded -rtsopts
@@ -128,7 +125,6 @@ test-suite test-builder
                     test-framework,
                     test-framework-hunit,
                     test-framework-quickcheck2  >= 0.3
-  cpp-options:      -DHAVE_TEST_FRAMEWORK=1
   ghc-options:      -Wall -fwarn-tabs -threaded -rtsopts
   extensions:       CPP, ForeignFunctionInterface
                     UnliftedFFITypes,
