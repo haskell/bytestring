@@ -1,6 +1,5 @@
 {-# LANGUAGE BangPatterns     #-}
 {-# LANGUAGE CPP              #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
@@ -17,9 +16,9 @@ module Data.ByteString.Builder.Tests (tests) where
 
 import           Control.Applicative
 import           Control.Monad (unless)
-import           Control.Monad.State (StateT, evalStateT, put, get)
-import           Control.Monad.Trans (lift)
-import           Control.Monad.Writer (execWriter, tell)
+import           Control.Monad.Trans.State (StateT, evalStateT, evalState, put, get)
+import           Control.Monad.Trans.Class (lift)
+import           Control.Monad.Trans.Writer (WriterT, execWriterT, tell)
 
 import           Foreign (minusPtr)
 
@@ -211,9 +210,10 @@ data Recipe = Recipe Strategy Int Int L.ByteString [Action]
 
 renderRecipe :: Recipe -> [Word8]
 renderRecipe (Recipe _ firstSize _ cont as) =
-    D.toList $ execWriter (evalStateT (traverse_ renderAction as) firstSize)
+    D.toList $ evalState (execWriterT (traverse_ renderAction as)) firstSize
                  `D.append` renderLBS cont
   where
+    renderAction :: Monad m => Action -> WriterT (D.DList Word8) (StateT Int m) ()
     renderAction (SBS Hex bs)   = tell $ foldMap hexWord8 $ S.unpack bs
     renderAction (SBS _ bs)     = tell $ D.fromList $ S.unpack bs
     renderAction (LBS Hex lbs)  = tell $ foldMap hexWord8 $ L.unpack lbs
@@ -227,10 +227,9 @@ renderRecipe (Recipe _ firstSize _ cont as) =
     renderAction (FDec f)       = tell $ D.fromList $ encodeASCII $ show f
     renderAction (DDec d)       = tell $ D.fromList $ encodeASCII $ show d
     renderAction (ModState i)   = do
-        s <- get
+        s <- lift get
         tell (D.fromList $ encodeASCII $ show s)
-        put (s - i)
-
+        lift $ put (s - i)
 
     renderLBS = D.fromList . L.unpack
     hexWord8  = D.fromList . wordHexFixed_list
