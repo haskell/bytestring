@@ -671,16 +671,16 @@ c2w = fromIntegral . ord
 {-# INLINE c2w #-}
 
 -- | Selects words corresponding to white-space characters in the Latin-1 range
--- ordered by frequency.
 isSpaceWord8 :: Word8 -> Bool
-isSpaceWord8 w =
-    w == 0x20 ||
-    w == 0x0A || -- LF, \n
-    w == 0x09 || -- HT, \t
-    w == 0x0C || -- FF, \f
-    w == 0x0D || -- CR, \r
-    w == 0x0B || -- VT, \v
-    w == 0xA0    -- spotted by QC..
+isSpaceWord8 w8 =
+    -- Avoid the cost of narrowing arithmetic results to Word8,
+    -- the conversion from Word8 to Word is free.
+    let w :: Word
+        !w = fromIntegral w8
+     in w - 0x21 > 0x7e   -- not [x21..0x9f]
+        && ( w == 0x20    -- SP
+          || w - 0x09 < 5 -- HT, NL, VT, FF, CR
+          || w == 0xa0 )  -- NBSP
 {-# INLINE isSpaceWord8 #-}
 
 -- | Selects white-space characters in the Latin-1 range
