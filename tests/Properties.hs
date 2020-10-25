@@ -1209,22 +1209,18 @@ prop_elemIndexEnd1LL c xs = (L.elemIndexEnd c (L.pack xs)) ==
                                 Nothing -> Nothing
                                 Just i  -> Just (fromIntegral (length xs) -1 -i))
 
-prop_elemIndexEnd2LL c xs = (L.elemIndexEnd c (L.pack xs)) ==
-                           ((-) (fromIntegral (length xs) - 1) `fmap` L.elemIndex c (L.pack $ reverse xs))
-
 prop_elemIndexEnd1LC c xs = (LC.elemIndexEnd c (LC.pack xs)) ==
                            (case LC.elemIndex c (LC.pack (reverse xs)) of
                                  Nothing -> Nothing
                                  Just i  -> Just (fromIntegral (length xs) -1 -i))
-
-prop_elemIndexEnd2LC c xs = (LC.elemIndexEnd c (LC.pack xs)) ==
-                           ((-) (fromIntegral (length xs) - 1) `fmap` LC.elemIndex c (LC.pack $ reverse xs))
 
 prop_elemIndicesBB xs c = elemIndices c xs == P.elemIndices c (P.pack xs)
 
 prop_findIndexBB xs a = (findIndex (==a) xs) == (P.findIndex (==a) (P.pack xs))
 
 prop_findIndexEndBB xs a = (findIndexEnd (==a) xs) == (P.findIndexEnd (==a) (P.pack xs))
+
+prop_findIndexEndLC xs a = (findIndexEnd (==a) xs) == (LC.findIndexEnd (==a) (LC.pack xs))
 
 prop_findIndiciesBB xs c = (findIndices (==c) xs) == (P.findIndices (==c) (P.pack xs))
 
@@ -2240,6 +2236,7 @@ bb_tests =
     , testProperty "elemIndex 2"    prop_elemIndex2BB
     , testProperty "findIndex"      prop_findIndexBB
     , testProperty "findIndexEnd"   prop_findIndexEndBB
+    , testProperty "findIndexEnd"   prop_findIndexEndLC
     , testProperty "findIndicies"   prop_findIndiciesBB
     , testProperty "elemIndices"    prop_elemIndicesBB
     , testProperty "find"           prop_findBB
@@ -2265,9 +2262,7 @@ bb_tests =
     , testProperty "elemIndexEnd 1" prop_elemIndexEnd1CC
     , testProperty "elemIndexEnd 2" prop_elemIndexEnd2BB
     , testProperty "elemIndexEnd 1" prop_elemIndexEnd1LL
-    , testProperty "elemIndexEnd 2" prop_elemIndexEnd2LL
     , testProperty "elemIndexEnd 1" prop_elemIndexEnd1LC
-    , testProperty "elemIndexEnd 2" prop_elemIndexEnd2LC
 --  , testProperty "words'"         prop_wordsBB'
 --  , testProperty "lines'"         prop_linesBB'
 --  , testProperty "dropSpaceEnd"   prop_dropSpaceEndBB
