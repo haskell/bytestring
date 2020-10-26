@@ -126,6 +126,7 @@ import Data.String              (IsString(..))
 
 import Control.Exception        (assert)
 
+import Data.Bits                ((.&.))
 import Data.Char                (ord)
 import Data.Word                (Word8)
 
@@ -677,10 +678,11 @@ isSpaceWord8 w8 =
     -- the conversion from Word8 to Word is free.
     let w :: Word
         !w = fromIntegral w8
-     in w - 0x21 > 0x7e   -- not [x21..0x9f]
-        && ( w == 0x20    -- SP
-          || w - 0x09 < 5 -- HT, NL, VT, FF, CR
-          || w == 0xa0 )  -- NBSP
+     in w .&. 0x50 == 0    -- Quick non-whitespace filter
+        && w - 0x21 > 0x7e -- Second non-whitespace filter
+        && ( w == 0x20     -- SP
+          || w == 0xa0     -- NBSP
+          || w - 0x09 < 5) -- HT, NL, VT, FF, CR
 {-# INLINE isSpaceWord8 #-}
 
 -- | Selects white-space characters in the Latin-1 range
