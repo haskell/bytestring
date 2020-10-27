@@ -654,6 +654,12 @@ times :: Integral a => a -> ByteString -> ByteString
 times n (BS fp len)
   | n < 0 = error "stimes: non-negative multiplier expected"
   | n == 0 = mempty
+  | len == 0 = mempty
+  | n == 1 = BS fp len
+  | len == 1 = unsafeCreate size $ \destptr ->
+    withForeignPtr fp $ \p -> do
+      byte <- peek p
+      memset destptr byte (fromIntegral size) >> return ()
   | otherwise = unsafeCreate size $ \destptr ->
     withForeignPtr fp $ \p -> do
       memcpy destptr p len
