@@ -279,12 +279,11 @@ concat css0 = to css0
 -- | Repeats the given ByteString n times.
 times :: Integral a => a -> ByteString -> ByteString
 times 0 _ = Empty
-times n Empty
+times n lbs0
   | n < 0 = error "stimes: non-negative multiplier expected"
-  | otherwise = Empty
-times n lbs0@(Chunk bs lbs)
-  | n < 0 = error "stimes: non-negative multiplier expected"
-  | otherwise = Chunk bs (go lbs)
+  | otherwise = case lbs0 of
+    Empty -> Empty
+    Chunk bs lbs -> Chunk bs (go lbs)
   where
     go Empty = times (n-1) lbs0
     go (Chunk c cs) = Chunk c (go cs)
