@@ -687,14 +687,7 @@ isSpaceWord8 w8 =
 
 -- | Selects white-space characters in the Latin-1 range
 isSpaceChar8 :: Char -> Bool
-isSpaceChar8 c =
-    c == ' '     ||
-    c == '\t'    ||
-    c == '\n'    ||
-    c == '\r'    ||
-    c == '\f'    ||
-    c == '\v'    ||
-    c == '\xa0'
+isSpaceChar8 = isSpaceWord8 . c2w
 {-# INLINE isSpaceChar8 #-}
 
 overflowError :: String -> a
