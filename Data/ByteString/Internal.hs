@@ -128,7 +128,7 @@ import Control.Exception        (assert)
 
 import Data.Bits                ((.&.))
 import Data.Char                (ord)
-import Data.Word                (Word8)
+import Data.Word                (Word8, Word)
 
 import Data.Typeable            (Typeable)
 import Data.Data                (Data(..), mkNoRepType)
