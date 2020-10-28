@@ -1816,31 +1816,48 @@ hGetLine h =
                   else ioe_EOF
        else haveBuf h_ buf' len xss
 
-  haveBuf h_@Handle__{haByteBuffer}
+  haveBuf h_@Handle__{haByteBuffer, haInputNL}
           buf@Buffer{ bufRaw=raw, bufR=w, bufL=r }
           len xss =
     do
-        off <- findEOL r w raw
+        (off, sizeNewline) <- findEOL haInputNL r w raw
         let new_len = len + off - r
         xs <- mkPS raw r off
 
       -- if eol == True, then off is the offset of the '\n'
       -- otherwise off == w and the buffer is now empty.
         if off /= w
-            then do if w == off + 1
-                            then writeIORef haByteBuffer buf{ bufL=0, bufR=0 }
-                            else writeIORef haByteBuffer buf{ bufL = off + 1 }
-                    mkBigPS new_len (xs:xss)
+            then do
+                -- If off + sizeNewline == w then the remaining buffer is empty
+                if (off + sizeNewline) == w
+                  then writeIORef haByteBuffer buf{ bufL=0, bufR=0 }
+                  else writeIORef haByteBuffer buf{ bufL = off + sizeNewline }
+                mkBigPS new_len (xs:xss)
             else fill h_ buf{ bufL=0, bufR=0 } new_len (xs:xss)
 
   -- find the end-of-line character, if there is one
-  findEOL r w raw
-        | r == w = return w
+  findEOL haInputNL r w raw
+        | r == w = return (w, 0)
         | otherwise =  do
             c <- readWord8Buf raw r
             if c == fromIntegral (ord '\n')
-                then return r -- NB. not r+1: don't include the '\n'
-                else findEOL (r+1) w raw
+                then do
+                   -- NB. not r+1: don't include the '\n'
+                   -- Also, it is important that it ends the line in both modes
+                   -- To match System.IO.hGetLine's behavior
+                  return (r, 1)
+                else if haInputNL == CRLF && c == fromIntegral (ord '\r') && r+1 < w
+                  then do
+                    c' <- readWord8Buf raw (r+1)
+                    if c' == fromIntegral (ord '\n')
+                      then return (r, 2)  -- NB. not r+1 or r+2: don't include the '\r\n'
+                      else do
+                        -- We cannot jump 2 characters ahead
+                        -- because if we encountered '\r\r\n'
+                        -- We would miss the pattern starting on the second '\r'
+                        findEOL haInputNL (r+1) w raw
+                  else findEOL haInputNL (r+1) w raw
+
 
 mkPS :: RawBuffer Word8 -> Int -> Int -> IO ByteString
 mkPS buf start end =
