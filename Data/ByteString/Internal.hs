@@ -108,10 +108,10 @@ import Foreign.C.Types          (CInt, CSize)
 import Foreign.C.String         (CString)
 
 #if MIN_VERSION_base(4,13,0)
-import Data.Semigroup           (Semigroup (sconcat))
+import Data.Semigroup           (Semigroup (sconcat, stimes))
 import Data.List.NonEmpty       (NonEmpty ((:|)))
 #elif MIN_VERSION_base(4,9,0)
-import Data.Semigroup           (Semigroup ((<>), sconcat))
+import Data.Semigroup           (Semigroup ((<>), sconcat, stimes))
 import Data.List.NonEmpty       (NonEmpty ((:|)))
 #endif
 
@@ -241,6 +241,7 @@ instance Ord ByteString where
 instance Semigroup ByteString where
     (<>)    = append
     sconcat (b:|bs) = concat (b:bs)
+    stimes = times
 #endif
 
 instance Monoid ByteString where
@@ -647,6 +648,31 @@ concat = \bss0 -> goLen0 bss0 bss0
 "ByteString concat [bs] -> bs" forall x.
    concat [x] = x
  #-}
+
+-- | /O(log n)/ Repeats the given ByteString n times.
+times :: Integral a => a -> ByteString -> ByteString
+times n (BS fp len)
+  | n < 0 = error "stimes: non-negative multiplier expected"
+  | n == 0 = mempty
+  | n == 1 = BS fp len
+  | len == 0 = mempty
+  | len == 1 = unsafeCreate size $ \destptr ->
+    withForeignPtr fp $ \p -> do
+      byte <- peek p
+      memset destptr byte (fromIntegral size) >> return ()
+  | otherwise = unsafeCreate size $ \destptr ->
+    withForeignPtr fp $ \p -> do
+      memcpy destptr p len
+      fillFrom destptr len
+  where
+    size = len * (fromIntegral n)
+
+    fillFrom :: Ptr Word8 -> Int -> IO ()
+    fillFrom destptr copied
+      | 2 * copied < size = do
+        memcpy (destptr `plusPtr` copied) destptr copied
+        fillFrom destptr (copied * 2)
+      | otherwise = memcpy (destptr `plusPtr` copied) destptr (size - copied)
 
 -- | Add two non-negative numbers. Errors out on overflow.
 checkedAdd :: String -> Int -> Int -> Int
