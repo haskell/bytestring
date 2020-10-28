@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP, BangPatterns #-}
 --
 -- Must have rules off, otherwise the rewrite rules will replace the rhs
 -- with the lhs, and we only end up testing lhs == lhs
