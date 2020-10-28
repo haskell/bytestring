@@ -538,70 +538,31 @@ compareLength (Chunk c cs) toCmp  = compareLength cs (toCmp - fromIntegral (S.le
 {-# RULES 
 "ByteString.Lazy length/compareN -> compareLength" [~1] forall t n.
   compare (length t) n = compareLength t n
-  #-}
-
-{-# RULES 
 "ByteString.Lazy compareN/length -> compareLength" [~1] forall t n.
-  compare n (length t) = negateOrdering $ compareLength t n
-  #-}
-
-{-# RULES 
+  -- compare EQ LT = GT and vice versa
+  compare n (length t) = compare EQ $ compareLength t n
 "ByteString.Lazy length/==N -> compareLength/==EQ" [~1] forall t n.
    length t == n = compareLength t n == EQ
-  #-}
-
-{-# RULES 
 "ByteString.Lazy N==/length -> compareLength/==EQ" [~1] forall t n.
    n == length t = compareLength t n == EQ
-  #-}
-
-{-# RULES 
 "ByteString.Lazy length//=N -> compareLength//=EQ" [~1] forall t n.
    length t /= n = compareLength t n /= EQ
-  #-}
-
-{-# RULES 
 "ByteString.Lazy N/=/length -> compareLength//=EQ" [~1] forall t n.
    n /= length t = compareLength t n /= EQ
-  #-}
-
-{-# RULES 
 "ByteString.Lazy length/<N -> compareLength/==LT" [~1] forall t n.
    length t < n = compareLength t n == LT
-  #-}
-
-{-# RULES 
 "ByteString.Lazy >N/length -> compareLength/==LT" [~1] forall t n.
    n > length t = compareLength t n == LT
-  #-}
-
-{-# RULES 
 "ByteString.Lazy length/<=N -> compareLength//=GT" [~1] forall t n.
    length t <= n = compareLength t n /= GT
-  #-}
-
-{-# RULES 
 "ByteString.Lazy <=N/length -> compareLength//=GT" [~1] forall t n.
    n >= length t = compareLength t n /= GT
-  #-}
-
-{-# RULES 
 "ByteString.Lazy length/>N -> compareLength/==GT" [~1] forall t n.
    length t > n = compareLength t n == GT
-  #-}
-
-{-# RULES 
 "ByteString.Lazy <N/length -> compareLength/==GT" [~1] forall t n.
    n < length t = compareLength t n == GT
-  #-}
-
-
-{-# RULES 
 "ByteString.Lazy length/>=N -> compareLength//=LT" [~1] forall t n.
    length t >= n = compareLength t n /= LT
-  #-}
-
-{-# RULES 
 "ByteString.Lazy >=N/length -> compareLength//=LT" [~1] forall t n.
    n <= length t = compareLength t n /= LT
   #-}
@@ -1428,12 +1389,6 @@ interact transformer = putStr . transformer =<< getContents
 
 -- ---------------------------------------------------------------------
 -- Internal utilities
-
--- Required for rewrite rules for 'compareLength'
-negateOrdering :: Ordering -> Ordering
-negateOrdering LT = GT
-negateOrdering EQ = EQ
-negateOrdering GT = LT
 
 -- Common up near identical calls to `error' to reduce the number
 -- constant strings created when compiled:
