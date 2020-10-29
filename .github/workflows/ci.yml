@@ -1,4 +1,4 @@
-name: Build
+name: ci
 on:
   push:
     branches:
@@ -53,9 +53,5 @@ jobs:
     - name: Bench
       run: |
         cd bench
-        cabal bench bench-bytestring-builder -O0 --benchmark-options "--quick --min-duration=0 --include-first-iter"
-        cabal bench bench-builder-boundscheck -O0 --benchmark-options "--quick --min-duration=0 --include-first-iter"
-        cabal bench bench-builder-csv -O0 --benchmark-options "--quick --min-duration=0 --include-first-iter"
-        cabal bench bench-strict-indices -O0 --benchmark-options "--quick --min-duration=0 --include-first-iter"
-
+        cabal bench -O0 --benchmark-options "--quick --min-duration=0 --include-first-iter"
 
