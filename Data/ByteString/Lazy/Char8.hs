@@ -804,11 +804,10 @@ unwords = intercalate (singleton ' ')
 -- input string.  If the sequence of digits decodes to a value larger than can
 -- be represented by an 'Int', the returned value will be 'Nothing'.
 --
--- This function will not read an /unreasonably/ long stream of leading
--- zero digits when trying to decode a number.  When reading the first
--- non-zero digit would require requesting a new chunk and ~32KB of
--- leading zeros have already been read, the conversion is aborted and
--- 'Nothing' is returned.
+-- Note that a lazy 'ByteString' may, after an optional plus or minus sign,
+-- consist of an unbounded stream of @0@ digits, in which case 'readInt'
+-- would diverge (never return).  If that's a concern, you can use 'take' to
+-- obtain a bounded initial segment to pass to 'readInt' instead.
 --
 -- 'readInt' does not ignore leading whitespace, the value must start
 -- immediately at the beginning of the input stream.
@@ -830,14 +829,6 @@ readInt bs = case L.uncons bs of
     -- | Read a decimal 'Int' without overflow.  The caller has already
     -- read any explicit sign (setting @positive@ to 'False' as needed).
     -- Here we just deal with the digits.
-    --
-    -- In order to avoid reading an unreasonable number of zero bytes before
-    -- ultimately reporting an overflow, a limit of ~32kB is imposed on the
-    -- number of bytes to read before giving up on /unreasonably long/ input
-    -- that is padded with so many zeros, that it could only be a memory
-    -- exhaustion attack.  Callers who want to trim very long runs of
-    -- zeros could note the sign, and skip leading zeros before calling
-    -- function.  Few if any should want that.
     {-# INLINE readDec #-}
     readDec !positive = loop 0 0
       where
@@ -853,12 +844,9 @@ readInt bs = case L.uncons bs of
                          | not inrange -> Nothing
                          | n < l -- input not entirely digits
                            -> result (nbytes + n) a $ Chunk (B.drop n c) cs
-                         | a > 0 || nbytes + n < defaultChunkSize
-                           -- if all zeros, not yet too many
-                           -> loop (nbytes + n) a cs
                          | otherwise
-                           -- too many zeros
-                           -> Nothing
+                           -- read more digits from the remaining chunks
+                           -> loop (nbytes + n) a cs
 
         -- | Process as many digits as we can, returning the additional
         -- number of digits found, the updated accumulator, and whether
