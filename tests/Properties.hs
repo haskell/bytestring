@@ -1,4 +1,7 @@
-{-# LANGUAGE CPP, BangPatterns #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE MagicHash #-}
+{-# LANGUAGE UnboxedTuples #-}
 --
 -- Must have rules off, otherwise the rewrite rules will replace the rhs
 -- with the lhs, and we only end up testing lhs == lhs
@@ -29,6 +32,8 @@ import Data.Monoid
 #if MIN_VERSION_base(4,9,0)
 import Data.Semigroup
 #endif
+import GHC.Exts (Int(..), newPinnedByteArray#, unsafeFreezeByteArray#)
+import GHC.ST (ST(..), runST)
 
 import Text.Printf
 import Data.String
@@ -1733,6 +1738,13 @@ prop_short_show' xs =
 prop_short_read xs =
     read (show (Short.pack xs)) == Short.pack xs
 
+prop_short_pinned :: NonNegative Int -> Property
+prop_short_pinned (NonNegative (I# len#)) = runST $ ST $ \s ->
+  case newPinnedByteArray# len# s of
+    (# s', mba# #) -> case unsafeFreezeByteArray# mba# s' of
+      (# s'', ba# #) -> let sbs = Short.SBS ba# in
+        (# s'', sbs === Short.toShort (Short.fromShort sbs) #)
+
 stripSuffix :: [W] -> [W] -> Maybe [W]
 stripSuffix xs ys = reverse <$> stripPrefix (reverse xs) (reverse ys)
 
@@ -1758,6 +1770,7 @@ short_tests =
     , testProperty "show"                     prop_short_show
     , testProperty "show'"                    prop_short_show'
     , testProperty "read"                     prop_short_read
+    , testProperty "pinned"                   prop_short_pinned
     ]
 
 ------------------------------------------------------------------------
