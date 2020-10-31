@@ -564,17 +564,17 @@ foldl1' f ps = case uncons ps of
 -- and thus must be applied to non-empty 'ByteString's
 -- An exception will be thrown in the case of an empty ByteString.
 foldr1 :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
-foldr1 f ps
-    | null ps   = errorEmptyList "foldr1"
-    | otherwise = foldr f (unsafeLast ps) (unsafeInit ps)
+foldr1 f ps = case unsnoc ps of
+  Nothing -> errorEmptyList "foldr1"
+  Just (b, c) -> foldr f c b
 {-# INLINE foldr1 #-}
 
 -- | 'foldr1'' is a variant of 'foldr1', but is strict in the
 -- accumulator.
 foldr1' :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
-foldr1' f ps
-    | null ps   = errorEmptyList "foldr1"
-    | otherwise = foldr' f (unsafeLast ps) (unsafeInit ps)
+foldr1' f ps = case unsnoc ps of
+  Nothing -> errorEmptyList "foldr1'"
+  Just (b, c) -> foldr' f c b
 {-# INLINE foldr1' #-}
 
 -- ---------------------------------------------------------------------
@@ -816,9 +816,9 @@ scanr f v (BS fp len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a ->
 
 -- | 'scanr1' is a variant of 'scanr' that has no starting value argument.
 scanr1 :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString
-scanr1 f ps
-    | null ps   = empty
-    | otherwise = scanr f (unsafeLast ps) (unsafeInit ps)
+scanr1 f ps = case unsnoc ps of
+  Nothing -> empty
+  Just (b, c) -> scanr f c b
 {-# INLINE scanr1 #-}
 
 -- ---------------------------------------------------------------------
@@ -1221,19 +1221,19 @@ split w (BS x l) = loop 0
 -- supply their own equality test. It is about 40% faster than
 -- /groupBy (==)/
 group :: ByteString -> [ByteString]
-group xs
-    | null xs   = []
-    | otherwise = ys : group zs
+group xs = case uncons xs of
+  Nothing     -> []
+  Just (h, _) -> ys : group zs
     where
-        (ys, zs) = spanByte (unsafeHead xs) xs
+        (ys, zs) = spanByte h xs
 
 -- | The 'groupBy' function is the non-overloaded version of 'group'.
 groupBy :: (Word8 -> Word8 -> Bool) -> ByteString -> [ByteString]
-groupBy k xs
-    | null xs   = []
-    | otherwise = unsafeTake n xs : groupBy k (unsafeDrop n xs)
+groupBy k xs = case uncons xs of
+  Nothing     -> []
+  Just (h, t) -> unsafeTake n xs : groupBy k (unsafeDrop n xs)
     where
-        n = 1 + findIndexOrEnd (not . k (unsafeHead xs)) (unsafeTail xs)
+        n = 1 + findIndexOrEnd (not . k h) t
 
 -- | /O(n)/ The 'intercalate' function takes a 'ByteString' and a list of
 -- 'ByteString's and concatenates the list after interspersing the first
@@ -2079,7 +2079,9 @@ moduleErrorMsg fun msg = "Data.ByteString." ++ fun ++ ':':' ':msg
 
 -- Find from the end of the string using predicate
 findFromEndUntil :: (Word8 -> Bool) -> ByteString -> Int
-findFromEndUntil f ps@(BS x l)
-  | null ps = 0
-  | f (unsafeLast ps) = l
-  | otherwise = findFromEndUntil f (BS x (l - 1))
+findFromEndUntil f ps@(BS x l) = case unsnoc ps of
+  Nothing     -> 0
+  Just (_, b) ->
+    if f b
+      then l
+      else findFromEndUntil f (BS x (l - 1))
