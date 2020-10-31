@@ -459,15 +459,13 @@ foldr k z = foldrChunks (flip (S.foldr k)) z
 -- | 'foldl1' is a variant of 'foldl' that has no starting value
 -- argument, and thus must be applied to non-empty 'ByteString's.
 foldl1 :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
-foldl1 f (Chunk c cs) = case S.uncons c of
-  Nothing -> errorEmptyList "foldl1"
-  Just (h, t) -> foldl f h (Chunk t cs)
+foldl1 _ Empty        = errorEmptyList "foldl1"
+foldl1 f (Chunk c cs) = foldl f (S.unsafeHead c) (Chunk (S.unsafeTail c) cs)
 
 -- | 'foldl1'' is like 'foldl1', but strict in the accumulator.
 foldl1' :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
-foldl1' f (Chunk c cs) = case S.uncons c of
-  Nothing -> errorEmptyList "foldl1"
-  Just (h, t) -> foldl' f h (Chunk t cs)
+foldl1' _ Empty        = errorEmptyList "foldl1'"
+foldl1' f (Chunk c cs) = foldl' f (S.unsafeHead c) (Chunk (S.unsafeTail c) cs)
 
 -- | 'foldr1' is a variant of 'foldr' that has no starting value argument,
 -- and thus must be applied to non-empty 'ByteString's
