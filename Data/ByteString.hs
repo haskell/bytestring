@@ -278,6 +278,7 @@ import GHC.IO                   (unsafePerformIO, unsafeDupablePerformIO)
 import Data.Char                (ord)
 import Foreign.Marshal.Utils    (copyBytes)
 
+import GHC.Prim                 (Word8#)
 import GHC.Base                 (build)
 import GHC.Word hiding (Word8)
 
