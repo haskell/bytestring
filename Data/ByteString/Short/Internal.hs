@@ -109,6 +109,14 @@ import Prelude ( Eq(..), Ord(..), Ordering(..), Read(..), Show(..)
                , (+), (-), fromIntegral
                , return )
 
+#if MIN_VERSION_base(4,15,0)
+import GHC.Exts ( extendWord8#, narrowWord8# )
+#else
+import GHC.Prim (Word#)
+extendWord8#, narrowWord8# :: Word# -> Word#
+extendWord8#  w = w
+narrowWord8#  w = w
+#endif
 
 -- | A compact representation of a 'Word8' vector.
 --
@@ -469,7 +477,7 @@ indexCharArray :: BA -> Int -> Char
 indexCharArray (BA# ba#) (I# i#) = C# (indexCharArray# ba# i#)
 
 indexWord8Array :: BA -> Int -> Word8
-indexWord8Array (BA# ba#) (I# i#) = W8# (indexWord8Array# ba# i#)
+indexWord8Array (BA# ba#) (I# i#) = W8# (narrowWord8# (indexWord8Array# ba# i#))
 
 newByteArray :: Int -> ST s (MBA s)
 newByteArray (I# len#) =
@@ -495,7 +503,7 @@ writeCharArray (MBA# mba#) (I# i#) (C# c#) =
 
 writeWord8Array :: MBA s -> Int -> Word8 -> ST s ()
 writeWord8Array (MBA# mba#) (I# i#) (W8# w#) =
-  ST $ \s -> case writeWord8Array# mba# i# w# s of
+  ST $ \s -> case writeWord8Array# mba# i# (extendWord8# w#) s of
                s -> (# s, () #)
 
 copyAddrToByteArray :: Ptr a -> MBA RealWorld -> Int -> Int -> ST RealWorld ()

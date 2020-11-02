@@ -282,7 +282,7 @@ import GHC.IO                   (unsafePerformIO, unsafeDupablePerformIO)
 import Data.Char                (ord)
 import Foreign.Marshal.Utils    (copyBytes)
 
-import GHC.Prim                 (Word#)
+import GHC.Prim                 (Word8#)
 import GHC.Base                 (build)
 import GHC.Word hiding (Word8)
 
@@ -985,7 +985,7 @@ splitWith pred_ (PS fp off len) = splitWith0 pred# off len fp
             withForeignPtr fp $ \p ->
               splitLoop pred' p 0 off' len' fp'
 
-        splitLoop :: (Word# -> Bool)
+        splitLoop :: (Word8# -> Bool)
                   -> Ptr Word8
                   -> Int -> Int -> Int
                   -> ForeignPtr Word8
