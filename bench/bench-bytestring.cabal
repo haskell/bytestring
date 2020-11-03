@@ -88,7 +88,7 @@ benchmark bench-builder-csv
   import:           bench-stanza
   main-is:          CSV.hs
   type:             exitcode-stdio-1.0
-  build-depends:    bytestring, dlist, text, utf8-light, utf8-string
+  build-depends:    bytestring, dlist, text
 
 benchmark bench-strict-indices
   import:           bench-stanza
