@@ -1000,18 +1000,23 @@ unwords = intercalate (singleton ' ')
 -- 'readInt' does not ignore leading whitespace, the value must start
 -- immediately at the beginning of the input stream.
 --
--- ==== __Example__
--- >>> case readInt str of
--- >>>     Just (n, rest)  -> print n >> gladly rest
--- >>>     Nothing         -> sadly Nothing
+-- ==== __Examples__
+-- >>> readInt "-1729 = (-10)^3 + (-9)^3 = (-12)^3 + (-1)^3"
+-- Just (-1729," = (-10)^3 + (-9)^3 = (-12)^3 + (-1)^3")
+-- >>> readInt "not a decimal number")
+-- Nothing
+-- >>> readInt "12345678901234567890 overflows maxBound")
+-- Nothing
+-- >>> readInt "-12345678901234567890 underflows minBound")
+-- Nothing
 --
 readInt :: ByteString -> Maybe (Int, ByteString)
 {-# INLINABLE readInt #-}
 readInt bs = case B.uncons bs of
-    Just (w, rest) | w - 0x30 <= 9 -> readDec True bs
-                   | w == 0x2b     -> readDec True rest
-                   | w == 0x2d     -> readDec False rest
-    _                              -> Nothing
+    Just (w, rest) | w - 0x30 <= 9 -> readDec True bs    -- starts with digit
+                   | w == 0x2d     -> readDec False rest -- starts with minus
+                   | w == 0x2b     -> readDec True rest  -- starts with plus
+    _                              -> Nothing            -- not signed decimal
   where
     -- | Read a decimal 'Int' without overflow.  The caller has already
     -- read any explicit sign (setting @positive@ to 'False' as needed).
@@ -1039,10 +1044,9 @@ readInt bs = case B.uncons bs of
             go :: Ptr Word8 -> Int -> Word -> IO (Int, Word, Bool)
             go !p !b !a | p == e = return (b, a, True)
             go !p !b !a = do
-                !byte <- peek p
-                let !w = byte - 0x30
-                    !d = fromIntegral w
-                if w > 9 -- No more digits
+                !w <- fmap fromIntegral $ peek p
+                let !d = w - 0x30
+                if d > 9 -- No more digits
                     then return (b, a, True)
                     else if a < maxq -- Look for more
                     then go (p `plusPtr` 1) (b + 1) (a * 10 + d)
