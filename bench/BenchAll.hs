@@ -34,11 +34,6 @@ import           Data.ByteString.Builder.Prim          (BoundedPrim, FixedPrim,
 import qualified Data.ByteString.Builder.Prim          as P
 import qualified Data.ByteString.Builder.Prim.Internal as PI
 
-import qualified Blaze.ByteString.Builder          as Blaze
-import qualified Blaze.Text                        as Blaze
-import qualified "bytestring" Data.ByteString      as OldS
-import qualified "bytestring" Data.ByteString.Lazy as OldL
-
 import           Foreign
 
 import System.Random
@@ -97,10 +92,6 @@ lazyByteStringData = case S.splitAt (nRepl `div` 2) byteStringData of
 byteStringChunksData :: [S.ByteString]
 byteStringChunksData = map (S.pack . replicate (4 ) . fromIntegral) intData
 
-{-# NOINLINE oldByteStringChunksData #-}
-oldByteStringChunksData :: [OldS.ByteString]
-oldByteStringChunksData = map (OldS.pack . replicate (4 ) . fromIntegral) intData
-
 {-# NOINLINE loremIpsum #-}
 loremIpsum :: S.ByteString
 loremIpsum = S8.unlines $ map S8.pack
@@ -114,13 +105,6 @@ loremIpsum = S8.unlines $ map S8.pack
 
 -- benchmark wrappers
 ---------------------
-
-{-# INLINE benchBlaze #-}
-benchBlaze :: String -> a -> (a -> Blaze.Builder) -> Benchmark
-benchBlaze name x b =
-    bench (name ++" (" ++ show nRepl ++ ")") $
-        whnf (OldL.length . Blaze.toLazyByteString . b) x
-
 
 {-# INLINE benchB #-}
 benchB :: String -> a -> (a -> Builder) -> Benchmark
@@ -279,10 +263,6 @@ main = do
                 (foldMap byteString)
             , benchB ("foldMap byteStringCopy" ++ dataName) byteStringChunksData
                 (foldMap byteStringCopy)
-            , benchBlaze ("foldMap Blaze.insertByteString" ++ dataName) oldByteStringChunksData
-                (foldMap Blaze.insertByteString)
-            , benchBlaze ("foldMap Blaze.fromByteString" ++ dataName) oldByteStringChunksData
-                (foldMap Blaze.fromByteString)
             ]
 
       , bgroup "Non-bounded encodings"
@@ -294,8 +274,6 @@ main = do
           -- to Integer.
         , benchB "foldMap integerDec (small)"                     smallIntegerData        $ foldMap integerDec
         , benchB "foldMap integerDec (large)"                     largeIntegerData        $ foldMap integerDec
-        , benchBlaze "foldMap integerDec (small) (blaze-textual)" smallIntegerData        $ foldMap Blaze.integral
-        , benchBlaze "foldMap integerDec (large) (blaze-textual)" largeIntegerData        $ foldMap Blaze.integral
         ]
       ]
 
