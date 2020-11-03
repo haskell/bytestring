@@ -53,10 +53,8 @@ common bench-stanza
         Data.ByteString.Lazy.Internal
         Data.ByteString.Short.Internal
         Data.ByteString.Unsafe
-  c-sources:         ../cbits/fpstring.c
-                     ../cbits/itoa.c
-  include-dirs:      ../include
-  includes:          fpstring.h
+  c-sources:        ../cbits/fpstring.c
+  include-dirs:     ../include
 
   ghc-options:      -O2
                     -fmax-simplifier-iterations=10
