@@ -73,24 +73,24 @@ common bench-stanza
       cpp-options: -DINTEGER_GMP
       build-depends: integer-gmp >= 0.2
 
-benchmark bench-bytestring-builder
+benchmark bench-builder
   import:           bench-stanza
   main-is:          BenchAll.hs
   type:             exitcode-stdio-1.0
   build-depends:    random
 
-benchmark bench-builder-boundscheck
+benchmark bench-boundscheck
   import:           bench-stanza
   main-is:          BoundsCheckFusion.hs
   type:             exitcode-stdio-1.0
 
-benchmark bench-builder-csv
+benchmark bench-csv
   import:           bench-stanza
   main-is:          CSV.hs
   type:             exitcode-stdio-1.0
   build-depends:    bytestring, dlist, text
 
-benchmark bench-strict-indices
+benchmark bench-indices
   import:           bench-stanza
   main-is:          BenchIndices.hs
   type:             exitcode-stdio-1.0
