@@ -1,3 +1,4 @@
+Cabal-Version:       2.2
 Name:                bench-bytestring
 Version:             0.1.0.0
 Synopsis:            Benchmarks for bytestring
@@ -7,7 +8,7 @@ Description:
     gauge depends on bytestring. Here, we just include the whole source of
     the bytestring library directly.
 
-License:             BSD3
+License:             BSD-3-Clause
 License-file:        LICENSE
 Category:            Data
 Copyright:           (c) Simon Meier          2010-2011.
@@ -20,7 +21,6 @@ Bug-reports:         iridcode@gmail.com
 Tested-With:         GHC==8.10.1, GHC==8.8.3, GHC==8.6.5, GHC==8.4.4, GHC==8.2.2,
                      GHC==8.0.2, GHC==7.10.3
 Build-Type:          Simple
-Cabal-Version:       >= 1.10
 
 source-repository head
   type:     darcs
@@ -30,16 +30,10 @@ flag integer-simple
   description: Use the simple integer library instead of GMP
   default: False
 
-benchmark bench-bytestring-builder
-  hs-source-dirs:    . ..
-  main-is:           BenchAll.hs
-  type:              exitcode-stdio-1.0
+common bench-stanza
+  hs-source-dirs:   . ..
+  default-language: Haskell98
 
-  build-depends:     base >= 4.8 && < 5
-                   , ghc-prim
-                   , deepseq       >= 1.2
-                   , gauge         >= 0.2.5
-                   , random
   other-modules:
         Data.ByteString
         Data.ByteString.Builder
@@ -53,108 +47,52 @@ benchmark bench-bytestring-builder
         Data.ByteString.Builder.Prim.Internal.Base16
         Data.ByteString.Builder.Prim.Internal.Floating
         Data.ByteString.Builder.Prim.Internal.UncheckedShifts
+        Data.ByteString.Char8
         Data.ByteString.Internal
         Data.ByteString.Lazy
         Data.ByteString.Lazy.Internal
         Data.ByteString.Short.Internal
         Data.ByteString.Unsafe
-
-  -- cabal complains about ../ dirs. However, this is better than symlinks,
-  -- which probably don't work on windows.
   c-sources:         ../cbits/fpstring.c
                      ../cbits/itoa.c
   include-dirs:      ../include
   includes:          fpstring.h
-  install-includes:  fpstring.h
 
-  default-language: Haskell98
   ghc-options:      -O2
                     -fmax-simplifier-iterations=10
                     -fdicts-cheap
                     -fspec-constr-count=6
 
-  -- flags for the decimal integer serialization code
+  build-depends:     base >= 4.8 && < 5
+                   , deepseq
+                   , gauge         >= 0.2.5
+                   , ghc-prim
+
   if impl(ghc >= 8.11)
     build-depends: ghc-bignum >= 1.0
-
-  if impl(ghc < 8.11)
+  else
     if !flag(integer-simple)
       cpp-options: -DINTEGER_GMP
       build-depends: integer-gmp >= 0.2
 
+benchmark bench-bytestring-builder
+  import:           bench-stanza
+  main-is:          BenchAll.hs
+  type:             exitcode-stdio-1.0
+  build-depends:    random
+
 benchmark bench-builder-boundscheck
-  hs-source-dirs:   .. .
+  import:           bench-stanza
   main-is:          BoundsCheckFusion.hs
   type:             exitcode-stdio-1.0
-  build-depends:    base >= 4.8 && < 5,
-                    deepseq,
-                    ghc-prim,
-                    gauge
-  c-sources:        ../cbits/fpstring.c
-                    ../cbits/itoa.c
-  include-dirs:     ../include
-  ghc-options:      -O2
-                    -fmax-simplifier-iterations=10
-                    -fdicts-cheap
-                    -fspec-constr-count=6
-  default-language: Haskell98
-  other-modules:
-        Data.ByteString
-        Data.ByteString.Builder
-        Data.ByteString.Builder.ASCII
-        Data.ByteString.Builder.Extra
-        Data.ByteString.Builder.Internal
-        Data.ByteString.Builder.Prim
-        Data.ByteString.Builder.Prim.ASCII
-        Data.ByteString.Builder.Prim.Binary
-        Data.ByteString.Builder.Prim.Internal
-        Data.ByteString.Builder.Prim.Internal.Base16
-        Data.ByteString.Builder.Prim.Internal.Floating
-        Data.ByteString.Builder.Prim.Internal.UncheckedShifts
-        Data.ByteString.Internal
-        Data.ByteString.Lazy
-        Data.ByteString.Lazy.Internal
-        Data.ByteString.Short.Internal
-        Data.ByteString.Unsafe
 
 benchmark bench-builder-csv
-  hs-source-dirs:   .. .
+  import:           bench-stanza
   main-is:          CSV.hs
   type:             exitcode-stdio-1.0
-  build-depends:    base >= 4.8 && < 5,
-                    deepseq,
-                    ghc-prim,
-                    text,
-                    gauge,
-                    utf8-string,
-                    utf8-light,
-                    bytestring,
-                    dlist
-  c-sources:        ../cbits/fpstring.c
-                    ../cbits/itoa.c
-  include-dirs:     ../include
-  ghc-options:      -O2
-                    -fmax-simplifier-iterations=10
-                    -fdicts-cheap
-                    -fspec-constr-count=6
-  default-language: Haskell2010
+  build-depends:    bytestring, dlist, text, utf8-light, utf8-string
 
 benchmark bench-strict-indices
-  hs-source-dirs:   .. .
+  import:           bench-stanza
   main-is:          BenchIndices.hs
-  other-modules:    Data.ByteString
-                    Data.ByteString.Internal
-                    Data.ByteString.Unsafe
   type:             exitcode-stdio-1.0
-  c-sources:        ../cbits/fpstring.c
-                    ../cbits/itoa.c
-  include-dirs:     ../include
-  build-depends:    base >= 4.8 && < 5
-                  , ghc-prim
-                  , deepseq       >= 1.2
-                  , gauge         >= 0.2.5
-  ghc-options:      -O2
-                    -fmax-simplifier-iterations=10
-                    -fdicts-cheap
-                    -fspec-constr-count=6
-  default-language: Haskell2010
