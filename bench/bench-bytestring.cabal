@@ -17,7 +17,8 @@ Maintainer:          Simon Meier <iridcode@gmail.com>
                      Duncan Coutts <duncan@community.haskell.org>
 Bug-reports:         iridcode@gmail.com
                      duncan@community.haskell.org
-Tested-With:         GHC==7.0.3
+Tested-With:         GHC==8.10.1, GHC==8.8.3, GHC==8.6.5, GHC==8.4.4, GHC==8.2.2,
+                     GHC==8.0.2, GHC==7.10.3
 Build-Type:          Simple
 Cabal-Version:       >= 1.10
 
@@ -34,7 +35,7 @@ benchmark bench-bytestring-builder
   main-is:           BenchAll.hs
   type:              exitcode-stdio-1.0
 
-  build-depends:     base >= 4.4 && < 5
+  build-depends:     base >= 4.8 && < 5
                    , ghc-prim
                    , deepseq       >= 1.2
                    , gauge         >= 0.2.5
@@ -86,20 +87,21 @@ benchmark bench-bytestring-builder
      build-depends: blaze-builder == 0.3.*
 
   -- flags for the decimal integer serialization code
-  if impl(ghc >= 6.11)
+  if impl(ghc >= 8.11)
+    build-depends: ghc-bignum >= 1.0
+
+  if impl(ghc < 8.11)
     if !flag(integer-simple)
       cpp-options: -DINTEGER_GMP
       build-depends: integer-gmp >= 0.2
-
-  if impl(ghc >= 6.9) && impl(ghc < 6.11)
-    cpp-options: -DINTEGER_GMP
-    build-depends: integer >= 0.1 && < 0.2
 
 benchmark bench-builder-boundscheck
   hs-source-dirs:   .. .
   main-is:          BoundsCheckFusion.hs
   type:             exitcode-stdio-1.0
-  build-depends:    base, deepseq, ghc-prim,
+  build-depends:    base >= 4.8 && < 5,
+                    deepseq,
+                    ghc-prim,
                     gauge
   c-sources:        ../cbits/fpstring.c
                     ../cbits/itoa.c
@@ -132,7 +134,9 @@ benchmark bench-builder-csv
   hs-source-dirs:   .. .
   main-is:          CSV.hs
   type:             exitcode-stdio-1.0
-  build-depends:    base, deepseq, ghc-prim,
+  build-depends:    base >= 4.8 && < 5,
+                    deepseq,
+                    ghc-prim,
                     text,
                     gauge,
                     utf8-string,
@@ -158,7 +162,7 @@ benchmark bench-strict-indices
   c-sources:        ../cbits/fpstring.c
                     ../cbits/itoa.c
   include-dirs:     ../include
-  build-depends:    base >= 4.4 && < 5
+  build-depends:    base >= 4.8 && < 5
                   , ghc-prim
                   , deepseq       >= 1.2
                   , gauge         >= 0.2.5
