@@ -1,6 +1,6 @@
 Name:                bench-bytestring
 Version:             0.1.0.0
-Synopsis:            Benchmarks for the lazy bytestring builder.
+Synopsis:            Benchmarks for bytestring
 Description:
     This package is not meant for public release. It fixes a problem with the
     current benchmarking support in cabal, which has trouble compiling because
@@ -39,10 +39,6 @@ benchmark bench-bytestring-builder
                    , ghc-prim
                    , deepseq       >= 1.2
                    , gauge         >= 0.2.5
-                   , blaze-textual == 0.2.*
-                   -- we require bytestring due to benchmarking against
-                   -- blaze-textual, which uses blaze-builder
-                   , bytestring    >= 0.9
                    , random
   other-modules:
         Data.ByteString
@@ -76,15 +72,6 @@ benchmark bench-bytestring-builder
                     -fmax-simplifier-iterations=10
                     -fdicts-cheap
                     -fspec-constr-count=6
-
-  -- Since blaze-builder-0.4+ is just a wrapper around bytestring, we prefer
-  -- building with blaze-builder-0.3.*. However blaze-builder-0.3.* isn't
-  -- compatible with GHC-8.4+, so we relax the version bounds when building
-  -- with these GHC versions.
-  if impl(ghc >= 8.4)
-     build-depends: blaze-builder >= 0.3 && < 0.5
-  else
-     build-depends: blaze-builder == 0.3.*
 
   -- flags for the decimal integer serialization code
   if impl(ghc >= 8.11)
