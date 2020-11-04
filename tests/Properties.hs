@@ -11,6 +11,7 @@
 -- -fhpc interferes with rewrite rules firing.
 --
 
+import Foreign.C.String (withCString)
 import Foreign.Storable
 import Foreign.ForeignPtr
 import Foreign.Marshal.Alloc
@@ -21,7 +22,7 @@ import Control.Applicative
 import Control.Monad
 import Control.Concurrent
 import Control.Exception
-import System.Directory
+import System.Posix.Internals (c_unlink)
 
 import Data.List
 import Data.Char
@@ -1672,7 +1673,7 @@ prop_read_write_file_P x = ioProperty $ do
     let f = "qc-test-" ++ show tid
     P.writeFile f x
     y <- P.readFile f
-    removeFile f
+    _ <- withCString f c_unlink
     return (x == y)
 
 prop_read_write_file_C x = ioProperty $ do
@@ -1680,7 +1681,7 @@ prop_read_write_file_C x = ioProperty $ do
     let f = "qc-test-" ++ show tid
     C.writeFile f x
     y <- C.readFile f
-    removeFile f
+    _ <- withCString f c_unlink
     return (x == y)
 
 prop_read_write_file_L x = ioProperty $ do
@@ -1688,7 +1689,7 @@ prop_read_write_file_L x = ioProperty $ do
     let f = "qc-test-" ++ show tid
     L.writeFile f x
     y <- L.readFile f
-    L.length y `seq` removeFile f
+    _ <- L.length y `seq` withCString f c_unlink
     return (x == y)
 
 prop_read_write_file_D x = ioProperty $ do
@@ -1696,7 +1697,7 @@ prop_read_write_file_D x = ioProperty $ do
     let f = "qc-test-" ++ show tid
     D.writeFile f x
     y <- D.readFile f
-    D.length y `seq` removeFile f
+    _ <- D.length y `seq` withCString f c_unlink
     return (x == y)
 
 ------------------------------------------------------------------------
@@ -1707,7 +1708,7 @@ prop_append_file_P x y = ioProperty $ do
     P.writeFile f x
     P.appendFile f y
     z <- P.readFile f
-    removeFile f
+    _ <- withCString f c_unlink
     return (z == x `P.append` y)
 
 prop_append_file_C x y = ioProperty $ do
@@ -1716,7 +1717,7 @@ prop_append_file_C x y = ioProperty $ do
     C.writeFile f x
     C.appendFile f y
     z <- C.readFile f
-    removeFile f
+    _ <- withCString f c_unlink
     return (z == x `C.append` y)
 
 prop_append_file_L x y = ioProperty $ do
@@ -1725,7 +1726,7 @@ prop_append_file_L x y = ioProperty $ do
     L.writeFile f x
     L.appendFile f y
     z <- L.readFile f
-    L.length z `seq` removeFile f
+    _ <- L.length y `seq` withCString f c_unlink
     return (z == x `L.append` y)
 
 prop_append_file_D x y = ioProperty $ do
@@ -1734,7 +1735,7 @@ prop_append_file_D x y = ioProperty $ do
     D.writeFile f x
     D.appendFile f y
     z <- D.readFile f
-    D.length z `seq` removeFile f
+    _ <- D.length y `seq` withCString f c_unlink
     return (z == x `D.append` y)
 
 prop_packAddress = C.pack "this is a test"
