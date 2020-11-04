@@ -40,10 +40,10 @@ import qualified Data.ByteString.Builder.Prim       as BP
 import           Data.ByteString.Builder.Prim.TestUtils
 
 import           Control.Exception (evaluate)
-import           System.IO (openTempFile, hPutStr, hClose, hSetBinaryMode, hSetNewlineMode, noNewlineTranslation)
-import           System.IO (hSetEncoding, utf8)
-import           System.Directory
+import           System.IO (openTempFile, hPutStr, hClose, hSetBinaryMode, hSetEncoding, utf8, hSetNewlineMode, noNewlineTranslation)
 import           Foreign (ForeignPtr, withForeignPtr, castPtr)
+import           Foreign.C.String (withCString)
+import           System.Posix.Internals (c_unlink)
 
 import           Test.Framework
 import           Test.Framework.Providers.QuickCheck2
@@ -110,8 +110,7 @@ testHandlePutBuilder =
             between = filter safeChr a2
             after   = filter safeChr a3
 #endif
-        tempDir <- getTemporaryDirectory
-        (tempFile, tempH) <- openTempFile tempDir "TestBuilder"
+        (tempFile, tempH) <- openTempFile "." "TestBuilder"
         -- switch to UTF-8 encoding
         hSetEncoding tempH utf8
         hSetNewlineMode tempH noNewlineTranslation
@@ -126,7 +125,7 @@ testHandlePutBuilder =
         -- read file
         lbs <- L.readFile tempFile
         _ <- evaluate (L.length $ lbs)
-        removeFile tempFile
+        _ <- withCString tempFile c_unlink
         -- compare to pure builder implementation
         let lbsRef = toLazyByteString $ fold
               [stringUtf8 before, b, stringUtf8 between, b, stringUtf8 after]
@@ -147,8 +146,7 @@ testHandlePutBuilderChar8 =
   where
     testRecipe :: (String, String, String, Recipe) -> Property
     testRecipe args@(before, between, after, recipe) = ioProperty $ do
-        tempDir <- getTemporaryDirectory
-        (tempFile, tempH) <- openTempFile tempDir "TestBuilder"
+        (tempFile, tempH) <- openTempFile "." "TestBuilder"
         -- switch to binary / latin1 encoding
         hSetBinaryMode tempH True
         -- output recipe with intermediate direct writing to handle
@@ -162,7 +160,7 @@ testHandlePutBuilderChar8 =
         -- read file
         lbs <- L.readFile tempFile
         _ <- evaluate (L.length $ lbs)
-        removeFile tempFile
+        _ <- withCString tempFile c_unlink
         -- compare to pure builder implementation
         let lbsRef = toLazyByteString $ fold
               [string8 before, b, string8 between, b, string8 after]
