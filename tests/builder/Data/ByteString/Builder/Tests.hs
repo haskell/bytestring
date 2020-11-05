@@ -38,7 +38,7 @@ import qualified Data.ByteString.Builder.Prim       as BP
 import           Data.ByteString.Builder.Prim.TestUtils
 
 import           Control.Exception (evaluate)
-import           System.IO (openTempFile, hPutStr, hClose, hSetBinaryMode)
+import           System.IO (openTempFile, hPutStr, hClose, hSetBinaryMode, hSetNewlineMode, noNewlineTranslation)
 import           System.IO (hSetEncoding, utf8)
 import           System.Directory
 import           Foreign (ForeignPtr, withForeignPtr, castPtr)
@@ -116,6 +116,7 @@ testHandlePutBuilder =
         (tempFile, tempH) <- openTempFile tempDir "TestBuilder"
         -- switch to UTF-8 encoding
         hSetEncoding tempH utf8
+        hSetNewlineMode tempH noNewlineTranslation
         -- output recipe with intermediate direct writing to handle
         let b = fst $ recipeComponents recipe
         hPutStr tempH before
