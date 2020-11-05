@@ -1297,7 +1297,7 @@ prop_unfoldrBB c =
     forAll arbitrarySizedIntegral $ \n ->
       (fst $ C.unfoldrN n fn c) == (C.pack $ take n $ unfoldr fn c)
   where
-    fn x = Just (x, chr (ord x + 1))
+    fn x = Just (x, if x == maxBound then x else succ x)
 
 prop_prefixBB xs ys = isPrefixOf xs ys == (P.pack xs `P.isPrefixOf` P.pack ys)
 prop_prefixLL xs ys = isPrefixOf xs ys == (L.pack xs `L.isPrefixOf` L.pack ys)
