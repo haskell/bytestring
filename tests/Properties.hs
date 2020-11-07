@@ -1614,6 +1614,31 @@ prop_read_write_file_D x = unsafePerformIO $ do
         (const $ do y <- D.readFile f
                     return (x==y))
 
+prop_hgetline_like_s8_hgetline (LinedASCII filetext) (lineEndIn, lineEndOut) = idempotentIOProperty $ do
+    let testFileName = "testdata.txt"
+    let newlineMode = NewlineMode (if lineEndIn then LF else CRLF) (if lineEndOut then LF else CRLF)
+    writeFile testFileName filetext
+    bsLines <- withFile testFileName ReadMode (\h -> do
+        hSetNewlineMode h newlineMode
+        readByLines C.hGetLine h
+      )
+    sLines <- withFile testFileName ReadMode (\h -> do
+        hSetNewlineMode h newlineMode
+        readByLines System.IO.hGetLine h
+      )
+    return $ map C.unpack bsLines === sLines
+  where
+    readByLines getLine h_ = go []
+      where 
+        go lines = do
+          isEnd <- hIsEOF h_
+          if isEnd
+            then return lines
+            else do
+              !nextLine <- getLine h_
+              go (nextLine : lines)
+
+
 ------------------------------------------------------------------------
 
 prop_append_file_P x y = unsafePerformIO $ do
@@ -1791,7 +1816,8 @@ io_tests =
     , testProperty "appendFile        " prop_append_file_D
 
     , testProperty "packAddress       " prop_packAddress
-
+    
+    , testProperty "pack.hGetLine=hGetLine" prop_hgetline_like_s8_hgetline
     ]
 
 misc_tests =
