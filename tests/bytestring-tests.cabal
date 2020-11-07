@@ -71,27 +71,6 @@ test-suite lazy-hclose
                     -fno-enable-rewrite-rules
                     -threaded -rtsopts
 
-test-suite hgetline
-  type:             exitcode-stdio-1.0
-  main-is:          HGetLine.hs
-  other-modules:    Data.ByteString
-                    Data.ByteString.Internal
-                    Data.ByteString.Unsafe
-  hs-source-dirs:   . ..
-  build-depends:    base, ghc-prim, deepseq, random, directory,
-                    test-framework, test-framework-hunit, HUnit
-  c-sources:        ../cbits/fpstring.c
-  include-dirs:     ../include
-  cpp-options:      -DHAVE_TEST_FRAMEWORK=1
-  ghc-options:      -fwarn-unused-binds
-                    -fno-enable-rewrite-rules
-                    -threaded -rtsopts
-  extensions:       BangPatterns
-                    UnliftedFFITypes,
-                    MagicHash,
-                    ScopedTypeVariables
-                    NamedFieldPuns
-
 executable regressions
   main-is:          Regressions.hs
   other-modules:    Data.ByteString
