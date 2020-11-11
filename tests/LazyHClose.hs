@@ -4,7 +4,7 @@ import Control.Monad (void, forM_)
 import Data.ByteString.Internal (toForeignPtr)
 import Foreign.C.String (withCString)
 import Foreign.ForeignPtr (finalizeForeignPtr)
-import System.IO (openFile, IOMode(..))
+import System.IO (openFile, openTempFile, hClose, hPutStrLn, IOMode(..))
 import System.Posix.Internals (c_unlink)
 
 import qualified Data.ByteString            as S
@@ -15,9 +15,9 @@ import qualified Data.ByteString.Lazy.Char8 as L8
 main :: IO ()
 main = do
     let n = 1000
-        fn = "lazyhclose-test.tmp"
-
-    writeFile fn "x"
+    (fn, h) <- openTempFile "." "lazy-hclose-test.tmp"
+    hPutStrLn h "x"
+    hClose h
 
     ------------------------------------------------------------------------
     -- readFile tests
@@ -58,4 +58,7 @@ main = do
          L.last r `seq` return ()
          appendFile fn "" -- will fail, if fn has not been closed yet
 
-    void $ withCString fn c_unlink
+    removeFile fn
+
+removeFile :: String -> IO ()
+removeFile fn = void $ withCString fn c_unlink

@@ -15,7 +15,7 @@
 module Data.ByteString.Builder.Tests (tests) where
 
 import           Control.Applicative
-import           Control.Monad (unless)
+import           Control.Monad (unless, void)
 import           Control.Monad.Trans.State (StateT, evalStateT, evalState, put, get)
 import           Control.Monad.Trans.Class (lift)
 import           Control.Monad.Trans.Writer (WriterT, execWriterT, tell)
@@ -110,7 +110,7 @@ testHandlePutBuilder =
             between = filter safeChr a2
             after   = filter safeChr a3
 #endif
-        (tempFile, tempH) <- openTempFile "." "TestBuilder"
+        (tempFile, tempH) <- openTempFile "." "test-builder.tmp"
         -- switch to UTF-8 encoding
         hSetEncoding tempH utf8
         hSetNewlineMode tempH noNewlineTranslation
@@ -125,7 +125,7 @@ testHandlePutBuilder =
         -- read file
         lbs <- L.readFile tempFile
         _ <- evaluate (L.length $ lbs)
-        _ <- withCString tempFile c_unlink
+        removeFile tempFile
         -- compare to pure builder implementation
         let lbsRef = toLazyByteString $ fold
               [stringUtf8 before, b, stringUtf8 between, b, stringUtf8 after]
@@ -160,7 +160,7 @@ testHandlePutBuilderChar8 =
         -- read file
         lbs <- L.readFile tempFile
         _ <- evaluate (L.length $ lbs)
-        _ <- withCString tempFile c_unlink
+        removeFile tempFile
         -- compare to pure builder implementation
         let lbsRef = toLazyByteString $ fold
               [string8 before, b, string8 between, b, string8 after]
@@ -175,6 +175,8 @@ testHandlePutBuilderChar8 =
         unless success (error msg)
         return success
 
+removeFile :: String -> IO ()
+removeFile fn = void $ withCString fn c_unlink
 
 -- Recipes with which to test the builder functions
 ---------------------------------------------------
