@@ -35,7 +35,7 @@ test-suite prop-compiled
                     Data.ByteString.Short.Internal
                     Data.ByteString.Unsafe
   hs-source-dirs:   . ..
-  build-depends:    base, ghc-prim, deepseq, random, directory,
+  build-depends:    base, ghc-prim, deepseq, random,
                     test-framework, test-framework-quickcheck2,
                     QuickCheck >= 2.10 && < 2.15
   c-sources:        ../cbits/fpstring.c
@@ -55,7 +55,7 @@ test-suite lazy-hclose
                     Data.ByteString.Lazy.Internal
                     Data.ByteString.Unsafe
   hs-source-dirs:   . ..
-  build-depends:    base, ghc-prim, deepseq, random, directory,
+  build-depends:    base, ghc-prim, deepseq, random,
                     test-framework, test-framework-quickcheck2,
                     QuickCheck >= 2.10 && < 2.15
   c-sources:        ../cbits/fpstring.c
@@ -71,7 +71,7 @@ executable regressions
                     Data.ByteString.Lazy.Internal
                     Data.ByteString.Unsafe
   hs-source-dirs:   . ..
-  build-depends:    base, ghc-prim, deepseq, random, directory,
+  build-depends:    base, ghc-prim, deepseq, random,
                     test-framework, test-framework-hunit, HUnit
   c-sources:        ../cbits/fpstring.c
   include-dirs:     ../include
@@ -110,7 +110,6 @@ test-suite test-builder
                     QuickCheck                 >= 2.10 && < 2.15,
                     byteorder                  == 1.0.*,
                     dlist                      >= 0.5 && < 0.9,
-                    directory,
                     transformers               >= 0.3,
                     HUnit,
                     test-framework,

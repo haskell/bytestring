@@ -11,6 +11,7 @@
 -- -fhpc interferes with rewrite rules firing.
 --
 
+import Foreign.C.String (withCString)
 import Foreign.Storable
 import Foreign.ForeignPtr
 import Foreign.Marshal.Alloc
@@ -21,7 +22,7 @@ import Control.Applicative
 import Control.Monad
 import Control.Concurrent
 import Control.Exception
-import System.Directory
+import System.Posix.Internals (c_unlink)
 
 import Data.List
 import Data.Char
@@ -1589,73 +1590,73 @@ prop_fromForeignPtr x = (let (a,b,c) = (P.toForeignPtr x)
 -- IO
 
 prop_read_write_file_P x = ioProperty $ do
-    tid <- myThreadId
-    let f = "qc-test-" ++ show tid
-    P.writeFile f x
-    y <- P.readFile f
-    removeFile f
+    (fn, h) <- openTempFile "." "prop-compiled.tmp"
+    hClose h
+    P.writeFile fn x
+    y <- P.readFile fn
+    removeFile fn
     return (x == y)
 
 prop_read_write_file_C x = ioProperty $ do
-    tid <- myThreadId
-    let f = "qc-test-" ++ show tid
-    C.writeFile f x
-    y <- C.readFile f
-    removeFile f
+    (fn, h) <- openTempFile "." "prop-compiled.tmp"
+    hClose h
+    C.writeFile fn x
+    y <- C.readFile fn
+    removeFile fn
     return (x == y)
 
 prop_read_write_file_L x = ioProperty $ do
-    tid <- myThreadId
-    let f = "qc-test-" ++ show tid
-    L.writeFile f x
-    y <- L.readFile f
-    L.length y `seq` removeFile f
+    (fn, h) <- openTempFile "." "prop-compiled.tmp"
+    hClose h
+    L.writeFile fn x
+    y <- L.readFile fn
+    L.length y `seq` removeFile fn
     return (x == y)
 
 prop_read_write_file_D x = ioProperty $ do
-    tid <- myThreadId
-    let f = "qc-test-" ++ show tid
-    D.writeFile f x
-    y <- D.readFile f
-    D.length y `seq` removeFile f
+    (fn, h) <- openTempFile "." "prop-compiled.tmp"
+    hClose h
+    D.writeFile fn x
+    y <- D.readFile fn
+    D.length y `seq` removeFile fn
     return (x == y)
 
 ------------------------------------------------------------------------
 
 prop_append_file_P x y = ioProperty $ do
-    tid <- myThreadId
-    let f = "qc-test-" ++ show tid
-    P.writeFile f x
-    P.appendFile f y
-    z <- P.readFile f
-    removeFile f
+    (fn, h) <- openTempFile "." "prop-compiled.tmp"
+    hClose h
+    P.writeFile fn x
+    P.appendFile fn y
+    z <- P.readFile fn
+    removeFile fn
     return (z == x `P.append` y)
 
 prop_append_file_C x y = ioProperty $ do
-    tid <- myThreadId
-    let f = "qc-test-" ++ show tid
-    C.writeFile f x
-    C.appendFile f y
-    z <- C.readFile f
-    removeFile f
+    (fn, h) <- openTempFile "." "prop-compiled.tmp"
+    hClose h
+    C.writeFile fn x
+    C.appendFile fn y
+    z <- C.readFile fn
+    removeFile fn
     return (z == x `C.append` y)
 
 prop_append_file_L x y = ioProperty $ do
-    tid <- myThreadId
-    let f = "qc-test-" ++ show tid
-    L.writeFile f x
-    L.appendFile f y
-    z <- L.readFile f
-    L.length z `seq` removeFile f
+    (fn, h) <- openTempFile "." "prop-compiled.tmp"
+    hClose h
+    L.writeFile fn x
+    L.appendFile fn y
+    z <- L.readFile fn
+    L.length y `seq` removeFile fn
     return (z == x `L.append` y)
 
 prop_append_file_D x y = ioProperty $ do
-    tid <- myThreadId
-    let f = "qc-test-" ++ show tid
-    D.writeFile f x
-    D.appendFile f y
-    z <- D.readFile f
-    D.length z `seq` removeFile f
+    (fn, h) <- openTempFile "." "prop-compiled.tmp"
+    hClose h
+    D.writeFile fn x
+    D.appendFile fn y
+    z <- D.readFile fn
+    D.length y `seq` removeFile fn
     return (z == x `D.append` y)
 
 prop_packAddress = C.pack "this is a test"
@@ -2528,3 +2529,6 @@ findIndexEnd p = go . findIndices p
 
 elemIndexEnd :: Eq a => a -> [a] -> Maybe Int
 elemIndexEnd = findIndexEnd . (==)
+
+removeFile :: String -> IO ()
+removeFile fn = void $ withCString fn c_unlink
