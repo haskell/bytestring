@@ -2079,9 +2079,9 @@ moduleErrorMsg fun msg = "Data.ByteString." ++ fun ++ ':':' ':msg
 
 -- Find from the end of the string using predicate
 findFromEndUntil :: (Word8 -> Bool) -> ByteString -> Int
-findFromEndUntil f ps@(BS x l) = case unsnoc ps of
+findFromEndUntil f ps@(BS _ l) = case unsnoc ps of
   Nothing     -> 0
-  Just (_, b) ->
-    if f b
+  Just (b, c) ->
+    if f c
       then l
-      else findFromEndUntil f (BS x (l - 1))
+      else findFromEndUntil f b
