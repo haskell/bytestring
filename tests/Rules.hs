@@ -1,5 +1,3 @@
-{-# LANGUAGE CPP #-}
-
 module Rules where
 --
 -- Tests to ensure rules are firing.
@@ -15,12 +13,7 @@ import Data.Word
 
 import QuickCheckUtils
 
-#if defined(HAVE_TEST_FRAMEWORK)
 import Test.Framework.Providers.QuickCheck2
-#else
-import TestFramework
-#endif
-
 
 prop_break_C :: Word8 -> C.ByteString -> Bool
 prop_break_C w = C.break ((==) x) `eq1` break ((==) x)

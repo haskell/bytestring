@@ -89,7 +89,13 @@ module Data.ByteString.Internal (
         accursedUnutterablePerformIO, -- :: IO a -> a
 
         -- * Exported compatibility shim
-        plusForeignPtr
+        plusForeignPtr,
+
+        -- * Internal constants
+        intmaxQuot10,
+        intmaxRem10,
+        intminQuot10,
+        intminRem10
   ) where
 
 import Prelude hiding (concat, null)
@@ -108,10 +114,10 @@ import Foreign.C.Types          (CInt, CSize)
 import Foreign.C.String         (CString)
 
 #if MIN_VERSION_base(4,13,0)
-import Data.Semigroup           (Semigroup (sconcat))
+import Data.Semigroup           (Semigroup (sconcat, stimes))
 import Data.List.NonEmpty       (NonEmpty ((:|)))
 #elif MIN_VERSION_base(4,9,0)
-import Data.Semigroup           (Semigroup ((<>), sconcat))
+import Data.Semigroup           (Semigroup ((<>), sconcat, stimes))
 import Data.List.NonEmpty       (NonEmpty ((:|)))
 #endif
 
@@ -126,8 +132,9 @@ import Data.String              (IsString(..))
 
 import Control.Exception        (assert)
 
+import Data.Bits                ((.&.))
 import Data.Char                (ord)
-import Data.Word                (Word8)
+import Data.Word                (Word8, Word)
 
 import Data.Typeable            (Typeable)
 import Data.Data                (Data(..), mkNoRepType)
@@ -241,6 +248,7 @@ instance Ord ByteString where
 instance Semigroup ByteString where
     (<>)    = append
     sconcat (b:|bs) = concat (b:bs)
+    stimes = times
 #endif
 
 instance Monoid ByteString where
@@ -648,6 +656,31 @@ concat = \bss0 -> goLen0 bss0 bss0
    concat [x] = x
  #-}
 
+-- | /O(log n)/ Repeats the given ByteString n times.
+times :: Integral a => a -> ByteString -> ByteString
+times n (BS fp len)
+  | n < 0 = error "stimes: non-negative multiplier expected"
+  | n == 0 = mempty
+  | n == 1 = BS fp len
+  | len == 0 = mempty
+  | len == 1 = unsafeCreate size $ \destptr ->
+    withForeignPtr fp $ \p -> do
+      byte <- peek p
+      memset destptr byte (fromIntegral size) >> return ()
+  | otherwise = unsafeCreate size $ \destptr ->
+    withForeignPtr fp $ \p -> do
+      memcpy destptr p len
+      fillFrom destptr len
+  where
+    size = len * (fromIntegral n)
+
+    fillFrom :: Ptr Word8 -> Int -> IO ()
+    fillFrom destptr copied
+      | 2 * copied < size = do
+        memcpy (destptr `plusPtr` copied) destptr copied
+        fillFrom destptr (copied * 2)
+      | otherwise = memcpy (destptr `plusPtr` copied) destptr (size - copied)
+
 -- | Add two non-negative numbers. Errors out on overflow.
 checkedAdd :: String -> Int -> Int -> Int
 checkedAdd fun x y
@@ -671,32 +704,42 @@ c2w = fromIntegral . ord
 {-# INLINE c2w #-}
 
 -- | Selects words corresponding to white-space characters in the Latin-1 range
--- ordered by frequency.
 isSpaceWord8 :: Word8 -> Bool
-isSpaceWord8 w =
-    w == 0x20 ||
-    w == 0x0A || -- LF, \n
-    w == 0x09 || -- HT, \t
-    w == 0x0C || -- FF, \f
-    w == 0x0D || -- CR, \r
-    w == 0x0B || -- VT, \v
-    w == 0xA0    -- spotted by QC..
+isSpaceWord8 w8 =
+    -- Avoid the cost of narrowing arithmetic results to Word8,
+    -- the conversion from Word8 to Word is free.
+    let w :: Word
+        !w = fromIntegral w8
+     in w .&. 0x50 == 0    -- Quick non-whitespace filter
+        && w - 0x21 > 0x7e -- Second non-whitespace filter
+        && ( w == 0x20     -- SP
+          || w == 0xa0     -- NBSP
+          || w - 0x09 < 5) -- HT, NL, VT, FF, CR
 {-# INLINE isSpaceWord8 #-}
 
 -- | Selects white-space characters in the Latin-1 range
 isSpaceChar8 :: Char -> Bool
-isSpaceChar8 c =
-    c == ' '     ||
-    c == '\t'    ||
-    c == '\n'    ||
-    c == '\r'    ||
-    c == '\f'    ||
-    c == '\v'    ||
-    c == '\xa0'
+isSpaceChar8 = isSpaceWord8 . c2w
 {-# INLINE isSpaceChar8 #-}
 
 overflowError :: String -> a
 overflowError fun = error $ "Data.ByteString." ++ fun ++ ": size overflow"
+
+-- | Bounds for Word# multiplication by 10 without overflow, and
+-- absolute values of Int bounds.
+intmaxWord, intminWord, intmaxQuot10, intmaxRem10, intminQuot10, intminRem10 :: Word
+intmaxWord = fromIntegral (maxBound :: Int)
+{-# INLINE intmaxWord #-}
+intminWord = fromIntegral (negate (minBound :: Int))
+{-# INLINE intminWord #-}
+intmaxQuot10 = intmaxWord `quot` 10
+{-# INLINE intmaxQuot10 #-}
+intmaxRem10 = intmaxWord `rem` 10
+{-# INLINE intmaxRem10 #-}
+intminQuot10 = intminWord `quot` 10
+{-# INLINE intminQuot10 #-}
+intminRem10 = intminWord `rem` 10
+{-# INLINE intminRem10 #-}
 
 ------------------------------------------------------------------------
 

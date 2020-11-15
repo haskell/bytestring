@@ -35,20 +35,14 @@ test-suite prop-compiled
                     Data.ByteString.Short.Internal
                     Data.ByteString.Unsafe
   hs-source-dirs:   . ..
-  build-depends:    base, ghc-prim, deepseq, random, directory,
+  build-depends:    base, ghc-prim, deepseq, random,
                     test-framework, test-framework-quickcheck2,
                     QuickCheck >= 2.10 && < 2.15
   c-sources:        ../cbits/fpstring.c
   include-dirs:     ../include
-  cpp-options:      -DHAVE_TEST_FRAMEWORK=1
   ghc-options:      -fwarn-unused-binds
                     -fno-enable-rewrite-rules
                     -threaded -rtsopts
-  extensions:       BangPatterns
-                    UnliftedFFITypes,
-                    MagicHash,
-                    ScopedTypeVariables
-                    NamedFieldPuns
 
 test-suite lazy-hclose
   type:             exitcode-stdio-1.0
@@ -61,12 +55,11 @@ test-suite lazy-hclose
                     Data.ByteString.Lazy.Internal
                     Data.ByteString.Unsafe
   hs-source-dirs:   . ..
-  build-depends:    base, ghc-prim, deepseq, random, directory,
+  build-depends:    base, ghc-prim, deepseq, random,
                     test-framework, test-framework-quickcheck2,
                     QuickCheck >= 2.10 && < 2.15
   c-sources:        ../cbits/fpstring.c
   include-dirs:     ../include
-  cpp-options:      -DHAVE_TEST_FRAMEWORK=1
   ghc-options:      -fwarn-unused-binds
                     -fno-enable-rewrite-rules
                     -threaded -rtsopts
@@ -75,21 +68,16 @@ executable regressions
   main-is:          Regressions.hs
   other-modules:    Data.ByteString
                     Data.ByteString.Internal
+                    Data.ByteString.Lazy.Internal
                     Data.ByteString.Unsafe
   hs-source-dirs:   . ..
-  build-depends:    base, ghc-prim, deepseq, random, directory,
+  build-depends:    base, ghc-prim, deepseq, random,
                     test-framework, test-framework-hunit, HUnit
   c-sources:        ../cbits/fpstring.c
   include-dirs:     ../include
-  cpp-options:      -DHAVE_TEST_FRAMEWORK=1
   ghc-options:      -fwarn-unused-binds
                     -fno-enable-rewrite-rules
                     -threaded -rtsopts
-  extensions:       BangPatterns
-                    UnliftedFFITypes,
-                    MagicHash,
-                    ScopedTypeVariables
-                    NamedFieldPuns
 
 test-suite test-builder
   type:             exitcode-stdio-1.0
@@ -122,21 +110,12 @@ test-suite test-builder
                     QuickCheck                 >= 2.10 && < 2.15,
                     byteorder                  == 1.0.*,
                     dlist                      >= 0.5 && < 0.9,
-                    directory,
-                    mtl                        >= 2.0 && < 2.3,
+                    transformers               >= 0.3,
                     HUnit,
                     test-framework,
                     test-framework-hunit,
                     test-framework-quickcheck2  >= 0.3
-  cpp-options:      -DHAVE_TEST_FRAMEWORK=1
   ghc-options:      -Wall -fwarn-tabs -threaded -rtsopts
-  extensions:       CPP, ForeignFunctionInterface
-                    UnliftedFFITypes,
-                    MagicHash,
-                    ScopedTypeVariables
-                    Rank2Types
-                    BangPatterns
-                    NamedFieldPuns
   c-sources:        ../cbits/fpstring.c
                     ../cbits/itoa.c
   include-dirs:     ../include

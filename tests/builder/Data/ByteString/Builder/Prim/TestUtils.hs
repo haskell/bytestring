@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 -- |
 -- Copyright   : (c) 2011 Simon Meier
 -- License     : BSD3-style (see LICENSE)
@@ -70,27 +70,19 @@ import qualified Data.ByteString               as S
 import qualified Data.ByteString.Internal      as S
 import qualified Data.ByteString.Builder.Prim.Internal as I
 
+import           Data.Bits (Bits(..))
 import           Data.Char (chr, ord)
-
+import           Data.Int
+import           Data.Word
+import           Foreign (Storable(..), castPtr, minusPtr, with)
 import           Numeric (showHex)
-
-#if MIN_VERSION_base(4,4,0)
-import Foreign hiding (unsafePerformIO)
-import System.IO.Unsafe (unsafePerformIO)
-#else
-import Foreign
-#endif
-
 import           System.ByteOrder
+import           System.IO.Unsafe (unsafePerformIO)
 
-#if defined(HAVE_TEST_FRAMEWORK)
 import           Test.HUnit (assertBool)
 import           Test.Framework
 import           Test.Framework.Providers.HUnit
 import           Test.Framework.Providers.QuickCheck2
-#else
-import           TestFramework
-#endif
 import           Test.QuickCheck (Arbitrary(..))
 
 -- Helper functions

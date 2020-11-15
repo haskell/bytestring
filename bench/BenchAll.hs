@@ -34,18 +34,9 @@ import           Data.ByteString.Builder.Prim          (BoundedPrim, FixedPrim,
 import qualified Data.ByteString.Builder.Prim          as P
 import qualified Data.ByteString.Builder.Prim.Internal as PI
 
-import qualified Blaze.ByteString.Builder          as Blaze
-import qualified Blaze.Text                        as Blaze
-import qualified "bytestring" Data.ByteString      as OldS
-import qualified "bytestring" Data.ByteString.Lazy as OldL
-
-import           Paths_bench_bytestring
-
 import           Foreign
 
 import System.Random
-import Paths_bench_bytestring
-
 
 ------------------------------------------------------------------------------
 -- Benchmark support
@@ -101,20 +92,19 @@ lazyByteStringData = case S.splitAt (nRepl `div` 2) byteStringData of
 byteStringChunksData :: [S.ByteString]
 byteStringChunksData = map (S.pack . replicate (4 ) . fromIntegral) intData
 
-{-# NOINLINE oldByteStringChunksData #-}
-oldByteStringChunksData :: [OldS.ByteString]
-oldByteStringChunksData = map (OldS.pack . replicate (4 ) . fromIntegral) intData
-
+{-# NOINLINE loremIpsum #-}
+loremIpsum :: S.ByteString
+loremIpsum = S8.unlines $ map S8.pack
+  [ "  Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor"
+  , "incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis"
+  , "nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."
+  , "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu"
+  , "fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in"
+  , "culpa qui officia deserunt mollit anim id est laborum."
+  ]
 
 -- benchmark wrappers
 ---------------------
-
-{-# INLINE benchBlaze #-}
-benchBlaze :: String -> a -> (a -> Blaze.Builder) -> Benchmark
-benchBlaze name x b =
-    bench (name ++" (" ++ show nRepl ++ ")") $
-        whnf (OldL.length . Blaze.toLazyByteString . b) x
-
 
 {-# INLINE benchB #-}
 benchB :: String -> a -> (a -> Builder) -> Benchmark
@@ -239,8 +229,6 @@ foldInputs = map (\k -> S.pack $ if k <= 6 then take (2 ^ k) [32..95] else conca
 main :: IO ()
 main = do
   mapM_ putStrLn sanityCheckInfo
-  putStrLn ""
-  wikiPage <- getDataFileName "wiki-haskell.html" >>= S.readFile
   Gauge.defaultMain
     [ bgroup "Data.ByteString.Builder"
       [ bgroup "Small payload"
@@ -275,10 +263,6 @@ main = do
                 (foldMap byteString)
             , benchB ("foldMap byteStringCopy" ++ dataName) byteStringChunksData
                 (foldMap byteStringCopy)
-            , benchBlaze ("foldMap Blaze.insertByteString" ++ dataName) oldByteStringChunksData
-                (foldMap Blaze.insertByteString)
-            , benchBlaze ("foldMap Blaze.fromByteString" ++ dataName) oldByteStringChunksData
-                (foldMap Blaze.fromByteString)
             ]
 
       , bgroup "Non-bounded encodings"
@@ -290,8 +274,6 @@ main = do
           -- to Integer.
         , benchB "foldMap integerDec (small)"                     smallIntegerData        $ foldMap integerDec
         , benchB "foldMap integerDec (large)"                     largeIntegerData        $ foldMap integerDec
-        , benchBlaze "foldMap integerDec (small) (blaze-textual)" smallIntegerData        $ foldMap Blaze.integral
-        , benchBlaze "foldMap integerDec (large) (blaze-textual)" largeIntegerData        $ foldMap Blaze.integral
         ]
       ]
 
@@ -403,6 +385,10 @@ main = do
         ]
       ]
     , bgroup "sort" $ map (\s -> bench (S8.unpack s) $ nf S.sort s) sortInputs
+    , bgroup "words"
+      [ bench "lorem ipsum" $ nf S8.words loremIpsum
+      , bench "one huge word" $ nf S8.words byteStringData
+      ]
     , bgroup "folds"
       [ bgroup "foldl'" $ map (\s -> bench (show $ S.length s) $
           nf (S.foldl' (\acc x -> acc + fromIntegral x) (0 :: Int)) s) foldInputs

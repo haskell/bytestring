@@ -1,4 +1,5 @@
-{-# LANGUAGE CPP, FlexibleContexts, ScopedTypeVariables, BangPatterns #-}
+{-# LANGUAGE BangPatterns     #-}
+{-# LANGUAGE CPP              #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
@@ -13,17 +14,18 @@
 
 module Data.ByteString.Builder.Tests (tests) where
 
-
 import           Control.Applicative
-import           Control.Monad.State
-import           Control.Monad.Writer
+import           Control.Monad (unless, void)
+import           Control.Monad.Trans.State (StateT, evalStateT, evalState, put, get)
+import           Control.Monad.Trans.Class (lift)
+import           Control.Monad.Trans.Writer (WriterT, execWriterT, tell)
 
-import           Foreign (Word, Word8, minusPtr)
-import           System.IO.Unsafe (unsafePerformIO)
+import           Foreign (minusPtr)
 
 import           Data.Char (chr)
 import qualified Data.DList      as D
-import           Data.Foldable (asum, foldMap)
+import           Data.Foldable
+import           Data.Word
 
 import qualified Data.ByteString          as S
 import qualified Data.ByteString.Internal as S
@@ -38,21 +40,17 @@ import qualified Data.ByteString.Builder.Prim       as BP
 import           Data.ByteString.Builder.Prim.TestUtils
 
 import           Control.Exception (evaluate)
-import           System.IO (openTempFile, hPutStr, hClose, hSetBinaryMode)
-import           System.IO (hSetEncoding, utf8)
-import           System.Directory
+import           System.IO (openTempFile, hPutStr, hClose, hSetBinaryMode, hSetEncoding, utf8, hSetNewlineMode, noNewlineTranslation)
 import           Foreign (ForeignPtr, withForeignPtr, castPtr)
+import           Foreign.C.String (withCString)
+import           System.Posix.Internals (c_unlink)
 
-#if defined(HAVE_TEST_FRAMEWORK)
 import           Test.Framework
 import           Test.Framework.Providers.QuickCheck2
-#else
-import           TestFramework
-#endif
 
 import           Test.QuickCheck
                    ( Arbitrary(..), oneof, choose, listOf, elements
-                   , counterexample, ioProperty, UnicodeString(..) )
+                   , counterexample, ioProperty, UnicodeString(..), Property )
 
 
 tests :: [Test]
@@ -95,9 +93,9 @@ testHandlePutBuilder :: Test
 testHandlePutBuilder =
     testProperty "hPutBuilder" testRecipe
   where
-    testRecipe :: (UnicodeString, UnicodeString, UnicodeString, Recipe) -> Bool
+    testRecipe :: (UnicodeString, UnicodeString, UnicodeString, Recipe) -> Property
     testRecipe args =
-      unsafePerformIO $ do
+      ioProperty $ do
         let (UnicodeString a1, UnicodeString a2, UnicodeString a3, recipe) = args
 #if MIN_VERSION_base(4,5,0)
             before  = a1
@@ -112,10 +110,10 @@ testHandlePutBuilder =
             between = filter safeChr a2
             after   = filter safeChr a3
 #endif
-        tempDir <- getTemporaryDirectory
-        (tempFile, tempH) <- openTempFile tempDir "TestBuilder"
+        (tempFile, tempH) <- openTempFile "." "test-builder.tmp"
         -- switch to UTF-8 encoding
         hSetEncoding tempH utf8
+        hSetNewlineMode tempH noNewlineTranslation
         -- output recipe with intermediate direct writing to handle
         let b = fst $ recipeComponents recipe
         hPutStr tempH before
@@ -129,7 +127,7 @@ testHandlePutBuilder =
         _ <- evaluate (L.length $ lbs)
         removeFile tempFile
         -- compare to pure builder implementation
-        let lbsRef = toLazyByteString $ mconcat
+        let lbsRef = toLazyByteString $ fold
               [stringUtf8 before, b, stringUtf8 between, b, stringUtf8 after]
         -- report
         let msg = unlines
@@ -146,10 +144,9 @@ testHandlePutBuilderChar8 :: Test
 testHandlePutBuilderChar8 =
     testProperty "char8 hPutBuilder" testRecipe
   where
-    testRecipe :: (String, String, String, Recipe) -> Bool
-    testRecipe args@(before, between, after, recipe) = unsafePerformIO $ do
-        tempDir <- getTemporaryDirectory
-        (tempFile, tempH) <- openTempFile tempDir "TestBuilder"
+    testRecipe :: (String, String, String, Recipe) -> Property
+    testRecipe args@(before, between, after, recipe) = ioProperty $ do
+        (tempFile, tempH) <- openTempFile "." "TestBuilder"
         -- switch to binary / latin1 encoding
         hSetBinaryMode tempH True
         -- output recipe with intermediate direct writing to handle
@@ -165,7 +162,7 @@ testHandlePutBuilderChar8 =
         _ <- evaluate (L.length $ lbs)
         removeFile tempFile
         -- compare to pure builder implementation
-        let lbsRef = toLazyByteString $ mconcat
+        let lbsRef = toLazyByteString $ fold
               [string8 before, b, string8 between, b, string8 after]
         -- report
         let msg = unlines
@@ -178,6 +175,8 @@ testHandlePutBuilderChar8 =
         unless success (error msg)
         return success
 
+removeFile :: String -> IO ()
+removeFile fn = void $ withCString fn c_unlink
 
 -- Recipes with which to test the builder functions
 ---------------------------------------------------
@@ -212,9 +211,10 @@ data Recipe = Recipe Strategy Int Int L.ByteString [Action]
 
 renderRecipe :: Recipe -> [Word8]
 renderRecipe (Recipe _ firstSize _ cont as) =
-    D.toList $ execWriter (evalStateT (mapM_ renderAction as) firstSize)
-                 `mappend` renderLBS cont
+    D.toList $ evalState (execWriterT (traverse_ renderAction as)) firstSize
+                 `D.append` renderLBS cont
   where
+    renderAction :: Monad m => Action -> WriterT (D.DList Word8) (StateT Int m) ()
     renderAction (SBS Hex bs)   = tell $ foldMap hexWord8 $ S.unpack bs
     renderAction (SBS _ bs)     = tell $ D.fromList $ S.unpack bs
     renderAction (LBS Hex lbs)  = tell $ foldMap hexWord8 $ L.unpack lbs
@@ -223,15 +223,14 @@ renderRecipe (Recipe _ firstSize _ cont as) =
     renderAction (W8 w)         = tell $ return w
     renderAction (W8S ws)       = tell $ D.fromList ws
     renderAction (String cs)    = tell $ foldMap (D.fromList . charUtf8_list) cs
-    renderAction Flush          = tell $ mempty
-    renderAction (EnsureFree _) = tell $ mempty
+    renderAction Flush          = tell $ D.empty
+    renderAction (EnsureFree _) = tell $ D.empty
     renderAction (FDec f)       = tell $ D.fromList $ encodeASCII $ show f
     renderAction (DDec d)       = tell $ D.fromList $ encodeASCII $ show d
     renderAction (ModState i)   = do
-        s <- get
+        s <- lift get
         tell (D.fromList $ encodeASCII $ show s)
-        put (s - i)
-
+        lift $ put (s - i)
 
     renderLBS = D.fromList . L.unpack
     hexWord8  = D.fromList . wordHexFixed_list
@@ -276,7 +275,7 @@ recipeComponents (Recipe how firstSize otherSize cont as) =
         strategy Safe      = safeStrategy
         strategy Untrimmed = untrimmedStrategy
 
-    b = fromPut $ evalStateT (mapM_ buildAction as) firstSize
+    b = fromPut $ evalStateT (traverse_ buildAction as) firstSize
 
 
 -- 'Arbitary' instances
@@ -390,7 +389,7 @@ test_encodeUnfoldrF =
 
 test_encodeUnfoldrB :: Test
 test_encodeUnfoldrB =
-    compareImpls "encodeUnfoldrB charUtf8" (concatMap charUtf8_list) encode
+    compareImpls "encodeUnfoldrB charUtf8" (foldMap charUtf8_list) encode
   where
     toLBS = toLazyByteStringWith (safeStrategy 23 101) L.empty
     encode =
@@ -475,7 +474,7 @@ testRunBuilder =
           actual <- bufferWriterOutput (runBuilder builder)
           return (S.unpack actual == expected)
       where
-        recipe = Recipe Safe 0 0 mempty actions
+        recipe = Recipe Safe 0 0 L.empty actions
 
 bufferWriterOutput :: BufferWriter -> IO S.ByteString
 bufferWriterOutput bwrite0 = do
@@ -512,7 +511,7 @@ testBuilderConstr name ref mkBuilder =
   where
     check x =
         (ws ++ ws) ==
-        (L.unpack $ toLazyByteString $ mkBuilder x `mappend` mkBuilder x)
+        (L.unpack $ toLazyByteString $ mkBuilder x `BI.append` mkBuilder x)
       where
         ws = ref x
 
@@ -564,7 +563,7 @@ testsBinary =
 testsASCII :: [Test]
 testsASCII =
   [ testBuilderConstr "char7" char7_list char7
-  , testBuilderConstr "string7" (concatMap char7_list) string7
+  , testBuilderConstr "string7" (foldMap char7_list) string7
 
   , testBuilderConstr "int8Dec"   dec_list int8Dec
   , testBuilderConstr "int16Dec"  dec_list int16Dec
@@ -607,11 +606,11 @@ testsASCII =
 testsChar8 :: [Test]
 testsChar8 =
   [ testBuilderConstr "charChar8" char8_list char8
-  , testBuilderConstr "stringChar8" (concatMap char8_list) string8
+  , testBuilderConstr "stringChar8" (foldMap char8_list) string8
   ]
 
 testsUtf8 :: [Test]
 testsUtf8 =
   [ testBuilderConstr "charUtf8" charUtf8_list charUtf8
-  , testBuilderConstr "stringUtf8" (concatMap charUtf8_list) stringUtf8
+  , testBuilderConstr "stringUtf8" (foldMap charUtf8_list) stringUtf8
   ]

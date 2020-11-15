@@ -127,8 +127,6 @@ import qualified Data.ByteString.Builder.Prim         as E
 
 -- To be used in a later comparison
 import qualified Data.DList                                      as D
-import qualified Codec.Binary.UTF8.Light                         as Utf8Light
-import qualified Data.String.UTF8                                as Utf8String
 import qualified Data.Text.Lazy                                  as TL
 import qualified Data.Text.Lazy.Encoding                         as TL
 import qualified Data.Text.Lazy.Builder                          as TB
@@ -361,27 +359,6 @@ benchDListUtf8 :: Benchmark
 benchDListUtf8 = bench "utf8 + renderTableD maxiTable" $
   nf (L.length . B.toLazyByteString . B.stringUtf8 . D.toList . renderTableD) maxiTable
 
-
-------------------------------------------------------------------------------
--- utf8-string and utf8-light
-------------------------------------------------------------------------------
-
--- 4.12 ms
-benchDListUtf8Light :: Benchmark
-benchDListUtf8Light = bench "utf8-light + renderTable maxiTable" $
-  whnf (Utf8Light.encode . D.toList . renderTableD) maxiTable
-
-{- Couldn't get utf8-string to work :-(
-
-benchDListUtf8String :: Benchmark
-benchDListUtf8String = bench "utf8-light + renderTable maxiTable" $
-  whnf (Utf8String.toRep . encode .
-        D.toList . renderTableD) maxiTable
-  where
-    encode :: String -> Utf8String.UTF8 S.ByteString
-    encode = Utf8String.fromString
--}
-
 ------------------------------------------------------------------------------
 -- Text Builder
 ------------------------------------------------------------------------------
@@ -432,7 +409,6 @@ main = do
       , benchString
       , benchStringUtf8
       , benchDListUtf8
-      , benchDListUtf8Light
       , benchTextBuilder
       , benchTextBuilderUtf8
       , benchBuilderUtf8

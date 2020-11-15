@@ -1,4 +1,7 @@
-{-# LANGUAGE CPP, ScopedTypeVariables, BangPatterns #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE MagicHash #-}
+{-# LANGUAGE UnboxedTuples #-}
 --
 -- Must have rules off, otherwise the rewrite rules will replace the rhs
 -- with the lhs, and we only end up testing lhs == lhs
@@ -8,6 +11,7 @@
 -- -fhpc interferes with rewrite rules firing.
 --
 
+import Foreign.C.String (withCString)
 import Foreign.Storable
 import Foreign.ForeignPtr
 import Foreign.Marshal.Alloc
@@ -18,7 +22,7 @@ import Control.Applicative
 import Control.Monad
 import Control.Concurrent
 import Control.Exception
-import System.Directory
+import System.Posix.Internals (c_unlink)
 
 import Data.List
 import Data.Char
@@ -26,13 +30,17 @@ import Data.Word
 import Data.Maybe
 import Data.Int (Int64)
 import Data.Monoid
+#if MIN_VERSION_base(4,9,0)
+import Data.Semigroup
+#endif
+import GHC.Exts (Int(..), newPinnedByteArray#, unsafeFreezeByteArray#)
+import GHC.ST (ST(..), runST)
 
 import Text.Printf
 import Data.String
 
 import System.Environment
 import System.IO
-import System.IO.Unsafe
 
 import Data.ByteString.Lazy (ByteString(..), pack , unpack)
 import qualified Data.ByteString.Lazy as L
@@ -52,12 +60,8 @@ import Prelude hiding (abs)
 
 import Rules
 import QuickCheckUtils
-#if defined(HAVE_TEST_FRAMEWORK)
 import Test.Framework
 import Test.Framework.Providers.QuickCheck2
-#else
-import TestFramework
-#endif
 
 toInt64 :: Int -> Int64
 toInt64 = fromIntegral
@@ -439,6 +443,8 @@ prop_unfoldrBL =
     ((\n f a ->                  take n $
           unfoldr f a) :: Int -> (X -> Maybe (W,X)) -> X -> [W])
 
+prop_packZipWithBL   = L.packZipWith `eq3` (zipWith :: (W -> W -> W) -> [W] -> [W] -> [W])
+
 --
 -- And finally, check correspondance between Data.ByteString and List
 --
@@ -540,7 +546,7 @@ prop_scanr1CL f = eqnotnull2
     (scanr1 :: (Char -> Char -> Char) -> [Char] -> [Char])
     (castFn f)
 
--- prop_zipWithPL'   = P.zipWith'  `eq3` (zipWith :: (W -> W -> W) -> [W] -> [W] -> [W])
+prop_packZipWithPL   = P.packZipWith  `eq3` (zipWith :: (W -> W -> W) -> [W] -> [W] -> [W])
 
 prop_zipWithPL    = (P.zipWith  :: (W -> W -> X) -> P   -> P   -> [X]) `eq3`
                       (zipWith  :: (W -> W -> X) -> [W] -> [W] -> [X])
@@ -711,6 +717,13 @@ prop_all xs a = (all (== a) xs) == (L.all (== a) (pack xs))
 
 prop_maximum xs = (not (null xs)) ==> (maximum xs) == (L.maximum ( pack xs ))
 prop_minimum xs = (not (null xs)) ==> (minimum xs) == (L.minimum ( pack xs ))
+
+prop_compareLength1 xs  =  (L.pack xs         `L.compareLength` fromIntegral (length xs)) == EQ
+prop_compareLength2 xs c = (L.pack (xs ++ [c]) `L.compareLength` fromIntegral (length xs)) == GT
+prop_compareLength3 xs c = (L.pack xs `L.compareLength` fromIntegral (length (xs ++ [c]))) == LT
+prop_compareLength4 xs c = ((L.pack xs `L.append` L.pack [c] `L.append` L.pack [undefined])
+                            `L.compareLength` fromIntegral (length xs)) == GT
+prop_compareLength5 xs l = L.compareLength xs l == compare (L.length xs) l
 
 prop_replicate1 c =
     forAll arbitrary $ \(Positive n) ->
@@ -1285,7 +1298,7 @@ prop_unfoldrBB c =
     forAll arbitrarySizedIntegral $ \n ->
       (fst $ C.unfoldrN n fn c) == (C.pack $ take n $ unfoldr fn c)
   where
-    fn x = Just (x, chr (ord x + 1))
+    fn x = Just (x, if x == maxBound then x else succ x)
 
 prop_prefixBB xs ys = isPrefixOf xs ys == (P.pack xs `P.isPrefixOf` P.pack ys)
 prop_prefixLL xs ys = isPrefixOf xs ys == (L.pack xs `L.isPrefixOf` L.pack ys)
@@ -1345,6 +1358,85 @@ prop_readIntSafe         = (fst . fromJust . D.readInt) (Chunk (C.pack "1z") Emp
 prop_readIntUnsafe       = (fst . fromJust . D.readInt) (Chunk (C.pack "2z") undefined)     == 2
 prop_readIntegerSafe     = (fst . fromJust . D.readInteger) (Chunk (C.pack "1z") Empty)     == 1
 prop_readIntegerUnsafe   = (fst . fromJust . D.readInteger) (Chunk (C.pack "2z") undefined) == 2
+prop_readIntBoundsCC     = let !smax   = show (maxBound :: Int)
+                               !smin   = show (minBound :: Int)
+                               !smax1  = show (fromIntegral (maxBound :: Int) + 1 :: Integer)
+                               !smin1  = show (fromIntegral (minBound :: Int) - 1 :: Integer)
+                               !smax10 = show (fromIntegral (maxBound :: Int) + 10 :: Integer)
+                               !smin10 = show (fromIntegral (minBound :: Int) - 10 :: Integer)
+                            --
+                            in C.readInt (spack smax) == good maxBound
+                            && C.readInt (spack smin) == good minBound
+                            --
+                            && C.readInt (spackPlus smax) == good maxBound
+                            && C.readInt (spackMinus smax) == good (negate maxBound)
+                            --
+                            && C.readInt (spackZeros smax) == good maxBound
+                            && C.readInt (spackZeros smin) == good minBound
+                            --
+                            && C.readInt (spack smax1 ) == Nothing
+                            && C.readInt (spack smin1 ) == Nothing
+                            --
+                            && C.readInt (spack smax10) == Nothing
+                            && C.readInt (spack smin10) == Nothing
+                            --
+                            && C.readInt (spackLong smax) == Nothing
+                            && C.readInt (spackLong smin) == Nothing
+  where
+    tailStr      = " tail"
+    zeroStr      = "000000000000000000000000000"
+    spack s      = C.pack $ s ++ tailStr
+    spackPlus s  = C.pack $ '+' : (s ++ tailStr)
+    spackMinus s = C.pack $ '-' : (s ++ tailStr)
+    spackLong s  = C.pack $ s ++ zeroStr ++ tailStr
+    spackZeros s = case s of
+                    '+':num -> C.pack $ '+' : zeroStr ++ num ++ tailStr
+                    '-':num -> C.pack $ '-' : zeroStr ++ num ++ tailStr
+                    num     -> C.pack $ zeroStr ++ num ++ tailStr
+    good i       = Just (i, C.pack tailStr)
+prop_readIntBoundsLC     = let !smax   = show (maxBound :: Int)
+                               !smin   = show (minBound :: Int)
+                               !smax1  = show (fromIntegral (maxBound :: Int) + 1 :: Integer)
+                               !smin1  = show (fromIntegral (minBound :: Int) - 1 :: Integer)
+                               !smax10 = show (fromIntegral (maxBound :: Int) + 10 :: Integer)
+                               !smin10 = show (fromIntegral (minBound :: Int) - 10 :: Integer)
+                            -- Plain min/maxBound
+                            in LC.readInt (spack smax) == good maxBound
+                            && LC.readInt (spack smin) == good minBound
+                            -- With explicit [+-] sign for maxBound
+                            && LC.readInt (spackPlus smax) == good maxBound
+                            && LC.readInt (spackMinus smax) == good (negate maxBound)
+                            -- With leading zeros
+                            && LC.readInt (spackZeros smax) == good maxBound
+                            && LC.readInt (spackZeros smin) == good minBound
+                            -- Overflow in last digit
+                            && LC.readInt (spack smax1 ) == Nothing
+                            && LC.readInt (spack smin1 ) == Nothing
+                            -- Overflow in 2nd-last digit
+                            && LC.readInt (spack smax10) == Nothing
+                            && LC.readInt (spack smin10) == Nothing
+                            -- Overflow across chunk boundary
+                            && LC.readInt (spackLong1 smax) == Nothing
+                            && LC.readInt (spackLong1 smin) == Nothing
+                            -- Overflow within chunk
+                            && LC.readInt (spackLong2 smax) == Nothing
+                            && LC.readInt (spackLong2 smin) == Nothing
+                            -- Sign with no digits
+                            && LC.readInt (LC.pack "+ foo") == Nothing
+                            && LC.readInt (LC.pack "-bar") == Nothing
+  where
+    tailStr      = " tail"
+    zeroStr      = "000000000000000000000000000"
+    spack s      = LC.pack $ s ++ tailStr
+    spackPlus s  = LC.singleton '+' `D.append` LC.pack s `D.append` LC.pack tailStr
+    spackMinus s = LC.singleton '-' `D.append` LC.pack s `D.append` LC.pack tailStr
+    spackLong1 s = LC.pack s `D.append` LC.pack zeroStr `D.append` LC.pack tailStr
+    spackLong2 s = LC.pack (s ++ zeroStr) `D.append` LC.pack tailStr
+    spackZeros s = case s of
+                    '+':num -> LC.pack ('+' : zeroStr) `D.append` LC.pack (num ++ tailStr)
+                    '-':num -> LC.pack ('-' : zeroStr) `D.append` LC.pack (num ++ tailStr)
+                    num     -> LC.pack $ zeroStr ++ num ++ tailStr
+    good i       = Just (i, LC.pack tailStr)
 
 -- prop_filterChar1BB c xs = (filter (==c) xs) == ((C.unpack . C.filterChar c . C.pack) xs)
 -- prop_filterChar2BB c xs = (C.filter (==c) (C.pack xs)) == (C.filterChar c (C.pack xs))
@@ -1363,10 +1455,22 @@ prop_zip1BB xs ys = P.zip xs ys == zip (P.unpack xs) (P.unpack ys)
 prop_zipWithBB xs ys = P.zipWith (,) xs ys == P.zip xs ys
 prop_zipWithCC xs ys = C.zipWith (,) xs ys == C.zip xs ys
 prop_zipWithLC xs ys = LC.zipWith (,) xs ys == LC.zip xs ys
--- prop_zipWith'BB xs ys = P.pack (P.zipWith (+) xs ys) == P.zipWith' (+) xs ys
+
+prop_packZipWithBB f xs ys = P.pack (P.zipWith f xs ys) == P.packZipWith f xs ys
+prop_packZipWithLL f xs ys = L.pack (L.zipWith f xs ys) == L.packZipWith f xs ys
+prop_packZipWithBC f xs ys = C.pack (C.zipWith f xs ys) == C.packZipWith f xs ys
+prop_packZipWithLC f xs ys = LC.pack (LC.zipWith f xs ys) == LC.packZipWith f xs ys
+
 
 prop_unzipBB x = let (xs,ys) = unzip x in (P.pack xs, P.pack ys) == P.unzip x
 
+#if MIN_VERSION_base(4,9,0)
+prop_stimesBB :: NonNegative Int -> P.ByteString -> Bool
+prop_stimesBB (NonNegative i) bs = stimes i bs == mtimesDefault i bs
+
+prop_stimesLL :: NonNegative Int -> L.ByteString -> Bool
+prop_stimesLL (NonNegative i) bs = stimes i bs == mtimesDefault i bs
+#endif
 
 -- prop_zipwith_spec f p q =
 --   P.pack (P.zipWith f p q) == P.zipWith' f p q
@@ -1478,21 +1582,21 @@ prop_unpackAppendCharsStrict (String8 cs) (String8 cs') =
 -- Unsafe functions
 
 -- Test unsafePackAddress
-prop_unsafePackAddress (CByteString x) = unsafePerformIO $ do
+prop_unsafePackAddress (CByteString x) = ioProperty $ do
         let (p,_,_) = P.toForeignPtr (x `P.snoc` 0)
         y <- withForeignPtr p $ \(Ptr addr) ->
             P.unsafePackAddress addr
         return (y == x)
 
 -- Test unsafePackAddressLen
-prop_unsafePackAddressLen x = unsafePerformIO $ do
+prop_unsafePackAddressLen x = ioProperty $ do
         let i = P.length x
             (p,_,_) = P.toForeignPtr (x `P.snoc` 0)
         y <- withForeignPtr p $ \(Ptr addr) ->
             P.unsafePackAddressLen i addr
         return (y == x)
 
-prop_unsafeUseAsCString x = unsafePerformIO $ do
+prop_unsafeUseAsCString x = ioProperty $ do
         let n = P.length x
         y <- P.unsafeUseAsCString x $ \cstr ->
                     sequence [ do a <- peekElemOff cstr i
@@ -1501,7 +1605,7 @@ prop_unsafeUseAsCString x = unsafePerformIO $ do
                              | i <- [0.. n-1]     ]
         return (and y)
 
-prop_unsafeUseAsCStringLen x = unsafePerformIO $ do
+prop_unsafeUseAsCStringLen x = ioProperty $ do
         let n = P.length x
         y <- P.unsafeUseAsCStringLen x $ \(cstr,_) ->
                     sequence [ do a <- peekElemOff cstr i
@@ -1512,7 +1616,7 @@ prop_unsafeUseAsCStringLen x = unsafePerformIO $ do
 
 prop_internal_invariant x = L.invariant x
 
-prop_useAsCString x = unsafePerformIO $ do
+prop_useAsCString x = ioProperty $ do
         let n = P.length x
         y <- P.useAsCString x $ \cstr ->
                     sequence [ do a <- peekElemOff cstr i
@@ -1521,23 +1625,23 @@ prop_useAsCString x = unsafePerformIO $ do
                              | i <- [0.. n-1]     ]
         return (and y)
 
-prop_packCString (CByteString x) = unsafePerformIO $ do
+prop_packCString (CByteString x) = ioProperty $ do
         y <- P.useAsCString x $ P.unsafePackCString
         return (y == x)
 
-prop_packCString_safe (CByteString x) = unsafePerformIO $ do
+prop_packCString_safe (CByteString x) = ioProperty $ do
         y <- P.useAsCString x $ P.packCString
         return (y == x)
 
-prop_packCStringLen x = unsafePerformIO $ do
+prop_packCStringLen x = ioProperty $ do
         y <- P.useAsCStringLen x $ P.unsafePackCStringLen
         return (y == x && P.length y == P.length x)
 
-prop_packCStringLen_safe x = unsafePerformIO $ do
+prop_packCStringLen_safe x = ioProperty $ do
         y <- P.useAsCStringLen x $ P.packCStringLen
         return (y == x && P.length y == P.length x)
 
-prop_packMallocCString (CByteString x) = unsafePerformIO $ do
+prop_packMallocCString (CByteString x) = ioProperty $ do
 
          let (fp,_,_) = P.toForeignPtr x
          ptr <- mallocArray0 (P.length x) :: IO (Ptr Word8)
@@ -1550,11 +1654,11 @@ prop_packMallocCString (CByteString x) = unsafePerformIO $ do
 
 prop_unsafeFinalize    x =
     P.length x > 0 ==>
-      unsafePerformIO $ do
+      ioProperty $ do
         x <- P.unsafeFinalize x
         return (x == ())
 
-prop_packCStringFinaliser x = unsafePerformIO $ do
+prop_packCStringFinaliser x = ioProperty $ do
         y <- P.useAsCString x $ \cstr -> P.unsafePackCStringFinalizer (castPtr cstr) (P.length x) (return ())
         return (y == x)
 
@@ -1564,90 +1668,82 @@ prop_fromForeignPtr x = (let (a,b,c) = (P.toForeignPtr x)
 ------------------------------------------------------------------------
 -- IO
 
-prop_read_write_file_P x = unsafePerformIO $ do
-    tid <- myThreadId
-    let f = "qc-test-"++show tid
-    bracket
-        (do P.writeFile f x)
-        (const $ do removeFile f)
-        (const $ do y <- P.readFile f
-                    return (x==y))
+prop_read_write_file_P x = ioProperty $ do
+    (fn, h) <- openTempFile "." "prop-compiled.tmp"
+    hClose h
+    P.writeFile fn x
+    y <- P.readFile fn
+    removeFile fn
+    return (x == y)
 
-prop_read_write_file_C x = unsafePerformIO $ do
-    tid <- myThreadId
-    let f = "qc-test-"++show tid
-    bracket
-        (do C.writeFile f x)
-        (const $ do removeFile f)
-        (const $ do y <- C.readFile f
-                    return (x==y))
+prop_read_write_file_C x = ioProperty $ do
+    (fn, h) <- openTempFile "." "prop-compiled.tmp"
+    hClose h
+    C.writeFile fn x
+    y <- C.readFile fn
+    removeFile fn
+    return (x == y)
 
-prop_read_write_file_L x = unsafePerformIO $ do
-    tid <- myThreadId
-    let f = "qc-test-"++show tid
-    bracket
-        (do L.writeFile f x)
-        (const $ do removeFile f)
-        (const $ do y <- L.readFile f
-                    return (x==y))
+prop_read_write_file_L x = ioProperty $ do
+    (fn, h) <- openTempFile "." "prop-compiled.tmp"
+    hClose h
+    L.writeFile fn x
+    y <- L.readFile fn
+    L.length y `seq` removeFile fn
+    return (x == y)
 
-prop_read_write_file_D x = unsafePerformIO $ do
-    tid <- myThreadId
-    let f = "qc-test-"++show tid
-    bracket
-        (do D.writeFile f x)
-        (const $ do removeFile f)
-        (const $ do y <- D.readFile f
-                    return (x==y))
+prop_read_write_file_D x = ioProperty $ do
+    (fn, h) <- openTempFile "." "prop-compiled.tmp"
+    hClose h
+    D.writeFile fn x
+    y <- D.readFile fn
+    D.length y `seq` removeFile fn
+    return (x == y)
 
 ------------------------------------------------------------------------
 
-prop_append_file_P x y = unsafePerformIO $ do
-    tid <- myThreadId
-    let f = "qc-test-"++show tid
-    bracket
-        (do P.writeFile f x
-            P.appendFile f y)
-        (const $ do removeFile f)
-        (const $ do z <- P.readFile f
-                    return (z==(x `P.append` y)))
+prop_append_file_P x y = ioProperty $ do
+    (fn, h) <- openTempFile "." "prop-compiled.tmp"
+    hClose h
+    P.writeFile fn x
+    P.appendFile fn y
+    z <- P.readFile fn
+    removeFile fn
+    return (z == x `P.append` y)
 
-prop_append_file_C x y = unsafePerformIO $ do
-    tid <- myThreadId
-    let f = "qc-test-"++show tid
-    bracket
-        (do C.writeFile f x
-            C.appendFile f y)
-        (const $ do removeFile f)
-        (const $ do z <- C.readFile f
-                    return (z==(x `C.append` y)))
+prop_append_file_C x y = ioProperty $ do
+    (fn, h) <- openTempFile "." "prop-compiled.tmp"
+    hClose h
+    C.writeFile fn x
+    C.appendFile fn y
+    z <- C.readFile fn
+    removeFile fn
+    return (z == x `C.append` y)
 
-prop_append_file_L x y = unsafePerformIO $ do
-    tid <- myThreadId
-    let f = "qc-test-"++show tid
-    bracket
-        (do L.writeFile f x
-            L.appendFile f y)
-        (const $ do removeFile f)
-        (const $ do z <- L.readFile f
-                    return (z==(x `L.append` y)))
+prop_append_file_L x y = ioProperty $ do
+    (fn, h) <- openTempFile "." "prop-compiled.tmp"
+    hClose h
+    L.writeFile fn x
+    L.appendFile fn y
+    z <- L.readFile fn
+    L.length y `seq` removeFile fn
+    return (z == x `L.append` y)
 
-prop_append_file_D x y = unsafePerformIO $ do
-    tid <- myThreadId
-    let f = "qc-test-"++show tid
-    bracket
-        (do D.writeFile f x
-            D.appendFile f y)
-        (const $ do removeFile f)
-        (const $ do z <- D.readFile f
-                    return (z==(x `D.append` y)))
+prop_append_file_D x y = ioProperty $ do
+    (fn, h) <- openTempFile "." "prop-compiled.tmp"
+    hClose h
+    D.writeFile fn x
+    D.appendFile fn y
+    z <- D.readFile fn
+    D.length y `seq` removeFile fn
+    return (z == x `D.append` y)
 
 prop_packAddress = C.pack "this is a test"
             ==
                    C.pack "this is a test"
 
-prop_isSpaceWord8 (w :: Word8) = isSpace c == P.isSpaceChar8 c
-   where c = chr (fromIntegral w)
+prop_isSpaceWord8 w = isSpace c == P.isSpaceChar8 c
+   where c = chr (fromIntegral (w :: Word8))
 
 
 ------------------------------------------------------------------------
@@ -1714,6 +1810,13 @@ prop_short_show' xs =
 prop_short_read xs =
     read (show (Short.pack xs)) == Short.pack xs
 
+prop_short_pinned :: NonNegative Int -> Property
+prop_short_pinned (NonNegative (I# len#)) = runST $ ST $ \s ->
+  case newPinnedByteArray# len# s of
+    (# s', mba# #) -> case unsafeFreezeByteArray# mba# s' of
+      (# s'', ba# #) -> let sbs = Short.SBS ba# in
+        (# s'', sbs === Short.toShort (Short.fromShort sbs) #)
+
 stripSuffix :: [W] -> [W] -> Maybe [W]
 stripSuffix xs ys = reverse <$> stripPrefix (reverse xs) (reverse ys)
 
@@ -1739,13 +1842,14 @@ short_tests =
     , testProperty "show"                     prop_short_show
     , testProperty "show'"                    prop_short_show'
     , testProperty "read"                     prop_short_read
+    , testProperty "pinned"                   prop_short_pinned
     ]
 
 ------------------------------------------------------------------------
 -- The entry point
 
 main :: IO ()
-main = defaultMainWithArgs tests ["-o 3"] -- timeout if a test runs for >3 secs
+main = defaultMain tests
 
 --
 -- And now a list of all the properties to test.
@@ -1900,6 +2004,7 @@ bl_tests =
     , testProperty "elemIndexEnd"prop_elemIndexEndBL
     , testProperty "elemIndices" prop_elemIndicesBL
     , testProperty "concatMap"   prop_concatMapBL
+    , testProperty "zipWith/packZipWithLazy" prop_packZipWithBL
     ]
 
 ------------------------------------------------------------------------
@@ -2089,10 +2194,9 @@ pl_tests =
     , testProperty "unzip"       prop_unzipPL
     , testProperty "unzip"       prop_unzipLL
     , testProperty "unzip"       prop_unzipCL
-    , testProperty "zipWith"          prop_zipWithPL
---  , testProperty "zipWith"          prop_zipWithCL
-    , testProperty "zipWith rules"   prop_zipWithPL_rules
---  , testProperty "zipWith/zipWith'" prop_zipWithPL'
+    , testProperty "zipWithPL"          prop_zipWithPL
+    , testProperty "zipWithPL rules"   prop_zipWithPL_rules
+    , testProperty "packZipWithPL" prop_packZipWithPL
 
     , testProperty "isPrefixOf"  prop_isPrefixOfPL
     , testProperty "isSuffixOf"  prop_isSuffixOfPL
@@ -2303,6 +2407,8 @@ bb_tests =
 
     , testProperty "readIntSafe"       prop_readIntSafe
     , testProperty "readIntUnsafe"     prop_readIntUnsafe
+    , testProperty "readIntBoundsCC"   prop_readIntBoundsCC
+    , testProperty "readIntBoundsLC"   prop_readIntBoundsLC
     , testProperty "readIntegerSafe"   prop_readIntegerSafe
     , testProperty "readIntegerUnsafe" prop_readIntegerUnsafe
 
@@ -2349,13 +2455,20 @@ bb_tests =
     , testProperty "zip"            prop_zipBB
     , testProperty "zip"            prop_zipLC
     , testProperty "zip1"           prop_zip1BB
-    , testProperty "zipWith"        prop_zipWithBB
-    , testProperty "zipWith"        prop_zipWithCC
-    , testProperty "zipWith"        prop_zipWithLC
---  , testProperty "zipWith'"       prop_zipWith'BB
+    , testProperty "zipWithBB"        prop_zipWithBB
+    , testProperty "zipWithCC"        prop_zipWithCC
+    , testProperty "zipWithLC"        prop_zipWithLC
+    , testProperty "packZipWithBB"    prop_packZipWithBB
+    , testProperty "packZipWithLL"    prop_packZipWithLL
+    , testProperty "packZipWithBC"    prop_packZipWithBC
+    , testProperty "packZipWithLC"    prop_packZipWithLC
     , testProperty "unzip"          prop_unzipBB
     , testProperty "concatMap"      prop_concatMapBB
 --  , testProperty "join/joinByte"  prop_join_spec
+#if MIN_VERSION_base(4,9,0)
+    , testProperty "stimes strict"  prop_stimesBB
+    , testProperty "stimes lazy"    prop_stimesLL
+#endif
     ]
 
 
@@ -2425,6 +2538,11 @@ ll_tests =
     , testProperty "all"                prop_all
     , testProperty "maximum"            prop_maximum
     , testProperty "minimum"            prop_minimum
+    , testProperty "compareLength 1"    prop_compareLength1
+    , testProperty "compareLength 2"    prop_compareLength2
+    , testProperty "compareLength 3"    prop_compareLength3
+    , testProperty "compareLength 4"    prop_compareLength4
+    , testProperty "compareLength 5"    prop_compareLength5
     , testProperty "replicate 1"        prop_replicate1
     , testProperty "replicate 2"        prop_replicate2
     , testProperty "take"               prop_take1
@@ -2492,3 +2610,6 @@ findIndexEnd p = go . findIndices p
 
 elemIndexEnd :: Eq a => a -> [a] -> Maybe Int
 elemIndexEnd = findIndexEnd . (==)
+
+removeFile :: String -> IO ()
+removeFile fn = void $ withCString fn c_unlink

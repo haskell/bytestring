@@ -30,7 +30,7 @@ module Data.ByteString.Short (
 
     -- * The @ShortByteString@ type
 
-    ShortByteString,
+    ShortByteString(..),
 
     -- ** Memory overhead
     -- | With GHC, the memory overheads are as follows, expressed in words and
