@@ -18,7 +18,7 @@ module Data.ByteString.Builder.ASCII
       -- | Formatting of numbers as ASCII text.
       --
       -- Note that you can also use these functions for the ISO/IEC 8859-1 and
-      -- UTF-8 encodings, as the ASCII encoding is equivalent on the 
+      -- UTF-8 encodings, as the ASCII encoding is equivalent on the
       -- codepoints 0-127.
 
       -- *** Decimal numbers
@@ -336,7 +336,7 @@ integerDec :: Integer -> Builder
 integerDec (IS i#) = intDec (I# i#)
 integerDec i
     | i < 0     = P.primFixed P.char8 '-' `mappend` go (-i)
-    | otherwise =                                   go ( i)
+    | otherwise =                                   go i
   where
     errImpossible fun =
         error $ "integerDec: " ++ fun ++ ": the impossible happened."

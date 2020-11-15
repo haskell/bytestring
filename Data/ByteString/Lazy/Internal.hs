@@ -203,7 +203,7 @@ foldrChunks f z = go
 -- | Consume the chunks of a lazy ByteString with a strict, tail-recursive,
 -- accumulating left fold.
 foldlChunks :: (a -> S.ByteString -> a) -> a -> ByteString -> a
-foldlChunks f z = go z
+foldlChunks f = go
   where go a _ | a `seq` False = undefined
         go a Empty        = a
         go a (Chunk c cs) = go (f a c) cs
@@ -269,7 +269,7 @@ append :: ByteString -> ByteString -> ByteString
 append xs ys = foldrChunks Chunk ys xs
 
 concat :: [ByteString] -> ByteString
-concat css0 = to css0
+concat = to
   where
     go Empty        css = to css
     go (Chunk c cs) css = Chunk c (go cs css)
@@ -329,7 +329,7 @@ toStrict = \cs -> goLen0 cs cs
     -- Copy the data
     goCopy Empty                    !_   = return ()
     goCopy (Chunk (S.BS _  0  ) cs) !ptr = goCopy cs ptr
-    goCopy (Chunk (S.BS fp len) cs) !ptr = do
+    goCopy (Chunk (S.BS fp len) cs) !ptr =
       withForeignPtr fp $ \p -> do
         S.memcpy ptr p len
         goCopy cs (ptr `plusPtr` len)

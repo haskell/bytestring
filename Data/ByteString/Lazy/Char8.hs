@@ -223,8 +223,12 @@ import Data.ByteString.Internal (c2w,w2c,isSpaceWord8
                                 ,intmaxQuot10,intmaxRem10
                                 ,intminQuot10,intminRem10)
 
+#if !(MIN_VERSION_base(4,8,0))
+import Control.Applicative ((<$>))
+#endif
+
 import Data.Int (Int64)
-import Data.Word (Word8, Word)
+import Data.Word
 import qualified Data.List as List
 import Foreign.Ptr (Ptr, plusPtr)
 import Foreign.ForeignPtr (withForeignPtr)
@@ -339,7 +343,7 @@ foldl' f = L.foldl' (\a c -> f a (w2c c))
 -- (typically the right-identity of the operator), and a packed string,
 -- reduces the packed string using the binary operator, from right to left.
 foldr :: (Char -> a -> a) -> a -> ByteString -> a
-foldr f = L.foldr (\c a -> f (w2c c) a)
+foldr f = L.foldr (f . w2c)
 {-# INLINE foldr #-}
 
 -- | 'foldl1' is a variant of 'foldl' that has no starting value
@@ -727,8 +731,8 @@ lines (Chunk c0 cs0) = loop0 c0 cs0
     loop0 c cs =
         case B.elemIndex (c2w '\n') c of
             Nothing -> case cs of
-                           Empty  | B.null c  ->                 []
-                                  | otherwise -> Chunk c Empty : []
+                           Empty  | B.null c  -> []
+                                  | otherwise -> [Chunk c Empty]
                            (Chunk c' cs')
                                | B.null c  -> loop0 c'     cs'
                                | otherwise -> loop  c' [c] cs'
@@ -746,7 +750,7 @@ lines (Chunk c0 cs0) = loop0 c0 cs0
             Nothing ->
                 case cs of
                     Empty -> let c' = revChunks (c : line)
-                              in c' `seq` (c' : [])
+                              in c' `seq` [c']
 
                     (Chunk c' cs') -> loop c' (c : line) cs'
 
@@ -858,7 +862,7 @@ readInt bs = case L.uncons bs of
         -- the input decimal did not overflow prior to processing all
         -- the provided digits (end of input or non-digit encountered).
         accumWord acc (BI.BS fp len) =
-            BI.accursedUnutterablePerformIO $ do
+            BI.accursedUnutterablePerformIO $
                 withForeignPtr fp $ \ptr -> do
                     let end = ptr `plusPtr` len
                     x@(!_, !_, !_) <- if positive
@@ -871,7 +875,7 @@ readInt bs = case L.uncons bs of
                 go :: Ptr Word8 -> Int -> Word -> IO (Int, Word, Bool)
                 go !p !b !a | p == e = return (b, a, True)
                 go !p !b !a = do
-                    !w <- fmap fromIntegral $ peek p
+                    !w <- fromIntegral <$> peek p
                     let !d = w - 0x30
                     if d > 9 -- No more digits
                         then return (b, a, True)
@@ -964,4 +968,4 @@ putStrLn = hPutStrLn stdout
 
 -- reverse a list of possibly-empty chunks into a lazy ByteString
 revChunks :: [S.ByteString] -> ByteString
-revChunks cs = List.foldl' (flip chunk) Empty cs
+revChunks = List.foldl' (flip chunk) Empty
