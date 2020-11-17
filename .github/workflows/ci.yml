@@ -30,6 +30,8 @@ jobs:
         path: |
           ${{ steps.setup-haskell-cabal.outputs.cabal-store }}
           dist-newstyle
+          tests/dist-newstyle
+          bench/dist-newstyle
         key: ${{ runner.os }}-${{ matrix.ghc }}-${{ hashFiles('cabal.project.freeze') }}
         restore-keys: |
           ${{ runner.os }}-${{ matrix.ghc }}-
@@ -49,4 +51,26 @@ jobs:
       run: |
         cd bench
         cabal bench -O0 --benchmark-options "--quick --min-duration=0 --include-first-iter"
+
+  build-freebsd:
+    # This job intentionally is using macOS because at the time of the writing
+    # Linux and Windows environments don't have the necessary virtualization features.
+    # See https://github.com/vmactions/freebsd-vm#under-the-hood.
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build
+      id: build-freebsd
+      uses: vmactions/freebsd-vm@v0.0.8
+      with:
+        usesh: true
+        prepare: pkg install -y ghc hs-cabal-install
+        run: |
+          freebsd-version
+          cabal update
+          cabal build
+          (cd tests; cabal test)
+          (cd bench; cabal bench -O0 --benchmark-options "--quick --min-duration=0 --include-first-iter")
+          cabal haddock
+          cabal sdist all
 
