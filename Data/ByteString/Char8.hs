@@ -830,9 +830,11 @@ filterNotChar c = B.filterNotByte (c2w c)
 -- equivalent to a pair of 'unpack' operations, and so space
 -- usage may be large for multi-megabyte ByteStrings
 zip :: ByteString -> ByteString -> [(Char,Char)]
-zip ps qs
-    | B.null ps || B.null qs = []
-    | otherwise = (unsafeHead ps, unsafeHead qs) : zip (B.unsafeTail ps) (B.unsafeTail qs)
+zip ps qs = case uncons ps of
+  Nothing         -> []
+  Just (psH, psT) -> case uncons qs of
+    Nothing         -> []
+    Just (qsH, qsT) -> (psH, qsH) : zip psT qsT
 
 -- | 'zipWith' generalises 'zip' by zipping with the function given as
 -- the first argument, instead of a tupling function.  For example,

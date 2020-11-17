@@ -544,34 +544,34 @@ foldr' k v (BS fp len) =
 -- argument, and thus must be applied to non-empty 'ByteString's.
 -- An exception will be thrown in the case of an empty ByteString.
 foldl1 :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
-foldl1 f ps
-    | null ps   = errorEmptyList "foldl1"
-    | otherwise = foldl f (unsafeHead ps) (unsafeTail ps)
+foldl1 f ps = case uncons ps of
+  Nothing     -> errorEmptyList "foldl1"
+  Just (h, t) -> foldl f h t
 {-# INLINE foldl1 #-}
 
 -- | 'foldl1'' is like 'foldl1', but strict in the accumulator.
 -- An exception will be thrown in the case of an empty ByteString.
 foldl1' :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
-foldl1' f ps
-    | null ps   = errorEmptyList "foldl1'"
-    | otherwise = foldl' f (unsafeHead ps) (unsafeTail ps)
+foldl1' f ps = case uncons ps of
+  Nothing     -> errorEmptyList "foldl1'"
+  Just (h, t) -> foldl' f h t
 {-# INLINE foldl1' #-}
 
 -- | 'foldr1' is a variant of 'foldr' that has no starting value argument,
 -- and thus must be applied to non-empty 'ByteString's
 -- An exception will be thrown in the case of an empty ByteString.
 foldr1 :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
-foldr1 f ps
-    | null ps        = errorEmptyList "foldr1"
-    | otherwise      = foldr f (unsafeLast ps) (unsafeInit ps)
+foldr1 f ps = case unsnoc ps of
+  Nothing -> errorEmptyList "foldr1"
+  Just (b, c) -> foldr f c b
 {-# INLINE foldr1 #-}
 
 -- | 'foldr1'' is a variant of 'foldr1', but is strict in the
 -- accumulator.
 foldr1' :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
-foldr1' f ps
-    | null ps        = errorEmptyList "foldr1"
-    | otherwise      = foldr' f (unsafeLast ps) (unsafeInit ps)
+foldr1' f ps = case unsnoc ps of
+  Nothing -> errorEmptyList "foldr1'"
+  Just (b, c) -> foldr' f c b
 {-# INLINE foldr1' #-}
 
 -- ---------------------------------------------------------------------
@@ -771,9 +771,9 @@ scanl f v (BS fp len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a ->
 --
 -- > scanl1 f [x1, x2, ...] == [x1, x1 `f` x2, ...]
 scanl1 :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString
-scanl1 f ps
-    | null ps   = empty
-    | otherwise = scanl f (unsafeHead ps) (unsafeTail ps)
+scanl1 f ps = case uncons ps of
+  Nothing     -> empty
+  Just (h, t) -> scanl f h t
 {-# INLINE scanl1 #-}
 
 -- | 'scanr' is similar to 'foldr', but returns a list of successive
@@ -813,9 +813,9 @@ scanr f v (BS fp len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a ->
 
 -- | 'scanr1' is a variant of 'scanr' that has no starting value argument.
 scanr1 :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString
-scanr1 f ps
-    | null ps   = empty
-    | otherwise = scanr f (unsafeLast ps) (unsafeInit ps)
+scanr1 f ps = case unsnoc ps of
+  Nothing -> empty
+  Just (b, c) -> scanr f c b
 {-# INLINE scanr1 #-}
 
 -- ---------------------------------------------------------------------
@@ -1218,19 +1218,19 @@ split w (BS x l) = loop 0
 -- supply their own equality test. It is about 40% faster than
 -- /groupBy (==)/
 group :: ByteString -> [ByteString]
-group xs
-    | null xs   = []
-    | otherwise = ys : group zs
+group xs = case uncons xs of
+  Nothing     -> []
+  Just (h, _) -> ys : group zs
     where
-        (ys, zs) = spanByte (unsafeHead xs) xs
+        (ys, zs) = spanByte h xs
 
 -- | The 'groupBy' function is the non-overloaded version of 'group'.
 groupBy :: (Word8 -> Word8 -> Bool) -> ByteString -> [ByteString]
-groupBy k xs
-    | null xs   = []
-    | otherwise = unsafeTake n xs : groupBy k (unsafeDrop n xs)
+groupBy k xs = case uncons xs of
+  Nothing     -> []
+  Just (h, t) -> unsafeTake n xs : groupBy k (unsafeDrop n xs)
     where
-        n = 1 + findIndexOrEnd (not . k (unsafeHead xs)) (unsafeTail xs)
+        n = 1 + findIndexOrEnd (not . k h) t
 
 -- | /O(n)/ The 'intercalate' function takes a 'ByteString' and a list of
 -- 'ByteString's and concatenates the list after interspersing the first
@@ -1639,18 +1639,22 @@ breakSubstring pat =
 -- excess elements of the longer ByteString are discarded. This is
 -- equivalent to a pair of 'unpack' operations.
 zip :: ByteString -> ByteString -> [(Word8,Word8)]
-zip ps qs
-    | null ps || null qs = []
-    | otherwise = (unsafeHead ps, unsafeHead qs) : zip (unsafeTail ps) (unsafeTail qs)
+zip ps qs = case uncons ps of
+  Nothing         -> []
+  Just (psH, psT) -> case uncons qs of
+    Nothing         -> []
+    Just (qsH, qsT) -> (psH, qsH) : zip psT qsT
 
 -- | 'zipWith' generalises 'zip' by zipping with the function given as
 -- the first argument, instead of a tupling function.  For example,
 -- @'zipWith' (+)@ is applied to two ByteStrings to produce the list of
 -- corresponding sums.
 zipWith :: (Word8 -> Word8 -> a) -> ByteString -> ByteString -> [a]
-zipWith f ps qs
-    | null ps || null qs = []
-    | otherwise = f (unsafeHead ps) (unsafeHead qs) : zipWith f (unsafeTail ps) (unsafeTail qs)
+zipWith f ps qs = case uncons ps of
+  Nothing         -> []
+  Just (psH, psT) -> case uncons qs of
+    Nothing         -> []
+    Just (qsH, qsT) -> f psH qsH : zipWith f psT qsT
 {-# NOINLINE [1] zipWith #-}
 
 -- | A specialised version of `zipWith` for the common case of a
@@ -2053,7 +2057,9 @@ moduleErrorMsg fun msg = "Data.ByteString." ++ fun ++ ':':' ':msg
 
 -- Find from the end of the string using predicate
 findFromEndUntil :: (Word8 -> Bool) -> ByteString -> Int
-findFromEndUntil f ps@(BS x l)
-  | null ps = 0
-  | f (unsafeLast ps) = l
-  | otherwise = findFromEndUntil f (BS x (l - 1))
+findFromEndUntil f ps@(BS _ l) = case unsnoc ps of
+  Nothing     -> 0
+  Just (b, c) ->
+    if f c
+      then l
+      else findFromEndUntil f b
