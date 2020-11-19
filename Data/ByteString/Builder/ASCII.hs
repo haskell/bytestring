@@ -104,11 +104,7 @@ import           Data.Monoid (mappend)
 import           GHC.Num     (quotRemInteger)
 # endif
 
-# if __GLASGOW_HASKELL__ < 611
-import GHC.Integer.Internals
-# else
 import GHC.Integer.GMP.Internals
-# endif
 #endif
 
 #if HAS_INTEGER_CONSTR
