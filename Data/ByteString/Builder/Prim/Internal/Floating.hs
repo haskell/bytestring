@@ -38,7 +38,7 @@ FFI to store the Float/Double in the buffer and peek it out again from there.
 encodeFloatViaWord32F :: FixedPrim Word32 -> FixedPrim Float
 encodeFloatViaWord32F w32fe
   | size w32fe < sizeOf (undefined :: Float) =
-      error $ "encodeFloatViaWord32F: encoding not wide enough"
+      error "encodeFloatViaWord32F: encoding not wide enough"
   | otherwise = fixedPrim (size w32fe) $ \x op -> do
       poke (castPtr op) x
       x' <- peek (castPtr op)
@@ -51,7 +51,7 @@ encodeFloatViaWord32F w32fe
 encodeDoubleViaWord64F :: FixedPrim Word64 -> FixedPrim Double
 encodeDoubleViaWord64F w64fe
   | size w64fe < sizeOf (undefined :: Float) =
-      error $ "encodeDoubleViaWord64F: encoding not wide enough"
+      error "encodeDoubleViaWord64F: encoding not wide enough"
   | otherwise = fixedPrim (size w64fe) $ \x op -> do
       poke (castPtr op) x
       x' <- peek (castPtr op)

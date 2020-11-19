@@ -458,14 +458,12 @@ module Data.ByteString.Builder.Prim (
   ) where
 
 import           Data.ByteString.Builder.Internal
-import           Data.ByteString.Builder.Prim.Internal.UncheckedShifts
 
 import qualified Data.ByteString               as S
 import qualified Data.ByteString.Internal      as S
 import qualified Data.ByteString.Lazy.Internal as L
 
 import           Data.Monoid
-import           Data.List (unfoldr)  -- HADDOCK ONLY
 import           Data.Char (chr, ord)
 import           Control.Monad ((<=<), unless)
 
@@ -502,7 +500,7 @@ primFixed = primBounded . toB
 primMapListFixed :: FixedPrim a -> ([a] -> Builder)
 primMapListFixed = primMapListBounded . toB
 
--- | Encode a list of values represented as an 'unfoldr' with a 'FixedPrim'.
+-- | Encode a list of values represented as an 'Data.List.unfoldr' with a 'FixedPrim'.
 {-# INLINE primUnfoldrFixed #-}
 primUnfoldrFixed :: FixedPrim b -> (a -> Maybe (b, a)) -> a -> Builder
 primUnfoldrFixed = primUnfoldrBounded . toB
@@ -618,12 +616,11 @@ primUnfoldrBounded :: BoundedPrim b -> (a -> Maybe (b, a)) -> a -> Builder
 primUnfoldrBounded w f x0 =
     builder $ fillWith x0
   where
-    fillWith x k !(BufferRange op0 ope0) =
+    fillWith x k (BufferRange op0 ope0) =
         go (f x) op0
       where
-        go !Nothing        !op         = do let !br' = BufferRange op ope0
-                                            k br'
-        go !(Just (y, x')) !op
+        go Nothing        !op         = k (BufferRange op ope0)
+        go (Just (y, x')) !op
           | op `plusPtr` bound <= ope0 = runB w y op >>= go (f x')
           | otherwise                  = return $ bufferFull bound op $
               \(BufferRange opNew opeNew) -> do
@@ -649,7 +646,7 @@ primMapByteStringBounded w =
         goBS (unsafeForeignPtrToPtr ifp)
       where
         !ipe = unsafeForeignPtrToPtr ifp `plusPtr` isize
-        goBS !ip0 !br@(BufferRange op0 ope)
+        goBS !ip0 br@(BufferRange op0 ope)
           | ip0 >= ipe = do
               touchForeignPtr ifp -- input buffer consumed
               k br
@@ -695,7 +692,7 @@ cstring =
     \addr0 -> builder $ step addr0
   where
     step :: Addr# -> BuildStep r -> BuildStep r
-    step !addr !k !br@(BufferRange op0@(Ptr op0#) ope)
+    step !addr !k br@(BufferRange op0@(Ptr op0#) ope)
       | isTrue# (ch `eqWord#` 0##) = k br
       | op0 == ope =
           return $ bufferFull defaultChunkSize op0 (step addr k)
@@ -714,7 +711,7 @@ cstringUtf8 =
     \addr0 -> builder $ step addr0
   where
     step :: Addr# -> BuildStep r -> BuildStep r
-    step !addr !k !br@(BufferRange op0@(Ptr op0#) ope)
+    step !addr !k br@(BufferRange op0@(Ptr op0#) ope)
       | isTrue# (ch `eqWord#` 0##) = k br
       | op0 == ope =
           return $ bufferFull defaultChunkSize op0 (step addr k)
@@ -754,7 +751,7 @@ charUtf8 = boundedPrim 4 (encodeCharUtf8 f1 f2 f3 f4)
   where
     pokeN n io op  = io op >> return (op `plusPtr` n)
 
-    f1 x1          = pokeN 1 $ \op -> do pokeByteOff op 0 x1
+    f1 x1          = pokeN 1 $ \op ->    pokeByteOff op 0 x1
 
     f2 x1 x2       = pokeN 2 $ \op -> do pokeByteOff op 0 x1
                                          pokeByteOff op 1 x2

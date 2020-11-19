@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables, CPP, BangPatterns #-}
+{-# LANGUAGE ScopedTypeVariables, CPP #-}
 #if __GLASGOW_HASKELL__ >= 703
 {-# LANGUAGE Unsafe #-}
 #endif
@@ -187,7 +187,7 @@ pairF (FP l1 io1) (FP l2 io2) =
 -- >contramapF f . contramapF g = contramapF (g . f)
 {-# INLINE CONLIKE contramapF #-}
 contramapF :: (b -> a) -> FixedPrim a -> FixedPrim b
-contramapF f (FP l io) = FP l (\x op -> io (f x) op)
+contramapF f (FP l io) = FP l (io . f)
 
 -- | Convert a 'FixedPrim' to a 'BoundedPrim'.
 {-# INLINE CONLIKE toB #-}
@@ -211,7 +211,7 @@ storableToF :: forall a. Storable a => FixedPrim a
 storableToF = FP (sizeOf (undefined :: a)) (\x op -> poke (castPtr op) x)
 #else
 storableToF = FP (sizeOf (undefined :: a)) $ \x op ->
-    if (ptrToWordPtr op) `mod` (fromIntegral (alignment (undefined :: a))) == 0 then poke (castPtr op) x
+    if ptrToWordPtr op `mod` fromIntegral (alignment (undefined :: a)) == 0 then poke (castPtr op) x
     else with x $ \tp -> copyBytes op (castPtr tp) (sizeOf (undefined :: a))
 #endif
 
@@ -257,7 +257,7 @@ runB (BP _ io) = io
 -- >contramapB f . contramapB g = contramapB (g . f)
 {-# INLINE CONLIKE contramapB #-}
 contramapB :: (b -> a) -> BoundedPrim a -> BoundedPrim b
-contramapB f (BP b io) = BP b (\x op -> io (f x) op)
+contramapB f (BP b io) = BP b (io . f)
 
 -- | The 'BoundedPrim' that always results in the zero-length sequence.
 {-# INLINE CONLIKE emptyB #-}

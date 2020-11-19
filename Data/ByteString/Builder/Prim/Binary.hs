@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, BangPatterns #-}
+{-# LANGUAGE CPP #-}
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE Trustworthy #-}
 #endif
@@ -88,7 +88,7 @@ word16BE = word16Host
 #else
 word16BE = fixedPrim 2 $ \w p -> do
     poke p               (fromIntegral (shiftr_w16 w 8) :: Word8)
-    poke (p `plusPtr` 1) (fromIntegral (w)              :: Word8)
+    poke (p `plusPtr` 1) (fromIntegral w                :: Word8)
 #endif
 
 -- | Encoding 'Word16's in little endian format.
@@ -96,7 +96,7 @@ word16BE = fixedPrim 2 $ \w p -> do
 word16LE :: FixedPrim Word16
 #ifdef WORDS_BIGENDIAN
 word16LE = fixedPrim 2 $ \w p -> do
-    poke p               (fromIntegral (w)              :: Word8)
+    poke p               (fromIntegral w                :: Word8)
     poke (p `plusPtr` 1) (fromIntegral (shiftr_w16 w 8) :: Word8)
 #else
 word16LE = word16Host
@@ -112,7 +112,7 @@ word32BE = fixedPrim 4 $ \w p -> do
     poke p               (fromIntegral (shiftr_w32 w 24) :: Word8)
     poke (p `plusPtr` 1) (fromIntegral (shiftr_w32 w 16) :: Word8)
     poke (p `plusPtr` 2) (fromIntegral (shiftr_w32 w  8) :: Word8)
-    poke (p `plusPtr` 3) (fromIntegral (w)               :: Word8)
+    poke (p `plusPtr` 3) (fromIntegral w                 :: Word8)
 #endif
 
 -- | Encoding 'Word32's in little endian format.
@@ -120,7 +120,7 @@ word32BE = fixedPrim 4 $ \w p -> do
 word32LE :: FixedPrim Word32
 #ifdef WORDS_BIGENDIAN
 word32LE = fixedPrim 4 $ \w p -> do
-    poke p               (fromIntegral (w)               :: Word8)
+    poke p               (fromIntegral w                 :: Word8)
     poke (p `plusPtr` 1) (fromIntegral (shiftr_w32 w  8) :: Word8)
     poke (p `plusPtr` 2) (fromIntegral (shiftr_w32 w 16) :: Word8)
     poke (p `plusPtr` 3) (fromIntegral (shiftr_w32 w 24) :: Word8)
@@ -149,11 +149,11 @@ word64BE =
         poke p               (fromIntegral (shiftr_w32 a 24) :: Word8)
         poke (p `plusPtr` 1) (fromIntegral (shiftr_w32 a 16) :: Word8)
         poke (p `plusPtr` 2) (fromIntegral (shiftr_w32 a  8) :: Word8)
-        poke (p `plusPtr` 3) (fromIntegral (a)               :: Word8)
+        poke (p `plusPtr` 3) (fromIntegral a                 :: Word8)
         poke (p `plusPtr` 4) (fromIntegral (shiftr_w32 b 24) :: Word8)
         poke (p `plusPtr` 5) (fromIntegral (shiftr_w32 b 16) :: Word8)
         poke (p `plusPtr` 6) (fromIntegral (shiftr_w32 b  8) :: Word8)
-        poke (p `plusPtr` 7) (fromIntegral (b)               :: Word8)
+        poke (p `plusPtr` 7) (fromIntegral b                 :: Word8)
 #else
 word64BE = fixedPrim 8 $ \w p -> do
     poke p               (fromIntegral (shiftr_w64 w 56) :: Word8)
@@ -163,7 +163,7 @@ word64BE = fixedPrim 8 $ \w p -> do
     poke (p `plusPtr` 4) (fromIntegral (shiftr_w64 w 24) :: Word8)
     poke (p `plusPtr` 5) (fromIntegral (shiftr_w64 w 16) :: Word8)
     poke (p `plusPtr` 6) (fromIntegral (shiftr_w64 w  8) :: Word8)
-    poke (p `plusPtr` 7) (fromIntegral (w)               :: Word8)
+    poke (p `plusPtr` 7) (fromIntegral w                 :: Word8)
 #endif
 #endif
 
@@ -176,17 +176,17 @@ word64LE =
     fixedPrim 8 $ \w p -> do
         let b = fromIntegral (shiftr_w64 w 32) :: Word32
             a = fromIntegral w                 :: Word32
-        poke (p)             (fromIntegral (a)               :: Word8)
+        poke (p)             (fromIntegral a                 :: Word8)
         poke (p `plusPtr` 1) (fromIntegral (shiftr_w32 a  8) :: Word8)
         poke (p `plusPtr` 2) (fromIntegral (shiftr_w32 a 16) :: Word8)
         poke (p `plusPtr` 3) (fromIntegral (shiftr_w32 a 24) :: Word8)
-        poke (p `plusPtr` 4) (fromIntegral (b)               :: Word8)
+        poke (p `plusPtr` 4) (fromIntegral b                 :: Word8)
         poke (p `plusPtr` 5) (fromIntegral (shiftr_w32 b  8) :: Word8)
         poke (p `plusPtr` 6) (fromIntegral (shiftr_w32 b 16) :: Word8)
         poke (p `plusPtr` 7) (fromIntegral (shiftr_w32 b 24) :: Word8)
 #else
 word64LE = fixedPrim 8 $ \w p -> do
-    poke p               (fromIntegral (w)               :: Word8)
+    poke p               (fromIntegral w                 :: Word8)
     poke (p `plusPtr` 1) (fromIntegral (shiftr_w64 w  8) :: Word8)
     poke (p `plusPtr` 2) (fromIntegral (shiftr_w64 w 16) :: Word8)
     poke (p `plusPtr` 3) (fromIntegral (shiftr_w64 w 24) :: Word8)
@@ -332,5 +332,3 @@ floatHost = storableToF
 {-# INLINE doubleHost #-}
 doubleHost :: FixedPrim Double
 doubleHost = storableToF
-
-

@@ -1,0 +1,21 @@
+- ignore:
+    name: Use camelCase
+    within:
+      - Data.ByteString.Builder.Internal
+      - Data.ByteString.Builder.Prim.Internal.UncheckedShifts
+      - Data.ByteString.Short.Internal
+- ignore:
+    name: Use fewer imports
+    within:
+      - Data.ByteString
+      - Data.ByteString.Internal
+      - Data.ByteString.Short.Internal
+- ignore:
+    name: Avoid lambda
+    within:
+      - Data.ByteString.Builder.Internal
+      - Data.ByteString.Builder.Prim
+- ignore:
+    name: Redundant lambda
+    within:
+      - Data.ByteString.Builder.Internal

@@ -360,7 +360,7 @@ unpackBytes bs = unpackAppendBytesLazy bs []
 -- (5 words per list element, 8 bytes per word, 100 elements = 4000 bytes)
 
 unpackAppendCharsLazy :: ShortByteString -> [Char] -> [Char]
-unpackAppendCharsLazy sbs cs0 = go 0 (length sbs) cs0
+unpackAppendCharsLazy sbs = go 0 (length sbs)
   where
     sz = 100
 
@@ -370,7 +370,7 @@ unpackAppendCharsLazy sbs cs0 = go 0 (length sbs) cs0
                       where remainder = go (off+sz) (len-sz) cs
 
 unpackAppendBytesLazy :: ShortByteString -> [Word8] -> [Word8]
-unpackAppendBytesLazy sbs ws0 = go 0 (length sbs) ws0
+unpackAppendBytesLazy sbs = go 0 (length sbs)
   where
     sz = 100
 
@@ -385,7 +385,7 @@ unpackAppendBytesLazy sbs ws0 = go 0 (length sbs) ws0
 -- buffer and loops down until we hit the sentinal:
 
 unpackAppendCharsStrict :: ShortByteString -> Int -> Int -> [Char] -> [Char]
-unpackAppendCharsStrict !sbs off len cs = go (off-1) (off-1 + len) cs
+unpackAppendCharsStrict !sbs off len = go (off-1) (off-1 + len)
   where
     go !sentinal !i !acc
       | i == sentinal = acc
@@ -393,7 +393,7 @@ unpackAppendCharsStrict !sbs off len cs = go (off-1) (off-1 + len) cs
                         in go sentinal (i-1) (c:acc)
 
 unpackAppendBytesStrict :: ShortByteString -> Int -> Int -> [Word8] -> [Word8]
-unpackAppendBytesStrict !sbs off len ws = go (off-1) (off-1 + len) ws
+unpackAppendBytesStrict !sbs off len = go (off-1) (off-1 + len)
   where
     go !sentinal !i !acc
       | i == sentinal = acc
@@ -568,13 +568,13 @@ copyByteArrayToAddr# = GHC.Exts.copyByteArrayToAddr#
 
 #else
 
-copyAddrToByteArray# src dst dst_off len s =
-  unIO_ (memcpy_AddrToByteArray dst (csize dst_off) src 0 (csize len)) s
+copyAddrToByteArray# src dst dst_off len =
+  unIO_ (memcpy_AddrToByteArray dst (csize dst_off) src 0 (csize len))
 
 copyAddrToByteArray0 :: Addr# -> MutableByteArray# s -> Int#
                      -> State# RealWorld -> State# RealWorld
-copyAddrToByteArray0 src dst len s =
-  unIO_ (memcpy_AddrToByteArray0 dst src (csize len)) s
+copyAddrToByteArray0 src dst len =
+  unIO_ (memcpy_AddrToByteArray0 dst src (csize len))
 
 {-# INLINE [0] copyAddrToByteArray# #-}
 {-# RULES "copyAddrToByteArray# dst_off=0"
@@ -589,13 +589,13 @@ foreign import ccall unsafe "string.h memcpy"
   memcpy_AddrToByteArray0 :: MutableByteArray# s -> Addr# -> CSize -> IO ()
 
 
-copyByteArrayToAddr# src src_off dst len s =
-  unIO_ (memcpy_ByteArrayToAddr dst 0 src (csize src_off) (csize len)) s
+copyByteArrayToAddr# src src_off dst len =
+  unIO_ (memcpy_ByteArrayToAddr dst 0 src (csize src_off) (csize len))
 
 copyByteArrayToAddr0 :: ByteArray# -> Addr# -> Int#
                      -> State# RealWorld -> State# RealWorld
-copyByteArrayToAddr0 src dst len s =
-  unIO_ (memcpy_ByteArrayToAddr0 dst src (csize len)) s
+copyByteArrayToAddr0 src dst len =
+  unIO_ (memcpy_ByteArrayToAddr0 dst src (csize len))
 
 {-# INLINE [0] copyByteArrayToAddr# #-}
 {-# RULES "copyByteArrayToAddr# src_off=0"
