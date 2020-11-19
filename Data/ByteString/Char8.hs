@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP, BangPatterns #-}
-{-# LANGUAGE MagicHash #-}
 {-# OPTIONS_HADDOCK prune #-}
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE Trustworthy #-}
@@ -266,6 +265,10 @@ import Data.ByteString (empty,null,length,tail,init,append
 
 import Data.ByteString.Internal
 
+#if !(MIN_VERSION_base(4,8,0))
+import Control.Applicative ((<$>))
+#endif
+
 import Data.Char    ( isSpace )
 #if MIN_VERSION_base(4,9,0)
 -- See bytestring #70
@@ -366,12 +369,12 @@ foldl' f = B.foldl' (\a c -> f a (w2c c))
 -- (typically the right-identity of the operator), and a packed string,
 -- reduces the packed string using the binary operator, from right to left.
 foldr :: (Char -> a -> a) -> a -> ByteString -> a
-foldr f = B.foldr (\c a -> f (w2c c) a)
+foldr f = B.foldr (f . w2c)
 {-# INLINE foldr #-}
 
 -- | 'foldr'' is a strict variant of foldr
 foldr' :: (Char -> a -> a) -> a -> ByteString -> a
-foldr' f = B.foldr' (\c a -> f (w2c c) a)
+foldr' f = B.foldr' (f . w2c)
 {-# INLINE foldr' #-}
 
 -- | 'foldl1' is a variant of 'foldl' that has no starting value
@@ -483,7 +486,7 @@ replicate n = B.replicate n . c2w
 --
 -- > unfoldr (\x -> if x <= '9' then Just (x, succ x) else Nothing) '0' == "0123456789"
 unfoldr :: (a -> Maybe (Char, a)) -> a -> ByteString
-unfoldr f x = B.unfoldr (fmap k . f) x
+unfoldr f = B.unfoldr (fmap k . f)
     where k (i, j) = (c2w i, j)
 
 -- | /O(n)/ Like 'unfoldr', 'unfoldrN' builds a ByteString from a seed
@@ -1021,6 +1024,7 @@ readInt as
           end _    0 _ _  = Nothing
           end True _ n ps = Just (negate n, ps)
           end _    _ n ps = Just (n, ps)
+
 
 -- | readInteger reads an Integer from the beginning of the ByteString.  If
 -- there is no integer at the beginning of the string, it returns Nothing,

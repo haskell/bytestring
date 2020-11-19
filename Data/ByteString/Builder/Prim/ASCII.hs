@@ -287,5 +287,3 @@ floatHexFixed = encodeFloatViaWord32F word32HexFixed
 {-# INLINE doubleHexFixed #-}
 doubleHexFixed :: FixedPrim Double
 doubleHexFixed = encodeDoubleViaWord64F word64HexFixed
-
-

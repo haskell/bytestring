@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, BangPatterns, MagicHash #-}
+{-# LANGUAGE CPP, MagicHash #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports -fno-warn-orphans #-}
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE Trustworthy #-}
@@ -58,8 +58,8 @@ We use the following imports and abbreviate 'mappend' to simplify reading.
 import qualified "Data.ByteString.Lazy"               as L
 import           "Data.ByteString.Builder"
 import           Data.Monoid
-import           Data.Foldable                        ('foldMap')
-import           Data.List                            ('intersperse')
+import           Data.Foldable                        ('Data.Foldable.foldMap')
+import           Data.List                            ('Data.List.intersperse')
 
 infixr 4 \<\>
 (\<\>) :: 'Monoid' m => m -> m -> m
@@ -154,7 +154,7 @@ For example,
 >renderRow :: Row -> Builder
 >renderRow  = mconcat . intersperse (charUtf8 ',') . map renderCell
 
-Similarly, using /O(n)/ concatentations like '++' or the equivalent 'S.concat'
+Similarly, using /O(n)/ concatentations like '++' or the equivalent 'Data.ByteString.concat'
   operations on strict and lazy 'L.ByteString's should be avoided.
 The following definition of @renderString@ is also about 20% slower.
 
@@ -265,15 +265,6 @@ import           System.IO (Handle)
 import           Foreign
 import           GHC.Base (unpackCString#, unpackCStringUtf8#,
                            unpackFoldrCString#, build)
-
--- HADDOCK only imports
-import qualified Data.ByteString               as S (concat)
-#if !(MIN_VERSION_base(4,8,0))
-import           Data.Monoid (Monoid(..))
-#endif
-import           Data.Foldable                      (foldMap)
-import           Data.List                          (intersperse)
-
 
 -- | Execute a 'Builder' and return the generated chunks as a lazy 'L.ByteString'.
 -- The work is performed lazy, i.e., only when a chunk of the lazy 'L.ByteString'

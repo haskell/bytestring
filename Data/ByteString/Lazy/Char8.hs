@@ -220,6 +220,10 @@ import Data.ByteString.Lazy.Internal
 
 import Data.ByteString.Internal (w2c, c2w, isSpaceWord8)
 
+#if !(MIN_VERSION_base(4,8,0))
+import Control.Applicative ((<$>))
+#endif
+
 import Data.Int (Int64)
 import qualified Data.List as List
 
@@ -332,7 +336,7 @@ foldl' f = L.foldl' (\a c -> f a (w2c c))
 -- (typically the right-identity of the operator), and a packed string,
 -- reduces the packed string using the binary operator, from right to left.
 foldr :: (Char -> a -> a) -> a -> ByteString -> a
-foldr f = L.foldr (\c a -> f (w2c c) a)
+foldr f = L.foldr (f . w2c)
 {-# INLINE foldr #-}
 
 -- | 'foldl1' is a variant of 'foldl' that has no starting value
@@ -720,8 +724,8 @@ lines (Chunk c0 cs0) = loop0 c0 cs0
     loop0 c cs =
         case B.elemIndex (c2w '\n') c of
             Nothing -> case cs of
-                           Empty  | B.null c  ->                 []
-                                  | otherwise -> Chunk c Empty : []
+                           Empty  | B.null c  -> []
+                                  | otherwise -> [Chunk c Empty]
                            (Chunk c' cs')
                                | B.null c  -> loop0 c'     cs'
                                | otherwise -> loop  c' [c] cs'
@@ -739,7 +743,7 @@ lines (Chunk c0 cs0) = loop0 c0 cs0
             Nothing ->
                 case cs of
                     Empty -> let c' = revChunks (c : line)
-                              in c' `seq` (c' : [])
+                              in c' `seq` [c']
 
                     (Chunk c' cs') -> loop c' (c : line) cs'
 
@@ -829,7 +833,6 @@ readInt (Chunk x xs) = case w2c (B.unsafeHead x) of
                       e  = n' `seq` c' `seq` Just (n',c')
          --                  in n' `seq` c' `seq` JustS n' c'
 
-
 -- | readInteger reads an Integer from the beginning of the ByteString.  If
 -- there is no integer at the beginning of the string, it returns Nothing,
 -- otherwise it just returns the int read, and the rest of the string.
@@ -898,4 +901,4 @@ putStrLn = hPutStrLn stdout
 
 -- reverse a list of possibly-empty chunks into a lazy ByteString
 revChunks :: [S.ByteString] -> ByteString
-revChunks cs = List.foldl' (flip chunk) Empty cs
+revChunks = List.foldl' (flip chunk) Empty

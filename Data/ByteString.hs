@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE TupleSections #-}
 {-# OPTIONS_HADDOCK prune #-}
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE Trustworthy #-}
@@ -241,7 +242,7 @@ import qualified Data.List as List
 import Data.Word                (Word8)
 
 import Control.Exception        (IOException, catch, finally, assert, throwIO)
-import Control.Monad            (when)
+import Control.Monad            (when, void)
 
 import Foreign.C.String         (CString, CStringLen)
 import Foreign.C.Types          (CSize)
@@ -260,14 +261,13 @@ import Foreign.Storable         (Storable(..))
 import System.IO                (stdin,stdout,hClose,hFileSize
                                 ,hGetBuf,hPutBuf,hGetBufNonBlocking
                                 ,hPutBufNonBlocking,withBinaryFile
-                                ,IOMode(..))
+                                ,IOMode(..),hGetBufSome)
 import System.IO.Error          (mkIOError, illegalOperationErrorType)
 
 #if !(MIN_VERSION_base(4,8,0))
+import Control.Applicative      ((<$>))
 import Data.Monoid              (Monoid(..))
 #endif
-
-import System.IO                (hGetBufSome)
 
 import Data.IORef
 import GHC.IO.Handle.Internals
@@ -472,7 +472,7 @@ intersperse c ps@(BS x l)
 -- | The 'transpose' function transposes the rows and columns of its
 -- 'ByteString' argument.
 transpose :: [ByteString] -> [ByteString]
-transpose ps = P.map pack . List.transpose . P.map unpack $ ps
+transpose = P.map pack . List.transpose . P.map unpack
 
 -- ---------------------------------------------------------------------
 -- Reducing 'ByteString's
@@ -484,7 +484,7 @@ transpose ps = P.map pack . List.transpose . P.map unpack $ ps
 foldl :: (a -> Word8 -> a) -> a -> ByteString -> a
 foldl f z (BS fp len) = go (end `plusPtr` len)
   where
-    end = (unsafeForeignPtrToPtr fp) `plusPtr` (-1)
+    end = unsafeForeignPtrToPtr fp `plusPtr` (-1)
     -- not tail recursive; traverses array right to left
     go !p | p == end  = z
           | otherwise = let !x = accursedUnutterablePerformIO $ do
@@ -712,7 +712,7 @@ mapAccumR :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteSt
 mapAccumR f acc (BS fp len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a -> do
     gp   <- mallocByteString len
     acc' <- withForeignPtr gp (go a)
-    return $! (acc', BS gp len)
+    return (acc', BS gp len)
   where
     go src dst = mapAccumR_ acc (len-1)
       where
@@ -831,7 +831,7 @@ replicate :: Int -> Word8 -> ByteString
 replicate w c
     | w <= 0    = empty
     | otherwise = unsafeCreate w $ \ptr ->
-                      memset ptr c (fromIntegral w) >> return ()
+                      void $ memset ptr c (fromIntegral w)
 {-# INLINE replicate #-}
 
 -- | /O(n)/, where /n/ is the length of the result.  The 'unfoldr'
@@ -850,7 +850,7 @@ unfoldr :: (a -> Maybe (Word8, a)) -> a -> ByteString
 unfoldr f = concat . unfoldChunk 32 64
   where unfoldChunk n n' x =
           case unfoldrN n f x of
-            (s, Nothing) -> s : []
+            (s, Nothing) -> [s]
             (s, Just x') -> s : unfoldChunk n' (n+n') x'
 {-# INLINE unfoldr #-}
 
@@ -1084,7 +1084,7 @@ breakEnd  p ps = splitAt (findFromEndUntil p ps) ps
 -- 'span' @p@ is equivalent to @'break' (not . p)@ and to @('takeWhile' p &&& 'dropWhile' p)@.
 --
 span :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
-span p ps = break (not . p) ps
+span p = break (not . p)
 {-# INLINE [1] span #-}
 
 -- | 'spanByte' breaks its ByteString argument at the first
@@ -1334,7 +1334,7 @@ elemIndices w (BS x l) = loop 0
 -- But more efficiently than using length on the intermediate list.
 count :: Word8 -> ByteString -> Int
 count w (BS x m) = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
-    fmap fromIntegral $ c_count p (fromIntegral m) w
+    fromIntegral <$> c_count p (fromIntegral m) w
 {-# INLINE count #-}
 
 -- | /O(n)/ The 'findIndex' function takes a predicate and a 'ByteString' and
@@ -1368,7 +1368,7 @@ findIndexEnd k (BS x l) = accursedUnutterablePerformIO $ withForeignPtr x $ \ f 
 -- | /O(n)/ The 'findIndices' function extends 'findIndex', by returning the
 -- indices of all elements satisfying the predicate, in ascending order.
 findIndices :: (Word8 -> Bool) -> ByteString -> [Int]
-findIndices p ps = loop 0 ps
+findIndices p = loop 0
    where
      loop !n !qs = case findIndex p qs of
                      Just !i ->
@@ -1404,7 +1404,7 @@ elem c ps = case elemIndex c ps of Nothing -> False ; _ -> True
 
 -- | /O(n)/ 'notElem' is the inverse of 'elem'
 notElem :: Word8 -> ByteString -> Bool
-notElem c ps = not (elem c ps)
+notElem c ps = not (c `elem` ps)
 {-# INLINE notElem #-}
 
 -- | /O(n)/ 'filter', applied to a predicate and a ByteString,
@@ -1584,7 +1584,7 @@ breakSubstring :: ByteString -- ^ String to search for
                -> (ByteString,ByteString) -- ^ Head and tail of string broken at substring
 breakSubstring pat =
   case lp of
-    0 -> \src -> (empty,src)
+    0 -> (empty,)
     1 -> breakByte (unsafeHead pat)
     _ -> if lp * 8 <= finiteBitSize (0 :: Word)
              then shift
@@ -1721,7 +1721,7 @@ sort (BS input l)
 
     let go 256 !_   = return ()
         go i   !ptr = do n <- peekElemOff arr i
-                         when (n /= 0) $ memset ptr (fromIntegral i) n >> return ()
+                         when (n /= 0) $ void $ memset ptr (fromIntegral i) n
                          go (i + 1) (ptr `plusPtr` fromIntegral n)
     go 0 p
   where

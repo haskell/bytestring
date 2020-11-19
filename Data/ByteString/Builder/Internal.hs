@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables, CPP, BangPatterns, RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables, CPP, BangPatterns, RankNTypes, TupleSections #-}
 #if __GLASGOW_HASKELL__ == 700
 -- This is needed as a workaround for an old bug in GHC 7.0.1 (Trac #4498)
 {-# LANGUAGE MonoPatBinds #-}
@@ -147,16 +147,11 @@ import qualified Data.ByteString.Internal      as S
 import qualified Data.ByteString.Lazy.Internal as L
 import qualified Data.ByteString.Short.Internal as Sh
 
-#if __GLASGOW_HASKELL__ >= 611
 import qualified GHC.IO.Buffer as IO (Buffer(..), newByteBuffer)
 import           GHC.IO.Handle.Internals (wantWritableHandle, flushWriteBuffer)
 import           GHC.IO.Handle.Types (Handle__, haByteBuffer, haBufferMode)
-import           System.IO (hFlush, BufferMode(..))
+import           System.IO (hFlush, BufferMode(..), Handle)
 import           Data.IORef
-#else
-import qualified Data.ByteString.Lazy as L
-#endif
-import           System.IO (Handle)
 
 #if MIN_VERSION_base(4,4,0)
 #if MIN_VERSION_base(4,7,0)
@@ -316,7 +311,7 @@ insertChunk :: Ptr Word8
             -> BuildStep a
             -- ^ 'BuildStep' to run on next 'BufferRange'
             -> BuildSignal a
-insertChunk op bs = InsertChunk op bs
+insertChunk = InsertChunk
 
 
 -- | Fill a 'BufferRange' using a 'BuildStep'.
@@ -374,7 +369,7 @@ builder = Builder
 
 -- | The final build step that returns the 'done' signal.
 finalBuildStep :: BuildStep ()
-finalBuildStep !(BufferRange op _) = return $ Done op ()
+finalBuildStep (BufferRange op _) = return $ Done op ()
 
 -- | Run a 'Builder' with the 'finalBuildStep'.
 {-# INLINE runBuilder #-}
@@ -394,7 +389,7 @@ runBuilderWith (Builder b) = b
 -- only exported for use in rewriting rules. Use 'mempty' otherwise.
 {-# INLINE[1] empty #-}
 empty :: Builder
-empty = Builder (\cont -> (\range -> cont range))
+empty = Builder ($)
 -- This eta expansion (hopefully) allows GHC to worker-wrapper the
 -- 'BufferRange' in the 'empty' base case of loops (since
 -- worker-wrapper requires (TODO: verify this) that all paths match
@@ -429,7 +424,7 @@ instance Monoid Builder where
 flush :: Builder
 flush = builder step
   where
-    step k !(BufferRange op _) = return $ insertChunk op S.empty k
+    step k (BufferRange op _) = return $ insertChunk op S.empty k
 
 
 ------------------------------------------------------------------------------
@@ -488,7 +483,7 @@ runPut :: Put a       -- ^ Put to run
 runPut (Put p) = p $ \x (BufferRange op _) -> return $ Done op x
 
 instance Functor Put where
-  fmap f p = Put $ \k -> unPut p (\x -> k (f x))
+  fmap f p = Put $ \k -> unPut p (k . f)
   {-# INLINE fmap #-}
 
 -- | Synonym for '<*' from 'Applicative'; used in rewriting rules.
@@ -506,7 +501,7 @@ instance Applicative Put where
   {-# INLINE pure #-}
   pure x = Put $ \k -> k x
   {-# INLINE (<*>) #-}
-  Put f <*> Put a = Put $ \k -> f (\f' -> a (\a' -> k (f' a')))
+  Put f <*> Put a = Put $ \k -> f (\f' -> a (k . f'))
   {-# INLINE (<*) #-}
   (<*) = ap_l
   {-# INLINE (*>) #-}
@@ -531,7 +526,7 @@ putBuilder (Builder b) = Put $ \k -> b (k ())
 -- | Convert a @'Put' ()@ action to a 'Builder'.
 {-# INLINE fromPut #-}
 fromPut :: Put () -> Builder
-fromPut (Put p) = Builder $ \k -> p (\_ -> k)
+fromPut (Put p) = Builder $ \k -> p (const k)
 
 -- We rewrite consecutive uses of 'putBuilder' such that the append of the
 -- involved 'Builder's is used. This can significantly improve performance,
@@ -775,7 +770,7 @@ putToLazyByteString
     -> (a, L.ByteString)  -- ^ Result and lazy 'L.ByteString'
                           -- written as its side-effect
 putToLazyByteString = putToLazyByteStringWith
-    (safeStrategy L.smallChunkSize L.defaultChunkSize) (\x -> (x, L.Empty))
+    (safeStrategy L.smallChunkSize L.defaultChunkSize) (, L.Empty)
 
 
 -- | Execute a 'Put' with a buffer-allocation strategy and a continuation. For
@@ -824,10 +819,10 @@ ensureFree minFree =
 -- | Copy the bytes from a 'BufferRange' into the output stream.
 wrappedBytesCopyStep :: BufferRange  -- ^ Input 'BufferRange'.
                      -> BuildStep a -> BuildStep a
-wrappedBytesCopyStep !(BufferRange ip0 ipe) k =
+wrappedBytesCopyStep (BufferRange ip0 ipe) k =
     go ip0
   where
-    go !ip !(BufferRange op ope)
+    go !ip (BufferRange op ope)
       | inpRemaining <= outRemaining = do
           copyBytes op ip inpRemaining
           let !br' = BufferRange (op `plusPtr` inpRemaining) ope
@@ -859,7 +854,7 @@ byteStringThreshold :: Int -> S.ByteString -> Builder
 byteStringThreshold maxCopySize =
     \bs -> builder $ step bs
   where
-    step !bs@(S.BS _ len) !k br@(BufferRange !op _)
+    step bs@(S.BS _ len) !k br@(BufferRange !op _)
       | len <= maxCopySize = byteStringCopyStep bs k br
       | otherwise          = return $ insertChunk op bs k
 
@@ -881,7 +876,7 @@ byteStringCopyStep (S.BS ifp isize) !k0 br0@(BufferRange op ope)
     | op' <= ope = do copyBytes op ip isize
                       touchForeignPtr ifp
                       k0 (BufferRange op' ope)
-    | otherwise  = do wrappedBytesCopyStep (BufferRange ip ipe) k br0
+    | otherwise  = wrappedBytesCopyStep (BufferRange ip ipe) k br0
   where
     op'  = op `plusPtr` isize
     ip   = unsafeForeignPtrToPtr ifp
@@ -918,7 +913,7 @@ shortByteStringCopyStep :: Sh.ShortByteString  -- ^ Input 'SH.ShortByteString'.
 shortByteStringCopyStep !sbs k =
     go 0 (Sh.length sbs)
   where
-    go !ip !ipe !(BufferRange op ope)
+    go !ip !ipe (BufferRange op ope)
       | inpRemaining <= outRemaining = do
           Sh.copyToPtr sbs ip op inpRemaining
           let !br' = BufferRange (op `plusPtr` inpRemaining) ope
@@ -1113,10 +1108,10 @@ buildStepToCIOS
     :: AllocationStrategy          -- ^ Buffer allocation strategy to use
     -> BuildStep a                 -- ^ 'BuildStep' to execute
     -> IO (ChunkIOStream a)
-buildStepToCIOS !(AllocationStrategy nextBuffer bufSize trim) =
+buildStepToCIOS (AllocationStrategy nextBuffer bufSize trim) =
     \step -> nextBuffer Nothing >>= fill step
   where
-    fill !step !buf@(Buffer fpbuf br@(BufferRange _ pe)) = do
+    fill !step buf@(Buffer fpbuf br@(BufferRange _ pe)) = do
         res <- fillWithBuildStep step doneH fullH insertChunkH br
         touchForeignPtr fpbuf
         return res

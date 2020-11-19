@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP, ForeignFunctionInterface, BangPatterns #-}
 {-# LANGUAGE UnliftedFFITypes, MagicHash,
             UnboxedTuples, DeriveDataTypeable #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
 #if __GLASGOW_HASKELL__ >= 800
 {-# LANGUAGE PatternSynonyms, ViewPatterns #-}
@@ -95,6 +96,8 @@ module Data.ByteString.Internal (
 import Prelude hiding (concat, null)
 import qualified Data.List as List
 
+import Control.Monad            (void)
+
 import Foreign.ForeignPtr       (ForeignPtr, withForeignPtr)
 import Foreign.Ptr              (Ptr, FunPtr, plusPtr, minusPtr)
 import Foreign.Storable         (Storable(..))
@@ -128,7 +131,7 @@ import Control.Exception        (assert)
 
 import Data.Bits                ((.&.))
 import Data.Char                (ord)
-import Data.Word                (Word8, Word)
+import Data.Word
 
 import Data.Typeable            (Typeable)
 import Data.Data                (Data(..), mkNoRepType)
@@ -147,11 +150,7 @@ import GHC.Base                 (unpackCString#)
 
 import GHC.Prim                 (Addr#)
 
-#if __GLASGOW_HASKELL__ >= 611
 import GHC.IO                   (IO(IO),unsafeDupablePerformIO)
-#else
-import GHC.IOBase               (IO(IO),RawBuffer,unsafeDupablePerformIO)
-#endif
 
 import GHC.ForeignPtr           (ForeignPtr(ForeignPtr)
 #if __GLASGOW_HASKELL__ < 900
@@ -227,7 +226,7 @@ data ByteString = BS {-# UNPACK #-} !(ForeignPtr Word8) -- payload
 -- as the base will be manipulated by 'plusForeignPtr' instead.
 --
 pattern PS :: ForeignPtr Word8 -> Int -> Int -> ByteString
-pattern PS fp zero len <- BS fp (((,) 0) -> (zero, len)) where
+pattern PS fp zero len <- BS fp ((0,) -> (zero, len)) where
   PS fp o len = BS (plusForeignPtr fp o) len
 {-# COMPLETE PS #-}
 #endif
@@ -466,7 +465,7 @@ fromForeignPtr :: ForeignPtr Word8
                -> Int -- ^ Offset
                -> Int -- ^ Length
                -> ByteString
-fromForeignPtr fp o len = BS (plusForeignPtr fp o) len
+fromForeignPtr fp o = BS (plusForeignPtr fp o)
 {-# INLINE fromForeignPtr #-}
 
 fromForeignPtr0 :: ForeignPtr Word8
@@ -660,13 +659,13 @@ times n (BS fp len)
   | len == 1 = unsafeCreate size $ \destptr ->
     withForeignPtr fp $ \p -> do
       byte <- peek p
-      memset destptr byte (fromIntegral size) >> return ()
+      void $ memset destptr byte (fromIntegral size)
   | otherwise = unsafeCreate size $ \destptr ->
     withForeignPtr fp $ \p -> do
       memcpy destptr p len
       fillFrom destptr len
   where
-    size = len * (fromIntegral n)
+    size = len * fromIntegral n
 
     fillFrom :: Ptr Word8 -> Int -> IO ()
     fillFrom destptr copied
@@ -764,7 +763,7 @@ foreign import ccall unsafe "string.h memchr" c_memchr
     :: Ptr Word8 -> CInt -> CSize -> IO (Ptr Word8)
 
 memchr :: Ptr Word8 -> Word8 -> CSize -> IO (Ptr Word8)
-memchr p w s = c_memchr p (fromIntegral w) s
+memchr p w = c_memchr p (fromIntegral w)
 
 foreign import ccall unsafe "string.h memcmp" c_memcmp
     :: Ptr Word8 -> Ptr Word8 -> CSize -> IO CInt
@@ -776,7 +775,7 @@ foreign import ccall unsafe "string.h memcpy" c_memcpy
     :: Ptr Word8 -> Ptr Word8 -> CSize -> IO (Ptr Word8)
 
 memcpy :: Ptr Word8 -> Ptr Word8 -> Int -> IO ()
-memcpy p q s = c_memcpy p q (fromIntegral s) >> return ()
+memcpy p q s = void $ c_memcpy p q (fromIntegral s)
 
 {-
 foreign import ccall unsafe "string.h memmove" c_memmove
@@ -791,7 +790,7 @@ foreign import ccall unsafe "string.h memset" c_memset
     :: Ptr Word8 -> CInt -> CSize -> IO (Ptr Word8)
 
 memset :: Ptr Word8 -> Word8 -> CSize -> IO (Ptr Word8)
-memset p w s = c_memset p (fromIntegral w) s
+memset p w = c_memset p (fromIntegral w)
 
 -- ---------------------------------------------------------------------
 --
