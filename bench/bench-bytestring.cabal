@@ -46,7 +46,6 @@ common bench-stanza
         Data.ByteString.Builder.Prim.Internal
         Data.ByteString.Builder.Prim.Internal.Base16
         Data.ByteString.Builder.Prim.Internal.Floating
-        Data.ByteString.Builder.Prim.Internal.UncheckedShifts
         Data.ByteString.Char8
         Data.ByteString.Internal
         Data.ByteString.Lazy

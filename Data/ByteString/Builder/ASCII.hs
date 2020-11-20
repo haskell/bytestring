@@ -109,8 +109,6 @@ import GHC.Integer.GMP.Internals
 
 #if HAS_INTEGER_CONSTR
 import qualified Data.ByteString.Builder.Prim.Internal          as P
-import           Data.ByteString.Builder.Prim.Internal.UncheckedShifts
-                   ( caseWordSize_32_64 )
 import           Foreign.C.Types
 import           GHC.Types   (Int(..))
 #endif
@@ -325,7 +323,7 @@ lazyByteStringHex = P.primMapLazyByteStringFixed P.word8HexFixed
 -- FIXME: Think about also using the MSB. For 64 bit 'Int's this makes a
 -- difference.
 maxPow10 :: Integer
-maxPow10 = toInteger $ (10 :: Int) ^ caseWordSize_32_64 (9 :: Int) 18
+maxPow10 = toInteger $ (10 :: Int) ^ P.caseWordSize_32_64 (9 :: Int) 18
 
 -- | Decimal encoding of an 'Integer' using the ASCII digits.
 integerDec :: Integer -> Builder
@@ -382,7 +380,7 @@ foreign import ccall unsafe "static _hs_bytestring_long_long_int_dec_padded18"
 
 {-# INLINE intDecPadded #-}
 intDecPadded :: P.BoundedPrim Int
-intDecPadded = P.liftFixedToBounded $ caseWordSize_32_64
+intDecPadded = P.liftFixedToBounded $ P.caseWordSize_32_64
     (P.fixedPrim  9 $ c_int_dec_padded9            . fromIntegral)
     (P.fixedPrim 18 $ c_long_long_int_dec_padded18 . fromIntegral)
 

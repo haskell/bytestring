@@ -84,7 +84,6 @@ import Data.ByteString.Builder.Prim.Binary
 import Data.ByteString.Builder.Prim.Internal
 import Data.ByteString.Builder.Prim.Internal.Floating
 import Data.ByteString.Builder.Prim.Internal.Base16
-import Data.ByteString.Builder.Prim.Internal.UncheckedShifts
 
 import Data.Char (ord)
 
