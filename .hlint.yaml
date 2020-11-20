@@ -2,7 +2,6 @@
     name: Use camelCase
     within:
       - Data.ByteString.Builder.Internal
-      - Data.ByteString.Builder.Prim.Internal.UncheckedShifts
       - Data.ByteString.Short.Internal
 - ignore:
     name: Use fewer imports

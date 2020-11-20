@@ -64,6 +64,9 @@ module Data.ByteString.Builder.Prim.Internal (
   , (>$<)
   , (>*<)
 
+  -- * Helpers
+  , caseWordSize_32_64
+
   -- * Deprecated
   , boudedPrim
   ) where
@@ -71,10 +74,7 @@ module Data.ByteString.Builder.Prim.Internal (
 import Foreign
 import Prelude hiding (maxBound)
 
-#if !(__GLASGOW_HASKELL__ >= 612)
--- ghc-6.10 and older do not support {-# INLINE CONLIKE #-}
-#define CONLIKE
-#endif
+#include "MachDeps.h"
 
 ------------------------------------------------------------------------------
 -- Supporting infrastructure
@@ -298,3 +298,17 @@ eitherB (BP b1 io1) (BP b2 io2) =
 condB :: (a -> Bool) -> BoundedPrim a -> BoundedPrim a -> BoundedPrim a
 condB p be1 be2 =
     contramapB (\x -> if p x then Left x else Right x) (eitherB be1 be2)
+
+-- | Select an implementation depending on bitness.
+-- Throw a compile time error if bitness is neither 32 nor 64.
+{-# INLINE caseWordSize_32_64 #-}
+caseWordSize_32_64
+  :: a -- Value for 32-bit architecture
+  -> a -- Value for 64-bit architecture
+  -> a
+#if WORD_SIZE_IN_BITS == 32
+caseWordSize_32_64 = const
+#endif
+#if WORD_SIZE_IN_BITS == 64
+caseWordSize_32_64 = const id
+#endif
