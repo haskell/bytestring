@@ -84,7 +84,6 @@ import Data.ByteString.Builder.Prim.Binary
 import Data.ByteString.Builder.Prim.Internal
 import Data.ByteString.Builder.Prim.Internal.Floating
 import Data.ByteString.Builder.Prim.Internal.Base16
-import Data.ByteString.Builder.Prim.Internal.UncheckedShifts
 
 import Data.Char (ord)
 
@@ -242,20 +241,20 @@ word8HexFixed = fixedPrim 2 $
 {-# INLINE word16HexFixed #-}
 word16HexFixed :: FixedPrim Word16
 word16HexFixed =
-    (\x -> (fromIntegral $ x `shiftr_w16` 8, fromIntegral x))
+    (\x -> (fromIntegral $ x `shiftR` 8, fromIntegral x))
       >$< pairF word8HexFixed word8HexFixed
 
 -- | Encode a 'Word32' using 8 nibbles.
 {-# INLINE word32HexFixed #-}
 word32HexFixed :: FixedPrim Word32
 word32HexFixed =
-    (\x -> (fromIntegral $ x `shiftr_w32` 16, fromIntegral x))
+    (\x -> (fromIntegral $ x `shiftR` 16, fromIntegral x))
       >$< pairF word16HexFixed word16HexFixed
 -- | Encode a 'Word64' using 16 nibbles.
 {-# INLINE word64HexFixed #-}
 word64HexFixed :: FixedPrim Word64
 word64HexFixed =
-    (\x -> (fromIntegral $ x `shiftr_w64` 32, fromIntegral x))
+    (\x -> (fromIntegral $ x `shiftR` 32, fromIntegral x))
       >$< pairF word32HexFixed word32HexFixed
 
 -- | Encode a 'Int8' using 2 nibbles (hexadecimal digits).
