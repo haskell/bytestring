@@ -30,6 +30,10 @@
  */
 
 #include "fpstring.h"
+#if defined(__x86_64__)
+#include <emmintrin.h>
+#include <xmmintrin.h>
+#endif
 
 /* copy a string in reverse */
 void fps_reverse(unsigned char *q, unsigned char *p, size_t n) {
@@ -44,7 +48,21 @@ void fps_intersperse(unsigned char *q,
                      unsigned char *p,
                      size_t n,
                      unsigned char c) {
-
+#if defined(__x86_64__)
+  {
+    const __m128i separator = _mm_set1_epi8(c);
+    const unsigned char *const p_begin = p;
+    const unsigned char *const p_end = p_begin + n - 9;
+    while (p < p_end) {
+      const __m128i eight_src_bytes = _mm_loadl_epi64((__m128i *)p);
+      const __m128i sixteen_dst_bytes = _mm_unpacklo_epi8(eight_src_bytes, separator);
+      _mm_storeu_si128((__m128i *)q, sixteen_dst_bytes);
+      p += 8;
+      q += 16;
+    }
+    n -= p - p_begin;
+  }
+#endif
     while (n > 1) {
         *q++ = *p++;
         *q++ = c;
