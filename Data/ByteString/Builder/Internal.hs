@@ -608,7 +608,6 @@ putLiftIO io = put $ \k br -> io >>= (`k` br)
 -- buffer is too small to execute one step of the 'Put' action, then
 -- it is replaced with a large enough buffer.
 hPut :: forall a. Handle -> Put a -> IO a
-#if __GLASGOW_HASKELL__ >= 611
 hPut h p = do
     fillHandle 1 (runPut p)
   where
@@ -655,12 +654,7 @@ hPut h p = do
 
               | freeSpace buf < minFree = flushWriteBuffer h_
               | otherwise               =
-#if __GLASGOW_HASKELL__ >= 613
                                           return ()
-#else
-                                          -- required for ghc-6.12
-                                          flushWriteBuffer h_
-#endif
 
             fillBuffer buf
               | freeSpace buf < minFree =
@@ -709,15 +703,6 @@ hPut h p = do
                     return $ do
                         S.hPut h bs
                         fillHandle 1 nextStep
-#else
-hPut h p =
-    go =<< buildStepToCIOS strategy (runPut p)
-  where
-    strategy = untrimmedStrategy L.smallChunkSize L.defaultChunkSize
-
-    go (Finished buf x) = S.hPut h (byteStringFromBuffer buf) >> return x
-    go (Yield1 bs io)   = S.hPut h bs >> io >>= go
-#endif
 
 -- | Execute a 'Put' and return the computed result and the bytes
 -- written during the computation as a lazy 'L.ByteString'.

@@ -97,7 +97,6 @@ test-suite test-builder
                     Data.ByteString.Builder.Prim.Internal
                     Data.ByteString.Builder.Prim.Internal.Base16
                     Data.ByteString.Builder.Prim.Internal.Floating
-                    Data.ByteString.Builder.Prim.Internal.UncheckedShifts
                     Data.ByteString.Internal
                     Data.ByteString.Lazy
                     Data.ByteString.Lazy.Char8
