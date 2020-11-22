@@ -271,7 +271,6 @@ import qualified Data.List as List (intersperse)
 import System.IO    (Handle,stdout)
 import Foreign
 
-
 ------------------------------------------------------------------------
 
 -- | /O(1)/ Convert a 'Char' into a 'ByteString'
@@ -817,7 +816,7 @@ unsafeHead  = w2c . B.unsafeHead
 -- > break isSpace == breakSpace
 --
 breakSpace :: ByteString -> (ByteString,ByteString)
-breakSpace (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> do
+breakSpace (PS x s l) = accursedUnutterablePerformIO $ unsafeWithForeignPtr x $ \p -> do
     i <- firstspace (p `plusPtr` s) 0 l
     return $! case () of {_
         | i == 0    -> (empty, PS x s l)
@@ -840,7 +839,7 @@ firstspace !ptr !n !m
 --
 -- @since 0.10.12.0
 dropSpace :: ByteString -> ByteString
-dropSpace (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> do
+dropSpace (PS x s l) = accursedUnutterablePerformIO $ unsafeWithForeignPtr x $ \p -> do
     i <- firstnonspace (p `plusPtr` s) 0 l
     return $! if i == l then empty else PS x (s+i) (l-i)
 {-# INLINE dropSpace #-}
@@ -866,7 +865,7 @@ strip = dropWhile isSpace . dropWhileEnd isSpace
 -- but it is more efficient than using multiple reverses.
 --
 dropSpaceEnd :: ByteString -> ByteString
-dropSpaceEnd (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> do
+dropSpaceEnd (PS x s l) = accursedUnutterablePerformIO $ unsafeWithForeignPtr x $ \p -> do
     i <- lastnonspace (p `plusPtr` s) (l-1)
     return $! if i == (-1) then empty else PS x s (i+1)
 {-# INLINE dropSpaceEnd #-}
@@ -895,7 +894,7 @@ lines ps
 -- Just as fast, but more complex. Should be much faster, I thought.
 lines :: ByteString -> [ByteString]
 lines (PS _ _ 0) = []
-lines (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> do
+lines (PS x s l) = accursedUnutterablePerformIO $ unsafeWithForeignPtr x $ \p -> do
         let ptr = p `plusPtr` s
 
             loop n = do

@@ -76,13 +76,17 @@ module Data.ByteString.Internal (
 
         -- * Deprecated and unmentionable
         accursedUnutterablePerformIO, -- :: IO a -> a
-        inlinePerformIO               -- :: IO a -> a
+        inlinePerformIO,              -- :: IO a -> a
+        unsafeWithForeignPtr
   ) where
 
 import Prelude hiding (concat, null)
 import qualified Data.List as List
 
 import Foreign.ForeignPtr       (ForeignPtr, withForeignPtr)
+#if MIN_VERSION_base(4,15,0)
+import GHC.ForeignPtr           (unsafeWithForeignPtr)
+#endif
 import Foreign.Ptr              (Ptr, FunPtr, plusPtr)
 import Foreign.Storable         (Storable(..))
 
@@ -141,6 +145,12 @@ import GHC.IOBase               (IO(IO),RawBuffer,unsafeDupablePerformIO)
 import GHC.ForeignPtr           (ForeignPtr(ForeignPtr)
                                 ,newForeignPtr_, mallocPlainForeignPtrBytes)
 import GHC.Ptr                  (Ptr(..), castPtr)
+
+#if !MIN_VERSION_base(4,15,0)
+unsafeWithForeignPtr :: ForeignPtr a -> (Ptr a -> IO b) -> IO b
+unsafeWithForeignPtr = withForeignPtr
+#endif
+
 
 -- CFILES stuff is Hugs only
 {-# CFILES cbits/fpstring.c #-}
@@ -472,8 +482,8 @@ compareBytes :: ByteString -> ByteString -> Ordering
 compareBytes (PS _   _    0)    (PS _   _    0)    = EQ  -- short cut for empty strings
 compareBytes (PS fp1 off1 len1) (PS fp2 off2 len2) =
     accursedUnutterablePerformIO $
-      withForeignPtr fp1 $ \p1 ->
-      withForeignPtr fp2 $ \p2 -> do
+      unsafeWithForeignPtr fp1 $ \p1 ->
+      unsafeWithForeignPtr fp2 $ \p2 -> do
         i <- memcmp (p1 `plusPtr` off1) (p2 `plusPtr` off2) (min len1 len2)
         return $! case i `compare` 0 of
                     EQ  -> len1 `compare` len2
@@ -485,8 +495,8 @@ append a                  (PS _   _    0)    = a
 append (PS fp1 off1 len1) (PS fp2 off2 len2) =
     unsafeCreate (len1+len2) $ \destptr1 -> do
       let destptr2 = destptr1 `plusPtr` len1
-      withForeignPtr fp1 $ \p1 -> memcpy destptr1 (p1 `plusPtr` off1) len1
-      withForeignPtr fp2 $ \p2 -> memcpy destptr2 (p2 `plusPtr` off2) len2
+      unsafeWithForeignPtr fp1 $ \p1 -> memcpy destptr1 (p1 `plusPtr` off1) len1
+      unsafeWithForeignPtr fp2 $ \p2 -> memcpy destptr2 (p2 `plusPtr` off2) len2
 
 concat :: [ByteString] -> ByteString
 concat = \bss0 -> goLen0 bss0 bss0
@@ -528,7 +538,7 @@ concat = \bss0 -> goLen0 bss0 bss0
     goCopy []                  !_   = return ()
     goCopy (PS _  _   0  :bss) !ptr = goCopy bss ptr
     goCopy (PS fp off len:bss) !ptr = do
-      withForeignPtr fp $ \p -> memcpy ptr (p `plusPtr` off) len
+      unsafeWithForeignPtr fp $ \p -> memcpy ptr (p `plusPtr` off) len
       goCopy bss (ptr `plusPtr` len)
 {-# NOINLINE concat #-}
 

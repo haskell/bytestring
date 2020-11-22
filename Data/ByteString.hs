@@ -369,14 +369,14 @@ infixl 5 `snoc`
 -- | /O(n)/ 'cons' is analogous to (:) for lists, but of different
 -- complexity, as it requires making a copy.
 cons :: Word8 -> ByteString -> ByteString
-cons c (PS x s l) = unsafeCreate (l+1) $ \p -> withForeignPtr x $ \f -> do
+cons c (PS x s l) = unsafeCreate (l+1) $ \p -> unsafeWithForeignPtr x $ \f -> do
         poke p c
         memcpy (p `plusPtr` 1) (f `plusPtr` s) (fromIntegral l)
 {-# INLINE cons #-}
 
 -- | /O(n)/ Append a byte to the end of a 'ByteString'
 snoc :: ByteString -> Word8 -> ByteString
-snoc (PS x s l) c = unsafeCreate (l+1) $ \p -> withForeignPtr x $ \f -> do
+snoc (PS x s l) c = unsafeCreate (l+1) $ \p -> unsafeWithForeignPtr x $ \f -> do
         memcpy p (f `plusPtr` s) (fromIntegral l)
         poke (p `plusPtr` l) c
 {-# INLINE snoc #-}
@@ -388,7 +388,7 @@ snoc (PS x s l) c = unsafeCreate (l+1) $ \p -> withForeignPtr x $ \f -> do
 head :: ByteString -> Word8
 head (PS x s l)
     | l <= 0    = errorEmptyList "head"
-    | otherwise = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> peekByteOff p s
+    | otherwise = accursedUnutterablePerformIO $ unsafeWithForeignPtr x $ \p -> peekByteOff p s
 {-# INLINE head #-}
 
 -- | /O(1)/ Extract the elements after the head of a ByteString, which must be non-empty.
@@ -404,7 +404,7 @@ tail (PS p s l)
 uncons :: ByteString -> Maybe (Word8, ByteString)
 uncons (PS x s l)
     | l <= 0    = Nothing
-    | otherwise = Just (accursedUnutterablePerformIO $ withForeignPtr x
+    | otherwise = Just (accursedUnutterablePerformIO $ unsafeWithForeignPtr x
                                                      $ \p -> peekByteOff p s,
                         PS x (s+1) (l-1))
 {-# INLINE uncons #-}
@@ -415,7 +415,7 @@ last :: ByteString -> Word8
 last ps@(PS x s l)
     | null ps   = errorEmptyList "last"
     | otherwise = accursedUnutterablePerformIO $
-                    withForeignPtr x $ \p -> peekByteOff p (s+l-1)
+                    unsafeWithForeignPtr x $ \p -> peekByteOff p (s+l-1)
 {-# INLINE last #-}
 
 -- | /O(1)/ Return all the elements of a 'ByteString' except the last one.
@@ -433,7 +433,7 @@ unsnoc (PS x s l)
     | l <= 0    = Nothing
     | otherwise = Just (PS x s (l-1),
                         accursedUnutterablePerformIO $
-                          withForeignPtr x $ \p -> peekByteOff p (s+l-1))
+                          unsafeWithForeignPtr x $ \p -> peekByteOff p (s+l-1))
 {-# INLINE unsnoc #-}
 
 -- | /O(n)/ Append two ByteStrings
@@ -447,7 +447,7 @@ append = mappend
 -- | /O(n)/ 'map' @f xs@ is the ByteString obtained by applying @f@ to each
 -- element of @xs@.
 map :: (Word8 -> Word8) -> ByteString -> ByteString
-map f (PS fp s len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a ->
+map f (PS fp s len) = unsafeDupablePerformIO $ unsafeWithForeignPtr fp $ \a ->
     create len $ map_ 0 (a `plusPtr` s)
   where
     map_ :: Int -> Ptr Word8 -> Ptr Word8 -> IO ()
@@ -461,7 +461,7 @@ map f (PS fp s len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a ->
 
 -- | /O(n)/ 'reverse' @xs@ efficiently returns the elements of @xs@ in reverse order.
 reverse :: ByteString -> ByteString
-reverse (PS x s l) = unsafeCreate l $ \p -> withForeignPtr x $ \f ->
+reverse (PS x s l) = unsafeCreate l $ \p -> unsafeWithForeignPtr x $ \f ->
         c_reverse p (f `plusPtr` s) (fromIntegral l)
 
 -- | /O(n)/ The 'intersperse' function takes a 'Word8' and a
@@ -471,7 +471,7 @@ reverse (PS x s l) = unsafeCreate l $ \p -> withForeignPtr x $ \f ->
 intersperse :: Word8 -> ByteString -> ByteString
 intersperse c ps@(PS x s l)
     | length ps < 2  = ps
-    | otherwise      = unsafeCreate (2*l-1) $ \p -> withForeignPtr x $ \f ->
+    | otherwise      = unsafeCreate (2*l-1) $ \p -> unsafeWithForeignPtr x $ \f ->
         c_intersperse p (f `plusPtr` s) (fromIntegral l) c
 
 -- | The 'transpose' function transposes the rows and columns of its
@@ -504,7 +504,7 @@ foldl f z (PS fp off len) =
 --
 foldl' :: (a -> Word8 -> a) -> a -> ByteString -> a
 foldl' f v (PS fp off len) =
-      accursedUnutterablePerformIO $ withForeignPtr fp $ \p ->
+      accursedUnutterablePerformIO $ unsafeWithForeignPtr fp $ \p ->
         go v (p `plusPtr` off) (p `plusPtr` (off+len))
     where
       -- tail recursive; traverses array left to right
@@ -533,7 +533,7 @@ foldr k z (PS fp off len) =
 -- | 'foldr'' is like 'foldr', but strict in the accumulator.
 foldr' :: (Word8 -> a -> a) -> a -> ByteString -> a
 foldr' k v (PS fp off len) =
-      accursedUnutterablePerformIO $ withForeignPtr fp $ \p ->
+      accursedUnutterablePerformIO $ unsafeWithForeignPtr fp $ \p ->
         go v (p `plusPtr` (off+len-1)) (p `plusPtr` (off-1))
     where
       -- tail recursive; traverses array right to left
@@ -593,7 +593,7 @@ concatMap f = concat . foldr ((:) . f) []
 -- any element of the 'ByteString' satisfies the predicate.
 any :: (Word8 -> Bool) -> ByteString -> Bool
 any _ (PS _ _ 0) = False
-any f (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \ptr ->
+any f (PS x s l) = accursedUnutterablePerformIO $ unsafeWithForeignPtr x $ \ptr ->
         go (ptr `plusPtr` s) (ptr `plusPtr` (s+l))
     where
         go !p !q | p == q    = return False
@@ -608,7 +608,7 @@ any f (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \ptr ->
 -- if all elements of the 'ByteString' satisfy the predicate.
 all :: (Word8 -> Bool) -> ByteString -> Bool
 all _ (PS _ _ 0) = True
-all f (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \ptr ->
+all f (PS x s l) = accursedUnutterablePerformIO $ unsafeWithForeignPtr x $ \ptr ->
         go (ptr `plusPtr` s) (ptr `plusPtr` (s+l))
     where
         go !p !q | p == q     = return True  -- end of list
@@ -626,7 +626,7 @@ all f (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \ptr ->
 maximum :: ByteString -> Word8
 maximum xs@(PS x s l)
     | null xs   = errorEmptyList "maximum"
-    | otherwise = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
+    | otherwise = accursedUnutterablePerformIO $ unsafeWithForeignPtr x $ \p ->
                       c_maximum (p `plusPtr` s) (fromIntegral l)
 {-# INLINE maximum #-}
 
@@ -636,7 +636,7 @@ maximum xs@(PS x s l)
 minimum :: ByteString -> Word8
 minimum xs@(PS x s l)
     | null xs   = errorEmptyList "minimum"
-    | otherwise = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
+    | otherwise = accursedUnutterablePerformIO $ unsafeWithForeignPtr x $ \p ->
                       c_minimum (p `plusPtr` s) (fromIntegral l)
 {-# INLINE minimum #-}
 
@@ -647,9 +647,9 @@ minimum xs@(PS x s l)
 -- passing an accumulating parameter from left to right, and returning a
 -- final value of this accumulator together with the new list.
 mapAccumL :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
-mapAccumL f acc (PS fp o len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a -> do
+mapAccumL f acc (PS fp o len) = unsafeDupablePerformIO $ unsafeWithForeignPtr fp $ \a -> do
     gp   <- mallocByteString len
-    acc' <- withForeignPtr gp $ \p -> mapAccumL_ acc 0 (a `plusPtr` o) p
+    acc' <- unsafeWithForeignPtr gp $ \p -> mapAccumL_ acc 0 (a `plusPtr` o) p
     return (acc', PS gp 0 len)
   where
     mapAccumL_ !s !n !p1 !p2
@@ -666,9 +666,9 @@ mapAccumL f acc (PS fp o len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a 
 -- passing an accumulating parameter from right to left, and returning a
 -- final value of this accumulator together with the new ByteString.
 mapAccumR :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
-mapAccumR f acc (PS fp o len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a -> do
+mapAccumR f acc (PS fp o len) = unsafeDupablePerformIO $ unsafeWithForeignPtr fp $ \a -> do
     gp   <- mallocByteString len
-    acc' <- withForeignPtr gp $ \p -> mapAccumR_ acc (len-1) (a `plusPtr` o) p
+    acc' <- unsafeWithForeignPtr gp $ \p -> mapAccumR_ acc (len-1) (a `plusPtr` o) p
     return $! (acc', PS gp 0 len)
   where
     mapAccumR_ !s !n !p !q
@@ -694,7 +694,7 @@ mapAccumR f acc (PS fp o len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a 
 --
 scanl :: (Word8 -> Word8 -> Word8) -> Word8 -> ByteString -> ByteString
 
-scanl f v (PS fp s len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a ->
+scanl f v (PS fp s len) = unsafeDupablePerformIO $ unsafeWithForeignPtr fp $ \a ->
     create (len+1) $ \q -> do
         poke q v
         scanl_ v 0 (a `plusPtr` s) (q `plusPtr` 1)
@@ -724,7 +724,7 @@ scanl1 f ps
 
 -- | scanr is the right-to-left dual of scanl.
 scanr :: (Word8 -> Word8 -> Word8) -> Word8 -> ByteString -> ByteString
-scanr f v (PS fp s len) = unsafeDupablePerformIO $ withForeignPtr fp $ \a ->
+scanr f v (PS fp s len) = unsafeDupablePerformIO $ unsafeWithForeignPtr fp $ \a ->
     create (len+1) $ \q -> do
         poke (q `plusPtr` len) v
         scanr_ v (len-1) (a `plusPtr` s) q
@@ -926,7 +926,7 @@ span p ps = break (not . p) ps
 spanByte :: Word8 -> ByteString -> (ByteString, ByteString)
 spanByte c ps@(PS x s l) =
     accursedUnutterablePerformIO $
-      withForeignPtr x $ \p ->
+      unsafeWithForeignPtr x $ \p ->
         go (p `plusPtr` s) 0
   where
     go !p !i | i >= l    = return (ps, empty)
@@ -982,7 +982,7 @@ splitWith pred_ (PS fp off len) = splitWith0 pred# off len fp
 
         splitWith0 !pred' !off' !len' !fp' =
           accursedUnutterablePerformIO $
-            withForeignPtr fp $ \p ->
+            unsafeWithForeignPtr fp $ \p ->
               splitLoop pred' p 0 off' len' fp'
 
         splitLoop :: (Word8# -> Bool)
@@ -1022,12 +1022,12 @@ split _ (PS _ _ 0) = []
 split w (PS x s l) = loop 0
     where
         loop !n =
-            let q = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
+            let q = accursedUnutterablePerformIO $ unsafeWithForeignPtr x $ \p ->
                       memchr (p `plusPtr` (s+n))
                              w (fromIntegral (l-n))
             in if q == nullPtr
                 then [PS x (s+n) (l-n)]
-                else let i = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
+                else let i = accursedUnutterablePerformIO $ unsafeWithForeignPtr x $ \p ->
                                return (q `minusPtr` (p `plusPtr` s))
                       in PS x (s+n) (i-n) : loop (i+1)
 
@@ -1076,8 +1076,8 @@ intercalate s = concat . List.intersperse s
 --
 intercalateWithByte :: Word8 -> ByteString -> ByteString -> ByteString
 intercalateWithByte c f@(PS ffp s l) g@(PS fgp t m) = unsafeCreate len $ \ptr ->
-    withForeignPtr ffp $ \fp ->
-    withForeignPtr fgp $ \gp -> do
+    unsafeWithForeignPtr ffp $ \fp ->
+    unsafeWithForeignPtr fgp $ \gp -> do
         memcpy ptr (fp `plusPtr` s) (fromIntegral l)
         poke (ptr `plusPtr` l) c
         memcpy (ptr `plusPtr` (l + 1)) (gp `plusPtr` t) (fromIntegral m)
@@ -1102,7 +1102,7 @@ index ps n
 -- element, or 'Nothing' if there is no such element.
 -- This implementation uses memchr(3).
 elemIndex :: Word8 -> ByteString -> Maybe Int
-elemIndex c (PS x s l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> do
+elemIndex c (PS x s l) = accursedUnutterablePerformIO $ unsafeWithForeignPtr x $ \p -> do
     let p' = p `plusPtr` s
     q <- memchr p' c (fromIntegral l)
     return $! if q == nullPtr then Nothing else Just $! q `minusPtr` p'
@@ -1126,12 +1126,12 @@ elemIndexEnd = findIndexEnd . (==)
 elemIndices :: Word8 -> ByteString -> [Int]
 elemIndices w (PS x s l) = loop 0
     where
-        loop !n = let q = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
+        loop !n = let q = accursedUnutterablePerformIO $ unsafeWithForeignPtr x $ \p ->
                            memchr (p `plusPtr` (n+s))
                                                 w (fromIntegral (l - n))
                   in if q == nullPtr
                         then []
-                        else let i = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
+                        else let i = accursedUnutterablePerformIO $ unsafeWithForeignPtr x $ \p ->
                                        return (q `minusPtr` (p `plusPtr` s))
                              in i : loop (i+1)
 {-# INLINE elemIndices #-}
@@ -1142,7 +1142,7 @@ elemIndices w (PS x s l) = loop 0
 --
 -- But more efficiently than using length on the intermediate list.
 count :: Word8 -> ByteString -> Int
-count w (PS x s m) = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
+count w (PS x s m) = accursedUnutterablePerformIO $ unsafeWithForeignPtr x $ \p ->
     fmap fromIntegral $ c_count (p `plusPtr` s) (fromIntegral m) w
 {-# INLINE count #-}
 
@@ -1296,8 +1296,8 @@ isPrefixOf :: ByteString -> ByteString -> Bool
 isPrefixOf (PS x1 s1 l1) (PS x2 s2 l2)
     | l1 == 0   = True
     | l2 < l1   = False
-    | otherwise = accursedUnutterablePerformIO $ withForeignPtr x1 $ \p1 ->
-        withForeignPtr x2 $ \p2 -> do
+    | otherwise = accursedUnutterablePerformIO $ unsafeWithForeignPtr x1 $ \p1 ->
+        unsafeWithForeignPtr x2 $ \p2 -> do
             i <- memcmp (p1 `plusPtr` s1) (p2 `plusPtr` s2) (fromIntegral l1)
             return $! i == 0
 
@@ -1324,8 +1324,8 @@ isSuffixOf :: ByteString -> ByteString -> Bool
 isSuffixOf (PS x1 s1 l1) (PS x2 s2 l2)
     | l1 == 0   = True
     | l2 < l1   = False
-    | otherwise = accursedUnutterablePerformIO $ withForeignPtr x1 $ \p1 ->
-        withForeignPtr x2 $ \p2 -> do
+    | otherwise = accursedUnutterablePerformIO $ unsafeWithForeignPtr x1 $ \p1 ->
+        unsafeWithForeignPtr x2 $ \p2 -> do
             i <- memcmp (p1 `plusPtr` s1) (p2 `plusPtr` s2 `plusPtr` (l2 - l1)) (fromIntegral l1)
             return $! i == 0
 
@@ -1550,7 +1550,7 @@ sort :: ByteString -> ByteString
 sort (PS input s l) = unsafeCreate l $ \p -> allocaArray 256 $ \arr -> do
 
     _ <- memset (castPtr arr) 0 (256 * fromIntegral (sizeOf (undefined :: CSize)))
-    withForeignPtr input (\x -> countOccurrences arr (x `plusPtr` s) l)
+    unsafeWithForeignPtr input (\x -> countOccurrences arr (x `plusPtr` s) l)
 
     let go 256 !_   = return ()
         go i   !ptr = do n <- peekElemOff arr i
@@ -1622,7 +1622,7 @@ packCStringLen (_, len) =
 -- is needed in the rest of the program.
 --
 copy :: ByteString -> ByteString
-copy (PS x s l) = unsafeCreate l $ \p -> withForeignPtr x $ \f ->
+copy (PS x s l) = unsafeCreate l $ \p -> unsafeWithForeignPtr x $ \f ->
     memcpy p (f `plusPtr` s) (fromIntegral l)
 
 -- ---------------------------------------------------------------------
@@ -1697,7 +1697,7 @@ mkBigPS _ pss = return $! concat (P.reverse pss)
 -- | Outputs a 'ByteString' to the specified 'Handle'.
 hPut :: Handle -> ByteString -> IO ()
 hPut _ (PS _  _ 0) = return ()
-hPut h (PS ps s l) = withForeignPtr ps $ \p-> hPutBuf h (p `plusPtr` s) l
+hPut h (PS ps s l) = unsafeWithForeignPtr ps $ \p-> hPutBuf h (p `plusPtr` s) l
 
 -- | Similar to 'hPut' except that it will never block. Instead it returns
 -- any tail that did not get written. This tail may be 'empty' in the case that
@@ -1709,7 +1709,7 @@ hPut h (PS ps s l) = withForeignPtr ps $ \p-> hPutBuf h (p `plusPtr` s) l
 --
 hPutNonBlocking :: Handle -> ByteString -> IO ByteString
 hPutNonBlocking h bs@(PS ps s l) = do
-  bytesWritten <- withForeignPtr ps $ \p-> hPutBufNonBlocking h (p `plusPtr` s) l
+  bytesWritten <- unsafeWithForeignPtr ps $ \p-> hPutBufNonBlocking h (p `plusPtr` s) l
   return $! drop bytesWritten bs
 
 -- | A synonym for @hPut@, for compatibility
@@ -1833,7 +1833,7 @@ hGetContentsSizeHint hnd =
   where
     readChunks chunks sz sz' = do
       fp        <- mallocByteString sz
-      readcount <- withForeignPtr fp $ \buf -> hGetBuf hnd buf sz
+      readcount <- unsafeWithForeignPtr fp $ \buf -> hGetBuf hnd buf sz
       let chunk = PS fp 0 readcount
       -- We rely on the hGetBuf behaviour (not hGetBufSome) where it reads up
       -- to the size we ask for, or EOF. So short reads indicate EOF.

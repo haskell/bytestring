@@ -312,7 +312,7 @@ toStrict = \cs -> goLen0 cs cs
     goCopy Empty                        !_   = return ()
     goCopy (Chunk (S.PS _  _   0  ) cs) !ptr = goCopy cs ptr
     goCopy (Chunk (S.PS fp off len) cs) !ptr = do
-      withForeignPtr fp $ \p -> do
+      S.unsafeWithForeignPtr fp $ \p -> do
         S.memcpy ptr (p `plusPtr` off) len
         goCopy cs (ptr `plusPtr` len)
 -- See the comment on Data.ByteString.Internal.concat for some background on
@@ -466,7 +466,7 @@ intersperse w (Chunk c cs) = Chunk (S.intersperse w c)
                                    (foldrChunks (Chunk . intersperse') Empty cs)
   where intersperse' :: P.ByteString -> P.ByteString
         intersperse' (S.PS fp o l) =
-          S.unsafeCreate (2*l) $ \p' -> withForeignPtr fp $ \p -> do
+          S.unsafeCreate (2*l) $ \p' -> S.unsafeWithForeignPtr fp $ \p -> do
             poke p' w
             S.c_intersperse (p' `plusPtr` 1) (p `plusPtr` o) (fromIntegral l) w
 
