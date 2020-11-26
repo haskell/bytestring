@@ -751,30 +751,6 @@ lines (Chunk c0 cs0) = loop0 c0 cs0
                 let c' = revChunks (B.unsafeTake n c : line)
                  in c' `seq` (c' : loop0 (B.unsafeDrop (n+1) c) cs)
 
-{-
-
-This function is too strict!  Consider,
-
-> prop_lazy =
-    (L.unpack . head . lazylines $ L.append (L.pack "a\nb\n") (error "failed"))
-  ==
-    "a"
-
-fails.  Here's a properly lazy version of 'lines' for lazy bytestrings
-
-    lazylines           :: L.ByteString -> [L.ByteString]
-    lazylines s
-        | L.null s  = []
-        | otherwise =
-            let (l,s') = L.break ((==) '\n') s
-            in l : if L.null s' then []
-                                else lazylines (L.tail s')
-
-we need a similarly lazy, but efficient version.
-
--}
-
-
 -- | 'unlines' is an inverse operation to 'lines'.  It joins lines,
 -- after appending a terminating newline to each.
 unlines :: [ByteString] -> ByteString

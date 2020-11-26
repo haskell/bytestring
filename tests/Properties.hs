@@ -1184,6 +1184,11 @@ prop_unlinesBB (String8 xs) =
 prop_unlinesLC (String8 xs) =
     (unlines.lines) xs == (LC.unpack. LC.unlines .  LC.lines .LC.pack) xs
 
+prop_lines_lazy1 =
+    head (LC.lines (LC.append (LC.pack "a\nb\n") undefined)) == LC.pack "a"
+prop_lines_lazy2 =
+    head (tail (LC.lines (LC.append (LC.pack "a\nb\n") undefined))) == LC.pack "b"
+
 prop_wordsBB (String8 xs) =
     (words xs) == ((map C.unpack) . C.words . C.pack) xs
 -- prop_wordstokensBB xs = C.words xs == C.tokens isSpace xs
@@ -2255,6 +2260,8 @@ bb_tests =
     , testProperty "lines"          prop_linesBB
     , testProperty "unlines"        prop_unlinesBB
     , testProperty "unlines"        prop_unlinesLC
+    , testProperty "lines_lazy1"    prop_lines_lazy1
+    , testProperty "lines_lazy2"    prop_lines_lazy2
     , testProperty "words"          prop_wordsBB
     , testProperty "words"          prop_wordsLC
     , testProperty "unwords"        prop_unwordsBB
