@@ -1615,33 +1615,24 @@ prop_read_write_file_D x = unsafePerformIO $ do
                     return (x==y))
 
 prop_hgetline_like_s8_hgetline (LinedASCII filetext) (lineEndIn, lineEndOut) = idempotentIOProperty $ do
-    tid <- myThreadId
-    let f = "qc-test-"++show tid
-    let newlineMode = NewlineMode (if lineEndIn then LF else CRLF) (if lineEndOut then LF else CRLF)
-    bracket_
-        (writeFile f filetext)
-        (removeFile f)
-        $ do 
-            bsLines <- withFile f ReadMode (\h -> do
-                hSetNewlineMode h newlineMode
-                readByLines C.hGetLine h
-              )
-            sLines <- withFile f ReadMode (\h -> do
-                hSetNewlineMode h newlineMode
-                readByLines System.IO.hGetLine h
-              )
-            return $ map C.unpack bsLines === sLines
-            
+    (fn, h) <- openTempFile "." "hgetline-prop-test.tmp"
+    hSetNewlineMode h noNewlineTranslation -- This is to ensure strings like \n are covered on Windows.
+    hPutStr h filetext
+    hClose h
+    bsLines <- readFileByLines C.hGetLine fn
+    sLines <- readFileByLines System.IO.hGetLine fn
+    removeFile fn
+    return (map C.unpack bsLines === sLines)
   where
-    readByLines getLine h_ = go []
-      where 
-        go lines = do
-          isEnd <- hIsEOF h_
-          if isEnd
-            then return lines
-            else do
-              !nextLine <- getLine h_
-              go (nextLine : lines)
+    newlineMode = NewlineMode (if lineEndIn then LF else CRLF) (if lineEndOut then LF else CRLF)
+    readFileByLines getLine fn = withFile fn ReadMode $ \h -> do
+        hSetNewlineMode h newlineMode
+        readByLines getLine h
+    readByLines getLine h = do
+        isEnd <- hIsEOF h
+        if isEnd
+          then return [] 
+          else (:) <$> getLine h <*> readByLines getLine h
 
 
 ------------------------------------------------------------------------
