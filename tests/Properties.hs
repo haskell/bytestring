@@ -1614,7 +1614,7 @@ prop_read_write_file_D x = unsafePerformIO $ do
         (const $ do y <- D.readFile f
                     return (x==y))
 
-prop_hgetline_like_s8_hgetline (LinedASCII filetext) (lineEndIn, lineEndOut) = idempotentIOProperty $ do
+prop_hgetline_like_s8_hgetline (LinedASCII filetext) (crlfIn, crlfOut) = idempotentIOProperty $ do
     (fn, h) <- openTempFile "." "hgetline-prop-test.tmp"
     hSetNewlineMode h noNewlineTranslation -- This is to ensure strings like \n are covered on Windows.
     hPutStr h filetext
@@ -1624,7 +1624,7 @@ prop_hgetline_like_s8_hgetline (LinedASCII filetext) (lineEndIn, lineEndOut) = i
     removeFile fn
     return (map C.unpack bsLines === sLines)
   where
-    newlineMode = NewlineMode (if lineEndIn then LF else CRLF) (if lineEndOut then LF else CRLF)
+    newlineMode = NewlineMode (if crlfIn then CRLF else LF) (if crlfOut then CRLF else LF)
     readFileByLines getLine fn = withFile fn ReadMode $ \h -> do
         hSetNewlineMode h newlineMode
         readByLines getLine h
