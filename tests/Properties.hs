@@ -1705,6 +1705,27 @@ prop_read_write_file_D x = ioProperty $ do
     D.length y `seq` removeFile fn
     return (x == y)
 
+prop_hgetline_like_s8_hgetline (LinedASCII filetext) (crlfIn, crlfOut) = idempotentIOProperty $ do
+    (fn, h) <- openTempFile "." "hgetline-prop-test.tmp"
+    hSetNewlineMode h noNewlineTranslation -- This is to ensure strings like \n are covered on Windows.
+    hPutStr h filetext
+    hClose h
+    bsLines <- readFileByLines C.hGetLine fn
+    sLines <- readFileByLines System.IO.hGetLine fn
+    removeFile fn
+    return (map C.unpack bsLines === sLines)
+  where
+    newlineMode = NewlineMode (if crlfIn then CRLF else LF) (if crlfOut then CRLF else LF)
+    readFileByLines getLine fn = withFile fn ReadMode $ \h -> do
+        hSetNewlineMode h newlineMode
+        readByLines getLine h
+    readByLines getLine h = do
+        isEnd <- hIsEOF h
+        if isEnd
+          then return [] 
+          else (:) <$> getLine h <*> readByLines getLine h
+
+
 ------------------------------------------------------------------------
 
 prop_append_file_P x y = ioProperty $ do
@@ -1886,7 +1907,8 @@ io_tests =
     , testProperty "appendFile        " prop_append_file_D
 
     , testProperty "packAddress       " prop_packAddress
-
+    
+    , testProperty "pack.hGetLine=hGetLine" prop_hgetline_like_s8_hgetline
     ]
 
 misc_tests =

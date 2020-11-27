@@ -93,6 +93,22 @@ instance Arbitrary String8 where
       toChar :: Word8 -> Char
       toChar = toEnum . fromIntegral
 
+-- | Strings, but each char is ASCII and there are a lot of newlines generated
+-- 
+newtype LinedASCII = LinedASCII String
+  deriving (Eq, Ord, Show)
+
+instance Arbitrary LinedASCII where
+  arbitrary = fmap LinedASCII . listOf . oneof $
+    [ arbitraryASCIIChar
+    , elements ['\n', '\r']
+    ]
+
+  shrink (LinedASCII s) = fmap LinedASCII (shrink s)
+
+instance CoArbitrary LinedASCII where
+  coarbitrary (LinedASCII s) = coarbitrary s
+
 ------------------------------------------------------------------------
 --
 -- We're doing two forms of testing here. Firstly, model based testing.
