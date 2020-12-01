@@ -21,8 +21,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Update cabal package database
-      run: |
-        cabal update
+      run: cabal update
     - uses: actions/cache@v2
       name: Cache cabal stuff
       with:
@@ -38,10 +37,15 @@ jobs:
         sudo apt-get install ghc-${{ matrix.ghc }}
     - name: Build
       run: |
-        GHC=/opt/ghc/bin/ghc-${{ matrix.ghc }}
-        (cabal sdist -z -o . && cabal get bytestring-*.tar.gz && cd bytestring-*/ && cabal build -w $GHC all)
-        (cd tests && cabal test -w $GHC)
-        (cabal haddock -w $GHC)
+        cabal sdist -z -o .
+        cabal get bytestring-*.tar.gz
+        cd bytestring-*/
+        cabal build -w /opt/ghc/bin/ghc-${{ matrix.ghc }} all
+    - name: Test
+      working-directory: ./tests
+      run: cabal test -w /opt/ghc/bin/ghc-${{ matrix.ghc }} --test-show-details=direct
+    - name: Haddock
+      run: cabal haddock -w /opt/ghc/bin/ghc-${{ matrix.ghc }}
 
   build:
     needs: build-old
@@ -53,9 +57,9 @@ jobs:
         ghc: ['7.10', '8.0', '8.2', '8.4', '8.6', '8.8', '8.10']
         include:
         - os: windows-latest
-          ghc: '8.10'
+          ghc: 'latest'
         - os: macOS-latest
-          ghc: '8.10'
+          ghc: 'latest'
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-haskell@v1
@@ -63,8 +67,7 @@ jobs:
       with:
         ghc-version: ${{ matrix.ghc }}
     - name: Update cabal package database
-      run: |
-        cabal update
+      run: cabal update
     - uses: actions/cache@v2
       name: Cache cabal stuff
       with:
@@ -76,16 +79,18 @@ jobs:
         key: ${{ runner.os }}-${{ matrix.ghc }}
     - name: Build
       run: |
-        cabal sdist -z -o . && cabal get bytestring-*.tar.gz && cd bytestring-*/ && cabal build all
+        cabal sdist -z -o .
+        cabal get bytestring-*.tar.gz
+        cd bytestring-*/
+        cabal build all
     - name: Test
-      run: |
-        cd tests && cabal test
+      working-directory: ./tests
+      run: cabal test --test-show-details=direct
     - name: Bench
-      run: |
-        cd bench && cabal bench --benchmark-options=-l
+      working-directory: ./bench
+      run: cabal bench --benchmark-options=-l
     - name: Haddock
-      run: |
-        cabal haddock
+      run: cabal haddock
 
   build-freebsd:
     needs: build
@@ -105,4 +110,5 @@ jobs:
         # and is quite slow, so only tests are run.
         run: |
           cabal update
-          cd tests && cabal test
+          cd tests
+          cabal test --test-show-details=direct
