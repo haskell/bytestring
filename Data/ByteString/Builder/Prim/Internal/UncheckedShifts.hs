@@ -71,8 +71,8 @@ shiftr_w w s = fromIntegral $ (`shiftr_w64` s) $ fromIntegral w
 #endif
 
 #if !defined(__HADDOCK__)
-shiftr_w16 (W16# w) (I# i) = W16# (narrowWord16# ((extendWord16# w) `uncheckedShiftRL#`   i))
-shiftr_w32 (W32# w) (I# i) = W32# (narrowWord32# ((extendWord32# w) `uncheckedShiftRL#`   i))
+shiftr_w16 (W16# w) (I# i) = W16# (wordToWord16# ((word16ToWord# w) `uncheckedShiftRL#`   i))
+shiftr_w32 (W32# w) (I# i) = W32# (wordToWord32# ((word32ToWord# w) `uncheckedShiftRL#`   i))
 
 #if WORD_SIZE_IN_BITS < 64
 shiftr_w64 (W64# w) (I# i) = W64# (w `uncheckedShiftRL64#` i)
