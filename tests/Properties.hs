@@ -60,8 +60,8 @@ import Prelude hiding (abs)
 
 import Rules
 import QuickCheckUtils
-import Test.Framework
-import Test.Framework.Providers.QuickCheck2
+import Test.Tasty
+import Test.Tasty.QuickCheck
 
 toInt64 :: Int -> Int64
 toInt64 = fromIntegral
@@ -1854,7 +1854,7 @@ short_tests =
 -- The entry point
 
 main :: IO ()
-main = defaultMain tests
+main = defaultMain $ testGroup "All" tests
 
 --
 -- And now a list of all the properties to test.

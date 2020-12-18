@@ -2,12 +2,12 @@ module Main where
 
 import qualified Data.ByteString.Builder.Tests
 import qualified Data.ByteString.Builder.Prim.Tests
-import           Test.Framework (defaultMain, Test, testGroup)
+import           Test.Tasty (defaultMain, TestTree, testGroup)
 
 main :: IO ()
-main = defaultMain tests
+main = defaultMain $ testGroup "All" tests
 
-tests :: [Test]
+tests :: [TestTree]
 tests =
   [ testGroup "Data.ByteString.Builder"
        Data.ByteString.Builder.Tests.tests

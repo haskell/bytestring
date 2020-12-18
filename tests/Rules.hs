@@ -13,7 +13,7 @@ import Data.Word
 
 import QuickCheckUtils
 
-import Test.Framework.Providers.QuickCheck2
+import Test.Tasty.QuickCheck
 
 prop_break_C :: Word8 -> C.ByteString -> Bool
 prop_break_C w = C.break ((==) x) `eq1` break ((==) x)
