@@ -36,7 +36,7 @@ test-suite prop-compiled
                     Data.ByteString.Unsafe
   hs-source-dirs:   . ..
   build-depends:    base, ghc-prim, deepseq, random,
-                    test-framework, test-framework-quickcheck2,
+                    tasty, tasty-quickcheck,
                     QuickCheck >= 2.10 && < 2.15
   c-sources:        ../cbits/fpstring.c
   include-dirs:     ../include
@@ -56,7 +56,7 @@ test-suite lazy-hclose
                     Data.ByteString.Unsafe
   hs-source-dirs:   . ..
   build-depends:    base, ghc-prim, deepseq, random,
-                    test-framework, test-framework-quickcheck2,
+                    tasty,
                     QuickCheck >= 2.10 && < 2.15
   c-sources:        ../cbits/fpstring.c
   include-dirs:     ../include
@@ -72,7 +72,7 @@ executable regressions
                     Data.ByteString.Unsafe
   hs-source-dirs:   . ..
   build-depends:    base, ghc-prim, deepseq, random,
-                    test-framework, test-framework-hunit, HUnit
+                    tasty, HUnit
   c-sources:        ../cbits/fpstring.c
   include-dirs:     ../include
   ghc-options:      -fwarn-unused-binds
@@ -111,9 +111,7 @@ test-suite test-builder
                     dlist                      >= 0.5 && < 0.9,
                     transformers               >= 0.3,
                     HUnit,
-                    test-framework,
-                    test-framework-hunit,
-                    test-framework-quickcheck2  >= 0.3
+                    tasty, tasty-hunit, tasty-quickcheck
   ghc-options:      -Wall -fwarn-tabs -threaded -rtsopts
   c-sources:        ../cbits/fpstring.c
                     ../cbits/itoa.c

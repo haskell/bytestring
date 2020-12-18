@@ -45,15 +45,15 @@ import           Foreign (ForeignPtr, withForeignPtr, castPtr)
 import           Foreign.C.String (withCString)
 import           System.Posix.Internals (c_unlink)
 
-import           Test.Framework
-import           Test.Framework.Providers.QuickCheck2
+import           Test.Tasty
+import           Test.Tasty.QuickCheck (testProperty)
 
 import           Test.QuickCheck
                    ( Arbitrary(..), oneof, choose, listOf, elements
                    , counterexample, ioProperty, UnicodeString(..), Property )
 
 
-tests :: [Test]
+tests :: [TestTree]
 tests =
   [ testBuilderRecipe
   , testHandlePutBuilder
@@ -72,7 +72,7 @@ tests =
 -- Testing 'Builder' execution
 ------------------------------------------------------------------------------
 
-testBuilderRecipe :: Test
+testBuilderRecipe :: TestTree
 testBuilderRecipe =
     testProperty "toLazyByteStringWith" $ testRecipe <$> arbitrary
   where
@@ -89,7 +89,7 @@ testBuilderRecipe =
           , "diff  : " ++ show (dropWhile (uncurry (==)) $ zip x1 x2)
           ]
 
-testHandlePutBuilder :: Test
+testHandlePutBuilder :: TestTree
 testHandlePutBuilder =
     testProperty "hPutBuilder" testRecipe
   where
@@ -140,7 +140,7 @@ testHandlePutBuilder =
         unless success (error msg)
         return success
 
-testHandlePutBuilderChar8 :: Test
+testHandlePutBuilderChar8 :: TestTree
 testHandlePutBuilderChar8 =
     testProperty "char8 hPutBuilder" testRecipe
   where
@@ -365,7 +365,7 @@ instance Arbitrary Recipe where
 -- Creating Builders from basic encodings
 ------------------------------------------------------------------------------
 
-testsEncodingToBuilder :: [Test]
+testsEncodingToBuilder :: [TestTree]
 testsEncodingToBuilder =
   [ test_encodeUnfoldrF
   , test_encodeUnfoldrB
@@ -375,7 +375,7 @@ testsEncodingToBuilder =
 -- Unfoldr fused with encoding
 ------------------------------
 
-test_encodeUnfoldrF :: Test
+test_encodeUnfoldrF :: TestTree
 test_encodeUnfoldrF =
     compareImpls "encodeUnfoldrF word8" id encode
   where
@@ -387,7 +387,7 @@ test_encodeUnfoldrF =
         go (w:ws) = Just (w, ws)
 
 
-test_encodeUnfoldrB :: Test
+test_encodeUnfoldrB :: TestTree
 test_encodeUnfoldrB =
     compareImpls "encodeUnfoldrB charUtf8" (foldMap charUtf8_list) encode
   where
@@ -403,7 +403,7 @@ test_encodeUnfoldrB =
 -- Testing the Put monad
 ------------------------------------------------------------------------------
 
-testPut :: Test
+testPut :: TestTree
 testPut = testGroup "Put monad"
   [ testLaw "identity" (\v -> (pure id <*> putInt v) `eqPut` (putInt v))
 
@@ -463,7 +463,7 @@ ensureFree minFree =
 -- Testing the Builder runner
 ------------------------------------------------------------------------------
 
-testRunBuilder :: Test
+testRunBuilder :: TestTree
 testRunBuilder =
     testProperty "runBuilder" prop
   where
@@ -505,7 +505,7 @@ bufferWriterOutput bwrite0 = do
 ------------------------------------------------------------------------------
 
 testBuilderConstr :: (Arbitrary a, Show a)
-                  => TestName -> (a -> [Word8]) -> (a -> Builder) -> Test
+                  => TestName -> (a -> [Word8]) -> (a -> Builder) -> TestTree
 testBuilderConstr name ref mkBuilder =
     testProperty name check
   where
@@ -516,7 +516,7 @@ testBuilderConstr name ref mkBuilder =
         ws = ref x
 
 
-testsBinary :: [Test]
+testsBinary :: [TestTree]
 testsBinary =
   [ testBuilderConstr "word8"     bigEndian_list    word8
   , testBuilderConstr "int8"      bigEndian_list    int8
@@ -560,7 +560,7 @@ testsBinary =
   , testBuilderConstr "doubleHost"  (double_list hostEndian_list)   doubleHost
   ]
 
-testsASCII :: [Test]
+testsASCII :: [TestTree]
 testsASCII =
   [ testBuilderConstr "char7" char7_list char7
   , testBuilderConstr "string7" (foldMap char7_list) string7
@@ -603,13 +603,13 @@ testsASCII =
   where
     enlarge (n, e) = n ^ (abs (e `mod` (50 :: Integer)))
 
-testsChar8 :: [Test]
+testsChar8 :: [TestTree]
 testsChar8 =
   [ testBuilderConstr "charChar8" char8_list char8
   , testBuilderConstr "stringChar8" (foldMap char8_list) string8
   ]
 
-testsUtf8 :: [Test]
+testsUtf8 :: [TestTree]
 testsUtf8 =
   [ testBuilderConstr "charUtf8" charUtf8_list charUtf8
   , testBuilderConstr "stringUtf8" (foldMap charUtf8_list) stringUtf8
