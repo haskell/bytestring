@@ -80,9 +80,9 @@ import           System.ByteOrder
 import           System.IO.Unsafe (unsafePerformIO)
 
 import           Test.HUnit (assertBool)
-import           Test.Framework
-import           Test.Framework.Providers.HUnit
-import           Test.Framework.Providers.QuickCheck2
+import           Test.Tasty
+import           Test.Tasty.HUnit (testCase)
+import           Test.Tasty.QuickCheck (testProperty)
 import           Test.QuickCheck (Arbitrary(..))
 
 -- Helper functions
@@ -91,7 +91,7 @@ import           Test.QuickCheck (Arbitrary(..))
 -- | Quickcheck test that includes a check that the property holds on the
 -- bounds of a bounded value.
 testBoundedProperty :: forall a. (Arbitrary a, Show a, Bounded a)
-                    => String -> (a -> Bool) -> Test
+                    => String -> (a -> Bool) -> TestTree
 testBoundedProperty name p = testGroup name
   [ testProperty name p
   , testCase (name ++ " minBound") $ assertBool "minBound" (p (minBound :: a))
@@ -146,7 +146,7 @@ testF :: (Arbitrary a, Show a)
       => String
       -> (a -> [Word8])
       -> FixedPrim a
-      -> Test
+      -> TestTree
 testF name ref fe =
     testProperty name prop
   where
@@ -167,7 +167,7 @@ testBoundedF :: (Arbitrary a, Bounded a, Show a)
              => String
              -> (a -> [Word8])
              -> FixedPrim a
-             -> Test
+             -> TestTree
 testBoundedF name ref fe =
     testBoundedProperty name $ \x -> evalF fe x == ref x
 
@@ -177,7 +177,7 @@ testFixedBoundF :: (Arbitrary a, Show a, Integral a)
                 => String
                 -> (a -> a -> [Word8])
                 -> (a -> FixedPrim a)
-                -> Test
+                -> TestTree
 testFixedBoundF name ref bfe =
     testProperty name prop
   where
@@ -204,7 +204,7 @@ testBoundedB :: (Arbitrary a, Bounded a, Show a)
              => String
              -> (a -> [Word8])
              -> BoundedPrim a
-             -> Test
+             -> TestTree
 testBoundedB name ref fe =
     testBoundedProperty name check
   where
@@ -221,7 +221,7 @@ testBoundedB name ref fe =
 
 -- | Compare two implementations of a function.
 compareImpls :: (Arbitrary a, Show a, Show b, Eq b)
-             => TestName -> (a -> b) -> (a -> b) -> Test
+             => TestName -> (a -> b) -> (a -> b) -> TestTree
 compareImpls name f1 f2 =
     testProperty name check
   where
