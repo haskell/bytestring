@@ -38,6 +38,9 @@ module Data.ByteString.Internal (
 #endif
         ), -- instances: Eq, Ord, Show, Read, Data, Typeable
 
+        -- * Internal indexing
+        findIndexOrEnd,
+
         -- * Conversion with lists: packing and unpacking
         packBytes, packUptoLenBytes, unsafePackLenBytes,
         packChars, packUptoLenChars, unsafePackLenChars,
@@ -297,6 +300,24 @@ instance Data ByteString where
   toConstr _     = error "Data.ByteString.ByteString.toConstr"
   gunfold _ _    = error "Data.ByteString.ByteString.gunfold"
   dataTypeOf _   = mkNoRepType "Data.ByteString.ByteString"
+
+------------------------------------------------------------------------
+-- Internal indexing
+
+-- | 'findIndexOrEnd' is a variant of findIndex, that returns the length
+-- of the string if no element is found, rather than Nothing.
+findIndexOrEnd :: (Word8 -> Bool) -> ByteString -> Int
+findIndexOrEnd k (BS x l) =
+    accursedUnutterablePerformIO $ withForeignPtr x g
+  where
+    g ptr = go 0
+      where
+        go !n | n >= l    = return l
+              | otherwise = do w <- peek $ ptr `plusPtr` n
+                               if k w
+                                 then return n
+                                 else go (n+1)
+{-# INLINE findIndexOrEnd #-}
 
 ------------------------------------------------------------------------
 -- Packing and unpacking from lists
