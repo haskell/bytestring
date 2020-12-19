@@ -721,7 +721,7 @@ takeWhile :: (Word8 -> Bool) -> ByteString -> ByteString
 takeWhile f = takeWhile'
   where takeWhile' Empty        = Empty
         takeWhile' (Chunk c cs) =
-          case findIndexOrEnd (not . f) c of
+          case S.findIndexOrEnd (not . f) c of
             0                  -> Empty
             n | n < S.length c -> Chunk (S.take n c) Empty
               | otherwise      -> Chunk c (takeWhile' cs)
@@ -733,7 +733,7 @@ dropWhile :: (Word8 -> Bool) -> ByteString -> ByteString
 dropWhile f = dropWhile'
   where dropWhile' Empty        = Empty
         dropWhile' (Chunk c cs) =
-          case findIndexOrEnd (not . f) c of
+          case S.findIndexOrEnd (not . f) c of
             n | n < S.length c -> Chunk (S.drop n c) cs
               | otherwise      -> dropWhile' cs
 
@@ -747,7 +747,7 @@ break :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
 break f = break'
   where break' Empty        = (Empty, Empty)
         break' (Chunk c cs) =
-          case findIndexOrEnd f c of
+          case S.findIndexOrEnd f c of
             0                  -> (Empty, Chunk c cs)
             n | n < S.length c -> (Chunk (S.take n c) Empty
                                   ,Chunk (S.drop n c) cs)
@@ -867,7 +867,7 @@ group = go
 
     to acc !_ Empty        = [revNonEmptyChunks acc]
     to acc !w (Chunk c cs) =
-      case findIndexOrEnd (/= w) c of
+      case S.findIndexOrEnd (/= w) c of
         0                    -> revNonEmptyChunks acc
                               : go (Chunk c cs)
         n | n == S.length c  -> to (S.unsafeTake n c : acc) w cs
@@ -886,7 +886,7 @@ groupBy k = go
 
     to acc !_ Empty        = [revNonEmptyChunks acc]
     to acc !w (Chunk c cs) =
-      case findIndexOrEnd (not . k w) c of
+      case S.findIndexOrEnd (not . k w) c of
         0                    -> revNonEmptyChunks acc
                               : go (Chunk c cs)
         n | n == S.length c  -> to (S.unsafeTake n c : acc) w cs
@@ -1407,20 +1407,6 @@ revNonEmptyChunks = L.foldl' (flip Chunk) Empty
 -- reverse a list of possibly-empty chunks into a lazy ByteString
 revChunks :: [P.ByteString] -> ByteString
 revChunks = L.foldl' (flip chunk) Empty
-
--- | 'findIndexOrEnd' is a variant of findIndex, that returns the length
--- of the string if no element is found, rather than Nothing.
-findIndexOrEnd :: (Word8 -> Bool) -> P.ByteString -> Int
-findIndexOrEnd k (S.BS x l) =
-    S.accursedUnutterablePerformIO $
-      withForeignPtr x $ \f -> go f 0
-  where
-    go !ptr !n | n >= l    = return l
-               | otherwise = do w <- peek ptr
-                                if k w
-                                  then return n
-                                  else go (ptr `plusPtr` 1) (n+1)
-{-# INLINE findIndexOrEnd #-}
 
 -- $IOChunk
 --

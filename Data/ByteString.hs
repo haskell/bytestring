@@ -2023,21 +2023,6 @@ appendFile = modifyFile AppendMode
 -- ---------------------------------------------------------------------
 -- Internal utilities
 
--- | 'findIndexOrEnd' is a variant of findIndex, that returns the length
--- of the string if no element is found, rather than Nothing.
-findIndexOrEnd :: (Word8 -> Bool) -> ByteString -> Int
-findIndexOrEnd k (BS x l) =
-    accursedUnutterablePerformIO $ withForeignPtr x g
-  where
-    g ptr = go 0
-      where
-        go !n | n >= l    = return l
-              | otherwise = do w <- peek $ ptr `plusPtr` n
-                               if k w
-                                 then return n
-                                 else go (n+1)
-{-# INLINE findIndexOrEnd #-}
-
 -- Common up near identical calls to `error' to reduce the number
 -- constant strings created when compiled:
 errorEmptyList :: String -> a
