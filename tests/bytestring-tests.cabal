@@ -35,7 +35,7 @@ test-suite prop-compiled
                     Data.ByteString.Short.Internal
                     Data.ByteString.Unsafe
   hs-source-dirs:   . ..
-  build-depends:    base, ghc-prim, deepseq, random,
+  build-depends:    base, ghc-prim, deepseq,
                     tasty, tasty-quickcheck,
                     QuickCheck >= 2.10 && < 2.15
   c-sources:        ../cbits/fpstring.c
@@ -55,7 +55,7 @@ test-suite lazy-hclose
                     Data.ByteString.Lazy.Internal
                     Data.ByteString.Unsafe
   hs-source-dirs:   . ..
-  build-depends:    base, ghc-prim, deepseq, random,
+  build-depends:    base, ghc-prim, deepseq,
                     tasty,
                     QuickCheck >= 2.10 && < 2.15
   c-sources:        ../cbits/fpstring.c
