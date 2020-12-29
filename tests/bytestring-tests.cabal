@@ -35,9 +35,8 @@ test-suite prop-compiled
                     Data.ByteString.Short.Internal
                     Data.ByteString.Unsafe
   hs-source-dirs:   . ..
-  build-depends:    base, ghc-prim, deepseq, random,
-                    tasty, tasty-quickcheck,
-                    QuickCheck >= 2.10 && < 2.15
+  build-depends:    base, ghc-prim, deepseq,
+                    tasty, tasty-quickcheck
   c-sources:        ../cbits/fpstring.c
   include-dirs:     ../include
   ghc-options:      -fwarn-unused-binds
@@ -55,24 +54,8 @@ test-suite lazy-hclose
                     Data.ByteString.Lazy.Internal
                     Data.ByteString.Unsafe
   hs-source-dirs:   . ..
-  build-depends:    base, ghc-prim, deepseq, random,
-                    tasty,
-                    QuickCheck >= 2.10 && < 2.15
-  c-sources:        ../cbits/fpstring.c
-  include-dirs:     ../include
-  ghc-options:      -fwarn-unused-binds
-                    -fno-enable-rewrite-rules
-                    -threaded -rtsopts
-
-executable regressions
-  main-is:          Regressions.hs
-  other-modules:    Data.ByteString
-                    Data.ByteString.Internal
-                    Data.ByteString.Lazy.Internal
-                    Data.ByteString.Unsafe
-  hs-source-dirs:   . ..
-  build-depends:    base, ghc-prim, deepseq, random,
-                    tasty, HUnit
+  build-depends:    base, ghc-prim, deepseq,
+                    tasty
   c-sources:        ../cbits/fpstring.c
   include-dirs:     ../include
   ghc-options:      -fwarn-unused-binds
@@ -106,11 +89,9 @@ test-suite test-builder
                     Data.ByteString.Unsafe
   build-depends:    base, ghc-prim,
                     deepseq,
-                    QuickCheck                 >= 2.10 && < 2.15,
                     byteorder                  == 1.0.*,
                     dlist                      >= 0.5 && < 0.9,
                     transformers               >= 0.3,
-                    HUnit,
                     tasty, tasty-hunit, tasty-quickcheck
   ghc-options:      -Wall -fwarn-tabs -threaded -rtsopts
   c-sources:        ../cbits/fpstring.c
