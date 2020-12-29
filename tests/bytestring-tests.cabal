@@ -64,21 +64,6 @@ test-suite lazy-hclose
                     -fno-enable-rewrite-rules
                     -threaded -rtsopts
 
-executable regressions
-  main-is:          Regressions.hs
-  other-modules:    Data.ByteString
-                    Data.ByteString.Internal
-                    Data.ByteString.Lazy.Internal
-                    Data.ByteString.Unsafe
-  hs-source-dirs:   . ..
-  build-depends:    base, ghc-prim, deepseq, random,
-                    tasty, HUnit
-  c-sources:        ../cbits/fpstring.c
-  include-dirs:     ../include
-  ghc-options:      -fwarn-unused-binds
-                    -fno-enable-rewrite-rules
-                    -threaded -rtsopts
-
 test-suite test-builder
   type:             exitcode-stdio-1.0
   hs-source-dirs:   . .. builder
