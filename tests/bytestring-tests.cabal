@@ -95,7 +95,6 @@ test-suite test-builder
                     byteorder                  == 1.0.*,
                     dlist                      >= 0.5 && < 0.9,
                     transformers               >= 0.3,
-                    HUnit,
                     tasty, tasty-hunit, tasty-quickcheck
   ghc-options:      -Wall -fwarn-tabs -threaded -rtsopts
   c-sources:        ../cbits/fpstring.c
