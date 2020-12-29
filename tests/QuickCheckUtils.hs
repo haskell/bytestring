@@ -6,7 +6,7 @@
 --
 module QuickCheckUtils where
 
-import Test.QuickCheck
+import Test.Tasty.QuickCheck
 import Text.Show.Functions
 
 import Control.Monad        ( liftM2 )
@@ -14,7 +14,6 @@ import Data.Char
 import Data.List
 import Data.Word
 import Data.Int
-import System.Random
 import System.IO
 import Foreign.C (CChar)
 
@@ -26,11 +25,6 @@ import qualified Data.ByteString.Char8      as PC
 import qualified Data.ByteString.Lazy.Char8 as LC
 
 ------------------------------------------------------------------------
-
-integralRandomR :: (Integral a, RandomGen g) => (a,a) -> g -> (a,g)
-integralRandomR  (a,b) g = case randomR (fromIntegral a :: Integer,
-                                         fromIntegral b :: Integer) g of
-                            (x,g) -> (fromIntegral x, g)
 
 sizedByteString n = do m <- choose(0, n)
                        fmap P.pack $ vectorOf m arbitrary
@@ -100,14 +94,14 @@ instance Arbitrary String8 where
 --
 --  i.e.    Lazy    ==   Byte
 --              \\      //
---                 List 
+--                 List
 --
 -- That is, the Lazy type can be modeled by functions in both the Byte
 -- and List type. For each of the 3 models, we have a set of tests that
 -- check those types match.
 --
 -- The Model class connects a type and its model type, via a conversion
--- function. 
+-- function.
 --
 --
 class Model a b where
@@ -167,7 +161,7 @@ checkInvariant :: L.ByteString -> L.ByteString
 checkInvariant = L.checkInvariant
 
 abstr :: L.ByteString -> P.ByteString
-abstr = P.concat . L.toChunks 
+abstr = P.concat . L.toChunks
 
 -- Some short hand.
 type X = Int
