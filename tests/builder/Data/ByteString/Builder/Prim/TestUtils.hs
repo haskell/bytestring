@@ -81,8 +81,7 @@ import           System.IO.Unsafe (unsafePerformIO)
 
 import           Test.Tasty
 import           Test.Tasty.HUnit (assertBool, testCase)
-import           Test.Tasty.QuickCheck (testProperty)
-import           Test.QuickCheck (Arbitrary(..))
+import           Test.Tasty.QuickCheck (Arbitrary(..), testProperty)
 
 -- Helper functions
 -------------------

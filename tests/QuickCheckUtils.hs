@@ -6,7 +6,7 @@
 --
 module QuickCheckUtils where
 
-import Test.QuickCheck
+import Test.Tasty.QuickCheck
 import Text.Show.Functions
 
 import Control.Monad        ( liftM2 )

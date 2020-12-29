@@ -36,8 +36,7 @@ test-suite prop-compiled
                     Data.ByteString.Unsafe
   hs-source-dirs:   . ..
   build-depends:    base, ghc-prim, deepseq,
-                    tasty, tasty-quickcheck,
-                    QuickCheck >= 2.10 && < 2.15
+                    tasty, tasty-quickcheck
   c-sources:        ../cbits/fpstring.c
   include-dirs:     ../include
   ghc-options:      -fwarn-unused-binds
@@ -56,8 +55,7 @@ test-suite lazy-hclose
                     Data.ByteString.Unsafe
   hs-source-dirs:   . ..
   build-depends:    base, ghc-prim, deepseq,
-                    tasty,
-                    QuickCheck >= 2.10 && < 2.15
+                    tasty
   c-sources:        ../cbits/fpstring.c
   include-dirs:     ../include
   ghc-options:      -fwarn-unused-binds
@@ -91,7 +89,6 @@ test-suite test-builder
                     Data.ByteString.Unsafe
   build-depends:    base, ghc-prim,
                     deepseq,
-                    QuickCheck                 >= 2.10 && < 2.15,
                     byteorder                  == 1.0.*,
                     dlist                      >= 0.5 && < 0.9,
                     transformers               >= 0.3,

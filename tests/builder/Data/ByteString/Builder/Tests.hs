@@ -46,11 +46,9 @@ import           Foreign.C.String (withCString)
 import           System.Posix.Internals (c_unlink)
 
 import           Test.Tasty (TestTree, TestName, testGroup)
-import           Test.Tasty.QuickCheck (testProperty)
-
-import           Test.QuickCheck
+import           Test.Tasty.QuickCheck
                    ( Arbitrary(..), oneof, choose, listOf, elements
-                   , counterexample, ioProperty, UnicodeString(..), Property )
+                   , counterexample, ioProperty, UnicodeString(..), Property, testProperty )
 
 
 tests :: [TestTree]
