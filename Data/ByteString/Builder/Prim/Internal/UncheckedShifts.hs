@@ -71,8 +71,8 @@ shiftr_w w s = fromIntegral $ (`shiftr_w64` s) $ fromIntegral w
 #endif
 
 #if !defined(__HADDOCK__)
-shiftr_w16 (W16# w) (I# i) = W16# (narrowWord16# ((extendWord16# w) `uncheckedShiftRL#`   i))
-shiftr_w32 (W32# w) (I# i) = W32# (narrowWord32# ((extendWord32# w) `uncheckedShiftRL#`   i))
+shiftr_w16 (W16# w) (I# i) = W16# (w `uncheckedShiftRL#`   i)
+shiftr_w32 (W32# w) (I# i) = W32# (w `uncheckedShiftRL#`   i)
 
 #if WORD_SIZE_IN_BITS < 64
 shiftr_w64 (W64# w) (I# i) = W64# (w `uncheckedShiftRL64#` i)
@@ -103,3 +103,5 @@ caseWordSize_32_64 f32 f64 =
     32 -> f32
     64 -> f64
     s  -> error $ "caseWordSize_32_64: unsupported Word bit-size " ++ show s
+
+
