@@ -16,7 +16,7 @@ import Data.Word
 import QuickCheckUtils
 
 #if defined(HAVE_TEST_FRAMEWORK)
-import Test.Framework.Providers.QuickCheck2
+import Test.Tasty.QuickCheck
 #else
 import TestFramework
 #endif

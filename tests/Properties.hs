@@ -53,8 +53,8 @@ import Prelude hiding (abs)
 import Rules
 import QuickCheckUtils
 #if defined(HAVE_TEST_FRAMEWORK)
-import Test.Framework
-import Test.Framework.Providers.QuickCheck2
+import Test.Tasty
+import Test.Tasty.QuickCheck
 #else
 import TestFramework
 #endif
@@ -1739,7 +1739,7 @@ short_tests =
 -- The entry point
 
 main :: IO ()
-main = defaultMainWithArgs tests ["-o 3"] -- timeout if a test runs for >3 secs
+main = defaultMain $ testGroup "All" tests
 
 --
 -- And now a list of all the properties to test.

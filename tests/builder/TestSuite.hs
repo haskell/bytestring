@@ -4,15 +4,15 @@ module Main where
 import qualified Data.ByteString.Builder.Tests
 import qualified Data.ByteString.Builder.Prim.Tests
 #if defined(HAVE_TEST_FRAMEWORK)
-import           Test.Framework (defaultMain, Test, testGroup)
+import           Test.Tasty (defaultMain, TestTree, testGroup)
 #else
 import           TestFramework
 #endif
 
 main :: IO ()
-main = defaultMain tests
+main = defaultMain $ testGroup "All" tests
 
-tests :: [Test]
+tests :: [TestTree]
 tests =
   [ testGroup "Data.ByteString.Builder"
        Data.ByteString.Builder.Tests.tests
