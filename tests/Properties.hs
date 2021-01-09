@@ -94,6 +94,7 @@ prop_dropWhileCC    = D.dropWhile             `eq2`  C.dropWhile
 prop_filterCC       = D.filter                `eq2`  C.filter
 prop_findCC         = D.find                  `eq2`  C.find
 prop_findIndexCC    = D.findIndex             `eq2`  ((fmap toInt64 .) . C.findIndex)
+prop_findIndexEndCC = D.findIndexEnd          `eq2`  ((fmap toInt64 .) . C.findIndexEnd)
 prop_findIndicesCC  = D.findIndices           `eq2`  ((fmap toInt64 .) . C.findIndices)
 prop_isPrefixOfCC   = D.isPrefixOf            `eq2`  C.isPrefixOf
 prop_stripPrefixCC  = D.stripPrefix           `eq2`  C.stripPrefix
@@ -1214,32 +1215,39 @@ prop_elemIndex2BB (String8 xs) (Char8 c) = (elemIndex  c  xs) == (C.elemIndex  c
 
 prop_countBB c xs = length (P.elemIndices c xs) == P.count c xs
 
-prop_elemIndexEnd1BB c xs = (P.elemIndexEnd c (P.pack xs)) ==
-                           (case P.elemIndex c (P.pack (reverse xs)) of
-                                Nothing -> Nothing
-                                Just i  -> Just (length xs -1 -i))
+prop_elemIndexEnd1BB c xs =
+  P.elemIndexEnd c (P.pack xs) ==
+    case P.elemIndex c (P.pack (reverse xs)) of
+      Nothing -> Nothing
+      Just i  -> Just (length xs - 1 - i)
 
-prop_elemIndexEnd1CC c xs = (C.elemIndexEnd c (C.pack xs)) ==
-                           (case C.elemIndex c (C.pack (reverse xs)) of
-                                Nothing -> Nothing
-                                Just i  -> Just (length xs -1 -i))
+prop_elemIndexEnd1CC (Char8 c) (String8 xs) =
+  C.elemIndexEnd c (C.pack xs) ==
+    case C.elemIndex c (C.pack (reverse xs)) of
+      Nothing -> Nothing
+      Just i  -> Just (length xs - 1 - i)
 
-prop_elemIndexEnd2BB c xs = (P.elemIndexEnd c (P.pack xs)) ==
-                           ((-) (length xs - 1) `fmap` P.elemIndex c (P.pack $ reverse xs))
+prop_elemIndexEnd1LL c xs =
+  L.elemIndexEnd c (L.pack xs) ==
+    case L.elemIndex c (L.pack (reverse xs)) of
+      Nothing -> Nothing
+      Just i  -> Just (fromIntegral (length xs) - 1 - i)
 
-prop_elemIndexEnd1LL c xs = (L.elemIndexEnd c (L.pack xs)) ==
-                           (case L.elemIndex c (L.pack (reverse xs)) of
-                                Nothing -> Nothing
-                                Just i  -> Just (fromIntegral (length xs) -1 -i))
-
-prop_elemIndexEnd2LL c xs = (L.elemIndexEnd c (L.pack xs)) ==
-                           ((-) (fromIntegral (length xs) - 1) `fmap` L.elemIndex c (L.pack $ reverse xs))
+prop_elemIndexEnd1DD (Char8 c) (String8 xs) =
+  D.elemIndexEnd c (D.pack xs) ==
+    case D.elemIndex c (D.pack (reverse xs)) of
+      Nothing -> Nothing
+      Just i  -> Just (fromIntegral (length xs) - 1 - i)
 
 prop_elemIndicesBB xs c = elemIndices c xs == P.elemIndices c (P.pack xs)
 
 prop_findIndexBB xs a = (findIndex (==a) xs) == (P.findIndex (==a) (P.pack xs))
 
 prop_findIndexEndBB xs a = (findIndexEnd (==a) xs) == (P.findIndexEnd (==a) (P.pack xs))
+
+prop_findIndexEndLL xs a = (findIndexEnd (==a) xs) == fmap fromIntegral (L.findIndexEnd (==a) (L.pack xs))
+
+prop_findIndexEndDD (String8 xs) (Char8 a) = (findIndexEnd (==a) xs) == fmap fromIntegral (D.findIndexEnd (==a) (D.pack xs))
 
 prop_findIndiciesBB xs c = (findIndices (==c) xs) == (P.findIndices (==c) (P.pack xs))
 
@@ -2039,6 +2047,7 @@ cc_tests =
     , testProperty "prop_filterCC"      prop_filterCC
     , testProperty "prop_findCC"        prop_findCC
     , testProperty "prop_findIndexCC"   prop_findIndexCC
+    , testProperty "prop_findIndexEndCC" prop_findIndexEndCC
     , testProperty "prop_findIndicesCC" prop_findIndicesCC
     , testProperty "prop_isPrefixCC"    prop_isPrefixOfCC
     , testProperty "prop_isSuffixCC"    prop_isSuffixOfCC
@@ -2354,6 +2363,8 @@ bb_tests =
     , testProperty "elemIndex 2"    prop_elemIndex2BB
     , testProperty "findIndex"      prop_findIndexBB
     , testProperty "findIndexEnd"   prop_findIndexEndBB
+    , testProperty "findIndexEnd"   prop_findIndexEndLL
+    , testProperty "findIndexEnd"   prop_findIndexEndDD
     , testProperty "findIndicies"   prop_findIndiciesBB
     , testProperty "elemIndices"    prop_elemIndicesBB
     , testProperty "find"           prop_findBB
@@ -2375,11 +2386,10 @@ bb_tests =
     , testProperty "spanEnd"        prop_spanEndBB
     , testProperty "breakEnd"       prop_breakEndBB
     , testProperty "breakEnd"       prop_breakEndCC
-    , testProperty "elemIndexEnd 1" prop_elemIndexEnd1BB
-    , testProperty "elemIndexEnd 1" prop_elemIndexEnd1CC
-    , testProperty "elemIndexEnd 2" prop_elemIndexEnd2BB
-    , testProperty "elemIndexEnd 1" prop_elemIndexEnd1LL
-    , testProperty "elemIndexEnd 2" prop_elemIndexEnd2LL
+    , testProperty "elemIndexEnd"   prop_elemIndexEnd1BB
+    , testProperty "elemIndexEnd"   prop_elemIndexEnd1CC
+    , testProperty "elemIndexEnd"   prop_elemIndexEnd1LL
+    , testProperty "elemIndexEnd"   prop_elemIndexEnd1DD
 --  , testProperty "words'"         prop_wordsBB'
 --  , testProperty "lines'"         prop_linesBB'
 --  , testProperty "dropSpaceEnd"   prop_dropSpaceEndBB

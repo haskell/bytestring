@@ -150,8 +150,10 @@ module Data.ByteString.Lazy.Char8 (
         indexMaybe,             -- :: ByteString -> Int64 -> Maybe Char
         (!?),                   -- :: ByteString -> Int64 -> Maybe Char
         elemIndex,              -- :: Char -> ByteString -> Maybe Int64
+        elemIndexEnd,           -- :: Char -> ByteString -> Maybe Int64
         elemIndices,            -- :: Char -> ByteString -> [Int64]
         findIndex,              -- :: (Char -> Bool) -> ByteString -> Maybe Int64
+        findIndexEnd,           -- :: (Char -> Bool) -> ByteString -> Maybe Int64
         findIndices,            -- :: (Char -> Bool) -> ByteString -> [Int64]
         count,                  -- :: Char -> ByteString -> Int64
 
@@ -569,6 +571,17 @@ elemIndex :: Char -> ByteString -> Maybe Int64
 elemIndex = L.elemIndex . c2w
 {-# INLINE elemIndex #-}
 
+-- | /O(n)/ The 'elemIndexEnd' function returns the last index of the
+-- element in the given 'ByteString' which is equal to the query
+-- element, or 'Nothing' if there is no such element. The following
+-- holds:
+--
+-- > elemIndexEnd c xs ==
+-- > (-) (length xs - 1) `fmap` elemIndex c (reverse xs)
+elemIndexEnd :: Char -> ByteString -> Maybe Int64
+elemIndexEnd = L.elemIndexEnd . c2w
+{-# INLINE elemIndexEnd #-}
+
 -- | /O(n)/ The 'elemIndices' function extends 'elemIndex', by returning
 -- the indices of all elements equal to the query element, in ascending order.
 elemIndices :: Char -> ByteString -> [Int64]
@@ -580,6 +593,13 @@ elemIndices = L.elemIndices . c2w
 findIndex :: (Char -> Bool) -> ByteString -> Maybe Int64
 findIndex f = L.findIndex (f . w2c)
 {-# INLINE findIndex #-}
+
+-- | The 'findIndexEnd' function takes a predicate and a 'ByteString' and
+-- returns the index of the last element in the ByteString
+-- satisfying the predicate.
+findIndexEnd :: (Char -> Bool) -> ByteString -> Maybe Int64
+findIndexEnd f = L.findIndexEnd (f . w2c)
+{-# INLINE findIndexEnd #-}
 
 -- | The 'findIndices' function extends 'findIndex', by returning the
 -- indices of all elements satisfying the predicate, in ascending order.
