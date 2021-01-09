@@ -513,6 +513,10 @@ prop_unzipCL :: [(Char8, Char8)] -> Bool
 prop_unzipCL xs   = (C.unzip     `eq1`   (unzip :: [(Char,Char)] -> ([Char],[Char])))
                     [ (a,b) | (Char8 a, Char8 b) <- xs ]
 
+prop_unzipDL :: [(Char8, Char8)] -> Bool
+prop_unzipDL xs   = (D.unzip     `eq1`   (unzip :: [(Char,Char)] -> ([Char],[Char])))
+                    [ (a,b) | (Char8 a, Char8 b) <- xs ]
+
 prop_foldl1PL     = P.foldl1    `eqnotnull2` (foldl1   :: (W -> W -> W) -> [W] -> W)
 prop_foldl1PL'    = P.foldl1'   `eqnotnull2` (foldl1' :: (W -> W -> W) -> [W] -> W)
 prop_foldr1PL     = P.foldr1    `eqnotnull2` (foldr1 :: (W -> W -> W) -> [W] -> W)
@@ -2208,6 +2212,7 @@ pl_tests =
     , testProperty "unzip"       prop_unzipPL
     , testProperty "unzip"       prop_unzipLL
     , testProperty "unzip"       prop_unzipCL
+    , testProperty "unzip"       prop_unzipDL
     , testProperty "zipWithPL"          prop_zipWithPL
     , testProperty "zipWithPL rules"   prop_zipWithPL_rules
     , testProperty "packZipWithPL" prop_packZipWithPL

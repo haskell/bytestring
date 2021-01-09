@@ -161,7 +161,7 @@ module Data.ByteString.Lazy.Char8 (
         zip,                    -- :: ByteString -> ByteString -> [(Char,Char)]
         zipWith,                -- :: (Char -> Char -> c) -> ByteString -> ByteString -> [c]
         packZipWith,            -- :: (Char -> Char -> Char) -> ByteString -> ByteString -> ByteString
---      unzip,                  -- :: [(Char,Char)] -> (ByteString,ByteString)
+        unzip,                  -- :: [(Char,Char)] -> (ByteString,ByteString)
 
         -- * Ordered ByteStrings
 --        sort,                   -- :: ByteString -> ByteString
@@ -723,6 +723,12 @@ packZipWith f = L.packZipWith f'
     where
         f' c1 c2 = c2w $ f (w2c c1) (w2c c2)
 {-# INLINE packZipWith #-}
+
+-- | /O(n)/ 'unzip' transforms a list of pairs of chars into a pair of
+-- ByteStrings. Note that this performs two 'pack' operations.
+unzip :: [(Char, Char)] -> (ByteString, ByteString)
+unzip ls = (pack (fmap fst ls), pack (fmap snd ls))
+{-# INLINE unzip #-}
 
 -- | 'lines' breaks a ByteString up into a list of ByteStrings at
 -- newline Chars (@'\\n'@). The resulting strings do not contain newlines.
