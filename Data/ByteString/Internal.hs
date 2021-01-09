@@ -182,6 +182,10 @@ import GHC.Ptr                  (Ptr(..), castPtr)
 import GHC.Types                (Int (..))
 #endif
 
+#if MIN_VERSION_base(4,15,0)
+import GHC.ForeignPtr           (unsafeWithForeignPtr)
+#endif
+
 #if !MIN_VERSION_base(4,15,0)
 unsafeWithForeignPtr :: ForeignPtr a -> (Ptr a -> IO b) -> IO b
 unsafeWithForeignPtr = withForeignPtr
