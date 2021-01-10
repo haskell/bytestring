@@ -150,8 +150,10 @@ module Data.ByteString.Lazy.Char8 (
         indexMaybe,             -- :: ByteString -> Int64 -> Maybe Char
         (!?),                   -- :: ByteString -> Int64 -> Maybe Char
         elemIndex,              -- :: Char -> ByteString -> Maybe Int64
+        elemIndexEnd,           -- :: Char -> ByteString -> Maybe Int64
         elemIndices,            -- :: Char -> ByteString -> [Int64]
         findIndex,              -- :: (Char -> Bool) -> ByteString -> Maybe Int64
+        findIndexEnd,           -- :: (Char -> Bool) -> ByteString -> Maybe Int64
         findIndices,            -- :: (Char -> Bool) -> ByteString -> [Int64]
         count,                  -- :: Char -> ByteString -> Int64
 
@@ -159,7 +161,7 @@ module Data.ByteString.Lazy.Char8 (
         zip,                    -- :: ByteString -> ByteString -> [(Char,Char)]
         zipWith,                -- :: (Char -> Char -> c) -> ByteString -> ByteString -> [c]
         packZipWith,            -- :: (Char -> Char -> Char) -> ByteString -> ByteString -> ByteString
---      unzip,                  -- :: [(Char,Char)] -> (ByteString,ByteString)
+        unzip,                  -- :: [(Char,Char)] -> (ByteString,ByteString)
 
         -- * Ordered ByteStrings
 --        sort,                   -- :: ByteString -> ByteString
@@ -569,6 +571,19 @@ elemIndex :: Char -> ByteString -> Maybe Int64
 elemIndex = L.elemIndex . c2w
 {-# INLINE elemIndex #-}
 
+-- | /O(n)/ The 'elemIndexEnd' function returns the last index of the
+-- element in the given 'ByteString' which is equal to the query
+-- element, or 'Nothing' if there is no such element. The following
+-- holds:
+--
+-- > elemIndexEnd c xs = case elemIndex c (reverse xs) of
+-- >   Nothing -> Nothing
+-- >   Just i  -> Just (length xs - 1 - i)
+--
+elemIndexEnd :: Char -> ByteString -> Maybe Int64
+elemIndexEnd = L.elemIndexEnd . c2w
+{-# INLINE elemIndexEnd #-}
+
 -- | /O(n)/ The 'elemIndices' function extends 'elemIndex', by returning
 -- the indices of all elements equal to the query element, in ascending order.
 elemIndices :: Char -> ByteString -> [Int64]
@@ -580,6 +595,13 @@ elemIndices = L.elemIndices . c2w
 findIndex :: (Char -> Bool) -> ByteString -> Maybe Int64
 findIndex f = L.findIndex (f . w2c)
 {-# INLINE findIndex #-}
+
+-- | The 'findIndexEnd' function takes a predicate and a 'ByteString' and
+-- returns the index of the last element in the ByteString
+-- satisfying the predicate.
+findIndexEnd :: (Char -> Bool) -> ByteString -> Maybe Int64
+findIndexEnd f = L.findIndexEnd (f . w2c)
+{-# INLINE findIndexEnd #-}
 
 -- | The 'findIndices' function extends 'findIndex', by returning the
 -- indices of all elements satisfying the predicate, in ascending order.
@@ -703,6 +725,12 @@ packZipWith f = L.packZipWith f'
     where
         f' c1 c2 = c2w $ f (w2c c1) (w2c c2)
 {-# INLINE packZipWith #-}
+
+-- | /O(n)/ 'unzip' transforms a list of pairs of chars into a pair of
+-- ByteStrings. Note that this performs two 'pack' operations.
+unzip :: [(Char, Char)] -> (ByteString, ByteString)
+unzip ls = (pack (fmap fst ls), pack (fmap snd ls))
+{-# INLINE unzip #-}
 
 -- | 'lines' breaks a ByteString up into a list of ByteStrings at
 -- newline Chars (@'\\n'@). The resulting strings do not contain newlines.

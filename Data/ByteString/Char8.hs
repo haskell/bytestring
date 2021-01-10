@@ -172,6 +172,7 @@ module Data.ByteString.Char8 (
         elemIndexEnd,           -- :: Char -> ByteString -> Maybe Int
         findIndex,              -- :: (Char -> Bool) -> ByteString -> Maybe Int
         findIndices,            -- :: (Char -> Bool) -> ByteString -> [Int]
+        findIndexEnd,           -- :: (Char -> Bool) -> ByteString -> Maybe Int
         count,                  -- :: Char -> ByteString -> Int
 
         -- * Zipping and unzipping ByteStrings
@@ -685,8 +686,9 @@ elemIndex = B.elemIndex . c2w
 -- element, or 'Nothing' if there is no such element. The following
 -- holds:
 --
--- > elemIndexEnd c xs ==
--- > (-) (length xs - 1) `fmap` elemIndex c (reverse xs)
+-- > elemIndexEnd c xs = case elemIndex c (reverse xs) of
+-- >   Nothing -> Nothing
+-- >   Just i  -> Just (length xs - 1 - i)
 --
 elemIndexEnd :: Char -> ByteString -> Maybe Int
 elemIndexEnd = B.elemIndexEnd . c2w
@@ -703,6 +705,13 @@ elemIndices = B.elemIndices . c2w
 findIndex :: (Char -> Bool) -> ByteString -> Maybe Int
 findIndex f = B.findIndex (f . w2c)
 {-# INLINE [1] findIndex #-}
+
+-- | /O(n)/ The 'findIndexEnd' function takes a predicate and a 'ByteString' and
+-- returns the index of the last element in the ByteString
+-- satisfying the predicate.
+findIndexEnd :: (Char -> Bool) -> ByteString -> Maybe Int
+findIndexEnd f = B.findIndexEnd (f . w2c)
+{-# INLINE [1] findIndexEnd #-}
 
 -- | The 'findIndices' function extends 'findIndex', by returning the
 -- indices of all elements satisfying the predicate, in ascending order.
