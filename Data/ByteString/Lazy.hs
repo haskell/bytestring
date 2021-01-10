@@ -952,8 +952,9 @@ elemIndex w = elemIndex' 0
 -- element, or 'Nothing' if there is no such element. The following
 -- holds:
 --
--- > elemIndexEnd c xs ==
--- > (-) (length xs - 1) `fmap` elemIndex c (reverse xs)
+-- > elemIndexEnd c xs = case elemIndex c (reverse xs) of
+-- >   Nothing -> Nothing
+-- >   Just i  -> Just (length xs - 1 - i)
 --
 -- @since 0.10.6.0
 elemIndexEnd :: Word8 -> ByteString -> Maybe Int64

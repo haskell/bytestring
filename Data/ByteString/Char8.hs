@@ -686,8 +686,9 @@ elemIndex = B.elemIndex . c2w
 -- element, or 'Nothing' if there is no such element. The following
 -- holds:
 --
--- > elemIndexEnd c xs ==
--- > (-) (length xs - 1) `fmap` elemIndex c (reverse xs)
+-- > elemIndexEnd c xs = case elemIndex c (reverse xs) of
+-- >   Nothing -> Nothing
+-- >   Just i  -> Just (length xs - 1 - i)
 --
 elemIndexEnd :: Char -> ByteString -> Maybe Int
 elemIndexEnd = B.elemIndexEnd . c2w
