@@ -60,6 +60,8 @@ jobs:
           ghc: 'latest'
         - os: macOS-latest
           ghc: 'latest'
+        - os: ubuntu-16.04 # testing that cbits are compatible with gcc-5
+          ghc: 'latest'
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-haskell@v1
