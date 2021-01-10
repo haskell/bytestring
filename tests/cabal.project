@@ -1,2 +1,0 @@
-packages: bytestring-tests.cabal
-tests: True
