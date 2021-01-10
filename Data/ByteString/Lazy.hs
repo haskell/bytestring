@@ -421,7 +421,7 @@ intersperse w (Chunk c cs) = Chunk (S.intersperse w c)
                                    (foldrChunks (Chunk . intersperse') Empty cs)
   where intersperse' :: P.ByteString -> P.ByteString
         intersperse' (S.BS fp l) =
-          S.unsafeCreate (2*l) $ \p' -> withForeignPtr fp $ \p -> do
+          S.unsafeCreate (2*l) $ \p' -> S.unsafeWithForeignPtr fp $ \p -> do
             poke p' w
             S.c_intersperse (p' `plusPtr` 1) p (fromIntegral l) w
 
