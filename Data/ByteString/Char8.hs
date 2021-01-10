@@ -881,7 +881,7 @@ unsafeHead  = w2c . B.unsafeHead
 -- > break isSpace == breakSpace
 --
 breakSpace :: ByteString -> (ByteString,ByteString)
-breakSpace (BS x l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> do
+breakSpace (BS x l) = accursedUnutterablePerformIO $ unsafeWithForeignPtr x $ \p -> do
     i <- firstspace p 0 l
     return $! case () of {_
         | i == 0    -> (empty, BS x l)
@@ -904,7 +904,7 @@ firstspace !ptr !n !m
 --
 -- @since 0.10.12.0
 dropSpace :: ByteString -> ByteString
-dropSpace (BS x l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> do
+dropSpace (BS x l) = accursedUnutterablePerformIO $ unsafeWithForeignPtr x $ \p -> do
     i <- firstnonspace p 0 l
     return $! if i == l then empty else BS (plusForeignPtr x i) (l-i)
 {-# INLINE dropSpace #-}
@@ -930,7 +930,7 @@ strip = dropWhile isSpace . dropWhileEnd isSpace
 -- but it is more efficient than using multiple reverses.
 --
 dropSpaceEnd :: ByteString -> ByteString
-dropSpaceEnd (BS x l) = accursedUnutterablePerformIO $ withForeignPtr x $ \p -> do
+dropSpaceEnd (BS x l) = accursedUnutterablePerformIO $ unsafeWithForeignPtr x $ \p -> do
     i <- lastnonspace p (l-1)
     return $! if i == (-1) then empty else BS x (i+1)
 {-# INLINE dropSpaceEnd #-}
@@ -963,7 +963,7 @@ lines (BS x l) = go x l
     nl = c2w '\n'
     -- It is important to remain lazy in the tail of the list.  The caller
     -- might only want the first few lines.
-    go !f !len = accursedUnutterablePerformIO $ withForeignPtr f $ \p -> do
+    go !f !len = accursedUnutterablePerformIO $ unsafeWithForeignPtr f $ \p -> do
         q <- memchr p nl $! fromIntegral len
         if q == nullPtr
             then return [BS f len]
@@ -1024,7 +1024,6 @@ readInt as
           end _    0 _ _  = Nothing
           end True _ n ps = Just (negate n, ps)
           end _    _ n ps = Just (n, ps)
-
 
 -- | readInteger reads an Integer from the beginning of the ByteString.  If
 -- there is no integer at the beginning of the string, it returns Nothing,

@@ -90,7 +90,8 @@ module Data.ByteString.Internal (
         accursedUnutterablePerformIO, -- :: IO a -> a
 
         -- * Exported compatibility shim
-        plusForeignPtr
+        plusForeignPtr,
+        unsafeWithForeignPtr
   ) where
 
 import Prelude hiding (concat, null)
@@ -173,6 +174,15 @@ import GHC.Ptr                  (Ptr(..), castPtr)
 
 #if (__GLASGOW_HASKELL__ < 802) || (__GLASGOW_HASKELL__ >= 811)
 import GHC.Types                (Int (..))
+#endif
+
+#if MIN_VERSION_base(4,15,0)
+import GHC.ForeignPtr           (unsafeWithForeignPtr)
+#endif
+
+#if !MIN_VERSION_base(4,15,0)
+unsafeWithForeignPtr :: ForeignPtr a -> (Ptr a -> IO b) -> IO b
+unsafeWithForeignPtr = withForeignPtr
 #endif
 
 -- CFILES stuff is Hugs only
@@ -424,7 +434,7 @@ unpackAppendCharsLazy (BS fp len) cs
 
 unpackAppendBytesStrict :: ByteString -> [Word8] -> [Word8]
 unpackAppendBytesStrict (BS fp len) xs =
-    accursedUnutterablePerformIO $ withForeignPtr fp $ \base ->
+    accursedUnutterablePerformIO $ unsafeWithForeignPtr fp $ \base ->
       loop (base `plusPtr` (-1)) (base `plusPtr` (-1+len)) xs
   where
     loop !sentinal !p acc
@@ -434,7 +444,7 @@ unpackAppendBytesStrict (BS fp len) xs =
 
 unpackAppendCharsStrict :: ByteString -> [Char] -> [Char]
 unpackAppendCharsStrict (BS fp len) xs =
-    accursedUnutterablePerformIO $ withForeignPtr fp $ \base ->
+    accursedUnutterablePerformIO $ unsafeWithForeignPtr fp $ \base ->
       loop (base `plusPtr` (-1)) (base `plusPtr` (-1+len)) xs
   where
     loop !sentinal !p acc
@@ -582,8 +592,8 @@ compareBytes :: ByteString -> ByteString -> Ordering
 compareBytes (BS _   0)    (BS _   0)    = EQ  -- short cut for empty strings
 compareBytes (BS fp1 len1) (BS fp2 len2) =
     accursedUnutterablePerformIO $
-      withForeignPtr fp1 $ \p1 ->
-      withForeignPtr fp2 $ \p2 -> do
+      unsafeWithForeignPtr fp1 $ \p1 ->
+      unsafeWithForeignPtr fp2 $ \p2 -> do
         i <- memcmp p1 p2 (min len1 len2)
         return $! case i `compare` 0 of
                     EQ  -> len1 `compare` len2
@@ -595,8 +605,8 @@ append a             (BS _   0)    = a
 append (BS fp1 len1) (BS fp2 len2) =
     unsafeCreate (len1+len2) $ \destptr1 -> do
       let destptr2 = destptr1 `plusPtr` len1
-      withForeignPtr fp1 $ \p1 -> memcpy destptr1 p1 len1
-      withForeignPtr fp2 $ \p2 -> memcpy destptr2 p2 len2
+      unsafeWithForeignPtr fp1 $ \p1 -> memcpy destptr1 p1 len1
+      unsafeWithForeignPtr fp2 $ \p2 -> memcpy destptr2 p2 len2
 
 concat :: [ByteString] -> ByteString
 concat = \bss0 -> goLen0 bss0 bss0
@@ -638,7 +648,7 @@ concat = \bss0 -> goLen0 bss0 bss0
     goCopy []                  !_   = return ()
     goCopy (BS _  0  :bss) !ptr = goCopy bss ptr
     goCopy (BS fp len:bss) !ptr = do
-      withForeignPtr fp $ \p -> memcpy ptr p len
+      unsafeWithForeignPtr fp $ \p -> memcpy ptr p len
       goCopy bss (ptr `plusPtr` len)
 {-# NOINLINE concat #-}
 
@@ -657,11 +667,11 @@ times n (BS fp len)
   | n == 1 = BS fp len
   | len == 0 = mempty
   | len == 1 = unsafeCreate size $ \destptr ->
-    withForeignPtr fp $ \p -> do
+    unsafeWithForeignPtr fp $ \p -> do
       byte <- peek p
       void $ memset destptr byte (fromIntegral size)
   | otherwise = unsafeCreate size $ \destptr ->
-    withForeignPtr fp $ \p -> do
+    unsafeWithForeignPtr fp $ \p -> do
       memcpy destptr p len
       fillFrom destptr len
   where

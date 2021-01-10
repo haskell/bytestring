@@ -111,7 +111,6 @@ import Prelude ( Eq(..), Ord(..), Ordering(..), Read(..), Show(..)
                , return
                , Maybe(..) )
 
-
 -- | A compact representation of a 'Word8' vector.
 --
 -- It has a lower memory overhead than a 'ByteString' and does not
