@@ -101,6 +101,7 @@ jobs:
       uses: vmactions/freebsd-vm@v0.1.0
       with:
         usesh: true
+        mem: 2048
         prepare: pkg install -y ghc hs-cabal-install git
         # Virtual machine does not allow to leverage cache
         # and is quite slow, so only tests are run.
