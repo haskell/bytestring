@@ -96,7 +96,7 @@ library
                      Data.ByteString.Builder.Prim.Internal.Floating
                      Data.ByteString.Builder.Prim.Internal.Base16
 
-  default-language:  Haskell98
+  default-language:  Haskell2010
   other-extensions:  CPP,
                      ForeignFunctionInterface,
                      BangPatterns
@@ -139,3 +139,44 @@ library
   if impl(ghc >= 6.9) && impl(ghc < 6.11)
     cpp-options: -DINTEGER_GMP
     build-depends: integer >= 0.1 && < 0.2
+
+test-suite prop-compiled
+  type:             exitcode-stdio-1.0
+  main-is:          Properties.hs
+  other-modules:    Rules
+                    QuickCheckUtils
+  hs-source-dirs:   tests
+  build-depends:    base, bytestring, ghc-prim, deepseq,
+                    tasty, tasty-quickcheck
+  ghc-options:      -fwarn-unused-binds
+                    -threaded -rtsopts
+  default-language: Haskell2010
+
+test-suite lazy-hclose
+  type:             exitcode-stdio-1.0
+  main-is:          LazyHClose.hs
+  hs-source-dirs:   tests
+  build-depends:    base, bytestring, ghc-prim, deepseq,
+                    tasty, tasty-quickcheck
+  ghc-options:      -fwarn-unused-binds
+                    -threaded -rtsopts
+  default-language: Haskell2010
+
+test-suite test-builder
+  type:             exitcode-stdio-1.0
+  hs-source-dirs:   tests/builder
+  main-is:          TestSuite.hs
+  other-modules:    Data.ByteString.Builder.Tests
+                    Data.ByteString.Builder.Prim.Tests
+                    Data.ByteString.Builder.Prim.TestUtils
+  build-depends:    base, bytestring, ghc-prim,
+                    deepseq,
+                    dlist                      >= 0.5 && < 0.9,
+                    transformers               >= 0.3,
+                    tasty,
+                    tasty-hunit,
+                    tasty-quickcheck
+  if impl(ghc < 8.4)
+    build-depends:  ghc-byteorder
+  ghc-options:      -Wall -fwarn-tabs -threaded -rtsopts
+  default-language: Haskell2010

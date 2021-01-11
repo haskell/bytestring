@@ -76,7 +76,7 @@ import           Data.Int
 import           Data.Word
 import           Foreign (Storable(..), castPtr, minusPtr, with)
 import           Numeric (showHex)
-import           System.ByteOrder
+import           GHC.ByteOrder
 import           System.IO.Unsafe (unsafePerformIO)
 
 import           Test.Tasty
@@ -331,12 +331,9 @@ littleEndian_list x =
     map (fromIntegral . (x `shiftR`) . (8*)) $ [0..sizeOf x - 1]
 
 hostEndian_list :: (Storable a, Bits a, Integral a) => a -> [Word8]
-hostEndian_list = case byteOrder of
+hostEndian_list = case targetByteOrder of
     LittleEndian -> littleEndian_list
     BigEndian    -> bigEndian_list
-    _            -> error $
-        "bounded-encoding: unsupported byteorder '" ++ show byteOrder ++ "'"
-
 
 float_list :: (Word32 -> [Word8]) -> Float -> [Word8]
 float_list f  = f . coerceFloatToWord32

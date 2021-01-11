@@ -28,22 +28,19 @@ jobs:
         path: |
           ${{ steps.setup-haskell-cabal.outputs.cabal-store }}
           dist-newstyle
-          tests/dist-newstyle
         key: ${{ runner.os }}-${{ matrix.ghc }}
     - name: Install GHC
       run: |
         sudo add-apt-repository ppa:hvr/ghc -y
         sudo apt-get update
         sudo apt-get install ghc-${{ matrix.ghc }}
-    - name: Build
+    - name: Test
       run: |
         cabal sdist -z -o .
         cabal get bytestring-*.tar.gz
         cd bytestring-*/
-        cabal build -w /opt/ghc/bin/ghc-${{ matrix.ghc }} all
-    - name: Test
-      working-directory: ./tests
-      run: cabal test -w /opt/ghc/bin/ghc-${{ matrix.ghc }} --test-show-details=direct
+        cp ../cabal.project .
+        cabal test -w /opt/ghc/bin/ghc-${{ matrix.ghc }} --test-show-details=direct
     - name: Haddock
       run: cabal haddock -w /opt/ghc/bin/ghc-${{ matrix.ghc }}
 
@@ -64,7 +61,7 @@ jobs:
           ghc: 'latest'
     steps:
     - uses: actions/checkout@v2
-    - uses: actions/setup-haskell@v1
+    - uses: haskell/actions/setup@v1
       id: setup-haskell-cabal
       with:
         ghc-version: ${{ matrix.ghc }}
@@ -76,18 +73,15 @@ jobs:
         path: |
           ${{ steps.setup-haskell-cabal.outputs.cabal-store }}
           dist-newstyle
-          tests/dist-newstyle
           bench/dist-newstyle
         key: ${{ runner.os }}-${{ matrix.ghc }}
-    - name: Build
+    - name: Test
       run: |
         cabal sdist -z -o .
         cabal get bytestring-*.tar.gz
         cd bytestring-*/
-        cabal build all
-    - name: Test
-      working-directory: ./tests
-      run: cabal test --test-show-details=direct
+        cp ../cabal.project .
+        cabal test --test-show-details=direct
     - name: Bench
       working-directory: ./bench
       run: cabal bench --benchmark-options=-l
@@ -102,15 +96,15 @@ jobs:
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v2
-    - name: Build
+    - name: Test
       id: build-freebsd
       uses: vmactions/freebsd-vm@v0.1.0
       with:
         usesh: true
+        mem: 4096
         prepare: pkg install -y ghc hs-cabal-install git
         # Virtual machine does not allow to leverage cache
         # and is quite slow, so only tests are run.
         run: |
           cabal update
-          cd tests
           cabal test --test-show-details=direct
