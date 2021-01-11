@@ -226,6 +226,12 @@ sortInputs = map (`S.take` S.pack [122, 121 .. 32]) [10..25]
 foldInputs :: [S.ByteString]
 foldInputs = map (\k -> S.pack $ if k <= 6 then take (2 ^ k) [32..95] else concat (replicate (2 ^ (k - 6)) [32..95])) [0..16]
 
+zeroes :: L.ByteString
+zeroes = L.replicate 10000 0
+
+zeroOneRepeating :: L.ByteString
+zeroOneRepeating = L.take 10000 (L.cycle (L.pack [0,1]))
+
 main :: IO ()
 main = do
   mapM_ putStrLn sanityCheckInfo
@@ -408,5 +414,14 @@ main = do
           nf (S.scanr (+) 0) s) foldInputs
       , bgroup "filter" $ map (\s -> bench (show $ S.length s) $
           nf (S.filter odd) s) foldInputs
+      ]
+    , bgroup "findIndexOrEnd"
+      [ bench "takeWhile"      $ nf (L.takeWhile even) zeroes
+      , bench "dropWhile"      $ nf (L.dropWhile even) zeroes
+      , bench "break"          $ nf (L.break odd) zeroes
+      , bench "group zeroes"   $ nf L.group zeroes
+      , bench "group zero-one" $ nf L.group zeroOneRepeating
+      , bench "groupBy (>=)"   $ nf (L.groupBy (>=)) zeroes
+      , bench "groupBy (>)"    $ nf (L.groupBy (>)) zeroes
       ]
     ]
