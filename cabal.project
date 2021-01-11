@@ -1,3 +1,6 @@
-packages: bytestring.cabal
-tests: False
+packages: .
+tests: True
 benchmarks: False
+
+constraints:
+  semigroups -hashable -text -binary -bytestring
