@@ -1,8 +1,31 @@
+[0.11.1.0] — Unreleased
+
+* [Add `Data.ByteString.Char8.findIndexEnd` and `Data.ByteString.Lazy.Char8.{elemIndexEnd,findIndexEnd,unzip}`](https://github.com/haskell/bytestring/pull/342)
+* [Expose `ShortByteString` constructor from `Data.ByteString.Short`](https://github.com/haskell/bytestring/pull/313)
+* [Add `compareLength` function, which is lazier than comparison of lengths](https://github.com/haskell/bytestring/pull/300)
+* [Add strict `takeEnd` and `dropEnd`](https://github.com/haskell/bytestring/pull/290)
+* [Expose `packZipWith` to zip two `ByteString`](https://github.com/haskell/bytestring/pull/295)
+* [Add `instance Show Builder`](https://github.com/haskell/bytestring/pull/296)
+* [Improve lazy `pack` to carry fewer arguments in the inner loop](https://github.com/haskell/bytestring/pull/292)
+* [Improve `map`, `findIndex` and `findIndexEnd` to carry fewer arguments in the inner loop](https://github.com/haskell/bytestring/pull/347)
+* [Improve lazy `{take,drop}While`, `break` and `group{,By}` to carry fewer arguments in the inner loop](https://github.com/haskell/bytestring/pull/337)
+* [Speed up `intersperse` using SSE2 instructions](https://github.com/haskell/bytestring/pull/310)
+* [`fromShort` does not reallocate its argument, if it is pinned](https://github.com/haskell/bytestring/pull/317)
+* [Speed up `words` using a faster test for spaces](https://github.com/haskell/bytestring/pull/315)
+* [Implement `stimes` more efficiently than default definition](https://github.com/haskell/bytestring/pull/301)
+
+[0.11.1.0]: https://github.com/haskell/bytestring/compare/0.11.0.0...0.11.1.0
+
+[0.10.12.1] – January 2021
+
+* [Replace `withForeignPtr` with `unsafeWithForeignPtr` where appropriate](https://github.com/haskell/bytestring/pull/333)
+
+[0.10.12.1]: https://github.com/haskell/bytestring/compare/0.10.12.0...0.10.12.1
+
 [0.11.0.0] — September 2020
  * [Change internal representation of `ByteString`, removing offset](https://github.com/haskell/bytestring/pull/175)
    * The old `PS` constructor has been turned into a pattern synonym that is available with GHC >= 8.0 for backwards compatibility. Consider adding `if !impl(ghc >=8.0) { build-depends: bytestring < 0.11 }` to packages, which use `PS` and still support GHC < 8.0.
  * [Fill `ForeignPtrContents` of `nullForeignPtr` with `FinalPtr` instead of a bottom](https://github.com/haskell/bytestring/pull/284)
-   * While `bytestring-0.11` is compatible with GHC >= 7.0, note that `bytestring < 0.11` will be unbuildable with GHC >= 9.0.
  * [Remove deprecated functions `findSubstring` and `findSubstrings`](https://github.com/haskell/bytestring/pull/181)
  * [Speed up sorting of short strings](https://github.com/haskell/bytestring/pull/267)
  * [Improve handling of literal strings in `Data.ByteString.Builder`](https://github.com/haskell/bytestring/pull/132)
