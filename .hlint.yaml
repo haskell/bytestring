@@ -15,6 +15,11 @@
       - Data.ByteString.Builder.Internal
       - Data.ByteString.Builder.Prim
 - ignore:
+    name: Reduce duplication
+    within:
+      - Data.ByteString  
+- ignore:
     name: Redundant lambda
     within:
       - Data.ByteString.Builder.Internal
+      - Data.ByteString  
