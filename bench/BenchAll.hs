@@ -424,4 +424,8 @@ main = do
       , bench "groupBy (>=)"   $ nf (L.groupBy (>=)) zeroes
       , bench "groupBy (>)"    $ nf (L.groupBy (>)) zeroes
       ]
+    , bgroup "findIndex"
+      [ bench "findIndices"    $ nf (sum . S.findIndices even) byteStringData
+      , bench "find"           $ nf (S.find (>= 9998)) byteStringData
+      ]
     ]
