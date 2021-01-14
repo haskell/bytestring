@@ -232,6 +232,13 @@ zeroes = L.replicate 10000 0
 zeroOneRepeating :: L.ByteString
 zeroOneRepeating = L.take 10000 (L.cycle (L.pack [0,1]))
 
+
+largeTraversalInput :: S.ByteString
+largeTraversalInput = S.concat (replicate 10 byteStringData)
+
+smallTraversalInput :: S.ByteString
+smallTraversalInput = S8.pack "The quick brown fox"
+
 main :: IO ()
 main = do
   mapM_ putStrLn sanityCheckInfo
@@ -424,8 +431,16 @@ main = do
       , bench "groupBy (>=)"   $ nf (L.groupBy (>=)) zeroes
       , bench "groupBy (>)"    $ nf (L.groupBy (>)) zeroes
       ]
-    , bgroup "findIndex"
-      [ bench "findIndices"    $ nf (sum . S.findIndices even) byteStringData
-      , bench "find"           $ nf (S.find (>= 9998)) byteStringData
+    , bgroup "findIndex_"
+      [ bench "findIndices"    $ nf (sum . S.findIndices (\x -> x ==  129 || x == 72)) byteStringData
+      , bench "find"           $ nf (S.find (>= 198)) byteStringData
+      ]
+    , bgroup "findIndexEnd"
+      [ bench "findIndexEnd"   $ nf (S.findIndexEnd (<= 57)) byteStringData
+      , bench "elemIndexInd"   $ nf (S.elemIndexEnd 42) byteStringData
+      ]
+    , bgroup "traversals"
+      [ bench "map (+1)"   $ nf (S.map (+ 1)) largeTraversalInput
+      , bench "map (+1)"   $ nf (S.map (+ 1)) smallTraversalInput
       ]
     ]
