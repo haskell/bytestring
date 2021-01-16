@@ -721,7 +721,7 @@ takeWhile :: (Word8 -> Bool) -> ByteString -> ByteString
 takeWhile f = takeWhile'
   where takeWhile' Empty        = Empty
         takeWhile' (Chunk c cs) =
-          case S.findIndexOrEnd (not . f) c of
+          case S.findIndexOrLength (not . f) c of
             0                  -> Empty
             n | n < S.length c -> Chunk (S.take n c) Empty
               | otherwise      -> Chunk c (takeWhile' cs)
@@ -733,7 +733,7 @@ dropWhile :: (Word8 -> Bool) -> ByteString -> ByteString
 dropWhile f = dropWhile'
   where dropWhile' Empty        = Empty
         dropWhile' (Chunk c cs) =
-          case S.findIndexOrEnd (not . f) c of
+          case S.findIndexOrLength (not . f) c of
             n | n < S.length c -> Chunk (S.drop n c) cs
               | otherwise      -> dropWhile' cs
 
@@ -747,7 +747,7 @@ break :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
 break f = break'
   where break' Empty        = (Empty, Empty)
         break' (Chunk c cs) =
-          case S.findIndexOrEnd f c of
+          case S.findIndexOrLength f c of
             0                  -> (Empty, Chunk c cs)
             n | n < S.length c -> (Chunk (S.take n c) Empty
                                   ,Chunk (S.drop n c) cs)
@@ -867,7 +867,7 @@ group = go
 
     to acc !_ Empty        = [revNonEmptyChunks acc]
     to acc !w (Chunk c cs) =
-      case S.findIndexOrEnd (/= w) c of
+      case S.findIndexOrLength (/= w) c of
         0                    -> revNonEmptyChunks acc
                               : go (Chunk c cs)
         n | n == S.length c  -> to (S.unsafeTake n c : acc) w cs
@@ -886,7 +886,7 @@ groupBy k = go
 
     to acc !_ Empty        = [revNonEmptyChunks acc]
     to acc !w (Chunk c cs) =
-      case S.findIndexOrEnd (not . k w) c of
+      case S.findIndexOrLength (not . k w) c of
         0                    -> revNonEmptyChunks acc
                               : go (Chunk c cs)
         n | n == S.length c  -> to (S.unsafeTake n c : acc) w cs

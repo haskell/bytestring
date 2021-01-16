@@ -941,7 +941,7 @@ splitAt n ps@(BS x l)
 -- returns the longest (possibly empty) prefix of elements
 -- satisfying the predicate.
 takeWhile :: (Word8 -> Bool) -> ByteString -> ByteString
-takeWhile f ps = unsafeTake (findIndexOrEnd (not . f) ps) ps
+takeWhile f ps = unsafeTake (findIndexOrLength (not . f) ps) ps
 {-# INLINE [1] takeWhile #-}
 
 #if MIN_VERSION_base(4,9,0)
@@ -982,7 +982,7 @@ takeWhileEnd f ps = unsafeDrop (findFromEndUntil (not . f) ps) ps
 -- drops the longest (possibly empty) prefix of elements
 -- satisfying the predicate and returns the remainder.
 dropWhile :: (Word8 -> Bool) -> ByteString -> ByteString
-dropWhile f ps = unsafeDrop (findIndexOrEnd (not . f) ps) ps
+dropWhile f ps = unsafeDrop (findIndexOrLength (not . f) ps) ps
 {-# INLINE [1] dropWhile #-}
 
 #if MIN_VERSION_base(4,9,0)
@@ -1020,8 +1020,6 @@ dropWhileEnd :: (Word8 -> Bool) -> ByteString -> ByteString
 dropWhileEnd f ps = unsafeTake (findFromEndUntil (not . f) ps) ps
 {-# INLINE dropWhileEnd #-}
 
--- instead of findIndexOrEnd, we could use memchr here.
-
 -- | Similar to 'P.break',
 -- returns the longest (possibly empty) prefix of elements which __do not__
 -- satisfy the predicate and the remainder of the string.
@@ -1035,7 +1033,7 @@ dropWhileEnd f ps = unsafeTake (findFromEndUntil (not . f) ps) ps
 -- > break (==x) = breakByte x
 --
 break :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
-break p ps = case findIndexOrEnd p ps of n -> (unsafeTake n ps, unsafeDrop n ps)
+break p ps = case findIndexOrLength p ps of n -> (unsafeTake n ps, unsafeDrop n ps)
 {-# INLINE [1] break #-}
 
 -- See bytestring #70
@@ -1230,7 +1228,7 @@ groupBy k xs = case uncons xs of
   Nothing     -> []
   Just (h, t) -> unsafeTake n xs : groupBy k (unsafeDrop n xs)
     where
-        n = 1 + findIndexOrEnd (not . k h) t
+        n = 1 + findIndexOrLength (not . k h) t
 
 -- | /O(n)/ The 'intercalate' function takes a 'ByteString' and a list of
 -- 'ByteString's and concatenates the list after interspersing the first
