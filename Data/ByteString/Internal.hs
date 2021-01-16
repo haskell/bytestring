@@ -39,7 +39,7 @@ module Data.ByteString.Internal (
         ), -- instances: Eq, Ord, Show, Read, Data, Typeable
 
         -- * Internal indexing
-        findIndexOrEnd,
+        findIndexOrLength,
 
         -- * Conversion with lists: packing and unpacking
         packBytes, packUptoLenBytes, unsafePackLenBytes,
@@ -304,10 +304,10 @@ instance Data ByteString where
 ------------------------------------------------------------------------
 -- Internal indexing
 
--- | 'findIndexOrEnd' is a variant of findIndex, that returns the length
+-- | 'findIndexOrLength' is a variant of findIndex, that returns the length
 -- of the string if no element is found, rather than Nothing.
-findIndexOrEnd :: (Word8 -> Bool) -> ByteString -> Int
-findIndexOrEnd k (BS x l) =
+findIndexOrLength :: (Word8 -> Bool) -> ByteString -> Int
+findIndexOrLength k (BS x l) =
     accursedUnutterablePerformIO $ withForeignPtr x g
   where
     g ptr = go 0
@@ -317,7 +317,7 @@ findIndexOrEnd k (BS x l) =
                                if k w
                                  then return n
                                  else go (n+1)
-{-# INLINE findIndexOrEnd #-}
+{-# INLINE findIndexOrLength #-}
 
 ------------------------------------------------------------------------
 -- Packing and unpacking from lists

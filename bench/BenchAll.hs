@@ -415,7 +415,7 @@ main = do
       , bgroup "filter" $ map (\s -> bench (show $ S.length s) $
           nf (S.filter odd) s) foldInputs
       ]
-    , bgroup "findIndexOrEnd"
+    , bgroup "findIndexOrLength"
       [ bench "takeWhile"      $ nf (L.takeWhile even) zeroes
       , bench "dropWhile"      $ nf (L.dropWhile even) zeroes
       , bench "break"          $ nf (L.break odd) zeroes
