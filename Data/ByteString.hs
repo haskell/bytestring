@@ -1020,8 +1020,6 @@ dropWhileEnd :: (Word8 -> Bool) -> ByteString -> ByteString
 dropWhileEnd f ps = unsafeTake (findFromEndUntil (not . f) ps) ps
 {-# INLINE dropWhileEnd #-}
 
--- instead of findIndexOrLength, we could use memchr here.
-
 -- | Similar to 'P.break',
 -- returns the longest (possibly empty) prefix of elements which __do not__
 -- satisfy the predicate and the remainder of the string.
