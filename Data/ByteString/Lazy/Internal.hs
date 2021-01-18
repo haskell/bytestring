@@ -204,9 +204,8 @@ foldrChunks f z = go
 -- accumulating left fold.
 foldlChunks :: (a -> S.ByteString -> a) -> a -> ByteString -> a
 foldlChunks f = go
-  where go a _ | a `seq` False = undefined
-        go a Empty        = a
-        go a (Chunk c cs) = go (f a c) cs
+  where go !a Empty        = a
+        go !a (Chunk c cs) = go (f a c) cs
 {-# INLINE foldlChunks #-}
 
 ------------------------------------------------------------------------

@@ -770,14 +770,14 @@ lines (Chunk c0 cs0) = loop0 c0 cs0
         case B.elemIndex (c2w '\n') c of
             Nothing ->
                 case cs of
-                    Empty -> let c' = revChunks (c : line)
-                              in c' `seq` [c']
+                    Empty -> let !c' = revChunks (c : line)
+                              in [c']
 
                     (Chunk c' cs') -> loop c' (c : line) cs'
 
             Just n ->
-                let c' = revChunks (B.unsafeTake n c : line)
-                 in c' `seq` (c' : loop0 (B.unsafeDrop (n+1) c) cs)
+                let !c' = revChunks (B.unsafeTake n c : line)
+                 in c' : loop0 (B.unsafeDrop (n+1) c) cs
 
 -- | 'unlines' is an inverse operation to 'lines'.  It joins lines,
 -- after appending a terminating newline to each.
@@ -883,11 +883,11 @@ readInteger (Chunk c0 cs0) =
           combine1 _ [n] = n
           combine1 b ns  = combine1 (b*b) $ combine2 b ns
 
-          combine2 b (n:m:ns) = let t = n+m*b in t `seq` (t : combine2 b ns)
+          combine2 b (n:m:ns) = let !t = n+m*b in t : combine2 b ns
           combine2 _ ns       = ns
 
-          end n c cs = let c' = chunk c cs
-                        in c' `seq` (n, c')
+          end n c cs = let !c' = chunk c cs
+                        in (n, c')
 
 
 -- | Write a ByteString to a handle, appending a newline byte
