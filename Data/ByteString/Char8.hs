@@ -1124,7 +1124,7 @@ readInteger as
           combine1 _ [n] = n
           combine1 b ns  = combine1 (b*b) $ combine2 b ns
 
-          combine2 b (n:m:ns) = let t = m*b + n in t `seq` (t : combine2 b ns)
+          combine2 b (n:m:ns) = let !t = m*b + n in t : combine2 b ns
           combine2 _ ns       = ns
 
 ------------------------------------------------------------------------
