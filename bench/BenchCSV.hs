@@ -9,7 +9,8 @@
 -- Running example for documentation of Data.ByteString.Builder
 --
 
-{-# LANGUAGE OverloadedStrings, PackageImports #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module BenchCSV (benchCSV) where
 
@@ -108,34 +109,27 @@ module BenchCSV (benchCSV) where
 
 -}
 
-
-import qualified Data.ByteString                     as S
-import qualified Data.ByteString.Lazy                as L
--- bytestring used by Data.Text.Lazy
-import qualified "bytestring" Data.ByteString.Lazy   as BaseL
-
-import           Data.ByteString.Builder                         as B
-
-import Data.Monoid
-import Data.Foldable (foldMap)
-
-import Gauge
 import Control.DeepSeq
+import Data.Char (ord)
+import Data.Foldable (foldMap)
+import Data.Monoid
 
+import Test.Tasty.Bench
 
--- To be used in a later optimization
+import qualified Data.ByteString         as S
+import qualified Data.ByteString.Lazy    as L
+import           Data.ByteString.Builder as B
 import           Data.ByteString.Builder.Prim.Internal ( (>*<), (>$<) )
 import qualified Data.ByteString.Builder.Prim         as E
 
 -- To be used in a later comparison
-import qualified Data.DList                                      as D
-import qualified Data.Text.Lazy                                  as TL
-import qualified Data.Text.Lazy.Encoding                         as TL
-import qualified Data.Text.Lazy.Builder                          as TB
-import qualified Data.Text.Lazy.Builder.Int                      as TB
-
-import Data.Char (ord)
-
+import qualified Data.DList                 as D
+#ifdef MIN_VERSION_text
+import qualified Data.Text.Lazy             as TL
+import qualified Data.Text.Lazy.Encoding    as TL
+import qualified Data.Text.Lazy.Builder     as TB
+import qualified Data.Text.Lazy.Builder.Int as TB
+#endif
 
 ------------------------------------------------------------------------------
 -- Simplife CSV Tables
@@ -365,6 +359,8 @@ benchDListUtf8 = bench "utf8 + renderTableD maxiTable" $
 -- Text Builder
 ------------------------------------------------------------------------------
 
+#ifdef MIN_VERSION_text
+
 renderStringTB :: String -> TB.Builder
 renderStringTB cs = TB.singleton '"' <> foldMap escape cs <> TB.singleton '"'
   where
@@ -392,7 +388,9 @@ benchTextBuilder = bench "renderTableTB maxiTable" $
 -- 1.10 ms
 benchTextBuilderUtf8 :: Benchmark
 benchTextBuilderUtf8 = bench "utf8 + renderTableTB maxiTable" $
-  nf (BaseL.length . TL.encodeUtf8 . TB.toLazyText . renderTableTB) maxiTable
+  nf (L.length . TL.encodeUtf8 . TB.toLazyText . renderTableTB) maxiTable
+
+#endif
 
 ------------------------------------------------------------------------------
 -- Benchmarking
@@ -404,8 +402,10 @@ benchCSV = bgroup "CSV"
       , benchString
       , benchStringUtf8
       , benchDListUtf8
+#ifdef MIN_VERSION_text
       , benchTextBuilder
       , benchTextBuilderUtf8
+#endif
       , benchBuilderUtf8
       , benchBuilderEncodingUtf8
       ]

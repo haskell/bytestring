@@ -1,6 +1,6 @@
 packages: .
 tests: True
-benchmarks: False
+benchmarks: True
 
 constraints:
   semigroups -hashable -text -binary -bytestring
