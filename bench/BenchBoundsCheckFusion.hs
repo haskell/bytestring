@@ -1,4 +1,3 @@
-{-# LANGUAGE PackageImports, ScopedTypeVariables, BangPatterns #-}
 -- |
 -- Copyright   : (c) 2011 Simon Meier
 -- License     : BSD3-style (see LICENSE)
@@ -8,7 +7,10 @@
 -- Portability : tested on GHC only
 --
 -- Benchmark that the bounds checks fuse.
-module Main (main) where
+
+{-# LANGUAGE PackageImports, ScopedTypeVariables, BangPatterns #-}
+
+module BenchBoundsCheckFusion (benchBoundsCheckFusion) where
 
 import Prelude hiding (words)
 import Data.Monoid
@@ -69,31 +71,10 @@ benchBInts name = benchB name intData
 -- benchmarks
 -------------
 
-sanityCheckInfo :: [String]
-sanityCheckInfo =
-  [ "Sanity checks:"
-  , " lengths of input data: " ++ show
-      [ length intData ]
-  ]
-
-main :: IO ()
-main = do
-  mapM_ putStrLn sanityCheckInfo
-  putStrLn ""
-  Gauge.defaultMain
+benchBoundsCheckFusion :: Benchmark
+benchBoundsCheckFusion = bgroup "BoundsCheckFusion"
     [ bgroup "Data.ByteString.Builder"
-        [ -- benchBInts "foldMap intHost" $
-            -- foldMap (intHost . fromIntegral)
-
-{-
-          benchBInts "mapM_ (\\x -> intHost x `mappend` intHost x)" $
-            foldMap ((\x -> intHost x `mappend` intHost x)
-
-        , benchBInts "foldMap (\\x -> intHost x `mappend` intHost x)" $
-            foldMap (\x -> intHost x `mappend` intHost x)
--}
-
-          benchBInts "foldMap (left-assoc)" $
+        [ benchBInts "foldMap (left-assoc)" $
             foldMap (\x -> (stringUtf8 "s" `mappend` intHost x) `mappend` intHost x)
 
         , benchBInts "foldMap (right-assoc)" $
@@ -104,9 +85,6 @@ main = do
 
         , benchBInts "foldMap [manually fused, right-assoc]" $
             foldMap (\x -> P.primBounded (P.liftFixedToBounded $ P.intHost >*< P.intHost) (x, x) `mappend` stringUtf8 "s")
-
-        -- , benchBInts "encodeListWithF intHost" $
-            -- P.encodeListWithF (fromIntegral >$< P.intHost)
         ]
     ]
 
