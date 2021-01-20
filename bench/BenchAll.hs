@@ -1,7 +1,3 @@
-{-# LANGUAGE BangPatterns        #-}
-{-# LANGUAGE PackageImports      #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE MagicHash           #-}
 -- |
 -- Copyright   : (c) 2011 Simon Meier
 -- License     : BSD3-style (see LICENSE)
@@ -10,7 +6,12 @@
 -- Stability   : experimental
 -- Portability : tested on GHC only
 --
--- Benchmark all 'Builder' functions.
+
+{-# LANGUAGE BangPatterns        #-}
+{-# LANGUAGE PackageImports      #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE MagicHash           #-}
+
 module Main (main) where
 
 import           Data.Foldable                         (foldMap)
@@ -37,6 +38,10 @@ import qualified Data.ByteString.Builder.Prim.Internal as PI
 import           Foreign
 
 import System.Random
+
+import BenchBoundsCheckFusion
+import BenchCSV
+import BenchIndices
 
 ------------------------------------------------------------------------------
 -- Benchmark support
@@ -242,7 +247,7 @@ smallTraversalInput = S8.pack "The quick brown fox"
 main :: IO ()
 main = do
   mapM_ putStrLn sanityCheckInfo
-  Gauge.defaultMain
+  defaultMain
     [ bgroup "Data.ByteString.Builder"
       [ bgroup "Small payload"
         [ benchB' "mempty"        ()  (const mempty)
@@ -443,4 +448,7 @@ main = do
       [ bench "map (+1)"   $ nf (S.map (+ 1)) largeTraversalInput
       , bench "map (+1)"   $ nf (S.map (+ 1)) smallTraversalInput
       ]
+    , benchBoundsCheckFusion
+    , benchCSV
+    , benchIndices
     ]

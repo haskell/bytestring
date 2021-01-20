@@ -1,4 +1,3 @@
-{-# LANGUAGE BangPatterns        #-}
 -- |
 -- Copyright   : (c) 2020 Peter Duchovni
 -- License     : BSD3-style (see LICENSE)
@@ -6,7 +5,10 @@
 -- Maintainer  : Peter Duchovni <caufeminecraft+github@gmail.com>
 --
 -- Benchmark elemIndex, findIndex, elemIndices, and findIndices
-module Main (main) where
+
+{-# LANGUAGE BangPatterns        #-}
+
+module BenchIndices (benchIndices) where
 
 import           Data.Foldable                         (foldMap)
 import           Data.Maybe                            (listToMaybe)
@@ -43,9 +45,8 @@ absurdlong = S.replicate 200 0x61 <> S.singleton nl
           <> S.replicate 200 0x65 <> S.singleton nl
           <> S.replicate 999999 0x66
 
-main :: IO ()
-main = do
-  Gauge.defaultMain
+benchIndices :: Benchmark
+benchIndices = bgroup "Indices"
     [ bgroup "ByteString strict first index" $
         [ bench "FindIndices" $ nf (listToMaybe . S.findIndices (== nl)) absurdlong
         , bench "ElemIndices" $ nf (listToMaybe . S.elemIndices     nl)  absurdlong

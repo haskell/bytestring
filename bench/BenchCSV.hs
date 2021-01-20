@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedStrings, PackageImports #-}
 -- |
 -- Copyright   : (c) 2010-2011 Simon Meier
 -- License     : BSD3-style (see LICENSE)
@@ -9,7 +8,10 @@
 --
 -- Running example for documentation of Data.ByteString.Builder
 --
-module Main (main) where
+
+{-# LANGUAGE OverloadedStrings, PackageImports #-}
+
+module BenchCSV (benchCSV) where
 
 -- **************************************************************************
 -- CamHac 2011: An introduction to Data.ByteString.Builder
@@ -117,7 +119,7 @@ import           Data.ByteString.Builder                         as B
 import Data.Monoid
 import Data.Foldable (foldMap)
 
-import Gauge.Main
+import Gauge
 import Control.DeepSeq
 
 
@@ -396,15 +398,8 @@ benchTextBuilderUtf8 = bench "utf8 + renderTableTB maxiTable" $
 -- Benchmarking
 ------------------------------------------------------------------------------
 
-main :: IO ()
-main = do
-    putStrLn "Encoding the maxiTable"
-    putStrLn $ "Total length in bytes: " ++
-        (show $ L.length $ encodeUtf8CSV maxiTable)
-    putStrLn $ "Chunk lengths: " ++
-        (show $ map S.length $ L.toChunks $ encodeUtf8CSV maxiTable)
-    putStrLn ""
-    defaultMain
+benchCSV :: Benchmark
+benchCSV = bgroup "CSV"
       [ benchNF
       , benchString
       , benchStringUtf8
