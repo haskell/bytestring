@@ -483,6 +483,7 @@ import           Foreign.ForeignPtr.Unsafe (unsafeForeignPtrToPtr)
 #else
 import           Foreign
 #endif
+import           GHC.Word (Word8 (..))
 import           GHC.Exts
 import           GHC.IO
 
@@ -693,7 +694,7 @@ cstring =
   where
     step :: Addr# -> BuildStep r -> BuildStep r
     step !addr !k br@(BufferRange op0@(Ptr op0#) ope)
-      | isTrue# (ch `eqWord#` 0##) = k br
+      | W8# ch == 0 = k br
       | op0 == ope =
           return $ bufferFull defaultChunkSize op0 (step addr k)
       | otherwise = do
@@ -712,13 +713,14 @@ cstringUtf8 =
   where
     step :: Addr# -> BuildStep r -> BuildStep r
     step !addr !k br@(BufferRange op0@(Ptr op0#) ope)
-      | isTrue# (ch `eqWord#` 0##) = k br
+      | W8# ch == 0 = k br
       | op0 == ope =
           return $ bufferFull defaultChunkSize op0 (step addr k)
         -- NULL is encoded as 0xc0 0x80
-      | isTrue# (ch `eqWord#` 0xc0##)
-      , isTrue# (indexWord8OffAddr# addr 1# `eqWord#` 0x80##) = do
-          IO $ \s -> case writeWord8OffAddr# op0# 0# 0## s of
+      | W8# ch == 0xc0
+      , W8# (indexWord8OffAddr# addr 1#) == 0x80 = do
+          let !(W8# nullByte#) = 0
+          IO $ \s -> case writeWord8OffAddr# op0# 0# nullByte# s of
                        s' -> (# s', () #)
           let br' = BufferRange (op0 `plusPtr` 1) ope
           step (addr `plusAddr#` 2#) k br'
