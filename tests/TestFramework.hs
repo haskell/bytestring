@@ -24,8 +24,8 @@ import Control.Exception
 
 -- Ideally we'd be using:
 
---import Test.Framework
---import Test.Framework.Providers.QuickCheck2
+--import Test.Tasty
+--import Test.Tasty.QuickCheck
 
 type TestName = String
 type Test     = [(TestName, Int -> IO (Bool, Int))]

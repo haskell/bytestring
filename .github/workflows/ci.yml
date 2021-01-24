@@ -1,0 +1,115 @@
+name: ci
+on:
+  push:
+    branches:
+      - master
+      - bytestring-0.11
+      - bytestring-0.10
+  pull_request: {}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build-old:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [ubuntu-latest]
+        ghc: ['7.0.4', '7.2.2', '7.4.2', '7.6.3', '7.8.4']
+    steps:
+    - uses: actions/checkout@v2
+    - name: Update cabal package database
+      run: cabal update
+    - uses: actions/cache@v2
+      name: Cache cabal stuff
+      with:
+        path: |
+          ${{ steps.setup-haskell-cabal.outputs.cabal-store }}
+          dist-newstyle
+          tests/dist-newstyle
+        key: ${{ runner.os }}-${{ matrix.ghc }}
+    - name: Install GHC
+      run: |
+        sudo add-apt-repository ppa:hvr/ghc -y
+        sudo apt-get update
+        sudo apt-get install ghc-${{ matrix.ghc }}
+    - name: Build
+      run: |
+        cabal sdist -z -o .
+        cabal get bytestring-*.tar.gz
+        cd bytestring-*/
+        cabal build -w /opt/ghc/bin/ghc-${{ matrix.ghc }} all
+    - name: Test
+      working-directory: ./tests
+      run: cabal test -w /opt/ghc/bin/ghc-${{ matrix.ghc }} --test-show-details=direct
+    - name: Haddock
+      run: cabal haddock -w /opt/ghc/bin/ghc-${{ matrix.ghc }}
+
+  build:
+    needs: build-old
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [ubuntu-latest]
+        ghc: ['7.10', '8.0', '8.2', '8.4', '8.6', '8.8', '8.10']
+        include:
+        - os: windows-latest
+          ghc: 'latest'
+        - os: macOS-latest
+          ghc: 'latest'
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-haskell@v1
+      id: setup-haskell-cabal
+      with:
+        ghc-version: ${{ matrix.ghc }}
+    - name: Update cabal package database
+      run: cabal update
+    - uses: actions/cache@v2
+      name: Cache cabal stuff
+      with:
+        path: |
+          ${{ steps.setup-haskell-cabal.outputs.cabal-store }}
+          dist-newstyle
+          tests/dist-newstyle
+          bench/dist-newstyle
+        key: ${{ runner.os }}-${{ matrix.ghc }}
+    - name: Build
+      run: |
+        cabal sdist -z -o .
+        cabal get bytestring-*.tar.gz
+        cd bytestring-*/
+        cabal build all
+    - name: Test
+      working-directory: ./tests
+      run: cabal test --test-show-details=direct
+    - name: Bench
+      working-directory: ./bench
+      run: cabal bench --benchmark-options=-l
+    - name: Haddock
+      run: cabal haddock
+
+  build-freebsd:
+    needs: build
+    # This job intentionally is using macOS because at the time of the writing
+    # Linux and Windows environments don't have the necessary virtualization features.
+    # See https://github.com/vmactions/freebsd-vm#under-the-hood.
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build
+      id: build-freebsd
+      uses: vmactions/freebsd-vm@v0.0.9
+      with:
+        usesh: true
+        prepare: pkg install -y ghc hs-cabal-install git
+        # Virtual machine does not allow to leverage cache
+        # and is quite slow, so only tests are run.
+        run: |
+          cabal update
+          cd tests
+          cabal test --test-show-details=direct

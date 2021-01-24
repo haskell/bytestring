@@ -36,7 +36,7 @@ test-suite prop-compiled
                     Data.ByteString.Unsafe
   hs-source-dirs:   . ..
   build-depends:    base, ghc-prim, deepseq, random, directory,
-                    test-framework, test-framework-quickcheck2,
+                    tasty, tasty-quickcheck,
                     QuickCheck >= 2.10 && < 2.15
   c-sources:        ../cbits/fpstring.c
   include-dirs:     ../include
@@ -57,7 +57,7 @@ executable regressions
                     Data.ByteString.Unsafe
   hs-source-dirs:   . ..
   build-depends:    base, ghc-prim, deepseq, random, directory,
-                    test-framework, test-framework-hunit, HUnit
+                    tasty, tasty-hunit
   c-sources:        ../cbits/fpstring.c
   include-dirs:     ../include
   cpp-options:      -DHAVE_TEST_FRAMEWORK=1
@@ -102,10 +102,9 @@ test-suite test-builder
                     dlist                      >= 0.5 && < 0.9,
                     directory,
                     mtl                        >= 2.0 && < 2.3,
-                    HUnit,
-                    test-framework,
-                    test-framework-hunit,
-                    test-framework-quickcheck2  >= 0.3
+                    tasty,
+                    tasty-hunit,
+                    tasty-quickcheck
   cpp-options:      -DHAVE_TEST_FRAMEWORK=1
   ghc-options:      -Wall -fwarn-tabs -threaded -rtsopts
   extensions:       CPP, ForeignFunctionInterface

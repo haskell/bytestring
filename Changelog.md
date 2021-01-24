@@ -1,3 +1,9 @@
+[0.10.12.1] – January 2021
+
+* [Replace `withForeignPtr` with `unsafeWithForeignPtr` where appropriate](https://github.com/haskell/bytestring/pull/333)
+
+[0.10.12.1]: https://github.com/haskell/bytestring/compare/0.10.12.0...0.10.12.1
+
 [0.10.12.0] – August 2020
 
  * **Note:** There are several breaking changes planned to be included in v0.11.

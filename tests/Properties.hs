@@ -53,8 +53,8 @@ import Prelude hiding (abs)
 import Rules
 import QuickCheckUtils
 #if defined(HAVE_TEST_FRAMEWORK)
-import Test.Framework
-import Test.Framework.Providers.QuickCheck2
+import Test.Tasty
+import Test.Tasty.QuickCheck
 #else
 import TestFramework
 #endif
@@ -1233,7 +1233,7 @@ prop_unfoldrBB c =
     forAll arbitrarySizedIntegral $ \n ->
       (fst $ C.unfoldrN n fn c) == (C.pack $ take n $ unfoldr fn c)
   where
-    fn x = Just (x, chr (ord x + 1))
+    fn x = Just (x, if x == maxBound then x else succ x)
 
 prop_prefixBB xs ys = isPrefixOf xs ys == (P.pack xs `P.isPrefixOf` P.pack ys)
 prop_prefixLL xs ys = isPrefixOf xs ys == (L.pack xs `L.isPrefixOf` L.pack ys)
@@ -1560,81 +1560,73 @@ prop_fromForeignPtr x = (let (a,b,c) = (P.toForeignPtr x)
 
 prop_read_write_file_P x = unsafePerformIO $ do
     tid <- myThreadId
-    let f = "qc-test-"++show tid
-    bracket
-        (do P.writeFile f x)
-        (const $ do removeFile f)
-        (const $ do y <- P.readFile f
-                    return (x==y))
+    let f = "qc-test-" ++ show tid
+    P.writeFile f x
+    y <- P.readFile f
+    removeFile f
+    return (x == y)
 
 prop_read_write_file_C x = unsafePerformIO $ do
     tid <- myThreadId
-    let f = "qc-test-"++show tid
-    bracket
-        (do C.writeFile f x)
-        (const $ do removeFile f)
-        (const $ do y <- C.readFile f
-                    return (x==y))
+    let f = "qc-test-" ++ show tid
+    C.writeFile f x
+    y <- C.readFile f
+    removeFile f
+    return (x == y)
 
 prop_read_write_file_L x = unsafePerformIO $ do
     tid <- myThreadId
-    let f = "qc-test-"++show tid
-    bracket
-        (do L.writeFile f x)
-        (const $ do removeFile f)
-        (const $ do y <- L.readFile f
-                    return (x==y))
+    let f = "qc-test-" ++ show tid
+    L.writeFile f x
+    y <- L.readFile f
+    L.length y `seq` removeFile f
+    return (x == y)
 
 prop_read_write_file_D x = unsafePerformIO $ do
     tid <- myThreadId
-    let f = "qc-test-"++show tid
-    bracket
-        (do D.writeFile f x)
-        (const $ do removeFile f)
-        (const $ do y <- D.readFile f
-                    return (x==y))
+    let f = "qc-test-" ++ show tid
+    D.writeFile f x
+    y <- D.readFile f
+    D.length y `seq` removeFile f
+    return (x == y)
 
 ------------------------------------------------------------------------
 
 prop_append_file_P x y = unsafePerformIO $ do
     tid <- myThreadId
-    let f = "qc-test-"++show tid
-    bracket
-        (do P.writeFile f x
-            P.appendFile f y)
-        (const $ do removeFile f)
-        (const $ do z <- P.readFile f
-                    return (z==(x `P.append` y)))
+    let f = "qc-test-" ++ show tid
+    P.writeFile f x
+    P.appendFile f y
+    z <- P.readFile f
+    removeFile f
+    return (z == x `P.append` y)
 
 prop_append_file_C x y = unsafePerformIO $ do
     tid <- myThreadId
-    let f = "qc-test-"++show tid
-    bracket
-        (do C.writeFile f x
-            C.appendFile f y)
-        (const $ do removeFile f)
-        (const $ do z <- C.readFile f
-                    return (z==(x `C.append` y)))
+    let f = "qc-test-" ++ show tid
+    C.writeFile f x
+    C.appendFile f y
+    z <- C.readFile f
+    removeFile f
+    return (z == x `C.append` y)
 
 prop_append_file_L x y = unsafePerformIO $ do
     tid <- myThreadId
-    let f = "qc-test-"++show tid
-    bracket
-        (do L.writeFile f x
-            L.appendFile f y)
-        (const $ do removeFile f)
-        (const $ do z <- L.readFile f
-                    return (z==(x `L.append` y)))
+    let f = "qc-test-" ++ show tid
+    L.writeFile f x
+    L.appendFile f y
+    z <- L.readFile f
+    L.length z `seq` removeFile f
+    return (z == x `L.append` y)
 
 prop_append_file_D x y = unsafePerformIO $ do
     tid <- myThreadId
-    let f = "qc-test-"++show tid
-    bracket
-        (do D.writeFile f x
-            D.appendFile f y)
-        (const $ do removeFile f)
-        (const $ do z <- D.readFile f
-                    return (z==(x `D.append` y)))
+    let f = "qc-test-" ++ show tid
+    D.writeFile f x
+    D.appendFile f y
+    z <- D.readFile f
+    D.length z `seq` removeFile f
+    return (z == x `D.append` y)
 
 prop_packAddress = C.pack "this is a test"
             ==
@@ -1739,7 +1731,7 @@ short_tests =
 -- The entry point
 
 main :: IO ()
-main = defaultMainWithArgs tests ["-o 3"] -- timeout if a test runs for >3 secs
+main = defaultMain $ testGroup "All" tests
 
 --
 -- And now a list of all the properties to test.

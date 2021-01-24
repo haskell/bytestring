@@ -1,5 +1,5 @@
 Name:                bytestring
-Version:             0.10.12.0
+Version:             0.10.12.1
 Synopsis:            Fast, compact, strict and lazy byte strings with a list interface
 Description:
     An efficient compact, immutable byte string type (both strict and lazy)
@@ -51,7 +51,7 @@ Copyright:           Copyright (c) Don Stewart          2005-2009,
 
 Author:              Don Stewart,
                      Duncan Coutts
-Maintainer:          Duncan Coutts <duncan@community.haskell.org>
+Maintainer:          Haskell Bytestring Team <andrew.lelechenko@gmail.com>, Core Libraries Committee
 Homepage:            https://github.com/haskell/bytestring
 Bug-reports:         https://github.com/haskell/bytestring/issues
 Tested-With:         GHC==8.10.1, GHC==8.8.3, GHC==8.6.5, GHC==8.4.4, GHC==8.2.2,
