@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE MagicHash, UnboxedTuples,
-            NamedFieldPuns, BangPatterns #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# OPTIONS_HADDOCK prune #-}
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE Trustworthy #-}
@@ -282,7 +282,6 @@ import GHC.IO                   (unsafePerformIO, unsafeDupablePerformIO)
 import Data.Char                (ord)
 import Foreign.Marshal.Utils    (copyBytes)
 
-import GHC.Prim                 (Word8#)
 import GHC.Base                 (build)
 import GHC.Word hiding (Word8)
 
@@ -976,29 +975,27 @@ spanEnd  p ps = splitAt (findFromEndUntil (not.p) ps) ps
 -- > splitWith (==97) []        == []
 --
 splitWith :: (Word8 -> Bool) -> ByteString -> [ByteString]
-splitWith _pred (PS _  _   0) = []
-splitWith pred_ (PS fp off len) = splitWith0 pred# off len fp
-  where pred# c# = pred_ (W8# c#)
-
-        splitWith0 !pred' !off' !len' !fp' =
+splitWith _ (PS _ _ 0) = []
+splitWith predicate (PS fp off len) = splitWith0 off len fp
+  where splitWith0 !off' !len' !fp' =
           accursedUnutterablePerformIO $
-            unsafeWithForeignPtr fp $ \p ->
-              splitLoop pred' p 0 off' len' fp'
+            withForeignPtr fp $ \p ->
+              splitLoop p 0 off' len' fp'
 
-        splitLoop :: (Word8# -> Bool)
-                  -> Ptr Word8
+        splitLoop :: Ptr Word8
                   -> Int -> Int -> Int
                   -> ForeignPtr Word8
                   -> IO [ByteString]
-
-        splitLoop pred' p idx' off' len' fp'
-            | idx' >= len'  = return [PS fp' off' idx']
-            | otherwise = do
-                w <- peekElemOff p (off'+idx')
-                if pred' (case w of W8# w# -> w#)
-                   then return (PS fp' off' idx' :
-                              splitWith0 pred' (off'+idx'+1) (len'-idx'-1) fp')
-                   else splitLoop pred' p (idx'+1) off' len' fp'
+        splitLoop p idx2 off' len' fp' = go idx2
+          where
+            go idx'
+                | idx' >= len'  = return [PS fp' off' idx']
+                | otherwise = do
+                    w <- peekElemOff p (off'+idx')
+                    if predicate w
+                       then return (PS fp' off' idx' :
+                                  splitWith0 (off'+idx'+1) (len'-idx'-1) fp')
+                       else go (idx'+1)
 {-# INLINE splitWith #-}
 
 -- | /O(n)/ Break a 'ByteString' into pieces separated by the byte

@@ -454,7 +454,6 @@ module Data.ByteString.Builder.Prim (
   ) where
 
 import           Data.ByteString.Builder.Internal
-import           Data.ByteString.Builder.Prim.Internal.UncheckedShifts
 
 import qualified Data.ByteString               as S
 import qualified Data.ByteString.Internal      as S
