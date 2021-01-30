@@ -854,12 +854,14 @@ unfoldrN i f x0
     | i < 0     = (empty, Just x0)
     | otherwise = unsafePerformIO $ createAndTrim' i $ \p -> go p x0 0
   where
-    go !p !x !n
-      | n == i    = return (0, n, Just x)
-      | otherwise = case f x of
-                      Nothing     -> return (0, n, Nothing)
-                      Just (w,x') -> do poke p w
-                                        go (p `plusPtr` 1) x' (n+1)
+    go !p !x !n = go' x n
+      where
+        go' !x' !n'
+          | n' == i    = return (0, n', Just x')
+          | otherwise = case f x' of
+                          Nothing      -> return (0, n', Nothing)
+                          Just (w,x'') -> do pokeByteOff p n' w
+                                             go' x'' (n'+1)
 {-# INLINE unfoldrN #-}
 
 -- ---------------------------------------------------------------------
