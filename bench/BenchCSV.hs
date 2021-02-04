@@ -124,6 +124,11 @@ import qualified Data.ByteString.Builder.Prim         as E
 
 -- To be used in a later comparison
 import qualified Data.DList                 as D
+
+-- bytestring benchmarks cannot depend on text because of a circular dependency.
+-- Anyways these comparisons are of historical interest only, so disabled for now.
+-- A curious soul can re-enable them by moving benchmarks to a separate package
+-- and adding text to build-depends.
 #ifdef MIN_VERSION_text
 import qualified Data.Text.Lazy             as TL
 import qualified Data.Text.Lazy.Encoding    as TL
