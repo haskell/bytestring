@@ -15,7 +15,7 @@ module BenchBoundsCheckFusion (benchBoundsCheckFusion) where
 import Prelude hiding (words)
 import Data.Monoid
 import Data.Foldable (foldMap)
-import Gauge
+import Test.Tasty.Bench
 
 import qualified Data.ByteString                  as S
 import qualified Data.ByteString.Lazy             as L

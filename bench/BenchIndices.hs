@@ -14,7 +14,7 @@ import           Data.Foldable                         (foldMap)
 import           Data.Maybe                            (listToMaybe)
 import           Data.Monoid
 import           Data.String
-import           Gauge
+import           Test.Tasty.Bench
 import           Prelude                               hiding (words)
 import           Data.Word                             (Word8)
 

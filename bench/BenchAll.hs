@@ -17,7 +17,7 @@ module Main (main) where
 import           Data.Foldable                         (foldMap)
 import           Data.Monoid
 import           Data.String
-import           Gauge
+import           Test.Tasty.Bench
 import           Prelude                               hiding (words)
 
 import qualified Data.ByteString                       as S
@@ -25,7 +25,6 @@ import qualified Data.ByteString.Char8                 as S8
 import qualified Data.ByteString.Lazy                  as L
 
 import           Data.ByteString.Builder
-import           Data.ByteString.Builder.ASCII
 import           Data.ByteString.Builder.Extra         (byteStringCopy,
                                                         byteStringInsert,
                                                         intHost)
