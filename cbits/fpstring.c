@@ -32,7 +32,6 @@
 #include "fpstring.h"
 #if defined(__x86_64__)
 #include <emmintrin.h>
-#include <pmmintrin.h>
 #include <xmmintrin.h>
 #endif
 
@@ -88,9 +87,9 @@ unsigned char fps_minimum(unsigned char *p, size_t len) {
     unsigned char *q, c = *p;
     q = p;
     if (len > 16) {
-        __m128i mins = _mm_lddqu_si128((void *) p);
+        __m128i mins = _mm_loadu_si128((__m128i *) p);
         for (q = p + 16; q < p + len - 16; q = q + 16)
-            mins = _mm_min_epu8(mins, _mm_lddqu_si128((void *) q));
+            mins = _mm_min_epu8(mins, _mm_loadu_si128((__m128i *) q));
         unsigned char dest[16];
         _mm_store_si128((__m128i *)dest, mins);
         for (int i = 0; i < 16; i++)
