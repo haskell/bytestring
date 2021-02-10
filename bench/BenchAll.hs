@@ -425,6 +425,8 @@ main = do
           nf (S.scanr (+) 0) s) foldInputs
       , bgroup "filter" $ map (\s -> bench (show $ S.length s) $
           nf (S.filter odd) s) foldInputs
+      , bgroup "minimum" $ map (\s -> bench (show $ S.length s) $
+          nf S.minimum s) foldInputs
       ]
     , bgroup "findIndexOrLength"
       [ bench "takeWhile"      $ nf (L.takeWhile even) zeroes
