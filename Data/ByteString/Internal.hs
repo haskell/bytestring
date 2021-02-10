@@ -241,7 +241,9 @@ data ByteString = BS {-# UNPACK #-} !(ForeignPtr Word8) -- payload
 pattern PS :: ForeignPtr Word8 -> Int -> Int -> ByteString
 pattern PS fp zero len <- BS fp ((0,) -> (zero, len)) where
   PS fp o len = BS (plusForeignPtr fp o) len
+#if __GLASGOW_HASKELL__ >= 802
 {-# COMPLETE PS #-}
+#endif
 #endif
 
 instance Eq  ByteString where
@@ -680,6 +682,7 @@ concat = \bss0 -> goLen0 bss0 bss0
    concat [x] = x
  #-}
 
+#if MIN_VERSION_base(4,9,0)
 -- | /O(log n)/ Repeats the given ByteString n times.
 times :: Integral a => a -> ByteString -> ByteString
 times n (BS fp len)
@@ -704,6 +707,7 @@ times n (BS fp len)
         memcpy (destptr `plusPtr` copied) destptr copied
         fillFrom destptr (copied * 2)
       | otherwise = memcpy (destptr `plusPtr` copied) destptr (size - copied)
+#endif
 
 -- | Add two non-negative numbers. Errors out on overflow.
 checkedAdd :: String -> Int -> Int -> Int

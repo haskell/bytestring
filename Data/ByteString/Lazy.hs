@@ -239,7 +239,6 @@ import System.IO                (Handle,openBinaryFile,stdin,stdout,withBinaryFi
 import System.IO.Error          (mkIOError, illegalOperationErrorType)
 import System.IO.Unsafe
 
-import Foreign.ForeignPtr       (withForeignPtr)
 import Foreign.Ptr
 import Foreign.Storable
 
