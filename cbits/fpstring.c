@@ -32,6 +32,7 @@
 #include "fpstring.h"
 #if defined(__x86_64__)
 #include <emmintrin.h>
+#include <pmmintrin.h>
 #include <xmmintrin.h>
 #endif
 
@@ -82,6 +83,26 @@ unsigned char fps_maximum(unsigned char *p, size_t len) {
 }
 
 /* find minimum char in a packed string */
+#if defined(__x86_64__)
+unsigned char fps_minimum(unsigned char *p, size_t len) {
+    unsigned char *q, c = *p;
+    q = p;
+    if (len > 16) {
+        __m128i mins = _mm_lddqu_si128((void *) p);
+        for (q = p + 16; q < p + len - 16; q = q + 16)
+            mins = _mm_min_epu8(mins, _mm_lddqu_si128((void *) q));
+        unsigned char dest[16];
+        _mm_store_si128((__m128i *)dest, mins);
+        for (int i = 0; i < 16; i++)
+            if (dest[i] < c)
+                c = dest[i];
+    }
+    for (; q < p + len; q++)
+        if (*q < c)
+            c = *q;
+    return c;
+}
+#else
 unsigned char fps_minimum(unsigned char *p, size_t len) {
     unsigned char *q, c = *p;
     for (q = p; q < p + len; q++)
@@ -89,6 +110,7 @@ unsigned char fps_minimum(unsigned char *p, size_t len) {
             c = *q;
     return c;
 }
+#endif
 
 /* count the number of occurences of a char in a string */
 size_t fps_count(unsigned char *p, size_t len, unsigned char w) {
