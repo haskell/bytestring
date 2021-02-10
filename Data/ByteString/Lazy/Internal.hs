@@ -275,6 +275,7 @@ concat = to
     to []               = Empty
     to (cs:css)         = go cs css
 
+#if MIN_VERSION_base(4,9,0)
 -- | Repeats the given ByteString n times.
 times :: Integral a => a -> ByteString -> ByteString
 times 0 _ = Empty
@@ -286,6 +287,7 @@ times n lbs0
   where
     go Empty = times (n-1) lbs0
     go (Chunk c cs) = Chunk c (go cs)
+#endif
 
 ------------------------------------------------------------------------
 -- Conversions
