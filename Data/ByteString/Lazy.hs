@@ -528,6 +528,8 @@ minimum (Chunk c cs) = foldlChunks (\n c' -> n `min` S.minimum c')
 
 -- | /O(c)/ 'compareLength' compares the length of a 'ByteString'
 -- to an 'Int64'
+--
+-- @since 0.11.1.0
 compareLength :: ByteString -> Int64 -> Ordering
 compareLength _ toCmp | toCmp < 0 = GT
 compareLength Empty toCmp         = compare 0 toCmp
@@ -1175,6 +1177,8 @@ zipWith f (Chunk a as) (Chunk b bs) = go a as b bs
 
 -- | A specialised version of `zipWith` for the common case of a
 -- simultaneous map over two ByteStrings, to build a 3rd.
+--
+-- @since 0.11.1.0
 packZipWith :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString -> ByteString
 packZipWith _ Empty _ = Empty
 packZipWith _ _ Empty = Empty

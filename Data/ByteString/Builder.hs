@@ -470,5 +470,6 @@ stringUtf8 = P.primMapListBounded P.charUtf8
 instance IsString Builder where
     fromString = stringUtf8
 
+-- | @since 0.11.1.0
 instance Show Builder where
     show = show . toLazyByteString

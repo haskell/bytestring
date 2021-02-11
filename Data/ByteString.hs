@@ -899,6 +899,8 @@ take n ps@(BS x l)
 -- ""
 -- >>> takeEnd 4 "abc"
 -- "abc"
+--
+-- @since 0.11.1.0
 takeEnd :: Int -> ByteString -> ByteString
 takeEnd n ps@(BS x len)
   | n >= len  = ps
@@ -924,6 +926,8 @@ drop n ps@(BS x l)
 -- "abcdefg"
 -- >>> dropEnd 4 "abc"
 -- ""
+--
+-- @since 0.11.1.0
 dropEnd :: Int -> ByteString -> ByteString
 dropEnd n ps@(BS x len)
     | n <= 0    = ps
@@ -1664,6 +1668,8 @@ zipWith f ps qs = case uncons ps of
 
 -- | A specialised version of `zipWith` for the common case of a
 -- simultaneous map over two ByteStrings, to build a 3rd.
+--
+-- @since 0.11.1.0
 packZipWith :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString -> ByteString
 packZipWith f (BS fp l) (BS fq m) = unsafeDupablePerformIO $
     withForeignPtr fp $ \a ->
