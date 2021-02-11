@@ -708,6 +708,8 @@ findIndex f = B.findIndex (f . w2c)
 -- | /O(n)/ The 'findIndexEnd' function takes a predicate and a 'ByteString' and
 -- returns the index of the last element in the ByteString
 -- satisfying the predicate.
+--
+-- @since 0.11.1.0
 findIndexEnd :: (Char -> Bool) -> ByteString -> Maybe Int
 findIndexEnd f = B.findIndexEnd (f . w2c)
 {-# INLINE [1] findIndexEnd #-}
@@ -856,6 +858,8 @@ zipWith f = B.zipWith ((. w2c) . f . w2c)
 
 -- | A specialised version of `zipWith` for the common case of a
 -- simultaneous map over two ByteStrings, to build a 3rd.
+--
+-- @since 0.11.1.0
 packZipWith :: (Char -> Char -> Char) -> ByteString -> ByteString -> ByteString
 packZipWith f = B.packZipWith f'
     where

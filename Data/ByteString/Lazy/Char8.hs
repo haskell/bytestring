@@ -573,6 +573,7 @@ elemIndex = L.elemIndex . c2w
 -- >   Nothing -> Nothing
 -- >   Just i  -> Just (length xs - 1 - i)
 --
+-- @since 0.11.1.0
 elemIndexEnd :: Char -> ByteString -> Maybe Int64
 elemIndexEnd = L.elemIndexEnd . c2w
 {-# INLINE elemIndexEnd #-}
@@ -592,6 +593,8 @@ findIndex f = L.findIndex (f . w2c)
 -- | The 'findIndexEnd' function takes a predicate and a 'ByteString' and
 -- returns the index of the last element in the ByteString
 -- satisfying the predicate.
+--
+-- @since 0.11.1.0
 findIndexEnd :: (Char -> Bool) -> ByteString -> Maybe Int64
 findIndexEnd f = L.findIndexEnd (f . w2c)
 {-# INLINE findIndexEnd #-}
@@ -713,6 +716,8 @@ zipWith f = L.zipWith ((. w2c) . f . w2c)
 
 -- | A specialised version of `zipWith` for the common case of a
 -- simultaneous map over two ByteStrings, to build a 3rd.
+--
+-- @since 0.11.1.0
 packZipWith :: (Char -> Char -> Char) -> ByteString -> ByteString -> ByteString
 packZipWith f = L.packZipWith f'
     where
@@ -721,6 +726,8 @@ packZipWith f = L.packZipWith f'
 
 -- | /O(n)/ 'unzip' transforms a list of pairs of chars into a pair of
 -- ByteStrings. Note that this performs two 'pack' operations.
+--
+-- @since 0.11.1.0
 unzip :: [(Char, Char)] -> (ByteString, ByteString)
 unzip ls = (pack (fmap fst ls), pack (fmap snd ls))
 {-# INLINE unzip #-}
