@@ -4,7 +4,7 @@
 
 [0.12.0.0]: https://github.com/haskell/bytestring/compare/0.11.1.0...0.12.0.0
 
-[0.11.1.0] — Unreleased
+[0.11.1.0] — February 2021
 
 * [Add `Data.ByteString.Char8.findIndexEnd` and `Data.ByteString.Lazy.Char8.{elemIndexEnd,findIndexEnd,unzip}`](https://github.com/haskell/bytestring/pull/342)
 * [Expose `ShortByteString` constructor from `Data.ByteString.Short`](https://github.com/haskell/bytestring/pull/313)
