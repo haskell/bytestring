@@ -139,6 +139,7 @@ import Data.String              (IsString(..))
 
 import Control.Exception        (assert)
 
+import Data.Bits                ((.&.))
 import Data.Char                (ord)
 import Data.Word
 
@@ -737,28 +738,22 @@ c2w = fromIntegral . ord
 {-# INLINE c2w #-}
 
 -- | Selects words corresponding to white-space characters in the Latin-1 range
--- ordered by frequency.
 isSpaceWord8 :: Word8 -> Bool
-isSpaceWord8 w =
-    w == 0x20 ||
-    w == 0x0A || -- LF, \n
-    w == 0x09 || -- HT, \t
-    w == 0x0C || -- FF, \f
-    w == 0x0D || -- CR, \r
-    w == 0x0B || -- VT, \v
-    w == 0xA0    -- spotted by QC..
+isSpaceWord8 w8 =
+    -- Avoid the cost of narrowing arithmetic results to Word8,
+    -- the conversion from Word8 to Word is free.
+    let w :: Word
+        !w = fromIntegral w8
+     in w .&. 0x50 == 0    -- Quick non-whitespace filter
+        && w - 0x21 > 0x7e -- Second non-whitespace filter
+        && ( w == 0x20     -- SP
+          || w == 0xa0     -- NBSP
+          || w - 0x09 < 5) -- HT, NL, VT, FF, CR
 {-# INLINE isSpaceWord8 #-}
 
 -- | Selects white-space characters in the Latin-1 range
 isSpaceChar8 :: Char -> Bool
-isSpaceChar8 c =
-    c == ' '     ||
-    c == '\t'    ||
-    c == '\n'    ||
-    c == '\r'    ||
-    c == '\f'    ||
-    c == '\v'    ||
-    c == '\xa0'
+isSpaceChar8 = isSpaceWord8 . c2w
 {-# INLINE isSpaceChar8 #-}
 
 overflowError :: String -> a
