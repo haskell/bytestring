@@ -61,7 +61,7 @@
  * [Add `findIndexEnd` to `Data.ByteString` and `Data.ByteString.Lazy`](https://github.com/haskell/bytestring/pull/155)
  * [Add `partition` to `Data.ByteString.Char8` and `Data.ByteString.Lazy.Char8`](https://github.com/haskell/bytestring/pull/251)
  * [Add `IsList` instances for strict and lazy `ByteString` and for `ShortByteString`](https://github.com/haskell/bytestring/pull/219)
- * [Add `createUpToN'` and `unsafeCreateUpToN'` to `Data.ByteString.Internal`](https://github.com/haskell/bytestring/pull/245)
+ * [Add `createUpToN'` and `unsafeCreateUptoN'` to `Data.ByteString.Internal`](https://github.com/haskell/bytestring/pull/245)
  * [Add `boundedPrim` to `Data.ByteString.Builder.Prim.Internal` and deprecate `boudedPrim`](https://github.com/haskell/bytestring/pull/246)
  * [Deprecate the `Data.ByteString.Lazy.Builder` and `Data.ByteString.Lazy.Builder.{ASCII,Extras}` modules](https://github.com/haskell/bytestring/pull/250)
  * [Fix documented complexity of `Data.ByteString.Lazy.length`](https://github.com/haskell/bytestring/pull/255)
