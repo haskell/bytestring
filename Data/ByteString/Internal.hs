@@ -227,6 +227,7 @@ plusForeignPtr (ForeignPtr addr guts) (I# offset) = ForeignPtr (plusAddr# addr o
 --
 data ByteString = BS {-# UNPACK #-} !(ForeignPtr Word8) -- payload
                      {-# UNPACK #-} !Int                -- length
+                     -- ^ @since 0.11.0.0
     deriving (Typeable)
 
 
@@ -392,6 +393,8 @@ unsafePackAddress addr# = do
 -- that context, there is no need for the sequencing guarantees that 'IO'
 -- provides. On GHC 9.0 and up, this function uses the @FinalPtr@ data
 -- constructor for @ForeignPtrContents@.
+--
+-- @since 0.11.0.0
 unsafePackLiteral :: Addr# -> ByteString
 unsafePackLiteral addr# =
 #if __GLASGOW_HASKELL__ >= 811
@@ -507,6 +510,7 @@ fromForeignPtr :: ForeignPtr Word8
 fromForeignPtr fp o = BS (plusForeignPtr fp o)
 {-# INLINE fromForeignPtr #-}
 
+-- | @since 0.11.0.0
 fromForeignPtr0 :: ForeignPtr Word8
                -> Int -- ^ Length
                -> ByteString
@@ -519,6 +523,8 @@ toForeignPtr (BS ps l) = (ps, 0, l)
 {-# INLINE toForeignPtr #-}
 
 -- | /O(1)/ Deconstruct a ForeignPtr from a ByteString
+--
+-- @since 0.11.0.0
 toForeignPtr0 :: ByteString -> (ForeignPtr Word8, Int) -- ^ (ptr, length)
 toForeignPtr0 (BS ps l) = (ps, l)
 {-# INLINE toForeignPtr0 #-}
