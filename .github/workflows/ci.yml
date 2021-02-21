@@ -11,32 +11,7 @@ defaults:
     shell: bash
 
 jobs:
-  ghcprep:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: true
-      matrix:
-        os: [ubuntu-latest]
-        ghc: ['8.0', '8.2', '8.4', '8.6', '8.8', '8.10', '9.0']
-    steps:
-    - uses: actions/checkout@v2
-    - name: Update cabal package database
-      run: cabal update
-    - uses: actions/cache@v2.1.4
-      name: Cache cabal stuff
-      with:
-        path: |
-          ${{ steps.setup-haskell-cabal.outputs.cabal-store }}
-          dist-newstyle
-        key: ${{ runner.os }}-${{ matrix.ghc }}
-    - name: Install GHC
-      run: |
-        sudo add-apt-repository ppa:hvr/ghc -y
-        sudo apt-get update
-        sudo apt-get install ghc-${{ matrix.ghc }}
-
   build:
-    needs: ghcprep
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: true
@@ -80,7 +55,6 @@ jobs:
       run: cabal haddock
 
   build-freebsd:
-    needs: build
     # This job intentionally is using macOS because at the time of the writing
     # Linux and Windows environments don't have the necessary virtualization features.
     # See https://github.com/vmactions/freebsd-vm#under-the-hood.
