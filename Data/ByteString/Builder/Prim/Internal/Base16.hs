@@ -1,7 +1,4 @@
-{-# LANGUAGE CPP #-}
-#if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE Trustworthy #-}
-#endif
 -- |
 -- Copyright   : (c) 2011 Simon Meier
 -- License     : BSD3-style (see LICENSE)
@@ -27,17 +24,9 @@ module Data.ByteString.Builder.Prim.Internal.Base16 (
 import qualified Data.ByteString          as S
 import qualified Data.ByteString.Internal as S
 
-#if MIN_VERSION_base(4,4,0)
-#if MIN_VERSION_base(4,7,0)
 import           Foreign
-#else
-import           Foreign hiding (unsafePerformIO, unsafeForeignPtrToPtr)
-#endif
 import           Foreign.ForeignPtr.Unsafe (unsafeForeignPtrToPtr)
 import           System.IO.Unsafe (unsafePerformIO)
-#else
-import           Foreign
-#endif
 
 -- Creating the encoding table
 ------------------------------

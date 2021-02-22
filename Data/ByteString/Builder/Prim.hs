@@ -1,13 +1,7 @@
-{-# LANGUAGE CPP, BangPatterns, ScopedTypeVariables #-}
+{-# LANGUAGE BangPatterns, ScopedTypeVariables #-}
 {-# LANGUAGE MagicHash, UnboxedTuples, PatternGuards #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
-#if __GLASGOW_HASKELL__ == 700
--- This is needed as a workaround for an old bug in GHC 7.0.1 (Trac #4498)
-{-# LANGUAGE MonoPatBinds #-}
-#endif
-#if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE Trustworthy #-}
-#endif
 {- | Copyright : (c) 2010-2011 Simon Meier
                  (c) 2010      Jasper van der Jeugt
 License        : BSD3-style (see LICENSE)
@@ -472,17 +466,9 @@ import qualified Data.ByteString.Builder.Prim.Internal as I (size, sizeBound)
 import           Data.ByteString.Builder.Prim.Binary
 import           Data.ByteString.Builder.Prim.ASCII
 
-#if MIN_VERSION_base(4,4,0)
-#if MIN_VERSION_base(4,7,0)
 import           Foreign
 import           Foreign.C.Types
-#else
-import           Foreign hiding (unsafeForeignPtrToPtr)
-#endif
 import           Foreign.ForeignPtr.Unsafe (unsafeForeignPtrToPtr)
-#else
-import           Foreign
-#endif
 import           GHC.Word (Word8 (..))
 import           GHC.Exts
 import           GHC.IO
@@ -680,12 +666,6 @@ primMapLazyByteStringBounded w =
 ------------------------------------------------------------------------------
 -- Raw CString encoding
 ------------------------------------------------------------------------------
-
-#if !MIN_VERSION_base(4,7,0)
--- eqWord# et al. return Bools prior to GHC 7.6
-isTrue# :: Bool -> Bool
-isTrue# x = x
-#endif
 
 -- | A null-terminated ASCII encoded 'CString'. Null characters are not representable.
 --
