@@ -1,8 +1,7 @@
-{-# LANGUAGE CPP, BangPatterns #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE MagicHash #-}
 {-# OPTIONS_HADDOCK prune #-}
-#if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE Trustworthy #-}
-#endif
 
 -- |
 -- Module      : Data.ByteString.Char8
@@ -266,15 +265,9 @@ import Data.ByteString (empty,null,length,tail,init,append
 
 import Data.ByteString.Internal
 
-#if !(MIN_VERSION_base(4,8,0))
-import Control.Applicative ((<$>))
-#endif
-
 import Data.Char    ( isSpace )
-#if MIN_VERSION_base(4,9,0)
 -- See bytestring #70
 import GHC.Char (eqChar)
-#endif
 import qualified Data.List as List (intersperse)
 
 import System.IO    (Handle,stdout)
@@ -543,21 +536,12 @@ break f = B.break (f . w2c)
 {-# INLINE [1] break #-}
 
 -- See bytestring #70
-#if MIN_VERSION_base(4,9,0)
 {-# RULES
 "ByteString specialise break (x==)" forall x.
     break (x `eqChar`) = breakChar x
 "ByteString specialise break (==x)" forall x.
     break (`eqChar` x) = breakChar x
   #-}
-#else
-{-# RULES
-"ByteString specialise break (x==)" forall x.
-    break (x ==) = breakChar x
-"ByteString specialise break (==x)" forall x.
-    break (== x) = breakChar x
-  #-}
-#endif
 
 -- INTERNAL:
 
@@ -720,7 +704,6 @@ findIndices :: (Char -> Bool) -> ByteString -> [Int]
 findIndices f = B.findIndices (f . w2c)
 {-# INLINE [1] findIndices #-}
 
-#if MIN_VERSION_base(4,9,0)
 {-# RULES
 "ByteString specialise findIndex (x==)" forall x.
     findIndex (x `eqChar`) = elemIndex x
@@ -731,18 +714,6 @@ findIndices f = B.findIndices (f . w2c)
 "ByteString specialise findIndices (==x)" forall x.
     findIndices (`eqChar` x) = elemIndices x
   #-}
-#else
-{-# RULES
-"ByteString specialise findIndex (x==)" forall x.
-    findIndex (x==) = elemIndex x
-"ByteString specialise findIndex (==x)" forall x.
-    findIndex (==x) = elemIndex x
-"ByteString specialise findIndices (x==)" forall x.
-    findIndices (x==) = elemIndices x
-"ByteString specialise findIndices (==x)" forall x.
-    findIndices (==x) = elemIndices x
-  #-}
-#endif
 
 
 -- | count returns the number of times its argument appears in the ByteString

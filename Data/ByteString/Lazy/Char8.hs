@@ -1,8 +1,6 @@
-{-# LANGUAGE CPP, BangPatterns #-}
+{-# LANGUAGE BangPatterns #-}
 {-# OPTIONS_HADDOCK prune #-}
-#if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE Trustworthy #-}
-#endif
 
 -- |
 -- Module      : Data.ByteString.Lazy.Char8
@@ -221,10 +219,6 @@ import qualified Data.ByteString.Unsafe as B
 import Data.ByteString.Lazy.Internal
 
 import Data.ByteString.Internal (w2c, c2w, isSpaceWord8)
-
-#if !(MIN_VERSION_base(4,8,0))
-import Control.Applicative ((<$>))
-#endif
 
 import Data.Int (Int64)
 import qualified Data.List as List

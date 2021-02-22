@@ -1,8 +1,5 @@
-{-# LANGUAGE CPP          #-}
 {-# LANGUAGE BangPatterns #-}
-#if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE Trustworthy #-}
-#endif
 -----------------------------------------------------------------------------
 -- | Copyright : (c) 2010      Jasper Van der Jeugt
 --               (c) 2010-2011 Simon Meier

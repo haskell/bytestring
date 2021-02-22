@@ -3,9 +3,7 @@
              UnliftedFFITypes #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
-#if __GLASGOW_HASKELL__ >= 703
 {-# LANGUAGE Unsafe #-}
-#endif
 {-# OPTIONS_HADDOCK not-home #-}
 
 -- |
@@ -50,42 +48,26 @@ import Data.ByteString.Internal (ByteString(..), accursedUnutterablePerformIO, c
 
 import Data.Typeable    (Typeable)
 import Data.Data        (Data(..), mkNoRepType)
-#if MIN_VERSION_base(4,9,0)
 import Data.Semigroup   (Semigroup((<>)))
-#endif
 import Data.Monoid      (Monoid(..))
 import Data.String      (IsString(..))
 import Control.DeepSeq  (NFData(..))
 import qualified Data.List as List (length)
 import Foreign.C.String (CString, CStringLen)
-#if MIN_VERSION_base(4,7,0)
 import Foreign.C.Types  (CSize(..), CInt(..))
-#elif MIN_VERSION_base(4,4,0)
-import Foreign.C.Types  (CSize(..), CInt(..), CLong(..))
-#else
-import Foreign.C.Types  (CSize, CInt, CLong)
-#endif
 import Foreign.Marshal.Alloc (allocaBytes)
 import Foreign.ForeignPtr (touchForeignPtr)
-#if MIN_VERSION_base(4,5,0)
 import Foreign.ForeignPtr.Unsafe (unsafeForeignPtrToPtr)
-#else
-import Foreign.ForeignPtr (unsafeForeignPtrToPtr)
-#endif
 import Foreign.Storable (pokeByteOff)
 
-#if MIN_VERSION_base(4,5,0)
 import qualified GHC.Exts
-#endif
 import GHC.Exts ( Int(I#), Int#, Ptr(Ptr), Addr#, Char(C#)
                 , State#, RealWorld
                 , ByteArray#, MutableByteArray#
                 , newByteArray#
-#if MIN_VERSION_base(4,6,0)
                 , newPinnedByteArray#
                 , byteArrayContents#
                 , unsafeCoerce#
-#endif
 #if MIN_VERSION_base(4,10,0)
                 , isByteArrayPinned#
                 , isTrue#
@@ -95,11 +77,7 @@ import GHC.Exts ( Int(I#), Int#, Ptr(Ptr), Addr#, Char(C#)
                 , writeWord8Array#, writeCharArray#
                 , unsafeFreezeByteArray# )
 import GHC.IO
-#if MIN_VERSION_base(4,6,0)
 import GHC.ForeignPtr (ForeignPtr(ForeignPtr), ForeignPtrContents(PlainPtr))
-#else
-import GHC.ForeignPtr (mallocPlainForeignPtrBytes)
-#endif
 import GHC.ST         (ST(ST), runST)
 import GHC.Word
 
@@ -139,18 +117,12 @@ instance Eq ShortByteString where
 instance Ord ShortByteString where
     compare = compareBytes
 
-#if MIN_VERSION_base(4,9,0)
 instance Semigroup ShortByteString where
     (<>)    = append
-#endif
 
 instance Monoid ShortByteString where
     mempty  = empty
-#if MIN_VERSION_base(4,9,0)
     mappend = (<>)
-#else
-    mappend = append
-#endif
     mconcat = concat
 
 instance NFData ShortByteString where
@@ -162,13 +134,11 @@ instance Show ShortByteString where
 instance Read ShortByteString where
     readsPrec p str = [ (packChars x, y) | (x, y) <- readsPrec p str ]
 
-#if MIN_VERSION_base(4,7,0)
 -- | @since 0.10.12.0
 instance GHC.Exts.IsList ShortByteString where
   type Item ShortByteString = Word8
   fromList = packBytes
   toList   = unpackBytes
-#endif
 
 -- | Beware: 'fromString' truncates multi-byte characters to octets.
 -- e.g. "枯朶に烏のとまりけり秋の暮" becomes �6k�nh~�Q��n�
@@ -281,23 +251,12 @@ fromShort !sbs = unsafeDupablePerformIO (fromShortIO sbs)
 
 fromShortIO :: ShortByteString -> IO ByteString
 fromShortIO sbs = do
-#if MIN_VERSION_base(4,6,0)
     let len = length sbs
     mba@(MBA# mba#) <- stToIO (newPinnedByteArray len)
     stToIO (copyByteArray (asBA sbs) 0 mba 0 len)
     let fp = ForeignPtr (byteArrayContents# (unsafeCoerce# mba#))
                         (PlainPtr mba#)
     return (BS fp len)
-#else
-    -- Before base 4.6 ForeignPtrContents is not exported from GHC.ForeignPtr
-    -- so we cannot get direct access to the mbarr#
-    let len = length sbs
-    fptr <- mallocPlainForeignPtrBytes len
-    let ptr = unsafeForeignPtrToPtr fptr
-    stToIO (copyByteArrayToAddr (asBA sbs) 0 ptr len)
-    touchForeignPtr fptr
-    return (BS fptr len)
-#endif
 
 
 ------------------------------------------------------------------------
@@ -491,12 +450,10 @@ newByteArray (I# len#) =
     ST $ \s -> case newByteArray# len# s of
                  (# s, mba# #) -> (# s, MBA# mba# #)
 
-#if MIN_VERSION_base(4,6,0)
 newPinnedByteArray :: Int -> ST s (MBA s)
 newPinnedByteArray (I# len#) =
     ST $ \s -> case newPinnedByteArray# len# s of
                  (# s, mba# #) -> (# s, MBA# mba# #)
-#endif
 
 unsafeFreezeByteArray :: MBA s -> ST s BA
 unsafeFreezeByteArray (MBA# mba#) =
@@ -558,77 +515,9 @@ copyByteArray#       :: ByteArray# -> Int#
                      -> Int#
                      -> State# s -> State# s
 
-#if MIN_VERSION_base(4,7,0)
-
--- These exist as real primops in ghc-7.8, and for before that we use
--- FFI to C memcpy.
 copyAddrToByteArray# = GHC.Exts.copyAddrToByteArray#
 copyByteArrayToAddr# = GHC.Exts.copyByteArrayToAddr#
-
-#else
-
-copyAddrToByteArray# src dst dst_off len =
-  unIO_ (memcpy_AddrToByteArray dst (csize dst_off) src 0 (csize len))
-
-copyAddrToByteArray0 :: Addr# -> MutableByteArray# s -> Int#
-                     -> State# RealWorld -> State# RealWorld
-copyAddrToByteArray0 src dst len =
-  unIO_ (memcpy_AddrToByteArray0 dst src (csize len))
-
-{-# INLINE [0] copyAddrToByteArray# #-}
-{-# RULES "copyAddrToByteArray# dst_off=0"
-      forall src dst len s.
-          copyAddrToByteArray# src dst 0# len s
-        = copyAddrToByteArray0 src dst    len s  #-}
-
-foreign import ccall unsafe "fpstring.h fps_memcpy_offsets"
-  memcpy_AddrToByteArray :: MutableByteArray# s -> CSize -> Addr# -> CSize -> CSize -> IO ()
-
-foreign import ccall unsafe "string.h memcpy"
-  memcpy_AddrToByteArray0 :: MutableByteArray# s -> Addr# -> CSize -> IO ()
-
-
-copyByteArrayToAddr# src src_off dst len =
-  unIO_ (memcpy_ByteArrayToAddr dst 0 src (csize src_off) (csize len))
-
-copyByteArrayToAddr0 :: ByteArray# -> Addr# -> Int#
-                     -> State# RealWorld -> State# RealWorld
-copyByteArrayToAddr0 src dst len =
-  unIO_ (memcpy_ByteArrayToAddr0 dst src (csize len))
-
-{-# INLINE [0] copyByteArrayToAddr# #-}
-{-# RULES "copyByteArrayToAddr# src_off=0"
-      forall src dst len s.
-          copyByteArrayToAddr# src 0# dst len s
-        = copyByteArrayToAddr0 src    dst len s  #-}
-
-foreign import ccall unsafe "fpstring.h fps_memcpy_offsets"
-  memcpy_ByteArrayToAddr :: Addr# -> CSize -> ByteArray# -> CSize -> CSize -> IO ()
-
-foreign import ccall unsafe "string.h memcpy"
-  memcpy_ByteArrayToAddr0 :: Addr# -> ByteArray# -> CSize -> IO ()
-
-
-unIO_ :: IO () -> State# RealWorld -> State# RealWorld
-unIO_ io s = case unIO io s of (# s, _ #) -> s
-
-csize :: Int# -> CSize
-csize i# = fromIntegral (I# i#)
-#endif
-
-#if MIN_VERSION_base(4,5,0)
 copyByteArray# = GHC.Exts.copyByteArray#
-#else
-copyByteArray# src src_off dst dst_off len s =
-    unST_ (unsafeIOToST
-      (memcpy_ByteArray dst (csize dst_off) src (csize src_off) (csize len))) s
-  where
-    unST (ST st) = st
-    unST_ st s = case unST st s of (# s, _ #) -> s
-
-foreign import ccall unsafe "fpstring.h fps_memcpy_offsets"
-  memcpy_ByteArray :: MutableByteArray# s -> CSize -> ByteArray# -> CSize -> CSize -> IO ()
-#endif
 
 -- | /O(n)./ Construct a new @ShortByteString@ from a @CString@. The
 -- resulting @ShortByteString@ is an immutable copy of the original

@@ -1,11 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables, CPP, BangPatterns, RankNTypes, TupleSections #-}
-#if __GLASGOW_HASKELL__ == 700
--- This is needed as a workaround for an old bug in GHC 7.0.1 (Trac #4498)
-{-# LANGUAGE MonoPatBinds #-}
-#endif
-#if __GLASGOW_HASKELL__ >= 703
 {-# LANGUAGE Unsafe #-}
-#endif
 {-# OPTIONS_HADDOCK not-home #-}
 -- | Copyright : (c) 2010 - 2011 Simon Meier
 -- License     : BSD3-style (see LICENSE)
@@ -134,12 +128,8 @@ module Data.ByteString.Builder.Internal (
 
 import           Control.Arrow (second)
 
-#if !(MIN_VERSION_base(4,11,0)) && MIN_VERSION_base(4,9,0)
+#if !(MIN_VERSION_base(4,11,0))
 import           Data.Semigroup (Semigroup((<>)))
-#endif
-#if !(MIN_VERSION_base(4,8,0))
-import           Data.Monoid
-import           Control.Applicative (Applicative(..),(<$>))
 #endif
 
 import qualified Data.ByteString               as S
@@ -153,18 +143,9 @@ import           GHC.IO.Handle.Types (Handle__, haByteBuffer, haBufferMode)
 import           System.IO (hFlush, BufferMode(..), Handle)
 import           Data.IORef
 
-#if MIN_VERSION_base(4,4,0)
-#if MIN_VERSION_base(4,7,0)
 import           Foreign
-#else
-import           Foreign hiding (unsafeForeignPtrToPtr)
-#endif
 import           Foreign.ForeignPtr.Unsafe (unsafeForeignPtrToPtr)
 import           System.IO.Unsafe (unsafeDupablePerformIO)
-#else
-import           Foreign
-import           GHC.IO (unsafeDupablePerformIO)
-#endif
 
 ------------------------------------------------------------------------------
 -- Buffers
@@ -401,21 +382,15 @@ empty = Builder ($)
 append :: Builder -> Builder -> Builder
 append (Builder b1) (Builder b2) = Builder $ b1 . b2
 
-#if MIN_VERSION_base(4,9,0)
 instance Semigroup Builder where
   {-# INLINE (<>) #-}
   (<>) = append
-#endif
 
 instance Monoid Builder where
   {-# INLINE mempty #-}
   mempty = empty
   {-# INLINE mappend #-}
-#if MIN_VERSION_base(4,9,0)
   mappend = (<>)
-#else
-  mappend = append
-#endif
   {-# INLINE mconcat #-}
   mconcat = foldr mappend mempty
 

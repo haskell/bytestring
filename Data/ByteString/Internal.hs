@@ -3,12 +3,8 @@
             UnboxedTuples, DeriveDataTypeable #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
-#if __GLASGOW_HASKELL__ >= 800
 {-# LANGUAGE PatternSynonyms, ViewPatterns #-}
-#endif
-#if __GLASGOW_HASKELL__ >= 703
 {-# LANGUAGE Unsafe #-}
-#endif
 {-# OPTIONS_HADDOCK not-home #-}
 
 -- |
@@ -33,9 +29,7 @@ module Data.ByteString.Internal (
         -- * The @ByteString@ type and representation
         ByteString
         ( BS
-#if __GLASGOW_HASKELL__ >= 800
         , PS -- backwards compatibility shim
-#endif
         ), -- instances: Eq, Ord, Show, Read, Data, Typeable
 
         -- * Internal indexing
@@ -105,27 +99,15 @@ import Control.Monad            (void)
 import Foreign.ForeignPtr       (ForeignPtr, withForeignPtr)
 import Foreign.Ptr              (Ptr, FunPtr, plusPtr, minusPtr)
 import Foreign.Storable         (Storable(..))
-
-#if MIN_VERSION_base(4,5,0) || __GLASGOW_HASKELL__ >= 703
 import Foreign.C.Types          (CInt(..), CSize(..))
-#else
-import Foreign.C.Types          (CInt, CSize)
-#endif
-
 import Foreign.C.String         (CString)
 
 #if MIN_VERSION_base(4,13,0)
 import Data.Semigroup           (Semigroup (sconcat, stimes))
-import Data.List.NonEmpty       (NonEmpty ((:|)))
-#elif MIN_VERSION_base(4,9,0)
+#else
 import Data.Semigroup           (Semigroup ((<>), sconcat, stimes))
+#endif
 import Data.List.NonEmpty       (NonEmpty ((:|)))
-#endif
-
-#if !(MIN_VERSION_base(4,8,0))
-import Data.Monoid              (Monoid(..))
-#endif
-
 
 import Control.DeepSeq          (NFData(rnf))
 
@@ -141,21 +123,10 @@ import Data.Typeable            (Typeable)
 import Data.Data                (Data(..), mkNoRepType)
 
 import GHC.Base                 (nullAddr#,realWorld#,unsafeChr)
-
-#if MIN_VERSION_base(4,7,0)
 import GHC.Exts                 (IsList(..))
-#endif
-
-#if MIN_VERSION_base(4,4,0)
 import GHC.CString              (unpackCString#)
-#else
-import GHC.Base                 (unpackCString#)
-#endif
-
 import GHC.Prim                 (Addr#)
-
 import GHC.IO                   (IO(IO),unsafeDupablePerformIO)
-
 import GHC.ForeignPtr           (ForeignPtr(ForeignPtr)
 #if __GLASGOW_HASKELL__ < 900
                                 , newForeignPtr_
@@ -225,7 +196,6 @@ data ByteString = BS {-# UNPACK #-} !(ForeignPtr Word8) -- payload
     deriving (Typeable)
 
 
-#if __GLASGOW_HASKELL__ >= 800
 -- |
 -- @'PS' foreignPtr offset length@ represents a 'ByteString' with data
 -- backed by a given @foreignPtr@, starting at a given @offset@ in bytes
@@ -245,7 +215,6 @@ pattern PS fp zero len <- BS fp ((0,) -> (zero, len)) where
 #if __GLASGOW_HASKELL__ >= 802
 {-# COMPLETE PS #-}
 #endif
-#endif
 
 instance Eq  ByteString where
     (==)    = eq
@@ -253,20 +222,14 @@ instance Eq  ByteString where
 instance Ord ByteString where
     compare = compareBytes
 
-#if MIN_VERSION_base(4,9,0)
 instance Semigroup ByteString where
     (<>)    = append
     sconcat (b:|bs) = concat (b:bs)
-    stimes = times
-#endif
+    stimes  = times
 
 instance Monoid ByteString where
     mempty  = BS nullForeignPtr 0
-#if MIN_VERSION_base(4,9,0)
     mappend = (<>)
-#else
-    mappend = append
-#endif
     mconcat = concat
 
 instance NFData ByteString where
@@ -278,13 +241,11 @@ instance Show ByteString where
 instance Read ByteString where
     readsPrec p str = [ (packChars x, y) | (x, y) <- readsPrec p str ]
 
-#if MIN_VERSION_base(4,7,0)
 -- | @since 0.10.12.0
 instance IsList ByteString where
   type Item ByteString = Word8
   fromList = packBytes
   toList   = unpackBytes
-#endif
 
 -- | Beware: 'fromString' truncates multi-byte characters to octets.
 -- e.g. "枯朶に烏のとまりけり秋の暮" becomes �6k�nh~�Q��n�
@@ -688,7 +649,6 @@ concat = \bss0 -> goLen0 bss0 bss0
    concat [x] = x
  #-}
 
-#if MIN_VERSION_base(4,9,0)
 -- | /O(log n)/ Repeats the given ByteString n times.
 times :: Integral a => a -> ByteString -> ByteString
 times n (BS fp len)
@@ -713,7 +673,6 @@ times n (BS fp len)
         memcpy (destptr `plusPtr` copied) destptr copied
         fillFrom destptr (copied * 2)
       | otherwise = memcpy (destptr `plusPtr` copied) destptr (size - copied)
-#endif
 
 -- | Add two non-negative numbers. Errors out on overflow.
 checkedAdd :: String -> Int -> Int -> Int

@@ -1,9 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables, CPP, ForeignFunctionInterface,
              MagicHash, UnboxedTuples #-}
 {-# OPTIONS_HADDOCK not-home #-}
-#if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE Trustworthy #-}
-#endif
 -- | Copyright : (c) 2010 - 2011 Simon Meier
 -- License     : BSD3-style (see LICENSE)
 --
@@ -95,14 +93,6 @@ import GHC.Num.Integer
 
 #define HAS_INTEGER_CONSTR 1
 #define IS S#
-
-# if !(MIN_VERSION_base(4,8,0))
-import           Data.Monoid (mappend)
-# endif
-
-# if __GLASGOW_HASKELL__ < 710
-import           GHC.Num     (quotRemInteger)
-# endif
 
 import GHC.Integer.GMP.Internals
 #endif
