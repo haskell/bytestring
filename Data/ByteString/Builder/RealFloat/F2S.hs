@@ -1,5 +1,4 @@
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE Strict #-}
 {-# LANGUAGE BangPatterns, MagicHash, UnboxedTuples #-}
 
 module Data.ByteString.Builder.RealFloat.F2S
@@ -70,21 +69,21 @@ mulPow5DivPow2 :: Word# -> Int# -> Int# -> Word#
 mulPow5DivPow2 m i j = mulShift32Unboxed m (get_float_pow5_split i) j
 
 acceptBounds :: Word32 -> Bool
-acceptBounds (W32# v) = boxToBool (acceptBoundsUnboxed v)
+acceptBounds !(W32# v) = boxToBool (acceptBoundsUnboxed v)
 
 data BoundsState = BoundsState
-    { vu :: Word32
-    , vv :: Word32
-    , vw :: Word32
-    , lastRemovedDigit :: Word32
-    , vuIsTrailingZeros :: Bool
-    , vvIsTrailingZeros :: Bool
+    { vu :: !Word32
+    , vv :: !Word32
+    , vw :: !Word32
+    , lastRemovedDigit :: !Word32
+    , vuIsTrailingZeros :: !Bool
+    , vvIsTrailingZeros :: !Bool
     }
 
 trimTrailing' :: BoundsState -> (BoundsState, Int32)
-trimTrailing' d
+trimTrailing' !d
   | vw' > vu' =
-    let (vv', vvRem) = fquotRem10Boxed $ vv d
+    let !(vv', vvRem) = fquotRem10Boxed $ vv d
      in fmap ((+) 1) . trimTrailing' $
          d { vu = vu'
            , vv = vv'
@@ -99,10 +98,10 @@ trimTrailing' d
     vw' = fwrapped fquot10 (vw d)
 
 trimTrailing'' :: BoundsState -> (BoundsState, Int32)
-trimTrailing'' d
+trimTrailing'' !d
   | vuRem == 0 =
-    let (vv', vvRem) = fquotRem10Boxed $ vv d
-        vw' = fwrapped fquot10 (vw d)
+    let !(vv', vvRem) = fquotRem10Boxed $ vv d
+        !vw' = fwrapped fquot10 (vw d)
      in fmap ((+) 1) . trimTrailing'' $
          d { vu = vu'
            , vv = vv'
@@ -115,9 +114,9 @@ trimTrailing'' d
     (vu', vuRem) = fquotRem10Boxed $ vu d
 
 trimTrailing :: BoundsState -> (BoundsState, Int32)
-trimTrailing d =
-  let (d', r) = trimTrailing' d
-      (d'', r') = if vuIsTrailingZeros d'
+trimTrailing !d =
+  let !(d', r) = trimTrailing' d
+      !(d'', r') = if vuIsTrailingZeros d'
                      then trimTrailing'' d'
                      else (d', 0)
       res = if vvIsTrailingZeros d'' && lastRemovedDigit d'' == 5 && vv d'' `rem` 2 == 0
@@ -133,11 +132,11 @@ trimNoTrailing' u' v' w' lastRemoved count =
            in trimNoTrailing' vu' vv' vw' ld (count +# 1#)
     0# -> (# u', v', lastRemoved , count #)
   where
-    vu' = fquot10 u'
-    vw' = fquot10 w'
+    !vu' = fquot10 u'
+    !vw' = fquot10 w'
 
 trimNoTrailing :: BoundsState -> (BoundsState, Int32)
-trimNoTrailing (BoundsState (W32# u') (W32# v') (W32# w') (W32# ld) _ _) =
+trimNoTrailing !(BoundsState (W32# u') (W32# v') (W32# w') (W32# ld) _ _) =
   let !(# vu', vv', ld', c' #) = trimNoTrailing' u' v' w' ld 0#
    in (BoundsState (W32# vu') (W32# vv') 0 (W32# ld') False False, I32# c')
 
@@ -150,7 +149,7 @@ f2dGT (I32# e2) (W32# u) (W32# v) (W32# w) =
       u' = mulPow5InvDivPow2 u q i
       v' = mulPow5InvDivPow2 v q i
       w' = mulPow5InvDivPow2 w q i
-      lastRemoved =
+      !lastRemoved =
         case (q `neWord#` 0##) `andI#` ((fquot10 (w' `minusWord#` 1##)) `leWord#` fquot10 u') of
           -- We need to know one removed digit even if we are not going to loop
           -- below. We could use q = X - 1 above, except that would require 33
@@ -181,7 +180,7 @@ f2dLT (I32# e2) (W32# u) (W32# v) (W32# w) =
       u' = mulPow5DivPow2 u i j
       v' = mulPow5DivPow2 v i j
       w' = mulPow5DivPow2 w i j
-      lastRemoved =
+      !lastRemoved =
         case (q `neWord#` 0##) `andI#` ((fquot10 (u'`minusWord#` 1##)) `leWord#` fquot10 u') of
           1# -> let j' = word2Int# q -# 1# -# (pow5bitsUnboxed (i +# 1#) -# unbox float_pow5_bitcount)
                  in frem10 (mulPow5DivPow2 v (i +# 1#) j')
@@ -206,31 +205,31 @@ calculate b s = vv s + asWord (roundUp b s)
 
 f2d :: Word32 -> Word32 -> FloatingDecimal
 f2d m e =
-  let mf = if e == 0
+  let !mf = if e == 0
               then m
               else (1 .<< float_mantissa_bits) .|. m
-      ef = if e == 0
+      !ef = if e == 0
               then toS 1 - toS (float_bias + float_mantissa_bits)
               else toS e - toS (float_bias + float_mantissa_bits)
-      e2 = ef - 2
+      !e2 = ef - 2
       -- Step 2. 3-tuple (u, v, w) * 2**e2
-      u = 4 * mf - 1 - asWord (m /= 0 || e <= 1)
-      v = 4 * mf
-      w = 4 * mf + 2
+      !u = 4 * mf - 1 - asWord (m /= 0 || e <= 1)
+      !v = 4 * mf
+      !w = 4 * mf + 2
       -- Step 3. convert to decimal power base
-      (state, e10) =
+      !(state, e10) =
         if e2 >= 0
            then f2dGT e2 u v w
            else f2dLT e2 u v w
       -- Step 4: Find the shortest decimal representation in the interval of
       -- valid representations.
-      (output, removed) =
+      !(output, removed) =
         if vvIsTrailingZeros state || vuIsTrailingZeros state
            then pmap (\s -> calculate (not (acceptBounds v)
                                     || not (vuIsTrailingZeros s)) s)
                                       $ trimTrailing state
            else pmap (calculate True) $ trimNoTrailing state
-      e' = e10 + removed
+      !e' = e10 + removed
    in FloatingDecimal output e'
 
 breakdown :: Float -> (Bool, Word32, Word32)

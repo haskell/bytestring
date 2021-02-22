@@ -1,5 +1,4 @@
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE Strict #-}
 {-# LANGUAGE BangPatterns, MagicHash, UnboxedTuples #-}
 
 module Data.ByteString.Builder.RealFloat.D2S
@@ -103,21 +102,21 @@ mulPow5InvDivPow2 m q j = mulShift64Unboxed m (get_double_pow5_inv_split (word2I
 
 
 acceptBounds :: Word64 -> Bool
-acceptBounds (W64# v) = boxToBool (acceptBoundsUnboxed v)
+acceptBounds !(W64# v) = boxToBool (acceptBoundsUnboxed v)
 
 data BoundsState = BoundsState
-    { vu :: Word64
-    , vv :: Word64
-    , vw :: Word64
-    , lastRemovedDigit :: Word64
-    , vuIsTrailingZeros :: Bool
-    , vvIsTrailingZeros :: Bool
+    { vu :: !Word64
+    , vv :: !Word64
+    , vw :: !Word64
+    , lastRemovedDigit :: !Word64
+    , vuIsTrailingZeros :: !Bool
+    , vvIsTrailingZeros :: !Bool
     } deriving Show
 
 trimTrailing' :: BoundsState -> (BoundsState, Int32)
-trimTrailing' d
+trimTrailing' !d
   | vw' > vu' =
-    let (vv', vvRem) = dquotRem10Boxed $ vv d
+    let !(vv', vvRem) = dquotRem10Boxed $ vv d
      in fmap ((+) 1) . trimTrailing' $
          d { vu = vu'
            , vv = vv'
@@ -128,14 +127,14 @@ trimTrailing' d
            }
   | otherwise = (d, 0)
   where
-    (vu', vuRem) = dquotRem10Boxed $ vu d
-    vw' = dwrapped dquot10 (vw d)
+    !(vu', vuRem) = dquotRem10Boxed $ vu d
+    !vw' = dwrapped dquot10 (vw d)
 
 trimTrailing'' :: BoundsState -> (BoundsState, Int32)
 trimTrailing'' d
   | vuRem == 0 =
-    let (vv', vvRem) = dquotRem10Boxed $ vv d
-        vw' = dwrapped dquot10 (vw d)
+    let !(vv', vvRem) = dquotRem10Boxed $ vv d
+        !vw' = dwrapped dquot10 (vw d)
      in fmap ((+) 1) . trimTrailing'' $
          d { vu = vu'
            , vv = vv'
@@ -145,12 +144,12 @@ trimTrailing'' d
            }
   | otherwise = (d, 0)
   where
-    (vu', vuRem) = dquotRem10Boxed $ vu d
+    !(vu', vuRem) = dquotRem10Boxed $ vu d
 
 trimTrailing :: BoundsState -> (BoundsState, Int32)
 trimTrailing d =
-  let (d', r) = trimTrailing' d
-      (d'', r') = if vuIsTrailingZeros d'
+  let !(d', r) = trimTrailing' d
+      !(d'', r') = if vuIsTrailingZeros d'
                      then trimTrailing'' d'
                      else (d', 0)
       res = if vvIsTrailingZeros d'' && lastRemovedDigit d'' == 5 && vv d'' `rem` 2 == 0
@@ -166,8 +165,8 @@ trimNoTrailing'' u' v' w' lastRemoved count =
            in trimNoTrailing' vu' vv' vw' ld (count +# 1#)
     0# -> (# u', v', lastRemoved , count #)
   where
-      vu' = dquot10 u'
-      vw' = dquot10 w'
+    !vu' = dquot10 u'
+    !vw' = dquot10 w'
 
 trimNoTrailing' :: Word# -> Word# -> Word# -> Word# -> Int# -> (# Word#, Word#, Word#, Int# #)
 trimNoTrailing' u' v' w' lastRemoved count =
@@ -175,16 +174,16 @@ trimNoTrailing' u' v' w' lastRemoved count =
   -- 0: 0.03%, 1: 13.8%, 2: 70.6%, 3: 14.0%, 4: 1.40%, 5: 0.14%, 6+: 0.02%
   -- Loop iterations below (approximately), with div 100 optimization:
   -- 0: 70.6%, 1: 27.8%, 2: 1.40%, 3: 0.14%, 4+: 0.02%
-  let vw' = dquot100 w'
-      vu' = dquot100 u'
+  let !vw' = dquot100 w'
+      !vu' = dquot100 u'
    in case vw' `gtWord#` vu' of
-        1# -> let vv' = dquot100 v'
-                  ld = dquot10 (v' `minusWord#` (vv' `timesWord#` 100##))
+        1# -> let !vv' = dquot100 v'
+                  !ld = dquot10 (v' `minusWord#` (vv' `timesWord#` 100##))
                in trimNoTrailing'' vu' vv' vw' ld (count +# 2#)
         0# -> trimNoTrailing'' u' v' w' lastRemoved count
 
 trimNoTrailing :: BoundsState -> (BoundsState, Int32)
-trimNoTrailing (BoundsState (W64# u' ) (W64# v') (W64# w') (W64# ld) _ _) =
+trimNoTrailing !(BoundsState (W64# u' ) (W64# v') (W64# w') (W64# ld) _ _) =
   let !(# vu', vv', ld', c' #) = trimNoTrailing' u' v' w' ld 0#
    in (BoundsState (W64# vu') (W64# vv') 0 (W64# ld') False False, I32# c')
 
@@ -240,31 +239,31 @@ calculate b s = vv s + asWord (roundUp b s)
 
 d2d :: Word64 -> Word32 -> FloatingDecimal
 d2d m e =
-  let mf = if e == 0
+  let !mf = if e == 0
               then m
               else (1 .<< double_mantissa_bits) .|. m
-      ef = if e == 0
+      !ef = if e == 0
               then toS 1 - toS double_bias - toS double_mantissa_bits
               else fromIntegral e - toS double_bias - toS double_mantissa_bits
-      e2 = fromIntegral ef - 2 :: Int32
+      !e2 = fromIntegral ef - 2 :: Int32
       -- Step 2. 3-tuple (u, v, w) * 2**e2
-      u = 4 * mf - 1 - asWord (m /= 0 || e <= 1)
-      v = 4 * mf
-      w = 4 * mf + 2
+      !u = 4 * mf - 1 - asWord (m /= 0 || e <= 1)
+      !v = 4 * mf
+      !w = 4 * mf + 2
       -- Step 3. convert to decimal power base
-      (state, e10) =
+      !(state, e10) =
         if e2 >= 0
            then d2dGT e2 u v w
            else d2dLT e2 u v w
       -- Step 4: Find the shortest decimal representation in the interval of
       -- valid representations.
-      (output, removed) =
+      !(output, removed) =
         if vvIsTrailingZeros state || vuIsTrailingZeros state
            then pmap (\s -> calculate (not (acceptBounds v)
                                     || not (vuIsTrailingZeros s)) s)
                                       $ trimTrailing state
            else pmap (calculate True) $ trimNoTrailing state
-      e' = e10 + removed
+      !e' = e10 + removed
    in FloatingDecimal output e'
 
 breakdown :: Double -> (Bool, Word64, Word64)

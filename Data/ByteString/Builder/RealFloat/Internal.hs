@@ -1,4 +1,3 @@
-{-# LANGUAGE Strict #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE BangPatterns, MagicHash, UnboxedTuples #-}
 
@@ -189,10 +188,10 @@ acceptBoundsUnboxed _ = 0#
 -- acceptBoundsUnboxed v = ((v `uncheckedShiftRL#` 2#) `and#` 1##) `eqWord#` 0##
 
 fcoerceToWord :: Float -> Word32
-fcoerceToWord x = runST (cast x)
+fcoerceToWord !x = runST (cast x)
 
 dcoerceToWord :: Double -> Word64
-dcoerceToWord x = runST (cast x)
+dcoerceToWord !x = runST (cast x)
 
 {-# INLINE cast #-}
 cast :: (MArray (STUArray s) a (ST s),
@@ -344,23 +343,23 @@ second = fromIntegral
 {-# SPECIALIZE writeMantissa :: Ptr Word8 -> Int -> Word32 -> IO (Ptr Word8) #-}
 {-# SPECIALIZE writeMantissa :: Ptr Word8 -> Int -> Word64 -> IO (Ptr Word8) #-}
 writeMantissa :: (Mantissa a) => Ptr Word8 -> Int -> a -> IO (Ptr Word8)
-writeMantissa ptr olength = go (ptr `plusPtr` olength)
+writeMantissa !ptr !olength = go (ptr `plusPtr` olength)
   where
-    go p mantissa
+    go !p !mantissa
       | mantissa >= 10000 = do
-          let (m', c) = quotRem10000 mantissa
-              (c1, c0) = quotRem100 c
+          let !(m', c) = quotRem10000 mantissa
+              !(c1, c0) = quotRem100 c
           copy (digit_table `unsafeAt` fromIntegral c0) (p `plusPtr` (-1))
           copy (digit_table `unsafeAt` fromIntegral c1) (p `plusPtr` (-3))
           go (p `plusPtr` (-4)) m'
       | mantissa >= 100 = do
-          let (m', c) = quotRem100 mantissa
+          let !(m', c) = quotRem100 mantissa
           copy (digit_table `unsafeAt` fromIntegral c) (p `plusPtr` (-1))
           finalize m'
       | otherwise = finalize mantissa
     finalize mantissa
       | mantissa >= 10 = do
-          let bs = digit_table `unsafeAt` fromIntegral mantissa
+          let !bs = digit_table `unsafeAt` fromIntegral mantissa
           poke (ptr `plusPtr` 2) (first bs)
           poke (ptr `plusPtr` 1) (c2w '.')
           poke ptr (second bs)
@@ -375,9 +374,9 @@ writeMantissa ptr olength = go (ptr `plusPtr` olength)
           return (ptr `plusPtr` 3)
 
 writeExponent :: Ptr Word8 -> Int32 -> IO (Ptr Word8)
-writeExponent ptr expo
+writeExponent !ptr !expo
   | expo >= 100 = do
-      let (e1, e0) = fquotRem10Boxed (fromIntegral expo)
+      let !(e1, e0) = fquotRem10Boxed (fromIntegral expo)
       copy (digit_table `unsafeAt` fromIntegral e1) ptr
       poke (ptr `plusPtr` 2) (toAscii e0 :: Word8)
       return $ ptr `plusPtr` 3
@@ -398,9 +397,9 @@ writeSign ptr False = return ptr
 {-# SPECIALIZE toCharsScientific :: Bool -> Word32 -> Int32 -> BoundedPrim () #-}
 {-# SPECIALIZE toCharsScientific :: Bool -> Word64 -> Int32 -> BoundedPrim () #-}
 toCharsScientific :: (Mantissa a) => Bool -> a -> Int32 -> BoundedPrim ()
-toCharsScientific sign mantissa expo = boundedPrim maxEncodedLength $ \_ p0 -> do
-  let olength = decimalLength mantissa
-      expo' = expo + fromIntegral olength - 1
+toCharsScientific !sign !mantissa !expo = boundedPrim maxEncodedLength $ \_ !p0 -> do
+  let !olength = decimalLength mantissa
+      !expo' = expo + fromIntegral olength - 1
   p1 <- writeSign p0 sign
   p2 <- writeMantissa p1 olength mantissa
   poke p2 (c2w 'e')
