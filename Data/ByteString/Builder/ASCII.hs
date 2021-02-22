@@ -35,9 +35,6 @@ module Data.ByteString.Builder.ASCII
     , word64Dec
     , wordDec
 
-    , floatDec
-    , doubleDec
-
       -- *** Hexadecimal numbers
 
       -- | Encoding positive integers as hexadecimal numbers using lower-case
@@ -161,22 +158,6 @@ word64Dec = P.primBounded P.word64Dec
 {-# INLINE wordDec #-}
 wordDec :: Word -> Builder
 wordDec = P.primBounded P.wordDec
-
-
--- Floating point numbers
--------------------------
-
--- TODO: Use Bryan O'Sullivan's double-conversion package to speed it up.
-
--- | /Currently slow./ Decimal encoding of an IEEE 'Float'.
-{-# INLINE floatDec #-}
-floatDec :: Float -> Builder
-floatDec = string7 . show
-
--- | /Currently slow./ Decimal encoding of an IEEE 'Double'.
-{-# INLINE doubleDec #-}
-doubleDec :: Double -> Builder
-doubleDec = string7 . show
 
 
 ------------------------------------------------------------------------------

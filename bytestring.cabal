@@ -70,7 +70,7 @@ source-repository head
   location: https://github.com/haskell/bytestring
 
 library
-  build-depends:     base >= 4.9 && < 5, ghc-prim, deepseq, template-haskell
+  build-depends:     base >= 4.9 && < 5, ghc-prim, deepseq, template-haskell, array
 
   exposed-modules:   Data.ByteString
                      Data.ByteString.Char8
@@ -85,6 +85,7 @@ library
                      Data.ByteString.Builder
                      Data.ByteString.Builder.Extra
                      Data.ByteString.Builder.Prim
+                     Data.ByteString.Builder.RealFloat
 
                      -- perhaps only exposed temporarily
                      Data.ByteString.Builder.Internal
@@ -94,6 +95,10 @@ library
                      Data.ByteString.Builder.Prim.Binary
                      Data.ByteString.Builder.Prim.Internal.Base16
                      Data.ByteString.Builder.Prim.Internal.Floating
+                     Data.ByteString.Builder.RealFloat.F2S
+                     Data.ByteString.Builder.RealFloat.D2S
+                     Data.ByteString.Builder.RealFloat.Internal
+                     Data.ByteString.Builder.RealFloat.TableGenerator
                      Data.ByteString.Lazy.Internal.Deque
 
   default-language:  Haskell2010
