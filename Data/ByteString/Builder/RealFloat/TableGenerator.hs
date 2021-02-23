@@ -21,7 +21,7 @@ module Data.ByteString.Builder.RealFloat.TableGenerator
   ) where
 
 import Data.Array.Base
-import Data.Bits ((.&.), shiftR, unsafeShiftL, unsafeShiftR)
+import Data.Bits ((.&.), shiftR, shiftL, shiftR)
 import GHC.Exts
 import GHC.ST (ST(..), runST)
 import GHC.Word (Word64(..))
@@ -143,12 +143,13 @@ blen n = 1 + blen (n `quot` 2)
 finv :: Integer -> Integer -> Integer
 finv bitcount i =
   let p = 5^i
-   in (1 `unsafeShiftL` fromIntegral (blen p - 1 + bitcount)) `div` p + 1
+   in (1 `shiftL` fromIntegral (blen p - 1 + bitcount)) `div` p + 1
 
 fnorm :: Integer -> Integer -> Integer
 fnorm bitcount i =
   let p = 5^i
-   in p `unsafeShiftR` fromIntegral (blen p - bitcount)
+      s = fromIntegral (blen p - bitcount)
+   in if s < 0 then p `shiftL` (-s) else p `shiftR` s
 
 gen_table_f :: (Integral a) => a -> (a -> Integer) -> Q Exp
 gen_table_f n f = return $ ListE (fmap (LitE . IntegerL . f) [0..n])
@@ -158,8 +159,8 @@ gen_table_d n f = return $ ListE (fmap ff [0..n])
   where
     ff :: a -> Exp
     ff c = let r = f c
-               hi = r `unsafeShiftR` 64
-               lo = r .&. ((1 `unsafeShiftL` 64) - 1)
+               hi = r `shiftR` 64
+               lo = r .&. ((1 `shiftL` 64) - 1)
             in AppE (AppE (ConE 'Word128) (LitE . IntegerL $ hi)) (LitE . IntegerL $ lo)
 
 get_range :: forall ff. (RealFloat ff) => ff -> (Integer, Integer)
