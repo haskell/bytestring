@@ -135,8 +135,12 @@ test-suite prop-compiled
   type:             exitcode-stdio-1.0
   main-is:          Properties.hs
   other-modules:    QuickCheckUtils
-                    Rules
+                    Properties.ByteString
+                    Properties.ByteStringChar8
+                    Properties.ByteStringLazy
+                    Properties.ByteStringLazyChar8
   hs-source-dirs:   tests
+  include-dirs:     tests/Properties
   build-depends:    base, bytestring, ghc-prim, deepseq,
                     tasty, tasty-quickcheck
   ghc-options:      -fwarn-unused-binds
