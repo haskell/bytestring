@@ -267,7 +267,7 @@ pow5_factor w count =
   let !(# q, r #) = dquotRem5 w
    in case r `eqWord#` 0## of
         0# -> count
-        1# -> pow5_factor q (count +# 1#)
+        _  -> pow5_factor q (count +# 1#)
 
 multipleOfPowerOf5_Unboxed :: Word# -> Word# -> Int#
 multipleOfPowerOf5_Unboxed value p = pow5_factor value 0# >=# word2Int# p

@@ -82,8 +82,8 @@ unifySmallTrailing :: FloatingDecimal -> FloatingDecimal
 unifySmallTrailing fd@(FloatingDecimal (W64# m) e) =
   let !(# q, r #) = dquotRem10 m
    in case r `neWord#` 0## of
-        1# -> fd
         0# -> unifySmallTrailing $ FloatingDecimal (W64# q) (e + 1)
+        _  -> fd
 
 -- TODO: 128-bit intrinsics
 mulShift64Unboxed :: Word# -> (# Word#, Word# #) -> Int# -> Word#
@@ -172,9 +172,9 @@ trimTrailing d =
 trimNoTrailing'' :: Word# -> Word# -> Word# -> Word# -> Int# -> (# Word#, Word#, Word#, Int# #)
 trimNoTrailing'' u' v' w' lastRemoved count =
   case vw' `gtWord#` vu' of
-    1# -> let !(# vv', ld #) = dquotRem10 v'
-           in trimNoTrailing' vu' vv' vw' ld (count +# 1#)
     0# -> (# u', v', lastRemoved , count #)
+    _  -> let !(# vv', ld #) = dquotRem10 v'
+           in trimNoTrailing' vu' vv' vw' ld (count +# 1#)
   where
     !vu' = dquot10 u'
     !vw' = dquot10 w'
@@ -188,10 +188,10 @@ trimNoTrailing' u' v' w' lastRemoved count =
   let !vw' = dquot100 w'
       !vu' = dquot100 u'
    in case vw' `gtWord#` vu' of
-        1# -> let !vv' = dquot100 v'
+        0# -> trimNoTrailing'' u' v' w' lastRemoved count
+        _  -> let !vv' = dquot100 v'
                   !ld = dquot10 (v' `minusWord#` (vv' `timesWord#` 100##))
                in trimNoTrailing'' vu' vv' vw' ld (count +# 2#)
-        0# -> trimNoTrailing'' u' v' w' lastRemoved count
 
 trimNoTrailing :: BoundsState -> (BoundsState, Int32)
 trimNoTrailing !(BoundsState (W64# u' ) (W64# v') (W64# w') (W64# ld) _ _) =

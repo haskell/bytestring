@@ -137,9 +137,9 @@ trimTrailing !d =
 trimNoTrailing' :: Word# -> Word# -> Word# -> Word# -> Int# -> (# Word#, Word#, Word#, Int# #)
 trimNoTrailing' u' v' w' lastRemoved count =
   case vw' `gtWord#` vu' of
-    1# -> let !(# vv', ld #) = fquotRem10 v'
-           in trimNoTrailing' vu' vv' vw' ld (count +# 1#)
     0# -> (# u', v', lastRemoved , count #)
+    _  -> let !(# vv', ld #) = fquotRem10 v'
+           in trimNoTrailing' vu' vv' vw' ld (count +# 1#)
   where
     !vu' = fquot10 u'
     !vw' = fquot10 w'
@@ -164,9 +164,9 @@ f2dGT (I32# e2) (W32# u) (W32# v) (W32# w) =
           -- below. We could use q = X - 1 above, except that would require 33
           -- bits for the result, and we've found that 32-bit arithmetic is
           -- faster even on 64-bit machines.
-          1# -> let l = unbox float_pow5_inv_bitcount +# pow5bitsUnboxed (word2Int# q -# 1#) -# 1#
-                 in frem10 (mulPow5InvDivPow2 v (q `minusWord#` 1##) (negateInt# e2 +# word2Int# q -# 1# +# l))
           0# -> 0##
+          _  -> let l = unbox float_pow5_inv_bitcount +# pow5bitsUnboxed (word2Int# q -# 1#) -# 1#
+                 in frem10 (mulPow5InvDivPow2 v (q `minusWord#` 1##) (negateInt# e2 +# word2Int# q -# 1# +# l))
       !(# vvTrailing, vuTrailing, vw' #) =
         case () of
           _ | isTrue# ((q `leWord#` 9##) `andI#` (frem5 v `eqWord#` 0##))
@@ -191,9 +191,9 @@ f2dLT (I32# e2) (W32# u) (W32# v) (W32# w) =
       w' = mulPow5DivPow2 w i j
       !lastRemoved =
         case (q `neWord#` 0##) `andI#` ((fquot10 (u'`minusWord#` 1##)) `leWord#` fquot10 u') of
-          1# -> let j' = word2Int# q -# 1# -# (pow5bitsUnboxed (i +# 1#) -# unbox float_pow5_bitcount)
-                 in frem10 (mulPow5DivPow2 v (i +# 1#) j')
           0# -> 0##
+          _  -> let j' = word2Int# q -# 1# -# (pow5bitsUnboxed (i +# 1#) -# unbox float_pow5_bitcount)
+                 in frem10 (mulPow5DivPow2 v (i +# 1#) j')
       !(# vvTrailing , vuTrailing, vw' #) =
         case () of
           _ | isTrue# ((q `leWord#` 1##) `andI#` acceptBoundsUnboxed v)
