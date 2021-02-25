@@ -1,5 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE BangPatterns, MagicHash, UnboxedTuples #-}
+{-# LANGUAGE GHCForeignImportPrim, UnliftedFFITypes #-}
 
 module Data.ByteString.Builder.RealFloat.D2S
     ( FloatingDecimal(..)
@@ -14,7 +15,6 @@ import Data.ByteString.Builder.RealFloat.Internal
 import Data.ByteString.Builder.RealFloat.TableGenerator
 import Data.Maybe (fromMaybe)
 import GHC.Exts
-import GHC.Float (castDoubleToWord64)
 import GHC.Int (Int32(..), Int64(..))
 import GHC.ST (ST(..), runST)
 import GHC.Word (Word32(..), Word64(..))
@@ -276,6 +276,13 @@ d2d m e =
            else pmap (calculate True) $ trimNoTrailing state
       !e' = e10 + removed
    in FloatingDecimal output e'
+
+{-# INLINE castDoubleToWord64 #-}
+castDoubleToWord64 :: Double -> Word64
+castDoubleToWord64 (D# d#) = W64# (stgDoubleToWord64 d#)
+
+foreign import prim "stg_doubleToWord64zh"
+    stgDoubleToWord64 :: Double# -> Word#
 
 breakdown :: Double -> (Bool, Word64, Word64)
 breakdown f =
