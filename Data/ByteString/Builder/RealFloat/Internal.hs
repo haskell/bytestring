@@ -39,7 +39,6 @@ module Data.ByteString.Builder.RealFloat.Internal
     , dquot100
     , dwrapped
     -- prim-op helpers
-    , boxToBool
     , box
     , unbox
     ) where
@@ -258,11 +257,6 @@ dquotRem10Boxed (W64# w) = let !(# q, r #) = dquotRem10 w in (W64# q, W64# r)
 dwrapped :: (Word# -> Word#) -> Word64 -> Word64
 dwrapped f (W64# w) = W64# (f w)
 
-boxToBool :: Int# -> Bool
-boxToBool i = case i of
-                1# -> True
-                0# -> False
-
 box :: Int# -> Int
 box i = I# i
 
@@ -280,7 +274,7 @@ multipleOfPowerOf5_Unboxed :: Word# -> Word# -> Int#
 multipleOfPowerOf5_Unboxed value p = pow5_factor value 0# >=# word2Int# p
 
 multipleOfPowerOf5_UnboxedB :: Word# -> Word# -> Bool
-multipleOfPowerOf5_UnboxedB value p = boxToBool (multipleOfPowerOf5_Unboxed value p)
+multipleOfPowerOf5_UnboxedB value p = isTrue# (multipleOfPowerOf5_Unboxed value p)
 
 multipleOfPowerOf2Unboxed :: Word# -> Word# -> Int#
 multipleOfPowerOf2Unboxed value p = (value `and#` ((1## `uncheckedShiftL#` word2Int# p) `minusWord#` 1##)) `eqWord#` 0##

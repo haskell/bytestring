@@ -70,7 +70,7 @@ mulPow5DivPow2 :: Word# -> Int# -> Int# -> Word#
 mulPow5DivPow2 m i j = mulShift32Unboxed m (get_float_pow5_split i) j
 
 acceptBounds :: Word32 -> Bool
-acceptBounds !(W32# v) = boxToBool (acceptBoundsUnboxed v)
+acceptBounds !(W32# v) = isTrue# (acceptBoundsUnboxed v)
 
 data BoundsState = BoundsState
     { vu :: !Word32
@@ -161,11 +161,11 @@ f2dGT (I32# e2) (W32# u) (W32# v) (W32# w) =
           0# -> 0##
       !(# vvTrailing, vuTrailing, vw' #) =
         case () of
-          _ | boxToBool ((q `leWord#` 9##) `andI#` (frem5 v `eqWord#` 0##))
+          _ | isTrue# ((q `leWord#` 9##) `andI#` (frem5 v `eqWord#` 0##))
                 -> (# multipleOfPowerOf5_UnboxedB v q, False, w' #)
-            | boxToBool ((q `leWord#` 9##) `andI#` acceptBoundsUnboxed v)
+            | isTrue# ((q `leWord#` 9##) `andI#` acceptBoundsUnboxed v)
                 -> (# False, multipleOfPowerOf5_UnboxedB u q, w' #)
-            | boxToBool (q `leWord#` 9##)
+            | isTrue# (q `leWord#` 9##)
                 -> (# False, False, w' `minusWord#` int2Word# (multipleOfPowerOf5_Unboxed w q) #)
             | otherwise
                 -> (# False, False, w' #)
@@ -188,12 +188,12 @@ f2dLT (I32# e2) (W32# u) (W32# v) (W32# w) =
           0# -> 0##
       !(# vvTrailing , vuTrailing, vw' #) =
         case () of
-          _ | boxToBool ((q `leWord#` 1##) `andI#` acceptBoundsUnboxed v)
-                -> (# True, boxToBool ((w `minusWord#` v) `eqWord#` 2##), w' #) -- mmShift == 1
-            | boxToBool (q `leWord#` 1##)
+          _ | isTrue# ((q `leWord#` 1##) `andI#` acceptBoundsUnboxed v)
+                -> (# True, isTrue# ((w `minusWord#` v) `eqWord#` 2##), w' #) -- mmShift == 1
+            | isTrue# (q `leWord#` 1##)
                 -> (# True, False, w' `minusWord#` 1## #)
-            | boxToBool (q `ltWord#` 31##)
-                -> (# boxToBool (multipleOfPowerOf2Unboxed v (q `minusWord#` 1##)), False, w' #)
+            | isTrue# (q `ltWord#` 31##)
+                -> (# isTrue# (multipleOfPowerOf2Unboxed v (q `minusWord#` 1##)), False, w' #)
             | otherwise
                 -> (# False, False, w' #)
    in (BoundsState (W32# u') (W32# v') (W32# vw') (W32# lastRemoved) vuTrailing vvTrailing , (I32# e10))
