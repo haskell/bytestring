@@ -20,8 +20,6 @@ module Data.ByteString.Builder.RealFloat.Internal
     , multipleOfPowerOf2Unboxed
     , acceptBoundsUnboxed
     , toCharsScientific
-    , fcoerceToWord
-    , dcoerceToWord
     -- hand-rolled division and remainder for f2s and d2s
     , fquot10
     , frem10
@@ -186,17 +184,6 @@ acceptBoundsUnboxed :: Word# -> Int#
 acceptBoundsUnboxed _ = 0#
 -- for round-to-even and correct shortest
 -- acceptBoundsUnboxed v = ((v `uncheckedShiftRL#` 2#) `and#` 1##) `eqWord#` 0##
-
-fcoerceToWord :: Float -> Word32
-fcoerceToWord !x = runST (cast x)
-
-dcoerceToWord :: Double -> Word64
-dcoerceToWord !x = runST (cast x)
-
-{-# INLINE cast #-}
-cast :: (MArray (STUArray s) a (ST s),
-         MArray (STUArray s) b (ST s)) => a -> ST s b
-cast x = newArray (0 :: Int, 0) x >>= castSTUArray >>= flip readArray 0
 
 fquot10 :: Word# -> Word#
 fquot10 w = (w `timesWord#` 0xCCCCCCCD##) `uncheckedShiftRL#` 35#

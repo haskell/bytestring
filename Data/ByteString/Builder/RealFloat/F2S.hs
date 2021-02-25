@@ -15,6 +15,7 @@ import Data.ByteString.Builder.Prim (primBounded)
 import Data.ByteString.Builder.RealFloat.Internal
 import Data.ByteString.Builder.RealFloat.TableGenerator
 import GHC.Exts
+import GHC.Float (castFloatToWord32)
 import GHC.Int (Int32(..))
 import GHC.Word (Word32(..), Word64(..))
 
@@ -234,7 +235,7 @@ f2d m e =
 
 breakdown :: Float -> (Bool, Word32, Word32)
 breakdown f =
-  let bits = fcoerceToWord f
+  let bits = castFloatToWord32 f
       sign = ((bits .>> (float_mantissa_bits + float_exponent_bits)) .&. 1) /= 0
       mantissa = bits .&. mask float_mantissa_bits
       expo = (bits .>> float_mantissa_bits) .&. mask float_exponent_bits

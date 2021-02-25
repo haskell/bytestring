@@ -15,6 +15,7 @@ import Data.ByteString.Builder.RealFloat.Internal
 import Data.ByteString.Builder.RealFloat.TableGenerator
 import Data.Maybe (fromMaybe)
 import GHC.Exts
+import GHC.Float (castDoubleToWord64)
 import GHC.Int (Int32(..), Int64(..))
 import GHC.Word (Word32(..), Word64(..))
 
@@ -268,7 +269,7 @@ d2d m e =
 
 breakdown :: Double -> (Bool, Word64, Word64)
 breakdown f =
-  let bits = dcoerceToWord f
+  let bits = castDoubleToWord64 f
       sign = ((bits .>> (double_mantissa_bits + double_exponent_bits)) .&. 1) /= 0
       mantissa = bits .&. mask double_mantissa_bits
       expo = (bits .>> double_mantissa_bits) .&. mask double_exponent_bits
