@@ -20,10 +20,8 @@ module Data.ByteString.Builder.RealFloat.TableGenerator
   , gen_table_d
   ) where
 
-import Data.Array.Base
 import Data.Bits ((.&.), shiftR, shiftL, shiftR)
 import GHC.Exts
-import GHC.ST (ST(..), runST)
 import GHC.Word (Word64(..))
 import Language.Haskell.TH
 
@@ -82,46 +80,6 @@ signum128 _ = Word128 0 1
 
 fromInteger128 :: Integer -> Word128
 fromInteger128 i = Word128 (fromIntegral $ i `shiftR` 64) (fromIntegral i)
-
-instance MArray (STUArray s) Word128 (ST s) where
-  {-# INLINE getBounds #-}
-  getBounds (STUArray l u _ _) = return (l,u)
-
-  {-# INLINE getNumElements #-}
-  getNumElements (STUArray _ _ n _) = return n
-
-  {-# INLINE unsafeNewArray_ #-}
-  unsafeNewArray_ (l,u) = unsafeNewArraySTUArray_ (l,u) (*# 16#)
-
-  {-# INLINE unsafeRead #-}
-  unsafeRead (STUArray _ _ _ marr) (I# i) = ST $ \s1 ->
-    let !(# s2, w1 #) = readWord64Array# marr (i *# 2#) s1
-        !(# _, w2 #) = readWord64Array# marr (i *# 2# +# 1#) s2
-     in (# s2, Word128 (W64# w1) (W64# w2) #)
-
-  {-# INLINE unsafeWrite #-}
-  unsafeWrite (STUArray _ _ _ marr) (I# i) (Word128 (W64# w1) (W64# w2)) = ST $ \s1 ->
-    let s2 = writeWord64Array# marr (i *# 2#) w1 s1
-        s3 = writeWord64Array# marr (i *# 2# +# 1#) w2 s2
-     in (# s3, () #)
-
-instance IArray UArray Word128 where
-  {-# INLINE bounds #-}
-  bounds (UArray l u _ _) = (l,u)
-
-  {-# INLINE numElements #-}
-  numElements (UArray _ _ n _) = n
-
-  {-# INLINE unsafeArray #-}
-  unsafeArray lu ies = runST (unsafeArrayUArray lu ies 0)
-
-  -- NB: don't actually use this anywhere but...
-  {-# INLINE unsafeAt #-}
-  unsafeAt (UArray _ _ _ arr) (I# i) =
-    let w1 = indexWord64Array# arr (i *# 2#)
-        w2 = indexWord64Array# arr (i *# 2# +# 1#)
-     in Word128 (W64# w1) (W64# w2)
-
 
 float_pow5_inv_bitcount :: Int
 float_pow5_inv_bitcount = 59

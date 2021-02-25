@@ -7,8 +7,6 @@ module Data.ByteString.Builder.RealFloat.F2S
     , f2Intermediate
     ) where
 
-import Data.Array.Unboxed
-import Data.Array.Base (UArray(..))
 import Data.Bits ((.|.), (.&.))
 import Data.ByteString.Builder.Internal (Builder)
 import Data.ByteString.Builder.Prim (primBounded)
@@ -17,14 +15,24 @@ import Data.ByteString.Builder.RealFloat.TableGenerator
 import GHC.Exts
 import GHC.Float (castFloatToWord32)
 import GHC.Int (Int32(..))
+import GHC.ST (ST(..), runST)
 import GHC.Word (Word32(..), Word64(..))
 
-float_pow5_inv_split :: UArray Word32 Word64
-float_pow5_inv_split = listArray (0, fromIntegral float_max_inv_split)
+listArray :: Int -> [Word64] -> ByteArray
+listArray (I# n) es = runST (ST $ \s1 ->
+  let !(# s2, marr #) = newByteArray# (n *# 8#) s1
+      go (W64# y) r = \i s ->
+        let s' = writeWord64Array# marr i y s
+         in if isTrue# (i ==# n) then s' else r (i +# 1#) s'
+      !(# s3, bs #) = unsafeFreezeByteArray# marr (foldr go (\_ s -> s) es 0# s2)
+   in (# s3, ByteArray bs #))
+
+float_pow5_inv_split :: ByteArray
+float_pow5_inv_split = listArray (fromIntegral float_max_inv_split + 1)
     $(gen_table_f float_max_inv_split (finv $ fromIntegral float_pow5_inv_bitcount))
 
-float_pow5_split :: UArray Word32 Word64
-float_pow5_split = listArray (0, fromIntegral float_max_split)
+float_pow5_split :: ByteArray
+float_pow5_split = listArray (fromIntegral float_max_split + 1)
     $(gen_table_f float_max_split (fnorm $ fromIntegral float_pow5_bitcount))
 
 float_mantissa_bits :: Word32
@@ -55,12 +63,12 @@ mulShift32Unboxed m factor shift =
 
 get_float_pow5_inv_split :: Int# -> Word#
 get_float_pow5_inv_split i =
-  let !(UArray _ _ _ arr) = float_pow5_inv_split
+  let !(ByteArray arr) = float_pow5_inv_split
    in indexWord64Array# arr i
 
 get_float_pow5_split :: Int# -> Word#
 get_float_pow5_split i =
-  let !(UArray _ _ _ arr) = float_pow5_split
+  let !(ByteArray arr) = float_pow5_split
    in indexWord64Array# arr i
 
 mulPow5InvDivPow2 :: Word# -> Word# -> Int# -> Word#

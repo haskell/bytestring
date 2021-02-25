@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ScopedTypeVariables, ExplicitForAll #-}
 {-# LANGUAGE BangPatterns, MagicHash, UnboxedTuples #-}
 
 module Data.ByteString.Builder.RealFloat.Internal
@@ -41,21 +41,20 @@ module Data.ByteString.Builder.RealFloat.Internal
     -- prim-op helpers
     , box
     , unbox
+    , ByteArray(..)
     ) where
 
 import Control.Monad (foldM)
-import Data.Array.Unboxed (UArray, IArray(..), listArray)
-import Data.Array.Base (unsafeAt, STUArray(..), MArray(..), castSTUArray, readArray)
 import Data.Bits (Bits(..), FiniteBits(..))
 import Data.ByteString.Internal (c2w)
 import Data.ByteString.Builder.Prim.Internal (BoundedPrim, boundedPrim)
 import Data.Char (ord)
-import GHC.Int (Int(..), Int32)
+import GHC.Int (Int32(..))
 import GHC.Exts
-import GHC.Word (Word8, Word16, Word32(..), Word64(..))
 import GHC.ST (ST(..), runST)
-import Foreign.Ptr (Ptr, plusPtr, castPtr)
-import Foreign.Storable (poke)
+import GHC.Word (Word8, Word32(..), Word64(..))
+import Foreign.Ptr (plusPtr)
+import qualified Foreign.Storable as S (poke)
 
 {-# INLINABLE (.>>) #-}
 (.>>) :: (Bits a, Integral b) => a -> b -> a
@@ -154,7 +153,7 @@ maxEncodedLength = 32
 -- TODO TH?
 pokeAll :: String -> Ptr Word8 -> IO (Ptr Word8)
 pokeAll s ptr = foldM pokeOne ptr s
-  where pokeOne p c = poke p (c2w c) >> return (p `plusPtr` 1)
+  where pokeOne p c = S.poke p (c2w c) >> return (p `plusPtr` 1)
 
 boundString :: String -> BoundedPrim ()
 boundString s = boundedPrim maxEncodedLength $ const (pokeAll s)
@@ -279,110 +278,141 @@ multipleOfPowerOf5_UnboxedB value p = isTrue# (multipleOfPowerOf5_Unboxed value 
 multipleOfPowerOf2Unboxed :: Word# -> Word# -> Int#
 multipleOfPowerOf2Unboxed value p = (value `and#` ((1## `uncheckedShiftL#` word2Int# p) `minusWord#` 1##)) `eqWord#` 0##
 
-class (IArray UArray a, FiniteBits a, Integral a) => Mantissa a where
+class (FiniteBits a, Integral a) => Mantissa a where
   decimalLength :: a -> Int
-  quotRem100 :: a -> (a, a)
-  quotRem10000 :: a -> (a, a)
+  raw :: a -> Word#
+  wrap :: Word# -> a
+  quotRem100 :: a -> (# Word#, Word# #)
+  quotRem10000 :: a -> (# Word#, Word# #)
 
 instance Mantissa Word32 where
   decimalLength = decimalLength9
+  raw (W32# w) = w
+  wrap w = (W32# w)
   quotRem100 (W32# w) =
     let w' = (w `timesWord#` 0x51EB851F##) `uncheckedShiftRL#` 37#
-      in (W32# w', W32# (w `minusWord#` (w' `timesWord#` 100##)))
+      in (# w', (w `minusWord#` (w' `timesWord#` 100##)) #)
   quotRem10000 (W32# w) =
     let w' = (w `timesWord#` 0xD1B71759##) `uncheckedShiftRL#` 45#
-      in (W32# w', W32# (w `minusWord#` (w' `timesWord#` 10000##)))
+      in (# w', (w `minusWord#` (w' `timesWord#` 10000##)) #)
 
 instance Mantissa Word64 where
     decimalLength = decimalLength17
+    raw (W64# w) = w
+    wrap w = (W64# w)
     quotRem100 (W64# w) =
       let w' = dquot100 w
-       in (W64# w', W64# (w `minusWord#` (w' `timesWord#` 100##)))
+       in (# w', (w `minusWord#` (w' `timesWord#` 100##)) #)
     quotRem10000 (W64# w) =
       let !(# rdx, _ #) = w `timesWord2#` 0x346DC5D63886594B##
           w' = rdx `uncheckedShiftRL#` 11#
-       in (W64# w', W64# (w `minusWord#` (w' `timesWord#` 10000##)))
+       in (# w', (w `minusWord#` (w' `timesWord#` 10000##)) #)
 
-type DigitStore = Word16
+asciiRaw :: Int -> Word#
+asciiRaw (I# i) = int2Word# i
 
-toAscii :: (Integral a, Integral b) => a -> b
-toAscii = fromIntegral . (+) (fromIntegral $ ord '0')
+asciiZero :: Int
+asciiZero = ord '0'
 
-digit_table :: UArray Int32 DigitStore
-digit_table = listArray (0, 99) [ (toAscii b .<< (8 :: Word16)) .|. toAscii a | a <- [0..9 :: Word16], b <- [0..9 :: Word16] ]
+asciiDot :: Int
+asciiDot = ord '.'
 
-copy :: DigitStore -> Ptr Word8 -> IO ()
-copy d p = poke (castPtr p) d
+asciiMinus :: Int
+asciiMinus = ord '-'
 
-first :: DigitStore -> Word8
-first = fromIntegral . flip (.>>) (8 :: Word16)
+ascii_e :: Int
+ascii_e = ord 'e'
 
-second :: DigitStore -> Word8
-second = fromIntegral
+toAscii :: Word# -> Word#
+toAscii a = a `plusWord#` asciiRaw asciiZero
+
+data ByteArray = ByteArray (ByteArray#)
+
+digit_table :: ByteArray
+digit_table = runST (ST $ \s1 ->
+  let !(# s2, marr #) = newByteArray# 200# s1
+      go (I# y) r = \i s ->
+        let !(# h, l #) = fquotRem10 (int2Word# y)
+            e' = (toAscii l `uncheckedShiftL#` 8#) `or#` toAscii h
+            s' = writeWord16Array# marr i e' s
+         in if isTrue# (i ==# 99#) then s' else r (i +# 1#) s'
+      !(# s3, bs #) = unsafeFreezeByteArray# marr (foldr go (\_ s -> s) [0..99] 0# s2)
+   in (# s3, ByteArray bs #))
+
+unsafeAt :: ByteArray -> Int# -> Word#
+unsafeAt (ByteArray bs) i = indexWord16Array# bs i
+
+copyWord16 :: Word# -> Addr# -> State# d -> State# d
+copyWord16 w a s = writeWord16OffAddr# a 0# w s
+
+poke :: Addr# -> Word# -> State# d -> State# d
+poke a w s = writeWord8OffAddr# a 0# w s
 
 -- for loop recursively...
-{-# SPECIALIZE writeMantissa :: Ptr Word8 -> Int -> Word32 -> IO (Ptr Word8) #-}
-{-# SPECIALIZE writeMantissa :: Ptr Word8 -> Int -> Word64 -> IO (Ptr Word8) #-}
-writeMantissa :: (Mantissa a) => Ptr Word8 -> Int -> a -> IO (Ptr Word8)
-writeMantissa !ptr !olength = go (ptr `plusPtr` olength)
+{-# SPECIALIZE writeMantissa :: Addr# -> Int# -> Word32 -> State# d -> (# Addr#, State# d #) #-}
+{-# SPECIALIZE writeMantissa :: Addr# -> Int# -> Word64 -> State# d -> (# Addr#, State# d #) #-}
+writeMantissa :: forall a d. (Mantissa a) => Addr# -> Int# -> a -> State# d -> (# Addr#, State# d #)
+writeMantissa ptr olength = go (ptr `plusAddr#` olength)
   where
-    go !p !mantissa
-      | mantissa >= 10000 = do
-          let !(m', c) = quotRem10000 mantissa
-              !(c1, c0) = quotRem100 c
-          copy (digit_table `unsafeAt` fromIntegral c0) (p `plusPtr` (-1))
-          copy (digit_table `unsafeAt` fromIntegral c1) (p `plusPtr` (-3))
-          go (p `plusPtr` (-4)) m'
-      | mantissa >= 100 = do
-          let !(m', c) = quotRem100 mantissa
-          copy (digit_table `unsafeAt` fromIntegral c) (p `plusPtr` (-1))
-          finalize m'
-      | otherwise = finalize mantissa
-    finalize mantissa
-      | mantissa >= 10 = do
-          let !bs = digit_table `unsafeAt` fromIntegral mantissa
-          poke (ptr `plusPtr` 2) (first bs)
-          poke (ptr `plusPtr` 1) (c2w '.')
-          poke ptr (second bs)
-          return (ptr `plusPtr` (olength + 1))
-      | olength > 1 = do
-          copy ((fromIntegral (c2w '.') .<< (8 :: Word16)) .|. toAscii mantissa) ptr
-          return $ ptr `plusPtr` (olength + 1)
-      | otherwise = do
-          poke (ptr `plusPtr` 2) (c2w '0')
-          poke (ptr `plusPtr` 1) (c2w '.')
-          poke ptr (toAscii mantissa)
-          return (ptr `plusPtr` 3)
+    go p mantissa s1
+      | mantissa >= 10000 =
+          let !(# m', c #) = quotRem10000 mantissa
+              !(# c1, c0 #) = quotRem100 (wrap c :: a)
+              s2 = copyWord16 (digit_table `unsafeAt` word2Int# c0) (p `plusAddr#` (-1#)) s1
+              s3 = copyWord16 (digit_table `unsafeAt` word2Int# c1) (p `plusAddr#` (-3#)) s2
+           in go (p `plusAddr#` (-4#)) (wrap m') s3
+      | mantissa >= 100 =
+          let !(# m', c #) = quotRem100 mantissa
+              s2 = copyWord16 (digit_table `unsafeAt` word2Int# c) (p `plusAddr#` (-1#)) s1
+           in finalize (wrap m' :: a) s2
+      | otherwise = finalize mantissa s1
+    finalize mantissa s1
+      | mantissa >= 10 =
+        let !bs = digit_table `unsafeAt` word2Int# (raw mantissa)
+            s2 = poke (ptr `plusAddr#` 2#) (bs `uncheckedShiftRL64#` 8#) s1
+            s3 = poke (ptr `plusAddr#` 1#) (asciiRaw asciiDot) s2
+            s4 = poke ptr (bs `and#` 0xff##) s3
+           in (# ptr `plusAddr#` (olength +# 1#), s4 #)
+      | (I# olength) > 1 =
+          let s2 = copyWord16 (((asciiRaw asciiDot) `uncheckedShiftL#` 8#) `or#` toAscii (raw mantissa)) ptr s1
+           in (# ptr `plusAddr#` (olength +# 1#), s2 #)
+      | otherwise =
+          let s2 = poke (ptr `plusAddr#` 2#) (asciiRaw asciiZero) s1
+              s3 = poke (ptr `plusAddr#` 1#) (asciiRaw asciiDot) s2
+              s4 = poke ptr (toAscii (raw mantissa)) s3
+           in (# ptr `plusAddr#` 3#, s4 #)
 
-writeExponent :: Ptr Word8 -> Int32 -> IO (Ptr Word8)
-writeExponent !ptr !expo
-  | expo >= 100 = do
-      let !(e1, e0) = fquotRem10Boxed (fromIntegral expo)
-      copy (digit_table `unsafeAt` fromIntegral e1) ptr
-      poke (ptr `plusPtr` 2) (toAscii e0 :: Word8)
-      return $ ptr `plusPtr` 3
-  | expo >= 10 = do
-      copy (digit_table `unsafeAt` fromIntegral expo) ptr
-      return $ ptr `plusPtr` 2
-  | otherwise = do
-      poke ptr (toAscii expo)
-      return $ ptr `plusPtr` 1
+writeExponent :: Addr# -> Int -> State# d -> (# Addr#, State# d #)
+writeExponent ptr !expo@(I# e) s1
+  | expo >= 100 =
+      let !(# e1, e0 #) = fquotRem10 (int2Word# e)
+          s2 = copyWord16 (digit_table `unsafeAt` word2Int# e1) ptr s1
+          s3 = poke (ptr `plusAddr#` 2#) (toAscii e0) s2
+       in (# ptr `plusAddr#` 3#, s3 #)
+  | expo >= 10 =
+      let s2 = copyWord16 (digit_table `unsafeAt` e) ptr s1
+       in (# ptr `plusAddr#` 2#, s2 #)
+  | otherwise =
+      let s2 = poke ptr (toAscii (int2Word# e)) s1
+       in (# ptr `plusAddr#` 1#, s2 #)
 
-writeSign :: Ptr Word8 -> Bool -> IO (Ptr Word8)
-writeSign ptr True = do
-  poke ptr (c2w '-')
-  return $ ptr `plusPtr` 1
-writeSign ptr False = return ptr
+writeSign :: Addr# -> Bool -> State# d -> (# Addr#, State# d #)
+writeSign ptr True s1 =
+  let s2 = poke ptr (asciiRaw asciiMinus) s1
+   in (# ptr `plusAddr#` 1#, s2 #)
+writeSign ptr False s = (# ptr, s #)
 
 {-# INLINABLE toCharsScientific #-}
 {-# SPECIALIZE toCharsScientific :: Bool -> Word32 -> Int32 -> BoundedPrim () #-}
 {-# SPECIALIZE toCharsScientific :: Bool -> Word64 -> Int32 -> BoundedPrim () #-}
 toCharsScientific :: (Mantissa a) => Bool -> a -> Int32 -> BoundedPrim ()
-toCharsScientific !sign !mantissa !expo = boundedPrim maxEncodedLength $ \_ !p0 -> do
-  let !olength = decimalLength mantissa
+toCharsScientific !sign !mantissa !expo = boundedPrim maxEncodedLength $ \_ !(Ptr p0)-> do
+  let !olength@(I# ol) = decimalLength mantissa
       !expo' = expo + fromIntegral olength - 1
-  p1 <- writeSign p0 sign
-  p2 <- writeMantissa p1 olength mantissa
-  poke p2 (c2w 'e')
-  p3 <- writeSign (p2 `plusPtr` 1) (expo' < 0)
-  writeExponent p3 (abs expo')
+  return $ runST (ST $ \s1 ->
+    let !(# p1, s2 #) = writeSign p0 sign s1
+        !(# p2, s3 #) = writeMantissa p1 ol mantissa s2
+        s4 = poke p2 (asciiRaw ascii_e) s3
+        !(# p3, s5 #) = writeSign (p2 `plusAddr#` 1#) (expo' < 0) s4
+        !(# p4, s6 #) = writeExponent p3 (fromIntegral $ abs expo') s5
+     in (# s6, (Ptr p4) #))

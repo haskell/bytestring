@@ -7,7 +7,6 @@ module Data.ByteString.Builder.RealFloat.D2S
     , d2Intermediate
     ) where
 
-import Data.Array.Base
 import Data.Bits ((.|.), (.&.))
 import Data.ByteString.Builder.Internal (Builder)
 import Data.ByteString.Builder.Prim (primBounded)
@@ -17,14 +16,25 @@ import Data.Maybe (fromMaybe)
 import GHC.Exts
 import GHC.Float (castDoubleToWord64)
 import GHC.Int (Int32(..), Int64(..))
+import GHC.ST (ST(..), runST)
 import GHC.Word (Word32(..), Word64(..))
 
-double_pow5_inv_split :: UArray Word64 Word128
-double_pow5_inv_split = listArray (0, fromIntegral double_max_inv_split)
+listArray :: Int -> [Word128] -> ByteArray
+listArray (I# n) es = runST (ST $ \s1 ->
+  let !(# s2, marr #) = newByteArray# (n *# 16#) s1
+      go (Word128 (W64# hi) (W64# lo)) r = \i s ->
+        let s'  = writeWord64Array# marr (i *# 2#) hi s
+            s'' = writeWord64Array# marr (i *# 2# +# 1#) lo s'
+         in if isTrue# (i ==# n) then s'' else r (i +# 1#) s''
+      !(# s3, bs #) = unsafeFreezeByteArray# marr (foldr go (\_ s -> s) es 0# s2)
+   in (# s3, ByteArray bs #))
+
+double_pow5_inv_split :: ByteArray
+double_pow5_inv_split = listArray (fromIntegral double_max_inv_split + 1)
     $(gen_table_d double_max_inv_split (finv $ fromIntegral double_pow5_inv_bitcount))
 
-double_pow5_split :: UArray Word64 Word128
-double_pow5_split = listArray (0, fromIntegral double_max_split)
+double_pow5_split :: ByteArray
+double_pow5_split = listArray (fromIntegral double_max_split + 1)
     $(gen_table_d double_max_split (fnorm $ fromIntegral double_pow5_bitcount))
 
 double_mantissa_bits :: Word64
@@ -87,12 +97,12 @@ mulShift64Unboxed m (# factorHi, factorLo #) shift =
 
 get_double_pow5_inv_split :: Int# -> (# Word#, Word# #)
 get_double_pow5_inv_split i =
-  let !(UArray _ _ _ arr) = double_pow5_inv_split
+  let !(ByteArray arr) = double_pow5_inv_split
    in (# indexWord64Array# arr (i *# 2#), indexWord64Array# arr (i *# 2# +# 1#) #)
 
 get_double_pow5_split :: Int# -> (# Word#, Word# #)
 get_double_pow5_split i =
-  let !(UArray _ _ _ arr) = double_pow5_split
+  let !(ByteArray arr) = double_pow5_split
    in (# indexWord64Array# arr (i *# 2#), indexWord64Array# arr (i *# 2# +# 1#) #)
 
 mulPow5DivPow2 :: Word# -> Int# -> Int# -> Word#
