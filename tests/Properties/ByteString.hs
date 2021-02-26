@@ -9,13 +9,15 @@
 -- We are happy to sacrifice optimizations in exchange for faster compilation,
 -- but need to test rewrite rules. As one can check using -ddump-rule-firings,
 -- rewrite rules do not fire in -O0 mode, so we use -O1, but disable almost all
--- optimizations. It roughly halfs compilation time.
+-- optimizations. It roughly halves compilation time.
 {-# OPTIONS_GHC -O1 -fenable-rewrite-rules
   -fmax-simplifier-iterations=1 -fsimplifier-phases=0
   -fno-call-arity -fno-case-merge -fno-cmm-elim-common-blocks -fno-cmm-sink
   -fno-cpr-anal -fno-cse -fno-do-eta-reduction -fno-float-in -fno-full-laziness
   -fno-loopification -fno-specialise -fno-strictness #-}
 
+-- BYTESTRING_CHAR8 and BYTESTRING_LAZY are defined in
+-- Properties.ByteString{Char8,Lazy,LazyChar8}, which include this file.
 #ifndef BYTESTRING_CHAR8
 
 #ifndef BYTESTRING_LAZY
@@ -46,6 +48,7 @@ import Text.Read
 #endif
 
 import Control.Arrow
+import Data.Foldable
 import Data.List as L
 import Data.Semigroup
 import Data.String
@@ -183,6 +186,8 @@ tests =
     \(toElem -> c) x -> B.break (== c) x === B.breakSubstring (B.singleton c) x
   , testProperty "breakSubstring" $
     \x y -> not (B.null x) ==> B.null (snd (B.breakSubstring x y)) === not (B.isInfixOf x y)
+  , testProperty "breakSubstring empty" $
+    \x -> B.breakSubstring B.empty x === (B.empty, x)
 #endif
 #ifdef BYTESTRING_CHAR8
   , testProperty "break isSpace" $
@@ -383,6 +388,10 @@ tests =
     \f (toElem -> c) x -> B.foldl' ((toElem .) . f) c x === foldl' ((toElem .) . f) c (B.unpack x)
   , testProperty "foldr" $
     \f (toElem -> c) x -> B.foldr ((toElem .) . f) c x === foldr ((toElem .) . f) c (B.unpack x)
+#ifndef BYTESTRING_LAZY
+  , testProperty "foldr'" $
+    \f (toElem -> c) x -> B.foldr' ((toElem .) . f) c x === foldr' ((toElem .) . f) c (B.unpack x)
+#endif
 
   , testProperty "foldl cons" $
     \x -> B.foldl (flip B.cons) B.empty x === B.reverse x
@@ -401,6 +410,10 @@ tests =
     \f x -> not (B.null x) ==> B.foldl1' ((toElem .) . f) x === foldl1' ((toElem .) . f) (B.unpack x)
   , testProperty "foldr1" $
     \f x -> not (B.null x) ==> B.foldr1 ((toElem .) . f) x === foldr1 ((toElem .) . f) (B.unpack x)
+#ifndef BYTESTRING_LAZY
+  , testProperty "foldr1'" $ -- there is not Data.List.foldr1'
+    \f x -> not (B.null x) ==> B.foldr1' ((toElem .) . f) x === foldr1 ((toElem .) . f) (B.unpack x)
+#endif
 
   , testProperty "foldl1 const" $
     \x -> not (B.null x) ==> B.foldl1 const x === B.head x
@@ -425,8 +438,12 @@ tests =
     \f (toElem -> c) x -> B.unpack (B.scanr ((toElem .) . f) c x) === scanr ((toElem .) . f) c (B.unpack x)
   , testProperty "scanl1" $
     \f x -> B.unpack (B.scanl1 ((toElem .) . f) x) === scanl1 ((toElem .) . f) (B.unpack x)
+  , testProperty "scanl1 empty" $
+    \f -> B.scanl1 f B.empty === B.empty
   , testProperty "scanr1" $
     \f x -> B.unpack (B.scanr1 ((toElem .) . f) x) === scanr1 ((toElem .) . f) (B.unpack x)
+  , testProperty "scanr1 empty" $
+    \f -> B.scanr1 f B.empty === B.empty
   , testProperty "sort" $
     \x -> B.unpack (B.sort x) === sort (B.unpack x)
 #endif
@@ -462,6 +479,8 @@ tests =
     \(NonNegative n) x -> fromIntegral n < B.length x ==> B.indexMaybe x (fromIntegral n) === Just (B.unpack x !! n)
   , testProperty "indexMaybe Nothing" $
     \n x -> (n :: Int) < 0 || fromIntegral n >= B.length x ==> B.indexMaybe x (fromIntegral n) === Nothing
+  , testProperty "!?" $
+    \n x -> B.indexMaybe x (fromIntegral (n :: Int)) === x B.!? (fromIntegral n)
 
 #ifdef BYTESTRING_CHAR8
   , testProperty "isString" $
