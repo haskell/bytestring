@@ -44,169 +44,169 @@ module Data.ByteString (
         ByteString,             -- abstract, instances: Eq, Ord, Show, Read, Data, Typeable, Monoid
 
         -- * Introducing and eliminating 'ByteString's
-        empty,                  -- :: ByteString
-        singleton,              -- :: Word8   -> ByteString
-        pack,                   -- :: [Word8] -> ByteString
-        unpack,                 -- :: ByteString -> [Word8]
-        fromStrict,             -- :: ByteString -> Lazy.ByteString
-        toStrict,               -- :: Lazy.ByteString -> ByteString
+        empty,
+        singleton,
+        pack,
+        unpack,
+        fromStrict,
+        toStrict,
 
         -- * Basic interface
-        cons,                   -- :: Word8 -> ByteString -> ByteString
-        snoc,                   -- :: ByteString -> Word8 -> ByteString
-        append,                 -- :: ByteString -> ByteString -> ByteString
-        head,                   -- :: ByteString -> Word8
-        uncons,                 -- :: ByteString -> Maybe (Word8, ByteString)
-        unsnoc,                 -- :: ByteString -> Maybe (ByteString, Word8)
-        last,                   -- :: ByteString -> Word8
-        tail,                   -- :: ByteString -> ByteString
-        init,                   -- :: ByteString -> ByteString
-        null,                   -- :: ByteString -> Bool
-        length,                 -- :: ByteString -> Int
+        cons,
+        snoc,
+        append,
+        head,
+        uncons,
+        unsnoc,
+        last,
+        tail,
+        init,
+        null,
+        length,
 
         -- * Transforming ByteStrings
-        map,                    -- :: (Word8 -> Word8) -> ByteString -> ByteString
-        reverse,                -- :: ByteString -> ByteString
-        intersperse,            -- :: Word8 -> ByteString -> ByteString
-        intercalate,            -- :: ByteString -> [ByteString] -> ByteString
-        transpose,              -- :: [ByteString] -> [ByteString]
+        map,
+        reverse,
+        intersperse,
+        intercalate,
+        transpose,
 
         -- * Reducing 'ByteString's (folds)
-        foldl,                  -- :: (a -> Word8 -> a) -> a -> ByteString -> a
-        foldl',                 -- :: (a -> Word8 -> a) -> a -> ByteString -> a
-        foldl1,                 -- :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
-        foldl1',                -- :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
+        foldl,
+        foldl',
+        foldl1,
+        foldl1',
 
-        foldr,                  -- :: (Word8 -> a -> a) -> a -> ByteString -> a
-        foldr',                 -- :: (Word8 -> a -> a) -> a -> ByteString -> a
-        foldr1,                 -- :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
-        foldr1',                -- :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
+        foldr,
+        foldr',
+        foldr1,
+        foldr1',
 
         -- ** Special folds
-        concat,                 -- :: [ByteString] -> ByteString
-        concatMap,              -- :: (Word8 -> ByteString) -> ByteString -> ByteString
-        any,                    -- :: (Word8 -> Bool) -> ByteString -> Bool
-        all,                    -- :: (Word8 -> Bool) -> ByteString -> Bool
-        maximum,                -- :: ByteString -> Word8
-        minimum,                -- :: ByteString -> Word8
+        concat,
+        concatMap,
+        any,
+        all,
+        maximum,
+        minimum,
 
         -- * Building ByteStrings
         -- ** Scans
-        scanl,                  -- :: (Word8 -> Word8 -> Word8) -> Word8 -> ByteString -> ByteString
-        scanl1,                 -- :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString
-        scanr,                  -- :: (Word8 -> Word8 -> Word8) -> Word8 -> ByteString -> ByteString
-        scanr1,                 -- :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString
+        scanl,
+        scanl1,
+        scanr,
+        scanr1,
 
         -- ** Accumulating maps
-        mapAccumL,              -- :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
-        mapAccumR,              -- :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
+        mapAccumL,
+        mapAccumR,
 
         -- ** Generating and unfolding ByteStrings
-        replicate,              -- :: Int -> Word8 -> ByteString
-        unfoldr,                -- :: (a -> Maybe (Word8, a)) -> a -> ByteString
-        unfoldrN,               -- :: Int -> (a -> Maybe (Word8, a)) -> a -> (ByteString, Maybe a)
+        replicate,
+        unfoldr,
+        unfoldrN,
 
         -- * Substrings
 
         -- ** Breaking strings
-        take,                   -- :: Int -> ByteString -> ByteString
-        takeEnd,                -- :: Int -> ByteString -> ByteString
-        drop,                   -- :: Int -> ByteString -> ByteString
-        dropEnd,                -- :: Int -> ByteString -> ByteString
-        splitAt,                -- :: Int -> ByteString -> (ByteString, ByteString)
-        takeWhile,              -- :: (Word8 -> Bool) -> ByteString -> ByteString
-        takeWhileEnd,           -- :: (Word8 -> Bool) -> ByteString -> ByteString
-        dropWhile,              -- :: (Word8 -> Bool) -> ByteString -> ByteString
-        dropWhileEnd,           -- :: (Word8 -> Bool) -> ByteString -> ByteString
-        span,                   -- :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
-        spanEnd,                -- :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
-        break,                  -- :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
-        breakEnd,               -- :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
-        group,                  -- :: ByteString -> [ByteString]
-        groupBy,                -- :: (Word8 -> Word8 -> Bool) -> ByteString -> [ByteString]
-        inits,                  -- :: ByteString -> [ByteString]
-        tails,                  -- :: ByteString -> [ByteString]
-        stripPrefix,            -- :: ByteString -> ByteString -> Maybe ByteString
-        stripSuffix,            -- :: ByteString -> ByteString -> Maybe ByteString
+        take,
+        takeEnd,
+        drop,
+        dropEnd,
+        splitAt,
+        takeWhile,
+        takeWhileEnd,
+        dropWhile,
+        dropWhileEnd,
+        span,
+        spanEnd,
+        break,
+        breakEnd,
+        group,
+        groupBy,
+        inits,
+        tails,
+        stripPrefix,
+        stripSuffix,
 
         -- ** Breaking into many substrings
-        split,                  -- :: Word8 -> ByteString -> [ByteString]
-        splitWith,              -- :: (Word8 -> Bool) -> ByteString -> [ByteString]
+        split,
+        splitWith,
 
         -- * Predicates
-        isPrefixOf,             -- :: ByteString -> ByteString -> Bool
-        isSuffixOf,             -- :: ByteString -> ByteString -> Bool
-        isInfixOf,              -- :: ByteString -> ByteString -> Bool
+        isPrefixOf,
+        isSuffixOf,
+        isInfixOf,
 
         -- ** Search for arbitrary substrings
-        breakSubstring,         -- :: ByteString -> ByteString -> (ByteString,ByteString)
+        breakSubstring,
 
         -- * Searching ByteStrings
 
         -- ** Searching by equality
-        elem,                   -- :: Word8 -> ByteString -> Bool
-        notElem,                -- :: Word8 -> ByteString -> Bool
+        elem,
+        notElem,
 
         -- ** Searching with a predicate
-        find,                   -- :: (Word8 -> Bool) -> ByteString -> Maybe Word8
-        filter,                 -- :: (Word8 -> Bool) -> ByteString -> ByteString
-        partition,              -- :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
+        find,
+        filter,
+        partition,
 
         -- * Indexing ByteStrings
-        index,                  -- :: ByteString -> Int -> Word8
-        indexMaybe,             -- :: ByteString -> Int -> Maybe Word8
-        (!?),                   -- :: ByteString -> Int -> Maybe Word8
-        elemIndex,              -- :: Word8 -> ByteString -> Maybe Int
-        elemIndices,            -- :: Word8 -> ByteString -> [Int]
-        elemIndexEnd,           -- :: Word8 -> ByteString -> Maybe Int
-        findIndex,              -- :: (Word8 -> Bool) -> ByteString -> Maybe Int
-        findIndices,            -- :: (Word8 -> Bool) -> ByteString -> [Int]
-        findIndexEnd,           -- :: (Word8 -> Bool) -> ByteString -> Maybe Int
-        count,                  -- :: Word8 -> ByteString -> Int
+        index,
+        indexMaybe,
+        (!?),
+        elemIndex,
+        elemIndices,
+        elemIndexEnd,
+        findIndex,
+        findIndices,
+        findIndexEnd,
+        count,
 
         -- * Zipping and unzipping ByteStrings
-        zip,                    -- :: ByteString -> ByteString -> [(Word8,Word8)]
-        zipWith,                -- :: (Word8 -> Word8 -> c) -> ByteString -> ByteString -> [c]
-        packZipWith,            -- :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString -> ByteString
-        unzip,                  -- :: [(Word8,Word8)] -> (ByteString,ByteString)
+        zip,
+        zipWith,
+        packZipWith,
+        unzip,
 
         -- * Ordered ByteStrings
-        sort,                   -- :: ByteString -> ByteString
+        sort,
 
         -- * Low level conversions
         -- ** Copying ByteStrings
-        copy,                   -- :: ByteString -> ByteString
+        copy,
 
         -- ** Packing 'CString's and pointers
-        packCString,            -- :: CString -> IO ByteString
-        packCStringLen,         -- :: CStringLen -> IO ByteString
+        packCString,
+        packCStringLen,
 
         -- ** Using ByteStrings as 'CString's
-        useAsCString,           -- :: ByteString -> (CString    -> IO a) -> IO a
-        useAsCStringLen,        -- :: ByteString -> (CStringLen -> IO a) -> IO a
+        useAsCString,
+        useAsCStringLen,
 
         -- * I\/O with 'ByteString's
 
         -- ** Standard input and output
-        getLine,                -- :: IO ByteString
-        getContents,            -- :: IO ByteString
-        putStr,                 -- :: ByteString -> IO ()
-        interact,               -- :: (ByteString -> ByteString) -> IO ()
+        getLine,
+        getContents,
+        putStr,
+        interact,
 
         -- ** Files
-        readFile,               -- :: FilePath -> IO ByteString
-        writeFile,              -- :: FilePath -> ByteString -> IO ()
-        appendFile,             -- :: FilePath -> ByteString -> IO ()
+        readFile,
+        writeFile,
+        appendFile,
 
         -- ** I\/O with Handles
-        hGetLine,               -- :: Handle -> IO ByteString
-        hGetContents,           -- :: Handle -> IO ByteString
-        hGet,                   -- :: Handle -> Int -> IO ByteString
-        hGetSome,               -- :: Handle -> Int -> IO ByteString
-        hGetNonBlocking,        -- :: Handle -> Int -> IO ByteString
-        hPut,                   -- :: Handle -> ByteString -> IO ()
-        hPutNonBlocking,        -- :: Handle -> ByteString -> IO ByteString
-        hPutStr,                -- :: Handle -> ByteString -> IO ()
+        hGetLine,
+        hGetContents,
+        hGet,
+        hGetSome,
+        hGetNonBlocking,
+        hPut,
+        hPutNonBlocking,
+        hPutStr,
   ) where
 
 import qualified Prelude as P
