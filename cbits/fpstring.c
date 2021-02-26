@@ -136,6 +136,13 @@ size_t fps_count_cmpestrm(unsigned char *str, size_t len, unsigned char w) {
         __m128i p5 = _mm_load_si128((const __m128i*)(str + i + 16 * 5));
         __m128i p6 = _mm_load_si128((const __m128i*)(str + i + 16 * 6));
         __m128i p7 = _mm_load_si128((const __m128i*)(str + i + 16 * 7));
+		// Here, cmpestrm compares two strings in the following mode:
+		// * _SIDD_SBYTE_OPS: interprets the strings as consisting of 8-bit chars,
+		// * _SIDD_CMP_EQUAL_EACH: computes the number of `i`s
+		//	 for which `p[i]`, a part of `str`, is equal to `pat[i]`
+		//	 (the latter being always equal to `w`).
+		//
+		// q.v. https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpestrm&expand=835
 #define MODE _SIDD_SBYTE_OPS | _SIDD_CMP_EQUAL_EACH
         __m128i r0 = _mm_cmpestrm(p0, 16, pat, 16, MODE);
         __m128i r1 = _mm_cmpestrm(p1, 16, pat, 16, MODE);
@@ -202,7 +209,13 @@ size_t fps_count_avx2(unsigned char *str, size_t len, unsigned char w) {
         res += _popcnt64(_mm256_extract_epi64(r3, 3));
     }
 
+	// _mm256_cmpeq_epi8(p, pat) returns a SIMD vector
+	// with `i`th byte consisting of eight `1`s if `p[i] == pat[i]`,
+	// and of eight `0`s otherwise,
+	// hence each matching byte is counted 8 times by popcnt.
+	// Dividing by 8 corrects for that.
     res /= 8;
+
     res += prefix;
 
     for (; i < len; ++i) {
@@ -245,6 +258,12 @@ size_t fps_count(unsigned char *str, size_t len, unsigned char w) {
 #ifndef USE_SIMD_COUNT
     return fps_count_naive(str, len, w);
 #else
+	// 1024 is a rough guesstimate of the string length
+	// for which the extra performance of the main SIMD loop
+	// starts to compensate the extra work and extra branching outside the SIMD loop.
+	// The real optimal number depends on the specific μarch
+	// and isn't worth optimizing for in this context,
+	// since counting characters in shorter strings is unlikely to be a hot spot.
     if (len <= 1024) {
         return fps_count_naive(str, len, w);
     }
