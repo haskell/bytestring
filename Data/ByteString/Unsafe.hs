@@ -19,29 +19,29 @@
 module Data.ByteString.Unsafe (
 
         -- * Unchecked access
-        unsafeHead,             -- :: ByteString -> Word8
-        unsafeTail,             -- :: ByteString -> ByteString
-        unsafeInit,             -- :: ByteString -> ByteString
-        unsafeLast,             -- :: ByteString -> Word8
-        unsafeIndex,            -- :: ByteString -> Int -> Word8
-        unsafeTake,             -- :: Int -> ByteString -> ByteString
-        unsafeDrop,             -- :: Int -> ByteString -> ByteString
+        unsafeHead,
+        unsafeTail,
+        unsafeInit,
+        unsafeLast,
+        unsafeIndex,
+        unsafeTake,
+        unsafeDrop,
 
         -- * Low level interaction with CStrings
         -- ** Using ByteStrings with functions for CStrings
-        unsafeUseAsCString,     -- :: ByteString -> (CString -> IO a) -> IO a
-        unsafeUseAsCStringLen,  -- :: ByteString -> (CStringLen -> IO a) -> IO a
+        unsafeUseAsCString,
+        unsafeUseAsCStringLen,
 
         -- ** Converting CStrings to ByteStrings
-        unsafePackCString,      -- :: CString -> IO ByteString
-        unsafePackCStringLen,   -- :: CStringLen -> IO ByteString
-        unsafePackMallocCString,-- :: CString -> IO ByteString
-        unsafePackMallocCStringLen, -- :: CStringLen -> IO ByteString
+        unsafePackCString,
+        unsafePackCStringLen,
+        unsafePackMallocCString,
+        unsafePackMallocCStringLen,
 
-        unsafePackAddress,          -- :: Addr# -> IO ByteString
-        unsafePackAddressLen,       -- :: Int -> Addr# -> IO ByteString
-        unsafePackCStringFinalizer, -- :: Ptr Word8 -> Int -> IO () -> IO ByteString
-        unsafeFinalize,             -- :: ByteString -> IO ()
+        unsafePackAddress,
+        unsafePackAddressLen,
+        unsafePackCStringFinalizer,
+        unsafeFinalize,
 
   ) where
 
