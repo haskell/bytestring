@@ -69,10 +69,6 @@ source-repository head
   type:     git
   location: https://github.com/haskell/bytestring
 
-flag integer-simple
-  description: Does nothing, retained for backward compatibility.
-  default: False
-
 library
   build-depends:     base >= 4.9 && < 5, ghc-prim, deepseq
 
