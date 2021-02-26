@@ -31,142 +31,142 @@
 module Data.ByteString.Lazy.Char8 (
 
         -- * The @ByteString@ type
-        ByteString,             -- instances: Eq, Ord, Show, Read, Data, Typeable
+        ByteString,
 
         -- * Introducing and eliminating 'ByteString's
-        empty,                  -- :: ByteString
-        singleton,              -- :: Char   -> ByteString
-        pack,                   -- :: String -> ByteString
-        unpack,                 -- :: ByteString -> String
-        fromChunks,             -- :: [Strict.ByteString] -> ByteString
-        toChunks,               -- :: ByteString -> [Strict.ByteString]
-        fromStrict,             -- :: Strict.ByteString -> ByteString
-        toStrict,               -- :: ByteString -> Strict.ByteString
+        empty,
+        singleton,
+        pack,
+        unpack,
+        fromChunks,
+        toChunks,
+        fromStrict,
+        toStrict,
 
         -- * Basic interface
-        cons,                   -- :: Char -> ByteString -> ByteString
-        cons',                  -- :: Char -> ByteString -> ByteString
-        snoc,                   -- :: ByteString -> Char -> ByteString
-        append,                 -- :: ByteString -> ByteString -> ByteString
-        head,                   -- :: ByteString -> Char
-        uncons,                 -- :: ByteString -> Maybe (Char, ByteString)
-        last,                   -- :: ByteString -> Char
-        tail,                   -- :: ByteString -> ByteString
-        unsnoc,                 -- :: ByteString -> Maybe (ByteString, Char)
-        init,                   -- :: ByteString -> ByteString
-        null,                   -- :: ByteString -> Bool
-        length,                 -- :: ByteString -> Int64
+        cons,
+        cons',
+        snoc,
+        append,
+        head,
+        uncons,
+        last,
+        tail,
+        unsnoc,
+        init,
+        null,
+        length,
 
         -- * Transforming ByteStrings
-        map,                    -- :: (Char -> Char) -> ByteString -> ByteString
-        reverse,                -- :: ByteString -> ByteString
-        intersperse,            -- :: Char -> ByteString -> ByteString
-        intercalate,            -- :: ByteString -> [ByteString] -> ByteString
-        transpose,              -- :: [ByteString] -> [ByteString]
+        map,
+        reverse,
+        intersperse,
+        intercalate,
+        transpose,
 
         -- * Reducing 'ByteString's (folds)
-        foldl,                  -- :: (a -> Char -> a) -> a -> ByteString -> a
-        foldl',                 -- :: (a -> Char -> a) -> a -> ByteString -> a
-        foldl1,                 -- :: (Char -> Char -> Char) -> ByteString -> Char
-        foldl1',                -- :: (Char -> Char -> Char) -> ByteString -> Char
-        foldr,                  -- :: (Char -> a -> a) -> a -> ByteString -> a
-        foldr1,                 -- :: (Char -> Char -> Char) -> ByteString -> Char
+        foldl,
+        foldl',
+        foldl1,
+        foldl1',
+        foldr,
+        foldr1,
 
         -- ** Special folds
-        concat,                 -- :: [ByteString] -> ByteString
-        concatMap,              -- :: (Char -> ByteString) -> ByteString -> ByteString
-        any,                    -- :: (Char -> Bool) -> ByteString -> Bool
-        all,                    -- :: (Char -> Bool) -> ByteString -> Bool
-        maximum,                -- :: ByteString -> Char
-        minimum,                -- :: ByteString -> Char
-        compareLength,          -- :: ByteString -> Int -> Ordering
+        concat,
+        concatMap,
+        any,
+        all,
+        maximum,
+        minimum,
+        compareLength,
 
         -- * Building ByteStrings
         -- ** Scans
-        scanl,                  -- :: (Char -> Char -> Char) -> Char -> ByteString -> ByteString
---      scanl1,                 -- :: (Char -> Char -> Char) -> ByteString -> ByteString
---      scanr,                  -- :: (Char -> Char -> Char) -> Char -> ByteString -> ByteString
---      scanr1,                 -- :: (Char -> Char -> Char) -> ByteString -> ByteString
+        scanl,
+--      scanl1,
+--      scanr,
+--      scanr1,
 
         -- ** Accumulating maps
-        mapAccumL,              -- :: (acc -> Char -> (acc, Char)) -> acc -> ByteString -> (acc, ByteString)
-        mapAccumR,              -- :: (acc -> Char -> (acc, Char)) -> acc -> ByteString -> (acc, ByteString)
+        mapAccumL,
+        mapAccumR,
 
         -- ** Infinite ByteStrings
-        repeat,                 -- :: Char -> ByteString
-        replicate,              -- :: Int64 -> Char -> ByteString
-        cycle,                  -- :: ByteString -> ByteString
-        iterate,                -- :: (Char -> Char) -> Char -> ByteString
+        repeat,
+        replicate,
+        cycle,
+        iterate,
 
         -- ** Unfolding ByteStrings
-        unfoldr,                -- :: (a -> Maybe (Char, a)) -> a -> ByteString
+        unfoldr,
 
         -- * Substrings
 
         -- ** Breaking strings
-        take,                   -- :: Int64 -> ByteString -> ByteString
-        drop,                   -- :: Int64 -> ByteString -> ByteString
-        splitAt,                -- :: Int64 -> ByteString -> (ByteString, ByteString)
-        takeWhile,              -- :: (Char -> Bool) -> ByteString -> ByteString
-        dropWhile,              -- :: (Char -> Bool) -> ByteString -> ByteString
-        span,                   -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
-        break,                  -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
-        group,                  -- :: ByteString -> [ByteString]
-        groupBy,                -- :: (Char -> Char -> Bool) -> ByteString -> [ByteString]
-        inits,                  -- :: ByteString -> [ByteString]
-        tails,                  -- :: ByteString -> [ByteString]
-        stripPrefix,            -- :: ByteString -> ByteString -> Maybe ByteString
-        stripSuffix,            -- :: ByteString -> ByteString -> Maybe ByteString
+        take,
+        drop,
+        splitAt,
+        takeWhile,
+        dropWhile,
+        span,
+        break,
+        group,
+        groupBy,
+        inits,
+        tails,
+        stripPrefix,
+        stripSuffix,
 
         -- ** Breaking into many substrings
-        split,                  -- :: Char -> ByteString -> [ByteString]
-        splitWith,              -- :: (Char -> Bool) -> ByteString -> [ByteString]
+        split,
+        splitWith,
 
         -- ** Breaking into lines and words
-        lines,                  -- :: ByteString -> [ByteString]
-        words,                  -- :: ByteString -> [ByteString]
-        unlines,                -- :: [ByteString] -> ByteString
-        unwords,                -- :: ByteString -> [ByteString]
+        lines,
+        words,
+        unlines,
+        unwords,
 
         -- * Predicates
-        isPrefixOf,             -- :: ByteString -> ByteString -> Bool
-        isSuffixOf,             -- :: ByteString -> ByteString -> Bool
+        isPrefixOf,
+        isSuffixOf,
 
         -- * Searching ByteStrings
 
         -- ** Searching by equality
-        elem,                   -- :: Char -> ByteString -> Bool
-        notElem,                -- :: Char -> ByteString -> Bool
+        elem,
+        notElem,
 
         -- ** Searching with a predicate
-        find,                   -- :: (Char -> Bool) -> ByteString -> Maybe Char
-        filter,                 -- :: (Char -> Bool) -> ByteString -> ByteString
-        partition,              -- :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
+        find,
+        filter,
+        partition,
 
         -- * Indexing ByteStrings
-        index,                  -- :: ByteString -> Int64 -> Char
-        indexMaybe,             -- :: ByteString -> Int64 -> Maybe Char
-        (!?),                   -- :: ByteString -> Int64 -> Maybe Char
-        elemIndex,              -- :: Char -> ByteString -> Maybe Int64
-        elemIndexEnd,           -- :: Char -> ByteString -> Maybe Int64
-        elemIndices,            -- :: Char -> ByteString -> [Int64]
-        findIndex,              -- :: (Char -> Bool) -> ByteString -> Maybe Int64
-        findIndexEnd,           -- :: (Char -> Bool) -> ByteString -> Maybe Int64
-        findIndices,            -- :: (Char -> Bool) -> ByteString -> [Int64]
-        count,                  -- :: Char -> ByteString -> Int64
+        index,
+        indexMaybe,
+        (!?),
+        elemIndex,
+        elemIndexEnd,
+        elemIndices,
+        findIndex,
+        findIndexEnd,
+        findIndices,
+        count,
 
         -- * Zipping and unzipping ByteStrings
-        zip,                    -- :: ByteString -> ByteString -> [(Char,Char)]
-        zipWith,                -- :: (Char -> Char -> c) -> ByteString -> ByteString -> [c]
-        packZipWith,            -- :: (Char -> Char -> Char) -> ByteString -> ByteString -> ByteString
-        unzip,                  -- :: [(Char,Char)] -> (ByteString,ByteString)
+        zip,
+        zipWith,
+        packZipWith,
+        unzip,
 
         -- * Ordered ByteStrings
---        sort,                   -- :: ByteString -> ByteString
+--        sort,
 
         -- * Low level conversions
         -- ** Copying ByteStrings
-        copy,                   -- :: ByteString -> ByteString
+        copy,
 
         -- * Reading from ByteStrings
         readInt,
@@ -178,24 +178,24 @@ module Data.ByteString.Lazy.Char8 (
         -- newline mode is considered a flaw and may be changed in a future version.
 
         -- ** Standard input and output
-        getContents,            -- :: IO ByteString
-        putStr,                 -- :: ByteString -> IO ()
-        putStrLn,               -- :: ByteString -> IO ()
-        interact,               -- :: (ByteString -> ByteString) -> IO ()
+        getContents,
+        putStr,
+        putStrLn,
+        interact,
 
         -- ** Files
-        readFile,               -- :: FilePath -> IO ByteString
-        writeFile,              -- :: FilePath -> ByteString -> IO ()
-        appendFile,             -- :: FilePath -> ByteString -> IO ()
+        readFile,
+        writeFile,
+        appendFile,
 
         -- ** I\/O with Handles
-        hGetContents,           -- :: Handle -> IO ByteString
-        hGet,                   -- :: Handle -> Int64 -> IO ByteString
-        hGetNonBlocking,        -- :: Handle -> Int64 -> IO ByteString
-        hPut,                   -- :: Handle -> ByteString -> IO ()
-        hPutNonBlocking,        -- :: Handle -> ByteString -> IO ByteString
-        hPutStr,                -- :: Handle -> ByteString -> IO ()
-        hPutStrLn,              -- :: Handle -> ByteString -> IO ()
+        hGetContents,
+        hGet,
+        hGetNonBlocking,
+        hPut,
+        hPutNonBlocking,
+        hPutStr,
+        hPutStrLn,
 
   ) where
 

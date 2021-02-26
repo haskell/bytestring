@@ -23,7 +23,7 @@
 module Data.ByteString.Lazy.Internal (
 
         -- * The lazy @ByteString@ type and representation
-        ByteString(..),     -- instances: Eq, Ord, Show, Read, Data, Typeable
+        ByteString(..),
         chunk,
         foldrChunks,
         foldlChunks,

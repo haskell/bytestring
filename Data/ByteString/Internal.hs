@@ -30,7 +30,7 @@ module Data.ByteString.Internal (
         ByteString
         ( BS
         , PS -- backwards compatibility shim
-        ), -- instances: Eq, Ord, Show, Read, Data, Typeable
+        ),
 
         -- * Internal indexing
         findIndexOrLength,
@@ -43,48 +43,48 @@ module Data.ByteString.Internal (
         unsafePackAddress, unsafePackLiteral,
 
         -- * Low level imperative construction
-        create,                 -- :: Int -> (Ptr Word8 -> IO ()) -> IO ByteString
-        createUptoN,            -- :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
-        createUptoN',           -- :: Int -> (Ptr Word8 -> IO (Int, a)) -> IO (ByteString, a)
-        createAndTrim,          -- :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
-        createAndTrim',         -- :: Int -> (Ptr Word8 -> IO (Int, Int, a)) -> IO (ByteString, a)
-        unsafeCreate,           -- :: Int -> (Ptr Word8 -> IO ()) -> ByteString
-        unsafeCreateUptoN,      -- :: Int -> (Ptr Word8 -> IO Int) -> ByteString
-        unsafeCreateUptoN',     -- :: Int -> (Ptr Word8 -> IO (Int, a)) -> (ByteString, a)
-        mallocByteString,       -- :: Int -> IO (ForeignPtr a)
+        create,
+        createUptoN,
+        createUptoN',
+        createAndTrim,
+        createAndTrim',
+        unsafeCreate,
+        unsafeCreateUptoN,
+        unsafeCreateUptoN',
+        mallocByteString,
 
         -- * Conversion to and from ForeignPtrs
-        fromForeignPtr,         -- :: ForeignPtr Word8 -> Int -> Int -> ByteString
-        toForeignPtr,           -- :: ByteString -> (ForeignPtr Word8, Int, Int)
-        fromForeignPtr0,        -- :: ForeignPtr Word8 -> Int -> ByteString
-        toForeignPtr0,          -- :: ByteString -> (ForeignPtr Word8, Int)
+        fromForeignPtr,
+        toForeignPtr,
+        fromForeignPtr0,
+        toForeignPtr0,
 
         -- * Utilities
-        nullForeignPtr,         -- :: ForeignPtr Word8
-        checkedAdd,             -- :: String -> Int -> Int -> Int
+        nullForeignPtr,
+        checkedAdd,
 
         -- * Standard C Functions
-        c_strlen,               -- :: CString -> IO CInt
-        c_free_finalizer,       -- :: FunPtr (Ptr Word8 -> IO ())
+        c_strlen,
+        c_free_finalizer,
 
-        memchr,                 -- :: Ptr Word8 -> Word8 -> CSize -> IO Ptr Word8
-        memcmp,                 -- :: Ptr Word8 -> Ptr Word8 -> Int -> IO CInt
-        memcpy,                 -- :: Ptr Word8 -> Ptr Word8 -> Int -> IO ()
-        memset,                 -- :: Ptr Word8 -> Word8 -> CSize -> IO (Ptr Word8)
+        memchr,
+        memcmp,
+        memcpy,
+        memset,
 
         -- * cbits functions
-        c_reverse,              -- :: Ptr Word8 -> Ptr Word8 -> CSize -> IO ()
-        c_intersperse,          -- :: Ptr Word8 -> Ptr Word8 -> CSize -> Word8 -> IO ()
-        c_maximum,              -- :: Ptr Word8 -> CSize -> IO Word8
-        c_minimum,              -- :: Ptr Word8 -> CSize -> IO Word8
-        c_count,                -- :: Ptr Word8 -> CSize -> Word8 -> IO CSize
-        c_sort,                 -- :: Ptr Word8 -> CSize -> IO ()
+        c_reverse,
+        c_intersperse,
+        c_maximum,
+        c_minimum,
+        c_count,
+        c_sort,
 
         -- * Chars
         w2c, c2w, isSpaceWord8, isSpaceChar8,
 
         -- * Deprecated and unmentionable
-        accursedUnutterablePerformIO, -- :: IO a -> a
+        accursedUnutterablePerformIO,
 
         -- * Exported compatibility shim
         plusForeignPtr,
