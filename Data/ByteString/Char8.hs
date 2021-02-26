@@ -43,7 +43,7 @@
 module Data.ByteString.Char8 (
 
         -- * The @ByteString@ type
-        ByteString,             -- abstract, instances: Eq, Ord, Show, Read, Data, Typeable, Monoid
+        ByteString,
 
         -- * Introducing and eliminating 'ByteString's
         empty,

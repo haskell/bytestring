@@ -30,7 +30,7 @@ module Data.ByteString.Internal (
         ByteString
         ( BS
         , PS -- backwards compatibility shim
-        ), -- instances: Eq, Ord, Show, Read, Data, Typeable
+        ),
 
         -- * Internal indexing
         findIndexOrLength,

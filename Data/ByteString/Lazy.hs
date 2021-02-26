@@ -50,7 +50,7 @@
 module Data.ByteString.Lazy (
 
         -- * The @ByteString@ type
-        ByteString,             -- instances: Eq, Ord, Show, Read, Data, Typeable
+        ByteString,
 
         -- * Introducing and eliminating 'ByteString's
         empty,
