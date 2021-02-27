@@ -297,7 +297,7 @@ maxPow10 = toInteger $ (10 :: Int) ^ P.caseWordSize_32_64 (9 :: Int) 18
 -- | Decimal encoding of an 'Integer' using the ASCII digits.
 integerDec :: Integer -> Builder
 integerDec i
-    | Just i' <- toIntegralSized i = intDec i'
+    | i' <- fromInteger i, toInteger i' == i = intDec i'
     | i < 0     = P.primFixed P.char8 '-' `mappend` go (-i)
     | otherwise =                                   go i
   where
