@@ -15,6 +15,7 @@ import Control.Concurrent
 import Control.Exception
 import System.Posix.Internals (c_unlink)
 
+import qualified Data.List as List
 import Data.Char
 import Data.Word
 import Data.Maybe
@@ -464,6 +465,17 @@ short_tests =
     ]
 
 ------------------------------------------------------------------------
+-- Strictness checks.
+
+explosiveTail :: L.ByteString -> L.ByteString
+explosiveTail = (`L.append` error "Tail of this byte string is undefined!")
+
+prop_Lfoldr_lazy = \ xs -> List.genericTake (L.length xs) (L.foldr (:) [ ] (explosiveTail xs)) == L.unpack xs
+prop_Lfoldr'_strict = expectFailure $ \ xs ys -> List.genericTake (L.length xs) (L.foldr' (:) [ ] (explosiveTail (xs `L.append` ys))) == L.unpack xs
+prop_Lfoldr1_lazy = \ xs -> L.length xs > 0 ==> L.foldr1 const (explosiveTail (xs `L.append` L.singleton 1)) == L.head xs
+prop_Lfoldr1'_strict = expectFailure $ \ xs ys -> L.length xs > 0 ==> L.foldr1' const (explosiveTail (xs `L.append` L.singleton 1 `L.append` ys)) == L.head xs
+
+------------------------------------------------------------------------
 -- The entry point
 
 main :: IO ()
@@ -475,6 +487,7 @@ main = defaultMain $ testGroup "All"
   , testGroup "Misc"        misc_tests
   , testGroup "IO"          io_tests
   , testGroup "Short"       short_tests
+  , testGroup "Strictness"  strictness_checks
   ]
 
 io_tests =
@@ -534,6 +547,13 @@ misc_tests =
     , testProperty "readIntegerSafe"   prop_readIntegerSafe
     , testProperty "readIntegerUnsafe" prop_readIntegerUnsafe
     ]
+
+strictness_checks =
+  [ testProperty "foldr is lazy"     prop_Lfoldr_lazy
+  , testProperty "foldr' is strict"  prop_Lfoldr'_strict
+  , testProperty "foldr1 is lazy"    prop_Lfoldr1_lazy
+  , testProperty "foldr1' is strict" prop_Lfoldr1'_strict
+  ]
 
 removeFile :: String -> IO ()
 removeFile fn = void $ withCString fn c_unlink
