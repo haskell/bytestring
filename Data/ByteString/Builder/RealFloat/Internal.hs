@@ -59,7 +59,7 @@ import GHC.Word (Word8, Word32(..), Word64(..))
 import Foreign.Ptr (plusPtr)
 import qualified Foreign.Storable as S (poke)
 
-#if __GLASGOW_HASKELL__ >= 802
+#if __GLASGOW_HASKELL__ >= 804
 import GHC.Float (castFloatToWord32, castDoubleToWord64)
 #else
 import System.IO.Unsafe (unsafePerformIO)
