@@ -1,5 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables, ExplicitForAll #-}
 {-# LANGUAGE BangPatterns, MagicHash, UnboxedTuples #-}
+{-# LANGUAGE CPP #-}
 
 module Data.ByteString.Builder.RealFloat.Internal
     ( (.>>)
@@ -42,6 +43,8 @@ module Data.ByteString.Builder.RealFloat.Internal
     , box
     , unbox
     , ByteArray(..)
+    , castDoubleToWord64
+    , castFloatToWord32
     ) where
 
 import Control.Monad (foldM)
@@ -55,6 +58,23 @@ import GHC.ST (ST(..), runST)
 import GHC.Word (Word8, Word32(..), Word64(..))
 import Foreign.Ptr (plusPtr)
 import qualified Foreign.Storable as S (poke)
+
+#if __GLASGOW_HASKELL__ >= 802
+import GHC.Float (castFloatToWord32, castDoubleToWord64)
+#else
+import System.IO.Unsafe (unsafePerformIO)
+import Foreign.Marshal.Utils (with)
+import Foreign.Ptr (castPtr)
+import Foreign.Storable (peek)
+{-# NOINLINE castFloatToWord32 #-}
+castFloatToWord32 :: Float -> Word32
+castFloatToWord32 x = unsafePerformIO (with x (peek . castPtr))
+
+-- | Convert a 'Double' to a 'Word64'.
+{-# NOINLINE castDoubleToWord64 #-}
+castDoubleToWord64 :: Double -> Word64
+castDoubleToWord64 x = unsafePerformIO (with x (peek . castPtr))
+#endif
 
 {-# INLINABLE (.>>) #-}
 (.>>) :: (Bits a, Integral b) => a -> b -> a

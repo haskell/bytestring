@@ -14,7 +14,6 @@ import Data.ByteString.Builder.RealFloat.Internal
 import Data.ByteString.Builder.RealFloat.TableGenerator
 import Data.Maybe (fromMaybe)
 import GHC.Exts
-import GHC.Float (castDoubleToWord64)
 import GHC.Int (Int32(..), Int64(..))
 import GHC.ST (ST(..), runST)
 import GHC.Word (Word32(..), Word64(..))
