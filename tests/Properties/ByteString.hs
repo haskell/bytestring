@@ -451,7 +451,6 @@ tests =
   , testProperty "scanl foldl" $
     \f (toElem -> c) x -> not (B.null x) ==> B.last (B.scanl ((toElem .) . f) c x) === B.foldl ((toElem .) . f) c x
 
-#ifndef BYTESTRING_LAZY
   , testProperty "scanr" $
     \f (toElem -> c) x -> B.unpack (B.scanr ((toElem .) . f) c x) === scanr ((toElem .) . f) c (B.unpack x)
   , testProperty "scanl1" $
@@ -462,6 +461,8 @@ tests =
     \f x -> B.unpack (B.scanr1 ((toElem .) . f) x) === scanr1 ((toElem .) . f) (B.unpack x)
   , testProperty "scanr1 empty" $
     \f -> B.scanr1 f B.empty === B.empty
+
+#ifndef BYTESTRING_LAZY
   , testProperty "sort" $
     \x -> B.unpack (B.sort x) === List.sort (B.unpack x)
 #endif

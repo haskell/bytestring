@@ -108,9 +108,9 @@ module Data.ByteString.Lazy (
         -- * Building ByteStrings
         -- ** Scans
         scanl,
---        scanl1,
---        scanr,
---        scanr1,
+        scanl1,
+        scanr,
+        scanr1,
 
         -- ** Accumulating maps
         mapAccumL,
@@ -632,10 +632,45 @@ scanl
     -- ^ input of length n
     -> ByteString
     -- ^ output of length n+1
-scanl f z = snd . foldl k (z,singleton z)
- where
-    k (c,acc) a = let n = f c a in (n, acc `snoc` n)
+scanl f = flip (foldr go singleton)
+  where
+    go value continuation accumulator =
+      let next = f accumulator value
+      in accumulator `cons` continuation next
 {-# INLINE scanl #-}
+
+-- | 'scanl1' is a variant of 'scanl' that has no starting value argument.
+--
+-- > scanl1 f [x1, x2, ...] == [x1, x1 `f` x2, ...]
+scanl1 :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString
+scanl1 _ Empty = Empty
+scanl1 f (Chunk c cs) = scanl f (S.unsafeHead c) (chunk (S.unsafeTail c) cs)
+
+-- | 'scanr' is similar to 'foldr', but returns a list of successive
+-- reduced values from the right.
+--
+-- > scanr f z [..., x{n-1}, xn] == [..., x{n-1} `f` (xn `f` z), xn `f` z, z]
+--
+-- Note that
+--
+-- > head (scanr f z xs) == foldr f z xs
+-- > last (scanr f z xs) == z
+--
+scanr
+    :: (Word8 -> Word8 -> Word8)
+    -- ^ element -> accumulator -> new accumulator
+    -> Word8
+    -- ^ starting value of accumulator
+    -> ByteString
+    -- ^ input of length n
+    -> ByteString
+    -- ^ output of length n+1
+scanr f z = pack . fmap (foldr f z) . tails
+
+-- | 'scanr1' is a variant of 'scanr' that has no starting value argument.
+scanr1 :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString
+scanr1 _ Empty = Empty
+scanr1 f lazyByteString = scanr f (last lazyByteString) (init lazyByteString)
 
 -- ---------------------------------------------------------------------
 -- Unfolds and replicates
