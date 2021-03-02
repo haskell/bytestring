@@ -546,31 +546,31 @@ misc_tests =
 strictness_checks =
   [ testGroup "Lazy Word8"
     [ testProperty "foldr is lazy" $ \ xs ->
-        List.genericTake (L.length xs) (L.foldr (:) [ ] (explosiveTail xs)) == L.unpack xs
+        List.genericTake (L.length xs) (L.foldr (:) [ ] (explosiveTail xs)) === L.unpack xs
     , testProperty "foldr' is strict" $ expectFailure $ \ xs ys ->
-        List.genericTake (L.length xs) (L.foldr' (:) [ ] (explosiveTail (xs `L.append` ys))) == L.unpack xs
+        List.genericTake (L.length xs) (L.foldr' (:) [ ] (explosiveTail (xs `L.append` ys))) === L.unpack xs
     , testProperty "foldr1 is lazy" $ \ xs -> L.length xs > 0 ==>
-        L.foldr1 const (explosiveTail (xs `L.append` L.singleton 1)) == L.head xs
+        L.foldr1 const (explosiveTail (xs `L.append` L.singleton 1)) === L.head xs
     , testProperty "foldr1' is strict" $ expectFailure $ \ xs ys -> L.length xs > 0 ==>
-        L.foldr1' const (explosiveTail (xs `L.append` L.singleton 1 `L.append` ys)) == L.head xs
+        L.foldr1' const (explosiveTail (xs `L.append` L.singleton 1 `L.append` ys)) === L.head xs
     , testProperty "scanl is lazy" $ \ xs ->
-        L.take (L.length xs + 1) (L.scanl (+) 0 (explosiveTail (xs `L.append` L.singleton 1))) == (L.pack . fmap (L.foldr (+) 0) . L.inits) xs
+        L.take (L.length xs + 1) (L.scanl (+) 0 (explosiveTail (xs `L.append` L.singleton 1))) === (L.pack . fmap (L.foldr (+) 0) . L.inits) xs
     , testProperty "scanl1 is lazy" $ \ xs -> L.length xs > 0 ==>
-        L.take (L.length xs) (L.scanl1 (+) (explosiveTail (xs `L.append` L.singleton 1))) == (L.pack . fmap (L.foldr1 (+)) . tail . L.inits) xs
+        L.take (L.length xs) (L.scanl1 (+) (explosiveTail (xs `L.append` L.singleton 1))) === (L.pack . fmap (L.foldr1 (+)) . tail . L.inits) xs
     ]
   , testGroup "Lazy Char"
     [ testProperty "foldr is lazy" $ \ xs ->
-        List.genericTake (D.length xs) (D.foldr (:) [ ] (explosiveTail xs)) == D.unpack xs
+        List.genericTake (D.length xs) (D.foldr (:) [ ] (explosiveTail xs)) === D.unpack xs
     , testProperty "foldr' is strict" $ expectFailure $ \ xs ys ->
-        List.genericTake (D.length xs) (D.foldr' (:) [ ] (explosiveTail (xs `D.append` ys))) == D.unpack xs
+        List.genericTake (D.length xs) (D.foldr' (:) [ ] (explosiveTail (xs `D.append` ys))) === D.unpack xs
     , testProperty "foldr1 is lazy" $ \ xs -> D.length xs > 0 ==>
-        D.foldr1 const (explosiveTail (xs `D.append` D.singleton 'x')) == D.head xs
+        D.foldr1 const (explosiveTail (xs `D.append` D.singleton 'x')) === D.head xs
     , testProperty "foldr1' is strict" $ expectFailure $ \ xs ys -> D.length xs > 0 ==>
-        D.foldr1' const (explosiveTail (xs `D.append` D.singleton 'x' `D.append` ys)) == D.head xs
+        D.foldr1' const (explosiveTail (xs `D.append` D.singleton 'x' `D.append` ys)) === D.head xs
     , testProperty "scanl is lazy" $ \ xs -> let char1 +. char2 = toEnum (fromEnum char1 + fromEnum char2) in
-        D.take (D.length xs + 1) (D.scanl (+.) '\NUL' (explosiveTail (xs `D.append` D.singleton '\SOH'))) == (D.pack . fmap (D.foldr (+.) '\NUL') . D.inits) xs
+        D.take (D.length xs + 1) (D.scanl (+.) '\NUL' (explosiveTail (xs `D.append` D.singleton '\SOH'))) === (D.pack . fmap (D.foldr (+.) '\NUL') . D.inits) xs
     , testProperty "scanl1 is lazy" $ \ xs -> D.length xs > 0 ==> let char1 +. char2 = toEnum (fromEnum char1 + fromEnum char2) in
-        D.take (D.length xs) (D.scanl1 (+.) (explosiveTail (xs `D.append` D.singleton '\SOH'))) == (D.pack . fmap (D.foldr1 (+.)) . tail . D.inits) xs
+        D.take (D.length xs) (D.scanl1 (+.) (explosiveTail (xs `D.append` D.singleton '\SOH'))) === (D.pack . fmap (D.foldr1 (+.)) . tail . D.inits) xs
     ]
   ]
 
