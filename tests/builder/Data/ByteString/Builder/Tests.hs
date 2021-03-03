@@ -23,9 +23,12 @@ import           Control.Monad.Trans.Writer (WriterT, execWriterT, tell)
 import           Foreign (minusPtr)
 
 import           Data.Char (chr)
+import           Data.Bits ((.|.), shiftL)
 import qualified Data.DList      as D
 import           Data.Foldable
 import           Data.Word
+import           GHC.Float (FFFormat(..), formatRealFloat)
+import           Numeric (showEFloat)
 
 import qualified Data.ByteString          as S
 import qualified Data.ByteString.Internal as S
@@ -62,6 +65,7 @@ tests =
   testsEncodingToBuilder ++
   testsBinary ++
   testsASCII ++
+  testsFloating ++
   testsChar8 ++
   testsUtf8
 
@@ -590,6 +594,310 @@ testsASCII =
   ]
   where
     enlarge (n, e) = n ^ (abs (e `mod` (50 :: Integer)))
+
+formatFloat :: FFFormat -> Maybe Int -> Float -> Builder
+formatFloat fmt prec = string7 . formatRealFloat fmt prec
+
+formatDouble :: FFFormat -> Maybe Int -> Double -> Builder
+formatDouble fmt prec = string7 . formatRealFloat fmt prec
+
+testsFloating :: [TestTree]
+testsFloating =
+  [ testMatches "f2sBasic" (formatFloat FFExponent Nothing) (flip (showEFloat Nothing) "")
+        [ ( 0.0    , "0.0e0" )
+        , ( (-0.0) , "-0.0e0" )
+        , ( 1.0    , "1.0e0" )
+        , ( (-1.0) , "-1.0e0" )
+        , ( (0/0)  , "NaN" )
+        , ( (1/0)  , "Infinity" )
+        , ( (-1/0) , "-Infinity" )
+        ]
+  , testMatches "f2sSubnormal" (formatFloat FFExponent Nothing) (flip (showEFloat Nothing) "")
+        [ ( 1.1754944e-38 , "1.1754944e-38" )
+        ]
+  , testMatches "f2sMinAndMax" (formatFloat FFExponent Nothing) (flip (showEFloat Nothing) "")
+        [ ( coerceWord32ToFloat 0x7f7fffff , "3.4028235e38" )
+        , ( coerceWord32ToFloat 0x00000001 , "1.0e-45" )
+        ]
+  , testMatches "f2sBoundaryRound" (formatFloat FFExponent Nothing) (flip (showEFloat Nothing) "")
+        [ ( 3.355445e7   , "3.3554448e7" )
+        , ( 8.999999e9   , "8.999999e9" )
+        , ( 3.4366717e10 , "3.4366718e10" )
+        ]
+  , testMatches "f2sExactValueRound" (formatFloat FFExponent Nothing) (flip (showEFloat Nothing) "")
+        [ ( 3.0540412e5 , "3.0540413e5" )
+        , ( 8.0990312e3 , "8.0990313e3" )
+        ]
+  , testMatches "f2sTrailingZeros" (formatFloat FFExponent Nothing) (flip (showEFloat Nothing) "")
+        -- Pattern for the first test: 00111001100000000000000000000000
+        [ ( 2.4414062e-4 , "2.4414063e-4" )
+        , ( 2.4414062e-3 , "2.4414063e-3" )
+        , ( 4.3945312e-3 , "4.3945313e-3" )
+        , ( 6.3476562e-3 , "6.3476563e-3" )
+        ]
+  , testMatches "f2sRegression" (formatFloat FFExponent Nothing) (flip (showEFloat Nothing) "")
+        [ ( 4.7223665e21   , "4.7223665e21" )
+        , ( 8388608.0      , "8.388608e6" )
+        , ( 1.6777216e7    , "1.6777216e7" )
+        , ( 3.3554436e7    , "3.3554436e7" )
+        , ( 6.7131496e7    , "6.7131496e7" )
+        , ( 1.9310392e-38  , "1.9310392e-38" )
+        , ( (-2.47e-43)    , "-2.47e-43" )
+        , ( 1.993244e-38   , "1.993244e-38" )
+        , ( 4103.9003      , "4.1039004e3" )
+        , ( 5.3399997e9    , "5.3399997e9" )
+        , ( 6.0898e-39     , "6.0898e-39" )
+        , ( 0.0010310042   , "1.0310042e-3" )
+        , ( 2.8823261e17   , "2.882326e17" )
+        , ( 7.0385309e-26  , "7.038531e-26" )
+        , ( 9.2234038e17   , "9.223404e17" )
+        , ( 6.7108872e7    , "6.710887e7" )
+        , ( 1.0e-44        , "1.0e-44" )
+        , ( 2.816025e14    , "2.816025e14" )
+        , ( 9.223372e18    , "9.223372e18" )
+        , ( 1.5846085e29   , "1.5846086e29" )
+        , ( 1.1811161e19   , "1.1811161e19" )
+        , ( 5.368709e18    , "5.368709e18" )
+        , ( 4.6143165e18   , "4.6143166e18" )
+        , ( 0.007812537    , "7.812537e-3" )
+        , ( 1.4e-45        , "1.0e-45" )
+        , ( 1.18697724e20  , "1.18697725e20" )
+        , ( 1.00014165e-36 , "1.00014165e-36" )
+        , ( 200.0          , "2.0e2" )
+        , ( 3.3554432e7    , "3.3554432e7" )
+        , ( 2.0019531      , "2.0019531e0" )
+        , ( 2.001953       , "2.001953e0" )
+        ]
+  , testMatches "f2sLooksLikePowerOf5" (formatFloat FFExponent Nothing) (flip (showEFloat Nothing) "")
+        [ ( coerceWord32ToFloat 0x5D1502F9 , "6.7108864e17" )
+        , ( coerceWord32ToFloat 0x5D9502F9 , "1.3421773e18" )
+        , ( coerceWord32ToFloat 0x5e1502F9 , "2.6843546e18" )
+        ]
+  , testMatches "f2sOutputLength" (formatFloat FFExponent Nothing) (flip (showEFloat Nothing) "")
+        [ ( 1.0            , "1.0e0" )
+        , ( 1.2            , "1.2e0" )
+        , ( 1.23           , "1.23e0" )
+        , ( 1.234          , "1.234e0" )
+        , ( 1.2345         , "1.2345e0" )
+        , ( 1.23456        , "1.23456e0" )
+        , ( 1.234567       , "1.234567e0" )
+        , ( 1.2345678      , "1.2345678e0" )
+        , ( 1.23456735e-36 , "1.23456735e-36" )
+        ]
+  , testMatches "d2sBasic" (formatDouble FFExponent Nothing) (flip (showEFloat Nothing) "")
+        [ ( 0.0    , "0.0e0" )
+        , ( (-0.0) , "-0.0e0" )
+        , ( 1.0    , "1.0e0" )
+        , ( (-1.0) , "-1.0e0" )
+        , ( (0/0)  , "NaN" )
+        , ( (1/0)  , "Infinity" )
+        , ( (-1/0) , "-Infinity" )
+        ]
+  , testMatches "d2sSubnormal" (formatDouble FFExponent Nothing) (flip (showEFloat Nothing) "")
+        [ ( 2.2250738585072014e-308 , "2.2250738585072014e-308" )
+        ]
+  , testMatches "d2sMinAndMax" (formatDouble FFExponent Nothing) (flip (showEFloat Nothing) "")
+        [ ( (coerceWord64ToDouble 0x7fefffffffffffff) , "1.7976931348623157e308" )
+        , ( (coerceWord64ToDouble 0x0000000000000001) , "5.0e-324" )
+        ]
+  , testMatches "d2sTrailingZeros" (formatDouble FFExponent Nothing) (flip (showEFloat Nothing) "")
+        [ ( 2.98023223876953125e-8 , "2.9802322387695313e-8" )
+        ]
+  , testMatches "d2sRegression" (formatDouble FFExponent Nothing) (flip (showEFloat Nothing) "")
+        [ ( (-2.109808898695963e16) , "-2.1098088986959632e16" )
+        , ( 4.940656e-318           , "4.940656e-318" )
+        , ( 1.18575755e-316         , "1.18575755e-316" )
+        , ( 2.989102097996e-312     , "2.989102097996e-312" )
+        , ( 9.0608011534336e15      , "9.0608011534336e15" )
+        , ( 4.708356024711512e18    , "4.708356024711512e18" )
+        , ( 9.409340012568248e18    , "9.409340012568248e18" )
+        , ( 1.2345678               , "1.2345678e0" )
+        , ( 1.9430376160308388e16   , "1.9430376160308388e16" )
+        , ( (-6.9741824662760956e19), "-6.9741824662760956e19" )
+        , ( 4.3816050601147837e18   , "4.3816050601147837e18" )
+        ]
+  , testMatches "d2sLooksLikePowerOf5" (formatDouble FFExponent Nothing) (flip (showEFloat Nothing) "")
+        [ ( (coerceWord64ToDouble 0x4830F0CF064DD592) , "5.764607523034235e39" )
+        , ( (coerceWord64ToDouble 0x4840F0CF064DD592) , "1.152921504606847e40" )
+        , ( (coerceWord64ToDouble 0x4850F0CF064DD592) , "2.305843009213694e40" )
+        ]
+  , testMatches "d2sOutputLength" (formatDouble FFExponent Nothing) (flip (showEFloat Nothing) "")
+        [ ( 1                  , "1.0e0" )
+        , ( 1.2                , "1.2e0" )
+        , ( 1.23               , "1.23e0" )
+        , ( 1.234              , "1.234e0" )
+        , ( 1.2345             , "1.2345e0" )
+        , ( 1.23456            , "1.23456e0" )
+        , ( 1.234567           , "1.234567e0" )
+        , ( 1.2345678          , "1.2345678e0" )
+        , ( 1.23456789         , "1.23456789e0" )
+        , ( 1.234567895        , "1.234567895e0" )
+        , ( 1.2345678901       , "1.2345678901e0" )
+        , ( 1.23456789012      , "1.23456789012e0" )
+        , ( 1.234567890123     , "1.234567890123e0" )
+        , ( 1.2345678901234    , "1.2345678901234e0" )
+        , ( 1.23456789012345   , "1.23456789012345e0" )
+        , ( 1.234567890123456  , "1.234567890123456e0" )
+        , ( 1.2345678901234567 , "1.2345678901234567e0" )
+
+        -- Test 32-bit chunking
+        , ( 4.294967294 , "4.294967294e0" )
+        , ( 4.294967295 , "4.294967295e0" )
+        , ( 4.294967296 , "4.294967296e0" )
+        , ( 4.294967297 , "4.294967297e0" )
+        , ( 4.294967298 , "4.294967298e0" )
+        ]
+  , testMatches "d2sMinMaxShift" (formatDouble FFExponent Nothing) (flip (showEFloat Nothing) "")
+        [ ( (ieeeParts2Double False 4 0) , "1.7800590868057611e-307" )
+        -- 32-bit opt-size=0:  49 <= dist <= 49
+        -- 32-bit opt-size=1:  28 <= dist <= 49
+        -- 64-bit opt-size=0:  50 <= dist <= 50
+        -- 64-bit opt-size=1:  28 <= dist <= 50
+        , ( (ieeeParts2Double False 6 maxMantissa) , "2.8480945388892175e-306" )
+        -- 32-bit opt-size=0:  52 <= dist <= 53
+        -- 32-bit opt-size=1:   2 <= dist <= 53
+        -- 64-bit opt-size=0:  53 <= dist <= 53
+        -- 64-bit opt-size=1:   2 <= dist <= 53
+        , ( (ieeeParts2Double False 41 0) , "2.446494580089078e-296" )
+        -- 32-bit opt-size=0:  52 <= dist <= 52
+        -- 32-bit opt-size=1:   2 <= dist <= 52
+        -- 64-bit opt-size=0:  53 <= dist <= 53
+        -- 64-bit opt-size=1:   2 <= dist <= 53
+        , ( (ieeeParts2Double False 40 maxMantissa) , "4.8929891601781557e-296" )
+        -- 32-bit opt-size=0:  57 <= dist <= 58
+        -- 32-bit opt-size=1:  57 <= dist <= 58
+        -- 64-bit opt-size=0:  58 <= dist <= 58
+        -- 64-bit opt-size=1:  58 <= dist <= 58
+        , ( (ieeeParts2Double False 1077 0) , "1.8014398509481984e16" )
+        -- 32-bit opt-size=0:  57 <= dist <= 57
+        -- 32-bit opt-size=1:  57 <= dist <= 57
+        -- 64-bit opt-size=0:  58 <= dist <= 58
+        -- 64-bit opt-size=1:  58 <= dist <= 58
+        , ( (ieeeParts2Double False 1076 maxMantissa) , "3.6028797018963964e16" )
+        -- 32-bit opt-size=0:  51 <= dist <= 52
+        -- 32-bit opt-size=1:  51 <= dist <= 59
+        -- 64-bit opt-size=0:  52 <= dist <= 52
+        -- 64-bit opt-size=1:  52 <= dist <= 59
+        , ( (ieeeParts2Double False 307 0) , "2.900835519859558e-216" )
+        -- 32-bit opt-size=0:  51 <= dist <= 51
+        -- 32-bit opt-size=1:  51 <= dist <= 59
+        -- 64-bit opt-size=0:  52 <= dist <= 52
+        -- 64-bit opt-size=1:  52 <= dist <= 59
+        , ( (ieeeParts2Double False 306 maxMantissa) , "5.801671039719115e-216" )
+        -- 32-bit opt-size=0:  49 <= dist <= 49
+        -- 32-bit opt-size=1:  44 <= dist <= 49
+        -- 64-bit opt-size=0:  50 <= dist <= 50
+        -- 64-bit opt-size=1:  44 <= dist <= 50
+        , ( (ieeeParts2Double False 934 0x000FA7161A4D6e0C) , "3.196104012172126e-27" )
+        ]
+  , testMatches "d2sSmallIntegers" (formatDouble FFExponent Nothing) (flip (showEFloat Nothing) "")
+        [ ( 9007199254740991.0 , "9.007199254740991e15" )
+        , ( 9007199254740992.0 , "9.007199254740992e15" )
+
+        , ( 1.0e+0                , "1.0e0" )
+        , ( 1.2e+1                , "1.2e1" )
+        , ( 1.23e+2               , "1.23e2" )
+        , ( 1.234e+3              , "1.234e3" )
+        , ( 1.2345e+4             , "1.2345e4" )
+        , ( 1.23456e+5            , "1.23456e5" )
+        , ( 1.234567e+6           , "1.234567e6" )
+        , ( 1.2345678e+7          , "1.2345678e7" )
+        , ( 1.23456789e+8         , "1.23456789e8" )
+        , ( 1.23456789e+9         , "1.23456789e9" )
+        , ( 1.234567895e+9        , "1.234567895e9" )
+        , ( 1.2345678901e+10      , "1.2345678901e10" )
+        , ( 1.23456789012e+11     , "1.23456789012e11" )
+        , ( 1.234567890123e+12    , "1.234567890123e12" )
+        , ( 1.2345678901234e+13   , "1.2345678901234e13" )
+        , ( 1.23456789012345e+14  , "1.23456789012345e14" )
+        , ( 1.234567890123456e+15 , "1.234567890123456e15" )
+
+        -- 10^i
+        , ( 1.0e+0  , "1.0e0" )
+        , ( 1.0e+1  , "1.0e1" )
+        , ( 1.0e+2  , "1.0e2" )
+        , ( 1.0e+3  , "1.0e3" )
+        , ( 1.0e+4  , "1.0e4" )
+        , ( 1.0e+5  , "1.0e5" )
+        , ( 1.0e+6  , "1.0e6" )
+        , ( 1.0e+7  , "1.0e7" )
+        , ( 1.0e+8  , "1.0e8" )
+        , ( 1.0e+9  , "1.0e9" )
+        , ( 1.0e+10 , "1.0e10" )
+        , ( 1.0e+11 , "1.0e11" )
+        , ( 1.0e+12 , "1.0e12" )
+        , ( 1.0e+13 , "1.0e13" )
+        , ( 1.0e+14 , "1.0e14" )
+        , ( 1.0e+15 , "1.0e15" )
+
+        -- 10^15 + 10^i
+        , ( (1.0e+15 + 1.0e+0)  , "1.000000000000001e15" )
+        , ( (1.0e+15 + 1.0e+1)  , "1.00000000000001e15" )
+        , ( (1.0e+15 + 1.0e+2)  , "1.0000000000001e15" )
+        , ( (1.0e+15 + 1.0e+3)  , "1.000000000001e15" )
+        , ( (1.0e+15 + 1.0e+4)  , "1.00000000001e15" )
+        , ( (1.0e+15 + 1.0e+5)  , "1.0000000001e15" )
+        , ( (1.0e+15 + 1.0e+6)  , "1.000000001e15" )
+        , ( (1.0e+15 + 1.0e+7)  , "1.00000001e15" )
+        , ( (1.0e+15 + 1.0e+8)  , "1.0000001e15" )
+        , ( (1.0e+15 + 1.0e+9)  , "1.000001e15" )
+        , ( (1.0e+15 + 1.0e+10) , "1.00001e15" )
+        , ( (1.0e+15 + 1.0e+11) , "1.0001e15" )
+        , ( (1.0e+15 + 1.0e+12) , "1.001e15" )
+        , ( (1.0e+15 + 1.0e+13) , "1.01e15" )
+        , ( (1.0e+15 + 1.0e+14) , "1.1e15" )
+
+        -- Largest power of 2 <= 10^(i+1)
+        , ( 8.0                , "8.0e0" )
+        , ( 64.0               , "6.4e1" )
+        , ( 512.0              , "5.12e2" )
+        , ( 8192.0             , "8.192e3" )
+        , ( 65536.0            , "6.5536e4" )
+        , ( 524288.0           , "5.24288e5" )
+        , ( 8388608.0          , "8.388608e6" )
+        , ( 67108864.0         , "6.7108864e7" )
+        , ( 536870912.0        , "5.36870912e8" )
+        , ( 8589934592.0       , "8.589934592e9" )
+        , ( 68719476736.0      , "6.8719476736e10" )
+        , ( 549755813888.0     , "5.49755813888e11" )
+        , ( 8796093022208.0    , "8.796093022208e12" )
+        , ( 70368744177664.0   , "7.0368744177664e13" )
+        , ( 562949953421312.0  , "5.62949953421312e14" )
+        , ( 9007199254740992.0 , "9.007199254740992e15" )
+
+        -- 1000 * (Largest power of 2 <= 10^(i+1))
+        , ( 8.0e+3             , "8.0e3" )
+        , ( 64.0e+3            , "6.4e4" )
+        , ( 512.0e+3           , "5.12e5" )
+        , ( 8192.0e+3          , "8.192e6" )
+        , ( 65536.0e+3         , "6.5536e7" )
+        , ( 524288.0e+3        , "5.24288e8" )
+        , ( 8388608.0e+3       , "8.388608e9" )
+        , ( 67108864.0e+3      , "6.7108864e10" )
+        , ( 536870912.0e+3     , "5.36870912e11" )
+        , ( 8589934592.0e+3    , "8.589934592e12" )
+        , ( 68719476736.0e+3   , "6.8719476736e13" )
+        , ( 549755813888.0e+3  , "5.49755813888e14" )
+        , ( 8796093022208.0e+3 , "8.796093022208e15" )
+        ]
+  , testMatches "f2sPowersOf10" floatDec show $
+        fmap asShowRef [read ("1.0e" ++ show x) :: Float | x <- [-46..39 :: Int]]
+  , testMatches "d2sPowersOf10" doubleDec show $
+        fmap asShowRef [read ("1.0e" ++ show x) :: Double | x <- [-324..309 :: Int]]
+  ]
+  where
+    testMatches :: (Show a) => TestName -> (a -> Builder) -> (a -> String) -> [(a, String)] -> TestTree
+    testMatches name dec refdec lst = testProperty name $
+      all (\(x, ref) -> L.unpack (toLazyByteString (dec x)) == encodeASCII (refdec x)
+                        && refdec x == ref) lst
+
+    maxMantissa = (1 `shiftL` 53) - 1 :: Word64
+
+    ieeeParts2Double :: Bool -> Int -> Word64 -> Double
+    ieeeParts2Double sign expo mantissa =
+        coerceWord64ToDouble $ (fromIntegral (fromEnum sign) `shiftL` 63) .|. (fromIntegral expo `shiftL` 52) .|. mantissa
+
+    asShowRef x = (x, show x)
 
 testsChar8 :: [TestTree]
 testsChar8 =
