@@ -431,6 +431,10 @@ main = do
             nf (L.foldr' (\x acc -> fromIntegral x + acc) (0 :: Int)) s) foldInputsLazy
         , bgroup "foldr1'" $ map (\s -> bench (show $ L.length s) $
             nf (L.foldr1' (\x  acc -> fromIntegral x + acc)) s) foldInputsLazy
+        , bgroup "scanl" $ map (\s -> bench (show $ L.length s) $
+            nf (L.scanl (+) 0) s) foldInputsLazy
+        , bgroup "scanr" $ map (\s -> bench (show $ L.length s) $
+            nf (L.scanr (+) 0) s) foldInputsLazy
         ]
 
       ]
