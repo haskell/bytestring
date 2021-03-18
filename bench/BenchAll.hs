@@ -214,16 +214,6 @@ htmlSubstrings s n h =
 -- benchmarks
 -------------
 
-sanityCheckInfo :: [String]
-sanityCheckInfo =
-  [ "Sanity checks:"
-  , " lengths of input data: " ++ show
-      [ length intData, length floatData, length doubleData
-      , length smallIntegerData, length largeIntegerData
-      , S.length byteStringData, fromIntegral (L.length lazyByteStringData)
-      ]
-  ]
-
 sortInputs :: [S.ByteString]
 sortInputs = map (`S.take` S.pack [122, 121 .. 32]) [10..25]
 
@@ -245,7 +235,6 @@ smallTraversalInput = S8.pack "The quick brown fox"
 
 main :: IO ()
 main = do
-  mapM_ putStrLn sanityCheckInfo
   defaultMain
     [ bgroup "Data.ByteString.Builder"
       [ bgroup "Small payload"
@@ -444,8 +433,8 @@ main = do
       , bench "elemIndexInd"   $ nf (S.elemIndexEnd 42) byteStringData
       ]
     , bgroup "traversals"
-      [ bench "map (+1)"   $ nf (S.map (+ 1)) largeTraversalInput
-      , bench "map (+1)"   $ nf (S.map (+ 1)) smallTraversalInput
+      [ bench "map (+1) large" $ nf (S.map (+ 1)) largeTraversalInput
+      , bench "map (+1) small" $ nf (S.map (+ 1)) smallTraversalInput
       ]
     , benchBoundsCheckFusion
     , benchCSV

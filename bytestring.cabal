@@ -172,7 +172,7 @@ benchmark bytestring-bench
   type:             exitcode-stdio-1.0
   hs-source-dirs:   bench
   default-language: Haskell2010
-  ghc-options:      -O2
+  ghc-options:      -O2 "-with-rtsopts=-A32m"
   build-depends:    base,
                     bytestring,
                     deepseq,
