@@ -40,8 +40,9 @@
 
 module Data.ByteString (
 
-        -- * The @ByteString@ type
+        -- * Strict @ByteString@
         ByteString,
+        StrictByteString,
 
         -- * Introducing and eliminating 'ByteString's
         empty,
