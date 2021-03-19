@@ -24,6 +24,7 @@ module Data.ByteString.Lazy.Internal (
 
         -- * The lazy @ByteString@ type and representation
         ByteString(..),
+        LazyByteString,
         chunk,
         foldrChunks,
         foldlChunks,
@@ -79,6 +80,9 @@ import GHC.Exts                 (IsList(..))
 data ByteString = Empty | Chunk {-# UNPACK #-} !S.ByteString ByteString
     deriving (Typeable)
 -- See 'invariant' function later in this module for internal invariants.
+
+-- | Type synonym for the lazy flavour of 'ByteString'.
+type LazyByteString = ByteString
 
 instance Eq  ByteString where
     (==)    = eq
