@@ -49,8 +49,9 @@
 
 module Data.ByteString.Lazy (
 
-        -- * The @ByteString@ type
+        -- * Lazy @ByteString@
         ByteString,
+        LazyByteString,
 
         -- * Introducing and eliminating 'ByteString's
         empty,

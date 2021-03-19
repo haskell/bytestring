@@ -32,6 +32,8 @@ module Data.ByteString.Internal (
         , PS -- backwards compatibility shim
         ),
 
+        StrictByteString,
+
         -- * Internal indexing
         findIndexOrLength,
 
@@ -201,6 +203,8 @@ data ByteString = BS {-# UNPACK #-} !(ForeignPtr Word8) -- payload
                      -- ^ @since 0.11.0.0
     deriving (Typeable)
 
+-- | Type synonym for the strict flavour of 'ByteString'.
+type StrictByteString = ByteString
 
 -- |
 -- @'PS' foreignPtr offset length@ represents a 'ByteString' with data
