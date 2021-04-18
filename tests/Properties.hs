@@ -20,7 +20,6 @@ import Data.Char
 import Data.Word
 import Data.Maybe
 import Data.Int (Int64)
-import Data.Monoid
 import Data.Semigroup
 import GHC.Exts (Int(..), newPinnedByteArray#, unsafeFreezeByteArray#)
 import GHC.ST (ST(..), runST)
