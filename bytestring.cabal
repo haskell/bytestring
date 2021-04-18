@@ -167,6 +167,7 @@ test-suite test-builder
 benchmark bytestring-bench
   main-is:          BenchAll.hs
   other-modules:    BenchBoundsCheckFusion
+                    BenchCount
                     BenchCSV
                     BenchIndices
   type:             exitcode-stdio-1.0
