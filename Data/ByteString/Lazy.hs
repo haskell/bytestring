@@ -586,29 +586,25 @@ compareLength (Chunk c cs) toCmp  = compareLength cs (toCmp - fromIntegral (S.le
    n <= length t = compareLength t n /= LT
   #-}
 
+mapAccumLChunks :: (acc -> S.ByteString -> (acc, S.ByteString)) -> acc -> ByteString -> (acc, ByteString)
+mapAccumLChunks function accumulator = fmap (List.foldr Chunk Empty) . List.mapAccumL function accumulator . foldrChunks (:) [ ]
+
+mapAccumRChunks :: (acc -> S.ByteString -> (acc, S.ByteString)) -> acc -> ByteString -> (acc, ByteString)
+mapAccumRChunks function accumulator = fmap (List.foldl (flip Chunk) Empty) . List.mapAccumL function accumulator . foldlChunks (flip (:)) [ ]
+
 -- | The 'mapAccumL' function behaves like a combination of 'map' and
 -- 'foldl'; it applies a function to each element of a ByteString,
 -- passing an accumulating parameter from left to right, and returning a
 -- final value of this accumulator together with the new ByteString.
 mapAccumL :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
-mapAccumL f = go
-  where
-    go s Empty        = (s, Empty)
-    go s (Chunk c cs) = (s'', Chunk c' cs')
-        where (s',  c')  = S.mapAccumL f s c
-              (s'', cs') = go s' cs
+mapAccumL f = mapAccumLChunks (S.mapAccumL f)
 
 -- | The 'mapAccumR' function behaves like a combination of 'map' and
 -- 'foldr'; it applies a function to each element of a ByteString,
 -- passing an accumulating parameter from right to left, and returning a
 -- final value of this accumulator together with the new ByteString.
 mapAccumR :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
-mapAccumR f = go
-  where
-    go s Empty        = (s, Empty)
-    go s (Chunk c cs) = (s'', Chunk c' cs')
-        where (s'', c') = S.mapAccumR f s' c
-              (s', cs') = go s cs
+mapAccumR f = mapAccumRChunks (S.mapAccumR f)
 
 -- ---------------------------------------------------------------------
 -- Building ByteStrings
@@ -632,11 +628,7 @@ scanl
     -- ^ input of length n
     -> ByteString
     -- ^ output of length n+1
-scanl f = flip (foldr go singleton)
-  where
-    go value continuation accumulator =
-      let next = f accumulator value
-      in accumulator `cons` continuation next
+scanl function = fmap (uncurry (flip snoc)) . mapAccumLChunks (S.mapAccumL (\x y -> (function x y, x)))
 {-# INLINE scanl #-}
 
 -- | 'scanl1' is a variant of 'scanl' that has no starting value argument.
@@ -665,7 +657,7 @@ scanr
     -- ^ input of length n
     -> ByteString
     -- ^ output of length n+1
-scanr f z = pack . fmap (foldr f z) . tails
+scanr function = fmap (uncurry cons) . mapAccumRChunks (S.mapAccumR (\x y -> (function y x, x)))
 
 -- | 'scanr1' is a variant of 'scanr' that has no starting value argument.
 scanr1 :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString
