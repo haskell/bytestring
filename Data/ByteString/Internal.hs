@@ -464,7 +464,7 @@ nullForeignPtr = ForeignPtr nullAddr# (error "nullForeignPtr")
 
 -- | /O(1)/ Build a ByteString from a ForeignPtr.
 --
--- If you do not need the offset parameter then you do should be using
+-- If you do not need the offset parameter then you should be using
 -- 'Data.ByteString.Unsafe.unsafePackCStringLen' or
 -- 'Data.ByteString.Unsafe.unsafePackCStringFinalizer' instead.
 --
