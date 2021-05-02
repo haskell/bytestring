@@ -37,6 +37,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <threads.h>
 
 /* copy a string in reverse */
 void fps_reverse(unsigned char *q, unsigned char *p, size_t n) {
@@ -252,7 +253,15 @@ fps_impl_t select_fps_simd_impl() {
 
     return &fps_count_naive;
 }
+
+static fps_impl_t fps_simd_impl = NULL;
+static once_flag fps_simd_chosen = ONCE_FLAG_INIT;
+
+void set_fps_simd_impl() {
+    fps_simd_impl = select_fps_simd_impl();
+}
 #endif
+
 
 size_t fps_count(unsigned char *str, size_t len, unsigned char w) {
 #ifndef USE_SIMD_COUNT
@@ -268,10 +277,7 @@ size_t fps_count(unsigned char *str, size_t len, unsigned char w) {
         return fps_count_naive(str, len, w);
     }
 
-    static _Thread_local fps_impl_t fps_simd_impl = NULL;
-    if (!fps_simd_impl) {
-        fps_simd_impl = select_fps_simd_impl();
-    }
+    call_once(&fps_simd_chosen, set_fps_simd_impl);
 
     return (*fps_simd_impl)(str, len, w);
 #endif
