@@ -37,8 +37,8 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <threads.h>
 
+#include <stdatomic.h>
 /* copy a string in reverse */
 void fps_reverse(unsigned char *q, unsigned char *p, size_t n) {
     p += n-1;
@@ -253,14 +253,8 @@ fps_impl_t select_fps_simd_impl() {
 
     return &fps_count_naive;
 }
-
-static fps_impl_t fps_simd_impl = NULL;
-static once_flag fps_simd_chosen = ONCE_FLAG_INIT;
-
-void set_fps_simd_impl() {
-    fps_simd_impl = select_fps_simd_impl();
-}
 #endif
+
 
 
 size_t fps_count(unsigned char *str, size_t len, unsigned char w) {
@@ -277,8 +271,13 @@ size_t fps_count(unsigned char *str, size_t len, unsigned char w) {
         return fps_count_naive(str, len, w);
     }
 
-    call_once(&fps_simd_chosen, set_fps_simd_impl);
+    static _Atomic fps_impl_t s_impl = (fps_impl_t)NULL;
+    fps_impl_t impl = atomic_load_explicit(&s_impl, memory_order_relaxed);
+    if (!impl) {
+      impl = select_fps_simd_impl();
+      atomic_store_explicit(&s_impl, impl, memory_order_relaxed);
+    }
 
-    return (*fps_simd_impl)(str, len, w);
+    return (*impl)(str, len, w);
 #endif
 }
