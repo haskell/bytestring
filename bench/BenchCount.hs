@@ -21,7 +21,8 @@ benchCount = bgroup "Count"
   , bgroup "all matches"                 $ mkBenches (1 : commonSizes) (\s -> B.replicate s 'a')
   ]
   where
-    commonSizes = [ 10, 100, 1000, 10000, 100000, 1000000 ]
+    aboveSimdSwitchThreshold = 1030 -- something above the threshold of 1024 that's divisible by cycle lengths
+    commonSizes = [ 10, 100, 1000, aboveSimdSwitchThreshold, 10000, 100000, 1000000 ]
     mkBenches sizes gen = [ bench (show size ++ " chars long") $ nf (B.count 'a') (gen size)
                           | size <- sizes
                           ]
