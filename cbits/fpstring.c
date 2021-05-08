@@ -38,7 +38,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#ifndef __STDC_NO_ATOMICS__
 #include <stdatomic.h>
+#endif
+
 /* copy a string in reverse */
 void fps_reverse(unsigned char *q, unsigned char *p, size_t n) {
     p += n-1;
@@ -111,7 +114,7 @@ size_t fps_count_naive(unsigned char *str, size_t len, unsigned char w) {
     return c;
 }
 
-#if defined(__x86_64__) && (__GNUC__ >= 6 || defined(__clang_major__))
+#if defined(__x86_64__) && (__GNUC__ >= 6 || defined(__clang_major__)) && !defined(__STDC_NO_ATOMICS__)
 #define USE_SIMD_COUNT
 #endif
 
