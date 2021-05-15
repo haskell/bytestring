@@ -39,6 +39,7 @@ import           Foreign
 import System.Random
 
 import BenchBoundsCheckFusion
+import BenchCount
 import BenchCSV
 import BenchIndices
 
@@ -437,6 +438,7 @@ main = do
       , bench "map (+1) small" $ nf (S.map (+ 1)) smallTraversalInput
       ]
     , benchBoundsCheckFusion
+    , benchCount
     , benchCSV
     , benchIndices
     ]
