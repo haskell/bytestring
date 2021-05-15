@@ -284,6 +284,11 @@ tests =
     \x -> B.length x === fromIntegral (length (B.unpack x))
   , testProperty "count" $
     \(toElem -> c) x -> B.count c x === fromIntegral (length (elemIndices c (B.unpack x)))
+  -- for long strings, the multiplier is non-round (and not power of 2)
+  -- to ensure non-trivial prefix or suffix of the string is handled outside any possible SIMD-based loop,
+  -- which typically handles chunks of 16 or 32 or 64 etc bytes.
+  , testProperty "count (long strings)" $
+    \(toElem -> c) x (Positive n) -> B.count c x * fromIntegral n === B.count c (B.concat $ replicate n x)
   , testProperty "filter" $
     \f x -> B.unpack (B.filter f x) === filter f (B.unpack x)
   , testProperty "filter compose" $
