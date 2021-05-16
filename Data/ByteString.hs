@@ -1597,11 +1597,6 @@ packZipWith f (BS fp l) (BS fq m) = unsafeDupablePerformIO $
     len = min l m
 {-# INLINE packZipWith #-}
 
-{-# RULES
-"ByteString specialise zipWith" forall (f :: Word8 -> Word8 -> Word8) p q .
-    zipWith f p q = unpack (packZipWith f p q)
-  #-}
-
 -- | /O(n)/ 'unzip' transforms a list of pairs of bytes into a pair of
 -- ByteStrings. Note that this performs two 'pack' operations.
 unzip :: [(Word8,Word8)] -> (ByteString,ByteString)
