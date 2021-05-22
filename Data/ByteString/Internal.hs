@@ -42,7 +42,8 @@ module Data.ByteString.Internal (
         packChars, packUptoLenChars, unsafePackLenChars,
         unpackBytes, unpackAppendBytesLazy, unpackAppendBytesStrict,
         unpackChars, unpackAppendCharsLazy, unpackAppendCharsStrict,
-        unsafePackAddress, unsafePackLiteral,
+        unsafePackAddress, unsafePackLenAddress,
+        unsafePackLiteral, unsafePackLenLiteral,
 
         -- * Low level imperative construction
         create,
@@ -353,6 +354,22 @@ unsafePackAddress addr# = do
 #endif
 {-# INLINE unsafePackAddress #-}
 
+-- | See 'unsafePackAddress'. This function is similar,
+-- but takes an additional length argument rather then computing
+-- it with @strlen@.
+-- Therefore embedding @\'\\0\'@ characters is possible.
+--
+-- @since 0.11.2.0
+unsafePackLenAddress :: Int -> Addr# -> IO ByteString
+unsafePackLenAddress len addr# = do
+#if __GLASGOW_HASKELL__ >= 811
+    return (BS (ForeignPtr addr# FinalPtr) len)
+#else
+    p <- newForeignPtr_ (Ptr addr#)
+    return $ BS p len
+#endif
+{-# INLINE unsafePackLenAddress #-}
+
 -- | See 'unsafePackAddress'. This function has similar behavior. Prefer
 -- this function when the address in known to be an @Addr#@ literal. In
 -- that context, there is no need for the sequencing guarantees that 'IO'
@@ -370,6 +387,21 @@ unsafePackLiteral addr# =
 #endif
 {-# INLINE unsafePackLiteral #-}
 
+
+-- | See 'unsafePackLiteral'. This function is similar,
+-- but takes an additional length argument rather then computing
+-- it with @strlen@.
+-- Therefore embedding @\'\\0\'@ characters is possible.
+--
+-- @since 0.11.2.0
+unsafePackLenLiteral :: Int -> Addr# -> ByteString
+unsafePackLenLiteral len addr# =
+#if __GLASGOW_HASKELL__ >= 811
+  BS (ForeignPtr addr# FinalPtr) len
+#else
+  BS (accursedUnutterablePerformIO (newForeignPtr_ (Ptr addr#))) len
+#endif
+{-# INLINE unsafePackLenLiteral #-}
 
 packUptoLenBytes :: Int -> [Word8] -> (ByteString, [Word8])
 packUptoLenBytes len xs0 =
