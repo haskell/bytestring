@@ -4,6 +4,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 {-# LANGUAGE Unsafe #-}
+{-# LANGUAGE TemplateHaskellQuotes #-}
 {-# OPTIONS_HADDOCK not-home #-}
 
 -- |
@@ -44,7 +45,8 @@ module Data.ByteString.Short.Internal (
     useAsCStringLen
   ) where
 
-import Data.ByteString.Internal (ByteString(..), accursedUnutterablePerformIO, c_strlen)
+import Data.ByteString.Internal (ByteString(..), accursedUnutterablePerformIO)
+import qualified Data.ByteString.Internal as BS
 
 import Data.Typeable    (Typeable)
 import Data.Data        (Data(..), mkNoRepType)
@@ -89,6 +91,9 @@ import Prelude ( Eq(..), Ord(..), Ordering(..), Read(..), Show(..)
                , return
                , Maybe(..) )
 
+import qualified Language.Haskell.TH.Lib as TH
+import qualified Language.Haskell.TH.Syntax as TH
+
 -- | A compact representation of a 'Word8' vector.
 --
 -- It has a lower memory overhead than a 'ByteString' and does not
@@ -104,6 +109,28 @@ import Prelude ( Eq(..), Ord(..), Ordering(..), Read(..), Show(..)
 --
 data ShortByteString = SBS ByteArray#
     deriving Typeable
+
+-- | @since 0.11.2.0
+instance TH.Lift ShortByteString where
+#if MIN_VERSION_template_haskell(2,16,0)
+  lift sbs = [| unsafePackLenLiteral |]
+    `TH.appE` TH.litE (TH.integerL (fromIntegral len))
+    `TH.appE` TH.litE (TH.BytesPrimL $ TH.Bytes ptr 0 (fromIntegral len))
+    where
+      BS ptr len = fromShort sbs
+#else
+  lift sbs = [| unsafePackLenLiteral |]
+    `TH.appE` TH.litE (TH.integerL (fromIntegral len))
+    `TH.appE` TH.litE (TH.StringPrimL $ BS.unpackBytes bs)
+    where
+      bs@(BS _ len) = fromShort sbs
+#endif
+
+#if MIN_VERSION_template_haskell(2,17,0)
+  liftTyped = TH.unsafeCodeCoerce . TH.lift
+#elif MIN_VERSION_template_haskell(2,16,0)
+  liftTyped = TH.unsafeTExpCoerce . TH.lift
+#endif
 
 -- The ByteArray# representation is always word sized and aligned but with a
 -- known byte length. Our representation choice for ShortByteString is to leave
@@ -200,6 +227,9 @@ indexError sbs i =
   error $ "Data.ByteString.Short.index: error in array index; " ++ show i
        ++ " not in range [0.." ++ show (length sbs) ++ ")"
 
+unsafePackLenLiteral :: Int -> Addr# -> ShortByteString
+unsafePackLenLiteral len addr# =
+    accursedUnutterablePerformIO $ createFromPtr (Ptr addr#) len
 
 ------------------------------------------------------------------------
 -- Internal utils
@@ -527,7 +557,7 @@ copyByteArray# = GHC.Exts.copyByteArray#
 -- @since 0.10.10.0
 packCString :: CString -> IO ShortByteString
 packCString cstr = do
-  len <- c_strlen cstr
+  len <- BS.c_strlen cstr
   packCStringLen (cstr, fromIntegral len)
 
 -- | /O(n)./ Construct a new @ShortByteString@ from a @CStringLen@. The
