@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveLift #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE Unsafe #-}
 {-# OPTIONS_HADDOCK not-home #-}
@@ -70,6 +71,8 @@ import Data.Data                (Data(..), mkNoRepType)
 
 import GHC.Exts                 (IsList(..))
 
+import qualified Language.Haskell.TH.Syntax as TH
+
 -- | A space-efficient representation of a 'Word8' vector, supporting many
 -- efficient operations.
 --
@@ -78,7 +81,7 @@ import GHC.Exts                 (IsList(..))
 -- 8-bit characters.
 --
 data ByteString = Empty | Chunk {-# UNPACK #-} !S.ByteString ByteString
-    deriving (Typeable)
+    deriving (Typeable, TH.Lift)
 -- See 'invariant' function later in this module for internal invariants.
 
 -- | Type synonym for the lazy flavour of 'ByteString'.
