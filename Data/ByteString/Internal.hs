@@ -5,6 +5,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE PatternSynonyms, ViewPatterns #-}
 {-# LANGUAGE Unsafe #-}
+{-# LANGUAGE TemplateHaskellQuotes #-}
 {-# OPTIONS_HADDOCK not-home #-}
 
 -- |
@@ -163,6 +164,9 @@ import GHC.Types                (Int (..))
 import GHC.ForeignPtr           (unsafeWithForeignPtr)
 #endif
 
+import qualified Language.Haskell.TH.Lib as TH
+import qualified Language.Haskell.TH.Syntax as TH
+
 #if !MIN_VERSION_base(4,15,0)
 unsafeWithForeignPtr :: ForeignPtr a -> (Ptr a -> IO b) -> IO b
 unsafeWithForeignPtr = withForeignPtr
@@ -269,6 +273,24 @@ instance Data ByteString where
   toConstr _     = error "Data.ByteString.ByteString.toConstr"
   gunfold _ _    = error "Data.ByteString.ByteString.gunfold"
   dataTypeOf _   = mkNoRepType "Data.ByteString.ByteString"
+
+-- | @since 0.11.2.0
+instance TH.Lift ByteString where
+#if MIN_VERSION_template_haskell(2,16,0)
+  lift (BS ptr len) = [| unsafePackLenLiteral |]
+    `TH.appE` TH.litE (TH.integerL (fromIntegral len))
+    `TH.appE` TH.litE (TH.BytesPrimL $ TH.Bytes ptr 0 (fromIntegral len))
+#else
+  lift bs@(BS _ len) = [| unsafePackLenLiteral |]
+    `TH.appE` TH.litE (TH.integerL (fromIntegral len))
+    `TH.appE` TH.litE (TH.StringPrimL $ unpackBytes bs)
+#endif
+
+#if MIN_VERSION_template_haskell(2,17,0)
+  liftTyped = TH.unsafeCodeCoerce . TH.lift
+#elif MIN_VERSION_template_haskell(2,16,0)
+  liftTyped = TH.unsafeTExpCoerce . TH.lift
+#endif
 
 ------------------------------------------------------------------------
 -- Internal indexing
