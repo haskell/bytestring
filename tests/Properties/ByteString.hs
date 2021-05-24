@@ -42,12 +42,12 @@ import qualified Data.ByteString.Lazy.Char8 as B
 import qualified Data.ByteString.Lazy.Internal as B (invariant)
 #endif
 
-import Data.Char
 import Text.Read
 
 #endif
 
 import Control.Arrow
+import Data.Char
 import Data.Foldable
 import Data.List as L
 import Data.Semigroup
@@ -535,6 +535,14 @@ tests =
   , testProperty "iterate" $
     \n f (toElem -> a) -> B.take (fromIntegral (n :: Int)) (B.iterate (toElem . f) a) ===
       B.take (fromIntegral n) (B.unfoldr (\x -> Just (toElem (f x), toElem (f x))) a)
+#endif
+
+#ifndef BYTESTRING_CHAR8
+  -- issue #393
+  , testProperty "fromString non-char8" $
+    \s -> fromString s == B.pack (map (fromIntegral . ord :: Char -> Word8) s)
+  , testProperty "fromString literal" $
+    fromString "\0\1\2\3\4" == B.pack [0,1,2,3,4]
 #endif
   ]
 
