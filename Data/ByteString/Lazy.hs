@@ -127,12 +127,18 @@ module Data.ByteString.Lazy (
 
         -- ** Breaking strings
         take,
+        takeEnd,
         drop,
+        dropEnd,
         splitAt,
         takeWhile,
+        takeWhileEnd,
         dropWhile,
+        dropWhileEnd,
         span,
+        spanEnd,
         break,
+        breakEnd,
         group,
         groupBy,
         inits,
@@ -684,6 +690,30 @@ take i cs0         = take' i cs0
             then Chunk (S.take (fromIntegral n) c) Empty
             else Chunk c (take' (n - fromIntegral (S.length c)) cs)
 
+-- | /O(c)/ @'takeEnd' n xs@ is equivalent to @'drop' ('length' xs - n) xs@.
+-- Takes @n@ elements from end of bytestring.
+--
+-- >>> takeEnd 3 "abcdefg"
+-- "efg"
+-- >>> takeEnd 0 "abcdefg"
+-- ""
+-- >>> takeEnd 4 "abc"
+-- "abc"
+--
+-- @since 0.11.1.1
+takeEnd :: Int64 -> ByteString -> ByteString
+takeEnd i _ | i <= 0 = Empty
+takeEnd i cs0        = takeEnd' i cs0
+  where takeEnd' 0 _                             = Empty
+        takeEnd' _ Empty                         = Empty
+        takeEnd' n (Chunk c Empty)               =
+            fromStrict (S.takeEnd (fromIntegral n) c) 
+        takeEnd' n (Chunk c bs)                  =
+           let n' = n - length bs
+               in if n' > 0
+                 then Chunk (S.takeEnd (fromIntegral n') c) bs
+                 else takeEnd' n bs
+
 -- | /O(n\/c)/ 'drop' @n xs@ returns the suffix of @xs@ after the first @n@
 -- elements, or @[]@ if @n > 'length' xs@.
 drop  :: Int64 -> ByteString -> ByteString
@@ -695,6 +725,30 @@ drop i cs0 = drop' i cs0
           if n < fromIntegral (S.length c)
             then Chunk (S.drop (fromIntegral n) c) cs
             else drop' (n - fromIntegral (S.length c)) cs
+
+-- | /O(c)/ @'dropEnd' n xs@ is equivalent to @'take' ('length' xs - n) xs@.
+-- Drops @n@ elements from end of bytestring.
+--
+-- >>> dropEnd 3 "abcdefg"
+-- "abcd"
+-- >>> dropEnd 0 "abcdefg"
+-- "abcdefg"
+-- >>> dropEnd 4 "abc"
+-- ""
+--
+-- @since 0.11.1.1
+dropEnd :: Int64 -> ByteString -> ByteString
+dropEnd i p | i <= 0 = p
+dropEnd i cs0 = dropEnd' i cs0
+  where dropEnd' 0 cs                             = cs
+        dropEnd' _ Empty                          = Empty
+        dropEnd' n (Chunk c Empty) =
+            fromStrict (S.dropEnd (fromIntegral n) c)
+        dropEnd' n (Chunk c bs) =
+           let n' = n - length bs
+             in if n' > 0
+               then dropEnd' n' (Chunk c Empty)
+               else Chunk c (dropEnd' n bs)
 
 -- | /O(n\/c)/ 'splitAt' @n xs@ is equivalent to @('take' n xs, 'drop' n xs)@.
 splitAt :: Int64 -> ByteString -> (ByteString, ByteString)
@@ -722,6 +776,23 @@ takeWhile f = takeWhile'
             n | n < S.length c -> Chunk (S.take n c) Empty
               | otherwise      -> Chunk c (takeWhile' cs)
 
+-- | Returns the longest (possibly empty) suffix of elements
+-- satisfying the predicate.
+--
+-- @'takeWhileEnd' p@ is equivalent to @'reverse' . 'takeWhile' p . 'reverse'@.
+--
+-- @since 0.11.1.1
+takeWhileEnd :: (Word8 -> Bool) -> ByteString -> ByteString
+takeWhileEnd f = takeWhileEnd'
+  where takeWhileEnd' Empty = Empty
+        takeWhileEnd' (Chunk c Empty) =
+            fromStrict (S.takeWhileEnd f c)
+        takeWhileEnd' (Chunk c bs) =
+          let bs' = takeWhileEnd' bs
+            in if length bs' == length bs
+              then Chunk (S.takeWhileEnd f c) bs
+              else bs'
+
 -- | Similar to 'P.dropWhile',
 -- drops the longest (possibly empty) prefix of elements
 -- satisfying the predicate and returns the remainder.
@@ -732,6 +803,23 @@ dropWhile f = dropWhile'
           case S.findIndexOrLength (not . f) c of
             n | n < S.length c -> Chunk (S.drop n c) cs
               | otherwise      -> dropWhile' cs
+
+-- | Similar to 'P.dropWhileEnd',
+-- drops the longest (possibly empty) suffix of elements
+-- satisfying the predicate and returns the remainder.
+--
+-- @'dropWhileEnd' p@ is equivalent to @'reverse' . 'dropWhile' p . 'reverse'@.
+--
+-- @since 0.11.1.1
+dropWhileEnd :: (Word8 -> Bool) -> ByteString -> ByteString
+dropWhileEnd f = dropWhileEnd'
+  where dropWhileEnd' Empty = Empty
+        dropWhileEnd' (Chunk c Empty) =
+            fromStrict (S.dropWhileEnd f c)
+        dropWhileEnd' (Chunk c bs) =
+            case dropWhileEnd' bs of
+                 Empty -> dropWhileEnd' (Chunk c Empty)
+                 bs' -> Chunk c bs'
 
 -- | Similar to 'P.break',
 -- returns the longest (possibly empty) prefix of elements which __do not__
@@ -749,6 +837,26 @@ break f = break'
                                   ,Chunk (S.drop n c) cs)
               | otherwise      -> let (cs', cs'') = break' cs
                                    in (Chunk c cs', cs'')
+
+
+-- | Returns the longest (possibly empty) suffix of elements which __do not__
+-- satisfy the predicate and the remainder of the string.
+--
+-- 'breakEnd' @p@ is equivalent to @'spanEnd' (not . p)@ and to @('takeWhileEnd' (not . p) &&& 'dropWhileEnd' (not . p))@.
+--
+-- @since 0.11.1.1
+breakEnd :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
+breakEnd  f = breakEnd'
+  where breakEnd' Empty           = (Empty, Empty)
+        breakEnd' (Chunk c Empty) =
+          let (c', cs') = S.breakEnd f c
+            in (fromStrict c', fromStrict cs')
+        breakEnd' (Chunk c cs)    =
+          case breakEnd' cs of
+               (Empty, cs') ->
+                 let (c', c'') = S.breakEnd f c
+                   in (fromStrict c', fromStrict c'' <> cs')
+               (cs', cs'')  -> (Chunk c cs', cs'')
 
 --
 -- TODO
@@ -798,6 +906,25 @@ spanByte c (LPS ps) = case (spanByte' ps) of (a,b) -> (LPS a, LPS b)
 --
 span :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
 span p = break (not . p)
+
+-- | Returns the longest (possibly empty) suffix of elements
+-- satisfying the predicate and the remainder of the string.
+--
+-- 'spanEnd' @p@ is equivalent to @'breakEnd' (not . p)@ and to @('takeWhileEnd' p &&& 'dropWhileEnd' p)@.
+--
+-- We have
+--
+-- > spanEnd (not . isSpace) "x y z" == ("x y ", "z")
+--
+-- and
+--
+-- > spanEnd (not . isSpace) ps
+-- >    ==
+-- > let (x, y) = span (not . isSpace) (reverse ps) in (reverse y, reverse x)
+--
+-- @since 0.11.1.1
+spanEnd :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
+spanEnd p = breakEnd (not . p)
 
 -- | /O(n)/ Splits a 'ByteString' into components delimited by
 -- separators, where the predicate returns True for a separator element.
