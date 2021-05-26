@@ -405,6 +405,8 @@ main = do
           nf (S.foldl' (\acc x -> acc + fromIntegral x) (0 :: Int)) s) foldInputs
       , bgroup "foldr'" $ map (\s -> bench (show $ S.length s) $
           nf (S.foldr' (\x acc -> fromIntegral x + acc) (0 :: Int)) s) foldInputs
+      , bgroup "unfoldrN" $ map (\s -> bench (show $ S.length s) $
+          nf (S.unfoldrN (S.length s) (\a -> Just (a, a + 1))) 0) foldInputs
       , bgroup "mapAccumL" $ map (\s -> bench (show $ S.length s) $
           nf (S.mapAccumL (\acc x -> (acc + fromIntegral x, succ x)) (0 :: Int)) s) foldInputs
       , bgroup "mapAccumR" $ map (\s -> bench (show $ S.length s) $
