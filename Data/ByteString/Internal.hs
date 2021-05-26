@@ -570,6 +570,7 @@ createAndTrim' l f = do
             else do ps <- create l' $ \p' ->
                             memcpy p' (p `plusPtr` off) l'
                     return (ps, res)
+{-# INLINE createAndTrim' #-}
 
 -- | Wrapper of 'Foreign.ForeignPtr.mallocForeignPtrBytes' with faster implementation for GHC
 --
