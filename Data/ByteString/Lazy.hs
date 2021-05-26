@@ -700,7 +700,7 @@ take i cs0         = take' i cs0
 -- >>> takeEnd 4 "abc"
 -- "abc"
 --
--- @since 0.11.1.1
+-- @since 0.11.2.0
 takeEnd :: Int64 -> ByteString -> ByteString
 takeEnd i _ | i <= 0 = Empty
 takeEnd i cs0        = takeEnd' i cs0
@@ -736,7 +736,7 @@ drop i cs0 = drop' i cs0
 -- >>> dropEnd 4 "abc"
 -- ""
 --
--- @since 0.11.1.1
+-- @since 0.11.2.0
 dropEnd :: Int64 -> ByteString -> ByteString
 dropEnd i p | i <= 0 = p
 dropEnd i cs0 = dropEnd' i cs0
@@ -781,7 +781,7 @@ takeWhile f = takeWhile'
 --
 -- @'takeWhileEnd' p@ is equivalent to @'reverse' . 'takeWhile' p . 'reverse'@.
 --
--- @since 0.11.1.1
+-- @since 0.11.2.0
 takeWhileEnd :: (Word8 -> Bool) -> ByteString -> ByteString
 takeWhileEnd f = takeWhileEnd'
   where takeWhileEnd' Empty = Empty
@@ -810,7 +810,7 @@ dropWhile f = dropWhile'
 --
 -- @'dropWhileEnd' p@ is equivalent to @'reverse' . 'dropWhile' p . 'reverse'@.
 --
--- @since 0.11.1.1
+-- @since 0.11.2.0
 dropWhileEnd :: (Word8 -> Bool) -> ByteString -> ByteString
 dropWhileEnd f = dropWhileEnd'
   where dropWhileEnd' Empty = Empty
@@ -844,7 +844,7 @@ break f = break'
 --
 -- 'breakEnd' @p@ is equivalent to @'spanEnd' (not . p)@ and to @('takeWhileEnd' (not . p) &&& 'dropWhileEnd' (not . p))@.
 --
--- @since 0.11.1.1
+-- @since 0.11.2.0
 breakEnd :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
 breakEnd  f = breakEnd'
   where breakEnd' Empty           = (Empty, Empty)
@@ -922,7 +922,7 @@ span p = break (not . p)
 -- >    ==
 -- > let (x, y) = span (not . isSpace) (reverse ps) in (reverse y, reverse x)
 --
--- @since 0.11.1.1
+-- @since 0.11.2.0
 spanEnd :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
 spanEnd p = breakEnd (not . p)
 

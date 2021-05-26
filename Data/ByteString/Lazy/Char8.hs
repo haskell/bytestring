@@ -467,7 +467,7 @@ takeWhile f = L.takeWhile (f . w2c)
 --
 -- @'takeWhileEnd' p@ is equivalent to @'reverse' . 'takeWhile' p . 'reverse'@.
 --
--- @since 0.11.1.1
+-- @since 0.11.2.0
 takeWhileEnd :: (Char -> Bool) -> ByteString -> ByteString
 takeWhileEnd f = L.takeWhileEnd (f . w2c)
 {-# INLINE takeWhileEnd #-}
@@ -483,7 +483,7 @@ dropWhile f = L.dropWhile (f . w2c)
 --
 -- @'dropWhileEnd' p@ is equivalent to @'reverse' . 'dropWhile' p . 'reverse'@.
 --
--- @since 0.11.1.1
+-- @since 0.11.2.0
 dropWhileEnd :: (Char -> Bool) -> ByteString -> ByteString
 dropWhileEnd f = L.dropWhileEnd (f . w2c)
 {-# INLINE dropWhileEnd #-}
@@ -497,7 +497,7 @@ break f = L.break (f . w2c)
 --
 -- breakEnd p == spanEnd (not.p)
 --
--- @since 0.11.1.1
+-- @since 0.11.2.0
 breakEnd :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
 breakEnd f = L.breakEnd (f . w2c)
 {-# INLINE breakEnd #-}
@@ -519,7 +519,7 @@ span f = L.span (f . w2c)
 -- >    ==
 -- > let (x,y) = span (not.isSpace) (reverse ps) in (reverse y, reverse x)
 --
--- @since 0.11.1.1
+-- @since 0.11.2.0
 spanEnd :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
 spanEnd f = L.spanEnd (f . w2c)
 {-# INLINE spanEnd #-}
