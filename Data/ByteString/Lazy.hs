@@ -704,15 +704,13 @@ take i cs0         = take' i cs0
 takeEnd :: Int64 -> ByteString -> ByteString
 takeEnd i _ | i <= 0 = Empty
 takeEnd i cs0        = takeEnd' i cs0
-  where takeEnd' 0 _                             = Empty
-        takeEnd' _ Empty                         = Empty
-        takeEnd' n (Chunk c Empty)               =
-            fromStrict (S.takeEnd (fromIntegral n) c) 
-        takeEnd' n (Chunk c bs)                  =
-           let n' = n - length bs
-               in if n' > 0
-                 then Chunk (S.takeEnd (fromIntegral n') c) bs
-                 else takeEnd' n bs
+  where takeEnd' 0 _         = Empty
+        takeEnd' n cs        =
+            snd $ foldrChunks takeTuple (fromIntegral n,Empty) cs
+        takeTuple _ (0, cs)  = (0, cs)
+        takeTuple c (n, cs)
+            | n > S.length c = (n - S.length c, Chunk c cs)
+            | otherwise      = (0, Chunk (S.takeEnd n c) cs)
 
 -- | /O(n\/c)/ 'drop' @n xs@ returns the suffix of @xs@ after the first @n@
 -- elements, or @[]@ if @n > 'length' xs@.
@@ -740,15 +738,13 @@ drop i cs0 = drop' i cs0
 dropEnd :: Int64 -> ByteString -> ByteString
 dropEnd i p | i <= 0 = p
 dropEnd i cs0 = dropEnd' i cs0
-  where dropEnd' 0 cs                             = cs
-        dropEnd' _ Empty                          = Empty
-        dropEnd' n (Chunk c Empty) =
-            fromStrict (S.dropEnd (fromIntegral n) c)
-        dropEnd' n (Chunk c bs) =
-           let n' = n - length bs
-             in if n' > 0
-               then dropEnd' n' (Chunk c Empty)
-               else Chunk c (dropEnd' n bs)
+  where dropEnd' 0 cs        = cs
+        dropEnd' n bs        =
+            snd $ foldrChunks dropTuple (fromIntegral n, Empty) bs
+        dropTuple c (0, cs)  = (0, Chunk c cs)
+        dropTuple c (n, _)
+            | n > S.length c = (n - S.length c, Empty)
+            | otherwise      = (0, fromStrict (S.dropEnd n c))
 
 -- | /O(n\/c)/ 'splitAt' @n xs@ is equivalent to @('take' n xs, 'drop' n xs)@.
 splitAt :: Int64 -> ByteString -> (ByteString, ByteString)
@@ -785,13 +781,13 @@ takeWhile f = takeWhile'
 takeWhileEnd :: (Word8 -> Bool) -> ByteString -> ByteString
 takeWhileEnd f = takeWhileEnd'
   where takeWhileEnd' Empty = Empty
-        takeWhileEnd' (Chunk c Empty) =
-            fromStrict (S.takeWhileEnd f c)
-        takeWhileEnd' (Chunk c bs) =
-          let bs' = takeWhileEnd' bs
-            in if length bs' == length bs
-              then Chunk (S.takeWhileEnd f c) bs
-              else bs'
+        takeWhileEnd' cs    =
+            snd $ foldrChunks takeTuple (True,Empty) cs
+        takeTuple _ (False, bs) = (False,bs)
+        takeTuple c (True,bs)   =
+           case S.takeWhileEnd f c of
+                c' | S.length c' == S.length c -> (True, Chunk c bs)
+                   | otherwise                 -> (False, fromStrict c' `append` bs)
 
 -- | Similar to 'P.dropWhile',
 -- drops the longest (possibly empty) prefix of elements
@@ -813,13 +809,11 @@ dropWhile f = dropWhile'
 -- @since 0.11.2.0
 dropWhileEnd :: (Word8 -> Bool) -> ByteString -> ByteString
 dropWhileEnd f = dropWhileEnd'
-  where dropWhileEnd' Empty = Empty
-        dropWhileEnd' (Chunk c Empty) =
-            fromStrict (S.dropWhileEnd f c)
+  where dropWhileEnd' Empty        = Empty
         dropWhileEnd' (Chunk c bs) =
             case dropWhileEnd' bs of
-                 Empty -> dropWhileEnd' (Chunk c Empty)
-                 bs' -> Chunk c bs'
+                 Empty -> fromStrict (S.dropWhileEnd f c)
+                 bs'   -> Chunk c bs'
 
 -- | Similar to 'P.break',
 -- returns the longest (possibly empty) prefix of elements which __do not__
@@ -848,14 +842,11 @@ break f = break'
 breakEnd :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
 breakEnd  f = breakEnd'
   where breakEnd' Empty           = (Empty, Empty)
-        breakEnd' (Chunk c Empty) =
-          let (c', cs') = S.breakEnd f c
-            in (fromStrict c', fromStrict cs')
         breakEnd' (Chunk c cs)    =
           case breakEnd' cs of
                (Empty, cs') ->
                  let (c', c'') = S.breakEnd f c
-                   in (fromStrict c', fromStrict c'' <> cs')
+                   in (fromStrict c', fromStrict c'' `append` cs')
                (cs', cs'')  -> (Chunk c cs', cs'')
 
 --
