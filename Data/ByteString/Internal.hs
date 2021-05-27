@@ -343,14 +343,10 @@ unsafePackLenChars len cs0 =
 unsafePackAddress :: Addr# -> IO ByteString
 unsafePackAddress addr# = do
 #if __GLASGOW_HASKELL__ >= 811
-    return (BS (ForeignPtr addr# FinalPtr) (I# (cstringLength# addr#)))
+    unsafePackLenAddress (I# (cstringLength# addr#)) addr#
 #else
-    p <- newForeignPtr_ (castPtr cstr)
-    l <- c_strlen cstr
-    return $ BS p (fromIntegral l)
-  where
-    cstr :: CString
-    cstr = Ptr addr#
+    l <- c_strlen (Ptr addr#)
+    unsafePackLenAddress (fromIntegral l) addr#
 #endif
 {-# INLINE unsafePackAddress #-}
 
@@ -380,10 +376,10 @@ unsafePackLenAddress len addr# = do
 unsafePackLiteral :: Addr# -> ByteString
 unsafePackLiteral addr# =
 #if __GLASGOW_HASKELL__ >= 811
-  BS (ForeignPtr addr# FinalPtr) (I# (cstringLength# addr#))
+  unsafePackLenLiteral (I# (cstringLength# addr#)) addr#
 #else
   let len = accursedUnutterablePerformIO (c_strlen (Ptr addr#))
-   in BS (accursedUnutterablePerformIO (newForeignPtr_ (Ptr addr#))) (fromIntegral len)
+   in unsafePackLenLiteral (fromIntegral len) addr#
 #endif
 {-# INLINE unsafePackLiteral #-}
 
