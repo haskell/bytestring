@@ -42,7 +42,8 @@ module Data.ByteString.Internal (
         packChars, packUptoLenChars, unsafePackLenChars,
         unpackBytes, unpackAppendBytesLazy, unpackAppendBytesStrict,
         unpackChars, unpackAppendCharsLazy, unpackAppendCharsStrict,
-        unsafePackAddress, unsafePackLiteral,
+        unsafePackAddress, unsafePackLenAddress,
+        unsafePackLiteral, unsafePackLenLiteral,
 
         -- * Low level imperative construction
         create,
@@ -342,16 +343,28 @@ unsafePackLenChars len cs0 =
 unsafePackAddress :: Addr# -> IO ByteString
 unsafePackAddress addr# = do
 #if __GLASGOW_HASKELL__ >= 811
-    return (BS (ForeignPtr addr# FinalPtr) (I# (cstringLength# addr#)))
+    unsafePackLenAddress (I# (cstringLength# addr#)) addr#
 #else
-    p <- newForeignPtr_ (castPtr cstr)
-    l <- c_strlen cstr
-    return $ BS p (fromIntegral l)
-  where
-    cstr :: CString
-    cstr = Ptr addr#
+    l <- c_strlen (Ptr addr#)
+    unsafePackLenAddress (fromIntegral l) addr#
 #endif
 {-# INLINE unsafePackAddress #-}
+
+-- | See 'unsafePackAddress'. This function is similar,
+-- but takes an additional length argument rather then computing
+-- it with @strlen@.
+-- Therefore embedding @\'\\0\'@ characters is possible.
+--
+-- @since 0.11.2.0
+unsafePackLenAddress :: Int -> Addr# -> IO ByteString
+unsafePackLenAddress len addr# = do
+#if __GLASGOW_HASKELL__ >= 811
+    return (BS (ForeignPtr addr# FinalPtr) len)
+#else
+    p <- newForeignPtr_ (Ptr addr#)
+    return $ BS p len
+#endif
+{-# INLINE unsafePackLenAddress #-}
 
 -- | See 'unsafePackAddress'. This function has similar behavior. Prefer
 -- this function when the address in known to be an @Addr#@ literal. In
@@ -363,13 +376,28 @@ unsafePackAddress addr# = do
 unsafePackLiteral :: Addr# -> ByteString
 unsafePackLiteral addr# =
 #if __GLASGOW_HASKELL__ >= 811
-  BS (ForeignPtr addr# FinalPtr) (I# (cstringLength# addr#))
+  unsafePackLenLiteral (I# (cstringLength# addr#)) addr#
 #else
   let len = accursedUnutterablePerformIO (c_strlen (Ptr addr#))
-   in BS (accursedUnutterablePerformIO (newForeignPtr_ (Ptr addr#))) (fromIntegral len)
+   in unsafePackLenLiteral (fromIntegral len) addr#
 #endif
 {-# INLINE unsafePackLiteral #-}
 
+
+-- | See 'unsafePackLiteral'. This function is similar,
+-- but takes an additional length argument rather then computing
+-- it with @strlen@.
+-- Therefore embedding @\'\\0\'@ characters is possible.
+--
+-- @since 0.11.2.0
+unsafePackLenLiteral :: Int -> Addr# -> ByteString
+unsafePackLenLiteral len addr# =
+#if __GLASGOW_HASKELL__ >= 811
+  BS (ForeignPtr addr# FinalPtr) len
+#else
+  BS (accursedUnutterablePerformIO (newForeignPtr_ (Ptr addr#))) len
+#endif
+{-# INLINE unsafePackLenLiteral #-}
 
 packUptoLenBytes :: Int -> [Word8] -> (ByteString, [Word8])
 packUptoLenBytes len xs0 =
