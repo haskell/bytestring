@@ -146,7 +146,7 @@ import GHC.Prim                 (plusAddr#)
 import GHC.CString              (cstringLength#)
 import GHC.ForeignPtr           (ForeignPtrContents(FinalPtr))
 #else
-import GHC.Ptr                  (Ptr(..), castPtr)
+import GHC.Ptr                  (Ptr(..))
 #endif
 
 #if (__GLASGOW_HASKELL__ < 802) || (__GLASGOW_HASKELL__ >= 811)
