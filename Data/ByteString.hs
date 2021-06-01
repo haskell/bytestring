@@ -782,8 +782,8 @@ scanr
     -- ^ output of length n+1
 scanr f v = \(BS fp len) -> unsafeDupablePerformIO $ unsafeWithForeignPtr fp $ \a ->
          -- see fold inlining
-    create (len+1) $ \q -> do
-        poke (q `plusPtr` len) v
+    create (len+1) $ \b -> do
+        poke (b `plusPtr` len) v
         let
           go p q = scanr_ v (len-1)
             where
@@ -794,7 +794,7 @@ scanr f v = \(BS fp len) -> unsafeDupablePerformIO $ unsafeWithForeignPtr fp $ \
                       let z' = f x z
                       pokeByteOff q n z'
                       scanr_ z' (n-1)
-        go a q
+        go a b
 {-# INLINE scanr #-}
 
 -- | 'scanr1' is a variant of 'scanr' that has no starting value argument.
@@ -1358,7 +1358,7 @@ filter k = \ps@(BS x l) ->
   if null ps
     then ps
     else
-      unsafePerformIO $ createAndTrim l $ \p -> withForeignPtr x $ \f -> do
+      unsafePerformIO $ createAndTrim l $ \pOut -> withForeignPtr x $ \pIn -> do
         let
           go' pf pt = go pf pt
             where
@@ -1369,8 +1369,8 @@ filter k = \ps@(BS x l) ->
                            if k w
                              then poke t w >> go (f `plusPtr` 1) (t `plusPtr` 1)
                              else             go (f `plusPtr` 1) t
-        t <- go' f p
-        return $! t `minusPtr` p -- actual length
+        t <- go' pIn pOut
+        return $! t `minusPtr` pOut -- actual length
 {-# INLINE filter #-}
 
 {-
