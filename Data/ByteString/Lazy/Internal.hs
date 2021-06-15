@@ -51,7 +51,6 @@ import Prelude hiding (concat)
 import qualified Data.ByteString.Internal as S
 
 import Data.Word (Word8)
-import Foreign.ForeignPtr (withForeignPtr)
 import Foreign.Ptr (plusPtr)
 import Foreign.Storable (Storable(sizeOf))
 
@@ -315,7 +314,7 @@ toStrict = \cs -> goLen0 cs cs
     goCopy Empty                    !_   = return ()
     goCopy (Chunk (S.BS _  0  ) cs) !ptr = goCopy cs ptr
     goCopy (Chunk (S.BS fp len) cs) !ptr =
-      withForeignPtr fp $ \p -> do
+      S.unsafeWithForeignPtr fp $ \p -> do
         S.memcpy ptr p len
         goCopy cs (ptr `plusPtr` len)
 -- See the comment on Data.ByteString.Internal.concat for some background on

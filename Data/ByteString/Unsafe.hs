@@ -262,7 +262,8 @@ unsafePackMallocCStringLen (cstr, len) = do
 -- after this.
 --
 unsafeUseAsCString :: ByteString -> (CString -> IO a) -> IO a
-unsafeUseAsCString (BS ps _) ac = withForeignPtr ps $ \p -> ac (castPtr p)
+unsafeUseAsCString (BS ps _) action = withForeignPtr ps $ \p -> action (castPtr p)
+-- Cannot use unsafeWithForeignPtr, because action can diverge
 
 -- | /O(1) construction/ Use a 'ByteString' with a function requiring a
 -- 'CStringLen'.
@@ -281,4 +282,5 @@ unsafeUseAsCString (BS ps _) ac = withForeignPtr ps $ \p -> ac (castPtr p)
 --
 -- If 'Data.ByteString.empty' is given, it will pass @('Foreign.Ptr.nullPtr', 0)@.
 unsafeUseAsCStringLen :: ByteString -> (CStringLen -> IO a) -> IO a
-unsafeUseAsCStringLen (BS ps l) f = withForeignPtr ps $ \p -> f (castPtr p,l)
+unsafeUseAsCStringLen (BS ps l) action = withForeignPtr ps $ \p -> action (castPtr p, l)
+-- Cannot use unsafeWithForeignPtr, because action can diverge
