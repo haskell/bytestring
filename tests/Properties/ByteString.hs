@@ -277,6 +277,8 @@ tests =
     \x (toElem -> c) -> B.compareLength (B.snoc x c <> undefined) (B.length x) === GT
   , testProperty "compareLength 5" $
     \x n -> B.compareLength x n === compare (B.length x) n
+  , testProperty "dropWhileEnd lazy" $
+    \(toElem -> c) -> B.take 1 (B.dropWhileEnd (const False) (B.singleton c <> undefined)) === B.singleton c
 #endif
 
   , testProperty "length" $

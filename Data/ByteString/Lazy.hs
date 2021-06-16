@@ -706,11 +706,11 @@ takeEnd i _ | i <= 0 = Empty
 takeEnd i cs0        = takeEnd' i cs0
   where takeEnd' 0 _         = Empty
         takeEnd' n cs        =
-            snd $ foldrChunks takeTuple (fromIntegral n,Empty) cs
+            snd $ foldrChunks takeTuple (n,Empty) cs
         takeTuple _ (0, cs)  = (0, cs)
         takeTuple c (n, cs)
-            | n > S.length c = (n - S.length c, Chunk c cs)
-            | otherwise      = (0, Chunk (S.takeEnd n c) cs)
+            | n > fromIntegral (S.length c) = (n - fromIntegral (S.length c), Chunk c cs)
+            | otherwise      = (0, Chunk (S.takeEnd (fromIntegral n) c) cs)
 
 -- | /O(n\/c)/ 'drop' @n xs@ returns the suffix of @xs@ after the first @n@
 -- elements, or @[]@ if @n > 'length' xs@.
@@ -740,11 +740,11 @@ dropEnd i p | i <= 0 = p
 dropEnd i cs0 = dropEnd' i cs0
   where dropEnd' 0 cs        = cs
         dropEnd' n bs        =
-            snd $ foldrChunks dropTuple (fromIntegral n, Empty) bs
-        dropTuple c (0, cs)  = (0, Chunk c cs)
+            snd $ foldrChunks dropTuple (n, Empty) bs
+        dropTuple c (0, cs)                 = (0, Chunk c cs)
         dropTuple c (n, _)
-            | n > S.length c = (n - S.length c, Empty)
-            | otherwise      = (0, fromStrict (S.dropEnd n c))
+            | n > fromIntegral (S.length c) = (n - fromIntegral (S.length c), Empty)
+            | otherwise                     = (0, fromStrict (S.dropEnd (fromIntegral n) c))
 
 -- | /O(n\/c)/ 'splitAt' @n xs@ is equivalent to @('take' n xs, 'drop' n xs)@.
 splitAt :: Int64 -> ByteString -> (ByteString, ByteString)
@@ -808,12 +808,16 @@ dropWhile f = dropWhile'
 --
 -- @since 0.11.2.0
 dropWhileEnd :: (Word8 -> Bool) -> ByteString -> ByteString
-dropWhileEnd f = dropWhileEnd'
-  where dropWhileEnd' Empty        = Empty
-        dropWhileEnd' (Chunk c bs) =
-            case dropWhileEnd' bs of
-                 Empty -> fromStrict (S.dropWhileEnd f c)
-                 bs'   -> Chunk c bs'
+dropWhileEnd f = go [] 
+  where go acc (Chunk c cs) 
+            | f (S.last c) = go (c : acc) cs
+            | otherwise    = L.foldl (flip Chunk) (go [] cs) (c : acc)
+        go acc Empty       = dropAcc acc
+        dropAcc []         = Empty
+        dropAcc (x : xs)   = 
+            case S.dropWhileEnd f x of
+                 x' | S.null x' -> dropAcc xs
+                    | otherwise -> L.foldl' (flip Chunk) Empty (x' : xs)
 
 -- | Similar to 'P.break',
 -- returns the longest (possibly empty) prefix of elements which __do not__
@@ -846,7 +850,7 @@ breakEnd  f = breakEnd'
           case breakEnd' cs of
                (Empty, cs') ->
                  let (c', c'') = S.breakEnd f c
-                   in (fromStrict c', fromStrict c'' `append` cs')
+                   in (c' `chunk` Empty, c'' `chunk` cs')
                (cs', cs'')  -> (Chunk c cs', cs'')
 
 --
