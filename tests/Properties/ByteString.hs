@@ -279,6 +279,10 @@ tests =
     \x n -> B.compareLength x n === compare (B.length x) n
   , testProperty "dropWhileEnd lazy" $
     \(toElem -> c) -> B.take 1 (B.dropWhileEnd (const False) (B.singleton c <> undefined)) === B.singleton c
+  , testProperty "breakEnd lazy" $
+    \(toElem -> c) -> B.take 1 (fst $ B.breakEnd (const True) (B.singleton c <> undefined)) === B.singleton c
+  , testProperty "spanEnd lazy" $
+    \(toElem -> c) -> B.take 1 (fst $ B.spanEnd (const False) (B.singleton c <> undefined)) === B.singleton c
 #endif
 
   , testProperty "length" $

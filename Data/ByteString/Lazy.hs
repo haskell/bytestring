@@ -226,6 +226,7 @@ import Prelude hiding
     ,getContents,getLine,putStr,putStrLn ,zip,zipWith,unzip,notElem)
 
 import qualified Data.List              as L  -- L for list/lazy
+import qualified Data.Bifunctor         as BF
 import qualified Data.ByteString        as P  (ByteString) -- type name only
 import qualified Data.ByteString        as S  -- S for strict (hmm...)
 import qualified Data.ByteString.Internal as S
@@ -844,14 +845,19 @@ break f = break'
 --
 -- @since 0.11.2.0
 breakEnd :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
-breakEnd  f = breakEnd'
-  where breakEnd' Empty           = (Empty, Empty)
-        breakEnd' (Chunk c cs)    =
-          case breakEnd' cs of
-               (Empty, cs') ->
-                 let (c', c'') = S.breakEnd f c
-                   in (c' `chunk` Empty, c'' `chunk` cs')
-               (cs', cs'')  -> (Chunk c cs', cs'')
+breakEnd  f = go []
+  where go acc (Chunk c cs)
+            | f (S.last c) = L.foldl (flip $ BF.first . Chunk) (go [] cs) (c : acc) 
+            | otherwise = go (c : acc) cs
+        go acc Empty = dropAcc acc
+        dropAcc [] = (Empty, Empty)
+        dropAcc (x : xs) = 
+            case S.breakEnd f x of
+                 (x', x'') | S.null x' -> let (y, y') = dropAcc xs
+                                           in (y, y' `append` fromStrict x)
+                           | otherwise -> 
+                                L.foldl' (flip $ BF.first . Chunk) (fromStrict x', fromStrict x'') xs
+
 
 --
 -- TODO
