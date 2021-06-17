@@ -1146,8 +1146,7 @@ split w (BS x l) = loop 0
                              w (fromIntegral (l-n))
             in if q == nullPtr
                 then [BS (plusForeignPtr x n) (l-n)]
-                else let i = accursedUnutterablePerformIO $ unsafeWithForeignPtr x $ \p ->
-                               return (q `minusPtr` p)
+                else let i = q `minusPtr` unsafeForeignPtrToPtr x
                       in BS (plusForeignPtr x n) (i-n) : loop (i+1)
 
 {-# INLINE split #-}
