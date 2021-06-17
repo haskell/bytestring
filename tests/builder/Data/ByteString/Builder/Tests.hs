@@ -27,8 +27,6 @@ import           Data.Bits ((.|.), shiftL)
 import qualified Data.DList      as D
 import           Data.Foldable
 import           Data.Word
-import           GHC.Float (FFFormat(..), formatRealFloat)
-import           Numeric (showEFloat)
 
 import qualified Data.ByteString          as S
 import qualified Data.ByteString.Internal as S
@@ -595,56 +593,50 @@ testsASCII =
   where
     enlarge (n, e) = n ^ (abs (e `mod` (50 :: Integer)))
 
-formatFloat :: FFFormat -> Maybe Int -> Float -> Builder
-formatFloat fmt prec = string7 . formatRealFloat fmt prec
-
-formatDouble :: FFFormat -> Maybe Int -> Double -> Builder
-formatDouble fmt prec = string7 . formatRealFloat fmt prec
-
 testsFloating :: [TestTree]
 testsFloating =
-  [ testMatches "f2sBasic" (formatFloat FFExponent Nothing) (flip (showEFloat Nothing) "")
-        [ ( 0.0    , "0.0e0" )
-        , ( (-0.0) , "-0.0e0" )
-        , ( 1.0    , "1.0e0" )
-        , ( (-1.0) , "-1.0e0" )
+  [ testMatches "f2sBasic" floatDec show
+        [ ( 0.0    , "0.0" )
+        , ( (-0.0) , "-0.0" )
+        , ( 1.0    , "1.0" )
+        , ( (-1.0) , "-1.0" )
         , ( (0/0)  , "NaN" )
         , ( (1/0)  , "Infinity" )
         , ( (-1/0) , "-Infinity" )
         ]
-  , testMatches "f2sSubnormal" (formatFloat FFExponent Nothing) (flip (showEFloat Nothing) "")
+  , testMatches "f2sSubnormal" floatDec show
         [ ( 1.1754944e-38 , "1.1754944e-38" )
         ]
-  , testMatches "f2sMinAndMax" (formatFloat FFExponent Nothing) (flip (showEFloat Nothing) "")
+  , testMatches "f2sMinAndMax" floatDec show
         [ ( coerceWord32ToFloat 0x7f7fffff , "3.4028235e38" )
         , ( coerceWord32ToFloat 0x00000001 , "1.0e-45" )
         ]
-  , testMatches "f2sBoundaryRound" (formatFloat FFExponent Nothing) (flip (showEFloat Nothing) "")
+  , testMatches "f2sBoundaryRound" floatDec show
         [ ( 3.355445e7   , "3.3554448e7" )
         , ( 8.999999e9   , "8.999999e9" )
         , ( 3.4366717e10 , "3.4366718e10" )
         ]
-  , testMatches "f2sExactValueRound" (formatFloat FFExponent Nothing) (flip (showEFloat Nothing) "")
-        [ ( 3.0540412e5 , "3.0540413e5" )
-        , ( 8.0990312e3 , "8.0990313e3" )
+  , testMatches "f2sExactValueRound" floatDec show
+        [ ( 3.0540412e5 , "305404.13" )
+        , ( 8.0990312e3 , "8099.0313" )
         ]
-  , testMatches "f2sTrailingZeros" (formatFloat FFExponent Nothing) (flip (showEFloat Nothing) "")
+  , testMatches "f2sTrailingZeros" floatDec show
         -- Pattern for the first test: 00111001100000000000000000000000
         [ ( 2.4414062e-4 , "2.4414063e-4" )
         , ( 2.4414062e-3 , "2.4414063e-3" )
         , ( 4.3945312e-3 , "4.3945313e-3" )
         , ( 6.3476562e-3 , "6.3476563e-3" )
         ]
-  , testMatches "f2sRegression" (formatFloat FFExponent Nothing) (flip (showEFloat Nothing) "")
+  , testMatches "f2sRegression" floatDec show
         [ ( 4.7223665e21   , "4.7223665e21" )
-        , ( 8388608.0      , "8.388608e6" )
+        , ( 8388608.0      , "8388608.0" )
         , ( 1.6777216e7    , "1.6777216e7" )
         , ( 3.3554436e7    , "3.3554436e7" )
         , ( 6.7131496e7    , "6.7131496e7" )
         , ( 1.9310392e-38  , "1.9310392e-38" )
         , ( (-2.47e-43)    , "-2.47e-43" )
         , ( 1.993244e-38   , "1.993244e-38" )
-        , ( 4103.9003      , "4.1039004e3" )
+        , ( 4103.9003      , "4103.9004" )
         , ( 5.3399997e9    , "5.3399997e9" )
         , ( 6.0898e-39     , "6.0898e-39" )
         , ( 0.0010310042   , "1.0310042e-3" )
@@ -663,47 +655,47 @@ testsFloating =
         , ( 1.4e-45        , "1.0e-45" )
         , ( 1.18697724e20  , "1.18697725e20" )
         , ( 1.00014165e-36 , "1.00014165e-36" )
-        , ( 200.0          , "2.0e2" )
+        , ( 200.0          , "200.0" )
         , ( 3.3554432e7    , "3.3554432e7" )
-        , ( 2.0019531      , "2.0019531e0" )
-        , ( 2.001953       , "2.001953e0" )
+        , ( 2.0019531      , "2.0019531" )
+        , ( 2.001953       , "2.001953" )
         ]
-  , testMatches "f2sLooksLikePowerOf5" (formatFloat FFExponent Nothing) (flip (showEFloat Nothing) "")
+  , testMatches "f2sLooksLikePowerOf5" floatDec show
         [ ( coerceWord32ToFloat 0x5D1502F9 , "6.7108864e17" )
         , ( coerceWord32ToFloat 0x5D9502F9 , "1.3421773e18" )
         , ( coerceWord32ToFloat 0x5e1502F9 , "2.6843546e18" )
         ]
-  , testMatches "f2sOutputLength" (formatFloat FFExponent Nothing) (flip (showEFloat Nothing) "")
-        [ ( 1.0            , "1.0e0" )
-        , ( 1.2            , "1.2e0" )
-        , ( 1.23           , "1.23e0" )
-        , ( 1.234          , "1.234e0" )
-        , ( 1.2345         , "1.2345e0" )
-        , ( 1.23456        , "1.23456e0" )
-        , ( 1.234567       , "1.234567e0" )
-        , ( 1.2345678      , "1.2345678e0" )
+  , testMatches "f2sOutputLength" floatDec show
+        [ ( 1.0            , "1.0" )
+        , ( 1.2            , "1.2" )
+        , ( 1.23           , "1.23" )
+        , ( 1.234          , "1.234" )
+        , ( 1.2345         , "1.2345" )
+        , ( 1.23456        , "1.23456" )
+        , ( 1.234567       , "1.234567" )
+        , ( 1.2345678      , "1.2345678" )
         , ( 1.23456735e-36 , "1.23456735e-36" )
         ]
-  , testMatches "d2sBasic" (formatDouble FFExponent Nothing) (flip (showEFloat Nothing) "")
-        [ ( 0.0    , "0.0e0" )
-        , ( (-0.0) , "-0.0e0" )
-        , ( 1.0    , "1.0e0" )
-        , ( (-1.0) , "-1.0e0" )
+  , testMatches "d2sBasic" doubleDec show
+        [ ( 0.0    , "0.0" )
+        , ( (-0.0) , "-0.0" )
+        , ( 1.0    , "1.0" )
+        , ( (-1.0) , "-1.0" )
         , ( (0/0)  , "NaN" )
         , ( (1/0)  , "Infinity" )
         , ( (-1/0) , "-Infinity" )
         ]
-  , testMatches "d2sSubnormal" (formatDouble FFExponent Nothing) (flip (showEFloat Nothing) "")
+  , testMatches "d2sSubnormal" doubleDec show
         [ ( 2.2250738585072014e-308 , "2.2250738585072014e-308" )
         ]
-  , testMatches "d2sMinAndMax" (formatDouble FFExponent Nothing) (flip (showEFloat Nothing) "")
+  , testMatches "d2sMinAndMax" doubleDec show
         [ ( (coerceWord64ToDouble 0x7fefffffffffffff) , "1.7976931348623157e308" )
         , ( (coerceWord64ToDouble 0x0000000000000001) , "5.0e-324" )
         ]
-  , testMatches "d2sTrailingZeros" (formatDouble FFExponent Nothing) (flip (showEFloat Nothing) "")
+  , testMatches "d2sTrailingZeros" doubleDec show
         [ ( 2.98023223876953125e-8 , "2.9802322387695313e-8" )
         ]
-  , testMatches "d2sRegression" (formatDouble FFExponent Nothing) (flip (showEFloat Nothing) "")
+  , testMatches "d2sRegression" doubleDec show
         [ ( (-2.109808898695963e16) , "-2.1098088986959632e16" )
         , ( 4.940656e-318           , "4.940656e-318" )
         , ( 1.18575755e-316         , "1.18575755e-316" )
@@ -711,43 +703,43 @@ testsFloating =
         , ( 9.0608011534336e15      , "9.0608011534336e15" )
         , ( 4.708356024711512e18    , "4.708356024711512e18" )
         , ( 9.409340012568248e18    , "9.409340012568248e18" )
-        , ( 1.2345678               , "1.2345678e0" )
+        , ( 1.2345678               , "1.2345678" )
         , ( 1.9430376160308388e16   , "1.9430376160308388e16" )
         , ( (-6.9741824662760956e19), "-6.9741824662760956e19" )
         , ( 4.3816050601147837e18   , "4.3816050601147837e18" )
         ]
-  , testMatches "d2sLooksLikePowerOf5" (formatDouble FFExponent Nothing) (flip (showEFloat Nothing) "")
+  , testMatches "d2sLooksLikePowerOf5" doubleDec show
         [ ( (coerceWord64ToDouble 0x4830F0CF064DD592) , "5.764607523034235e39" )
         , ( (coerceWord64ToDouble 0x4840F0CF064DD592) , "1.152921504606847e40" )
         , ( (coerceWord64ToDouble 0x4850F0CF064DD592) , "2.305843009213694e40" )
         ]
-  , testMatches "d2sOutputLength" (formatDouble FFExponent Nothing) (flip (showEFloat Nothing) "")
-        [ ( 1                  , "1.0e0" )
-        , ( 1.2                , "1.2e0" )
-        , ( 1.23               , "1.23e0" )
-        , ( 1.234              , "1.234e0" )
-        , ( 1.2345             , "1.2345e0" )
-        , ( 1.23456            , "1.23456e0" )
-        , ( 1.234567           , "1.234567e0" )
-        , ( 1.2345678          , "1.2345678e0" )
-        , ( 1.23456789         , "1.23456789e0" )
-        , ( 1.234567895        , "1.234567895e0" )
-        , ( 1.2345678901       , "1.2345678901e0" )
-        , ( 1.23456789012      , "1.23456789012e0" )
-        , ( 1.234567890123     , "1.234567890123e0" )
-        , ( 1.2345678901234    , "1.2345678901234e0" )
-        , ( 1.23456789012345   , "1.23456789012345e0" )
-        , ( 1.234567890123456  , "1.234567890123456e0" )
-        , ( 1.2345678901234567 , "1.2345678901234567e0" )
+  , testMatches "d2sOutputLength" doubleDec show
+        [ ( 1                  , "1.0" )
+        , ( 1.2                , "1.2" )
+        , ( 1.23               , "1.23" )
+        , ( 1.234              , "1.234" )
+        , ( 1.2345             , "1.2345" )
+        , ( 1.23456            , "1.23456" )
+        , ( 1.234567           , "1.234567" )
+        , ( 1.2345678          , "1.2345678" )
+        , ( 1.23456789         , "1.23456789" )
+        , ( 1.234567895        , "1.234567895" )
+        , ( 1.2345678901       , "1.2345678901" )
+        , ( 1.23456789012      , "1.23456789012" )
+        , ( 1.234567890123     , "1.234567890123" )
+        , ( 1.2345678901234    , "1.2345678901234" )
+        , ( 1.23456789012345   , "1.23456789012345" )
+        , ( 1.234567890123456  , "1.234567890123456" )
+        , ( 1.2345678901234567 , "1.2345678901234567" )
 
         -- Test 32-bit chunking
-        , ( 4.294967294 , "4.294967294e0" )
-        , ( 4.294967295 , "4.294967295e0" )
-        , ( 4.294967296 , "4.294967296e0" )
-        , ( 4.294967297 , "4.294967297e0" )
-        , ( 4.294967298 , "4.294967298e0" )
+        , ( 4.294967294 , "4.294967294" )
+        , ( 4.294967295 , "4.294967295" )
+        , ( 4.294967296 , "4.294967296" )
+        , ( 4.294967297 , "4.294967297" )
+        , ( 4.294967298 , "4.294967298" )
         ]
-  , testMatches "d2sMinMaxShift" (formatDouble FFExponent Nothing) (flip (showEFloat Nothing) "")
+  , testMatches "d2sMinMaxShift" doubleDec show
         [ ( (ieeeParts2Double False 4 0) , "1.7800590868057611e-307" )
         -- 32-bit opt-size=0:  49 <= dist <= 49
         -- 32-bit opt-size=1:  28 <= dist <= 49
@@ -790,17 +782,17 @@ testsFloating =
         -- 64-bit opt-size=1:  44 <= dist <= 50
         , ( (ieeeParts2Double False 934 0x000FA7161A4D6e0C) , "3.196104012172126e-27" )
         ]
-  , testMatches "d2sSmallIntegers" (formatDouble FFExponent Nothing) (flip (showEFloat Nothing) "")
+  , testMatches "d2sSmallIntegers" doubleDec show
         [ ( 9007199254740991.0 , "9.007199254740991e15" )
         , ( 9007199254740992.0 , "9.007199254740992e15" )
 
-        , ( 1.0e+0                , "1.0e0" )
-        , ( 1.2e+1                , "1.2e1" )
-        , ( 1.23e+2               , "1.23e2" )
-        , ( 1.234e+3              , "1.234e3" )
-        , ( 1.2345e+4             , "1.2345e4" )
-        , ( 1.23456e+5            , "1.23456e5" )
-        , ( 1.234567e+6           , "1.234567e6" )
+        , ( 1.0e+0                , "1.0" )
+        , ( 1.2e+1                , "12.0" )
+        , ( 1.23e+2               , "123.0" )
+        , ( 1.234e+3              , "1234.0" )
+        , ( 1.2345e+4             , "12345.0" )
+        , ( 1.23456e+5            , "123456.0" )
+        , ( 1.234567e+6           , "1234567.0" )
         , ( 1.2345678e+7          , "1.2345678e7" )
         , ( 1.23456789e+8         , "1.23456789e8" )
         , ( 1.23456789e+9         , "1.23456789e9" )
@@ -813,13 +805,13 @@ testsFloating =
         , ( 1.234567890123456e+15 , "1.234567890123456e15" )
 
         -- 10^i
-        , ( 1.0e+0  , "1.0e0" )
-        , ( 1.0e+1  , "1.0e1" )
-        , ( 1.0e+2  , "1.0e2" )
-        , ( 1.0e+3  , "1.0e3" )
-        , ( 1.0e+4  , "1.0e4" )
-        , ( 1.0e+5  , "1.0e5" )
-        , ( 1.0e+6  , "1.0e6" )
+        , ( 1.0e+0  , "1.0" )
+        , ( 1.0e+1  , "10.0" )
+        , ( 1.0e+2  , "100.0" )
+        , ( 1.0e+3  , "1000.0" )
+        , ( 1.0e+4  , "10000.0" )
+        , ( 1.0e+5  , "100000.0" )
+        , ( 1.0e+6  , "1000000.0" )
         , ( 1.0e+7  , "1.0e7" )
         , ( 1.0e+8  , "1.0e8" )
         , ( 1.0e+9  , "1.0e9" )
@@ -848,13 +840,13 @@ testsFloating =
         , ( (1.0e+15 + 1.0e+14) , "1.1e15" )
 
         -- Largest power of 2 <= 10^(i+1)
-        , ( 8.0                , "8.0e0" )
-        , ( 64.0               , "6.4e1" )
-        , ( 512.0              , "5.12e2" )
-        , ( 8192.0             , "8.192e3" )
-        , ( 65536.0            , "6.5536e4" )
-        , ( 524288.0           , "5.24288e5" )
-        , ( 8388608.0          , "8.388608e6" )
+        , ( 8.0                , "8.0" )
+        , ( 64.0               , "64.0" )
+        , ( 512.0              , "512.0" )
+        , ( 8192.0             , "8192.0" )
+        , ( 65536.0            , "65536.0" )
+        , ( 524288.0           , "524288.0" )
+        , ( 8388608.0          , "8388608.0" )
         , ( 67108864.0         , "6.7108864e7" )
         , ( 536870912.0        , "5.36870912e8" )
         , ( 8589934592.0       , "8.589934592e9" )
@@ -866,10 +858,10 @@ testsFloating =
         , ( 9007199254740992.0 , "9.007199254740992e15" )
 
         -- 1000 * (Largest power of 2 <= 10^(i+1))
-        , ( 8.0e+3             , "8.0e3" )
-        , ( 64.0e+3            , "6.4e4" )
-        , ( 512.0e+3           , "5.12e5" )
-        , ( 8192.0e+3          , "8.192e6" )
+        , ( 8.0e+3             , "8000.0" )
+        , ( 64.0e+3            , "64000.0" )
+        , ( 512.0e+3           , "512000.0" )
+        , ( 8192.0e+3          , "8192000.0" )
         , ( 65536.0e+3         , "6.5536e7" )
         , ( 524288.0e+3        , "5.24288e8" )
         , ( 8388608.0e+3       , "8.388608e9" )
