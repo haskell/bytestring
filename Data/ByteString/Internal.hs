@@ -299,7 +299,7 @@ instance TH.Lift ByteString where
 -- of the string if no element is found, rather than Nothing.
 findIndexOrLength :: (Word8 -> Bool) -> ByteString -> Int
 findIndexOrLength k (BS x l) =
-    accursedUnutterablePerformIO $ withForeignPtr x g
+    accursedUnutterablePerformIO $ unsafeWithForeignPtr x g
   where
     g ptr = go 0
       where
@@ -565,9 +565,10 @@ unsafeCreateUptoN' l f = unsafeDupablePerformIO (createUptoN' l f)
 
 -- | Create ByteString of size @l@ and use action @f@ to fill its contents.
 create :: Int -> (Ptr Word8 -> IO ()) -> IO ByteString
-create l f = do
+create l action = do
     fp <- mallocByteString l
-    withForeignPtr fp $ \p -> f p
+    -- Cannot use unsafeWithForeignPtr, because action can diverge
+    withForeignPtr fp $ \p -> action p
     return $! BS fp l
 {-# INLINE create #-}
 
@@ -575,9 +576,10 @@ create l f = do
 -- starting at the given 'Ptr' and returns the actual utilized length,
 -- @`createUpToN'` l f@ returns the filled 'ByteString'.
 createUptoN :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
-createUptoN l f = do
+createUptoN l action = do
     fp <- mallocByteString l
-    l' <- withForeignPtr fp $ \p -> f p
+    -- Cannot use unsafeWithForeignPtr, because action can diverge
+    l' <- withForeignPtr fp $ \p -> action p
     assert (l' <= l) $ return $! BS fp l'
 {-# INLINE createUptoN #-}
 
@@ -586,9 +588,10 @@ createUptoN l f = do
 --
 -- @since 0.10.12.0
 createUptoN' :: Int -> (Ptr Word8 -> IO (Int, a)) -> IO (ByteString, a)
-createUptoN' l f = do
+createUptoN' l action = do
     fp <- mallocByteString l
-    (l', res) <- withForeignPtr fp $ \p -> f p
+    -- Cannot use unsafeWithForeignPtr, because action can diverge
+    (l', res) <- withForeignPtr fp $ \p -> action p
     assert (l' <= l) $ return (BS fp l', res)
 {-# INLINE createUptoN' #-}
 
@@ -601,20 +604,22 @@ createUptoN' l f = do
 -- ByteString functions, using Haskell or C functions to fill the space.
 --
 createAndTrim :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
-createAndTrim l f = do
+createAndTrim l action = do
     fp <- mallocByteString l
+    -- Cannot use unsafeWithForeignPtr, because action can diverge
     withForeignPtr fp $ \p -> do
-        l' <- f p
+        l' <- action p
         if assert (l' <= l) $ l' >= l
             then return $! BS fp l
             else create l' $ \p' -> memcpy p' p l'
 {-# INLINE createAndTrim #-}
 
 createAndTrim' :: Int -> (Ptr Word8 -> IO (Int, Int, a)) -> IO (ByteString, a)
-createAndTrim' l f = do
+createAndTrim' l action = do
     fp <- mallocByteString l
+    -- Cannot use unsafeWithForeignPtr, because action can diverge
     withForeignPtr fp $ \p -> do
-        (off, l', res) <- f p
+        (off, l', res) <- action p
         if assert (l' <= l) $ l' >= l
             then return (BS fp l, res)
             else do ps <- create l' $ \p' ->

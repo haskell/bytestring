@@ -227,7 +227,6 @@ import Data.Int (Int64)
 import Data.Word
 import qualified Data.List as List
 import Foreign.Ptr (Ptr, plusPtr)
-import Foreign.ForeignPtr (withForeignPtr)
 import Foreign.Storable (peek)
 
 import Prelude hiding
@@ -868,7 +867,7 @@ readInt bs = case L.uncons bs of
         -- the provided digits (end of input or non-digit encountered).
         accumWord acc (BI.BS fp len) =
             BI.accursedUnutterablePerformIO $
-                withForeignPtr fp $ \ptr -> do
+                BI.unsafeWithForeignPtr fp $ \ptr -> do
                     let end = ptr `plusPtr` len
                     x@(!_, !_, !_) <- if positive
                         then digits intmaxQuot10 intmaxRem10 end ptr 0 acc
