@@ -1146,8 +1146,7 @@ split w (BS x l) = loop 0
                              w (fromIntegral (l-n))
             in if q == nullPtr
                 then [BS (plusForeignPtr x n) (l-n)]
-                else let i = accursedUnutterablePerformIO $ withForeignPtr x $ \p ->
-                               return (q `minusPtr` p)
+                else let i = q `minusPtr` unsafeForeignPtrToPtr x
                       in BS (plusForeignPtr x n) (i-n) : loop (i+1)
 
 {-# INLINE split #-}
@@ -1288,7 +1287,7 @@ count w (BS x m) = accursedUnutterablePerformIO $ unsafeWithForeignPtr x $ \p ->
 -- returns the index of the first element in the ByteString
 -- satisfying the predicate.
 findIndex :: (Word8 -> Bool) -> ByteString -> Maybe Int
-findIndex k (BS x l) = accursedUnutterablePerformIO $ withForeignPtr x g
+findIndex k (BS x l) = accursedUnutterablePerformIO $ unsafeWithForeignPtr x g
   where
     g !ptr = go 0
       where
@@ -1305,7 +1304,7 @@ findIndex k (BS x l) = accursedUnutterablePerformIO $ withForeignPtr x g
 --
 -- @since 0.10.12.0
 findIndexEnd :: (Word8 -> Bool) -> ByteString -> Maybe Int
-findIndexEnd k (BS x l) = accursedUnutterablePerformIO $ withForeignPtr x g
+findIndexEnd k (BS x l) = accursedUnutterablePerformIO $ unsafeWithForeignPtr x g
   where
     g !ptr = go (l-1)
       where
@@ -1358,7 +1357,7 @@ filter k = \ps@(BS x l) ->
   if null ps
     then ps
     else
-      unsafePerformIO $ createAndTrim l $ \pOut -> withForeignPtr x $ \pIn -> do
+      unsafePerformIO $ createAndTrim l $ \pOut -> unsafeWithForeignPtr x $ \pIn -> do
         let
           go' pf pt = go pf pt
             where
@@ -1417,7 +1416,7 @@ find f p = case findIndex f p of
 partition :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
 partition f s = unsafeDupablePerformIO $
     do fp' <- mallocByteString len
-       withForeignPtr fp' $ \p ->
+       unsafeWithForeignPtr fp' $ \p ->
            do let end = p `plusPtr` (len - 1)
               mid <- sep 0 p end
               rev mid end
@@ -1456,7 +1455,7 @@ isPrefixOf (BS x1 l1) (BS x2 l2)
     | l1 == 0   = True
     | l2 < l1   = False
     | otherwise = accursedUnutterablePerformIO $ unsafeWithForeignPtr x1 $ \p1 ->
-        withForeignPtr x2 $ \p2 -> do
+        unsafeWithForeignPtr x2 $ \p2 -> do
             i <- memcmp p1 p2 (fromIntegral l1)
             return $! i == 0
 
@@ -1484,7 +1483,7 @@ isSuffixOf (BS x1 l1) (BS x2 l2)
     | l1 == 0   = True
     | l2 < l1   = False
     | otherwise = accursedUnutterablePerformIO $ unsafeWithForeignPtr x1 $ \p1 ->
-        withForeignPtr x2 $ \p2 -> do
+        unsafeWithForeignPtr x2 $ \p2 -> do
             i <- memcmp p1 (p2 `plusPtr` (l2 - l1)) (fromIntegral l1)
             return $! i == 0
 
@@ -1608,8 +1607,8 @@ zipWith f ps qs = case uncons ps of
 -- @since 0.11.1.0
 packZipWith :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString -> ByteString
 packZipWith f (BS fp l) (BS fq m) = unsafeDupablePerformIO $
-    withForeignPtr fp $ \a ->
-    withForeignPtr fq $ \b ->
+    unsafeWithForeignPtr fp $ \a ->
+    unsafeWithForeignPtr fq $ \b ->
     create len $ go a b
   where
     go p1 p2 = zipWith_ 0
@@ -1658,7 +1657,7 @@ tails p | null p    = [empty]
 sort :: ByteString -> ByteString
 sort (BS input l)
   -- qsort outperforms counting sort for small arrays
-  | l <= 20 = unsafeCreate l $ \ptr -> withForeignPtr input $ \inp -> do
+  | l <= 20 = unsafeCreate l $ \ptr -> unsafeWithForeignPtr input $ \inp -> do
     memcpy ptr inp (fromIntegral l)
     c_sort ptr (fromIntegral l)
   | otherwise = unsafeCreate l $ \p -> allocaArray 256 $ \arr -> do
@@ -1693,11 +1692,12 @@ sort (BS input l)
 -- subcomputation finishes.
 useAsCString :: ByteString -> (CString -> IO a) -> IO a
 useAsCString (BS fp l) action =
- allocaBytes (l+1) $ \buf ->
-   withForeignPtr fp $ \p -> do
-     memcpy buf p (fromIntegral l)
-     pokeByteOff buf l (0::Word8)
-     action (castPtr buf)
+  allocaBytes (l+1) $ \buf ->
+    -- Cannot use unsafeWithForeignPtr, because action can diverge
+    withForeignPtr fp $ \p -> do
+      memcpy buf p (fromIntegral l)
+      pokeByteOff buf l (0::Word8)
+      action (castPtr buf)
 
 -- | /O(n) construction/ Use a @ByteString@ with a function requiring a @CStringLen@.
 -- As for @useAsCString@ this function makes a copy of the original @ByteString@.
