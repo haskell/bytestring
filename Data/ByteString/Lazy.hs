@@ -738,14 +738,16 @@ drop i cs0 = drop' i cs0
 -- @since 0.11.2.0
 dropEnd :: Int64 -> ByteString -> ByteString
 dropEnd i p | i <= 0 = p
-dropEnd i cs0 = dropEnd' i cs0
-  where dropEnd' 0 cs        = cs
-        dropEnd' n bs        =
-            snd $ foldrChunks dropTuple (n, Empty) bs
-        dropTuple c (0, cs)                 = (0, Chunk c cs)
-        dropTuple c (n, _)
-            | n > fromIntegral (S.length c) = (n - fromIntegral (S.length c), Empty)
-            | otherwise                     = (0, fromStrict (S.dropEnd (fromIntegral n) c))
+dropEnd i p = go [] 0 p
+  where go bss acc cs'@(Chunk c cs)
+            | acc < i = go (c : bss) (acc + fromIntegral (S.length c)) cs
+            | otherwise = L.foldl (flip chunk) (go [] 0 cs') bss
+        go bss _ Empty = dropChunks bss (fromIntegral i)
+        dropChunks [] _ = Empty
+        dropChunks (c : cs) n =
+            case S.length c of
+                 l | l <= fromIntegral n -> dropChunks cs (fromIntegral n - l)
+                   | otherwise -> L.foldl' (flip chunk) Empty (S.dropEnd (fromIntegral n) c : cs)
 
 -- | /O(n\/c)/ 'splitAt' @n xs@ is equivalent to @('take' n xs, 'drop' n xs)@.
 splitAt :: Int64 -> ByteString -> (ByteString, ByteString)
