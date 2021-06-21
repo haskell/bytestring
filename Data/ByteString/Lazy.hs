@@ -811,13 +811,13 @@ dropWhile f = dropWhile'
 --
 -- @since 0.11.2.0
 dropWhileEnd :: (Word8 -> Bool) -> ByteString -> ByteString
-dropWhileEnd f = go [] 
-  where go acc (Chunk c cs) 
+dropWhileEnd f = go []
+  where go acc (Chunk c cs)
             | f (S.last c) = go (c : acc) cs
             | otherwise    = L.foldl (flip Chunk) (go [] cs) (c : acc)
         go acc Empty       = dropAcc acc
         dropAcc []         = Empty
-        dropAcc (x : xs)   = 
+        dropAcc (x : xs)   =
             case S.dropWhileEnd f x of
                  x' | S.null x' -> dropAcc xs
                     | otherwise -> L.foldl' (flip Chunk) Empty (x' : xs)
@@ -849,15 +849,15 @@ break f = break'
 breakEnd :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
 breakEnd  f = go []
   where go acc (Chunk c cs)
-            | f (S.last c) = L.foldl (flip $ BF.first . Chunk) (go [] cs) (c : acc) 
+            | f (S.last c) = L.foldl (flip $ BF.first . Chunk) (go [] cs) (c : acc)
             | otherwise = go (c : acc) cs
         go acc Empty = dropAcc acc
         dropAcc [] = (Empty, Empty)
-        dropAcc (x : xs) = 
+        dropAcc (x : xs) =
             case S.breakEnd f x of
                  (x', x'') | S.null x' -> let (y, y') = dropAcc xs
                                            in (y, y' `append` fromStrict x)
-                           | otherwise -> 
+                           | otherwise ->
                                 L.foldl' (flip $ BF.first . Chunk) (fromStrict x', fromStrict x'') xs
 
 
