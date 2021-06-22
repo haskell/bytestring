@@ -59,6 +59,8 @@ module Data.ByteString.Builder.Prim.TestUtils (
   , double_list
   , coerceFloatToWord32
   , coerceDoubleToWord64
+  , coerceWord32ToFloat
+  , coerceWord64ToDouble
 
   ) where
 
@@ -350,6 +352,16 @@ coerceFloatToWord32 x = unsafePerformIO (with x (peek . castPtr))
 {-# NOINLINE coerceDoubleToWord64 #-}
 coerceDoubleToWord64 :: Double -> Word64
 coerceDoubleToWord64 x = unsafePerformIO (with x (peek . castPtr))
+
+-- | Convert a 'Word32' to a 'Float'.
+{-# NOINLINE coerceWord32ToFloat #-}
+coerceWord32ToFloat :: Word32 -> Float
+coerceWord32ToFloat x = unsafePerformIO (with x (peek . castPtr))
+
+-- | Convert a 'Word64' to a 'Double'.
+{-# NOINLINE coerceWord64ToDouble #-}
+coerceWord64ToDouble :: Word64 -> Double
+coerceWord64ToDouble x = unsafePerformIO (with x (peek . castPtr))
 
 -- | Parse a variable length encoding
 parseVar :: (Num a, Bits a) => [Word8] -> (a, [Word8])
