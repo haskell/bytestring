@@ -51,6 +51,8 @@ module Data.ByteString (
         unpack,
         fromStrict,
         toStrict,
+        fromFilePath,
+        toFilePath,
 
         -- * Basic interface
         cons,
@@ -256,7 +258,9 @@ import GHC.IO.Handle.Internals
 import GHC.IO.Handle.Types
 import GHC.IO.Buffer
 import GHC.IO.BufferedIO as Buffered
+import GHC.IO.Encoding          (getFileSystemEncoding)
 import GHC.IO                   (unsafePerformIO, unsafeDupablePerformIO)
+import GHC.Foreign              (newCStringLen, peekCStringLen)
 import Data.Char                (ord)
 import Foreign.Marshal.Utils    (copyBytes)
 
@@ -319,6 +323,18 @@ unpackFoldr bs k z = foldr k z bs
 "ByteString unpack-list" [1]  forall bs .
     unpackFoldr bs (:) [] = unpackBytes bs
  #-}
+
+-- | Convert a 'FilePath' to a 'ByteString'.
+fromFilePath :: FilePath -> IO ByteString
+fromFilePath path = do
+    enc <- getFileSystemEncoding
+    newCStringLen enc path >>= unsafePackMallocCStringLen
+
+-- | Convert a 'ByteString' to a 'FilePath'.
+toFilePath :: ByteString -> IO FilePath
+toFilePath path = do
+    enc <- getFileSystemEncoding
+    useAsCStringLen path (peekCStringLen enc)
 
 -- ---------------------------------------------------------------------
 -- Basic interface
