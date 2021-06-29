@@ -325,12 +325,23 @@ unpackFoldr bs k z = foldr k z bs
  #-}
 
 -- | Convert a 'FilePath' to a 'ByteString'.
+--
+-- The 'FilePath' type is expected to use the file system encoding
+-- as reported by 'GHC.IO.Encoding.getFileSystemEncoding'. This
+-- encoding allows for round-tripping of arbitrary data on platforms
+-- that allow arbitrary bytes in their paths. This conversion
+-- function does the same thing that `System.IO.openFile` would
+-- do when decoding the 'FilePath'.
 fromFilePath :: FilePath -> IO ByteString
 fromFilePath path = do
     enc <- getFileSystemEncoding
     newCStringLen enc path >>= unsafePackMallocCStringLen
 
 -- | Convert a 'ByteString' to a 'FilePath'.
+--
+-- This function uses the file system encoding, and resulting 'FilePath's
+-- can be safely used with standard IO functions and will reference the
+-- correct path in the presence of arbitrary non-UTF-8 encoded paths.
 toFilePath :: ByteString -> IO FilePath
 toFilePath path = do
     enc <- getFileSystemEncoding
