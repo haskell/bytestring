@@ -51,6 +51,8 @@ module Data.ByteString (
         unpack,
         fromStrict,
         toStrict,
+        fromFilePath,
+        toFilePath,
 
         -- * Basic interface
         cons,
@@ -256,7 +258,9 @@ import GHC.IO.Handle.Internals
 import GHC.IO.Handle.Types
 import GHC.IO.Buffer
 import GHC.IO.BufferedIO as Buffered
+import GHC.IO.Encoding          (getFileSystemEncoding)
 import GHC.IO                   (unsafePerformIO, unsafeDupablePerformIO)
+import GHC.Foreign              (newCStringLen, peekCStringLen)
 import Data.Char                (ord)
 import Foreign.Marshal.Utils    (copyBytes)
 
@@ -319,6 +323,29 @@ unpackFoldr bs k z = foldr k z bs
 "ByteString unpack-list" [1]  forall bs .
     unpackFoldr bs (:) [] = unpackBytes bs
  #-}
+
+-- | Convert a 'FilePath' to a 'ByteString'.
+--
+-- The 'FilePath' type is expected to use the file system encoding
+-- as reported by 'GHC.IO.Encoding.getFileSystemEncoding'. This
+-- encoding allows for round-tripping of arbitrary data on platforms
+-- that allow arbitrary bytes in their paths. This conversion
+-- function does the same thing that `System.IO.openFile` would
+-- do when decoding the 'FilePath'.
+fromFilePath :: FilePath -> IO ByteString
+fromFilePath path = do
+    enc <- getFileSystemEncoding
+    newCStringLen enc path >>= unsafePackMallocCStringLen
+
+-- | Convert a 'ByteString' to a 'FilePath'.
+--
+-- This function uses the file system encoding, and resulting 'FilePath's
+-- can be safely used with standard IO functions and will reference the
+-- correct path in the presence of arbitrary non-UTF-8 encoded paths.
+toFilePath :: ByteString -> IO FilePath
+toFilePath path = do
+    enc <- getFileSystemEncoding
+    useAsCStringLen path (peekCStringLen enc)
 
 -- ---------------------------------------------------------------------
 -- Basic interface

@@ -77,6 +77,18 @@ tests =
     \x -> B.fromStrict (B.toStrict x) === x
   , testProperty "toStrict . fromStrict" $
     \x -> B.toStrict (B.fromStrict x) === x
+#ifndef BYTESTRING_LAZY
+#ifndef BYTESTRING_CHAR8
+  , testProperty "toFilePath >>= fromFilePath" $
+    \x -> ioProperty $ do
+      r <- B.toFilePath x >>= B.fromFilePath
+      pure (r === x)
+  , testProperty "fromFilePath >>= toFilePath" $
+    \x -> ioProperty $ do
+      r <- B.fromFilePath x >>= B.toFilePath
+      pure (r === x)
+#endif
+#endif
 
   , testProperty "==" $
     \x y -> (x == y) === (B.unpack x == B.unpack y)
