@@ -251,6 +251,7 @@ module Data.ByteString.Builder
     , stringUtf8
 
     , module Data.ByteString.Builder.ASCII
+    , module Data.ByteString.Builder.RealFloat
 
     ) where
 
@@ -258,6 +259,7 @@ import           Data.ByteString.Builder.Internal
 import qualified Data.ByteString.Builder.Prim  as P
 import qualified Data.ByteString.Lazy.Internal as L
 import           Data.ByteString.Builder.ASCII
+import           Data.ByteString.Builder.RealFloat
 
 import           Data.String (IsString(..))
 import           System.IO (Handle)
