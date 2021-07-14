@@ -189,11 +189,12 @@ tests =
     \(toElem -> c) x -> (B.unpack *** B.unpack) (B.break (/= c) x) === break (/= c) (B.unpack x)
   , testProperty "break span" $
     \f x -> B.break f x === B.span (not . f) x
-#ifndef BYTESTRING_LAZY
   , testProperty "breakEnd" $
     \f x -> B.breakEnd f x === swap ((B.reverse *** B.reverse) (B.break f (B.reverse x)))
   , testProperty "breakEnd" $
     \f x -> B.breakEnd f x === B.spanEnd (not . f) x
+
+#ifndef BYTESTRING_LAZY
   , testProperty "break breakSubstring" $
     \(toElem -> c) x -> B.break (== c) x === B.breakSubstring (B.singleton c) x
   , testProperty "breakSubstring" $
@@ -260,7 +261,6 @@ tests =
     \x -> B.unpack (B.takeWhile isSpace x) === takeWhile isSpace (B.unpack x)
 #endif
 
-#ifndef BYTESTRING_LAZY
   , testProperty "dropEnd" $
     \n x -> B.dropEnd n x === B.take (B.length x - n) x
   , testProperty "dropWhileEnd" $
@@ -269,7 +269,6 @@ tests =
     \n x -> B.takeEnd n x === B.drop (B.length x - n) x
   , testProperty "takeWhileEnd" $
     \f x -> B.takeWhileEnd f x === B.reverse (B.takeWhile f (B.reverse x))
-#endif
 
 #ifdef BYTESTRING_LAZY
   , testProperty "invariant" $
@@ -290,6 +289,14 @@ tests =
     \x (toElem -> c) -> B.compareLength (B.snoc x c <> undefined) (B.length x) === GT
   , testProperty "compareLength 5" $
     \x n -> B.compareLength x n === compare (B.length x) n
+  , testProperty "dropEnd lazy" $
+    \(toElem -> c) -> B.take 1 (B.dropEnd 1 (B.singleton c <> B.singleton c <> B.singleton c <> undefined)) === B.singleton c
+  , testProperty "dropWhileEnd lazy" $
+    \(toElem -> c) -> B.take 1 (B.dropWhileEnd (const False) (B.singleton c <> undefined)) === B.singleton c
+  , testProperty "breakEnd lazy" $
+    \(toElem -> c) -> B.take 1 (fst $ B.breakEnd (const True) (B.singleton c <> undefined)) === B.singleton c
+  , testProperty "spanEnd lazy" $
+    \(toElem -> c) -> B.take 1 (fst $ B.spanEnd (const False) (B.singleton c <> undefined)) === B.singleton c
 #endif
 
   , testProperty "length" $
@@ -362,10 +369,8 @@ tests =
     \(toElem -> c) x -> (B.unpack *** B.unpack) (B.span (== c) x) === span (== c) (B.unpack x)
   , testProperty "span /=" $
     \(toElem -> c) x -> (B.unpack *** B.unpack) (B.span (/= c) x) === span (/= c) (B.unpack x)
-#ifndef BYTESTRING_LAZY
   , testProperty "spanEnd" $
     \f x -> B.spanEnd f x === swap ((B.reverse *** B.reverse) (B.span f (B.reverse x)))
-#endif
   , testProperty "split" $
     \(toElem -> c) x -> map B.unpack (B.split c x) === split c (B.unpack x)
   , testProperty "split empty" $
