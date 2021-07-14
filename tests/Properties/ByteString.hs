@@ -278,7 +278,7 @@ tests =
   , testProperty "compareLength 5" $
     \x n -> B.compareLength x n === compare (B.length x) n
   , testProperty "dropEnd lazy" $
-    \(toElem -> c) -> B.take 1 (B.dropEnd 1 (B.singleton c <> B.singleton c <> undefined)) === B.singleton c
+    \(toElem -> c) -> B.take 1 (B.dropEnd 1 (B.singleton c <> B.singleton c <> B.singleton c <> undefined)) === B.singleton c
   , testProperty "dropWhileEnd lazy" $
     \(toElem -> c) -> B.take 1 (B.dropWhileEnd (const False) (B.singleton c <> undefined)) === B.singleton c
   , testProperty "breakEnd lazy" $

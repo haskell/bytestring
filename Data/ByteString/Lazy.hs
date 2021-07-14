@@ -234,6 +234,7 @@ import qualified Data.ByteString.Unsafe as S
 import Data.ByteString.Lazy.Internal
 
 import Control.Monad            (mplus)
+import Data.Maybe               (listToMaybe)
 import Data.Word                (Word8)
 import Data.Int                 (Int64)
 import System.IO                (Handle,openBinaryFile,stdin,stdout,withBinaryFile,IOMode(..)
@@ -725,7 +726,7 @@ drop i cs0 = drop' i cs0
             then Chunk (S.drop (fromIntegral n) c) cs
             else drop' (n - fromIntegral (S.length c)) cs
 
--- | /O(c)/ @'dropEnd' n xs@ is equivalent to @'take' ('length' xs - n) xs@.
+-- | /O(n)/ @'dropEnd' n xs@ is equivalent to @'take' ('length' xs - n) xs@.
 -- Drops @n@ elements from end of bytestring.
 --
 -- >>> dropEnd 3 "abcdefg"
@@ -738,11 +739,24 @@ drop i cs0 = drop' i cs0
 -- @since 0.11.2.0
 dropEnd :: Int64 -> ByteString -> ByteString
 dropEnd i p | i <= 0 = p
-dropEnd i p = go [] 0 p
-  where go bss acc cs'@(Chunk c cs)
-            | acc < i = go (c : bss) (acc + fromIntegral (S.length c)) cs
-            | otherwise = L.foldl (flip chunk) (go [] 0 cs') bss
-        go bss _ Empty = dropChunks bss (fromIntegral i)
+dropEnd i p = go [] [] 0 0 p
+  where go hss tss acc h (Chunk c cs)
+            | h >= acc - i  = go hss (c : tss) (acc + len c) h cs
+            | otherwise =
+              let (output, hss', tss', acc') = getOutput [] hss (c : tss) ( acc + len c)
+                in L.foldl (flip chunk) (go hss' tss' acc' (hLen hss') cs) output
+        go hss tss _ _ Empty = dropChunks (tss ++ L.reverse hss) (fromIntegral i)
+
+        len c = fromIntegral (S.length c)
+        hLen cs = maybe 0 len (listToMaybe cs)
+
+        getOutput out [] [] acc = (out, [], [], acc)
+        getOutput out [] bss acc = getOutput out (L.reverse bss) [] acc
+        getOutput out (x:xs) bss acc =
+            if len x <= acc - i - len x
+               then getOutput (x:out) xs bss (acc - len x)
+               else (out, x:xs, bss, acc)
+
         dropChunks [] _ = Empty
         dropChunks (c : cs) n =
             case S.length c of
