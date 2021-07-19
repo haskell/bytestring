@@ -90,6 +90,7 @@ library
                      Data.ByteString.Builder.Internal
                      Data.ByteString.Builder.Prim.Internal
   other-modules:     Data.ByteString.Builder.ASCII
+                     Data.ByteString.Lazy.Internal.Deque
                      Data.ByteString.Builder.Prim.ASCII
                      Data.ByteString.Builder.Prim.Binary
                      Data.ByteString.Builder.Prim.Internal.Base16
