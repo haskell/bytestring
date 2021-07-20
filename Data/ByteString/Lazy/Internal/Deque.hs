@@ -44,17 +44,19 @@ len :: S.ByteString -> Int64
 len x = fromIntegral $ S.length x
 
 -- Pop a `S.ByteString` from the front of the `Deque`
--- Returns the bytestring, or Nothing if the Deque is empty, and the updated Deque
+-- Returns the bytestring and the updated Deque, or Nothing if the Deque is empty
 -- O(1) , occasionally O(n)
-popFront :: Deque -> (Maybe S.ByteString, Deque)
-popFront (Deque [] [] _) = (Nothing, empty)
-popFront (Deque [] rs acc) = popFront (Deque (reverse rs) [] acc)
-popFront (Deque (x : xs) rs acc) = (Just x, Deque xs rs (acc - len x))
+popFront :: Deque -> Maybe (S.ByteString, Deque)
+popFront (Deque [] rs acc) = case reverse rs of
+    [] -> Nothing
+    x : xs -> Just (x, Deque xs [] (acc - len x))
+popFront (Deque (x : xs) rs acc) = Just (x, Deque xs rs (acc - len x))
 
 -- Pop a `S.ByteString` from the rear of the `Deque`
--- Returns the bytestring, or Nothing if the Deque is empty, and the updated Deque
+-- Returns the bytestring and the updated Deque, or Nothing if the Deque is empty
 -- O(1) , occasionally O(n)
-popRear :: Deque -> (Maybe S.ByteString, Deque)
-popRear (Deque [] [] _) = (Nothing, empty)
-popRear (Deque fs [] acc) = popRear (Deque [] (reverse fs) acc)
-popRear (Deque fs (x : xs) acc) = (Just x, Deque fs xs (acc - len x))
+popRear :: Deque -> Maybe (S.ByteString, Deque)
+popRear (Deque fs [] acc) = case reverse fs of
+    [] -> Nothing
+    x : xs -> Just (x, Deque [] xs (acc - len x))
+popRear (Deque fs (x : xs) acc) = Just (x, Deque fs xs (acc - len x))
