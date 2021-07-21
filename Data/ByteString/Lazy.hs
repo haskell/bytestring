@@ -746,7 +746,7 @@ dropEnd i p = go D.empty p
             | otherwise              =
                   let (output, deque') = getOutput empty (D.snoc c deque)
                     in foldrChunks Chunk (go deque' cs) output
-        go deque Empty               = fromDeque $ dropElements deque i
+        go deque Empty               = fromDeque $ dropEndBytes deque i
 
         len c = fromIntegral (S.length c)
 
@@ -764,10 +764,10 @@ dropEnd i p = go D.empty p
         reverseChunks = foldlChunks (flip Chunk) empty
 
         -- drop n elements from the rear of the accumulating `deque`
-        dropElements :: D.Deque -> Int64 -> D.Deque
-        dropElements deque n = case D.popRear deque of
+        dropEndBytes :: D.Deque -> Int64 -> D.Deque
+        dropEndBytes deque n = case D.popRear deque of
             Nothing                       -> deque
-            Just (deque', x) | len x <= n -> dropElements deque' (n - len x)
+            Just (deque', x) | len x <= n -> dropEndBytes deque' (n - len x)
                              | otherwise  ->
                                 D.snoc (S.dropEnd (fromIntegral n) x) deque'
 
@@ -843,11 +843,11 @@ dropWhileEnd f = go []
   where go acc (Chunk c cs)
             | f (S.last c) = go (c : acc) cs
             | otherwise    = L.foldl (flip Chunk) (go [] cs) (c : acc)
-        go acc Empty       = dropElements acc
-        dropElements []         = Empty
-        dropElements (x : xs)   =
+        go acc Empty       = dropEndBytes acc
+        dropEndBytes []         = Empty
+        dropEndBytes (x : xs)   =
             case S.dropWhileEnd f x of
-                 x' | S.null x' -> dropElements xs
+                 x' | S.null x' -> dropEndBytes xs
                     | otherwise -> L.foldl' (flip Chunk) Empty (x' : xs)
 
 -- | Similar to 'P.break',
@@ -879,11 +879,11 @@ breakEnd  f = go []
   where go acc (Chunk c cs)
             | f (S.last c) = L.foldl (flip $ BF.first . Chunk) (go [] cs) (c : acc)
             | otherwise = go (c : acc) cs
-        go acc Empty = dropElements acc
-        dropElements [] = (Empty, Empty)
-        dropElements (x : xs) =
+        go acc Empty = dropEndBytes acc
+        dropEndBytes [] = (Empty, Empty)
+        dropEndBytes (x : xs) =
             case S.breakEnd f x of
-                 (x', x'') | S.null x' -> let (y, y') = dropElements xs
+                 (x', x'') | S.null x' -> let (y, y') = dropEndBytes xs
                                            in (y, y' `append` fromStrict x)
                            | otherwise ->
                                 L.foldl' (flip $ BF.first . Chunk) (fromStrict x', fromStrict x'') xs
