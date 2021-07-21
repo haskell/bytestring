@@ -1,3 +1,6 @@
+-- |
+-- A Deque used for accumulating `S.ByteString`s in the lazy
+-- version of `dropEnd`.
 module Data.ByteString.Lazy.Internal.Deque (
     Deque (..),
     empty,
@@ -18,7 +21,7 @@ data Deque = Deque
     { front :: [S.ByteString]
     , rear :: [S.ByteString]
     , -- | Accumulated length of deque's elements
-      elemLength :: Int64
+      elemLength :: !Int64
     }
 
 -- An empty Deque
@@ -55,8 +58,8 @@ popFront (Deque (x : xs) rs acc) = Just (x, Deque xs rs (acc - len x))
 -- Pop a `S.ByteString` from the rear of the `Deque`
 -- Returns the bytestring and the updated Deque, or Nothing if the Deque is empty
 -- O(1) , occasionally O(n)
-popRear :: Deque -> Maybe (S.ByteString, Deque)
+popRear :: Deque -> Maybe (Deque, S.ByteString)
 popRear (Deque fs [] acc) = case reverse fs of
     [] -> Nothing
-    x : xs -> Just (x, Deque [] xs (acc - len x))
-popRear (Deque fs (x : xs) acc) = Just (x, Deque fs xs (acc - len x))
+    x : xs -> Just (Deque [] xs (acc - len x),x)
+popRear (Deque fs (x : xs) acc) = Just (Deque fs xs (acc - len x),x)

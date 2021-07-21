@@ -744,27 +744,32 @@ dropEnd i p = go D.empty p
         go deque (Chunk c cs)
             | D.elemLength deque < i = go (D.snoc c deque) cs
             | otherwise              =
-                  let (output, deque') = getOutput [] (D.snoc c deque)
-                    in L.foldl (flip chunk) (go deque' cs) output
-        go deque Empty               = dropElements deque (fromIntegral i)
+                  let (output, deque') = getOutput empty (D.snoc c deque)
+                    in foldrChunks Chunk (go deque' cs) output
+        go deque Empty               = fromDeque $ dropElements deque i
 
         len c = fromIntegral (S.length c)
 
-        -- get all `S.ByteString` from the front of the accumulating deque
+        -- get a `ByteString` from all the front chunks of the accumulating deque
         -- for which we know they won't be dropped
-        getOutput :: [S.ByteString] -> D.Deque -> ([S.ByteString], D.Deque)
+        getOutput :: ByteString -> D.Deque -> (ByteString, D.Deque)
         getOutput out deque = case D.popFront deque of
-            Nothing                       -> (out, deque)
-            Just (x, deque') | D.elemLength deque' >= i -> getOutput (x:out) deque'
-                             | otherwise  -> (out, deque)
+            Nothing                       -> (reverseChunks out, deque)
+            Just (x, deque') | D.elemLength deque' >= i ->
+                            getOutput (Chunk x out) deque'
+                             | otherwise  -> (reverseChunks out, deque)
+
+        -- reverse a `ByteString`s chunks, keeping all internal `S.ByteString`s
+        -- unchanged
+        reverseChunks = foldlChunks (flip Chunk) empty
 
         -- drop n elements from the rear of the accumulating `deque`
-        dropElements :: D.Deque -> Int -> ByteString
+        dropElements :: D.Deque -> Int64 -> D.Deque
         dropElements deque n = case D.popRear deque of
-            Nothing                       -> Empty
-            Just (x, deque') | len x <= n -> dropElements deque' (n - len x)
+            Nothing                       -> deque
+            Just (deque', x) | len x <= n -> dropElements deque' (n - len x)
                              | otherwise  ->
-                                fromDeque (D.snoc (S.dropEnd n x) deque')
+                                D.snoc (S.dropEnd (fromIntegral n) x) deque'
 
         -- build a lazy ByteString from an accumulating `deque`
         fromDeque :: D.Deque -> ByteString
