@@ -742,7 +742,7 @@ dropEnd i p | i <= 0 = p
 dropEnd i p          = go D.empty p
   where go :: D.Deque -> ByteString -> ByteString
         go deque (Chunk c cs)
-            | D.elemLength deque < i = go (D.snoc c deque) cs
+            | D.byteLength deque < i = go (D.snoc c deque) cs
             | otherwise              =
                   let (output, deque') = getOutput empty (D.snoc c deque)
                     in foldrChunks Chunk (go deque' cs) output
@@ -755,7 +755,7 @@ dropEnd i p          = go D.empty p
         getOutput :: ByteString -> D.Deque -> (ByteString, D.Deque)
         getOutput out deque = case D.popFront deque of
             Nothing                       -> (reverseChunks out, deque)
-            Just (x, deque') | D.elemLength deque' >= i ->
+            Just (x, deque') | D.byteLength deque' >= i ->
                             getOutput (Chunk x out) deque'
             _ -> (reverseChunks out, deque)
 
