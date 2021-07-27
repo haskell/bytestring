@@ -739,7 +739,7 @@ drop i cs0 = drop' i cs0
 -- @since 0.11.2.0
 dropEnd :: Int64 -> ByteString -> ByteString
 dropEnd i p | i <= 0 = p
-dropEnd i p = go D.empty p
+dropEnd i p          = go D.empty p
   where go :: D.Deque -> ByteString -> ByteString
         go deque (Chunk c cs)
             | D.elemLength deque < i = go (D.snoc c deque) cs
@@ -757,7 +757,7 @@ dropEnd i p = go D.empty p
             Nothing                       -> (reverseChunks out, deque)
             Just (x, deque') | D.elemLength deque' >= i ->
                             getOutput (Chunk x out) deque'
-                             | otherwise  -> (reverseChunks out, deque)
+            _ -> (reverseChunks out, deque)
 
         -- reverse a `ByteString`s chunks, keeping all internal `S.ByteString`s
         -- unchanged
@@ -808,6 +808,9 @@ takeWhile f = takeWhile'
 --
 -- @'takeWhileEnd' p@ is equivalent to @'reverse' . 'takeWhile' p . 'reverse'@.
 --
+-- >>> takeWhileEnd even (Chunk (pack [1,2]) (Chunk (pack [3,4,6]) Empty))
+-- Chunk (pack [4,6]) Empty
+--
 -- @since 0.11.2.0
 takeWhileEnd :: (Word8 -> Bool) -> ByteString -> ByteString
 takeWhileEnd f = takeWhileEnd'
@@ -836,6 +839,9 @@ dropWhile f = dropWhile'
 -- satisfying the predicate and returns the remainder.
 --
 -- @'dropWhileEnd' p@ is equivalent to @'reverse' . 'dropWhile' p . 'reverse'@.
+--
+-- >>> dropWhileEnd even (Chunk (pack [1,2]) (Chunk (pack [3,4,6]) Empty))
+-- Chunk (pack [1,2]) (Chunk [3] Empty)
 --
 -- @since 0.11.2.0
 dropWhileEnd :: (Word8 -> Bool) -> ByteString -> ByteString
