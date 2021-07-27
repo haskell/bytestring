@@ -808,8 +808,9 @@ takeWhile f = takeWhile'
 --
 -- @'takeWhileEnd' p@ is equivalent to @'reverse' . 'takeWhile' p . 'reverse'@.
 --
--- >>> takeWhileEnd even (Chunk (pack [1,2]) (Chunk (pack [3,4,6]) Empty))
--- Chunk (pack [4,6]) Empty
+-- >>> {-# LANGUAGE OverloadedLists #-)
+-- >>> takeWhileEnd even [1,2,3,4,6]
+-- [4,6]
 --
 -- @since 0.11.2.0
 takeWhileEnd :: (Word8 -> Bool) -> ByteString -> ByteString
@@ -840,8 +841,9 @@ dropWhile f = dropWhile'
 --
 -- @'dropWhileEnd' p@ is equivalent to @'reverse' . 'dropWhile' p . 'reverse'@.
 --
--- >>> dropWhileEnd even (Chunk (pack [1,2]) (Chunk (pack [3,4,6]) Empty))
--- Chunk (pack [1,2]) (Chunk [3] Empty)
+-- >>> {-# LANGUAGE OverloadedLists #-)
+-- >>> dropWhileEnd even [1,2,3,4,6]
+-- [1,2,3]
 --
 -- @since 0.11.2.0
 dropWhileEnd :: (Word8 -> Bool) -> ByteString -> ByteString
