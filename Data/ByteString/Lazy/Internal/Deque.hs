@@ -20,8 +20,8 @@ import Prelude hiding (head, length, null)
 data Deque = Deque
     { front :: [S.ByteString]
     , rear :: [S.ByteString]
-    , -- | Accumulated length of deque's elements
-      elemLength :: !Int64
+    , -- | Total length in bytes
+      byteLength :: !Int64
     }
 
 -- An empty Deque
