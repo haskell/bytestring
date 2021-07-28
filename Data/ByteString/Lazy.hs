@@ -127,12 +127,18 @@ module Data.ByteString.Lazy (
 
         -- ** Breaking strings
         take,
+        takeEnd,
         drop,
+        dropEnd,
         splitAt,
         takeWhile,
+        takeWhileEnd,
         dropWhile,
+        dropWhileEnd,
         span,
+        spanEnd,
         break,
+        breakEnd,
         group,
         groupBy,
         inits,
@@ -220,10 +226,12 @@ import Prelude hiding
     ,getContents,getLine,putStr,putStrLn ,zip,zipWith,unzip,notElem)
 
 import qualified Data.List              as L  -- L for list/lazy
+import qualified Data.Bifunctor         as BF
 import qualified Data.ByteString        as P  (ByteString) -- type name only
 import qualified Data.ByteString        as S  -- S for strict (hmm...)
 import qualified Data.ByteString.Internal as S
 import qualified Data.ByteString.Unsafe as S
+import qualified Data.ByteString.Lazy.Internal.Deque as D
 import Data.ByteString.Lazy.Internal
 
 import Control.Monad            (mplus)
@@ -684,6 +692,28 @@ take i cs0         = take' i cs0
             then Chunk (S.take (fromIntegral n) c) Empty
             else Chunk c (take' (n - fromIntegral (S.length c)) cs)
 
+-- | /O(c)/ @'takeEnd' n xs@ is equivalent to @'drop' ('length' xs - n) xs@.
+-- Takes @n@ elements from end of bytestring.
+--
+-- >>> takeEnd 3 "abcdefg"
+-- "efg"
+-- >>> takeEnd 0 "abcdefg"
+-- ""
+-- >>> takeEnd 4 "abc"
+-- "abc"
+--
+-- @since 0.11.2.0
+takeEnd :: Int64 -> ByteString -> ByteString
+takeEnd i _ | i <= 0 = Empty
+takeEnd i cs0        = takeEnd' i cs0
+  where takeEnd' 0 _         = Empty
+        takeEnd' n cs        =
+            snd $ foldrChunks takeTuple (n,Empty) cs
+        takeTuple _ (0, cs)  = (0, cs)
+        takeTuple c (n, cs)
+            | n > fromIntegral (S.length c) = (n - fromIntegral (S.length c), Chunk c cs)
+            | otherwise      = (0, Chunk (S.takeEnd (fromIntegral n) c) cs)
+
 -- | /O(n\/c)/ 'drop' @n xs@ returns the suffix of @xs@ after the first @n@
 -- elements, or @[]@ if @n > 'length' xs@.
 drop  :: Int64 -> ByteString -> ByteString
@@ -695,6 +725,57 @@ drop i cs0 = drop' i cs0
           if n < fromIntegral (S.length c)
             then Chunk (S.drop (fromIntegral n) c) cs
             else drop' (n - fromIntegral (S.length c)) cs
+
+-- | /O(n)/ @'dropEnd' n xs@ is equivalent to @'take' ('length' xs - n) xs@.
+-- Drops @n@ elements from end of bytestring.
+--
+-- >>> dropEnd 3 "abcdefg"
+-- "abcd"
+-- >>> dropEnd 0 "abcdefg"
+-- "abcdefg"
+-- >>> dropEnd 4 "abc"
+-- ""
+--
+-- @since 0.11.2.0
+dropEnd :: Int64 -> ByteString -> ByteString
+dropEnd i p | i <= 0 = p
+dropEnd i p          = go D.empty p
+  where go :: D.Deque -> ByteString -> ByteString
+        go deque (Chunk c cs)
+            | D.byteLength deque < i = go (D.snoc c deque) cs
+            | otherwise              =
+                  let (output, deque') = getOutput empty (D.snoc c deque)
+                    in foldrChunks Chunk (go deque' cs) output
+        go deque Empty               = fromDeque $ dropEndBytes deque i
+
+        len c = fromIntegral (S.length c)
+
+        -- get a `ByteString` from all the front chunks of the accumulating deque
+        -- for which we know they won't be dropped
+        getOutput :: ByteString -> D.Deque -> (ByteString, D.Deque)
+        getOutput out deque = case D.popFront deque of
+            Nothing                       -> (reverseChunks out, deque)
+            Just (x, deque') | D.byteLength deque' >= i ->
+                            getOutput (Chunk x out) deque'
+            _ -> (reverseChunks out, deque)
+
+        -- reverse a `ByteString`s chunks, keeping all internal `S.ByteString`s
+        -- unchanged
+        reverseChunks = foldlChunks (flip Chunk) empty
+
+        -- drop n elements from the rear of the accumulating `deque`
+        dropEndBytes :: D.Deque -> Int64 -> D.Deque
+        dropEndBytes deque n = case D.popRear deque of
+            Nothing                       -> deque
+            Just (deque', x) | len x <= n -> dropEndBytes deque' (n - len x)
+                             | otherwise  ->
+                                D.snoc (S.dropEnd (fromIntegral n) x) deque'
+
+        -- build a lazy ByteString from an accumulating `deque`
+        fromDeque :: D.Deque -> ByteString
+        fromDeque deque =
+            L.foldr chunk Empty (D.front deque) `append`
+            L.foldl' (flip chunk) Empty (D.rear deque)
 
 -- | /O(n\/c)/ 'splitAt' @n xs@ is equivalent to @('take' n xs, 'drop' n xs)@.
 splitAt :: Int64 -> ByteString -> (ByteString, ByteString)
@@ -722,6 +803,27 @@ takeWhile f = takeWhile'
             n | n < S.length c -> Chunk (S.take n c) Empty
               | otherwise      -> Chunk c (takeWhile' cs)
 
+-- | Returns the longest (possibly empty) suffix of elements
+-- satisfying the predicate.
+--
+-- @'takeWhileEnd' p@ is equivalent to @'reverse' . 'takeWhile' p . 'reverse'@.
+--
+-- >>> {-# LANGUAGE OverloadedLists #-)
+-- >>> takeWhileEnd even [1,2,3,4,6]
+-- [4,6]
+--
+-- @since 0.11.2.0
+takeWhileEnd :: (Word8 -> Bool) -> ByteString -> ByteString
+takeWhileEnd f = takeWhileEnd'
+  where takeWhileEnd' Empty = Empty
+        takeWhileEnd' cs    =
+            snd $ foldrChunks takeTuple (True,Empty) cs
+        takeTuple _ (False, bs) = (False,bs)
+        takeTuple c (True,bs)   =
+           case S.takeWhileEnd f c of
+                c' | S.length c' == S.length c -> (True, Chunk c bs)
+                   | otherwise                 -> (False, fromStrict c' `append` bs)
+
 -- | Similar to 'P.dropWhile',
 -- drops the longest (possibly empty) prefix of elements
 -- satisfying the predicate and returns the remainder.
@@ -732,6 +834,29 @@ dropWhile f = dropWhile'
           case S.findIndexOrLength (not . f) c of
             n | n < S.length c -> Chunk (S.drop n c) cs
               | otherwise      -> dropWhile' cs
+
+-- | Similar to 'P.dropWhileEnd',
+-- drops the longest (possibly empty) suffix of elements
+-- satisfying the predicate and returns the remainder.
+--
+-- @'dropWhileEnd' p@ is equivalent to @'reverse' . 'dropWhile' p . 'reverse'@.
+--
+-- >>> {-# LANGUAGE OverloadedLists #-)
+-- >>> dropWhileEnd even [1,2,3,4,6]
+-- [1,2,3]
+--
+-- @since 0.11.2.0
+dropWhileEnd :: (Word8 -> Bool) -> ByteString -> ByteString
+dropWhileEnd f = go []
+  where go acc (Chunk c cs)
+            | f (S.last c) = go (c : acc) cs
+            | otherwise    = L.foldl (flip Chunk) (go [] cs) (c : acc)
+        go acc Empty       = dropEndBytes acc
+        dropEndBytes []         = Empty
+        dropEndBytes (x : xs)   =
+            case S.dropWhileEnd f x of
+                 x' | S.null x' -> dropEndBytes xs
+                    | otherwise -> L.foldl' (flip Chunk) Empty (x' : xs)
 
 -- | Similar to 'P.break',
 -- returns the longest (possibly empty) prefix of elements which __do not__
@@ -749,6 +874,28 @@ break f = break'
                                   ,Chunk (S.drop n c) cs)
               | otherwise      -> let (cs', cs'') = break' cs
                                    in (Chunk c cs', cs'')
+
+
+-- | Returns the longest (possibly empty) suffix of elements which __do not__
+-- satisfy the predicate and the remainder of the string.
+--
+-- 'breakEnd' @p@ is equivalent to @'spanEnd' (not . p)@ and to @('takeWhileEnd' (not . p) &&& 'dropWhileEnd' (not . p))@.
+--
+-- @since 0.11.2.0
+breakEnd :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
+breakEnd  f = go []
+  where go acc (Chunk c cs)
+            | f (S.last c) = L.foldl (flip $ BF.first . Chunk) (go [] cs) (c : acc)
+            | otherwise = go (c : acc) cs
+        go acc Empty = dropEndBytes acc
+        dropEndBytes [] = (Empty, Empty)
+        dropEndBytes (x : xs) =
+            case S.breakEnd f x of
+                 (x', x'') | S.null x' -> let (y, y') = dropEndBytes xs
+                                           in (y, y' `append` fromStrict x)
+                           | otherwise ->
+                                L.foldl' (flip $ BF.first . Chunk) (fromStrict x', fromStrict x'') xs
+
 
 --
 -- TODO
@@ -798,6 +945,25 @@ spanByte c (LPS ps) = case (spanByte' ps) of (a,b) -> (LPS a, LPS b)
 --
 span :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
 span p = break (not . p)
+
+-- | Returns the longest (possibly empty) suffix of elements
+-- satisfying the predicate and the remainder of the string.
+--
+-- 'spanEnd' @p@ is equivalent to @'breakEnd' (not . p)@ and to @('takeWhileEnd' p &&& 'dropWhileEnd' p)@.
+--
+-- We have
+--
+-- > spanEnd (not . isSpace) "x y z" == ("x y ", "z")
+--
+-- and
+--
+-- > spanEnd (not . isSpace) ps
+-- >    ==
+-- > let (x, y) = span (not . isSpace) (reverse ps) in (reverse y, reverse x)
+--
+-- @since 0.11.2.0
+spanEnd :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
+spanEnd p = breakEnd (not . p)
 
 -- | /O(n)/ Splits a 'ByteString' into components delimited by
 -- separators, where the predicate returns True for a separator element.

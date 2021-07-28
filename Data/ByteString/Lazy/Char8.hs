@@ -105,12 +105,18 @@ module Data.ByteString.Lazy.Char8 (
 
         -- ** Breaking strings
         take,
+        takeEnd,
         drop,
+        dropEnd,
         splitAt,
         takeWhile,
+        takeWhileEnd,
         dropWhile,
+        dropWhileEnd,
         span,
+        spanEnd,
         break,
+        breakEnd,
         group,
         groupBy,
         inits,
@@ -203,7 +209,7 @@ module Data.ByteString.Lazy.Char8 (
 import Data.ByteString.Lazy
         (fromChunks, toChunks
         ,empty,null,length,tail,init,append,reverse,transpose,cycle
-        ,concat,take,drop,splitAt,intercalate
+        ,concat,take,takeEnd,drop,dropEnd,splitAt,intercalate
         ,isPrefixOf,isSuffixOf,group,inits,tails,copy
         ,stripPrefix,stripSuffix
         ,hGetContents, hGet, hPut, getContents
@@ -449,21 +455,67 @@ takeWhile :: (Char -> Bool) -> ByteString -> ByteString
 takeWhile f = L.takeWhile (f . w2c)
 {-# INLINE takeWhile #-}
 
+-- | Returns the longest (possibly empty) suffix of elements
+-- satisfying the predicate.
+--
+-- @'takeWhileEnd' p@ is equivalent to @'reverse' . 'takeWhile' p . 'reverse'@.
+--
+-- @since 0.11.2.0
+takeWhileEnd :: (Char -> Bool) -> ByteString -> ByteString
+takeWhileEnd f = L.takeWhileEnd (f . w2c)
+{-# INLINE takeWhileEnd #-}
+
 -- | 'dropWhile' @p xs@ returns the suffix remaining after 'takeWhile' @p xs@.
 dropWhile :: (Char -> Bool) -> ByteString -> ByteString
 dropWhile f = L.dropWhile (f . w2c)
 {-# INLINE dropWhile #-}
+
+-- | Similar to 'P.dropWhileEnd',
+-- drops the longest (possibly empty) suffix of elements
+-- satisfying the predicate and returns the remainder.
+--
+-- @'dropWhileEnd' p@ is equivalent to @'reverse' . 'dropWhile' p . 'reverse'@.
+--
+-- @since 0.11.2.0
+dropWhileEnd :: (Char -> Bool) -> ByteString -> ByteString
+dropWhileEnd f = L.dropWhileEnd (f . w2c)
+{-# INLINE dropWhileEnd #-}
 
 -- | 'break' @p@ is equivalent to @'span' ('not' . p)@.
 break :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
 break f = L.break (f . w2c)
 {-# INLINE break #-}
 
+-- | 'breakEnd' behaves like 'break' but from the end of the 'ByteString'
+--
+-- breakEnd p == spanEnd (not.p)
+--
+-- @since 0.11.2.0
+breakEnd :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
+breakEnd f = L.breakEnd (f . w2c)
+{-# INLINE breakEnd #-}
+
 -- | 'span' @p xs@ breaks the ByteString into two segments. It is
 -- equivalent to @('takeWhile' p xs, 'dropWhile' p xs)@
 span :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
 span f = L.span (f . w2c)
 {-# INLINE span #-}
+
+-- | 'spanEnd' behaves like 'span' but from the end of the 'ByteString'.
+-- We have
+--
+-- > spanEnd (not.isSpace) "x y z" == ("x y ","z")
+--
+-- and
+--
+-- > spanEnd (not . isSpace) ps
+-- >    ==
+-- > let (x,y) = span (not.isSpace) (reverse ps) in (reverse y, reverse x)
+--
+-- @since 0.11.2.0
+spanEnd :: (Char -> Bool) -> ByteString -> (ByteString, ByteString)
+spanEnd f = L.spanEnd (f . w2c)
+{-# INLINE spanEnd #-}
 
 {-
 -- | 'breakChar' breaks its ByteString argument at the first occurence
