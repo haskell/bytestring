@@ -225,7 +225,7 @@ import Prelude hiding
     ,repeat, cycle, interact, iterate,readFile,writeFile,appendFile,replicate
     ,getContents,getLine,putStr,putStrLn ,zip,zipWith,unzip,notElem)
 
-import qualified Data.List              as L  -- L for list/lazy
+import qualified Data.List              as List
 import qualified Data.Bifunctor         as BF
 import qualified Data.ByteString        as P  (ByteString) -- type name only
 import qualified Data.ByteString        as S  -- S for strict (hmm...)
@@ -269,7 +269,7 @@ unpack = unpackBytes
 
 -- | /O(c)/ Convert a list of strict 'ByteString' into a lazy 'ByteString'
 fromChunks :: [P.ByteString] -> ByteString
-fromChunks = L.foldr chunk Empty
+fromChunks = List.foldr chunk Empty
 
 -- | /O(c)/ Convert a lazy 'ByteString' into a list of strict 'ByteString'
 toChunks :: ByteString -> [P.ByteString]
@@ -430,8 +430,8 @@ intersperse w (Chunk c cs) = Chunk (S.intersperse w c)
 -- | The 'transpose' function transposes the rows and columns of its
 -- 'ByteString' argument.
 transpose :: [ByteString] -> [ByteString]
-transpose css = L.map (\ss -> Chunk (S.pack ss) Empty)
-                      (L.transpose (L.map unpack css))
+transpose css = List.map (\ss -> Chunk (S.pack ss) Empty)
+                      (List.transpose (List.map unpack css))
 --TODO: make this fast
 
 -- ---------------------------------------------------------------------
@@ -774,8 +774,8 @@ dropEnd i p          = go D.empty p
         -- build a lazy ByteString from an accumulating `deque`
         fromDeque :: D.Deque -> ByteString
         fromDeque deque =
-            L.foldr chunk Empty (D.front deque) `append`
-            L.foldl' (flip chunk) Empty (D.rear deque)
+            List.foldr chunk Empty (D.front deque) `append`
+            List.foldl' (flip chunk) Empty (D.rear deque)
 
 -- | /O(n\/c)/ 'splitAt' @n xs@ is equivalent to @('take' n xs, 'drop' n xs)@.
 splitAt :: Int64 -> ByteString -> (ByteString, ByteString)
@@ -850,13 +850,13 @@ dropWhileEnd :: (Word8 -> Bool) -> ByteString -> ByteString
 dropWhileEnd f = go []
   where go acc (Chunk c cs)
             | f (S.last c) = go (c : acc) cs
-            | otherwise    = L.foldl (flip Chunk) (go [] cs) (c : acc)
+            | otherwise    = List.foldl (flip Chunk) (go [] cs) (c : acc)
         go acc Empty       = dropEndBytes acc
         dropEndBytes []         = Empty
         dropEndBytes (x : xs)   =
             case S.dropWhileEnd f x of
                  x' | S.null x' -> dropEndBytes xs
-                    | otherwise -> L.foldl' (flip Chunk) Empty (x' : xs)
+                    | otherwise -> List.foldl' (flip Chunk) Empty (x' : xs)
 
 -- | Similar to 'P.break',
 -- returns the longest (possibly empty) prefix of elements which __do not__
@@ -885,7 +885,7 @@ break f = break'
 breakEnd :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
 breakEnd  f = go []
   where go acc (Chunk c cs)
-            | f (S.last c) = L.foldl (flip $ BF.first . Chunk) (go [] cs) (c : acc)
+            | f (S.last c) = List.foldl (flip $ BF.first . Chunk) (go [] cs) (c : acc)
             | otherwise = go (c : acc) cs
         go acc Empty = dropEndBytes acc
         dropEndBytes [] = (Empty, Empty)
@@ -894,7 +894,7 @@ breakEnd  f = go []
                  (x', x'') | S.null x' -> let (y, y') = dropEndBytes xs
                                            in (y, y' `append` fromStrict x)
                            | otherwise ->
-                                L.foldl' (flip $ BF.first . Chunk) (fromStrict x', fromStrict x'') xs
+                                List.foldl' (flip $ BF.first . Chunk) (fromStrict x', fromStrict x'') xs
 
 
 --
@@ -1059,7 +1059,7 @@ groupBy k = go
 -- 'ByteString's and concatenates the list after interspersing the first
 -- argument between each element of the list.
 intercalate :: ByteString -> [ByteString] -> ByteString
-intercalate s = concat . L.intersperse s
+intercalate s = concat . List.intersperse s
 
 -- ---------------------------------------------------------------------
 -- Indexing ByteStrings
@@ -1129,7 +1129,7 @@ elemIndexEnd = findIndexEnd . (==)
 elemIndices :: Word8 -> ByteString -> [Int64]
 elemIndices w = elemIndices' 0
   where elemIndices' _ Empty        = []
-        elemIndices' n (Chunk c cs) = L.map ((+n).fromIntegral) (S.elemIndices w c)
+        elemIndices' n (Chunk c cs) = List.map ((+n).fromIntegral) (S.elemIndices w c)
                              ++ elemIndices' (n + fromIntegral (S.length c)) cs
 
 -- | count returns the number of times its argument appears in the ByteString
@@ -1186,7 +1186,7 @@ find f = find'
 findIndices :: (Word8 -> Bool) -> ByteString -> [Int64]
 findIndices k = findIndices' 0
   where findIndices' _ Empty        = []
-        findIndices' n (Chunk c cs) = L.map ((+n).fromIntegral) (S.findIndices k c)
+        findIndices' n (Chunk c cs) = List.map ((+n).fromIntegral) (S.findIndices k c)
                              ++ findIndices' (n + fromIntegral (S.length c)) cs
 {-# INLINE findIndices #-}
 
@@ -1353,7 +1353,7 @@ packZipWith f (Chunk a@(S.BS _ al) as) (Chunk b@(S.BS _ bl) bs) = Chunk (S.packZ
 -- | /O(n)/ 'unzip' transforms a list of pairs of bytes into a pair of
 -- ByteStrings. Note that this performs two 'pack' operations.
 unzip :: [(Word8,Word8)] -> (ByteString,ByteString)
-unzip ls = (pack (L.map fst ls), pack (L.map snd ls))
+unzip ls = (pack (List.map fst ls), pack (List.map snd ls))
 {-# INLINE unzip #-}
 
 -- ---------------------------------------------------------------------
@@ -1363,8 +1363,8 @@ unzip ls = (pack (L.map fst ls), pack (L.map snd ls))
 inits :: ByteString -> [ByteString]
 inits = (Empty :) . inits'
   where inits' Empty        = []
-        inits' (Chunk c cs) = L.map (`Chunk` Empty) (L.tail (S.inits c))
-                           ++ L.map (Chunk c) (inits' cs)
+        inits' (Chunk c cs) = List.map (`Chunk` Empty) (List.tail (S.inits c))
+                           ++ List.map (Chunk c) (inits' cs)
 
 -- | /O(n)/ Return all final segments of the given 'ByteString', longest first.
 tails :: ByteString -> [ByteString]
@@ -1567,11 +1567,11 @@ moduleError fun msg = error ("Data.ByteString.Lazy." ++ fun ++ ':':' ':msg)
 
 -- reverse a list of non-empty chunks into a lazy ByteString
 revNonEmptyChunks :: [P.ByteString] -> ByteString
-revNonEmptyChunks = L.foldl' (flip Chunk) Empty
+revNonEmptyChunks = List.foldl' (flip Chunk) Empty
 
 -- reverse a list of possibly-empty chunks into a lazy ByteString
 revChunks :: [P.ByteString] -> ByteString
-revChunks = L.foldl' (flip chunk) Empty
+revChunks = List.foldl' (flip chunk) Empty
 
 -- $IOChunk
 --
