@@ -49,7 +49,7 @@ import Text.Read
 import Control.Arrow
 import Data.Char
 import Data.Foldable
-import Data.List as L
+import qualified Data.List as L
 import Data.Semigroup
 import Data.String
 import Data.Tuple
@@ -161,9 +161,9 @@ tests =
   , testProperty "groupBy /=" $
     \x -> map B.unpack (B.groupBy (/=) x) === L.groupBy (/=) (B.unpack x)
   , testProperty "inits" $
-    \x -> map B.unpack (B.inits x) === inits (B.unpack x)
+    \x -> map B.unpack (B.inits x) === L.inits (B.unpack x)
   , testProperty "tails" $
-    \x -> map B.unpack (B.tails x) === tails (B.unpack x)
+    \x -> map B.unpack (B.tails x) === L.tails (B.unpack x)
   , testProperty "all" $
     \f x -> B.all f x === all f (B.unpack x)
   , testProperty "all ==" $
@@ -219,7 +219,7 @@ tests =
   , testProperty "cons []" $
     \(toElem -> c) -> B.unpack (B.cons c B.empty) === [c]
   , testProperty "uncons" $
-    \x -> fmap (second B.unpack) (B.uncons x) === uncons (B.unpack x)
+    \x -> fmap (second B.unpack) (B.uncons x) === L.uncons (B.unpack x)
   , testProperty "snoc" $
     \(toElem -> c) x -> B.unpack (B.snoc x c) === B.unpack x ++ [c]
   , testProperty "snoc []" $
@@ -302,7 +302,7 @@ tests =
   , testProperty "length" $
     \x -> B.length x === fromIntegral (length (B.unpack x))
   , testProperty "count" $
-    \(toElem -> c) x -> B.count c x === fromIntegral (length (elemIndices c (B.unpack x)))
+    \(toElem -> c) x -> B.count c x === fromIntegral (length (L.elemIndices c (B.unpack x)))
   -- for long strings, the multiplier is non-round (and not power of 2)
   -- to ensure non-trivial prefix or suffix of the string is handled outside any possible SIMD-based loop,
   -- which typically handles chunks of 16 or 32 or 64 etc bytes.
@@ -317,41 +317,41 @@ tests =
   , testProperty "filter /=" $
     \(toElem -> c) x -> B.unpack (B.filter (/= c) x) === filter (/= c) (B.unpack x)
   , testProperty "partition" $
-    \f x -> (B.unpack *** B.unpack) (B.partition f x) === partition f (B.unpack x)
+    \f x -> (B.unpack *** B.unpack) (B.partition f x) === L.partition f (B.unpack x)
 
   , testProperty "find" $
     \f x -> B.find f x === find f (B.unpack x)
   , testProperty "findIndex" $
-    \f x -> B.findIndex f x === fmap fromIntegral (findIndex f (B.unpack x))
+    \f x -> B.findIndex f x === fmap fromIntegral (L.findIndex f (B.unpack x))
   , testProperty "findIndexEnd" $
     \f x -> B.findIndexEnd f x === fmap fromIntegral (findIndexEnd f (B.unpack x))
   , testProperty "findIndices" $
-    \f x -> B.findIndices f x === fmap fromIntegral (findIndices f (B.unpack x))
+    \f x -> B.findIndices f x === fmap fromIntegral (L.findIndices f (B.unpack x))
   , testProperty "findIndices ==" $
-    \(toElem -> c) x -> B.findIndices (== c) x === fmap fromIntegral (findIndices (== c) (B.unpack x))
+    \(toElem -> c) x -> B.findIndices (== c) x === fmap fromIntegral (L.findIndices (== c) (B.unpack x))
 
   , testProperty "elem" $
     \(toElem -> c) x -> B.elem c x === elem c (B.unpack x)
   , testProperty "notElem" $
     \(toElem -> c) x -> B.notElem c x === notElem c (B.unpack x)
   , testProperty "elemIndex" $
-    \(toElem -> c) x -> B.elemIndex c x === fmap fromIntegral (elemIndex c (B.unpack x))
+    \(toElem -> c) x -> B.elemIndex c x === fmap fromIntegral (L.elemIndex c (B.unpack x))
   , testProperty "elemIndexEnd" $
     \(toElem -> c) x -> B.elemIndexEnd c x === fmap fromIntegral (elemIndexEnd c (B.unpack x))
   , testProperty "elemIndices" $
-    \(toElem -> c) x -> B.elemIndices c x === fmap fromIntegral (elemIndices c (B.unpack x))
+    \(toElem -> c) x -> B.elemIndices c x === fmap fromIntegral (L.elemIndices c (B.unpack x))
 
   , testProperty "isPrefixOf" $
-    \x y -> B.isPrefixOf x y === isPrefixOf (B.unpack x) (B.unpack y)
+    \x y -> B.isPrefixOf x y === L.isPrefixOf (B.unpack x) (B.unpack y)
   , testProperty "stripPrefix" $
-    \x y -> fmap B.unpack (B.stripPrefix x y) === stripPrefix (B.unpack x) (B.unpack y)
+    \x y -> fmap B.unpack (B.stripPrefix x y) === L.stripPrefix (B.unpack x) (B.unpack y)
   , testProperty "isSuffixOf" $
-    \x y -> B.isSuffixOf x y === isSuffixOf (B.unpack x) (B.unpack y)
+    \x y -> B.isSuffixOf x y === L.isSuffixOf (B.unpack x) (B.unpack y)
   , testProperty "stripSuffix" $
     \x y -> fmap B.unpack (B.stripSuffix x y) === stripSuffix (B.unpack x) (B.unpack y)
 #ifndef BYTESTRING_LAZY
   , testProperty "isInfixOf" $
-    \x y -> B.isInfixOf x y === isInfixOf (B.unpack x) (B.unpack y)
+    \x y -> B.isInfixOf x y === L.isInfixOf (B.unpack x) (B.unpack y)
 #endif
 
   , testProperty "map" $
@@ -429,7 +429,7 @@ tests =
   , testProperty "foldl1" $
     \f x -> not (B.null x) ==> B.foldl1 ((toElem .) . f) x === foldl1 ((toElem .) . f) (B.unpack x)
   , testProperty "foldl1'" $
-    \f x -> not (B.null x) ==> B.foldl1' ((toElem .) . f) x === foldl1' ((toElem .) . f) (B.unpack x)
+    \f x -> not (B.null x) ==> B.foldl1' ((toElem .) . f) x === L.foldl1' ((toElem .) . f) (B.unpack x)
   , testProperty "foldr1" $
     \f x -> not (B.null x) ==> B.foldr1 ((toElem .) . f) x === foldr1 ((toElem .) . f) (B.unpack x)
 #ifndef BYTESTRING_LAZY
@@ -467,24 +467,24 @@ tests =
   , testProperty "scanr1 empty" $
     \f -> B.scanr1 f B.empty === B.empty
   , testProperty "sort" $
-    \x -> B.unpack (B.sort x) === sort (B.unpack x)
+    \x -> B.unpack (B.sort x) === L.sort (B.unpack x)
 #endif
 
   , testProperty "intersperse" $
-    \(toElem -> c) x -> B.unpack (B.intersperse c x) === intersperse c (B.unpack x)
+    \(toElem -> c) x -> B.unpack (B.intersperse c x) === L.intersperse c (B.unpack x)
   , testProperty "intercalate" $
-    \x ys -> B.unpack (B.intercalate x ys) === intercalate (B.unpack x) (map B.unpack ys)
+    \x ys -> B.unpack (B.intercalate x ys) === L.intercalate (B.unpack x) (map B.unpack ys)
   , testProperty "intercalate 'c' [x,y]" $
-    \(toElem -> c) x y -> B.unpack (B.intercalate (B.singleton c) [x, y]) === intercalate [c] [B.unpack x, B.unpack y]
+    \(toElem -> c) x y -> B.unpack (B.intercalate (B.singleton c) [x, y]) === L.intercalate [c] [B.unpack x, B.unpack y]
   , testProperty "intercalate split" $
     \(toElem -> c) x -> B.intercalate (B.singleton c) (B.split c x) === x
 
   , testProperty "mapAccumL" $
     \f (toElem -> c) x -> second B.unpack (B.mapAccumL ((second toElem .) . f) c x) ===
-      mapAccumL ((second toElem .) . f) c (B.unpack x)
+      L.mapAccumL ((second toElem .) . f) c (B.unpack x)
   , testProperty "mapAccumR" $
     \f (toElem -> c) x -> second B.unpack (B.mapAccumR ((second toElem .) . f) c x) ===
-      mapAccumR ((second toElem .) . f) c (B.unpack x)
+      L.mapAccumR ((second toElem .) . f) c (B.unpack x)
 
   , testProperty "zip" $
     \x y -> B.zip x y === zip (B.unpack x) (B.unpack y)
@@ -531,24 +531,24 @@ tests =
 #ifndef BYTESTRING_LAZY
   , testProperty "unfoldrN" $
     \n f (toElem -> c) -> B.unpack (fst (B.unfoldrN n (fmap (first toElem) . f) c)) ===
-      take (fromIntegral n) (unfoldr (fmap (first toElem) . f) c)
+      take (fromIntegral n) (L.unfoldr (fmap (first toElem) . f) c)
   , testProperty "unfoldrN replicate" $
     \n (toElem -> c) -> fst (B.unfoldrN n (\t -> Just (t, t)) c) === B.replicate n c
   , testProperty "unfoldr" $
     \n a (toElem -> c) -> B.unpack (B.unfoldr (\x -> if x <= 100 * n then Just (c, x + 1 :: Int) else Nothing) a) ===
-      unfoldr (\x -> if x <= 100 * n then Just (c, x + 1) else Nothing) a
+      L.unfoldr (\x -> if x <= 100 * n then Just (c, x + 1) else Nothing) a
 #endif
 
 #ifdef BYTESTRING_LAZY
   , testProperty "unfoldr" $
     \n f (toElem -> a) -> B.unpack (B.take (fromIntegral n) (B.unfoldr (fmap (first toElem) . f) a)) ===
-      take n (unfoldr (fmap (first toElem) . f) a)
+      take n (L.unfoldr (fmap (first toElem) . f) a)
   , testProperty "repeat" $
     \n (toElem -> c) -> B.take (fromIntegral (n :: Int)) (B.repeat c) ===
       B.take (fromIntegral n) (B.unfoldr (\a -> Just (a, a)) c)
   , testProperty "cycle" $
     \n x -> not (B.null x) ==> B.take (fromIntegral (n :: Int)) (B.cycle x) ===
-      B.take (fromIntegral n) (B.concat (unfoldr (\a -> Just (a, a)) x))
+      B.take (fromIntegral n) (B.concat (L.unfoldr (\a -> Just (a, a)) x))
   , testProperty "iterate" $
     \n f (toElem -> a) -> B.take (fromIntegral (n :: Int)) (B.iterate (toElem . f) a) ===
       B.take (fromIntegral n) (B.unfoldr (\x -> Just (toElem (f x), toElem (f x))) a)
@@ -568,13 +568,13 @@ unsnoc [] = Nothing
 unsnoc xs = Just (init xs, last xs)
 
 findIndexEnd :: (a -> Bool) -> [a] -> Maybe Int
-findIndexEnd f xs = fmap (\n -> length xs - 1 - n) (findIndex f (reverse xs))
+findIndexEnd f xs = fmap (\n -> length xs - 1 - n) (L.findIndex f (reverse xs))
 
 elemIndexEnd :: Eq a => a -> [a] -> Maybe Int
-elemIndexEnd c xs = fmap (\n -> length xs - 1 - n) (elemIndex c (reverse xs))
+elemIndexEnd c xs = fmap (\n -> length xs - 1 - n) (L.elemIndex c (reverse xs))
 
 stripSuffix :: Eq a => [a] -> [a] -> Maybe [a]
-stripSuffix x y = fmap reverse (stripPrefix (reverse x) (reverse y))
+stripSuffix x y = fmap reverse (L.stripPrefix (reverse x) (reverse y))
 
 split :: Eq a => a -> [a] -> [[a]]
 split c = splitWith (== c)
