@@ -301,8 +301,8 @@ modifyFile mode f bld = withBinaryFile f mode (`hPutBuilder` bld)
 
 -- | Write a 'Builder' to a file.
 --
--- Similarly to `hPutBuilder`, this function is more efficient than 
--- using @hPut . 'toLazyByteString'@ with a file handle. 
+-- Similarly to 'hPutBuilder', this function is more efficient than 
+-- using 'Data.ByteString.Lazy.hPut' . 'toLazyByteString' with a file handle. 
 --
 -- @since 0.11.2.0
 writeFile :: FilePath -> Builder -> IO ()
