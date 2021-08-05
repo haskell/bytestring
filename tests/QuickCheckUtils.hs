@@ -7,7 +7,6 @@ import Text.Show.Functions
 
 import Control.Monad        ( liftM2 )
 import Data.Char
-import Data.List
 import Data.Word
 import Data.Int
 import System.IO
