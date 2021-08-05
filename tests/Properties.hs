@@ -15,7 +15,6 @@ import Control.Concurrent
 import Control.Exception
 import System.Posix.Internals (c_unlink)
 
-import Data.List
 import Data.Char
 import Data.Word
 import Data.Maybe
