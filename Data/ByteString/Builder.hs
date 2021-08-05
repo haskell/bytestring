@@ -190,6 +190,7 @@ module Data.ByteString.Builder
       -- about fine-tuning them.
     , toLazyByteString
     , hPutBuilder
+    , writeFile
 
       -- * Creating Builders
 
@@ -254,13 +255,15 @@ module Data.ByteString.Builder
 
     ) where
 
+import           Prelude hiding (writeFile)
+
 import           Data.ByteString.Builder.Internal
 import qualified Data.ByteString.Builder.Prim  as P
 import qualified Data.ByteString.Lazy.Internal as L
 import           Data.ByteString.Builder.ASCII
 
 import           Data.String (IsString(..))
-import           System.IO (Handle)
+import           System.IO (Handle, IOMode(..), withBinaryFile)
 import           Foreign
 import           GHC.Base (unpackCString#, unpackCStringUtf8#,
                            unpackFoldrCString#, build)
@@ -293,6 +296,17 @@ toLazyByteString = toLazyByteStringWith
 hPutBuilder :: Handle -> Builder -> IO ()
 hPutBuilder h = hPut h . putBuilder
 
+modifyFile :: IOMode -> FilePath -> Builder -> IO ()
+modifyFile mode f bld = withBinaryFile f mode (`hPutBuilder` bld)
+
+-- | Write a 'Builder' to a file.
+--
+-- Similarly to 'hPutBuilder', this function is more efficient than 
+-- using 'Data.ByteString.Lazy.hPut' . 'toLazyByteString' with a file handle. 
+--
+-- @since 0.11.2.0
+writeFile :: FilePath -> Builder -> IO ()
+writeFile = modifyFile WriteMode
 
 ------------------------------------------------------------------------------
 -- Binary encodings

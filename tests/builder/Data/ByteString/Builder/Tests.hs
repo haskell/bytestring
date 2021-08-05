@@ -14,6 +14,8 @@
 
 module Data.ByteString.Builder.Tests (tests) where
 
+import           Prelude hiding (writeFile)
+
 import           Control.Applicative
 import           Control.Monad (unless, void)
 import           Control.Monad.Trans.State (StateT, evalStateT, evalState, put, get)
@@ -59,6 +61,7 @@ tests =
   , testHandlePutBuilderChar8
   , testPut
   , testRunBuilder
+  , testWriteFile
   ] ++
   testsEncodingToBuilder ++
   testsBinary ++
@@ -164,6 +167,32 @@ testHandlePutBuilderChar8 =
             success = lbs == lbsRef
         unless success (error msg)
         return success
+
+testWriteFile :: TestTree
+testWriteFile =
+    testProperty "writeFile" testRecipe
+  where
+    testRecipe :: Recipe -> Property
+    testRecipe recipe =
+        ioProperty $ do
+            (tempFile, tempH) <- openTempFile "." "test-builder-writeFile.tmp"
+            hClose tempH
+            let b = fst $ recipeComponents recipe
+            writeFile tempFile b
+            lbs <- L.readFile tempFile
+            _ <- evaluate (L.length $ lbs)
+            removeFile tempFile
+            let lbsRef = toLazyByteString b
+            -- report
+            let msg =
+                    unlines
+                        [ "recipe:   " ++ show recipe
+                        , "via file: " ++ show lbs
+                        , "direct :  " ++ show lbsRef
+                        ]
+                success = lbs == lbsRef
+            unless success (error msg)
+            return success
 
 removeFile :: String -> IO ()
 removeFile fn = void $ withCString fn c_unlink
