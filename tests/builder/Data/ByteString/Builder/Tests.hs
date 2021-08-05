@@ -180,6 +180,7 @@ testWriteFile =
             let b = fst $ recipeComponents recipe
             writeFile tempFile b
             lbs <- L.readFile tempFile
+            _ <- evaluate (L.length $ lbs)
             removeFile tempFile
             let lbsRef = toLazyByteString b
             -- report
