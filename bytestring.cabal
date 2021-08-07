@@ -74,6 +74,9 @@ source-repository head
 library
   build-depends:     base >= 4.9 && < 5, ghc-prim, deepseq, template-haskell
 
+  if impl(ghc < 9.4)
+    build-depends: data-array-byte >= 0.1 && < 0.2
+
   exposed-modules:   Data.ByteString
                      Data.ByteString.Char8
                      Data.ByteString.Unsafe
