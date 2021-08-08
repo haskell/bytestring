@@ -21,97 +21,135 @@ module Data.ByteString.Builder.RealFloat.TableGenerator
   ) where
 
 import Data.Bits ((.&.), shiftR, shiftL, shiftR)
-import GHC.Exts
 import GHC.Word (Word64(..))
 import Language.Haskell.TH
 
+-- | Representation of 128-bit integer used for lookup table generation
 data Word128 = Word128
   { word128Hi64 :: !Word64
   , word128Lo64 :: !Word64
   }
 
-instance Num Word128 where
-  (+) = plus128
-  (-) = minus128
-  (*) = times128
-  negate = negate128
-  abs = id
-  signum = signum128
-  fromInteger = fromInteger128
+-- The basic floating point conversion algorithm is as such:
+--
+-- Given floating point
+--
+--   f = (-1)^s * m_f * 2^e_f
+--
+-- which is IEEE encoded by `[s] [.. e ..] [.. m ..]`. `s` is the sign bit, `e`
+-- is the biased exponent, and `m` is the mantissa, let
+--
+--       | e /= 0            | e == 0
+--  -----+-------------------+-----------
+--   m_f | 2^len(m) + m      | m
+--   e_f | e - bias - len(m) | 1 - bias - len(m)
+--
+-- we compute the halfway points to the next smaller (`f-`) and larger (`f+`)
+-- floating point numbers as
+--
+--  lower halfway point u * 2^e2, u = 4 * m_f - (if m == 0 then 1 else 2)
+--                      v * 2^e2, v = 4 * m_f
+--  upper halfway point w * 2^e2, u = 4 * m_f + 2
+--  where e2 = ef - 2 (so u, v, w are integers)
+--
+--
+-- Then we compute (a, b, c) * 10^e10 = (u, v, w) * 2^e2 which is split into
+-- the case of
+--
+--   e2 >= 0   ==>    e10 = 0 , (a, b, c) = (u, v, w) * 2^e2
+--   e2 <  0   ==>    e10 = e2, (a, b, c) = (u, v, w) * 5^-e2
+--
+-- And finally we find the shortest representation from integers d0 and e0 such
+-- that
+--
+--  a * 10^e10 < d0 * 10^(e0+e10) < c * 10^e10
+--
+-- such that e0 is maximal (we allow equality to smaller or larger halfway
+-- point depending on rounding mode). This is found through iteratively
+-- dividing by 10 while a/10^j < c/10^j and doing some bookkeeping around
+-- zeros.
+--
+--
+--
+--
+-- The ryu algorithm removes the requirement for arbitrary precision arithmetic
+-- and improves the runtime significantly by skipping most of the iterative
+-- division by carefully selecting a point where certain invariants hold and
+-- precomputing a few tables.
+--
+-- Specifically, define `q` such that the correspondings values of a/10^q <
+-- c/10^q - 1. We can prove (not shown) that
+--
+--    if e2 >= 0, q = e2 * log_10(2)
+--    if e2 <  0, q = -e2 * log_10(5)
+--
+-- Then we can compute (a, b, c) / 10^q. Starting from (u, v, w) we have
+--
+--      (a, b, c) / 10^q                  (a, b, c) / 10^q
+--    = (u, v, w) * 2^e2 / 10^q    OR   = (u, v, w) * 5^-e2 / 10^q
+--
+-- And since q < e2,
+--
+--    = (u, v, w) * 2^e2-q / 5^q   OR   = (u, v, w) * 5^-e2-q / 2^q
+--
+-- While (u, v, w) are n-bit numbers, 5^q and whatnot are significantly larger,
+-- but we only need the top-most n bits of the result so we can choose `k` that
+-- reduce the number of bits required to ~2n. We then multiply by either
+--
+--    2^k / 5^q                    OR   5^-e2-q / 2^k
+--
+-- The required `k` is roughly linear in the exponent (we need more of the
+-- multiplication to be precise) but the number of bits to store the
+-- multiplicands above stays fixed.
+--
+-- Since the number of bits needed is relatively small for IEEE 32- and 64-bit
+-- floating types, we can compute appropriate values for `k` for the
+-- floating-point-type-specific bounds instead of each e2.
+--
+-- Finally, we need to do some final manual iterations potentially to do a
+-- final fixup of the skipped state
 
-{-# INLINABLE plus128 #-}
-plus128 :: Word128 -> Word128 -> Word128
-plus128 (Word128 (W64# a1) (W64# a0)) (Word128 (W64# b1) (W64# b0)) =
-  Word128 (W64# s1) (W64# s0)
-  where
-    !(# c1, s0 #) = plusWord2# a0 b0
-    s1a = plusWord# a1 b1
-    s1 = plusWord# c1 s1a
 
-{-# INLINABLE minus128 #-}
-minus128 :: Word128 -> Word128 -> Word128
-minus128 (Word128 (W64# a1) (W64# a0)) (Word128 (W64# b1) (W64# b0)) =
-  Word128 (W64# d1) (W64# d0)
-  where
-    !(# d0, c1 #) = subWordC# a0 b0
-    a1c = minusWord# a1 (int2Word# c1)
-    d1 = minusWord# a1c b1
-
-times128 :: Word128 -> Word128 -> Word128
-times128 (Word128 (W64# a1) (W64# a0)) (Word128 (W64# b1) (W64# b0)) =
-  Word128 (W64# p1) (W64# p0)
-  where
-    !(# c1, p0 #) = timesWord2# a0 b0
-    p1a = timesWord# a1 b0
-    p1b = timesWord# a0 b1
-    p1c = plusWord# p1a p1b
-    p1 = plusWord# p1c c1
-
-{-# INLINABLE negate128 #-}
-negate128 :: Word128 -> Word128
-negate128 (Word128 (W64# a1) (W64# a0)) =
-  case plusWord2# (not# a0) 1## of
-    (# c, s #) -> Word128 (W64# (plusWord# (not# a1) c)) (W64# s)
-
-{-# INLINABLE signum128 #-}
-signum128 :: Word128 -> Word128
-signum128 (Word128 (W64# 0##) (W64# 0##)) = Word128 0 0
-signum128 _ = Word128 0 1
-
-fromInteger128 :: Integer -> Word128
-fromInteger128 i = Word128 (fromIntegral $ i `shiftR` 64) (fromIntegral i)
-
+-- | Bound for bits of 2^k / 5^q for floats
 float_pow5_inv_bitcount :: Int
 float_pow5_inv_bitcount = 59
 
+-- | Bound for bits of 5^-e2-q / 2^k for floats
 float_pow5_bitcount :: Int
 float_pow5_bitcount = 61
 
+-- | Bound for bits of 5^-e2-q / 2^k for doubles
 double_pow5_bitcount :: Int
 double_pow5_bitcount = 125
 
+-- | Bound for bits of 2^k / 5^q for doubles
 double_pow5_inv_bitcount :: Int
 double_pow5_inv_bitcount = 125
 
+-- | Number of bits in a positive integer
 blen :: Integer -> Integer
 blen 0 = 0
 blen 1 = 1
 blen n = 1 + blen (n `quot` 2)
 
+-- | Used for table generation of 2^k / 5^q + 1
 finv :: Integer -> Integer -> Integer
 finv bitcount i =
   let p = 5^i
    in (1 `shiftL` fromIntegral (blen p - 1 + bitcount)) `div` p + 1
 
+-- | Used for table generation of 5^-e2-q / 2^k
 fnorm :: Integer -> Integer -> Integer
 fnorm bitcount i =
   let p = 5^i
       s = fromIntegral (blen p - bitcount)
    in if s < 0 then p `shiftL` (-s) else p `shiftR` s
 
+-- | Generates a compile-time lookup table for floats as Word64
 gen_table_f :: (Integral a) => a -> (a -> Integer) -> Q Exp
 gen_table_f n f = return $ ListE (fmap (LitE . IntegerL . f) [0..n])
 
+-- | Generates a compile-time lookup table for doubles as Word128
 gen_table_d :: forall a. (Integral a) => a -> (a -> Integer) -> Q Exp
 gen_table_d n f = return $ ListE (fmap ff [0..n])
   where
@@ -121,15 +159,16 @@ gen_table_d n f = return $ ListE (fmap ff [0..n])
                lo = r .&. ((1 `shiftL` 64) - 1)
             in AppE (AppE (ConE 'Word128) (LitE . IntegerL $ hi)) (LitE . IntegerL $ lo)
 
+-- Given a specific floating-point type, determine the range of q for the < 0
+-- and >= 0 cases
 get_range :: forall ff. (RealFloat ff) => ff -> (Integer, Integer)
 get_range f =
   let (emin, emax) = floatRange f
       mantissaDigits = floatDigits f
       emin' = fromIntegral $ emin - mantissaDigits - 2
       emax' = fromIntegral $ emax - mantissaDigits - 2
-      log10 :: ff -> ff
-      log10 x = log x / log 10
-   in ((-emin') - floor (fromIntegral (-emin') * log10 5), floor $ emax' * log10 2)
+   in ( (-emin') - floor (fromIntegral (-emin') * logBase 10 5 :: Double)
+      , floor (emax' * logBase 10 2 :: Double))
 
 float_max_split :: Integer
 float_max_inv_split :: Integer
