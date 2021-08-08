@@ -20,6 +20,10 @@ module Data.ByteString.Builder.RealFloat.Internal
     , multipleOfPowerOf5_UnboxedB
     , multipleOfPowerOf2Unboxed
     , acceptBoundsUnboxed
+    , BoundsState(..)
+    , trimTrailing
+    , trimNoTrailing
+    , closestCorrectlyRounded
     , toCharsScientific
     -- hand-rolled division and remainder for f2s and d2s
     , fquot10
@@ -293,6 +297,12 @@ fquotRem10 w =
   let w' = fquot10 w
    in (# w', w `minusWord#` (w' `timesWord#` 10##) #)
 
+-- | Returns w / 100
+fquot100 :: Word# -> Word#
+fquot100 w =
+  let !(# rdx, _ #) = (w `uncheckedShiftRL#` 2#) `timesWord2#` 0x51EB851F##
+    in rdx `uncheckedShiftRL#` 37#
+
 -- | Returns w / 5
 fquot5 :: Word# -> Word#
 fquot5 w = (w `timesWord#` 0xCCCCCCCD##) `uncheckedShiftRL#` 34#
@@ -396,6 +406,9 @@ class (FiniteBits a, Integral a) => Mantissa a where
   decimalLength :: a -> Int
   raw :: a -> Word#
   wrap :: Word# -> a
+  quotRem10Boxed :: a -> (a, a)
+  quot10Boxed  :: a -> a
+  quot100Boxed :: a -> a
   quotRem100 :: a -> (# Word#, Word# #)
   quotRem10000 :: a -> (# Word#, Word# #)
 
@@ -403,6 +416,16 @@ instance Mantissa Word32 where
   decimalLength = decimalLength9
   raw (W32# w) = w
   wrap w = (W32# w)
+
+  {-# INLINE quotRem10Boxed #-}
+  quotRem10Boxed = fquotRem10Boxed
+
+  {-# INLINE quot10Boxed #-}
+  quot10Boxed = fwrapped fquot10
+
+  {-# INLINE quot100Boxed #-}
+  quot100Boxed = fwrapped fquot100
+
   quotRem100 (W32# w) =
     let w' = (w `timesWord#` 0x51EB851F##) `uncheckedShiftRL#` 37#
       in (# w', (w `minusWord#` (w' `timesWord#` 100##)) #)
@@ -411,16 +434,122 @@ instance Mantissa Word32 where
       in (# w', (w `minusWord#` (w' `timesWord#` 10000##)) #)
 
 instance Mantissa Word64 where
-    decimalLength = decimalLength17
-    raw (W64# w) = w
-    wrap w = (W64# w)
-    quotRem100 (W64# w) =
-      let w' = dquot100 w
-       in (# w', (w `minusWord#` (w' `timesWord#` 100##)) #)
-    quotRem10000 (W64# w) =
-      let !(# rdx, _ #) = w `timesWord2#` 0x346DC5D63886594B##
-          w' = rdx `uncheckedShiftRL#` 11#
-       in (# w', (w `minusWord#` (w' `timesWord#` 10000##)) #)
+  decimalLength = decimalLength17
+  raw (W64# w) = w
+  wrap w = (W64# w)
+
+  {-# INLINE quotRem10Boxed #-}
+  quotRem10Boxed = dquotRem10Boxed
+
+  {-# INLINE quot10Boxed #-}
+  quot10Boxed = dwrapped dquot10
+
+  {-# INLINE quot100Boxed #-}
+  quot100Boxed = dwrapped dquot100
+
+  quotRem100 (W64# w) =
+    let w' = dquot100 w
+     in (# w', (w `minusWord#` (w' `timesWord#` 100##)) #)
+  quotRem10000 (W64# w) =
+    let !(# rdx, _ #) = w `timesWord2#` 0x346DC5D63886594B##
+        w' = rdx `uncheckedShiftRL#` 11#
+     in (# w', (w `minusWord#` (w' `timesWord#` 10000##)) #)
+
+-- | Bookkeeping state for finding the shortest, correctly-rounded
+-- representation. The same trimming algorithm is similar enough for 32- and
+-- 64-bit floats
+data BoundsState a = BoundsState
+    { vu :: !a
+    , vv :: !a
+    , vw :: !a
+    , lastRemovedDigit :: !a
+    , vuIsTrailingZeros :: !Bool
+    , vvIsTrailingZeros :: !Bool
+    }
+
+-- | Trim digits while and update bookkeeping state when the table-computed
+-- step results in trailing zeros (the general case, happens rarely)
+trimTrailing :: Mantissa a => BoundsState a -> (BoundsState a, Int32)
+trimTrailing !initial = (res, r + r')
+  where
+    !(d', r) = trimTrailing' initial
+    !(d'', r') = if vuIsTrailingZeros d' then trimTrailing'' d' else (d', 0)
+    res = if vvIsTrailingZeros d'' && lastRemovedDigit d'' == 5 && vv d'' `rem` 2 == 0
+             -- set `{ lastRemovedDigit = 4 }` to round-even
+             then d''
+             else d''
+
+    trimTrailing' !d
+      | vw' > vu' =
+         fmap ((+) 1) . trimTrailing' $
+          d { vu = vu'
+            , vv = vv'
+            , vw = vw'
+            , lastRemovedDigit = vvRem
+            , vuIsTrailingZeros = vuIsTrailingZeros d && vuRem == 0
+            , vvIsTrailingZeros = vvIsTrailingZeros d && lastRemovedDigit d == 0
+            }
+      | otherwise = (d, 0)
+      where
+        !(vv', vvRem) = quotRem10Boxed $ vv d
+        !(vu', vuRem) = quotRem10Boxed $ vu d
+        !(vw', _    ) = quotRem10Boxed $ vw d
+
+    trimTrailing'' !d
+      | vuRem == 0 =
+         fmap ((+) 1) . trimTrailing'' $
+          d { vu = vu'
+            , vv = vv'
+            , vw = vw'
+            , lastRemovedDigit = vvRem
+            , vvIsTrailingZeros = vvIsTrailingZeros d && lastRemovedDigit d == 0
+            }
+      | otherwise = (d, 0)
+      where
+        !(vu', vuRem) = quotRem10Boxed $ vu d
+        !(vv', vvRem) = quotRem10Boxed $ vv d
+        !(vw', _    ) = quotRem10Boxed $ vw d
+
+
+-- | Trim digits while and update bookkeeping state when the table-computed
+-- step results has no trailing zeros (common case)
+trimNoTrailing :: Mantissa a => BoundsState a -> (BoundsState a, Int32)
+trimNoTrailing !(BoundsState u v w ld _ _) =
+  (BoundsState ru' rv' 0 ld' False False, c)
+  where
+    !(ru', rv', ld', c) = trimNoTrailing' u v w ld 0
+
+    trimNoTrailing' u' v' w' lastRemoved count
+      -- Loop iterations below (approximately), without div 100 optimization:
+      -- 0: 0.03%, 1: 13.8%, 2: 70.6%, 3: 14.0%, 4: 1.40%, 5: 0.14%, 6+: 0.02%
+      -- Loop iterations below (approximately), with div 100 optimization:
+      -- 0: 70.6%, 1: 27.8%, 2: 1.40%, 3: 0.14%, 4+: 0.02%
+      | vw' > vu' =
+          trimNoTrailing'' vu' vv' vw' (quot10Boxed (v' - (vv' * 100))) (count + 2)
+      | otherwise =
+          trimNoTrailing'' u' v' w' lastRemoved count
+      where
+        !vw' = quot100Boxed w'
+        !vu' = quot100Boxed u'
+        !vv' = quot100Boxed v'
+
+    trimNoTrailing'' u' v' w' lastRemoved count
+      | vw' > vu' = trimNoTrailing' vu' vv' vw' lastRemoved' (count + 1)
+      | otherwise = (u', v', lastRemoved, count)
+      where
+        !(vv', lastRemoved') = quotRem10Boxed v'
+        !vu' = quot10Boxed u'
+        !vw' = quot10Boxed w'
+
+-- | Returns the correctly rounded decimal representation mantissa based on if
+-- we need to round up (next decimal place >= 5) or if we are outside the
+-- bounds
+{-# INLINE closestCorrectlyRounded #-}
+closestCorrectlyRounded :: Mantissa a => Bool -> BoundsState a -> a
+closestCorrectlyRounded acceptBounds s = vv s + asWord roundUp
+  where
+    outsideBounds = not (vuIsTrailingZeros s) || not acceptBounds
+    roundUp = (vv s == vu s && outsideBounds) || lastRemovedDigit s >= 5
 
 -- Wrappe around int2Word#
 asciiRaw :: Int -> Word#

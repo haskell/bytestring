@@ -16,16 +16,20 @@ import GHC.Float (FFFormat(..), roundTo)
 import GHC.Word (Word64(..))
 import GHC.Show (intToDigit)
 
+-- | Returns a rendered Float using the Ryu algorithm. Matches `show` in
+-- displaying in fixed or scientific notation
 {-# INLINABLE floatDec #-}
 floatDec :: Float -> Builder
 floatDec = formatFloat FFGeneric Nothing
 
+-- | Returns a rendered Double using the Ryu algorithm. Matches `show` in
+-- displaying in fixed or scientific notation
 {-# INLINABLE doubleDec #-}
 doubleDec :: Double -> Builder
 doubleDec = formatDouble FFGeneric Nothing
 
-{-# INLINABLE formatFloat #-}
 -- TODO precision for general and exponent formats
+{-# INLINABLE formatFloat #-}
 formatFloat :: FFFormat -> Maybe Int -> Float -> Builder
 formatFloat fmt prec f =
   case fmt of
@@ -41,9 +45,9 @@ formatFloat fmt prec f =
     FFExponent -> RF.f2s f
     FFFixed -> d2Fixed (realToFrac f) prec
 
+-- TODO precision for general and exponent formats
 {-# INLINABLE formatDouble #-}
 formatDouble :: FFFormat -> Maybe Int -> Double -> Builder
--- TODO precision for general and exponent formats
 formatDouble fmt prec f =
   case fmt of
     FFGeneric ->
@@ -58,7 +62,7 @@ formatDouble fmt prec f =
     FFExponent -> RD.d2s f
     FFFixed -> d2Fixed f prec
 
--- show fixed floating point matching show / showFFloat output by dropping
+-- | Show fixed floating point matching show / showFFloat output by dropping
 -- digits after exponentiation precision
 d2Fixed :: Double -> Maybe Int -> Builder
 d2Fixed f prec =
@@ -80,9 +84,12 @@ char7 = BP.primFixed BP.char7
 string7 :: String -> Builder
 string7 = BP.primMapListFixed BP.char7
 
+-- | Encodes a `-` if input is negative
 sign :: RealFloat a => a -> Builder
 sign f = if f < 0 then char7 '-' else mempty
 
+-- | Special rendering for Nan, Infinity, and 0. See
+-- RealFloat.Internal.NonNumbersAndZero
 specialStr :: RealFloat a => a -> Maybe Builder
 specialStr f
   | isNaN f          = Just $ string7 "NaN"
@@ -91,12 +98,14 @@ specialStr f
   | f == 0           = Just $ string7 "0.0"
   | otherwise        = Nothing
 
+-- | Returns a list of decimal digits in a Word64
 digits :: Word64 -> [Int]
 digits w = go [] w
   where go ds 0 = ds
         go ds c = let (q, r) = R.dquotRem10Boxed c
                    in go (fromIntegral r:ds) q
 
+-- | Show a floating point value in fixed point. Based on GHC.Float.showFloat
 showFixed :: Word64 -> Int -> Maybe Int -> Builder
 showFixed m e prec =
   case prec of
