@@ -35,6 +35,9 @@ module Data.ByteString.Builder.ASCII
     , word64Dec
     , wordDec
 
+    , floatDec
+    , doubleDec
+
       -- *** Hexadecimal numbers
 
       -- | Encoding positive integers as hexadecimal numbers using lower-case
@@ -78,19 +81,10 @@ import           Data.ByteString.Lazy                           as L
 import           Data.ByteString.Builder.Internal (Builder)
 import qualified Data.ByteString.Builder.Prim                   as P
 import qualified Data.ByteString.Builder.Prim.Internal          as P
+import           Data.ByteString.Builder.RealFloat (floatDec, doubleDec)
 
 import           Foreign
 import           Foreign.C.Types
-
-------------------------------------------------------------------------------
--- Decimal Encoding
-------------------------------------------------------------------------------
-
-
--- | Encode a 'String' using 'P.char7'.
-{-# INLINE string7 #-}
-string7 :: String -> Builder
-string7 = P.primMapListFixed P.char7
 
 ------------------------------------------------------------------------------
 -- Decimal Encoding
