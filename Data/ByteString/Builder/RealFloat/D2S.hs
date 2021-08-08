@@ -7,6 +7,7 @@ module Data.ByteString.Builder.RealFloat.D2S
     , d2Intermediate
     ) where
 
+import Control.Arrow (first)
 import Data.Bits ((.|.), (.&.))
 import Data.ByteString.Builder.Internal (Builder)
 import Data.ByteString.Builder.Prim (primBounded)
@@ -269,10 +270,10 @@ d2d m e =
       -- valid representations.
       !(output, removed) =
         if vvIsTrailingZeros state || vuIsTrailingZeros state
-           then pmap (\s -> calculate (not (acceptBounds v)
+           then first (\s -> calculate (not (acceptBounds v)
                                     || not (vuIsTrailingZeros s)) s)
                                       $ trimTrailing state
-           else pmap (calculate True) $ trimNoTrailing state
+           else first (calculate True) $ trimNoTrailing state
       !e' = e10 + removed
    in FloatingDecimal output e'
 
@@ -285,17 +286,20 @@ breakdown f =
    in (sign, mantissa, expo)
 
 {-# INLINE d2s' #-}
-d2s' :: (Bool -> Word64 -> Int32 -> a) -> (Bool -> Bool -> Bool -> a) -> Double -> a
+d2s' :: (Bool -> Word64 -> Int32 -> a) -> (NonNumbersAndZero -> a) -> Double -> a
 d2s' formatter specialFormatter d =
   let (sign, mantissa, expo) = breakdown d
    in if (expo == mask double_exponent_bits) || (expo == 0 && mantissa == 0)
-         then specialFormatter sign (expo > 0) (mantissa > 0)
+         then specialFormatter NonNumbersAndZero
+                  { negative=sign
+                  , exponent_all_one=expo > 0
+                  , mantissa_non_zero=mantissa > 0 }
          else let v = unifySmallTrailing <$> d2dSmallInt mantissa (fromIntegral expo)
                   FloatingDecimal m e = fromMaybe (d2d mantissa (fromIntegral expo)) v
                in formatter sign m e
 
 d2s :: Double -> Builder
-d2s d = primBounded (d2s' toCharsScientific special d) ()
+d2s d = primBounded (d2s' toCharsScientific toCharsNonNumbersAndZero d) ()
 
 d2Intermediate :: Double -> FloatingDecimal
-d2Intermediate = d2s' (const FloatingDecimal) (\_ _ _ -> FloatingDecimal 0 0)
+d2Intermediate = d2s' (const FloatingDecimal) (const $ FloatingDecimal 0 0)

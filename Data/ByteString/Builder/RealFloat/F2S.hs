@@ -7,6 +7,7 @@ module Data.ByteString.Builder.RealFloat.F2S
     , f2Intermediate
     ) where
 
+import Control.Arrow (first)
 import Data.Bits ((.|.), (.&.))
 import Data.ByteString.Builder.Internal (Builder)
 import Data.ByteString.Builder.Prim (primBounded)
@@ -233,10 +234,10 @@ f2d m e =
       -- valid representations.
       !(output, removed) =
         if vvIsTrailingZeros state || vuIsTrailingZeros state
-           then pmap (\s -> calculate (not (acceptBounds v)
+           then first (\s -> calculate (not (acceptBounds v)
                                     || not (vuIsTrailingZeros s)) s)
                                       $ trimTrailing state
-           else pmap (calculate True) $ trimNoTrailing state
+           else first (calculate True) $ trimNoTrailing state
       !e' = e10 + removed
    in FloatingDecimal output e'
 
@@ -249,16 +250,19 @@ breakdown f =
    in (sign, mantissa, expo)
 
 {-# INLINE f2s' #-}
-f2s' :: (Bool -> Word32 -> Int32 -> a) -> (Bool -> Bool -> Bool -> a) -> Float -> a
+f2s' :: (Bool -> Word32 -> Int32 -> a) -> (NonNumbersAndZero -> a) -> Float -> a
 f2s' formatter specialFormatter f =
   let (sign, mantissa, expo) = breakdown f
    in if (expo == mask float_exponent_bits) || (expo == 0 && mantissa == 0)
-         then specialFormatter sign (expo > 0) (mantissa > 0)
+         then specialFormatter NonNumbersAndZero
+                  { negative=sign
+                  , exponent_all_one=expo > 0
+                  , mantissa_non_zero=mantissa > 0 }
          else let FloatingDecimal m e = f2d mantissa expo
                in formatter sign m e
 
 f2s :: Float -> Builder
-f2s f = primBounded (f2s' toCharsScientific special f) ()
+f2s f = primBounded (f2s' toCharsScientific toCharsNonNumbersAndZero f) ()
 
 f2Intermediate :: Float -> FloatingDecimal
-f2Intermediate = f2s' (const FloatingDecimal) (\_ _ _ -> FloatingDecimal 0 0)
+f2Intermediate = f2s' (const FloatingDecimal) (const $ FloatingDecimal 0 0)
