@@ -196,7 +196,7 @@ log10pow2Unboxed e = (e *# 78913#) `uncheckedIShiftRL#` 18#
 
 -- Returns floor(log_10(5^e)); requires 0 <= e <= 2620.
 log10pow5Unboxed :: Int# -> Int#
-log10pow5Unboxed e = (e *# 732928#) `uncheckedIShiftRL#` 20#
+log10pow5Unboxed e = (e *# 732923#) `uncheckedIShiftRL#` 20#
 
 acceptBoundsUnboxed :: Word# -> Int#
 acceptBoundsUnboxed _ = 0#
