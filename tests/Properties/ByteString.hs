@@ -410,10 +410,8 @@ tests =
     \f (toElem -> c) x -> B.foldl' ((toElem .) . f) c x === foldl' ((toElem .) . f) c (B.unpack x)
   , testProperty "foldr" $
     \f (toElem -> c) x -> B.foldr ((toElem .) . f) c x === foldr ((toElem .) . f) c (B.unpack x)
-#if !defined BYTESTRING_LAZY && !defined BYTESTRING_CHAR8
   , testProperty "foldr'" $
     \f (toElem -> c) x -> B.foldr' ((toElem .) . f) c x === foldr' ((toElem .) . f) c (B.unpack x)
-#endif
 
   , testProperty "foldl cons" $
     \x -> B.foldl (flip B.cons) B.empty x === B.reverse x
@@ -432,10 +430,8 @@ tests =
     \f x -> not (B.null x) ==> B.foldl1' ((toElem .) . f) x === List.foldl1' ((toElem .) . f) (B.unpack x)
   , testProperty "foldr1" $
     \f x -> not (B.null x) ==> B.foldr1 ((toElem .) . f) x === foldr1 ((toElem .) . f) (B.unpack x)
-#if !defined BYTESTRING_LAZY && !defined BYTESTRING_CHAR8
   , testProperty "foldr1'" $ -- there is not Data.List.foldr1'
     \f x -> not (B.null x) ==> B.foldr1' ((toElem .) . f) x === foldr1 ((toElem .) . f) (B.unpack x)
-#endif
 
   , testProperty "foldl1 const" $
     \x -> not (B.null x) ==> B.foldl1 const x === B.head x

@@ -70,7 +70,9 @@ module Data.ByteString.Lazy.Char8 (
         foldl1,
         foldl1',
         foldr,
+        foldr',
         foldr1,
+        foldr1',
 
         -- ** Special folds
         concat,
@@ -347,6 +349,10 @@ foldr :: (Char -> a -> a) -> a -> ByteString -> a
 foldr f = L.foldr (f . w2c)
 {-# INLINE foldr #-}
 
+-- | 'foldr'' is like 'foldr', but strict in the accumulator.
+foldr' :: (Char -> a -> a) -> a -> ByteString -> a
+foldr' f = L.foldr' (f . w2c)
+
 -- | 'foldl1' is a variant of 'foldl' that has no starting value
 -- argument, and thus must be applied to non-empty 'ByteString's.
 foldl1 :: (Char -> Char -> Char) -> ByteString -> Char
@@ -362,6 +368,10 @@ foldl1' f ps = w2c (L.foldl1' (\x y -> c2w (f (w2c x) (w2c y))) ps)
 foldr1 :: (Char -> Char -> Char) -> ByteString -> Char
 foldr1 f ps = w2c (L.foldr1 (\x y -> c2w (f (w2c x) (w2c y))) ps)
 {-# INLINE foldr1 #-}
+
+-- | 'foldr1'' is like 'foldr1', but strict in the accumulator.
+foldr1' :: (Char -> Char -> Char) -> ByteString -> Char
+foldr1' f ps = w2c (L.foldr1' (\x y -> c2w (f (w2c x) (w2c y))) ps)
 
 -- | Map a function over a 'ByteString' and concatenate the results
 concatMap :: (Char -> ByteString) -> ByteString -> ByteString
