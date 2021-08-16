@@ -332,6 +332,10 @@ unpackFoldr bs k z = foldr k z bs
 -- that allow arbitrary bytes in their paths. This conversion
 -- function does the same thing that `System.IO.openFile` would
 -- do when decoding the 'FilePath'.
+--
+-- This function is in 'IO' because the file system encoding can be
+-- changed. If the encoding can be assumed to be constant in your
+-- use case, you may invoke this function via 'unsafePerformIO'.
 fromFilePath :: FilePath -> IO ByteString
 fromFilePath path = do
     enc <- getFileSystemEncoding
@@ -342,6 +346,10 @@ fromFilePath path = do
 -- This function uses the file system encoding, and resulting 'FilePath's
 -- can be safely used with standard IO functions and will reference the
 -- correct path in the presence of arbitrary non-UTF-8 encoded paths.
+--
+-- This function is in 'IO' because the file system encoding can be
+-- changed. If the encoding can be assumed to be constant in your
+-- use case, you may invoke this function via 'unsafePerformIO'.
 toFilePath :: ByteString -> IO FilePath
 toFilePath path = do
     enc <- getFileSystemEncoding
