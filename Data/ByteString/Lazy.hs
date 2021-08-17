@@ -590,7 +590,7 @@ mapAccumLChunks :: (acc -> S.ByteString -> (acc, S.ByteString)) -> acc -> ByteSt
 mapAccumLChunks function accumulator = fmap (List.foldr Chunk Empty) . List.mapAccumL function accumulator . foldrChunks (:) [ ]
 
 mapAccumRChunks :: (acc -> S.ByteString -> (acc, S.ByteString)) -> acc -> ByteString -> (acc, ByteString)
-mapAccumRChunks function accumulator = fmap (List.foldl (flip Chunk) Empty) . List.mapAccumL function accumulator . foldlChunks (flip (:)) [ ]
+mapAccumRChunks function accumulator = fmap (List.foldr Chunk Empty) . List.mapAccumR function accumulator . foldrChunks (:) [ ]
 
 -- | The 'mapAccumL' function behaves like a combination of 'map' and
 -- 'foldl'; it applies a function to each element of a ByteString,
@@ -635,8 +635,9 @@ scanl function = fmap (uncurry (flip snoc)) . mapAccumLChunks (S.mapAccumL (\x y
 --
 -- > scanl1 f [x1, x2, ...] == [x1, x1 `f` x2, ...]
 scanl1 :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString
-scanl1 _ Empty = Empty
-scanl1 f (Chunk c cs) = scanl f (S.unsafeHead c) (chunk (S.unsafeTail c) cs)
+scanl1 function byteStream = case uncons byteStream of
+  Nothing -> Empty
+  Just (firstByte, remainingBytes) -> scanl function firstByte remainingBytes
 
 -- | 'scanr' is similar to 'foldr', but returns a list of successive
 -- reduced values from the right.
@@ -661,8 +662,9 @@ scanr function = fmap (uncurry cons) . mapAccumRChunks (S.mapAccumR (\x y -> (fu
 
 -- | 'scanr1' is a variant of 'scanr' that has no starting value argument.
 scanr1 :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString
-scanr1 _ Empty = Empty
-scanr1 f lazyByteString = scanr f (last lazyByteString) (init lazyByteString)
+scanr1 function byteStream = case unsnoc byteStream of
+  Nothing -> Empty
+  Just (initialBytes, lastByte) -> scanr function lastByte initialBytes
 
 -- ---------------------------------------------------------------------
 -- Unfolds and replicates
