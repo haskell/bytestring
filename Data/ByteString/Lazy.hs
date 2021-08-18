@@ -464,8 +464,10 @@ foldr k = foldrChunks (flip (S.foldr k))
 
 -- | 'foldr'' is like 'foldr', but strict in the accumulator.
 foldr' :: (Word8 -> a -> a) -> a -> ByteString -> a
-foldr' _ a Empty = a
-foldr' f a (Chunk c cs) = S.foldr' f (foldr' f a cs) c
+foldr' f a = go
+  where
+    go Empty = a
+    go (Chunk c cs) = S.foldr' f (foldr' f a cs) c
 {-# INLINE foldr' #-}
 
 -- | 'foldl1' is a variant of 'foldl' that has no starting value
@@ -597,14 +599,14 @@ mapAccumRChunks function accumulator = fmap (List.foldr Chunk Empty) . List.mapA
 -- passing an accumulating parameter from left to right, and returning a
 -- final value of this accumulator together with the new ByteString.
 mapAccumL :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
-mapAccumL f = mapAccumLChunks (S.mapAccumL f)
+mapAccumL = mapAccumLChunks . S.mapAccumL
 
 -- | The 'mapAccumR' function behaves like a combination of 'map' and
 -- 'foldr'; it applies a function to each element of a ByteString,
 -- passing an accumulating parameter from right to left, and returning a
 -- final value of this accumulator together with the new ByteString.
 mapAccumR :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
-mapAccumR f = mapAccumRChunks (S.mapAccumR f)
+mapAccumR = mapAccumRChunks . S.mapAccumR
 
 -- ---------------------------------------------------------------------
 -- Building ByteStrings
@@ -628,7 +630,7 @@ scanl
     -- ^ input of length n
     -> ByteString
     -- ^ output of length n+1
-scanl function = fmap (uncurry (flip snoc)) . mapAccumLChunks (S.mapAccumL (\x y -> (function x y, x)))
+scanl function = fmap (uncurry (flip snoc)) . mapAccumL (\x y -> (function x y, x))
 {-# INLINE scanl #-}
 
 -- | 'scanl1' is a variant of 'scanl' that has no starting value argument.
@@ -658,7 +660,7 @@ scanr
     -- ^ input of length n
     -> ByteString
     -- ^ output of length n+1
-scanr function = fmap (uncurry cons) . mapAccumRChunks (S.mapAccumR (\x y -> (function y x, x)))
+scanr function = fmap (uncurry cons) . mapAccumR (\x y -> (function y x, x))
 
 -- | 'scanr1' is a variant of 'scanr' that has no starting value argument.
 scanr1 :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString
