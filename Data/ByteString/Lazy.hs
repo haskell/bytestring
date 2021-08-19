@@ -523,14 +523,12 @@ concatMap f (Chunk c0 cs0) = to c0 cs0
 any :: (Word8 -> Bool) -> ByteString -> Bool
 any f = foldrChunks (\c rest -> S.any f c || rest) False
 {-# INLINE any #-}
--- todo fuse
 
 -- | /O(n)/ Applied to a predicate and a 'ByteString', 'all' determines
 -- if all elements of the 'ByteString' satisfy the predicate.
 all :: (Word8 -> Bool) -> ByteString -> Bool
 all f = foldrChunks (\c rest -> S.all f c && rest) True
 {-# INLINE all #-}
--- todo fuse
 
 -- | /O(n)/ 'maximum' returns the maximum value from a 'ByteString'
 maximum :: ByteString -> Word8
@@ -616,7 +614,7 @@ mapAccumR f = go
 -- Building ByteStrings
 
 -- | 'scanl' is similar to 'foldl', but returns a list of successive
--- reduced values from the left. This function will fuse.
+-- reduced values from the left.
 --
 -- > scanl f z [x1, x2, ...] == [z, z `f` x1, (z `f` x1) `f` x2, ...]
 --

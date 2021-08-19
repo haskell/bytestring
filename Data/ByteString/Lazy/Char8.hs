@@ -404,7 +404,7 @@ minimum = w2c . L.minimum
 -- Building ByteStrings
 
 -- | 'scanl' is similar to 'foldl', but returns a list of successive
--- reduced values from the left. This function will fuse.
+-- reduced values from the left.
 --
 -- > scanl f z [x1, x2, ...] == [z, z `f` x1, (z `f` x1) `f` x2, ...]
 --
