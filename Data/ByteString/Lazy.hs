@@ -588,25 +588,29 @@ compareLength (Chunk c cs) toCmp  = compareLength cs (toCmp - fromIntegral (S.le
    n <= length t = compareLength t n /= LT
   #-}
 
-mapAccumLChunks :: (acc -> S.ByteString -> (acc, S.ByteString)) -> acc -> ByteString -> (acc, ByteString)
-mapAccumLChunks function accumulator = fmap (List.foldr Chunk Empty) . List.mapAccumL function accumulator . foldrChunks (:) [ ]
-
-mapAccumRChunks :: (acc -> S.ByteString -> (acc, S.ByteString)) -> acc -> ByteString -> (acc, ByteString)
-mapAccumRChunks function accumulator = fmap (List.foldr Chunk Empty) . List.mapAccumR function accumulator . foldrChunks (:) [ ]
-
 -- | The 'mapAccumL' function behaves like a combination of 'map' and
 -- 'foldl'; it applies a function to each element of a ByteString,
 -- passing an accumulating parameter from left to right, and returning a
 -- final value of this accumulator together with the new ByteString.
 mapAccumL :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
-mapAccumL = mapAccumLChunks . S.mapAccumL
+mapAccumL f = go
+  where
+    go s Empty        = (s, Empty)
+    go s (Chunk c cs) = (s'', Chunk c' cs')
+        where (s',  c')  = S.mapAccumL f s c
+              (s'', cs') = go s' cs
 
 -- | The 'mapAccumR' function behaves like a combination of 'map' and
 -- 'foldr'; it applies a function to each element of a ByteString,
 -- passing an accumulating parameter from right to left, and returning a
 -- final value of this accumulator together with the new ByteString.
 mapAccumR :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
-mapAccumR = mapAccumRChunks . S.mapAccumR
+mapAccumR f = go
+  where
+    go s Empty        = (s, Empty)
+    go s (Chunk c cs) = (s'', Chunk c' cs')
+        where (s'', c') = S.mapAccumR f s' c
+              (s', cs') = go s cs
 
 -- ---------------------------------------------------------------------
 -- Building ByteStrings
