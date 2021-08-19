@@ -92,7 +92,9 @@ module Data.ByteString.Lazy (
         foldl1,
         foldl1',
         foldr,
+        foldr',
         foldr1,
+        foldr1',
 
         -- ** Special folds
         concat,
@@ -106,9 +108,9 @@ module Data.ByteString.Lazy (
         -- * Building ByteStrings
         -- ** Scans
         scanl,
---        scanl1,
---        scanr,
---        scanr1,
+        scanl1,
+        scanr,
+        scanr1,
 
         -- ** Accumulating maps
         mapAccumL,
@@ -460,6 +462,14 @@ foldr :: (Word8 -> a -> a) -> a -> ByteString -> a
 foldr k = foldrChunks (flip (S.foldr k))
 {-# INLINE foldr #-}
 
+-- | 'foldr'' is like 'foldr', but strict in the accumulator.
+foldr' :: (Word8 -> a -> a) -> a -> ByteString -> a
+foldr' f a = go
+  where
+    go Empty = a
+    go (Chunk c cs) = S.foldr' f (foldr' f a cs) c
+{-# INLINE foldr' #-}
+
 -- | 'foldl1' is a variant of 'foldl' that has no starting value
 -- argument, and thus must be applied to non-empty 'ByteString's.
 foldl1 :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
@@ -478,6 +488,13 @@ foldr1 _ Empty          = errorEmptyList "foldr1"
 foldr1 f (Chunk c0 cs0) = go c0 cs0
   where go c Empty         = S.foldr1 f c
         go c (Chunk c' cs) = S.foldr  f (go c' cs) c
+
+-- | 'foldr1'' is like 'foldr1', but strict in the accumulator.
+foldr1' :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
+foldr1' _ Empty          = errorEmptyList "foldr1'"
+foldr1' f (Chunk c0 cs0) = go c0 cs0
+  where go c Empty         = S.foldr1' f c
+        go c (Chunk c' cs) = S.foldr'  f (go c' cs) c
 
 -- ---------------------------------------------------------------------
 -- Special folds
@@ -617,10 +634,43 @@ scanl
     -- ^ input of length n
     -> ByteString
     -- ^ output of length n+1
-scanl f z = snd . foldl k (z,singleton z)
- where
-    k (c,acc) a = let n = f c a in (n, acc `snoc` n)
+scanl function = fmap (uncurry (flip snoc)) . mapAccumL (\x y -> (function x y, x))
 {-# INLINE scanl #-}
+
+-- | 'scanl1' is a variant of 'scanl' that has no starting value argument.
+--
+-- > scanl1 f [x1, x2, ...] == [x1, x1 `f` x2, ...]
+scanl1 :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString
+scanl1 function byteStream = case uncons byteStream of
+  Nothing -> Empty
+  Just (firstByte, remainingBytes) -> scanl function firstByte remainingBytes
+
+-- | 'scanr' is similar to 'foldr', but returns a list of successive
+-- reduced values from the right.
+--
+-- > scanr f z [..., x{n-1}, xn] == [..., x{n-1} `f` (xn `f` z), xn `f` z, z]
+--
+-- Note that
+--
+-- > head (scanr f z xs) == foldr f z xs
+-- > last (scanr f z xs) == z
+--
+scanr
+    :: (Word8 -> Word8 -> Word8)
+    -- ^ element -> accumulator -> new accumulator
+    -> Word8
+    -- ^ starting value of accumulator
+    -> ByteString
+    -- ^ input of length n
+    -> ByteString
+    -- ^ output of length n+1
+scanr function = fmap (uncurry cons) . mapAccumR (\x y -> (function y x, x))
+
+-- | 'scanr1' is a variant of 'scanr' that has no starting value argument.
+scanr1 :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString
+scanr1 function byteStream = case unsnoc byteStream of
+  Nothing -> Empty
+  Just (initialBytes, lastByte) -> scanr function lastByte initialBytes
 
 -- ---------------------------------------------------------------------
 -- Unfolds and replicates

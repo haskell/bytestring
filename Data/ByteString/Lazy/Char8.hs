@@ -70,7 +70,9 @@ module Data.ByteString.Lazy.Char8 (
         foldl1,
         foldl1',
         foldr,
+        foldr',
         foldr1,
+        foldr1',
 
         -- ** Special folds
         concat,
@@ -84,9 +86,9 @@ module Data.ByteString.Lazy.Char8 (
         -- * Building ByteStrings
         -- ** Scans
         scanl,
---      scanl1,
---      scanr,
---      scanr1,
+        scanl1,
+        scanr,
+        scanr1,
 
         -- ** Accumulating maps
         mapAccumL,
@@ -238,7 +240,7 @@ import Foreign.Storable (peek)
 import Prelude hiding
         (reverse,head,tail,last,init,null,length,map,lines,foldl,foldr,unlines
         ,concat,any,take,drop,splitAt,takeWhile,dropWhile,span,break,elem,filter
-        ,unwords,words,maximum,minimum,all,concatMap,scanl,scanl1,foldl1,foldr1
+        ,unwords,words,maximum,minimum,all,concatMap,scanl,scanl1,scanr,scanr1,foldl1,foldr1
         ,readFile,writeFile,appendFile,replicate,getContents,getLine,putStr,putStrLn
         ,zip,zipWith,unzip,notElem,repeat,iterate,interact,cycle)
 
@@ -347,6 +349,10 @@ foldr :: (Char -> a -> a) -> a -> ByteString -> a
 foldr f = L.foldr (f . w2c)
 {-# INLINE foldr #-}
 
+-- | 'foldr'' is like 'foldr', but strict in the accumulator.
+foldr' :: (Char -> a -> a) -> a -> ByteString -> a
+foldr' f = L.foldr' (f . w2c)
+
 -- | 'foldl1' is a variant of 'foldl' that has no starting value
 -- argument, and thus must be applied to non-empty 'ByteString's.
 foldl1 :: (Char -> Char -> Char) -> ByteString -> Char
@@ -362,6 +368,10 @@ foldl1' f ps = w2c (L.foldl1' (\x y -> c2w (f (w2c x) (w2c y))) ps)
 foldr1 :: (Char -> Char -> Char) -> ByteString -> Char
 foldr1 f ps = w2c (L.foldr1 (\x y -> c2w (f (w2c x) (w2c y))) ps)
 {-# INLINE foldr1 #-}
+
+-- | 'foldr1'' is like 'foldr1', but strict in the accumulator.
+foldr1' :: (Char -> Char -> Char) -> ByteString -> Char
+foldr1' f ps = w2c (L.foldr1' (\x y -> c2w (f (w2c x) (w2c y))) ps)
 
 -- | Map a function over a 'ByteString' and concatenate the results
 concatMap :: (Char -> ByteString) -> ByteString -> ByteString
@@ -403,6 +413,40 @@ minimum = w2c . L.minimum
 -- > last (scanl f z xs) == foldl f z xs.
 scanl :: (Char -> Char -> Char) -> Char -> ByteString -> ByteString
 scanl f z = L.scanl (\a b -> c2w (f (w2c a) (w2c b))) (c2w z)
+
+-- | 'scanl1' is a variant of 'scanl' that has no starting value argument.
+--
+-- > scanl1 f [x1, x2, ...] == [x1, x1 `f` x2, ...]
+scanl1 :: (Char -> Char -> Char) -> ByteString -> ByteString
+scanl1 f = L.scanl1 f'
+  where f' accumulator value = c2w (f (w2c accumulator) (w2c value))
+
+-- | 'scanr' is similar to 'foldr', but returns a list of successive
+-- reduced values from the right.
+--
+-- > scanr f z [..., x{n-1}, xn] == [..., x{n-1} `f` (xn `f` z), xn `f` z, z]
+--
+-- Note that
+--
+-- > head (scanr f z xs) == foldr f z xs
+-- > last (scanr f z xs) == z
+--
+scanr
+    :: (Char -> Char -> Char)
+    -- ^ element -> accumulator -> new accumulator
+    -> Char
+    -- ^ starting value of accumulator
+    -> ByteString
+    -- ^ input of length n
+    -> ByteString
+    -- ^ output of length n+1
+scanr f = L.scanr f' . c2w
+  where f' accumulator value = c2w (f (w2c accumulator) (w2c value))
+
+-- | 'scanr1' is a variant of 'scanr' that has no starting value argument.
+scanr1 :: (Char -> Char -> Char) -> ByteString -> ByteString
+scanr1 f = L.scanr1 f'
+  where f' accumulator value = c2w (f (w2c accumulator) (w2c value))
 
 -- | The 'mapAccumL' function behaves like a combination of 'map' and
 -- 'foldl'; it applies a function to each element of a ByteString,
