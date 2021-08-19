@@ -15,11 +15,11 @@ import Control.Concurrent
 import Control.Exception
 import System.Posix.Internals (c_unlink)
 
+import qualified Data.List as List
 import Data.Char
 import Data.Word
 import Data.Maybe
 import Data.Int (Int64)
-import Data.Monoid
 import Data.Semigroup
 import GHC.Exts (Int(..), newPinnedByteArray#, unsafeFreezeByteArray#)
 import GHC.ST (ST(..), runST)
@@ -385,6 +385,12 @@ short_tests =
     ]
 
 ------------------------------------------------------------------------
+-- Strictness checks.
+
+explosiveTail :: L.ByteString -> L.ByteString
+explosiveTail = (`L.append` error "Tail of this byte string is undefined!")
+
+------------------------------------------------------------------------
 -- The entry point
 
 main :: IO ()
@@ -396,6 +402,7 @@ main = defaultMain $ testGroup "All"
   , testGroup "Misc"        misc_tests
   , testGroup "IO"          io_tests
   , testGroup "Short"       short_tests
+  , testGroup "Strictness"  strictness_checks
   ]
 
 io_tests =
@@ -453,6 +460,37 @@ misc_tests =
     , testProperty "readIntegerSafe"   prop_readIntegerSafe
     , testProperty "readIntegerUnsafe" prop_readIntegerUnsafe
     ]
+
+strictness_checks =
+  [ testGroup "Lazy Word8"
+    [ testProperty "foldr is lazy" $ \ xs ->
+        List.genericTake (L.length xs) (L.foldr (:) [ ] (explosiveTail xs)) === L.unpack xs
+    , testProperty "foldr' is strict" $ expectFailure $ \ xs ys ->
+        List.genericTake (L.length xs) (L.foldr' (:) [ ] (explosiveTail (xs <> ys))) === L.unpack xs
+    , testProperty "foldr1 is lazy" $ \ xs -> L.length xs > 0 ==>
+        L.foldr1 const (explosiveTail (xs <> L.singleton 1)) === L.head xs
+    , testProperty "foldr1' is strict" $ expectFailure $ \ xs ys -> L.length xs > 0 ==>
+        L.foldr1' const (explosiveTail (xs <> L.singleton 1 <> ys)) === L.head xs
+    , testProperty "scanl is lazy" $ \ xs ->
+        L.take (L.length xs + 1) (L.scanl (+) 0 (explosiveTail (xs <> L.singleton 1))) === (L.pack . fmap (L.foldr (+) 0) . L.inits) xs
+    , testProperty "scanl1 is lazy" $ \ xs -> L.length xs > 0 ==>
+        L.take (L.length xs) (L.scanl1 (+) (explosiveTail (xs <> L.singleton 1))) === (L.pack . fmap (L.foldr1 (+)) . tail . L.inits) xs
+    ]
+  , testGroup "Lazy Char"
+    [ testProperty "foldr is lazy" $ \ xs ->
+        List.genericTake (D.length xs) (D.foldr (:) [ ] (explosiveTail xs)) === D.unpack xs
+    , testProperty "foldr' is strict" $ expectFailure $ \ xs ys ->
+        List.genericTake (D.length xs) (D.foldr' (:) [ ] (explosiveTail (xs <> ys))) === D.unpack xs
+    , testProperty "foldr1 is lazy" $ \ xs -> D.length xs > 0 ==>
+        D.foldr1 const (explosiveTail (xs <> D.singleton 'x')) === D.head xs
+    , testProperty "foldr1' is strict" $ expectFailure $ \ xs ys -> D.length xs > 0 ==>
+        D.foldr1' const (explosiveTail (xs <> D.singleton 'x' <> ys)) === D.head xs
+    , testProperty "scanl is lazy" $ \ xs -> let char1 +. char2 = toEnum (fromEnum char1 + fromEnum char2) in
+        D.take (D.length xs + 1) (D.scanl (+.) '\NUL' (explosiveTail (xs <> D.singleton '\SOH'))) === (D.pack . fmap (D.foldr (+.) '\NUL') . D.inits) xs
+    , testProperty "scanl1 is lazy" $ \ xs -> D.length xs > 0 ==> let char1 +. char2 = toEnum (fromEnum char1 + fromEnum char2) in
+        D.take (D.length xs) (D.scanl1 (+.) (explosiveTail (xs <> D.singleton '\SOH'))) === (D.pack . fmap (D.foldr1 (+.)) . tail . D.inits) xs
+    ]
+  ]
 
 removeFile :: String -> IO ()
 removeFile fn = void $ withCString fn c_unlink

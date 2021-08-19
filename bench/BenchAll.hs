@@ -221,6 +221,9 @@ sortInputs = map (`S.take` S.pack [122, 121 .. 32]) [10..25]
 foldInputs :: [S.ByteString]
 foldInputs = map (\k -> S.pack $ if k <= 6 then take (2 ^ k) [32..95] else concat (replicate (2 ^ (k - 6)) [32..95])) [0..16]
 
+foldInputsLazy :: [L.ByteString]
+foldInputsLazy = map (\k -> L.pack $ if k <= 6 then take (2 ^ k) [32..95] else concat (replicate (2 ^ (k - 6)) [32..95])) [0..16]
+
 zeroes :: L.ByteString
 zeroes = L.replicate 10000 0
 
@@ -401,22 +404,43 @@ main = do
       , bench "one huge word" $ nf S8.words byteStringData
       ]
     , bgroup "folds"
-      [ bgroup "foldl'" $ map (\s -> bench (show $ S.length s) $
-          nf (S.foldl' (\acc x -> acc + fromIntegral x) (0 :: Int)) s) foldInputs
-      , bgroup "foldr'" $ map (\s -> bench (show $ S.length s) $
-          nf (S.foldr' (\x acc -> fromIntegral x + acc) (0 :: Int)) s) foldInputs
-      , bgroup "unfoldrN" $ map (\s -> bench (show $ S.length s) $
-          nf (S.unfoldrN (S.length s) (\a -> Just (a, a + 1))) 0) foldInputs
-      , bgroup "mapAccumL" $ map (\s -> bench (show $ S.length s) $
-          nf (S.mapAccumL (\acc x -> (acc + fromIntegral x, succ x)) (0 :: Int)) s) foldInputs
-      , bgroup "mapAccumR" $ map (\s -> bench (show $ S.length s) $
-          nf (S.mapAccumR (\acc x -> (fromIntegral x + acc, succ x)) (0 :: Int)) s) foldInputs
-      , bgroup "scanl" $ map (\s -> bench (show $ S.length s) $
-          nf (S.scanl (+) 0) s) foldInputs
-      , bgroup "scanr" $ map (\s -> bench (show $ S.length s) $
-          nf (S.scanr (+) 0) s) foldInputs
-      , bgroup "filter" $ map (\s -> bench (show $ S.length s) $
-          nf (S.filter odd) s) foldInputs
+      [ bgroup "strict"
+        [ bgroup "foldl'" $ map (\s -> bench (show $ S.length s) $
+            nf (S.foldl' (\acc x -> acc + fromIntegral x) (0 :: Int)) s) foldInputs
+        , bgroup "foldr'" $ map (\s -> bench (show $ S.length s) $
+            nf (S.foldr' (\x acc -> fromIntegral x + acc) (0 :: Int)) s) foldInputs
+        , bgroup "foldr1'" $ map (\s -> bench (show $ S.length s) $
+            nf (S.foldr1' (\x  acc -> fromIntegral x + acc)) s) foldInputs
+        , bgroup "unfoldrN" $ map (\s -> bench (show $ S.length s) $
+            nf (S.unfoldrN (S.length s) (\a -> Just (a, a + 1))) 0) foldInputs
+        , bgroup "mapAccumL" $ map (\s -> bench (show $ S.length s) $
+            nf (S.mapAccumL (\acc x -> (acc + fromIntegral x, succ x)) (0 :: Int)) s) foldInputs
+        , bgroup "mapAccumR" $ map (\s -> bench (show $ S.length s) $
+            nf (S.mapAccumR (\acc x -> (fromIntegral x + acc, succ x)) (0 :: Int)) s) foldInputs
+        , bgroup "scanl" $ map (\s -> bench (show $ S.length s) $
+            nf (S.scanl (+) 0) s) foldInputs
+        , bgroup "scanr" $ map (\s -> bench (show $ S.length s) $
+            nf (S.scanr (+) 0) s) foldInputs
+        , bgroup "filter" $ map (\s -> bench (show $ S.length s) $
+            nf (S.filter odd) s) foldInputs
+        ]
+      , bgroup "lazy"
+        [ bgroup "foldl'" $ map (\s -> bench (show $ L.length s) $
+            nf (L.foldl' (\acc x -> acc + fromIntegral x) (0 :: Int)) s) foldInputsLazy
+        , bgroup "foldr'" $ map (\s -> bench (show $ L.length s) $
+            nf (L.foldr' (\x acc -> fromIntegral x + acc) (0 :: Int)) s) foldInputsLazy
+        , bgroup "foldr1'" $ map (\s -> bench (show $ L.length s) $
+            nf (L.foldr1' (\x  acc -> fromIntegral x + acc)) s) foldInputsLazy
+        , bgroup "mapAccumL" $ map (\s -> bench (show $ L.length s) $
+            nf (L.mapAccumL (\acc x -> (acc + fromIntegral x, succ x)) (0 :: Int)) s) foldInputsLazy
+        , bgroup "mapAccumR" $ map (\s -> bench (show $ L.length s) $
+            nf (L.mapAccumR (\acc x -> (fromIntegral x + acc, succ x)) (0 :: Int)) s) foldInputsLazy
+        , bgroup "scanl" $ map (\s -> bench (show $ L.length s) $
+            nf (L.scanl (+) 0) s) foldInputsLazy
+        , bgroup "scanr" $ map (\s -> bench (show $ L.length s) $
+            nf (L.scanr (+) 0) s) foldInputsLazy
+        ]
+
       ]
     , bgroup "findIndexOrLength"
       [ bench "takeWhile"      $ nf (L.takeWhile even) zeroes
