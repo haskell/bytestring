@@ -389,8 +389,6 @@ snoc (BS x l) c = unsafeCreate (l+1) $ \p -> unsafeWithForeignPtr x $ \f -> do
         poke (p `plusPtr` l) c
 {-# INLINE snoc #-}
 
--- todo fuse
-
 -- | /O(1)/ Extract the first element of a ByteString, which must be non-empty.
 -- An exception will be thrown in the case of an empty ByteString.
 head :: ByteString -> Word8
@@ -651,8 +649,6 @@ anyByte c (BS x l) = accursedUnutterablePerformIO $ unsafeWithForeignPtr x $ \p 
     return $! q /= nullPtr
 {-# INLINE anyByte #-}
 
--- todo fuse
-
 -- | /O(n)/ Applied to a predicate and a 'ByteString', 'all' determines
 -- if all elements of the 'ByteString' satisfy the predicate.
 all :: (Word8 -> Bool) -> ByteString -> Bool
@@ -679,7 +675,6 @@ all f (BS x len) = accursedUnutterablePerformIO $ unsafeWithForeignPtr x g
 ------------------------------------------------------------------------
 
 -- | /O(n)/ 'maximum' returns the maximum value from a 'ByteString'
--- This function will fuse.
 -- An exception will be thrown in the case of an empty ByteString.
 maximum :: ByteString -> Word8
 maximum xs@(BS x l)
@@ -689,7 +684,6 @@ maximum xs@(BS x l)
 {-# INLINE maximum #-}
 
 -- | /O(n)/ 'minimum' returns the minimum value from a 'ByteString'
--- This function will fuse.
 -- An exception will be thrown in the case of an empty ByteString.
 minimum :: ByteString -> Word8
 minimum xs@(BS x l)
@@ -747,7 +741,7 @@ mapAccumR f acc = \(BS fp len) -> unsafeDupablePerformIO $ unsafeWithForeignPtr 
 -- Building ByteStrings
 
 -- | 'scanl' is similar to 'foldl', but returns a list of successive
--- reduced values from the left. This function will fuse.
+-- reduced values from the left.
 --
 -- > scanl f z [x1, x2, ...] == [z, z `f` x1, (z `f` x1) `f` x2, ...]
 --
@@ -782,12 +776,7 @@ scanl f v = \(BS fp len) -> unsafeDupablePerformIO $ unsafeWithForeignPtr fp $ \
         go a (q `plusPtr` 1)
 {-# INLINE scanl #-}
 
-    -- n.b. haskell's List scan returns a list one bigger than the
-    -- input, so we need to snoc here to get some extra space, however,
-    -- it breaks map/up fusion (i.e. scanl . map no longer fuses)
-
 -- | 'scanl1' is a variant of 'scanl' that has no starting value argument.
--- This function will fuse.
 --
 -- > scanl1 f [x1, x2, ...] == [x1, x1 `f` x2, ...]
 scanl1 :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString
