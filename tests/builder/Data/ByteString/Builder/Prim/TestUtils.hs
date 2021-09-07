@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 -- |
 -- Copyright   : (c) 2011 Simon Meier
@@ -78,12 +79,13 @@ import           Data.Int
 import           Data.Word
 import           Foreign (Storable(..), castPtr, minusPtr, with)
 import           Numeric (showHex)
-import           GHC.ByteOrder
 import           System.IO.Unsafe (unsafePerformIO)
 
 import           Test.Tasty
 import           Test.Tasty.HUnit (assertBool, testCase)
 import           Test.Tasty.QuickCheck (Arbitrary(..), testProperty)
+
+#include <ghcautoconf.h>
 
 -- Helper functions
 -------------------
@@ -332,10 +334,14 @@ littleEndian_list :: (Storable a, Bits a, Integral a) => a -> [Word8]
 littleEndian_list x =
     map (fromIntegral . (x `shiftR`) . (8*)) $ [0..sizeOf x - 1]
 
+-- See https://gitlab.haskell.org/ghc/ghc/-/issues/20338
+-- and https://gitlab.haskell.org/ghc/ghc/-/issues/18445
 hostEndian_list :: (Storable a, Bits a, Integral a) => a -> [Word8]
-hostEndian_list = case targetByteOrder of
-    LittleEndian -> littleEndian_list
-    BigEndian    -> bigEndian_list
+#if defined(WORDS_BIGENDIAN)
+hostEndian_list = bigEndian_list
+#else
+hostEndian_list = littleEndian_list
+#endif
 
 float_list :: (Word32 -> [Word8]) -> Float -> [Word8]
 float_list f  = f . coerceFloatToWord32
