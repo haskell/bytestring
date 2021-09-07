@@ -156,7 +156,6 @@ test-suite test-builder
                     Data.ByteString.Builder.Tests
   build-depends:    base, bytestring, ghc-prim,
                     deepseq,
-                    dlist                      >= 0.5,
                     transformers               >= 0.3,
                     tasty,
                     tasty-hunit,
