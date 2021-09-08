@@ -23,6 +23,7 @@
 #ifndef BYTESTRING_LAZY
 module Properties.ByteString (tests) where
 import qualified Data.ByteString as B
+import GHC.IO.Encoding
 #else
 module Properties.ByteStringLazy (tests) where
 import qualified Data.ByteString.Lazy as B
@@ -83,10 +84,16 @@ tests =
     \x -> ioProperty $ do
       r <- B.toFilePath x >>= B.fromFilePath
       pure (r === x)
-  , testProperty "fromFilePath >>= toFilePath" $
-    \x -> ioProperty $ do
-      r <- B.fromFilePath x >>= B.toFilePath
-      pure (r === x)
+  , testProperty "fromFilePath >>= toFilePath" $ ioProperty $ do
+    let prop x = ioProperty $ do
+          r <- B.fromFilePath x >>= B.toFilePath
+          pure (r === x)
+    -- Normally getFileSystemEncoding returns a Unicode encoding,
+    -- but if it is ASCII, we should not generate Unicode filenames.
+    enc <- getFileSystemEncoding
+    pure $ case textEncodingName enc of
+      "ASCII" -> property (prop . getASCIIString)
+      _       -> property prop
 #endif
 #endif
 
