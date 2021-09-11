@@ -26,8 +26,10 @@ import           Foreign (minusPtr)
 
 import           Data.Char (chr)
 import           Data.Bits ((.|.), shiftL)
-import qualified Data.DList      as D
 import           Data.Foldable
+#if !MIN_VERSION_base(4,11,0)
+import           Data.Semigroup
+#endif
 import           Data.Word
 
 import qualified Data.ByteString          as S
@@ -228,31 +230,45 @@ data Strategy = Safe | Untrimmed
 data Recipe = Recipe Strategy Int Int L.ByteString [Action]
      deriving( Eq, Ord, Show )
 
+newtype DList a = DList ([a] -> [a])
+
+instance Semigroup (DList a) where
+  DList f <> DList g = DList (f . g)
+
+instance Monoid (DList a) where
+  mempty = DList id
+  mappend = (<>)
+
+fromDList :: DList a -> [a]
+fromDList (DList f) = f []
+
+toDList :: [a] -> DList a
+toDList xs = DList (xs <>)
+
 renderRecipe :: Recipe -> [Word8]
 renderRecipe (Recipe _ firstSize _ cont as) =
-    D.toList $ evalState (execWriterT (traverse_ renderAction as)) firstSize
-                 `D.append` renderLBS cont
+  fromDList $ evalState (execWriterT (traverse_ renderAction as)) firstSize <> renderLBS cont
   where
-    renderAction :: Monad m => Action -> WriterT (D.DList Word8) (StateT Int m) ()
+    renderAction :: Monad m => Action -> WriterT (DList Word8) (StateT Int m) ()
     renderAction (SBS Hex bs)   = tell $ foldMap hexWord8 $ S.unpack bs
-    renderAction (SBS _ bs)     = tell $ D.fromList $ S.unpack bs
+    renderAction (SBS _ bs)     = tell $ toDList $ S.unpack bs
     renderAction (LBS Hex lbs)  = tell $ foldMap hexWord8 $ L.unpack lbs
     renderAction (LBS _ lbs)    = tell $ renderLBS lbs
-    renderAction (ShBS sbs)     = tell $ D.fromList $ Sh.unpack sbs
-    renderAction (W8 w)         = tell $ return w
-    renderAction (W8S ws)       = tell $ D.fromList ws
-    renderAction (String cs)    = tell $ foldMap (D.fromList . charUtf8_list) cs
-    renderAction Flush          = tell $ D.empty
-    renderAction (EnsureFree _) = tell $ D.empty
-    renderAction (FDec f)       = tell $ D.fromList $ encodeASCII $ show f
-    renderAction (DDec d)       = tell $ D.fromList $ encodeASCII $ show d
+    renderAction (ShBS sbs)     = tell $ toDList $ Sh.unpack sbs
+    renderAction (W8 w)         = tell $ toDList [w]
+    renderAction (W8S ws)       = tell $ toDList ws
+    renderAction (String cs)    = tell $ foldMap (toDList . charUtf8_list) cs
+    renderAction Flush          = tell $ mempty
+    renderAction (EnsureFree _) = tell $ mempty
+    renderAction (FDec f)       = tell $ toDList $ encodeASCII $ show f
+    renderAction (DDec d)       = tell $ toDList $ encodeASCII $ show d
     renderAction (ModState i)   = do
         s <- lift get
-        tell (D.fromList $ encodeASCII $ show s)
+        tell (toDList $ encodeASCII $ show s)
         lift $ put (s - i)
 
-    renderLBS = D.fromList . L.unpack
-    hexWord8  = D.fromList . wordHexFixed_list
+    renderLBS = toDList . L.unpack
+    hexWord8  = toDList . wordHexFixed_list
 
 buildAction :: Action -> StateT Int Put ()
 buildAction (SBS Hex bs)            = lift $ putBuilder $ byteStringHex bs
