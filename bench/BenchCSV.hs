@@ -122,9 +122,6 @@ import           Data.ByteString.Builder as B
 import           Data.ByteString.Builder.Prim.Internal ( (>*<), (>$<) )
 import qualified Data.ByteString.Builder.Prim         as E
 
--- To be used in a later comparison
-import qualified Data.DList                 as D
-
 -- bytestring benchmarks cannot depend on text because of a circular dependency.
 -- Anyways these comparisons are of historical interest only, so disabled for now.
 -- A curious soul can re-enable them by moving benchmarks to a separate package
@@ -134,6 +131,12 @@ import qualified Data.Text.Lazy             as TL
 import qualified Data.Text.Lazy.Encoding    as TL
 import qualified Data.Text.Lazy.Builder     as TB
 import qualified Data.Text.Lazy.Builder.Int as TB
+#endif
+
+-- Same as above: comparison against DList is of historical interest now,
+-- so lets shave off another dependency.
+#ifdef MIN_VERSION_dlist
+import qualified Data.DList                 as D
 #endif
 
 ------------------------------------------------------------------------------
@@ -334,6 +337,8 @@ benchBuilderEncodingUtf8 = bench "utf8 + renderTableBE maxiTable" $
 -- Difference-list based rendering
 ------------------------------------------------------------------------------
 
+#ifdef MIN_VERSION_dlist
+
 type DString = D.DList Char
 
 renderStringD :: String -> DString
@@ -359,6 +364,8 @@ renderTableD rs = mconcat [renderRowD r <> return '\n' | r <- rs]
 benchDListUtf8 :: Benchmark
 benchDListUtf8 = bench "utf8 + renderTableD maxiTable" $
   nf (L.length . B.toLazyByteString . B.stringUtf8 . D.toList . renderTableD) maxiTable
+
+#endif
 
 ------------------------------------------------------------------------------
 -- Text Builder
@@ -406,7 +413,9 @@ benchCSV = bgroup "CSV"
       [ benchNF
       , benchString
       , benchStringUtf8
+#ifdef MIN_VERSION_dlist
       , benchDListUtf8
+#endif
 #ifdef MIN_VERSION_text
       , benchTextBuilder
       , benchTextBuilderUtf8

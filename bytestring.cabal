@@ -187,6 +187,5 @@ benchmark bytestring-bench
   build-depends:    base,
                     bytestring,
                     deepseq,
-                    dlist,
                     tasty-bench,
                     random
