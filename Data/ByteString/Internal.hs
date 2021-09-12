@@ -209,6 +209,8 @@ data ByteString = BS {-# UNPACK #-} !(ForeignPtr Word8) -- payload
     deriving (Typeable)
 
 -- | Type synonym for the strict flavour of 'ByteString'.
+--
+-- @since 0.11.2.0
 type StrictByteString = ByteString
 
 -- |
@@ -394,7 +396,7 @@ unsafePackLenAddress len addr# = do
 -- provides. On GHC 9.0 and up, this function uses the @FinalPtr@ data
 -- constructor for @ForeignPtrContents@.
 --
--- @since 0.11.0.0
+-- @since 0.11.1.0
 unsafePackLiteral :: Addr# -> ByteString
 unsafePackLiteral addr# =
 #if __GLASGOW_HASKELL__ >= 811
