@@ -667,7 +667,8 @@ primMapLazyByteStringBounded w =
 -- Raw CString encoding
 ------------------------------------------------------------------------------
 
--- | A null-terminated ASCII encoded 'CString'. Null characters are not representable.
+-- | A null-terminated ASCII encoded 'Foreign.C.String.CString'.
+-- Null characters are not representable.
 --
 -- @since 0.11.0.0
 cstring :: Addr# -> Builder
@@ -687,8 +688,8 @@ cstring =
       where
         !ch = indexWord8OffAddr# addr 0#
 
--- | A null-terminated UTF-8 encoded 'CString'. Null characters can be encoded as
--- @0xc0 0x80@.
+-- | A null-terminated UTF-8 encoded 'Foreign.C.String.CString'.
+-- Null characters can be encoded as @0xc0 0x80@.
 --
 -- @since 0.11.0.0
 cstringUtf8 :: Addr# -> Builder

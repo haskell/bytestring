@@ -223,7 +223,7 @@ type StrictByteString = ByteString
 -- change to benefit from the simplified 'BS' constructor and can
 -- continue to function unchanged.
 --
--- /Note:/ Matching with this constructor will always be given a 0 'offset',
+-- /Note:/ Matching with this constructor will always be given a 0 offset,
 -- as the base will be manipulated by 'plusForeignPtr' instead.
 --
 pattern PS :: ForeignPtr Word8 -> Int -> Int -> ByteString
@@ -576,7 +576,7 @@ create l action = do
 
 -- | Given a maximum size @l@ and an action @f@ that fills the 'ByteString'
 -- starting at the given 'Ptr' and returns the actual utilized length,
--- @`createUpToN'` l f@ returns the filled 'ByteString'.
+-- @`createUptoN'` l f@ returns the filled 'ByteString'.
 createUptoN :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
 createUptoN l action = do
     fp <- mallocByteString l
@@ -585,7 +585,7 @@ createUptoN l action = do
     assert (l' <= l) $ return $! BS fp l'
 {-# INLINE createUptoN #-}
 
--- | Like 'createUpToN', but also returns an additional value created by the
+-- | Like 'createUptoN', but also returns an additional value created by the
 -- action.
 --
 -- @since 0.10.12.0
