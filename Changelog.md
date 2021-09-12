@@ -1,8 +1,25 @@
 [0.12.0.0] — Unreleased
 
 * [`readInt` returns `Nothing`, if the sequence of digits cannot be represented by an `Int`, instead of overflowing silently](https://github.com/haskell/bytestring/pull/309)
+* [Remove `zipWith` rewrite rule](https://github.com/haskell/bytestring/pull/387)
 
-[0.12.0.0]: https://github.com/haskell/bytestring/compare/0.11.1.0...0.12.0.0
+[0.12.0.0]: https://github.com/haskell/bytestring/compare/0.11.2.0...0.12.0.0
+
+[0.11.2.0] — Unreleased
+
+* [Add `StrictByteString` and `LazyByteString` type aliases](https://github.com/haskell/bytestring/pull/378)
+* [Add `foldr'`, `foldr1'`, `scanl1`, `scanr`, `scanr1` to `Data.ByteString.Lazy{,.Char8}`](https://github.com/haskell/bytestring/pull/364)
+* [Add `takeEnd`, `dropEnd`, `takeWhileEnd`, `dropWhileEnd`, `spanEnd`, `breakEnd` to `Data.ByteString.Lazy{,.Char8}`](https://github.com/haskell/bytestring/pull/395)
+* [Add `Data.ByteString.Builder.writeFile` to write `Builder` to file directly](https://github.com/haskell/bytestring/pull/408)
+* [Add `Data.ByteString.{from,to}FilePath` for encoding-aware conversions](https://github.com/haskell/bytestring/pull/403)
+* [Add `Lift` instances for all flavors of `ByteString`](https://github.com/haskell/bytestring/pull/392)
+* [Define `foldl`, `foldl'`, `foldr`, `foldr'`, `mapAccumL`, `mapAccumR`, `scanl`, `scanr` and `filter` with onel less argument to allow more inlining](https://github.com/haskell/bytestring/pull/345)
+* [Speed up internal loop in `unfoldrN`](https://github.com/haskell/bytestring/pull/356)
+* [Speed up `count` with SSE and AVX instructions](https://github.com/haskell/bytestring/pull/202)
+* [Remove `integer-simple` flag](https://github.com/haskell/bytestring/pull/371)
+
+
+[0.11.2.0]: https://github.com/haskell/bytestring/compare/0.11.1.0...0.11.2.0
 
 [0.11.1.0] — February 2021
 
