@@ -13,11 +13,13 @@
 * [Add `Data.ByteString.Builder.writeFile` to write `Builder` to file directly](https://github.com/haskell/bytestring/pull/408)
 * [Add `Data.ByteString.{from,to}FilePath` for encoding-aware conversions](https://github.com/haskell/bytestring/pull/403)
 * [Add `Lift` instances for all flavors of `ByteString`](https://github.com/haskell/bytestring/pull/392)
-* [Define `foldl`, `foldl'`, `foldr`, `foldr'`, `mapAccumL`, `mapAccumR`, `scanl`, `scanr` and `filter` with onel less argument to allow more inlining](https://github.com/haskell/bytestring/pull/345)
+* [Define `foldl`, `foldl'`, `foldr`, `foldr'`, `mapAccumL`, `mapAccumR`, `scanl`, `scanr` and `filter` with one argument less to allow more inlining](https://github.com/haskell/bytestring/pull/345)
 * [Speed up internal loop in `unfoldrN`](https://github.com/haskell/bytestring/pull/356)
 * [Speed up `count` with SSE and AVX instructions](https://github.com/haskell/bytestring/pull/202)
+* [Improve performance of certain `Builder`s by using a static table for Base16](https://github.com/haskell/bytestring/pull/418)
+* [Use `unsafeWithForeignPtr` whenever possible](https://github.com/haskell/bytestring/pull/401)
 * [Remove `integer-simple` flag](https://github.com/haskell/bytestring/pull/371)
-
+* [Remove misleading mentions of fusion](https://github.com/haskell/bytestring/pull/412)
 
 [0.11.2.0]: https://github.com/haskell/bytestring/compare/0.11.1.0...0.11.2.0
 
