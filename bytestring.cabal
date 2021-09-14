@@ -1,5 +1,5 @@
 Name:                bytestring
-Version:             0.11.1.0
+Version:             0.11.2.0
 Synopsis:            Fast, compact, strict and lazy byte strings with a list interface
 Description:
     An efficient compact, immutable byte string type (both strict and lazy)
@@ -113,9 +113,15 @@ library
                     -fmax-simplifier-iterations=10
                     -fdicts-cheap
                     -fspec-constr-count=6
+  if (arch(x86_64) || arch(i386))
+    c-sources:        cbits/fpstring.c
+                      cbits/itoa.c
+                      cbits/x86/is-valid-utf8.c
+  else
+    c-sources:        cbits/fpstring.c
+                      cbits/itoa.c
+                      cbits/is-valid-utf8.c
 
-  c-sources:         cbits/fpstring.c
-                     cbits/itoa.c
   cc-options:        -std=c11
   include-dirs:      include
   includes:          fpstring.h
@@ -169,6 +175,14 @@ test-suite bytestring-th
   main-is:          bytestring-th.hs
   other-extensions: TemplateHaskell
   build-depends:    base, bytestring, template-haskell, tasty, tasty-hunit
+  ghc-options:      -Wall -fwarn-tabs -threaded -rtsopts
+  default-language: Haskell2010
+
+test-suite is-valid-utf8
+  type:             exitcode-stdio-1.0
+  hs-source-dirs:   tests/is-valid-utf8
+  main-is:          Main.hs
+  build-depends:    base, bytestring, tasty, tasty-quickcheck, QuickCheck
   ghc-options:      -Wall -fwarn-tabs -threaded -rtsopts
   default-language: Haskell2010
 

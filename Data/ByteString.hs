@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE MagicHash #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TupleSections #-}
 {-# OPTIONS_HADDOCK prune #-}
@@ -141,6 +142,9 @@ module Data.ByteString (
         isSuffixOf,
         isInfixOf,
 
+        -- ** Encoding validation
+        isValidUtf8,
+
         -- ** Search for arbitrary substrings
         breakSubstring,
 
@@ -238,7 +242,7 @@ import Control.Exception        (IOException, catch, finally, assert, throwIO)
 import Control.Monad            (when, void)
 
 import Foreign.C.String         (CString, CStringLen)
-import Foreign.C.Types          (CSize)
+import Foreign.C.Types          (CSize (CSize), CInt (CInt))
 import Foreign.ForeignPtr       (ForeignPtr, withForeignPtr, touchForeignPtr)
 import Foreign.ForeignPtr.Unsafe(unsafeForeignPtrToPtr)
 import Foreign.Marshal.Alloc    (allocaBytes)
@@ -1522,6 +1526,17 @@ stripSuffix bs1@(BS _ l1) bs2@(BS _ l2)
 -- | Check whether one string is a substring of another.
 isInfixOf :: ByteString -> ByteString -> Bool
 isInfixOf p s = null p || not (null $ snd $ breakSubstring p s)
+
+-- | /O(n)/ Check whether a 'ByteString' represents valid UTF-8.
+--
+-- @since 0.11.2.0
+isValidUtf8 :: ByteString -> Bool
+isValidUtf8 (BS ptr len) = accursedUnutterablePerformIO $ unsafeWithForeignPtr ptr $ \p -> do 
+  CInt i <- isValidUtf8# p (CSize . fromIntegral $ len)
+  pure $ i /= 0
+
+foreign import ccall unsafe "is_valid_utf8" isValidUtf8#
+  :: Ptr Word8 -> CSize -> IO CInt
 
 -- | Break a string on a substring, returning a pair of the part of the
 -- string prior to the match, and the rest of the string.

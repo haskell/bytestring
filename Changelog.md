@@ -4,6 +4,10 @@
 
 [0.12.0.0]: https://github.com/haskell/bytestring/compare/0.11.1.0...0.12.0.0
 
+[0.11.2.0] - September 2021
+
+* Add `Data.ByteString.isValidUtf8`
+
 [0.11.1.0] — February 2021
 
 * [Add `Data.ByteString.Char8.findIndexEnd` and `Data.ByteString.Lazy.Char8.{elemIndexEnd,findIndexEnd,unzip}`](https://github.com/haskell/bytestring/pull/342)

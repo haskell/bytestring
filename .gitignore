@@ -8,3 +8,4 @@ cabal.sandbox.config
 .hsenv
 *~
 dist-newstyle/
+.nvimrc
