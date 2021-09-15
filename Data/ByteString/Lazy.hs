@@ -463,6 +463,8 @@ foldr k = foldrChunks (flip (S.foldr k))
 {-# INLINE foldr #-}
 
 -- | 'foldr'' is like 'foldr', but strict in the accumulator.
+--
+-- @since 0.11.2.0
 foldr' :: (Word8 -> a -> a) -> a -> ByteString -> a
 foldr' f a = go
   where
@@ -490,6 +492,8 @@ foldr1 f (Chunk c0 cs0) = go c0 cs0
         go c (Chunk c' cs) = S.foldr  f (go c' cs) c
 
 -- | 'foldr1'' is like 'foldr1', but strict in the accumulator.
+--
+-- @since 0.11.2.0
 foldr1' :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldr1' _ Empty          = errorEmptyList "foldr1'"
 foldr1' f (Chunk c0 cs0) = go c0 cs0
@@ -638,6 +642,8 @@ scanl function = fmap (uncurry (flip snoc)) . mapAccumL (\x y -> (function x y, 
 -- | 'scanl1' is a variant of 'scanl' that has no starting value argument.
 --
 -- > scanl1 f [x1, x2, ...] == [x1, x1 `f` x2, ...]
+--
+-- @since 0.11.2.0
 scanl1 :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString
 scanl1 function byteStream = case uncons byteStream of
   Nothing -> Empty
@@ -653,6 +659,7 @@ scanl1 function byteStream = case uncons byteStream of
 -- > head (scanr f z xs) == foldr f z xs
 -- > last (scanr f z xs) == z
 --
+-- @since 0.11.2.0
 scanr
     :: (Word8 -> Word8 -> Word8)
     -- ^ element -> accumulator -> new accumulator
@@ -665,6 +672,8 @@ scanr
 scanr function = fmap (uncurry cons) . mapAccumR (\x y -> (function y x, x))
 
 -- | 'scanr1' is a variant of 'scanr' that has no starting value argument.
+--
+-- @since 0.11.2.0
 scanr1 :: (Word8 -> Word8 -> Word8) -> ByteString -> ByteString
 scanr1 function byteStream = case unsnoc byteStream of
   Nothing -> Empty
