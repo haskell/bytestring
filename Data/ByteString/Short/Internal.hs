@@ -227,6 +227,7 @@ indexError sbs i =
   error $ "Data.ByteString.Short.index: error in array index; " ++ show i
        ++ " not in range [0.." ++ show (length sbs) ++ ")"
 
+-- | @since 0.11.2.0
 unsafePackLenLiteral :: Int -> Addr# -> ShortByteString
 unsafePackLenLiteral len addr# =
     accursedUnutterablePerformIO $ createFromPtr (Ptr addr#) len

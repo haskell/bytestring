@@ -340,6 +340,8 @@ unpackFoldr bs k z = foldr k z bs
 -- This function is in 'IO' because the file system encoding can be
 -- changed. If the encoding can be assumed to be constant in your
 -- use case, you may invoke this function via 'unsafePerformIO'.
+--
+-- @since 0.11.2.0
 fromFilePath :: FilePath -> IO ByteString
 fromFilePath path = do
     enc <- getFileSystemEncoding
@@ -354,6 +356,8 @@ fromFilePath path = do
 -- This function is in 'IO' because the file system encoding can be
 -- changed. If the encoding can be assumed to be constant in your
 -- use case, you may invoke this function via 'unsafePerformIO'.
+--
+-- @since 0.11.2.0
 toFilePath :: ByteString -> IO FilePath
 toFilePath path = do
     enc <- getFileSystemEncoding

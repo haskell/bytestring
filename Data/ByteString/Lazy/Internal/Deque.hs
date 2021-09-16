@@ -1,6 +1,5 @@
 {- |
- A Deque used for accumulating `S.ByteString`s in the lazy
- version of `dropEnd`.
+ A Deque used for accumulating `S.ByteString`s in `Data.ByteString.Lazy.dropEnd`.
 -}
 module Data.ByteString.Lazy.Internal.Deque (
     Deque (..),

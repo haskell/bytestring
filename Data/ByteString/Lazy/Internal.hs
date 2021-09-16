@@ -84,6 +84,8 @@ data ByteString = Empty | Chunk {-# UNPACK #-} !S.ByteString ByteString
 -- See 'invariant' function later in this module for internal invariants.
 
 -- | Type synonym for the lazy flavour of 'ByteString'.
+--
+-- @since 0.11.2.0
 type LazyByteString = ByteString
 
 instance Eq  ByteString where

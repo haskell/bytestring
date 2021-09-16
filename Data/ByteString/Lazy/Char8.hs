@@ -350,6 +350,8 @@ foldr f = L.foldr (f . w2c)
 {-# INLINE foldr #-}
 
 -- | 'foldr'' is like 'foldr', but strict in the accumulator.
+--
+-- @since 0.11.2.0
 foldr' :: (Char -> a -> a) -> a -> ByteString -> a
 foldr' f = L.foldr' (f . w2c)
 
@@ -370,6 +372,8 @@ foldr1 f ps = w2c (L.foldr1 (\x y -> c2w (f (w2c x) (w2c y))) ps)
 {-# INLINE foldr1 #-}
 
 -- | 'foldr1'' is like 'foldr1', but strict in the accumulator.
+--
+-- @since 0.11.2.0
 foldr1' :: (Char -> Char -> Char) -> ByteString -> Char
 foldr1' f ps = w2c (L.foldr1' (\x y -> c2w (f (w2c x) (w2c y))) ps)
 
@@ -417,6 +421,8 @@ scanl f z = L.scanl (\a b -> c2w (f (w2c a) (w2c b))) (c2w z)
 -- | 'scanl1' is a variant of 'scanl' that has no starting value argument.
 --
 -- > scanl1 f [x1, x2, ...] == [x1, x1 `f` x2, ...]
+--
+-- @since 0.11.2.0
 scanl1 :: (Char -> Char -> Char) -> ByteString -> ByteString
 scanl1 f = L.scanl1 f'
   where f' accumulator value = c2w (f (w2c accumulator) (w2c value))
@@ -431,6 +437,7 @@ scanl1 f = L.scanl1 f'
 -- > head (scanr f z xs) == foldr f z xs
 -- > last (scanr f z xs) == z
 --
+-- @since 0.11.2.0
 scanr
     :: (Char -> Char -> Char)
     -- ^ element -> accumulator -> new accumulator
@@ -444,6 +451,8 @@ scanr f = L.scanr f' . c2w
   where f' accumulator value = c2w (f (w2c accumulator) (w2c value))
 
 -- | 'scanr1' is a variant of 'scanr' that has no starting value argument.
+--
+-- @since 0.11.2.0
 scanr1 :: (Char -> Char -> Char) -> ByteString -> ByteString
 scanr1 f = L.scanr1 f'
   where f' accumulator value = c2w (f (w2c accumulator) (w2c value))
