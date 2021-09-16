@@ -113,14 +113,13 @@ library
                     -fmax-simplifier-iterations=10
                     -fdicts-cheap
                     -fspec-constr-count=6
+  
+  c-sources:        cbits/fpstring.c
+                    cbits/itoa.c
   if (arch(x86_64) || arch(i386))
-    c-sources:        cbits/fpstring.c
-                      cbits/itoa.c
-                      cbits/x86/is-valid-utf8.c
+    c-sources:        cbits/x86/is-valid-utf8.c
   else
-    c-sources:        cbits/fpstring.c
-                      cbits/itoa.c
-                      cbits/is-valid-utf8.c
+    c-sources:        cbits/is-valid-utf8.c
 
   cc-options:        -std=c11
   include-dirs:      include

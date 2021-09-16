@@ -9,3 +9,4 @@ cabal.sandbox.config
 *~
 dist-newstyle/
 .nvimrc
+cabal.project.local*

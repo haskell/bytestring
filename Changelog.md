@@ -20,12 +20,9 @@
 * [Use `unsafeWithForeignPtr` whenever possible](https://github.com/haskell/bytestring/pull/401)
 * [Remove `integer-simple` flag](https://github.com/haskell/bytestring/pull/371)
 * [Remove misleading mentions of fusion](https://github.com/haskell/bytestring/pull/412)
+* Add `Data.ByteString.isValidUtf8`
 
 [0.11.2.0]: https://github.com/haskell/bytestring/compare/0.11.1.0...0.11.2.0
-
-[0.11.2.0] - September 2021
-
-* Add `Data.ByteString.isValidUtf8`
 
 [0.11.1.0] — February 2021
 

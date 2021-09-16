@@ -7,7 +7,7 @@ import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
 import Data.Char (chr, ord)
 import Data.Word (Word8)
-import Test.QuickCheck (Property, forAllShrink, (===))
+import Test.QuickCheck (Property, forAll, (===))
 import Test.QuickCheck.Arbitrary (Arbitrary (arbitrary, shrink))
 import Test.QuickCheck.Gen (oneof, Gen, choose, vectorOf, listOf1, sized, resize,
                             elements)
@@ -21,10 +21,10 @@ main = defaultMain . testGroup "UTF-8 validation" $ [
   ]
   where
     goValid :: Property
-    goValid = forAllShrink arbitrary shrink $
+    goValid = forAll arbitrary $
       \(ValidUtf8 ss) -> (B.isValidUtf8 . foldMap sequenceToBS $ ss) === True
     goInvalid :: Property
-    goInvalid = forAllShrink arbitrary shrink $ 
+    goInvalid = forAll arbitrary $ 
       \inv -> (B.isValidUtf8 . toByteString $ inv) === False
 
 -- Helpers
