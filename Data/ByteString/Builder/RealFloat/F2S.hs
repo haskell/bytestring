@@ -1,4 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE BangPatterns, MagicHash, UnboxedTuples #-}
 
 module Data.ByteString.Builder.RealFloat.F2S
@@ -8,7 +9,7 @@ module Data.ByteString.Builder.RealFloat.F2S
     ) where
 
 import Control.Arrow (first)
-import Data.Bits ((.|.), (.&.))
+import Data.Bits ((.|.), (.&.), unsafeShiftL, unsafeShiftR)
 import Data.ByteString.Builder.Internal (Builder)
 import Data.ByteString.Builder.Prim (primBounded)
 import Data.ByteString.Builder.RealFloat.Internal
@@ -36,25 +37,25 @@ listArray es = runST (ST $ \s1 ->
 -- | Table of 2^k / 5^q + 1
 float_pow5_inv_split :: ByteArray
 float_pow5_inv_split = listArray
-    $(gen_table_f float_max_inv_split (finv $ fromIntegral float_pow5_inv_bitcount))
+    $(gen_table_f float_max_inv_split (finv float_pow5_inv_bitcount))
 
 -- | Table of 5^(-e2-q) / 2^k + 1
 float_pow5_split :: ByteArray
 float_pow5_split = listArray
-    $(gen_table_f float_max_split (fnorm $ fromIntegral float_pow5_bitcount))
+    $(gen_table_f float_max_split (fnorm float_pow5_bitcount))
 
 -- | Number of mantissa bits of a 32-bit float. The number of significant bits
 -- (floatDigits (undefined :: Float)) is 24 since we have a leading 1 for
 -- normal floats and 0 for subnormal floats
-float_mantissa_bits :: Word32
+float_mantissa_bits :: Int
 float_mantissa_bits = 23
 
 -- | Number of exponent bits of a 32-bit float
-float_exponent_bits :: Word32
+float_exponent_bits :: Int
 float_exponent_bits = 8
 
 -- | Bias in encoded 32-bit float representation (2^7 - 1)
-float_bias :: Word32
+float_bias :: Int
 float_bias = 127
 
 data FloatingDecimal = FloatingDecimal
@@ -166,10 +167,10 @@ f2d :: Word32 -> Word32 -> FloatingDecimal
 f2d m e =
   let !mf = if e == 0
               then m
-              else (1 .<< float_mantissa_bits) .|. m
-      !ef = fromIntegral $ if e == 0
+              else (1 `unsafeShiftL` float_mantissa_bits) .|. m
+      !(ef :: Int32) = fromIntegral $ if e == 0
               then 1 - (float_bias + float_mantissa_bits)
-              else e - (float_bias + float_mantissa_bits)
+              else (fromIntegral e :: Int) - (float_bias + float_mantissa_bits)
       !e2 = ef - 2
       -- Step 2. 3-tuple (u, v, w) * 2**e2
       !u = 4 * mf - 1 - asWord (m /= 0 || e <= 1)
@@ -194,9 +195,9 @@ f2d m e =
 breakdown :: Float -> (Bool, Word32, Word32)
 breakdown f =
   let bits = castFloatToWord32 f
-      sign = ((bits .>> (float_mantissa_bits + float_exponent_bits)) .&. 1) /= 0
+      sign = ((bits `unsafeShiftR` (float_mantissa_bits + float_exponent_bits)) .&. 1) /= 0
       mantissa = bits .&. mask float_mantissa_bits
-      expo = (bits .>> float_mantissa_bits) .&. mask float_exponent_bits
+      expo = (bits `unsafeShiftR` float_mantissa_bits) .&. mask float_exponent_bits
    in (sign, mantissa, expo)
 
 -- | Dispatches to `f2d` and applies the given formatters

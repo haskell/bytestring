@@ -21,6 +21,7 @@ module Data.ByteString.Builder.RealFloat.TableGenerator
   ) where
 
 import Data.Bits ((.&.), shiftR, shiftL, shiftR)
+import GHC.Float (int2Double)
 import GHC.Word (Word64(..))
 import Language.Haskell.TH
 
@@ -127,33 +128,33 @@ double_pow5_inv_bitcount :: Int
 double_pow5_inv_bitcount = 125
 
 -- | Number of bits in a positive integer
-blen :: Integer -> Integer
+blen :: Integer -> Int
 blen 0 = 0
 blen 1 = 1
 blen n = 1 + blen (n `quot` 2)
 
 -- | Used for table generation of 2^k / 5^q + 1
-finv :: Integer -> Integer -> Integer
+finv :: Int -> Int -> Integer
 finv bitcount i =
   let p = 5^i
-   in (1 `shiftL` fromIntegral (blen p - 1 + bitcount)) `div` p + 1
+   in (1 `shiftL` (blen p - 1 + bitcount)) `div` p + 1
 
 -- | Used for table generation of 5^-e2-q / 2^k
-fnorm :: Integer -> Integer -> Integer
+fnorm :: Int -> Int -> Integer
 fnorm bitcount i =
   let p = 5^i
-      s = fromIntegral (blen p - bitcount)
+      s = blen p - bitcount
    in if s < 0 then p `shiftL` (-s) else p `shiftR` s
 
 -- | Generates a compile-time lookup table for floats as Word64
-gen_table_f :: (Integral a) => a -> (a -> Integer) -> Q Exp
+gen_table_f :: Int -> (Int -> Integer) -> Q Exp
 gen_table_f n f = return $ ListE (fmap (LitE . IntegerL . f) [0..n])
 
 -- | Generates a compile-time lookup table for doubles as Word128
-gen_table_d :: forall a. (Integral a) => a -> (a -> Integer) -> Q Exp
+gen_table_d :: Int -> (Int -> Integer) -> Q Exp
 gen_table_d n f = return $ ListE (fmap ff [0..n])
   where
-    ff :: a -> Exp
+    ff :: Int -> Exp
     ff c = let r = f c
                hi = r `shiftR` 64
                lo = r .&. ((1 `shiftL` 64) - 1)
@@ -161,22 +162,22 @@ gen_table_d n f = return $ ListE (fmap ff [0..n])
 
 -- Given a specific floating-point type, determine the range of q for the < 0
 -- and >= 0 cases
-get_range :: forall ff. (RealFloat ff) => ff -> (Integer, Integer)
+get_range :: forall ff. (RealFloat ff) => ff -> (Int, Int)
 get_range f =
   let (emin, emax) = floatRange f
       mantissaDigits = floatDigits f
-      emin' = fromIntegral $ emin - mantissaDigits - 2
-      emax' = fromIntegral $ emax - mantissaDigits - 2
-   in ( (-emin') - floor (fromIntegral (-emin') * logBase 10 5 :: Double)
-      , floor (emax' * logBase 10 2 :: Double))
+      emin' = emin - mantissaDigits - 2
+      emax' = emax - mantissaDigits - 2
+   in ( (-emin') - floor (int2Double (-emin') * logBase 10 5)
+      , floor (int2Double emax' * logBase 10 2))
 
-float_max_split :: Integer
-float_max_inv_split :: Integer
+float_max_split :: Int
+float_max_inv_split :: Int
 (float_max_split, float_max_inv_split) = get_range (undefined :: Float)
 
 -- we take a slightly different codepath s.t we need one extra entry
-double_max_split :: Integer
-double_max_inv_split :: Integer
+double_max_split :: Int
+double_max_inv_split :: Int
 (double_max_split, double_max_inv_split) =
     let (m, mi) = get_range (undefined :: Double)
      in (m + 1, mi)

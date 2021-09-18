@@ -1,4 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE BangPatterns, MagicHash, UnboxedTuples #-}
 
 module Data.ByteString.Builder.RealFloat.D2S
@@ -8,14 +9,14 @@ module Data.ByteString.Builder.RealFloat.D2S
     ) where
 
 import Control.Arrow (first)
-import Data.Bits ((.|.), (.&.))
+import Data.Bits ((.|.), (.&.), unsafeShiftL, unsafeShiftR)
 import Data.ByteString.Builder.Internal (Builder)
 import Data.ByteString.Builder.Prim (primBounded)
 import Data.ByteString.Builder.RealFloat.Internal
 import Data.ByteString.Builder.RealFloat.TableGenerator
 import Data.Maybe (fromMaybe)
 import GHC.Exts
-import GHC.Int (Int32(..), Int64(..))
+import GHC.Int (Int32(..))
 import GHC.ST (ST(..), runST)
 import GHC.Word (Word32(..), Word64(..))
 
@@ -38,25 +39,25 @@ listArray es = runST (ST $ \s1 ->
 -- | Table of 2^k / 5^q + 1
 double_pow5_inv_split :: ByteArray
 double_pow5_inv_split = listArray
-    $(gen_table_d double_max_inv_split (finv $ fromIntegral double_pow5_inv_bitcount))
+    $(gen_table_d double_max_inv_split (finv double_pow5_inv_bitcount))
 
 -- | Table of 5^(-e2-q) / 2^k + 1
 double_pow5_split :: ByteArray
 double_pow5_split = listArray
-    $(gen_table_d double_max_split (fnorm $ fromIntegral double_pow5_bitcount))
+    $(gen_table_d double_max_split (fnorm double_pow5_bitcount))
 
 -- | Number of mantissa bits of a 64-bit float. The number of significant bits
 -- (floatDigits (undefined :: Double)) is 53 since we have a leading 1 for
 -- normal floats and 0 for subnormal floats
-double_mantissa_bits :: Word64
+double_mantissa_bits :: Int
 double_mantissa_bits = 52
 
 -- | Number of exponent bits of a 64-bit float
-double_exponent_bits :: Word64
+double_exponent_bits :: Int
 double_exponent_bits = 11
 
 -- | Bias in encoded 64-bit float representation (2^10 - 1)
-double_bias :: Word64
+double_bias :: Int
 double_bias = 1023
 
 data FloatingDecimal = FloatingDecimal
@@ -67,9 +68,9 @@ data FloatingDecimal = FloatingDecimal
 -- | Quick check for small integers
 d2dSmallInt :: Word64 -> Word32 -> Maybe FloatingDecimal
 d2dSmallInt m e =
-  let m2 = (1 .<< double_mantissa_bits) .|. m
-      e2 = fromIntegral $ fromIntegral e - double_bias - double_mantissa_bits :: Int64
-      fraction = m2 .&. mask (fromIntegral $ -e2)
+  let m2 = (1 `unsafeShiftL` double_mantissa_bits) .|. m
+      e2 = fromIntegral e - (double_bias + double_mantissa_bits) :: Int
+      fraction = m2 .&. mask (-e2)
    in case () of
         _ -- f = m2 * 2^e2 >= 2^53 is an integer.
           -- Ignore this case for now.
@@ -84,7 +85,7 @@ d2dSmallInt m e =
           -- f is an integer in the range [1, 2^53).
           -- Note: mantissa might contain trailing (decimal) 0's.
           -- Note: since 2^53 < 10^16, there is no need to adjust decimalLength17().
-          | otherwise -> Just $ FloatingDecimal (m2 .>> (fromIntegral $ -e2)) 0
+          | otherwise -> Just $ FloatingDecimal (m2 `unsafeShiftR` (-e2)) 0
 
 
 -- | Removes trailing (decimal) zeros for small integers in the range [1, 2^53)
@@ -187,10 +188,10 @@ d2d :: Word64 -> Word32 -> FloatingDecimal
 d2d m e =
   let !mf = if e == 0
               then m
-              else (1 .<< double_mantissa_bits) .|. m
-      !ef = fromIntegral $ if e == 0
-              then 1 - double_bias - double_mantissa_bits
-              else fromIntegral e - double_bias - double_mantissa_bits
+              else (1 `unsafeShiftL` double_mantissa_bits) .|. m
+      !(ef :: Int32) = fromIntegral $ if e == 0
+              then 1 - (double_bias + double_mantissa_bits)
+              else (fromIntegral e :: Int) - (double_bias + double_mantissa_bits)
       !e2 = ef - 2
       -- Step 2. 3-tuple (u, v, w) * 2**e2
       !u = 4 * mf - 1 - asWord (m /= 0 || e <= 1)
@@ -212,13 +213,13 @@ d2d m e =
    in FloatingDecimal output e'
 
 -- | Split a Double into (sign, mantissa, exponent)
-breakdown :: Double -> (Bool, Word64, Word64)
+breakdown :: Double -> (Bool, Word64, Word32)
 breakdown f =
   let bits = castDoubleToWord64 f
-      sign = ((bits .>> (double_mantissa_bits + double_exponent_bits)) .&. 1) /= 0
+      sign = ((bits `unsafeShiftR` (double_mantissa_bits + double_exponent_bits)) .&. 1) /= 0
       mantissa = bits .&. mask double_mantissa_bits
-      expo = (bits .>> double_mantissa_bits) .&. mask double_exponent_bits
-   in (sign, mantissa, expo)
+      expo = (bits `unsafeShiftR` double_mantissa_bits) .&. mask double_exponent_bits
+   in (sign, mantissa, fromIntegral expo)
 
 -- | Dispatches to `d2d` or `d2dSmallInt` and applies the given formatters
 {-# INLINE d2s' #-}
@@ -230,8 +231,8 @@ d2s' formatter specialFormatter d =
                   { negative=sign
                   , exponent_all_one=expo > 0
                   , mantissa_non_zero=mantissa > 0 }
-         else let v = unifySmallTrailing <$> d2dSmallInt mantissa (fromIntegral expo)
-                  FloatingDecimal m e = fromMaybe (d2d mantissa (fromIntegral expo)) v
+         else let v = unifySmallTrailing <$> d2dSmallInt mantissa expo
+                  FloatingDecimal m e = fromMaybe (d2d mantissa expo) v
                in formatter sign m e
 
 -- | Render a Double in scientific notation

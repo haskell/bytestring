@@ -4,9 +4,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Data.ByteString.Builder.RealFloat.Internal
-    ( (.>>)
-    , (.<<)
-    , mask
+    ( mask
     , asWord
     , NonNumbersAndZero(..)
     , toCharsNonNumbersAndZero
@@ -91,26 +89,14 @@ castDoubleToWord64 :: Double -> Word64
 castDoubleToWord64 x = unsafePerformIO (with x (peek . castPtr))
 #endif
 
--- | Unsafe shiftR by specified number of bits. The second argument must be
--- non-negative and smaller than the number of bits in the type.
-{-# INLINABLE (.>>) #-}
-(.>>) :: (Bits a, Integral a) => a -> a -> a
-a .>> s = unsafeShiftR a (fromIntegral s)
-
--- | Unsafe shiftL by specified number of bits. The second argument must be
--- non-negative and smaller than the number of bits in the type.
-{-# INLINABLE (.<<) #-}
-(.<<) :: (Bits a, Integral a) => a -> a -> a
-a .<< s = unsafeShiftL a (fromIntegral s)
-
 -- | Build a full bit-mask of specified length.
 --
 -- e.g
 --
--- > showHex (mask (12 :: Word32)) [] = "fff"
+-- > showHex (mask 12) [] = "fff"
 {-# INLINABLE mask #-}
-mask :: (Bits a, Integral a) => a -> a
-mask = flip (-) 1 . (.<<) 1
+mask :: (Bits a, Integral a) => Int -> a
+mask = flip (-) 1 . unsafeShiftL 1
 
 -- | Convert Boolean False to 0 and True to 1
 {-# INLINABLE asWord #-}
@@ -634,8 +620,8 @@ writeMantissa ptr olength = go (ptr `plusAddr#` olength)
            in (# ptr `plusAddr#` 3#, s4 #)
 
 -- | Write the exponent into the given address.
-writeExponent :: Addr# -> Int -> State# d -> (# Addr#, State# d #)
-writeExponent ptr !expo@(I# e) s1
+writeExponent :: Addr# -> Int32 -> State# d -> (# Addr#, State# d #)
+writeExponent ptr !expo@(I32# e) s1
   | expo >= 100 =
       let !(# e1, e0 #) = fquotRem10 (int2Word# e)
           s2 = copyWord16 (digit_table `unsafeAt` word2Int# e1) ptr s1
@@ -663,11 +649,11 @@ writeSign ptr False s = (# ptr, s #)
 toCharsScientific :: (Mantissa a) => Bool -> a -> Int32 -> BoundedPrim ()
 toCharsScientific !sign !mantissa !expo = boundedPrim maxEncodedLength $ \_ !(Ptr p0)-> do
   let !olength@(I# ol) = decimalLength mantissa
-      !expo' = expo + fromIntegral olength - 1
+      !expo' = expo + fromIntegral olength - 1 :: Int32
   return $ runST (ST $ \s1 ->
     let !(# p1, s2 #) = writeSign p0 sign s1
         !(# p2, s3 #) = writeMantissa p1 ol mantissa s2
         s4 = poke p2 (asciiRaw ascii_e) s3
         !(# p3, s5 #) = writeSign (p2 `plusAddr#` 1#) (expo' < 0) s4
-        !(# p4, s6 #) = writeExponent p3 (fromIntegral $ abs expo') s5
+        !(# p4, s6 #) = writeExponent p3 (abs expo') s5
      in (# s6, (Ptr p4) #))

@@ -38,10 +38,10 @@ formatFloat fmt prec f =
         Just b -> b
         Nothing ->
           if e' >= 0 && e' <= 7
-             then sign f `mappend` showFixed (fromIntegral m) e' prec
+             then sign f `mappend` showFixed (fromIntegral m :: Word64) e' prec
              else BP.primBounded (R.toCharsScientific (f < 0) m e) ()
       where (RF.FloatingDecimal m e) = RF.f2Intermediate f
-            e' = fromIntegral e + R.decimalLength9 m
+            e' = fromIntegral e + R.decimalLength9 m :: Int
     FFExponent -> RF.f2s f
     FFFixed -> d2Fixed (realToFrac f) prec
 
@@ -58,7 +58,7 @@ formatDouble fmt prec f =
              then sign f `mappend` showFixed m e' prec
              else BP.primBounded (R.toCharsScientific (f < 0) m e) ()
       where (RD.FloatingDecimal m e) = RD.d2Intermediate f
-            e' = fromIntegral e + R.decimalLength17 m
+            e' = fromIntegral e + R.decimalLength17 m :: Int
     FFExponent -> RD.d2s f
     FFFixed -> d2Fixed f prec
 
@@ -70,9 +70,8 @@ d2Fixed f prec =
     Just b -> b
     Nothing -> sign f `mappend` showFixed m e' prec
   where (RD.FloatingDecimal m e) = RD.d2Intermediate f
-        olength = R.decimalLength17 m
         -- NB: exponent in exponential format is e' - 1
-        e' = fromIntegral e + olength
+        e' = fromIntegral e + R.decimalLength17 m :: Int
 
 -- | Char7 encode a 'Char'.
 {-# INLINE char7 #-}
@@ -102,8 +101,8 @@ specialStr f
 digits :: Word64 -> [Int]
 digits w = go [] w
   where go ds 0 = ds
-        go ds c = let (q, r) = R.dquotRem10Boxed c
-                   in go (fromIntegral r:ds) q
+        go ds c = let (q, r) = R.dquotRem10Boxed c :: (Word64, Word64)
+                   in go ((fromIntegral r :: Int) : ds) q
 
 -- | Show a floating point value in fixed point. Based on GHC.Float.showFloat
 showFixed :: Word64 -> Int -> Maybe Int -> Builder
