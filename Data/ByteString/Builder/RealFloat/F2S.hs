@@ -1,6 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE BangPatterns, MagicHash, UnboxedTuples #-}
+-- | Implementation of float-to-string conversion
 
 module Data.ByteString.Builder.RealFloat.F2S
     ( FloatingDecimal(..)

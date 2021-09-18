@@ -1,3 +1,13 @@
+-- | Floating point formatting for Bytestring.Builder
+--
+-- This module primarily exposes `floatDec` and `doubleDec` which do the
+-- equivalent of converting through `string7 . show`.
+--
+-- Experimentally, it also exposes `formatFloat` and `formatDouble` which
+-- accept the same arguments as `GHC.Float.formatRealFloat`. Currently,
+-- precision is not supported for the general and scientific notation versions
+-- of this API.
+--
 
 module Data.ByteString.Builder.RealFloat
   ( FFFormat(..)
@@ -16,19 +26,28 @@ import GHC.Float (FFFormat(..), roundTo)
 import GHC.Word (Word64(..))
 import GHC.Show (intToDigit)
 
--- | Returns a rendered Float using the Ryu algorithm. Matches `show` in
--- displaying in fixed or scientific notation
+-- | Returns a rendered Float. Matches `show` in displaying in fixed or
+-- scientific notation
 {-# INLINABLE floatDec #-}
 floatDec :: Float -> Builder
 floatDec = formatFloat FFGeneric Nothing
 
--- | Returns a rendered Double using the Ryu algorithm. Matches `show` in
--- displaying in fixed or scientific notation
+-- | Returns a rendered Double. Matches `show` in displaying in fixed or
+-- scientific notation
 {-# INLINABLE doubleDec #-}
 doubleDec :: Double -> Builder
 doubleDec = formatDouble FFGeneric Nothing
 
--- TODO precision for general and exponent formats
+-- TODO: support precision argument for FFGeneric and FFExponent
+-- | Returns a rendered Float. Matches the API of `formatRealFloat` but does not
+-- currently handle the precision argument in case of `FFGeneric` and
+-- `FFExponent`
+--
+-- e.g
+--
+-- > formatFloat FFFixed (Just 2) 12.345 = "12.35"
+-- > formatFloat FFFixed (Just 5) 12.345 = "12.34500"
+-- > formatFloat FFGeneric Nothing 12.345 = "12.345"
 {-# INLINABLE formatFloat #-}
 formatFloat :: FFFormat -> Maybe Int -> Float -> Builder
 formatFloat fmt prec f =
@@ -45,7 +64,16 @@ formatFloat fmt prec f =
     FFExponent -> RF.f2s f
     FFFixed -> d2Fixed (realToFrac f) prec
 
--- TODO precision for general and exponent formats
+-- TODO: support precision argument for FFGeneric and FFExponent
+-- | Returns a rendered Double. Matches the API of `formatRealFloat` but does not
+-- currently handle the precision argument in case of `FGeneric` and
+-- `FFExponent`
+--
+-- e.g
+--
+-- > formatDouble FFFixed (Just 2) 12.345 = "12.35"
+-- > formatDouble FFFixed (Just 5) 12.345 = "12.34500"
+-- > formatDouble FFGeneric Nothing 12.345 = "12.345"
 {-# INLINABLE formatDouble #-}
 formatDouble :: FFFormat -> Maybe Int -> Double -> Builder
 formatDouble fmt prec f =
@@ -62,8 +90,8 @@ formatDouble fmt prec f =
     FFExponent -> RD.d2s f
     FFFixed -> d2Fixed f prec
 
--- | Show fixed floating point matching show / showFFloat output by dropping
--- digits after exponentiation precision
+-- | Show fixed floating point matching show / formatRealFloat output by
+-- dropping digits after exponentiation precision
 d2Fixed :: Double -> Maybe Int -> Builder
 d2Fixed f prec =
   case specialStr f of

@@ -3,6 +3,13 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE BangPatterns, MagicHash, UnboxedTuples #-}
+-- | Constants and compile-time table generation for Ryu internals
+--
+-- This module uses Haskell's arbitrary-precision `Integer` types to compute
+-- the necessary multipliers for efficient conversion to a decimal power base.
+--
+-- It also exposes constants relevant to the 32- and 64-bit tables (e.g maximum
+-- number of bits required to store the table values).
 
 module Data.ByteString.Builder.RealFloat.TableGenerator
   ( Word128(..)

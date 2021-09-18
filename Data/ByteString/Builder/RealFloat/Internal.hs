@@ -2,6 +2,15 @@
 {-# LANGUAGE BangPatterns, MagicHash, UnboxedTuples #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE RecordWildCards #-}
+-- | Various floating-to-string conversion helpers that are somewhat
+-- floating-size agnostic
+--
+-- This module includes
+-- - Efficient formatting for scientific floating-to-string
+-- - Trailing zero handling when converting to decimal power base
+-- - Approximations for logarithms of powers
+-- - Fast-division by reciprocal multiplication
+-- - Prim-op bit-wise peek
 
 module Data.ByteString.Builder.RealFloat.Internal
     ( mask
@@ -69,7 +78,7 @@ import Foreign.Ptr (castPtr)
 import Foreign.Storable (peek)
 
 -- | Interpret a 'Float' as a 'Word32' as if through a bit-for-bit copy.
--- (fallback if not availble through GHC.Float)
+-- (fallback if not available through GHC.Float)
 --
 -- e.g
 --
@@ -79,7 +88,7 @@ castFloatToWord32 :: Float -> Word32
 castFloatToWord32 x = unsafePerformIO (with x (peek . castPtr))
 
 -- | Interpret a 'Double' as a 'Word64' as if through a bit-for-bit copy.
--- (fallback if not availble through GHC.Float)
+-- (fallback if not available through GHC.Float)
 --
 -- e.g
 --
