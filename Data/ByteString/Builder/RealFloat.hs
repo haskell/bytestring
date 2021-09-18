@@ -10,7 +10,7 @@
 --
 
 module Data.ByteString.Builder.RealFloat
-  ( FFFormat(..)
+  ( FloatFormat(..)
   , floatDec
   , doubleDec
   , formatFloat
@@ -22,7 +22,7 @@ import qualified Data.ByteString.Builder.RealFloat.Internal as R
 import qualified Data.ByteString.Builder.RealFloat.F2S as RF
 import qualified Data.ByteString.Builder.RealFloat.D2S as RD
 import qualified Data.ByteString.Builder.Prim as BP
-import GHC.Float (FFFormat(..), roundTo)
+import GHC.Float (roundTo)
 import GHC.Word (Word64(..))
 import GHC.Show (intToDigit)
 
@@ -30,29 +30,36 @@ import GHC.Show (intToDigit)
 -- scientific notation
 {-# INLINABLE floatDec #-}
 floatDec :: Float -> Builder
-floatDec = formatFloat FFGeneric Nothing
+floatDec = formatFloat FGeneric Nothing
 
 -- | Returns a rendered Double. Matches `show` in displaying in fixed or
 -- scientific notation
 {-# INLINABLE doubleDec #-}
 doubleDec :: Double -> Builder
-doubleDec = formatDouble FFGeneric Nothing
+doubleDec = formatDouble FGeneric Nothing
 
--- TODO: support precision argument for FFGeneric and FFExponent
--- | Returns a rendered Float. Matches the API of `formatRealFloat` but does not
--- currently handle the precision argument in case of `FFGeneric` and
--- `FFExponent`
+-- | ByteString float-to-string format
+data FloatFormat
+  = FExponent       -- ^ scientific notation
+  | FFixed          -- ^ fixed precision with `Maybe Int` digits after the decimal
+  | FGeneric        -- ^ dispatches to fixed or exponent based on the exponent
+  deriving Show
+
+-- TODO: support precision argument for FGeneric and FExponent
+-- | Returns a rendered Float. Matches the API of `formatRealFloat` but does
+-- not currently handle the precision argument in case of `FGeneric` and
+-- `FExponent`
 --
 -- e.g
 --
--- > formatFloat FFFixed (Just 2) 12.345 = "12.35"
--- > formatFloat FFFixed (Just 5) 12.345 = "12.34500"
--- > formatFloat FFGeneric Nothing 12.345 = "12.345"
+-- > formatFloat FFixed (Just 2) 12.345 = "12.35"
+-- > formatFloat FFixed (Just 5) 12.345 = "12.34500"
+-- > formatFloat FGeneric Nothing 12.345 = "12.345"
 {-# INLINABLE formatFloat #-}
-formatFloat :: FFFormat -> Maybe Int -> Float -> Builder
+formatFloat :: FloatFormat-> Maybe Int -> Float -> Builder
 formatFloat fmt prec f =
   case fmt of
-    FFGeneric ->
+    FGeneric ->
       case specialStr f of
         Just b -> b
         Nothing ->
@@ -61,24 +68,24 @@ formatFloat fmt prec f =
              else BP.primBounded (R.toCharsScientific (f < 0) m e) ()
       where (RF.FloatingDecimal m e) = RF.f2Intermediate f
             e' = fromIntegral e + R.decimalLength9 m :: Int
-    FFExponent -> RF.f2s f
-    FFFixed -> d2Fixed (realToFrac f) prec
+    FExponent -> RF.f2s f
+    FFixed -> d2Fixed (realToFrac f) prec
 
--- TODO: support precision argument for FFGeneric and FFExponent
--- | Returns a rendered Double. Matches the API of `formatRealFloat` but does not
--- currently handle the precision argument in case of `FGeneric` and
--- `FFExponent`
+-- TODO: support precision argument for FGeneric and FExponent
+-- | Returns a rendered Double. Matches the API of `formatRealFloat` but does
+-- not currently handle the precision argument in case of `FGeneric` and
+-- `FExponent`
 --
 -- e.g
 --
--- > formatDouble FFFixed (Just 2) 12.345 = "12.35"
--- > formatDouble FFFixed (Just 5) 12.345 = "12.34500"
--- > formatDouble FFGeneric Nothing 12.345 = "12.345"
+-- > formatDouble FFixed (Just 2) 12.345 = "12.35"
+-- > formatDouble FFixed (Just 5) 12.345 = "12.34500"
+-- > formatDouble FGeneric Nothing 12.345 = "12.345"
 {-# INLINABLE formatDouble #-}
-formatDouble :: FFFormat -> Maybe Int -> Double -> Builder
+formatDouble :: FloatFormat-> Maybe Int -> Double -> Builder
 formatDouble fmt prec f =
   case fmt of
-    FFGeneric ->
+    FGeneric ->
       case specialStr f of
         Just b -> b
         Nothing ->
@@ -87,8 +94,8 @@ formatDouble fmt prec f =
              else BP.primBounded (R.toCharsScientific (f < 0) m e) ()
       where (RD.FloatingDecimal m e) = RD.d2Intermediate f
             e' = fromIntegral e + R.decimalLength17 m :: Int
-    FFExponent -> RD.d2s f
-    FFFixed -> d2Fixed f prec
+    FExponent -> RD.d2s f
+    FFixed -> d2Fixed f prec
 
 -- | Show fixed floating point matching show / formatRealFloat output by
 -- dropping digits after exponentiation precision
