@@ -19,7 +19,7 @@ import Data.Maybe (fromMaybe)
 import GHC.Exts
 import GHC.Int (Int32(..))
 import GHC.ST (ST(..), runST)
-import GHC.Word (Word32(..), Word64(..))
+import GHC.Word (Word64(..))
 
 -- See Data.ByteString.Builder.RealFloat.TableGenerator for a high-level
 -- explanation of the ryu algorithm
@@ -67,10 +67,10 @@ data FloatingDecimal = FloatingDecimal
   } deriving (Show, Eq)
 
 -- | Quick check for small integers
-d2dSmallInt :: Word64 -> Word32 -> Maybe FloatingDecimal
+d2dSmallInt :: Word64 -> Word64 -> Maybe FloatingDecimal
 d2dSmallInt m e =
   let m2 = (1 `unsafeShiftL` double_mantissa_bits) .|. m
-      e2 = fromIntegral e - (double_bias + double_mantissa_bits) :: Int
+      e2 = word64ToInt e - (double_bias + double_mantissa_bits)
       fraction = m2 .&. mask (-e2)
    in case () of
         _ -- f = m2 * 2^e2 >= 2^53 is an integer.
@@ -185,17 +185,17 @@ d2dLT (I32# e2) (W64# u) (W64# v) (W64# w) =
 
 -- | Returns the decimal representation of the given mantissa and exponent of a
 -- 64-bit Double using the ryu algorithm.
-d2d :: Word64 -> Word32 -> FloatingDecimal
+d2d :: Word64 -> Word64 -> FloatingDecimal
 d2d m e =
   let !mf = if e == 0
               then m
               else (1 `unsafeShiftL` double_mantissa_bits) .|. m
-      !(ef :: Int32) = fromIntegral $ if e == 0
+      !ef = intToInt32 $ if e == 0
               then 1 - (double_bias + double_mantissa_bits)
-              else (fromIntegral e :: Int) - (double_bias + double_mantissa_bits)
+              else word64ToInt e - (double_bias + double_mantissa_bits)
       !e2 = ef - 2
       -- Step 2. 3-tuple (u, v, w) * 2**e2
-      !u = 4 * mf - 1 - asWord (m /= 0 || e <= 1)
+      !u = 4 * mf - 1 - boolToWord64 (m /= 0 || e <= 1)
       !v = 4 * mf
       !w = 4 * mf + 2
       -- Step 3. convert to decimal power base
@@ -214,13 +214,13 @@ d2d m e =
    in FloatingDecimal output e'
 
 -- | Split a Double into (sign, mantissa, exponent)
-breakdown :: Double -> (Bool, Word64, Word32)
+breakdown :: Double -> (Bool, Word64, Word64)
 breakdown f =
   let bits = castDoubleToWord64 f
       sign = ((bits `unsafeShiftR` (double_mantissa_bits + double_exponent_bits)) .&. 1) /= 0
       mantissa = bits .&. mask double_mantissa_bits
       expo = (bits `unsafeShiftR` double_mantissa_bits) .&. mask double_exponent_bits
-   in (sign, mantissa, fromIntegral expo)
+   in (sign, mantissa, expo)
 
 -- | Dispatches to `d2d` or `d2dSmallInt` and applies the given formatters
 {-# INLINE d2s' #-}

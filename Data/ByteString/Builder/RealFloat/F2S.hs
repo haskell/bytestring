@@ -169,12 +169,12 @@ f2d m e =
   let !mf = if e == 0
               then m
               else (1 `unsafeShiftL` float_mantissa_bits) .|. m
-      !(ef :: Int32) = fromIntegral $ if e == 0
+      !ef = intToInt32 $ if e == 0
               then 1 - (float_bias + float_mantissa_bits)
-              else (fromIntegral e :: Int) - (float_bias + float_mantissa_bits)
+              else word32ToInt e - (float_bias + float_mantissa_bits)
       !e2 = ef - 2
       -- Step 2. 3-tuple (u, v, w) * 2**e2
-      !u = 4 * mf - 1 - asWord (m /= 0 || e <= 1)
+      !u = 4 * mf - 1 - boolToWord32 (m /= 0 || e <= 1)
       !v = 4 * mf
       !w = 4 * mf + 2
       -- Step 3. convert to decimal power base

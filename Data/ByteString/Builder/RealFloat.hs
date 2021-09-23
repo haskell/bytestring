@@ -23,7 +23,7 @@ import qualified Data.ByteString.Builder.RealFloat.F2S as RF
 import qualified Data.ByteString.Builder.RealFloat.D2S as RD
 import qualified Data.ByteString.Builder.Prim as BP
 import GHC.Float (roundTo)
-import GHC.Word (Word64(..))
+import GHC.Word (Word32, Word64)
 import GHC.Show (intToDigit)
 
 -- | Returns a rendered Float. Matches `show` in displaying in fixed or
@@ -64,10 +64,12 @@ formatFloat fmt prec f =
         Just b -> b
         Nothing ->
           if e' >= 0 && e' <= 7
-             then sign f `mappend` showFixed (fromIntegral m :: Word64) e' prec
+             then sign f `mappend` showFixed (word32ToWord64 m) e' prec
              else BP.primBounded (R.toCharsScientific (f < 0) m e) ()
       where (RF.FloatingDecimal m e) = RF.f2Intermediate f
-            e' = fromIntegral e + R.decimalLength9 m :: Int
+            e' = R.int32ToInt e + R.decimalLength9 m
+            word32ToWord64 :: Word32 -> Word64
+            word32ToWord64 = fromIntegral
     FExponent -> RF.f2s f
     FFixed -> d2Fixed (realToFrac f) prec
 
@@ -93,7 +95,7 @@ formatDouble fmt prec f =
              then sign f `mappend` showFixed m e' prec
              else BP.primBounded (R.toCharsScientific (f < 0) m e) ()
       where (RD.FloatingDecimal m e) = RD.d2Intermediate f
-            e' = fromIntegral e + R.decimalLength17 m :: Int
+            e' = R.int32ToInt e + R.decimalLength17 m
     FExponent -> RD.d2s f
     FFixed -> d2Fixed f prec
 
@@ -106,7 +108,7 @@ d2Fixed f prec =
     Nothing -> sign f `mappend` showFixed m e' prec
   where (RD.FloatingDecimal m e) = RD.d2Intermediate f
         -- NB: exponent in exponential format is e' - 1
-        e' = fromIntegral e + R.decimalLength17 m :: Int
+        e' = R.int32ToInt e + R.decimalLength17 m :: Int
 
 -- | Char7 encode a 'Char'.
 {-# INLINE char7 #-}
@@ -136,8 +138,8 @@ specialStr f
 digits :: Word64 -> [Int]
 digits w = go [] w
   where go ds 0 = ds
-        go ds c = let (q, r) = R.dquotRem10Boxed c :: (Word64, Word64)
-                   in go ((fromIntegral r :: Int) : ds) q
+        go ds c = let (q, r) = R.dquotRem10Boxed c
+                   in go ((R.word64ToInt r) : ds) q
 
 -- | Show a floating point value in fixed point. Based on GHC.Float.showFloat
 showFixed :: Word64 -> Int -> Maybe Int -> Builder

@@ -14,7 +14,6 @@
 
 module Data.ByteString.Builder.RealFloat.Internal
     ( mask
-    , asWord
     , NonNumbersAndZero(..)
     , toCharsNonNumbersAndZero
     , decimalLength9
@@ -55,6 +54,13 @@ module Data.ByteString.Builder.RealFloat.Internal
     , ByteArray(..)
     , castDoubleToWord64
     , castFloatToWord32
+    -- monomorphic conversions
+    , boolToWord32
+    , boolToWord64
+    , int32ToInt
+    , intToInt32
+    , word32ToInt
+    , word64ToInt
     ) where
 
 import Control.Monad (foldM)
@@ -108,9 +114,35 @@ mask :: (Bits a, Integral a) => Int -> a
 mask = flip (-) 1 . unsafeShiftL 1
 
 -- | Convert Boolean False to 0 and True to 1
-{-# INLINABLE asWord #-}
-asWord :: Integral w => Bool -> w
-asWord = fromIntegral . fromEnum
+{-# INLINABLE boolToWord32 #-}
+boolToWord32 :: Bool -> Word32
+boolToWord32 = fromIntegral . fromEnum
+
+-- | Convert Boolean False to 0 and True to 1
+{-# INLINABLE boolToWord64 #-}
+boolToWord64 :: Bool -> Word64
+boolToWord64 = fromIntegral . fromEnum
+
+-- | Monomorphic conversion for Int32 -> Int
+{-# INLINABLE int32ToInt #-}
+int32ToInt :: Int32 -> Int
+int32ToInt = fromIntegral
+
+-- | Monomorphic conversion for intToInt32 -> Int
+{-# INLINABLE intToInt32 #-}
+intToInt32 :: Int -> Int32
+intToInt32 = fromIntegral
+
+-- | Monomorphic conversion for Word32 -> Int
+{-# INLINABLE word32ToInt #-}
+word32ToInt :: Word32 -> Int
+word32ToInt = fromIntegral
+
+-- | Monomorphic conversion for Word64 -> Int
+{-# INLINABLE word64ToInt #-}
+word64ToInt :: Word64 -> Int
+word64ToInt = fromIntegral
+
 
 -- | Returns the number of decimal digits in v, which must not contain more than 9 digits.
 decimalLength9 :: Word32 -> Int
@@ -401,6 +433,7 @@ class (FiniteBits a, Integral a) => Mantissa a where
   decimalLength :: a -> Int
   raw :: a -> Word#
   wrap :: Word# -> a
+  boolToWord :: Bool -> a
   quotRem10Boxed :: a -> (a, a)
   quot10Boxed  :: a -> a
   quot100Boxed :: a -> a
@@ -411,6 +444,7 @@ instance Mantissa Word32 where
   decimalLength = decimalLength9
   raw (W32# w) = w
   wrap w = (W32# w)
+  boolToWord = boolToWord32
 
   {-# INLINE quotRem10Boxed #-}
   quotRem10Boxed = fquotRem10Boxed
@@ -432,6 +466,7 @@ instance Mantissa Word64 where
   decimalLength = decimalLength17
   raw (W64# w) = w
   wrap w = (W64# w)
+  boolToWord = boolToWord64
 
   {-# INLINE quotRem10Boxed #-}
   quotRem10Boxed = dquotRem10Boxed
@@ -541,7 +576,7 @@ trimNoTrailing !(BoundsState u v w ld _ _) =
 -- bounds
 {-# INLINE closestCorrectlyRounded #-}
 closestCorrectlyRounded :: Mantissa a => Bool -> BoundsState a -> a
-closestCorrectlyRounded acceptBounds s = vv s + asWord roundUp
+closestCorrectlyRounded acceptBounds s = vv s + boolToWord roundUp
   where
     outsideBounds = not (vuIsTrailingZeros s) || not acceptBounds
     roundUp = (vv s == vu s && outsideBounds) || lastRemovedDigit s >= 5
@@ -658,7 +693,7 @@ writeSign ptr False s = (# ptr, s #)
 toCharsScientific :: (Mantissa a) => Bool -> a -> Int32 -> BoundedPrim ()
 toCharsScientific !sign !mantissa !expo = boundedPrim maxEncodedLength $ \_ !(Ptr p0)-> do
   let !olength@(I# ol) = decimalLength mantissa
-      !expo' = expo + fromIntegral olength - 1 :: Int32
+      !expo' = expo + intToInt32 olength - 1
   return $ runST (ST $ \s1 ->
     let !(# p1, s2 #) = writeSign p0 sign s1
         !(# p2, s3 #) = writeMantissa p1 ol mantissa s2
