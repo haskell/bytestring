@@ -51,6 +51,7 @@ module Data.ByteString.Builder.RealFloat.Internal
     , dwrapped
     -- prim-op helpers
     , unbox
+    , Addr(..)
     , ByteArray(..)
     , castDoubleToWord64
     , castFloatToWord32
@@ -600,6 +601,8 @@ ascii_e = ord 'e'
 -- | Convert a single-digit number to the ascii ordinal e.g '1' -> 0x31
 toAscii :: Word# -> Word#
 toAscii a = a `plusWord#` asciiRaw asciiZero
+
+data Addr = Addr Addr#
 
 data ByteArray = ByteArray ByteArray#
 

@@ -1,7 +1,6 @@
 {-# LANGUAGE ExplicitForAll #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE BangPatterns, MagicHash, UnboxedTuples #-}
 -- | Constants and compile-time table generation for Ryu internals
 --
@@ -12,8 +11,7 @@
 -- number of bits required to store the table values).
 
 module Data.ByteString.Builder.RealFloat.TableGenerator
-  ( Word128(..)
-  , float_pow5_inv_bitcount
+  ( float_pow5_inv_bitcount
   , float_pow5_bitcount
   , double_pow5_bitcount
   , double_pow5_inv_bitcount
@@ -23,20 +21,11 @@ module Data.ByteString.Builder.RealFloat.TableGenerator
   , double_max_inv_split
   , finv
   , fnorm
-  , gen_table_f
-  , gen_table_d
   ) where
 
-import Data.Bits ((.&.), shiftR, shiftL, shiftR)
+import Data.Bits (shiftL, shiftR)
 import GHC.Float (int2Double)
-import GHC.Word (Word64(..))
-import Language.Haskell.TH
 
--- | Representation of 128-bit integer used for lookup table generation
-data Word128 = Word128
-  { word128Hi64 :: !Word64
-  , word128Lo64 :: !Word64
-  }
 
 -- The basic floating point conversion algorithm is as such:
 --
@@ -153,19 +142,21 @@ fnorm bitcount i =
       s = blen p - bitcount
    in if s < 0 then p `shiftL` (-s) else p `shiftR` s
 
--- | Generates a compile-time lookup table for floats as Word64
-gen_table_f :: Int -> (Int -> Integer) -> Q Exp
-gen_table_f n f = return $ ListE (fmap (LitE . IntegerL . f) [0..n])
-
--- | Generates a compile-time lookup table for doubles as Word128
-gen_table_d :: Int -> (Int -> Integer) -> Q Exp
-gen_table_d n f = return $ ListE (fmap ff [0..n])
-  where
-    ff :: Int -> Exp
-    ff c = let r = f c
-               hi = r `shiftR` 64
-               lo = r .&. ((1 `shiftL` 64) - 1)
-            in AppE (AppE (ConE 'Word128) (LitE . IntegerL $ hi)) (LitE . IntegerL $ lo)
+-- NB: these tables are encoded directly into the source code in F2S and D2S
+--
+-- -- | Generates a compile-time lookup table for floats as Word64
+-- gen_table_f :: Int -> (Int -> Integer) -> Q Exp
+-- gen_table_f n f = return $ ListE (fmap (LitE . IntegerL . f) [0..n])
+--
+-- -- | Generates a compile-time lookup table for doubles as Word128
+-- gen_table_d :: Int -> (Int -> Integer) -> Q Exp
+-- gen_table_d n f = return $ ListE (fmap ff [0..n])
+--   where
+--     ff :: Int -> Exp
+--     ff c = let r = f c
+--                hi = r `shiftR` 64
+--                lo = r .&. ((1 `shiftL` 64) - 1)
+--             in AppE (AppE (ConE 'Word128) (LitE . IntegerL $ hi)) (LitE . IntegerL $ lo)
 
 -- Given a specific floating-point type, determine the range of q for the < 0
 -- and >= 0 cases
