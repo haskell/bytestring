@@ -111,13 +111,13 @@ mulShift32Unboxed m factor shift =
 get_float_pow5_inv_split :: Int# -> Word#
 get_float_pow5_inv_split i =
   let !(Addr arr) = float_pow5_inv_split
-   in indexWord64OffAddr# arr i
+   in getWord64At arr i
 
 -- | Index into the 64-bit word lookup table float_pow5_split
 get_float_pow5_split :: Int# -> Word#
 get_float_pow5_split i =
   let !(Addr arr) = float_pow5_split
-   in indexWord64OffAddr# arr i
+   in getWord64At arr i
 
 -- | Take the high bits of m * 2^k / 5^q / 2^-e2+q+k
 mulPow5InvDivPow2 :: Word# -> Word# -> Int# -> Word#

@@ -718,13 +718,13 @@ mulShift64Unboxed m (# factorHi, factorLo #) shift =
 get_double_pow5_inv_split :: Int# -> (# Word#, Word# #)
 get_double_pow5_inv_split i =
   let !(Addr arr) = double_pow5_inv_split
-   in (# indexWord64OffAddr# arr (i *# 2# +# 1#), indexWord64OffAddr# arr (i *# 2#) #)
+   in getWord128At arr i
 
 -- | Index into the 128-bit word lookup table double_pow5_split
 get_double_pow5_split :: Int# -> (# Word#, Word# #)
 get_double_pow5_split i =
   let !(Addr arr) = double_pow5_split
-   in (# indexWord64OffAddr# arr (i *# 2# +# 1#), indexWord64OffAddr# arr (i *# 2#) #)
+   in getWord128At arr i
 
 -- | Take the high bits of m * 5^-e2-q / 2^k / 2^q-k
 mulPow5DivPow2 :: Word# -> Int# -> Int# -> Word#
