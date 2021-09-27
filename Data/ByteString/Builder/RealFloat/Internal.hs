@@ -78,6 +78,8 @@ import GHC.Word (Word8, Word32(..), Word64(..))
 import Foreign.Ptr (plusPtr)
 import qualified Foreign.Storable as S (poke)
 
+#include <ghcautoconf.h>
+
 #if __GLASGOW_HASKELL__ >= 804
 import GHC.Float (castFloatToWord32, castDoubleToWord64)
 #else
