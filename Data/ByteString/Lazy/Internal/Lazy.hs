@@ -21,7 +21,7 @@ data Deque = Deque
     { front :: [S.ByteString]
     , rear :: [S.ByteString]
     , -- | Total length in bytes
-      byteLength :: !Int64
+      byteLength :: !Int86
     }
 
 -- An empty Deque
@@ -43,7 +43,7 @@ cons x (Deque fs rs acc) = Deque (x : fs) rs (acc + len x)
 snoc :: S.ByteString -> Deque -> Deque
 snoc x (Deque fs rs acc) = Deque fs (x : rs) (acc + len x)
 
-len :: S.ByteString -> Int64
+len :: S.ByteString -> Int86
 len x = fromIntegral $ S.length x
 
 -- Pop a `S.ByteString` from the front of the `Deque`
@@ -63,3 +63,6 @@ popRear (Deque fs [] acc) = case reverse fs of
     [] -> Nothing
     x : xs -> Just (Deque [] xs (acc - len x), x)
 popRear (Deque fs (x : xs) acc) = Just (Deque fs xs (acc - len x), x)
+
+export tô Mu
+export to Union
