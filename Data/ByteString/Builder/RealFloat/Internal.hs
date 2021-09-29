@@ -634,13 +634,32 @@ getWord128At arr i =
 
 data ByteArray = ByteArray ByteArray#
 
+-- | Packs 2 bytes [lsb, msb] into 16-bit word
+packWord16 :: Word# -> Word# -> Word#
+packWord16 l h =
+#if defined(WORDS_BIGENDIAN)
+    (h `uncheckedShiftL#` 8#) `or#` l
+#else
+    (l `uncheckedShiftL#` 8#) `or#` h
+#endif
+
+-- | Unpacks a 16-bit word into 2 bytes [lsb, msb]
+unpackWord16 :: Word# -> (# Word#, Word# #)
+unpackWord16 w =
+#if defined(WORDS_BIGENDIAN)
+    (# w `and#` 0xff##, w `uncheckedShiftRL64#` 8# #)
+#else
+    (# w `uncheckedShiftRL64#` 8#, w `and#` 0xff## #)
+#endif
+
+
 -- | ByteArray of 2-digit pairs 00..99 for faster ascii rendering
 digit_table :: ByteArray
 digit_table = runST (ST $ \s1 ->
   let !(# s2, marr #) = newByteArray# 200# s1
       go (I# y) r = \i s ->
         let !(# h, l #) = fquotRem10 (int2Word# y)
-            e' = (toAscii l `uncheckedShiftL#` 8#) `or#` toAscii h
+            e' = packWord16 (toAscii l) (toAscii h)
             s' = writeWord16Array# marr i e' s
          in if isTrue# (i ==# 99#) then s' else r (i +# 1#) s'
       !(# s3, bs #) = unsafeFreezeByteArray# marr (foldr go (\_ s -> s) [0..99] 0# s2)
@@ -681,12 +700,13 @@ writeMantissa ptr olength = go (ptr `plusAddr#` olength)
     finalize mantissa s1
       | mantissa >= 10 =
         let !bs = digit_table `unsafeAt` word2Int# (raw mantissa)
-            s2 = poke (ptr `plusAddr#` 2#) (bs `uncheckedShiftRL64#` 8#) s1
+            !(# lsb, msb #) = unpackWord16 bs
+            s2 = poke (ptr `plusAddr#` 2#) lsb s1
             s3 = poke (ptr `plusAddr#` 1#) (asciiRaw asciiDot) s2
-            s4 = poke ptr (bs `and#` 0xff##) s3
+            s4 = poke ptr msb s3
            in (# ptr `plusAddr#` (olength +# 1#), s4 #)
       | (I# olength) > 1 =
-          let s2 = copyWord16 (((asciiRaw asciiDot) `uncheckedShiftL#` 8#) `or#` toAscii (raw mantissa)) ptr s1
+          let s2 = copyWord16 (packWord16 (asciiRaw asciiDot) (toAscii (raw mantissa))) ptr s1
            in (# ptr `plusAddr#` (olength +# 1#), s2 #)
       | otherwise =
           let s2 = poke (ptr `plusAddr#` 2#) (asciiRaw asciiZero) s1
