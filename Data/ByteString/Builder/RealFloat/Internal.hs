@@ -620,12 +620,13 @@ getWord64At arr i =
 
 -- | Index into the 128-bit word lookup table provided
 -- Return (# high-64-bits , low-64-bits #)
+-- NB: really just swaps the bytes and doesn't reorder the words
 {-# INLINE getWord128At #-}
 getWord128At :: Addr# -> Int# -> (# Word#, Word# #)
 getWord128At arr i =
 #if defined(WORDS_BIGENDIAN)
-   (# byteSwap64# (indexWord64OffAddr# arr (i *# 2#))
-    , byteSwap64# (indexWord64OffAddr# arr (i *# 2# +# 1#))
+   (# byteSwap64# (indexWord64OffAddr# arr (i *# 2# +# 1#))
+    , byteSwap64# (indexWord64OffAddr# arr (i *# 2#))
     #)
 #else
    (# indexWord64OffAddr# arr (i *# 2# +# 1#), indexWord64OffAddr# arr (i *# 2#) #)
