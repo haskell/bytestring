@@ -38,10 +38,8 @@ module Data.ByteString.Builder.RealFloat.Internal
     , fquotRem10Boxed
     , fquot5
     , frem5
-    , fquotRem5
     , fwrapped
     , dquot10
-    , drem10
     , dquotRem10
     , dquotRem10Boxed
     , dquot5
@@ -345,12 +343,6 @@ frem5 w =
   let w' = fquot5 w
    in w `minusWord#` (w' `timesWord#` 5##)
 
--- | Returns (w / 5, w % 5)
-fquotRem5 :: Word# -> (# Word#, Word# #)
-fquotRem5 w =
-  let w' = fquot5 w
-   in (# w', w `minusWord#` (w' `timesWord#` 5##) #)
-
 -- | Returns (w / 10, w % 10)
 fquotRem10Boxed :: Word32 -> (Word32, Word32)
 fquotRem10Boxed (W32# w) = let !(# q, r #) = fquotRem10 w in (W32# q, W32# r)
@@ -370,12 +362,6 @@ dquot100 :: Word# -> Word#
 dquot100 w =
   let !(# rdx, _ #) = (w `uncheckedShiftRL#` 2#) `timesWord2#` 0x28F5C28F5C28F5C3##
     in rdx `uncheckedShiftRL#` 2#
-
--- | Returns w % 10
-drem10 :: Word# -> Word#
-drem10 w =
-  let w' = dquot10 w
-   in w `minusWord#` (w' `timesWord#` 10##)
 
 -- | Returns (w / 10, w % 10)
 dquotRem10 :: Word# -> (# Word#, Word# #)
