@@ -752,7 +752,7 @@ d2dGT (I32# e2) (W64# u) (W64# v) (W64# w) =
       w' = mulPow5InvDivPow2 w q i
       !(# vvTrailing, vuTrailing, vw' #) =
         case () of
-          _ | isTrue# ((q `leWord#` 21##) `andI#` (frem5 v `eqWord#` 0##))
+          _ | isTrue# ((q `leWord#` 21##) `andI#` (drem5 v `eqWord#` 0##))
                 -> (# multipleOfPowerOf5_UnboxedB v q, False, w' #)
             | isTrue# ((q `leWord#` 21##) `andI#` acceptBoundsUnboxed v)
                 -> (# False, multipleOfPowerOf5_UnboxedB u q, w' #)

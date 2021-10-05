@@ -490,7 +490,15 @@ data BoundsState a = BoundsState
 
 -- | Trim digits while and update bookkeeping state when the table-computed
 -- step results in trailing zeros (the general case, happens rarely)
-trimTrailing :: Mantissa a => BoundsState a -> (BoundsState a, Int32)
+--
+-- NB: This function isn't actually necessary so long as acceptBounds is always
+-- False since we don't do anything different with the trailing-zero
+-- information directly:
+-- - vuIsTrailingZeros is always False.  We can see this by noting that in all
+--   places where vuTrailing can possible be True, we must have acceptBounds be
+--   True (accept_smaller)
+-- - The final result doesn't change the lastRemovedDigit for rounding anyway
+trimTrailing :: (Show a, Mantissa a) => BoundsState a -> (BoundsState a, Int32)
 trimTrailing !initial = (res, r + r')
   where
     !(d', r) = trimTrailing' initial

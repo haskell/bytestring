@@ -760,6 +760,11 @@ testsFloating =
         [ ( (coerceWord64ToDouble 0x4830F0CF064DD592) , "5.764607523034235e39" )
         , ( (coerceWord64ToDouble 0x4840F0CF064DD592) , "1.152921504606847e40" )
         , ( (coerceWord64ToDouble 0x4850F0CF064DD592) , "2.305843009213694e40" )
+        , ( (coerceWord64ToDouble 0x4400000000000004) , "3.689348814741914e19" )
+
+        -- here v- is a power of 5 but since we don't accept bounds there is no
+        -- interesting trailing behavior
+        , ( (coerceWord64ToDouble 0x440000000000301d) , "3.6893488147520004e19" )
         ]
   , testMatches "d2sOutputLength" doubleDec show
         [ ( 1                  , "1.0" )
