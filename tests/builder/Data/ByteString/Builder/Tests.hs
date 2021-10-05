@@ -51,6 +51,7 @@ import           System.IO (openTempFile, hPutStr, hClose, hSetBinaryMode, hSetE
 import           Foreign (ForeignPtr, withForeignPtr, castPtr)
 import           Foreign.C.String (withCString)
 import           GHC.Int (Int(..))
+import           Numeric (showFFloat)
 import           System.Posix.Internals (c_unlink)
 
 import           Test.Tasty (TestTree, TestName, testGroup)
@@ -708,6 +709,22 @@ testsFloating =
         , ( 2.0019531      , "2.0019531" )
         , ( 2.001953       , "2.001953" )
         ]
+  , testExpected "f2sScientific" (formatFloat FExponent Nothing)
+        [ ( 0.0            , "0.0e0"         )
+        , ( 8388608.0      , "8.388608e6"    )
+        , ( 1.6777216e7    , "1.6777216e7"   )
+        , ( 3.3554436e7    , "3.3554436e7"   )
+        , ( 6.7131496e7    , "6.7131496e7"   )
+        , ( 1.9310392e-38  , "1.9310392e-38" )
+        , ( (-2.47e-43)    , "-2.47e-43"     )
+        , ( 1.993244e-38   , "1.993244e-38"  )
+        , ( 4103.9003      , "4.1039004e3"   )
+        , ( 0.0010310042   , "1.0310042e-3"  )
+        , ( 0.007812537    , "7.812537e-3"   )
+        , ( 200.0          , "2.0e2"         )
+        , ( 2.0019531      , "2.0019531e0"   )
+        , ( 2.001953       , "2.001953e0"    )
+        ]
   , testMatches "f2sLooksLikePowerOf5" floatDec show
         [ ( coerceWord32ToFloat 0x5D1502F9 , "6.7108864e17" )
         , ( coerceWord32ToFloat 0x5D9502F9 , "1.3421773e18" )
@@ -755,6 +772,18 @@ testsFloating =
         , ( 1.9430376160308388e16   , "1.9430376160308388e16" )
         , ( (-6.9741824662760956e19), "-6.9741824662760956e19" )
         , ( 4.3816050601147837e18   , "4.3816050601147837e18" )
+        ]
+  , testExpected "d2sScientific" (formatDouble FExponent Nothing)
+        [ ( 0.0         , "0.0e0"         )
+        , ( 1.2345678   , "1.2345678e0"   )
+        , ( 4.294967294 , "4.294967294e0" )
+        , ( 4.294967295 , "4.294967295e0" )
+        ]
+  , testProperty "d2sFixed" $ all (== True)
+        [ singleMatches (formatDouble FFixed (Just 2)) (flip (showFFloat (Just 2)) []) ( 12.345 , "12.34"    )
+        , singleMatches (formatDouble FFixed (Just 2)) (flip (showFFloat (Just 2)) []) ( 0.0050 , "0.00"     )
+        , singleMatches (formatDouble FFixed (Just 2)) (flip (showFFloat (Just 2)) []) ( 0.0051 , "0.01"     )
+        , singleMatches (formatDouble FFixed (Just 5)) (flip (showFFloat (Just 5)) []) ( 12.345 , "12.34500" )
         ]
   , testMatches "d2sLooksLikePowerOf5" doubleDec show
         [ ( (coerceWord64ToDouble 0x4830F0CF064DD592) , "5.764607523034235e39" )
@@ -929,13 +958,22 @@ testsFloating =
         fmap asShowRef [read ("1.0e" ++ show x) :: Float | x <- [-46..39 :: Int]]
   , testMatches "d2sPowersOf10" doubleDec show $
         fmap asShowRef [read ("1.0e" ++ show x) :: Double | x <- [-324..309 :: Int]]
+  , testProperty "float_max_split" $ BRFI.float_max_split == 46
+  , testProperty "float_max_inv_split" $ BRFI.float_max_inv_split == 30
+  , testProperty "double_max_split" $ BRFI.double_max_split == 325
+  , testProperty "double_max_inv_split" $ BRFI.double_max_inv_split == 291
   ]
   ++ testsLogApprox
   where
-    testMatches :: (Show a) => TestName -> (a -> Builder) -> (a -> String) -> [(a, String)] -> TestTree
-    testMatches name dec refdec lst = testProperty name $
-      all (\(x, ref) -> L.unpack (toLazyByteString (dec x)) == encodeASCII (refdec x)
-                        && refdec x == ref) lst
+    testExpected :: TestName -> (a -> Builder) -> [(a, String)] -> TestTree
+    testExpected name dec lst = testProperty name $
+      all (\(x, ref) -> L.unpack (toLazyByteString (dec x)) == encodeASCII ref) lst
+
+    singleMatches :: (a -> Builder) -> (a -> String) -> (a, String) -> Bool
+    singleMatches dec refdec (x, ref) = L.unpack (toLazyByteString (dec x)) == encodeASCII (refdec x) && refdec x == ref
+
+    testMatches :: TestName -> (a -> Builder) -> (a -> String) -> [(a, String)] -> TestTree
+    testMatches name dec refdec lst = testProperty name $ all (singleMatches dec refdec) lst
 
     maxMantissa = (1 `shiftL` 53) - 1 :: Word64
 

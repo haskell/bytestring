@@ -13,7 +13,6 @@ import Data.Bits ((.|.), (.&.), unsafeShiftL, unsafeShiftR)
 import Data.ByteString.Builder.Internal (Builder)
 import Data.ByteString.Builder.Prim (primBounded)
 import Data.ByteString.Builder.RealFloat.Internal
-import Data.ByteString.Builder.RealFloat.TableGenerator
 import Data.Maybe (fromMaybe)
 import GHC.Exts
 import GHC.Int (Int32(..))

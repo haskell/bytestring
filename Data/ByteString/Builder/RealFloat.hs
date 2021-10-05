@@ -52,7 +52,7 @@ data FloatFormat
 --
 -- e.g
 --
--- > formatFloat FFixed (Just 2) 12.345 = "12.35"
+-- > formatFloat FFixed (Just 2) 12.345 = "12.34"
 -- > formatFloat FFixed (Just 5) 12.345 = "12.34500"
 -- > formatFloat FGeneric Nothing 12.345 = "12.345"
 {-# INLINABLE formatFloat #-}
@@ -80,7 +80,7 @@ formatFloat fmt prec f =
 --
 -- e.g
 --
--- > formatDouble FFixed (Just 2) 12.345 = "12.35"
+-- > formatDouble FFixed (Just 2) 12.345 = "12.34"
 -- > formatDouble FFixed (Just 5) 12.345 = "12.34500"
 -- > formatDouble FGeneric Nothing 12.345 = "12.345"
 {-# INLINABLE formatDouble #-}

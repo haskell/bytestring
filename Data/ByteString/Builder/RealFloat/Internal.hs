@@ -62,12 +62,15 @@ module Data.ByteString.Builder.RealFloat.Internal
     , intToInt32
     , word32ToInt
     , word64ToInt
+
+    , module Data.ByteString.Builder.RealFloat.TableGenerator
     ) where
 
 import Control.Monad (foldM)
 import Data.Bits (Bits(..), FiniteBits(..))
 import Data.ByteString.Internal (c2w)
 import Data.ByteString.Builder.Prim.Internal (BoundedPrim, boundedPrim)
+import Data.ByteString.Builder.RealFloat.TableGenerator
 import Data.Char (ord)
 import GHC.Int (Int32(..))
 import GHC.Exts
