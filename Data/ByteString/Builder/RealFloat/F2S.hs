@@ -1,6 +1,12 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE BangPatterns, MagicHash, UnboxedTuples #-}
--- | Implementation of float-to-string conversion
+-- |
+-- Module      : Data.ByteString.Builder.RealFloat.F2S
+-- Copyright   : (c) Lawrence Wu 2021
+-- License     : BSD-style
+-- Maintainer  : lawrencejwu@gmail.com
+--
+-- Implementation of float-to-string conversion
 
 module Data.ByteString.Builder.RealFloat.F2S
     ( FloatingDecimal(..)

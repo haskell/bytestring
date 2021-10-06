@@ -1,4 +1,10 @@
--- | Floating point formatting for Bytestring.Builder
+-- |
+-- Module      : Data.ByteString.Builder.RealFloat
+-- Copyright   : (c) Lawrence Wu 2021
+-- License     : BSD-style
+-- Maintainer  : lawrencejwu@gmail.com
+--
+-- Floating point formatting for Bytestring.Builder
 --
 -- This module primarily exposes `floatDec` and `doubleDec` which do the
 -- equivalent of converting through `string7 . show`.

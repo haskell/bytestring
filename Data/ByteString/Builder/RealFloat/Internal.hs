@@ -2,7 +2,13 @@
 {-# LANGUAGE BangPatterns, MagicHash, UnboxedTuples #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE RecordWildCards #-}
--- | Various floating-to-string conversion helpers that are somewhat
+-- |
+-- Module      : Data.ByteString.Builder.RealFloat.Internal
+-- Copyright   : (c) Lawrence Wu 2021
+-- License     : BSD-style
+-- Maintainer  : lawrencejwu@gmail.com
+--
+-- Various floating-to-string conversion helpers that are somewhat
 -- floating-size agnostic
 --
 -- This module includes

@@ -1,6 +1,12 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE BangPatterns, MagicHash, UnboxedTuples #-}
--- | Implementation of double-to-string conversion
+-- |
+-- Module      : Data.ByteString.Builder.RealFloat.D2S
+-- Copyright   : (c) Lawrence Wu 2021
+-- License     : BSD-style
+-- Maintainer  : lawrencejwu@gmail.com
+--
+-- Implementation of double-to-string conversion
 
 module Data.ByteString.Builder.RealFloat.D2S
     ( FloatingDecimal(..)
