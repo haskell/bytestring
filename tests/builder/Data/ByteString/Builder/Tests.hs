@@ -57,7 +57,8 @@ import           System.Posix.Internals (c_unlink)
 import           Test.Tasty (TestTree, TestName, testGroup)
 import           Test.Tasty.QuickCheck
                    ( Arbitrary(..), oneof, choose, listOf, elements
-                   , counterexample, ioProperty, UnicodeString(..), Property, testProperty )
+                   , counterexample, ioProperty, UnicodeString(..), Property, testProperty
+                   , (===), (.&&.), conjoin )
 
 
 tests :: [TestTree]
@@ -779,7 +780,7 @@ testsFloating =
         , ( 4.294967294 , "4.294967294e0" )
         , ( 4.294967295 , "4.294967295e0" )
         ]
-  , testProperty "d2sFixed" $ all (== True)
+  , testProperty "d2sFixed" $ conjoin
         [ singleMatches (formatDouble FFixed (Just 2)) (flip (showFFloat (Just 2)) []) ( 12.345 , "12.34"    )
         , singleMatches (formatDouble FFixed (Just 2)) (flip (showFFloat (Just 2)) []) ( 0.0050 , "0.00"     )
         , singleMatches (formatDouble FFixed (Just 2)) (flip (showFFloat (Just 2)) []) ( 0.0051 , "0.01"     )
@@ -958,22 +959,22 @@ testsFloating =
         fmap asShowRef [read ("1.0e" ++ show x) :: Float | x <- [-46..39 :: Int]]
   , testMatches "d2sPowersOf10" doubleDec show $
         fmap asShowRef [read ("1.0e" ++ show x) :: Double | x <- [-324..309 :: Int]]
-  , testProperty "float_max_split" $ BRFI.float_max_split == 46
-  , testProperty "float_max_inv_split" $ BRFI.float_max_inv_split == 30
-  , testProperty "double_max_split" $ BRFI.double_max_split == 325
-  , testProperty "double_max_inv_split" $ BRFI.double_max_inv_split == 291
+  , testProperty "float_max_split" $ BRFI.float_max_split === 46
+  , testProperty "float_max_inv_split" $ BRFI.float_max_inv_split === 30
+  , testProperty "double_max_split" $ BRFI.double_max_split === 325
+  , testProperty "double_max_inv_split" $ BRFI.double_max_inv_split === 291
   ]
   ++ testsLogApprox
   where
     testExpected :: TestName -> (a -> Builder) -> [(a, String)] -> TestTree
-    testExpected name dec lst = testProperty name $
-      all (\(x, ref) -> L.unpack (toLazyByteString (dec x)) == encodeASCII ref) lst
+    testExpected name dec lst = testProperty name . conjoin $
+      fmap (\(x, ref) -> L.unpack (toLazyByteString (dec x)) === encodeASCII ref) lst
 
-    singleMatches :: (a -> Builder) -> (a -> String) -> (a, String) -> Bool
-    singleMatches dec refdec (x, ref) = L.unpack (toLazyByteString (dec x)) == encodeASCII (refdec x) && refdec x == ref
+    singleMatches :: (a -> Builder) -> (a -> String) -> (a, String) -> Property
+    singleMatches dec refdec (x, ref) = L.unpack (toLazyByteString (dec x)) === encodeASCII (refdec x) .&&. refdec x === ref
 
     testMatches :: TestName -> (a -> Builder) -> (a -> String) -> [(a, String)] -> TestTree
-    testMatches name dec refdec lst = testProperty name $ all (singleMatches dec refdec) lst
+    testMatches name dec refdec lst = testProperty name . conjoin $ fmap (singleMatches dec refdec) lst
 
     maxMantissa = (1 `shiftL` 53) - 1 :: Word64
 
@@ -985,12 +986,12 @@ testsFloating =
 
 testsLogApprox :: [TestTree]
 testsLogApprox =
-  [ testProperty "pow5bits" $ all (==True) $ flip fmap [1..3528] (\e ->
-      pow5bits e == fromIntegral (ilog2ceiling (5^e)))
-  , testProperty "log10pow2" $ all (==True) $ flip fmap [0..1650] (\e ->
-      log10pow2 e == fromIntegral (ilog10floor (2^e)))
-  , testProperty "log10pow5" $ all (==True) $ flip fmap [0..2620] (\e ->
-      log10pow5 e == fromIntegral (ilog10floor (5^e)))
+  [ testProperty "pow5bits" . conjoin $ flip fmap [1..3528] (\e ->
+      pow5bits e === fromIntegral (ilog2ceiling (5^e)))
+  , testProperty "log10pow2" . conjoin $ flip fmap [0..1650] (\e ->
+      log10pow2 e === fromIntegral (ilog10floor (2^e)))
+  , testProperty "log10pow5" . conjoin $ flip fmap [0..2620] (\e ->
+      log10pow5 e === fromIntegral (ilog10floor (5^e)))
   ]
   where
     -- wrappers around log approximations
