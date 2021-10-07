@@ -338,9 +338,7 @@ fquotRem10 w =
 
 -- | Returns w / 100
 fquot100 :: Word# -> Word#
-fquot100 w =
-  let !(# rdx, _ #) = (w `uncheckedShiftRL#` 2#) `timesWord2#` 0x51EB851F##
-    in rdx `uncheckedShiftRL#` 37#
+fquot100 w = (w `timesWord#` 0x51EB851F##) `uncheckedShiftRL#` 37#
 
 -- | Returns w / 5
 fquot5 :: Word# -> Word#
@@ -456,7 +454,7 @@ instance Mantissa Word32 where
   quot100Boxed = fwrapped fquot100
 
   quotRem100 (W32# w) =
-    let w' = (w `timesWord#` 0x51EB851F##) `uncheckedShiftRL#` 37#
+    let w' = fquot100 w
       in (# w', (w `minusWord#` (w' `timesWord#` 100##)) #)
   quotRem10000 (W32# w) =
     let w' = (w `timesWord#` 0xD1B71759##) `uncheckedShiftRL#` 45#
