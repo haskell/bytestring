@@ -160,9 +160,9 @@ instance Show InvalidUtf8 where
 instance Arbitrary InvalidUtf8 where
   arbitrary = oneof
     [ InvalidUtf8 mempty <$> genInvalidUtf8 <*> pure mempty
-    , InvalidUtf8 mempty <$> genInvalidUtf8 <*> genBS
+    , InvalidUtf8 mempty <$> genInvalidUtf8 <*> genValidUtf8
     , InvalidUtf8 <$> genValidUtf8 <*> genInvalidUtf8 <*> pure mempty
-    , InvalidUtf8 <$> genValidUtf8 <*> genInvalidUtf8 <*> genBS
+    , InvalidUtf8 <$> genValidUtf8 <*> genInvalidUtf8 <*> genValidUtf8
     ]
   shrink (InvalidUtf8 p i s) = 
     (InvalidUtf8 p i <$> shrinkBS s) ++
@@ -246,9 +246,6 @@ genValidUtf8 = sized $ \size ->
       b3 <- elements [0x80 .. 0xBF]
       b4 <- elements [0x80 .. 0xBF]
       pure . B.pack $ [b1, b2, b3, b4]
-
-genBS :: Gen ByteString
-genBS = B.pack <$> arbitrary
 
 shrinkBS :: ByteString -> [ByteString]
 shrinkBS bs = B.pack <$> (shrink . B.unpack $ bs)
