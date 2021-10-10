@@ -707,6 +707,9 @@ is_valid_utf8_avx2(uint8_t const *const src, size_t const len) {
 }
 
 int is_valid_utf8(uint8_t const *const src, size_t const len) {
+  if (len == 0) {
+    return 1;
+  }
   __builtin_cpu_init();
   if (__builtin_cpu_supports("avx2")) {
     return is_valid_utf8_avx2(src, len);

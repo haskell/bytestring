@@ -11,13 +11,13 @@ import Test.QuickCheck (Property, forAll, (===))
 import Test.QuickCheck.Arbitrary (Arbitrary (arbitrary, shrink))
 import Test.QuickCheck.Gen (oneof, Gen, choose, vectorOf, listOf1, sized, resize,
                             elements)
-import Test.Tasty (defaultMain, testGroup)
-import Test.Tasty.QuickCheck (testProperty)
+import Test.Tasty (defaultMain, testGroup, localOption)
+import Test.Tasty.QuickCheck (testProperty, QuickCheckTests)
 
 main :: IO ()
 main = defaultMain . testGroup "UTF-8 validation" $ [
-  testProperty "Valid UTF-8" goValid,
-  testProperty "Invalid UTF-8" goInvalid
+  localOption testCount . testProperty "Valid UTF-8" $ goValid,
+  localOption testCount . testProperty "Invalid UTF-8" $ goInvalid
   ]
   where
     goValid :: Property
@@ -26,6 +26,8 @@ main = defaultMain . testGroup "UTF-8 validation" $ [
     goInvalid :: Property
     goInvalid = forAll arbitrary $ 
       \inv -> (B.isValidUtf8 . toByteString $ inv) === False
+    testCount :: QuickCheckTests
+    testCount = 100000
 
 -- Helpers
 
