@@ -122,6 +122,10 @@ library
     c-sources:        cbits/is-valid-utf8.c
 
   cc-options:        -std=c11
+  
+  if os(windows)
+    extra-libraries:  gcc_s
+
   include-dirs:      include
   includes:          fpstring.h
   install-includes:  fpstring.h
