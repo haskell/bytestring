@@ -8,5 +8,21 @@ steps:
     - export LC_ALL=C.UTF-8
     - apt-get update -y
     - apt-get install -y ghc cabal-install
+    - cabal --version
     - cabal update
     - cabal new-test
+---
+kind: pipeline
+name: i386
+platform: { os: linux, arch: amd64 }
+steps:
+- name: Test
+  image: i386/ubuntu
+  commands:
+    - export LC_ALL=C.UTF-8
+    - apt-get update -y
+    - apt-get install -y ghc cabal-install
+    - cabal --version # 1.24
+    - cabal update
+    - cabal install --dependencies-only --enable-tests --constraint 'optparse-applicative -process'
+    - cabal test
