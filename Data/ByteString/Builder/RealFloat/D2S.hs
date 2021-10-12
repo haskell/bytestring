@@ -1,5 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE BangPatterns, MagicHash, UnboxedTuples #-}
+{-# LANGUAGE BangPatterns, MagicHash #-}
 -- |
 -- Module      : Data.ByteString.Builder.RealFloat.D2S
 -- Copyright   : (c) Lawrence Wu 2021
@@ -20,7 +20,6 @@ import Data.ByteString.Builder.Internal (Builder)
 import Data.ByteString.Builder.Prim (primBounded)
 import Data.ByteString.Builder.RealFloat.Internal
 import Data.Maybe (fromMaybe)
-import GHC.Exts
 import GHC.Int (Int32(..))
 import GHC.Word (Word64(..))
 
@@ -701,97 +700,93 @@ d2dSmallInt m e =
 
 -- | Removes trailing (decimal) zeros for small integers in the range [1, 2^53)
 unifySmallTrailing :: FloatingDecimal -> FloatingDecimal
-unifySmallTrailing fd@(FloatingDecimal (W64# m) e) =
-  let !(# q, r #) = dquotRem10 m
-   in case r `neWord#` 0## of
-        0# -> unifySmallTrailing $ FloatingDecimal (W64# q) (e + 1)
-        _  -> fd
+unifySmallTrailing fd@(FloatingDecimal m e) =
+  let !(q, r) = dquotRem10 m
+   in if r == 0
+        then unifySmallTrailing $ FloatingDecimal q (e + 1)
+        else fd
 
 -- TODO: 128-bit intrinsics
 -- | Multiply a 64-bit number with a 128-bit number while keeping the upper 64
 -- bits. Then shift by specified amount minus 64
-mulShift64Unboxed :: Word# -> (# Word#, Word# #) -> Int# -> Word#
-mulShift64Unboxed m (# factorHi, factorLo #) shift =
-  let !(# b0Hi, _ #) = m `timesWord2#` factorLo
-      !(# b1Hi, b1Lo #) = m `timesWord2#` factorHi
-      total = b0Hi `plusWord#` b1Lo
-      high = b1Hi `plusWord#` (int2Word# (total `ltWord#` b0Hi))
-      dist = shift -# 64#
-   in (high `uncheckedShiftL#` (64# -# dist)) `or#` (total `uncheckedShiftRL#` dist)
+mulShift64 :: Word64 -> (Word64, Word64) -> Int -> Word64
+mulShift64 m (factorHi, factorLo) shift =
+  let !(b0Hi, _   ) = m `timesWord2` factorLo
+      !(b1Hi, b1Lo) = m `timesWord2` factorHi
+      total = b0Hi + b1Lo
+      high  = b1Hi + boolToWord64 (total < b0Hi)
+      dist  = shift - 64
+   in (high `unsafeShiftL` (64 - dist)) .|. (total `unsafeShiftR` dist)
 
 -- | Index into the 128-bit word lookup table double_pow5_inv_split
-get_double_pow5_inv_split :: Int# -> (# Word#, Word# #)
-get_double_pow5_inv_split i =
+get_double_pow5_inv_split :: Int -> (Word64, Word64)
+get_double_pow5_inv_split =
   let !(Addr arr) = double_pow5_inv_split
-   in getWord128At arr i
+   in getWord128At arr
 
 -- | Index into the 128-bit word lookup table double_pow5_split
-get_double_pow5_split :: Int# -> (# Word#, Word# #)
-get_double_pow5_split i =
+get_double_pow5_split :: Int -> (Word64, Word64)
+get_double_pow5_split =
   let !(Addr arr) = double_pow5_split
-   in getWord128At arr i
+   in getWord128At arr
 
 -- | Take the high bits of m * 5^-e2-q / 2^k / 2^q-k
-mulPow5DivPow2 :: Word# -> Int# -> Int# -> Word#
-mulPow5DivPow2 m i j = mulShift64Unboxed m (get_double_pow5_split i) j
+mulPow5DivPow2 :: Word64 -> Int -> Int -> Word64
+mulPow5DivPow2 m i j = mulShift64 m (get_double_pow5_split i) j
 
 -- | Take the high bits of m * 2^k / 5^q / 2^-e2+q+k
-mulPow5InvDivPow2 :: Word# -> Word# -> Int# -> Word#
-mulPow5InvDivPow2 m q j = mulShift64Unboxed m (get_double_pow5_inv_split (word2Int# q)) j
-
--- | Wrapper around acceptBoundsUnboxed for Word64
-acceptBounds :: Word64 -> Bool
-acceptBounds !(W64# v) = isTrue# (acceptBoundsUnboxed v)
+mulPow5InvDivPow2 :: Word64 -> Int -> Int -> Word64
+mulPow5InvDivPow2 m q j = mulShift64 m (get_double_pow5_inv_split q) j
 
 -- | Handle case e2 >= 0
 d2dGT :: Int32 -> Word64 -> Word64 -> Word64 -> (BoundsState Word64, Int32)
-d2dGT (I32# e2) (W64# u) (W64# v) (W64# w) =
-  let q = int2Word# (log10pow2Unboxed e2 -# (e2 ># 3#))
-      e10 = word2Int# q
+d2dGT e2' u v w =
+  let e2 = int32ToInt e2'
+      q = log10pow2 e2 - fromEnum (e2 > 3)
       -- k = B0 + log_2(5^q)
-      k = unbox double_pow5_inv_bitcount +# pow5bitsUnboxed (word2Int# q) -# 1#
-      i = (negateInt# e2) +# word2Int# q +# k
+      k = double_pow5_inv_bitcount + pow5bits q - 1
+      i = -e2 + q + k
       -- (u, v, w) * 2^k / 5^q / 2^-e2+q+k
       u' = mulPow5InvDivPow2 u q i
       v' = mulPow5InvDivPow2 v q i
       w' = mulPow5InvDivPow2 w q i
-      !(# vvTrailing, vuTrailing, vw' #) =
+      !(vvTrailing, vuTrailing, vw') =
         case () of
-          _ | isTrue# ((q `leWord#` 21##) `andI#` (drem5 v `eqWord#` 0##))
-                -> (# multipleOfPowerOf5_UnboxedB v q, False, w' #)
-            | isTrue# ((q `leWord#` 21##) `andI#` acceptBoundsUnboxed v)
-                -> (# False, multipleOfPowerOf5_UnboxedB u q, w' #)
-            | isTrue# (q `leWord#` 21##)
-                -> (# False, False, w' `minusWord#` int2Word# (multipleOfPowerOf5_Unboxed w q) #)
+          _ | q <= 21 && (drem5 v == 0)
+                -> (multipleOfPowerOf5 v q, False, w')
+            | q <= 21 && acceptBounds v
+                -> (False, multipleOfPowerOf5 u q, w')
+            | q <= 21
+                -> (False, False, w' - boolToWord64 (multipleOfPowerOf5 w q))
             | otherwise
-                -> (# False, False, w' #)
-   in (BoundsState (W64# u') (W64# v') (W64# vw') 0 vuTrailing vvTrailing, (I32# e10))
+                -> (False, False, w')
+   in (BoundsState u' v' vw' 0 vuTrailing vvTrailing, intToInt32 q)
 
 -- | Handle case e2 < 0
 d2dLT :: Int32 -> Word64 -> Word64 -> Word64 -> (BoundsState Word64, Int32)
-d2dLT (I32# e2) (W64# u) (W64# v) (W64# w) =
-  let nege2 = negateInt# e2
-      q = int2Word# (log10pow5Unboxed nege2 -# (nege2 ># 1#))
-      e10 = word2Int# q +# e2
-      i = nege2 -# word2Int# q
+d2dLT e2' u v w =
+  let e2 = int32ToInt e2'
+      q = log10pow5 (-e2) - fromEnum (-e2 > 1)
+      e10 = q + e2
+      i = -e2 - q
       -- k = log_2(5^-e2-q) - B1
-      k = pow5bitsUnboxed i -# unbox double_pow5_bitcount
-      j = word2Int# q -# k
+      k = pow5bits i - double_pow5_bitcount
+      j = q - k
       -- (u, v, w) * 5^-e2-q / 2^k / 2^q-k
       u' = mulPow5DivPow2 u i j
       v' = mulPow5DivPow2 v i j
       w' = mulPow5DivPow2 w i j
-      !(# vvTrailing, vuTrailing, vw' #) =
+      !(vvTrailing, vuTrailing, vw') =
         case () of
-          _ | isTrue# ((q `leWord#` 1##) `andI#` acceptBoundsUnboxed v)
-                -> (# True, isTrue# ((w `minusWord#` v) `eqWord#` 2##), w' #) -- mmShift == 1
-            | isTrue# (q `leWord#` 1##)
-                -> (# True, False, w' `minusWord#` 1## #)
-            | isTrue# (q `ltWord#` 63##)
-                -> (# isTrue# (multipleOfPowerOf2Unboxed v (q `minusWord#` 1##)), False, w' #)
+          _ | q <= 1 && acceptBounds v
+                -> (True, v - u == 2, w') -- mmShift == 1
+            | q <= 1
+                -> (True, False, w' - 1)
+            | q < 63
+                -> (multipleOfPowerOf2 v (q - 1), False, w')
             | otherwise
-                -> (# False, False, w' #)
-   in (BoundsState (W64# u') (W64# v') (W64# vw') 0 vuTrailing vvTrailing, (I32# e10))
+                -> (False, False, w')
+   in (BoundsState u' v' vw' 0 vuTrailing vvTrailing, intToInt32 e10)
 
 -- | Returns the decimal representation of the given mantissa and exponent of a
 -- 64-bit Double using the ryu algorithm.

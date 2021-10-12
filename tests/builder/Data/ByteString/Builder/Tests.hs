@@ -50,7 +50,6 @@ import           Control.Exception (evaluate)
 import           System.IO (openTempFile, hPutStr, hClose, hSetBinaryMode, hSetEncoding, utf8, hSetNewlineMode, noNewlineTranslation)
 import           Foreign (ForeignPtr, withForeignPtr, castPtr)
 import           Foreign.C.String (withCString)
-import           GHC.Int (Int(..))
 import           Numeric (showFFloat)
 import           System.Posix.Internals (c_unlink)
 
@@ -987,18 +986,13 @@ testsFloating =
 testsLogApprox :: [TestTree]
 testsLogApprox =
   [ testProperty "pow5bits" . conjoin $ flip fmap [1..3528] (\e ->
-      pow5bits e === fromIntegral (ilog2ceiling (5^e)))
+      BRFI.pow5bits e === fromIntegral (ilog2ceiling (5^e)))
   , testProperty "log10pow2" . conjoin $ flip fmap [0..1650] (\e ->
-      log10pow2 e === fromIntegral (ilog10floor (2^e)))
+      BRFI.log10pow2 e === fromIntegral (ilog10floor (2^e)))
   , testProperty "log10pow5" . conjoin $ flip fmap [0..2620] (\e ->
-      log10pow5 e === fromIntegral (ilog10floor (5^e)))
+      BRFI.log10pow5 e === fromIntegral (ilog10floor (5^e)))
   ]
   where
-    -- wrappers around log approximations
-    pow5bits (I# i) = I# (BRFI.pow5bitsUnboxed i)
-    log10pow2 (I# i) = I# (BRFI.log10pow2Unboxed i)
-    log10pow5 (I# i) = I# (BRFI.log10pow5Unboxed i)
-
     -- trial division logarithms
     ilog2ceiling :: Integer -> Integer
     ilog2ceiling x

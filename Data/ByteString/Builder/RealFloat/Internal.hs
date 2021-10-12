@@ -24,14 +24,13 @@ module Data.ByteString.Builder.RealFloat.Internal
     , toCharsNonNumbersAndZero
     , decimalLength9
     , decimalLength17
-    , pow5bitsUnboxed
-    , log10pow2Unboxed
-    , log10pow5Unboxed
+    , pow5bits
+    , log10pow2
+    , log10pow5
     , pow5_factor
-    , multipleOfPowerOf5_Unboxed
-    , multipleOfPowerOf5_UnboxedB
-    , multipleOfPowerOf2Unboxed
-    , acceptBoundsUnboxed
+    , multipleOfPowerOf5
+    , multipleOfPowerOf2
+    , acceptBounds
     , BoundsState(..)
     , trimTrailing
     , trimNoTrailing
@@ -41,20 +40,16 @@ module Data.ByteString.Builder.RealFloat.Internal
     , fquot10
     , frem10
     , fquotRem10
-    , fquotRem10Boxed
     , fquot5
     , frem5
-    , fwrapped
     , dquot10
     , dquotRem10
-    , dquotRem10Boxed
     , dquot5
     , drem5
-    , dquotRem5
     , dquot100
     , dwrapped
     -- prim-op helpers
-    , unbox
+    , timesWord2
     , Addr(..)
     , ByteArray(..)
     , castDoubleToWord64
@@ -269,8 +264,8 @@ toCharsNonNumbersAndZero NonNumbersAndZero{..}
 --
 -- For round-to-even and correct shortest
 -- acceptBoundsUnboxed v = ((v `uncheckedShiftRL#` 2#) `and#` 1##) `eqWord#` 0##
-acceptBoundsUnboxed :: Word# -> Int#
-acceptBoundsUnboxed _ = 0#
+acceptBounds :: Mantissa a => a -> Bool
+acceptBounds _ = False
 
 -------------------------------------------------------------------------------
 -- Logarithm Approximations
@@ -299,6 +294,12 @@ log10pow2Unboxed e = (e *# 78913#) `uncheckedIShiftRL#` 18#
 log10pow5Unboxed :: Int# -> Int#
 log10pow5Unboxed e = (e *# 732923#) `uncheckedIShiftRL#` 20#
 
+-- | Boxed versions of the functions above
+pow5bits, log10pow2, log10pow5 :: Int -> Int
+pow5bits  = wrapped pow5bitsUnboxed
+log10pow2 = wrapped log10pow2Unboxed
+log10pow5 = wrapped log10pow5Unboxed
+
 -------------------------------------------------------------------------------
 -- Fast Division
 --
@@ -321,110 +322,125 @@ log10pow5Unboxed e = (e *# 732923#) `uncheckedIShiftRL#` 20#
 -------------------------------------------------------------------------------
 
 -- | Returns w / 10
-fquot10 :: Word# -> Word#
-fquot10 w = (w `timesWord#` 0xCCCCCCCD##) `uncheckedShiftRL#` 35#
+fquot10Unboxed :: Word# -> Word#
+fquot10Unboxed w = (w `timesWord#` 0xCCCCCCCD##) `uncheckedShiftRL#` 35#
 
 -- | Returns w % 10
-frem10 :: Word# -> Word#
-frem10 w =
-  let w' = fquot10 w
+frem10Unboxed :: Word# -> Word#
+frem10Unboxed w =
+  let w' = fquot10Unboxed w
    in w `minusWord#` (w' `timesWord#` 10##)
 
 -- | Returns (w / 10, w % 10)
-fquotRem10 :: Word# -> (# Word#, Word# #)
-fquotRem10 w =
-  let w' = fquot10 w
+fquotRem10Unboxed :: Word# -> (# Word#, Word# #)
+fquotRem10Unboxed w =
+  let w' = fquot10Unboxed w
    in (# w', w `minusWord#` (w' `timesWord#` 10##) #)
 
 -- | Returns w / 100
-fquot100 :: Word# -> Word#
-fquot100 w = (w `timesWord#` 0x51EB851F##) `uncheckedShiftRL#` 37#
+fquot100Unboxed :: Word# -> Word#
+fquot100Unboxed w = (w `timesWord#` 0x51EB851F##) `uncheckedShiftRL#` 37#
 
 -- | Returns w / 5
-fquot5 :: Word# -> Word#
-fquot5 w = (w `timesWord#` 0xCCCCCCCD##) `uncheckedShiftRL#` 34#
+fquot5Unboxed :: Word# -> Word#
+fquot5Unboxed w = (w `timesWord#` 0xCCCCCCCD##) `uncheckedShiftRL#` 34#
 
 -- | Returns w % 5
-frem5 :: Word# -> Word#
-frem5 w =
-  let w' = fquot5 w
+frem5Unboxed :: Word# -> Word#
+frem5Unboxed w =
+  let w' = fquot5Unboxed w
    in w `minusWord#` (w' `timesWord#` 5##)
 
+-- | Boxed versions of the functions above
+fquot10, frem10, fquot100, fquot5, frem5 :: Word32 -> Word32
+fquot10  = fwrapped fquot10Unboxed
+frem10   = fwrapped frem10Unboxed
+fquot100 = fwrapped fquot100Unboxed
+fquot5   = fwrapped fquot5Unboxed
+frem5    = fwrapped frem5Unboxed
+
 -- | Returns (w / 10, w % 10)
-fquotRem10Boxed :: Word32 -> (Word32, Word32)
-fquotRem10Boxed (W32# w) = let !(# q, r #) = fquotRem10 w in (W32# q, W32# r)
+fquotRem10 :: Word32 -> (Word32, Word32)
+fquotRem10 (W32# w) = let !(# q, r #) = fquotRem10Unboxed w in (W32# q, W32# r)
 
 -- | Wrap a unboxed function on 32-bit floats into the boxed equivalent
 fwrapped :: (Word# -> Word#) -> Word32 -> Word32
 fwrapped f (W32# w) = W32# (f w)
 
 -- | Returns w / 10
-dquot10 :: Word# -> Word#
-dquot10 w =
+dquot10Unboxed :: Word# -> Word#
+dquot10Unboxed w =
   let !(# rdx, _ #) = w `timesWord2#` 0xCCCCCCCCCCCCCCCD##
     in rdx `uncheckedShiftRL#` 3#
 
 -- | Returns w / 100
-dquot100 :: Word# -> Word#
-dquot100 w =
+dquot100Unboxed :: Word# -> Word#
+dquot100Unboxed w =
   let !(# rdx, _ #) = (w `uncheckedShiftRL#` 2#) `timesWord2#` 0x28F5C28F5C28F5C3##
     in rdx `uncheckedShiftRL#` 2#
 
 -- | Returns (w / 10, w % 10)
-dquotRem10 :: Word# -> (# Word#, Word# #)
-dquotRem10 w =
-  let w' = dquot10 w
+dquotRem10Unboxed :: Word# -> (# Word#, Word# #)
+dquotRem10Unboxed w =
+  let w' = dquot10Unboxed w
    in (# w', w `minusWord#` (w' `timesWord#` 10##) #)
 
 -- | Returns w / 5
-dquot5 :: Word# -> Word#
-dquot5 w =
+dquot5Unboxed :: Word# -> Word#
+dquot5Unboxed w =
   let !(# rdx, _ #) = w `timesWord2#` 0xCCCCCCCCCCCCCCCD##
     in rdx `uncheckedShiftRL#` 2#
 
 -- | Returns w % 5
-drem5 :: Word# -> Word#
-drem5 w =
-  let w' = dquot5 w
+drem5Unboxed :: Word# -> Word#
+drem5Unboxed w =
+  let w' = dquot5Unboxed w
    in w `minusWord#` (w' `timesWord#` 5##)
 
 -- | Returns (w / 5, w % 5)
-dquotRem5 :: Word# -> (# Word#, Word# #)
-dquotRem5 w =
-  let w' = dquot5 w
+dquotRem5Unboxed :: Word# -> (# Word#, Word# #)
+dquotRem5Unboxed w =
+  let w' = dquot5Unboxed w
    in (# w', w `minusWord#` (w' `timesWord#` 5##) #)
 
+-- | Boxed versions of the functions above
+dquot10, dquot100, dquot5, drem5 :: Word64 -> Word64
+dquot10  = dwrapped dquot10Unboxed
+dquot100 = dwrapped dquot100Unboxed
+dquot5   = dwrapped dquot5Unboxed
+drem5    = dwrapped drem5Unboxed
+
 -- | Returns (w / 10, w % 10)
-dquotRem10Boxed :: Word64 -> (Word64, Word64)
-dquotRem10Boxed (W64# w) = let !(# q, r #) = dquotRem10 w in (W64# q, W64# r)
+dquotRem10 :: Word64 -> (Word64, Word64)
+dquotRem10 (W64# w) = let !(# q, r #) = dquotRem10Unboxed w in (W64# q, W64# r)
 
 -- | Wrap a unboxed function on 64-bit floats into the boxed equivalent
 dwrapped :: (Word# -> Word#) -> Word64 -> Word64
 dwrapped f (W64# w) = W64# (f w)
 
--- | Unbox an Int
-unbox :: Int -> Int#
-unbox (I# i) = i
+-- | Wrap a unboxed function on Int# into the boxed equivalent
+wrapped :: (Int# -> Int#) -> Int -> Int
+wrapped f (I# w) = I# (f w)
+
+-- | Boxed version of `timesWord2#`
+timesWord2 :: Word64 -> Word64 -> (Word64, Word64)
+timesWord2 a b = let !(# hi, lo #) = raw a `timesWord2#` raw b in (wrap hi, wrap lo)
 
 -- | Returns the number of times w is divisible by 5
 pow5_factor :: Word# -> Int# -> Int#
 pow5_factor w count =
-  let !(# q, r #) = dquotRem5 w
+  let !(# q, r #) = dquotRem5Unboxed w
    in case r `eqWord#` 0## of
         0# -> count
         _  -> pow5_factor q (count +# 1#)
 
--- | Returns 1# if value is divisible by 5^p
-multipleOfPowerOf5_Unboxed :: Word# -> Word# -> Int#
-multipleOfPowerOf5_Unboxed value p = pow5_factor value 0# >=# word2Int# p
-
 -- | Returns True if value is divisible by 5^p
-multipleOfPowerOf5_UnboxedB :: Word# -> Word# -> Bool
-multipleOfPowerOf5_UnboxedB value p = isTrue# (multipleOfPowerOf5_Unboxed value p)
+multipleOfPowerOf5 :: Mantissa a => a -> Int -> Bool
+multipleOfPowerOf5 value (I# p) = isTrue# (pow5_factor (raw value) 0# >=# p)
 
--- | Returns 1# if value is divisible by 2^p
-multipleOfPowerOf2Unboxed :: Word# -> Word# -> Int#
-multipleOfPowerOf2Unboxed value p = (value `and#` ((1## `uncheckedShiftL#` word2Int# p) `minusWord#` 1##)) `eqWord#` 0##
+-- | Returns Trueif value is divisible by 2^p
+multipleOfPowerOf2 :: Mantissa a => a -> Int -> Bool
+multipleOfPowerOf2 value (I# p) = isTrue# (((raw value) `and#` ((1## `uncheckedShiftL#` p) `minusWord#` 1##)) `eqWord#` 0##)
 
 -- | Wrapper for polymorphic handling of 32- and 64-bit floats
 class (FiniteBits a, Integral a) => Mantissa a where
@@ -445,16 +461,16 @@ instance Mantissa Word32 where
   boolToWord = boolToWord32
 
   {-# INLINE quotRem10Boxed #-}
-  quotRem10Boxed = fquotRem10Boxed
+  quotRem10Boxed = fquotRem10
 
   {-# INLINE quot10Boxed #-}
-  quot10Boxed = fwrapped fquot10
+  quot10Boxed = fquot10
 
   {-# INLINE quot100Boxed #-}
-  quot100Boxed = fwrapped fquot100
+  quot100Boxed = fquot100
 
   quotRem100 (W32# w) =
-    let w' = fquot100 w
+    let w' = fquot100Unboxed w
       in (# w', (w `minusWord#` (w' `timesWord#` 100##)) #)
   quotRem10000 (W32# w) =
     let w' = (w `timesWord#` 0xD1B71759##) `uncheckedShiftRL#` 45#
@@ -467,16 +483,16 @@ instance Mantissa Word64 where
   boolToWord = boolToWord64
 
   {-# INLINE quotRem10Boxed #-}
-  quotRem10Boxed = dquotRem10Boxed
+  quotRem10Boxed = dquotRem10
 
   {-# INLINE quot10Boxed #-}
-  quot10Boxed = dwrapped dquot10
+  quot10Boxed = dquot10
 
   {-# INLINE quot100Boxed #-}
-  quot100Boxed = dwrapped dquot100
+  quot100Boxed = dquot100
 
   quotRem100 (W64# w) =
-    let w' = dquot100 w
+    let w' = dquot100Unboxed w
      in (# w', (w `minusWord#` (w' `timesWord#` 100##)) #)
   quotRem10000 (W64# w) =
     let !(# rdx, _ #) = w `timesWord2#` 0x346DC5D63886594B##
@@ -582,9 +598,9 @@ trimNoTrailing !(BoundsState u v w ld _ _) =
 -- bounds
 {-# INLINE closestCorrectlyRounded #-}
 closestCorrectlyRounded :: Mantissa a => Bool -> BoundsState a -> a
-closestCorrectlyRounded acceptBounds s = vv s + boolToWord roundUp
+closestCorrectlyRounded acceptBound s = vv s + boolToWord roundUp
   where
-    outsideBounds = not (vuIsTrailingZeros s) || not acceptBounds
+    outsideBounds = not (vuIsTrailingZeros s) || not acceptBound
     roundUp = (vv s == vu s && outsideBounds) || lastRemovedDigit s >= 5
 
 -- Wrappe around int2Word#
@@ -611,26 +627,28 @@ data Addr = Addr Addr#
 
 -- | Index into the 64-bit word lookup table provided
 {-# INLINE getWord64At #-}
-getWord64At :: Addr# -> Int# -> Word#
-getWord64At arr i =
+getWord64At :: Addr# -> Int -> Word64
+getWord64At arr (I# i) =
 #if defined(WORDS_BIGENDIAN)
-   byteSwap64# (indexWord64OffAddr# arr i)
+   wrap (byteSwap64# (indexWord64OffAddr# arr i)
 #else
-   indexWord64OffAddr# arr i
+   wrap (indexWord64OffAddr# arr i)
 #endif
 
 -- | Index into the 128-bit word lookup table provided
 -- Return (# high-64-bits , low-64-bits #)
 -- NB: really just swaps the bytes and doesn't reorder the words
 {-# INLINE getWord128At #-}
-getWord128At :: Addr# -> Int# -> (# Word#, Word# #)
-getWord128At arr i =
+getWord128At :: Addr# -> Int -> (Word64, Word64)
+getWord128At arr (I# i) =
 #if defined(WORDS_BIGENDIAN)
-   (# byteSwap64# (indexWord64OffAddr# arr (i *# 2# +# 1#))
-    , byteSwap64# (indexWord64OffAddr# arr (i *# 2#))
-    #)
+   ( wrap (byteSwap64# (indexWord64OffAddr# arr (i *# 2# +# 1#)))
+   , wrap (byteSwap64# (indexWord64OffAddr# arr (i *# 2#)))
+   )
 #else
-   (# indexWord64OffAddr# arr (i *# 2# +# 1#), indexWord64OffAddr# arr (i *# 2#) #)
+   ( wrap (indexWord64OffAddr# arr (i *# 2# +# 1#))
+   , wrap (indexWord64OffAddr# arr (i *# 2#))
+   )
 #endif
 
 
@@ -660,7 +678,7 @@ digit_table :: ByteArray
 digit_table = runST (ST $ \s1 ->
   let !(# s2, marr #) = newByteArray# 200# s1
       go (I# y) r = \i s ->
-        let !(# h, l #) = fquotRem10 (int2Word# y)
+        let !(# h, l #) = fquotRem10Unboxed (int2Word# y)
             e' = packWord16 (toAscii l) (toAscii h)
             s' = writeWord16Array# marr i e' s
          in if isTrue# (i ==# 99#) then s' else r (i +# 1#) s'
@@ -720,7 +738,7 @@ writeMantissa ptr olength = go (ptr `plusAddr#` olength)
 writeExponent :: Addr# -> Int32 -> State# d -> (# Addr#, State# d #)
 writeExponent ptr !expo@(I32# e) s1
   | expo >= 100 =
-      let !(# e1, e0 #) = fquotRem10 (int2Word# e)
+      let !(# e1, e0 #) = fquotRem10Unboxed (int2Word# e)
           s2 = copyWord16 (digit_table `unsafeAt` word2Int# e1) ptr s1
           s3 = poke (ptr `plusAddr#` 2#) (toAscii e0) s2
        in (# ptr `plusAddr#` 3#, s3 #)

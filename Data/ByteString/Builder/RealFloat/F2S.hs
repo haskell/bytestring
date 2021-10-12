@@ -1,5 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE BangPatterns, MagicHash, UnboxedTuples #-}
+{-# LANGUAGE BangPatterns, MagicHash #-}
 -- |
 -- Module      : Data.ByteString.Builder.RealFloat.F2S
 -- Copyright   : (c) Lawrence Wu 2021
@@ -19,9 +19,8 @@ import Data.Bits ((.|.), (.&.), unsafeShiftL, unsafeShiftR)
 import Data.ByteString.Builder.Internal (Builder)
 import Data.ByteString.Builder.Prim (primBounded)
 import Data.ByteString.Builder.RealFloat.Internal
-import GHC.Exts
 import GHC.Int (Int32(..))
-import GHC.Word (Word32(..))
+import GHC.Word (Word32(..), Word64(..))
 
 -- See Data.ByteString.Builder.RealFloat.TableGenerator for a high-level
 -- explanation of the ryu algorithm
@@ -103,101 +102,99 @@ data FloatingDecimal = FloatingDecimal
 
 -- | Multiply a 32-bit number with a 64-bit number while keeping the upper 64
 -- bits. Then shift by specified amount minus 32
-mulShift32Unboxed :: Word# -> Word# -> Int# -> Word#
-mulShift32Unboxed m factor shift =
-  let factorLo = narrow32Word# factor
-      factorHi = factor `uncheckedShiftRL#` 32#
-      bits0 = m `timesWord#` factorLo
-      bits1 = m `timesWord#` factorHi
-      total  = (bits0 `uncheckedShiftRL#` 32#) `plusWord#` bits1
-   in narrow32Word# (total `uncheckedShiftRL#` (shift -# 32#))
+mulShift32 :: Word32 -> Word64 -> Int -> Word32
+mulShift32 m factor shift =
+  let factorLo = factor .&. mask 32
+      factorHi = factor `unsafeShiftR` 32
+      bits0 = fromIntegral m * factorLo
+      bits1 = fromIntegral m * factorHi
+      total  = (bits0 `unsafeShiftR` 32) + bits1
+   in fromIntegral $ total `unsafeShiftR` (shift - 32)
 
 -- | Index into the 64-bit word lookup table float_pow5_inv_split
-get_float_pow5_inv_split :: Int# -> Word#
-get_float_pow5_inv_split i =
+get_float_pow5_inv_split :: Int -> Word64
+get_float_pow5_inv_split =
   let !(Addr arr) = float_pow5_inv_split
-   in getWord64At arr i
+   in getWord64At arr
 
 -- | Index into the 64-bit word lookup table float_pow5_split
-get_float_pow5_split :: Int# -> Word#
-get_float_pow5_split i =
+get_float_pow5_split :: Int -> Word64
+get_float_pow5_split =
   let !(Addr arr) = float_pow5_split
-   in getWord64At arr i
+   in getWord64At arr
 
 -- | Take the high bits of m * 2^k / 5^q / 2^-e2+q+k
-mulPow5InvDivPow2 :: Word# -> Word# -> Int# -> Word#
-mulPow5InvDivPow2 m q j = mulShift32Unboxed m (get_float_pow5_inv_split (word2Int# q)) j
+mulPow5InvDivPow2 :: Word32 -> Int -> Int -> Word32
+mulPow5InvDivPow2 m q j = mulShift32 m (get_float_pow5_inv_split q) j
 
 -- | Take the high bits of m * 5^-e2-q / 2^k / 2^q-k
-mulPow5DivPow2 :: Word# -> Int# -> Int# -> Word#
-mulPow5DivPow2 m i j = mulShift32Unboxed m (get_float_pow5_split i) j
-
--- | Wrapper around acceptBoundsUnboxed for Word32
-acceptBounds :: Word32 -> Bool
-acceptBounds !(W32# v) = isTrue# (acceptBoundsUnboxed v)
+mulPow5DivPow2 :: Word32 -> Int -> Int -> Word32
+mulPow5DivPow2 m i j = mulShift32 m (get_float_pow5_split i) j
 
 -- | Handle case e2 >= 0
 f2dGT :: Int32 -> Word32 -> Word32 -> Word32 -> (BoundsState Word32, Int32)
-f2dGT (I32# e2) (W32# u) (W32# v) (W32# w) =
-  let q = int2Word# (log10pow2Unboxed e2)
-      e10 = word2Int# q
+f2dGT e2' u v w =
+  let e2 = int32ToInt e2'
+      -- q = e10 = log_10(2^e2)
+      q = log10pow2 e2
       -- k = B0 + log_2(5^q)
-      k = unbox float_pow5_inv_bitcount +# pow5bitsUnboxed (word2Int# q) -# 1#
-      i = negateInt# e2 +# word2Int# q +# k
+      k = float_pow5_inv_bitcount + pow5bits q - 1
+      i = -e2 + q + k
       -- (u, v, w) * 2^k / 5^q / 2^-e2+q+k
       u' = mulPow5InvDivPow2 u q i
       v' = mulPow5InvDivPow2 v q i
       w' = mulPow5InvDivPow2 w q i
       !lastRemoved =
-        case (q `neWord#` 0##) `andI#` ((fquot10 (w' `minusWord#` 1##)) `leWord#` fquot10 u') of
+        if q /= 0 && fquot10 (w' - 1) <= fquot10 u'
           -- We need to know one removed digit even if we are not going to loop
           -- below. We could use q = X - 1 above, except that would require 33
           -- bits for the result, and we've found that 32-bit arithmetic is
           -- faster even on 64-bit machines.
-          0# -> 0##
-          _  -> let l = unbox float_pow5_inv_bitcount +# pow5bitsUnboxed (word2Int# q -# 1#) -# 1#
-                 in frem10 (mulPow5InvDivPow2 v (q `minusWord#` 1##) (negateInt# e2 +# word2Int# q -# 1# +# l))
-      !(# vvTrailing, vuTrailing, vw' #) =
+          then let l = float_pow5_inv_bitcount + pow5bits (q - 1) - 1
+                in frem10 (mulPow5InvDivPow2 v (q - 1) (-e2 + q - 1 + l))
+          else 0
+      !(vvTrailing, vuTrailing, vw') =
         case () of
-          _ | isTrue# ((q `leWord#` 9##) `andI#` (frem5 v `eqWord#` 0##))
-                -> (# multipleOfPowerOf5_UnboxedB v q, False, w' #)
-            | isTrue# ((q `leWord#` 9##) `andI#` acceptBoundsUnboxed v)
-                -> (# False, multipleOfPowerOf5_UnboxedB u q, w' #)
-            | isTrue# (q `leWord#` 9##)
-                -> (# False, False, w' `minusWord#` int2Word# (multipleOfPowerOf5_Unboxed w q) #)
+          _ | q < 9 && frem5 v == 0
+                -> (multipleOfPowerOf5 v q, False, w')
+            | q < 9 && acceptBounds v
+                -> (False, multipleOfPowerOf5 u q, w')
+            | q < 9
+                -> (False, False, w' - boolToWord32 (multipleOfPowerOf5 w q))
             | otherwise
-                -> (# False, False, w' #)
-   in (BoundsState (W32# u') (W32# v') (W32# vw') (W32# lastRemoved) vuTrailing vvTrailing , (I32# e10))
+                -> (False, False, w')
+   in (BoundsState u' v' vw' lastRemoved vuTrailing vvTrailing, intToInt32 q)
 
 -- | Handle case e2 < 0
 f2dLT :: Int32 -> Word32 -> Word32 -> Word32 -> (BoundsState Word32, Int32)
-f2dLT (I32# e2) (W32# u) (W32# v) (W32# w) =
-  let q = int2Word# (log10pow5Unboxed (negateInt# e2))
-      e10 = word2Int# q +# e2
-      i = (negateInt# e2) -# word2Int# q
+f2dLT e2' u v w =
+  let e2 = int32ToInt e2'
+      q = log10pow5 (-e2)
+      e10 = q + e2
+      i = (-e2) - q
       -- k = log_2(5^-e2-q) - B1
-      k = pow5bitsUnboxed i -# unbox float_pow5_bitcount
-      j = word2Int# q -# k
+      k = pow5bits i - float_pow5_bitcount
+      j = q - k
       -- (u, v, w) * 5^-e2-q / 2^k / 2^q-k
       u' = mulPow5DivPow2 u i j
       v' = mulPow5DivPow2 v i j
       w' = mulPow5DivPow2 w i j
       !lastRemoved =
-        case (q `neWord#` 0##) `andI#` ((fquot10 (u'`minusWord#` 1##)) `leWord#` fquot10 u') of
-          0# -> 0##
-          _  -> let j' = word2Int# q -# 1# -# (pow5bitsUnboxed (i +# 1#) -# unbox float_pow5_bitcount)
-                 in frem10 (mulPow5DivPow2 v (i +# 1#) j')
-      !(# vvTrailing , vuTrailing, vw' #) =
+        if q /= 0 && fquot10 (w' - 1) <= fquot10 u'
+          then let j' = q - 1 - (pow5bits (i + 1) - float_pow5_bitcount)
+                in frem10 (mulPow5DivPow2 v (i + 1) j')
+          else 0
+      !(vvTrailing , vuTrailing, vw') =
         case () of
-          _ | isTrue# ((q `leWord#` 1##) `andI#` acceptBoundsUnboxed v)
-                -> (# True, isTrue# ((w `minusWord#` v) `eqWord#` 2##), w' #) -- mmShift == 1
-            | isTrue# (q `leWord#` 1##)
-                -> (# True, False, w' `minusWord#` 1## #)
-            | isTrue# (q `ltWord#` 31##)
-                -> (# isTrue# (multipleOfPowerOf2Unboxed v (q `minusWord#` 1##)), False, w' #)
+          _ | q <= 1 && acceptBounds v
+                -> (True, v - u == 2, w') -- mmShift == 1
+            | q <= 1
+                -> (True, False, w' - 1)
+            | q < 31
+                -> (multipleOfPowerOf2 v (q - 1), False, w')
             | otherwise
-                -> (# False, False, w' #)
-   in (BoundsState (W32# u') (W32# v') (W32# vw') (W32# lastRemoved) vuTrailing vvTrailing , (I32# e10))
+                -> (False, False, w')
+   in (BoundsState u' v' vw' lastRemoved vuTrailing vvTrailing, intToInt32 e10)
 
 -- | Returns the decimal representation of the given mantissa and exponent of a
 -- 32-bit Float using the ryu algorithm.

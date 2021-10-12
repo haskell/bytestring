@@ -144,7 +144,7 @@ specialStr f
 digits :: Word64 -> [Int]
 digits w = go [] w
   where go ds 0 = ds
-        go ds c = let (q, r) = R.dquotRem10Boxed c
+        go ds c = let (q, r) = R.dquotRem10 c
                    in go ((R.word64ToInt r) : ds) q
 
 -- | Show a floating point value in fixed point. Based on GHC.Float.showFloat
