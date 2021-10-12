@@ -24,5 +24,9 @@ steps:
     - apt-get install -y ghc cabal-install
     - cabal --version # 1.24
     - cabal update
+    # We need to break dependency circuit between optparse-applicative,
+    # process, unix and bytestring. Newer versions of Cabal are capable
+    # to come up with optparse-applicative -process automatically, but
+    # older ones need a hint.
     - cabal install --dependencies-only --enable-tests --constraint 'optparse-applicative -process'
     - cabal test
