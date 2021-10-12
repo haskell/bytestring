@@ -361,11 +361,11 @@ frem5    = fwrapped frem5Unboxed
 
 -- | Returns (w / 10, w % 10)
 fquotRem10 :: Word32 -> (Word32, Word32)
-fquotRem10 (W32# w) = let !(# q, r #) = fquotRem10Unboxed w in (W32# q, W32# r)
+fquotRem10 w = let !(# q, r #) = fquotRem10Unboxed (raw w) in (wrap q, wrap r)
 
 -- | Wrap a unboxed function on 32-bit floats into the boxed equivalent
 fwrapped :: (Word# -> Word#) -> Word32 -> Word32
-fwrapped f (W32# w) = W32# (f w)
+fwrapped f w = wrap (f (raw w))
 
 -- | Returns w / 10
 dquot10Unboxed :: Word# -> Word#
@@ -456,8 +456,13 @@ class (FiniteBits a, Integral a) => Mantissa a where
 
 instance Mantissa Word32 where
   decimalLength = decimalLength9
+#if __GLASGOW_HASKELL__ >= 902
+  raw (W32# w) = word32ToWord# w
+  wrap w = W32# (wordToWord32# w)
+#else
   raw (W32# w) = w
-  wrap w = (W32# w)
+  wrap w = W32# w
+#endif
   boolToWord = boolToWord32
 
   {-# INLINE quotRem10Boxed #-}
@@ -469,12 +474,12 @@ instance Mantissa Word32 where
   {-# INLINE quot100Boxed #-}
   quot100Boxed = fquot100
 
-  quotRem100 (W32# w) =
-    let w' = fquot100Unboxed w
-      in (# w', (w `minusWord#` (w' `timesWord#` 100##)) #)
-  quotRem10000 (W32# w) =
-    let w' = (w `timesWord#` 0xD1B71759##) `uncheckedShiftRL#` 45#
-      in (# w', (w `minusWord#` (w' `timesWord#` 10000##)) #)
+  quotRem100 w =
+    let w' = fquot100Unboxed (raw w)
+      in (# w', (raw w `minusWord#` (w' `timesWord#` 100##)) #)
+  quotRem10000 w =
+    let w' = (raw w `timesWord#` 0xD1B71759##) `uncheckedShiftRL#` 45#
+      in (# w', (raw w `minusWord#` (w' `timesWord#` 10000##)) #)
 
 instance Mantissa Word64 where
   decimalLength = decimalLength17
@@ -667,9 +672,9 @@ packWord16 l h =
 unpackWord16 :: Word# -> (# Word#, Word# #)
 unpackWord16 w =
 #if defined(WORDS_BIGENDIAN)
-    (# w `and#` 0xff##, w `uncheckedShiftRL64#` 8# #)
+    (# w `and#` 0xff##, w `uncheckedShiftRL#` 8# #)
 #else
-    (# w `uncheckedShiftRL64#` 8#, w `and#` 0xff## #)
+    (# w `uncheckedShiftRL#` 8#, w `and#` 0xff## #)
 #endif
 
 
@@ -680,22 +685,41 @@ digit_table = runST (ST $ \s1 ->
       go (I# y) r = \i s ->
         let !(# h, l #) = fquotRem10Unboxed (int2Word# y)
             e' = packWord16 (toAscii l) (toAscii h)
+#if __GLASGOW_HASKELL__ >= 902
+            s' = writeWord16Array# marr i (wordToWord16# e') s
+#else
             s' = writeWord16Array# marr i e' s
+#endif
          in if isTrue# (i ==# 99#) then s' else r (i +# 1#) s'
       !(# s3, bs #) = unsafeFreezeByteArray# marr (foldr go (\_ s -> s) [0..99] 0# s2)
    in (# s3, ByteArray bs #))
 
 -- | Unsafe index a ByteArray for the 16-bit word at the index
 unsafeAt :: ByteArray -> Int# -> Word#
-unsafeAt (ByteArray bs) i = indexWord16Array# bs i
+unsafeAt (ByteArray bs) i =
+#if __GLASGOW_HASKELL__ >= 902
+    word16ToWord# (indexWord16Array# bs i)
+#else
+    indexWord16Array# bs i
+#endif
 
 -- | Write a 16-bit word into the given address
 copyWord16 :: Word# -> Addr# -> State# d -> State# d
-copyWord16 w a s = writeWord16OffAddr# a 0# w s
+copyWord16 w a s =
+#if __GLASGOW_HASKELL__ >= 902
+    writeWord16OffAddr# a 0# (wordToWord16# w) s
+#else
+    writeWord16OffAddr# a 0# w s
+#endif
 
 -- | Write an 8-bit word into the given address
 poke :: Addr# -> Word# -> State# d -> State# d
-poke a w s = writeWord8OffAddr# a 0# w s
+poke a w s =
+#if __GLASGOW_HASKELL__ >= 902
+    writeWord8OffAddr# a 0# (wordToWord8# w) s
+#else
+    writeWord8OffAddr# a 0# w s
+#endif
 
 -- | Write the mantissa into the given address. This function attempts to
 -- optimize this by writing pairs of digits simultaneously when the mantissa is
@@ -736,7 +760,7 @@ writeMantissa ptr olength = go (ptr `plusAddr#` olength)
 
 -- | Write the exponent into the given address.
 writeExponent :: Addr# -> Int32 -> State# d -> (# Addr#, State# d #)
-writeExponent ptr !expo@(I32# e) s1
+writeExponent ptr !expo s1
   | expo >= 100 =
       let !(# e1, e0 #) = fquotRem10Unboxed (int2Word# e)
           s2 = copyWord16 (digit_table `unsafeAt` word2Int# e1) ptr s1
@@ -748,6 +772,7 @@ writeExponent ptr !expo@(I32# e) s1
   | otherwise =
       let s2 = poke ptr (toAscii (int2Word# e)) s1
        in (# ptr `plusAddr#` 1#, s2 #)
+  where !(I# e) = int32ToInt expo
 
 -- | Write the sign into the given address.
 writeSign :: Addr# -> Bool -> State# d -> (# Addr#, State# d #)
