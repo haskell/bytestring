@@ -39,7 +39,6 @@ module Data.ByteString.Builder.RealFloat.Internal
     -- hand-rolled division and remainder for f2s and d2s
     , fquot10
     , frem10
-    , fquotRem10
     , fquot5
     , frem5
     , dquot10
@@ -47,7 +46,6 @@ module Data.ByteString.Builder.RealFloat.Internal
     , dquot5
     , drem5
     , dquot100
-    , dwrapped
     -- prim-op helpers
     , timesWord2
     , Addr(..)
@@ -63,6 +61,8 @@ module Data.ByteString.Builder.RealFloat.Internal
     , intToInt32
     , word32ToInt
     , word64ToInt
+    , word32ToWord64
+    , word64ToWord32
 
     , module Data.ByteString.Builder.RealFloat.TableGenerator
     ) where
@@ -73,14 +73,20 @@ import Data.ByteString.Internal (c2w)
 import Data.ByteString.Builder.Prim.Internal (BoundedPrim, boundedPrim)
 import Data.ByteString.Builder.RealFloat.TableGenerator
 import Data.Char (ord)
-import GHC.Int (Int32(..))
-import GHC.Exts
+import GHC.Int (Int(..), Int32(..))
+import GHC.Prim
+import GHC.Ptr (Ptr(..), plusPtr)
 import GHC.ST (ST(..), runST)
+import GHC.Types (isTrue#)
 import GHC.Word (Word8, Word32(..), Word64(..))
-import Foreign.Ptr (plusPtr)
 import qualified Foreign.Storable as S (poke)
 
 #include <ghcautoconf.h>
+#include "MachDeps.h"
+
+#if WORD_SIZE_IN_BITS < 64
+import GHC.IntWord64
+#endif
 
 #if __GLASGOW_HASKELL__ >= 804
 import GHC.Float (castFloatToWord32, castDoubleToWord64)
@@ -321,116 +327,183 @@ log10pow5 = wrapped log10pow5Unboxed
 -- more detailed explanation.
 -------------------------------------------------------------------------------
 
+word32ToWord64 :: Word32 -> Word64
+word32ToWord64 = fromIntegral
+
+word64ToWord32 :: Word64 -> Word32
+word64ToWord32 = fromIntegral
+
 -- | Returns w / 10
-fquot10Unboxed :: Word# -> Word#
-fquot10Unboxed w = (w `timesWord#` 0xCCCCCCCD##) `uncheckedShiftRL#` 35#
+fquot10 :: Word32 -> Word32
+fquot10 w = word64ToWord32 ((word32ToWord64 w * 0xCCCCCCCD) `unsafeShiftR` 35)
 
 -- | Returns w % 10
-frem10Unboxed :: Word# -> Word#
-frem10Unboxed w =
-  let w' = fquot10Unboxed w
-   in w `minusWord#` (w' `timesWord#` 10##)
-
--- | Returns (w / 10, w % 10)
-fquotRem10Unboxed :: Word# -> (# Word#, Word# #)
-fquotRem10Unboxed w =
-  let w' = fquot10Unboxed w
-   in (# w', w `minusWord#` (w' `timesWord#` 10##) #)
-
--- | Returns w / 100
-fquot100Unboxed :: Word# -> Word#
-fquot100Unboxed w = (w `timesWord#` 0x51EB851F##) `uncheckedShiftRL#` 37#
-
--- | Returns w / 5
-fquot5Unboxed :: Word# -> Word#
-fquot5Unboxed w = (w `timesWord#` 0xCCCCCCCD##) `uncheckedShiftRL#` 34#
-
--- | Returns w % 5
-frem5Unboxed :: Word# -> Word#
-frem5Unboxed w =
-  let w' = fquot5Unboxed w
-   in w `minusWord#` (w' `timesWord#` 5##)
-
--- | Boxed versions of the functions above
-fquot10, frem10, fquot100, fquot5, frem5 :: Word32 -> Word32
-fquot10  = fwrapped fquot10Unboxed
-frem10   = fwrapped frem10Unboxed
-fquot100 = fwrapped fquot100Unboxed
-fquot5   = fwrapped fquot5Unboxed
-frem5    = fwrapped frem5Unboxed
+frem10 :: Word32 -> Word32
+frem10 w = w - fquot10 w * 10
 
 -- | Returns (w / 10, w % 10)
 fquotRem10 :: Word32 -> (Word32, Word32)
-fquotRem10 w = let !(# q, r #) = fquotRem10Unboxed (raw w) in (wrap q, wrap r)
-
--- | Wrap a unboxed function on 32-bit floats into the boxed equivalent
-fwrapped :: (Word# -> Word#) -> Word32 -> Word32
-fwrapped f w = wrap (f (raw w))
-
--- | Returns w / 10
-dquot10Unboxed :: Word# -> Word#
-dquot10Unboxed w =
-  let !(# rdx, _ #) = w `timesWord2#` 0xCCCCCCCCCCCCCCCD##
-    in rdx `uncheckedShiftRL#` 3#
+fquotRem10 w =
+  let w' = fquot10 w
+   in (w', w - fquot10 w * 10)
 
 -- | Returns w / 100
-dquot100Unboxed :: Word# -> Word#
-dquot100Unboxed w =
-  let !(# rdx, _ #) = (w `uncheckedShiftRL#` 2#) `timesWord2#` 0x28F5C28F5C28F5C3##
-    in rdx `uncheckedShiftRL#` 2#
+fquot100 :: Word32 -> Word32
+fquot100 w = word64ToWord32 ((word32ToWord64 w * 0x51EB851F) `unsafeShiftR` 37)
 
--- | Returns (w / 10, w % 10)
-dquotRem10Unboxed :: Word# -> (# Word#, Word# #)
-dquotRem10Unboxed w =
-  let w' = dquot10Unboxed w
-   in (# w', w `minusWord#` (w' `timesWord#` 10##) #)
+-- | Returns (w / 10000, w % 10000)
+fquotRem10000 :: Word32 -> (Word32, Word32)
+fquotRem10000 w =
+  let w' = word64ToWord32 ((word32ToWord64 w * 0xD1B71759) `unsafeShiftR` 45)
+    in (w', w - w' * 10000)
 
 -- | Returns w / 5
-dquot5Unboxed :: Word# -> Word#
-dquot5Unboxed w =
-  let !(# rdx, _ #) = w `timesWord2#` 0xCCCCCCCCCCCCCCCD##
-    in rdx `uncheckedShiftRL#` 2#
+fquot5 :: Word32 -> Word32
+fquot5 w = word64ToWord32 ((word32ToWord64 w * 0xCCCCCCCD) `unsafeShiftR` 34)
 
 -- | Returns w % 5
-drem5Unboxed :: Word# -> Word#
-drem5Unboxed w =
-  let w' = dquot5Unboxed w
-   in w `minusWord#` (w' `timesWord#` 5##)
+frem5 :: Word32 -> Word32
+frem5 w = w - fquot5 w * 5
 
--- | Returns (w / 5, w % 5)
-dquotRem5Unboxed :: Word# -> (# Word#, Word# #)
-dquotRem5Unboxed w =
-  let w' = dquot5Unboxed w
-   in (# w', w `minusWord#` (w' `timesWord#` 5##) #)
+-- | Returns w / 10
+dquot10 :: Word64 -> Word64
+dquot10 w =
+  let !(rdx, _) = w `timesWord2` 0xCCCCCCCCCCCCCCCD
+    in rdx `unsafeShiftR` 3
 
--- | Boxed versions of the functions above
-dquot10, dquot100, dquot5, drem5 :: Word64 -> Word64
-dquot10  = dwrapped dquot10Unboxed
-dquot100 = dwrapped dquot100Unboxed
-dquot5   = dwrapped dquot5Unboxed
-drem5    = dwrapped drem5Unboxed
+-- | Returns w / 100
+dquot100 :: Word64 -> Word64
+dquot100 w =
+  let !(rdx, _) = (w `unsafeShiftR` 2) `timesWord2` 0x28F5C28F5C28F5C3
+    in rdx `unsafeShiftR` 2
+
+-- | Returns (w / 10000, w % 10000)
+dquotRem10000 :: Word64 -> (Word64, Word64)
+dquotRem10000 w =
+  let !(rdx, _) = w `timesWord2` 0x346DC5D63886594B
+      w' = rdx `unsafeShiftR` 11
+   in (w', w - w' * 10000)
 
 -- | Returns (w / 10, w % 10)
 dquotRem10 :: Word64 -> (Word64, Word64)
-dquotRem10 (W64# w) = let !(# q, r #) = dquotRem10Unboxed w in (W64# q, W64# r)
+dquotRem10 w =
+  let w' = dquot10 w
+   in (w', w - w' * 10)
 
--- | Wrap a unboxed function on 64-bit floats into the boxed equivalent
-dwrapped :: (Word# -> Word#) -> Word64 -> Word64
-dwrapped f (W64# w) = W64# (f w)
+-- | Returns w / 5
+dquot5 :: Word64 -> Word64
+dquot5 w =
+  let !(rdx, _) = w `timesWord2` 0xCCCCCCCCCCCCCCCD
+    in rdx `unsafeShiftR` 2
+
+-- | Returns w % 5
+drem5 :: Word64 -> Word64
+drem5 w = w - dquot5 w * 5
+
+-- | Returns (w / 5, w % 5)
+dquotRem5 :: Word64 -> (Word64, Word64)
+dquotRem5 w =
+  let w' = dquot5 w
+   in (w', w - w' * 5)
 
 -- | Wrap a unboxed function on Int# into the boxed equivalent
 wrapped :: (Int# -> Int#) -> Int -> Int
 wrapped f (I# w) = I# (f w)
 
--- | Boxed version of `timesWord2#`
+#if WORD_SIZE_IN_BITS == 32
+-- | Packs 2 32-bit system words (hi, lo) into a Word64
+packWord64 :: Word# -> Word# -> Word64#
+packWord64 hi lo =
+#if defined(WORDS_BIGENDIAN)
+    ((wordToWord64# lo) `uncheckedShiftL64#` 32#) `or64#` (wordToWord64# hi)
+#else
+    ((wordToWord64# hi) `uncheckedShiftL64#` 32#) `or64#` (wordToWord64# lo)
+#endif
+
+-- | Unpacks a Word64 into 2 32-bit words (hi, lo)
+unpackWord64 :: Word64# -> (# Word#, Word# #)
+unpackWord64 w =
+#if defined(WORDS_BIGENDIAN)
+    (# word64ToWord# w
+     , word64ToWord# (w `uncheckedShiftRL64#` 32#)
+     #)
+#else
+    (# word64ToWord# (w `uncheckedShiftRL64#` 32#)
+     , word64ToWord# w
+     #)
+#endif
+
+-- | Adds 2 Word64's with 32-bit addition and manual carrying
+plusWord64 :: Word64# -> Word64# -> Word64#
+plusWord64 x y =
+  let !(# x_h, x_l #) = unpackWord64 x
+      !(# y_h, y_l #) = unpackWord64 y
+      lo = x_l `plusWord#` y_l
+      carry = int2Word# (lo `ltWord#` x_l)
+      hi = x_h `plusWord#` y_h `plusWord#` carry
+   in packWord64 hi lo
+#endif
+
+-- | Boxed version of `timesWord2#` for 64 bits
 timesWord2 :: Word64 -> Word64 -> (Word64, Word64)
-timesWord2 a b = let !(# hi, lo #) = raw a `timesWord2#` raw b in (wrap hi, wrap lo)
+timesWord2 a b =
+  let ra = raw a
+      rb = raw b
+#if WORD_SIZE_IN_BITS >= 64
+      !(# hi, lo #) = ra `timesWord2#` rb
+#else
+      !(# x_h, x_l #) = unpackWord64 ra
+      !(# y_h, y_l #) = unpackWord64 rb
+
+      !(# phh_h, phh_l #) = x_h `timesWord2#` y_h
+      !(# phl_h, phl_l #) = x_h `timesWord2#` y_l
+      !(# plh_h, plh_l #) = x_l `timesWord2#` y_h
+      !(# pll_h, pll_l #) = x_l `timesWord2#` y_l
+
+      --          x1 x0
+      --  X       y1 y0
+      --  -------------
+      --             00  LOW PART
+      --  -------------
+      --          00
+      --       10 10     MIDDLE PART
+      --  +       01
+      --  -------------
+      --       01
+      --  + 11 11        HIGH PART
+      --  -------------
+
+      phh = packWord64 phh_h phh_l
+      phl = packWord64 phl_h phl_l
+
+      !(# mh, ml #) = unpackWord64 (phl
+        `plusWord64` (wordToWord64# pll_h)
+        `plusWord64` (wordToWord64# plh_l))
+
+      hi = phh
+        `plusWord64` (wordToWord64# mh)
+        `plusWord64` (wordToWord64# plh_h)
+
+      lo = packWord64 ml pll_l
+#endif
+   in (W64# hi, W64# lo)
+
+type WORD64 =
+#if WORD_SIZE_IN_BITS < 64
+  Word64#
+#else
+  Word#
+#endif
 
 -- | Returns the number of times w is divisible by 5
-pow5_factor :: Word# -> Int# -> Int#
+pow5_factor :: WORD64 -> Int# -> Int#
 pow5_factor w count =
-  let !(# q, r #) = dquotRem5Unboxed w
+  let !(W64# q, W64# r) = dquotRem5 (W64# w)
+#if WORD_SIZE_IN_BITS >= 64
    in case r `eqWord#` 0## of
+#else
+   in case r `eqWord64#` wordToWord64# 0## of
+#endif
         0# -> count
         _  -> pow5_factor q (count +# 1#)
 
@@ -440,69 +513,78 @@ multipleOfPowerOf5 value (I# p) = isTrue# (pow5_factor (raw value) 0# >=# p)
 
 -- | Returns Trueif value is divisible by 2^p
 multipleOfPowerOf2 :: Mantissa a => a -> Int -> Bool
-multipleOfPowerOf2 value (I# p) = isTrue# (((raw value) `and#` ((1## `uncheckedShiftL#` p) `minusWord#` 1##)) `eqWord#` 0##)
+multipleOfPowerOf2 value p = (value .&. mask p) == 0
 
 -- | Wrapper for polymorphic handling of 32- and 64-bit floats
 class (FiniteBits a, Integral a) => Mantissa a where
+  -- NB: might truncate!
+  -- Use this when we know the value fits in 32-bits
+  unsafeRaw :: a -> Word#
+  raw :: a -> WORD64
+
   decimalLength :: a -> Int
-  raw :: a -> Word#
-  wrap :: Word# -> a
   boolToWord :: Bool -> a
-  quotRem10Boxed :: a -> (a, a)
-  quot10Boxed  :: a -> a
-  quot100Boxed :: a -> a
-  quotRem100 :: a -> (# Word#, Word# #)
-  quotRem10000 :: a -> (# Word#, Word# #)
+  quotRem10 :: a -> (a, a)
+  quot10  :: a -> a
+  quot100 :: a -> a
+  quotRem100 :: a -> (a, a)
+  quotRem10000 :: a -> (a, a)
 
 instance Mantissa Word32 where
-  decimalLength = decimalLength9
 #if __GLASGOW_HASKELL__ >= 902
-  raw (W32# w) = word32ToWord# w
-  wrap w = W32# (wordToWord32# w)
+  unsafeRaw (W32# w) = word32ToWord# w
 #else
-  raw (W32# w) = w
-  wrap w = W32# w
+  unsafeRaw (W32# w) = w
 #endif
+#if WORD_SIZE_IN_BITS >= 64
+  raw = unsafeRaw
+#else
+  raw w = wordToWord64# (unsafeRaw w)
+#endif
+
+  decimalLength = decimalLength9
   boolToWord = boolToWord32
 
-  {-# INLINE quotRem10Boxed #-}
-  quotRem10Boxed = fquotRem10
+  {-# INLINE quotRem10 #-}
+  quotRem10 = fquotRem10
 
-  {-# INLINE quot10Boxed #-}
-  quot10Boxed = fquot10
+  {-# INLINE quot10 #-}
+  quot10 = fquot10
 
-  {-# INLINE quot100Boxed #-}
-  quot100Boxed = fquot100
+  {-# INLINE quot100 #-}
+  quot100 = fquot100
 
   quotRem100 w =
-    let w' = fquot100Unboxed (raw w)
-      in (# w', (raw w `minusWord#` (w' `timesWord#` 100##)) #)
-  quotRem10000 w =
-    let w' = (raw w `timesWord#` 0xD1B71759##) `uncheckedShiftRL#` 45#
-      in (# w', (raw w `minusWord#` (w' `timesWord#` 10000##)) #)
+    let w' = fquot100 w
+      in (w', (w - w' * 100))
+
+  quotRem10000 = fquotRem10000
 
 instance Mantissa Word64 where
-  decimalLength = decimalLength17
+#if WORD_SIZE_IN_BITS >= 64
+  unsafeRaw (W64# w) = w
+#else
+  unsafeRaw (W64# w) = word64ToWord# w
+#endif
   raw (W64# w) = w
-  wrap w = (W64# w)
+
+  decimalLength = decimalLength17
   boolToWord = boolToWord64
 
-  {-# INLINE quotRem10Boxed #-}
-  quotRem10Boxed = dquotRem10
+  {-# INLINE quotRem10 #-}
+  quotRem10 = dquotRem10
 
-  {-# INLINE quot10Boxed #-}
-  quot10Boxed = dquot10
+  {-# INLINE quot10 #-}
+  quot10 = dquot10
 
-  {-# INLINE quot100Boxed #-}
-  quot100Boxed = dquot100
+  {-# INLINE quot100 #-}
+  quot100 = dquot100
 
-  quotRem100 (W64# w) =
-    let w' = dquot100Unboxed w
-     in (# w', (w `minusWord#` (w' `timesWord#` 100##)) #)
-  quotRem10000 (W64# w) =
-    let !(# rdx, _ #) = w `timesWord2#` 0x346DC5D63886594B##
-        w' = rdx `uncheckedShiftRL#` 11#
-     in (# w', (w `minusWord#` (w' `timesWord#` 10000##)) #)
+  quotRem100 w =
+    let w' = dquot100 w
+     in (w', (w - w' * 100))
+
+  quotRem10000 = dquotRem10000
 
 -- | Bookkeeping state for finding the shortest, correctly-rounded
 -- representation. The same trimming algorithm is similar enough for 32- and
@@ -548,9 +630,9 @@ trimTrailing !initial = (res, r + r')
             }
       | otherwise = (d, 0)
       where
-        !(vv', vvRem) = quotRem10Boxed $ vv d
-        !(vu', vuRem) = quotRem10Boxed $ vu d
-        !(vw', _    ) = quotRem10Boxed $ vw d
+        !(vv', vvRem) = quotRem10 $ vv d
+        !(vu', vuRem) = quotRem10 $ vu d
+        !(vw', _    ) = quotRem10 $ vw d
 
     trimTrailing'' !d
       | vuRem == 0 =
@@ -563,9 +645,9 @@ trimTrailing !initial = (res, r + r')
             }
       | otherwise = (d, 0)
       where
-        !(vu', vuRem) = quotRem10Boxed $ vu d
-        !(vv', vvRem) = quotRem10Boxed $ vv d
-        !(vw', _    ) = quotRem10Boxed $ vw d
+        !(vu', vuRem) = quotRem10 $ vu d
+        !(vv', vvRem) = quotRem10 $ vv d
+        !(vw', _    ) = quotRem10 $ vw d
 
 
 -- | Trim digits while and update bookkeeping state when the table-computed
@@ -582,21 +664,21 @@ trimNoTrailing !(BoundsState u v w ld _ _) =
       -- Loop iterations below (approximately), with div 100 optimization:
       -- 0: 70.6%, 1: 27.8%, 2: 1.40%, 3: 0.14%, 4+: 0.02%
       | vw' > vu' =
-          trimNoTrailing'' vu' vv' vw' (quot10Boxed (v' - (vv' * 100))) (count + 2)
+          trimNoTrailing'' vu' vv' vw' (quot10 (v' - (vv' * 100))) (count + 2)
       | otherwise =
           trimNoTrailing'' u' v' w' lastRemoved count
       where
-        !vw' = quot100Boxed w'
-        !vu' = quot100Boxed u'
-        !vv' = quot100Boxed v'
+        !vw' = quot100 w'
+        !vu' = quot100 u'
+        !vv' = quot100 v'
 
     trimNoTrailing'' u' v' w' lastRemoved count
       | vw' > vu' = trimNoTrailing' vu' vv' vw' lastRemoved' (count + 1)
       | otherwise = (u', v', lastRemoved, count)
       where
-        !(vv', lastRemoved') = quotRem10Boxed v'
-        !vu' = quot10Boxed u'
-        !vw' = quot10Boxed w'
+        !(vv', lastRemoved') = quotRem10 v'
+        !vu' = quot10 u'
+        !vw' = quot10 w'
 
 -- | Returns the correctly rounded decimal representation mantissa based on if
 -- we need to round up (next decimal place >= 5) or if we are outside the
@@ -635,9 +717,9 @@ data Addr = Addr Addr#
 getWord64At :: Addr# -> Int -> Word64
 getWord64At arr (I# i) =
 #if defined(WORDS_BIGENDIAN)
-   wrap (byteSwap64# (indexWord64OffAddr# arr i)
+   W64# (byteSwap64# (indexWord64OffAddr# arr i))
 #else
-   wrap (indexWord64OffAddr# arr i)
+   W64# (indexWord64OffAddr# arr i)
 #endif
 
 -- | Index into the 128-bit word lookup table provided
@@ -647,12 +729,12 @@ getWord64At arr (I# i) =
 getWord128At :: Addr# -> Int -> (Word64, Word64)
 getWord128At arr (I# i) =
 #if defined(WORDS_BIGENDIAN)
-   ( wrap (byteSwap64# (indexWord64OffAddr# arr (i *# 2# +# 1#)))
-   , wrap (byteSwap64# (indexWord64OffAddr# arr (i *# 2#)))
+   ( W64# (byteSwap64# (indexWord64OffAddr# arr (i *# 2# +# 1#)))
+   , W64# (byteSwap64# (indexWord64OffAddr# arr (i *# 2#)))
    )
 #else
-   ( wrap (indexWord64OffAddr# arr (i *# 2# +# 1#))
-   , wrap (indexWord64OffAddr# arr (i *# 2#))
+   ( W64# (indexWord64OffAddr# arr (i *# 2# +# 1#))
+   , W64# (indexWord64OffAddr# arr (i *# 2#))
    )
 #endif
 
@@ -682,9 +764,9 @@ unpackWord16 w =
 digit_table :: ByteArray
 digit_table = runST (ST $ \s1 ->
   let !(# s2, marr #) = newByteArray# 200# s1
-      go (I# y) r = \i s ->
-        let !(# h, l #) = fquotRem10Unboxed (int2Word# y)
-            e' = packWord16 (toAscii l) (toAscii h)
+      go y r = \i s ->
+        let !(h, l) = fquotRem10 y
+            e' = packWord16 (toAscii (unsafeRaw l)) (toAscii (unsafeRaw h))
 #if __GLASGOW_HASKELL__ >= 902
             s' = writeWord16Array# marr i (wordToWord16# e') s
 #else
@@ -731,40 +813,40 @@ writeMantissa ptr olength = go (ptr `plusAddr#` olength)
   where
     go p mantissa s1
       | mantissa >= 10000 =
-          let !(# m', c #) = quotRem10000 mantissa
-              !(# c1, c0 #) = quotRem100 (wrap c :: a)
-              s2 = copyWord16 (digit_table `unsafeAt` word2Int# c0) (p `plusAddr#` (-1#)) s1
-              s3 = copyWord16 (digit_table `unsafeAt` word2Int# c1) (p `plusAddr#` (-3#)) s2
-           in go (p `plusAddr#` (-4#)) (wrap m') s3
+          let !(m', c) = quotRem10000 mantissa
+              !(c1, c0) = quotRem100 c
+              s2 = copyWord16 (digit_table `unsafeAt` word2Int# (unsafeRaw c0)) (p `plusAddr#` (-1#)) s1
+              s3 = copyWord16 (digit_table `unsafeAt` word2Int# (unsafeRaw c1)) (p `plusAddr#` (-3#)) s2
+           in go (p `plusAddr#` (-4#)) m' s3
       | mantissa >= 100 =
-          let !(# m', c #) = quotRem100 mantissa
-              s2 = copyWord16 (digit_table `unsafeAt` word2Int# c) (p `plusAddr#` (-1#)) s1
-           in finalize (wrap m' :: a) s2
+          let !(m', c) = quotRem100 mantissa
+              s2 = copyWord16 (digit_table `unsafeAt` word2Int# (unsafeRaw c)) (p `plusAddr#` (-1#)) s1
+           in finalize m' s2
       | otherwise = finalize mantissa s1
     finalize mantissa s1
       | mantissa >= 10 =
-        let !bs = digit_table `unsafeAt` word2Int# (raw mantissa)
+        let !bs = digit_table `unsafeAt` word2Int# (unsafeRaw mantissa)
             !(# lsb, msb #) = unpackWord16 bs
             s2 = poke (ptr `plusAddr#` 2#) lsb s1
             s3 = poke (ptr `plusAddr#` 1#) (asciiRaw asciiDot) s2
             s4 = poke ptr msb s3
            in (# ptr `plusAddr#` (olength +# 1#), s4 #)
       | (I# olength) > 1 =
-          let s2 = copyWord16 (packWord16 (asciiRaw asciiDot) (toAscii (raw mantissa))) ptr s1
+          let s2 = copyWord16 (packWord16 (asciiRaw asciiDot) (toAscii (unsafeRaw mantissa))) ptr s1
            in (# ptr `plusAddr#` (olength +# 1#), s2 #)
       | otherwise =
           let s2 = poke (ptr `plusAddr#` 2#) (asciiRaw asciiZero) s1
               s3 = poke (ptr `plusAddr#` 1#) (asciiRaw asciiDot) s2
-              s4 = poke ptr (toAscii (raw mantissa)) s3
+              s4 = poke ptr (toAscii (unsafeRaw mantissa)) s3
            in (# ptr `plusAddr#` 3#, s4 #)
 
 -- | Write the exponent into the given address.
 writeExponent :: Addr# -> Int32 -> State# d -> (# Addr#, State# d #)
 writeExponent ptr !expo s1
   | expo >= 100 =
-      let !(# e1, e0 #) = fquotRem10Unboxed (int2Word# e)
-          s2 = copyWord16 (digit_table `unsafeAt` word2Int# e1) ptr s1
-          s3 = poke (ptr `plusAddr#` 2#) (toAscii e0) s2
+      let !(e1, e0) = fquotRem10 (fromIntegral expo) -- TODO
+          s2 = copyWord16 (digit_table `unsafeAt` word2Int# (unsafeRaw e1)) ptr s1
+          s3 = poke (ptr `plusAddr#` 2#) (toAscii (unsafeRaw e0)) s2
        in (# ptr `plusAddr#` 3#, s3 #)
   | expo >= 10 =
       let s2 = copyWord16 (digit_table `unsafeAt` e) ptr s1

@@ -106,10 +106,10 @@ mulShift32 :: Word32 -> Word64 -> Int -> Word32
 mulShift32 m factor shift =
   let factorLo = factor .&. mask 32
       factorHi = factor `unsafeShiftR` 32
-      bits0 = fromIntegral m * factorLo
-      bits1 = fromIntegral m * factorHi
+      bits0 = word32ToWord64 m * factorLo
+      bits1 = word32ToWord64 m * factorHi
       total  = (bits0 `unsafeShiftR` 32) + bits1
-   in fromIntegral $ total `unsafeShiftR` (shift - 32)
+   in word64ToWord32 $ total `unsafeShiftR` (shift - 32)
 
 -- | Index into the 64-bit word lookup table float_pow5_inv_split
 get_float_pow5_inv_split :: Int -> Word64
