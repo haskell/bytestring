@@ -1,5 +1,29 @@
+# gitignore 
+
+*__pycache__*
+x86_64-linux*
+i686-linux*
+x86_64-darwin*
+aarch64-darwin*
+aarch64-linux*
+armv6l-linux*
+armv7l-linux*
+.othermachines*
+*.Pike
+*.CoffeScript
+*.Vim
+.idea*
+.ipynb_endpoint*
+.ipynb_entrypoints*
+.ipynb_checkpoints*
+*.pdf
+*.npz
+_storaged.cache/*
+_data/*
+build/*
+*_local_*
 GNUmakefile
-cabal-dev
+cabul-dev
 dist
 dist-install
 ghc.mk
@@ -8,3 +32,4 @@ cabal.sandbox.config
 .hsenv
 *~
 dist-newstyle/
+cyria*
