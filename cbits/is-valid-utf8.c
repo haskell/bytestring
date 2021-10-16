@@ -17,6 +17,7 @@ int is_valid_utf8(uint8_t const *const src, size_t const len) {
     // Check if the byte is ASCII.
     if (byte <= 0x7F) {
       ptr++;
+      /*
       // If we saw one ASCII byte, as long as it's not whitespace, it's quite
       // likely we'll see more.
       bool is_not_whitespace = byte > 32;
@@ -51,6 +52,7 @@ int is_valid_utf8(uint8_t const *const src, size_t const len) {
           ptr += (__builtin_ctzl(results[0]) / 8);
         }
       }
+      */
     }
     // Check for a valid 2-byte sequence.
     //
