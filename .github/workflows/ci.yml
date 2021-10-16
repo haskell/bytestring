@@ -20,7 +20,7 @@ jobs:
         ghc: ['8.0', '8.2', '8.4', '8.6', '8.8', '8.10', '9.0']
         include:
         - os: windows-latest
-          ghc: 'latest'
+          ghc: '8.10'
         - os: macOS-latest
           ghc: 'latest'
         - os: ubuntu-16.04 # testing that cbits are compatible with gcc-5
