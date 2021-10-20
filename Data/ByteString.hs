@@ -1539,7 +1539,7 @@ isValidUtf8 (BS ptr len) = accursedUnutterablePerformIO $ unsafeWithForeignPtr p
   CInt i <- isValidUtf8# p (CSize . fromIntegral $ len)
   pure $ i /= 0
 
-foreign import ccall unsafe "is_valid_utf8" isValidUtf8#
+foreign import ccall unsafe "bytestring_is_valid_utf8" isValidUtf8#
   :: Ptr Word8 -> CSize -> IO CInt
 
 -- | Break a string on a substring, returning a pair of the part of the

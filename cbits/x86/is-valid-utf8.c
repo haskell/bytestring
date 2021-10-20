@@ -706,7 +706,7 @@ is_valid_utf8_avx2(uint8_t const *const src, size_t const len) {
   return is_valid_utf8_fallback(small_ptr, small_len);
 }
 
-int is_valid_utf8(uint8_t const *const src, size_t const len) {
+int bytestring_is_valid_utf8(uint8_t const *const src, size_t const len) {
   if (len == 0) {
     return 1;
   }

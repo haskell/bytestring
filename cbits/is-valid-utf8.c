@@ -7,7 +7,7 @@
 // 0x80 in every 'lane'.
 static uint64_t const high_bits_mask = 0x8080808080808080ULL;
 
-int is_valid_utf8(uint8_t const *const src, size_t const len) {
+int bytestring_is_valid_utf8(uint8_t const *const src, size_t const len) {
   uint8_t const *ptr = (uint8_t const *)src;
   // This is 'one past the end' to make loop termination and bounds checks
   // easier.
