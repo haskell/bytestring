@@ -124,7 +124,7 @@ library
   cc-options:        -std=c11
   
   if os(windows)
-    extra-libraries:  gcc_s
+    extra-libraries:  gcc_s gcc
 
   include-dirs:      include
   includes:          fpstring.h
