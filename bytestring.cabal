@@ -116,11 +116,12 @@ library
   
   c-sources:        cbits/fpstring.c
                     cbits/itoa.c
+  
   if (arch(x86_64) || arch(i386))
     c-sources:        cbits/x86/is-valid-utf8.c
   else
     c-sources:        cbits/is-valid-utf8.c
-
+  
   cc-options:        -std=c11
   
   if os(windows)
@@ -185,7 +186,12 @@ test-suite is-valid-utf8
   type:             exitcode-stdio-1.0
   hs-source-dirs:   tests/is-valid-utf8
   main-is:          Main.hs
-  build-depends:    base, bytestring, tasty, tasty-quickcheck, QuickCheck
+  build-depends:    base, 
+                    bytestring, 
+                    tasty, 
+                    tasty-hunit,
+                    tasty-quickcheck, 
+                    QuickCheck
   ghc-options:      -Wall -fwarn-tabs -threaded -rtsopts
   default-language: Haskell2010
 

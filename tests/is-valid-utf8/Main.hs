@@ -7,17 +7,20 @@ import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
 import Data.Char (chr, ord)
 import Data.Word (Word8)
+import GHC.Exts (fromList)
 import Test.QuickCheck (Property, forAll, (===))
 import Test.QuickCheck.Arbitrary (Arbitrary (arbitrary, shrink))
 import Test.QuickCheck.Gen (oneof, Gen, choose, vectorOf, listOf1, sized, resize,
                             elements)
-import Test.Tasty (defaultMain, testGroup, localOption)
+import Test.Tasty (defaultMain, testGroup, localOption, TestTree)
+import Test.Tasty.HUnit (testCase, assertBool)
 import Test.Tasty.QuickCheck (testProperty, QuickCheckTests)
 
 main :: IO ()
 main = defaultMain . testGroup "UTF-8 validation" $ [
   localOption testCount . testProperty "Valid UTF-8" $ goValid,
-  localOption testCount . testProperty "Invalid UTF-8" $ goInvalid
+  localOption testCount . testProperty "Invalid UTF-8" $ goInvalid,
+  testGroup "Regressons" checkRegressions
   ]
   where
     goValid :: Property
@@ -28,6 +31,19 @@ main = defaultMain . testGroup "UTF-8 validation" $ [
       \inv -> (B.isValidUtf8 . toByteString $ inv) === False
     testCount :: QuickCheckTests
     testCount = 100000
+
+checkRegressions :: [TestTree]
+checkRegressions = [
+  testCase "Too high code point" go
+  ]
+  where
+    go :: IO ()
+    go = assertBool "\\244\\176\\181\\139 is too high to be valid" .
+         not . B.isValidUtf8 $ tooHigh
+    tooHigh :: ByteString
+    tooHigh = fromList $ replicate 56 48 <> -- 56 ASCII zeroes
+                         [244, 176, 181, 139] <> -- our invalid sequence
+                         (take 68 . cycle $ [194, 162]) -- 68 cent symbols
 
 -- Helpers
 

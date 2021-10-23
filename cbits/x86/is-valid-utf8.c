@@ -418,21 +418,6 @@ static int8_t const ef_fe_lookup2[32] = {
     0, 3, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 };
 
-__attribute__((target("avx,avx2"))) static inline bool
-is_ascii_avx2(__m256i const x, __m256i const y) {
-  __m256i const ored = _mm256_or_si256(x, y);
-  return _mm256_movemask_epi8(ored) == 0;
-}
-
-/*
-__attribute__((target("avx,avx2")))
-static inline bool is_ascii_avx2 (__m256i const * src) {
-  __m256i const ored = _mm256_or_si256(_mm256_or_si256(src[0], src[1]),
-                                       _mm256_or_si256(src[2], src[3]));
-  return _mm256_movemask_epi8(ored) == 0;
-}
-*/
-
 __attribute__((target("avx,avx2"))) static inline __m256i
 high_nibbles_of_avx2(__m256i const src) {
   return _mm256_and_si256(_mm256_srli_epi16(src, 4), _mm256_set1_epi8(0x0F));
@@ -479,7 +464,7 @@ check_block_avx2(__m256i const prev_input, __m256i const prev_first_len,
   __m256i const minv = _mm256_shuffle_epi8(range_min_tbl, range);
   __m256i const maxv = _mm256_shuffle_epi8(range_max_tbl, range);
   errors[0] = _mm256_or_si256(errors[0], _mm256_cmpgt_epi8(minv, input));
-  errors[1] = _mm256_or_si256(errors[0], _mm256_cmpgt_epi8(input, maxv));
+  errors[1] = _mm256_or_si256(errors[1], _mm256_cmpgt_epi8(input, maxv));
 }
 
 __attribute__((target("avx,avx2"))) static inline int
@@ -512,174 +497,39 @@ is_valid_utf8_avx2(uint8_t const *const src, size_t const len) {
         _mm256_loadu_si256(big_ptr), _mm256_loadu_si256(big_ptr + 1),
         _mm256_loadu_si256(big_ptr + 2), _mm256_loadu_si256(big_ptr + 3)};
     // Check if we have ASCII.
-    bool is_ascii[4] = {_mm256_movemask_epi8(inputs[0]) == 0,
-                        _mm256_movemask_epi8(inputs[1]) == 0,
-                        _mm256_movemask_epi8(inputs[2]) == 0,
-                        _mm256_movemask_epi8(inputs[3]) == 0};
-    if (!is_ascii[0]) {
-      __m256i const first_len =
+    bool is_ascii = _mm256_movemask_epi8(_mm256_or_si256(
+                        _mm256_or_si256(inputs[0], inputs[1]),
+                        _mm256_or_si256(inputs[2], inputs[3]))) == 0;
+    if (is_ascii) {
+      // Prev_first_len cheaply
+      prev_first_len =
+          _mm256_shuffle_epi8(first_len_tbl, high_nibbles_of_avx2(inputs[3]));
+    } else {
+      __m256i first_len =
           _mm256_shuffle_epi8(first_len_tbl, high_nibbles_of_avx2(inputs[0]));
       check_block_avx2(prev_input, prev_first_len, errors, first_range_tbl,
                        range_min_tbl, range_max_tbl, df_ee_tbl, ef_fe_tbl,
                        inputs[0], first_len);
       prev_first_len = first_len;
-    } else {
-      prev_first_len = _mm256_setzero_si256();
-    }
-    if (!is_ascii[1]) {
-      __m256i const first_len =
+      first_len =
           _mm256_shuffle_epi8(first_len_tbl, high_nibbles_of_avx2(inputs[1]));
       check_block_avx2(inputs[0], prev_first_len, errors, first_range_tbl,
                        range_min_tbl, range_max_tbl, df_ee_tbl, ef_fe_tbl,
                        inputs[1], first_len);
       prev_first_len = first_len;
-    } else {
-      prev_first_len = _mm256_setzero_si256();
-    }
-    if (!is_ascii[2]) {
-      __m256i const first_len =
+      first_len =
           _mm256_shuffle_epi8(first_len_tbl, high_nibbles_of_avx2(inputs[2]));
       check_block_avx2(inputs[1], prev_first_len, errors, first_range_tbl,
                        range_min_tbl, range_max_tbl, df_ee_tbl, ef_fe_tbl,
                        inputs[2], first_len);
       prev_first_len = first_len;
-    } else {
-      prev_first_len = _mm256_setzero_si256();
-    }
-    if (!is_ascii[3]) {
-      __m256i const first_len =
+      first_len =
           _mm256_shuffle_epi8(first_len_tbl, high_nibbles_of_avx2(inputs[3]));
       check_block_avx2(inputs[2], prev_first_len, errors, first_range_tbl,
                        range_min_tbl, range_max_tbl, df_ee_tbl, ef_fe_tbl,
                        inputs[3], first_len);
       prev_first_len = first_len;
-
-    } else {
-      prev_first_len = _mm256_setzero_si256();
     }
-    /*
-    bool is_ascii_first = is_ascii_avx2(inputs[0], inputs[1]);
-    bool is_ascii_second = is_ascii_avx2(inputs[2], inputs[3]);
-    if (is_ascii_first) {
-      if (is_ascii_second) {
-        prev_first_len =
-          _mm256_shuffle_epi8(first_len_tbl, high_nibbles_of_avx2(inputs[3]));
-      }
-      else {
-        // Do the upper half of the work only.
-        __m256i first_len =
-          _mm256_shuffle_epi8(first_len_tbl, high_nibbles_of_avx2(inputs[2]));
-        check_block_avx2(inputs[1],
-                         prev_first_len,
-                         errors,
-                         first_range_tbl,
-                         range_min_tbl,
-                         range_max_tbl,
-                         df_ee_tbl,
-                         ef_fe_tbl,
-                         inputs[2],
-                         first_len);
-        prev_first_len = first_len;
-        first_len =
-          _mm256_shuffle_epi8(first_len_tbl, high_nibbles_of_avx2(inputs[3]));
-        check_block_avx2(inputs[2],
-                         prev_first_len,
-                         errors,
-                         first_range_tbl,
-                         range_min_tbl,
-                         range_max_tbl,
-                         df_ee_tbl,
-                         ef_fe_tbl,
-                         inputs[3],
-                         first_len);
-        prev_first_len = first_len;
-      }
-    }
-    else if (is_ascii_second) {
-      // Do the lower half of the work only.
-      __m256i first_len =
-        _mm256_shuffle_epi8(first_len_tbl, high_nibbles_of_avx2(inputs[0]));
-      check_block_avx2(prev_input,
-                       prev_first_len,
-                       errors,
-                       first_range_tbl,
-                       range_min_tbl,
-                       range_max_tbl,
-                       df_ee_tbl,
-                       ef_fe_tbl,
-                       inputs[0],
-                       first_len);
-      prev_first_len = first_len;
-      first_len =
-        _mm256_shuffle_epi8(first_len_tbl, high_nibbles_of_avx2(inputs[1]));
-      check_block_avx2(inputs[0],
-                       prev_first_len,
-                       errors,
-                       first_range_tbl,
-                       range_min_tbl,
-                       range_max_tbl,
-                       df_ee_tbl,
-                       ef_fe_tbl,
-                       inputs[1],
-                       first_len);
-      prev_first_len =
-        _mm256_shuffle_epi8(first_len_tbl, high_nibbles_of_avx2(inputs[3]));
-    }
-    else {
-      __m256i first_len =
-        _mm256_shuffle_epi8(first_len_tbl, high_nibbles_of_avx2(inputs[0]));
-      check_block_avx2(prev_input,
-                       prev_first_len,
-                       errors,
-                       first_range_tbl,
-                       range_min_tbl,
-                       range_max_tbl,
-                       df_ee_tbl,
-                       ef_fe_tbl,
-                       inputs[0],
-                       first_len);
-      prev_first_len = first_len;
-      first_len =
-        _mm256_shuffle_epi8(first_len_tbl, high_nibbles_of_avx2(inputs[1]));
-      check_block_avx2(inputs[0],
-                       prev_first_len,
-                       errors,
-                       first_range_tbl,
-                       range_min_tbl,
-                       range_max_tbl,
-                       df_ee_tbl,
-                       ef_fe_tbl,
-                       inputs[1],
-                       first_len);
-      prev_first_len = first_len;
-      first_len =
-        _mm256_shuffle_epi8(first_len_tbl, high_nibbles_of_avx2(inputs[2]));
-      check_block_avx2(inputs[1],
-                       prev_first_len,
-                       errors,
-                       first_range_tbl,
-                       range_min_tbl,
-                       range_max_tbl,
-                       df_ee_tbl,
-                       ef_fe_tbl,
-                       inputs[2],
-                       first_len);
-      prev_first_len = first_len;
-      first_len =
-        _mm256_shuffle_epi8(first_len_tbl, high_nibbles_of_avx2(inputs[3]));
-      check_block_avx2(inputs[2],
-                       prev_first_len,
-                       errors,
-                       first_range_tbl,
-                       range_min_tbl,
-                       range_max_tbl,
-                       df_ee_tbl,
-                       ef_fe_tbl,
-                       inputs[3],
-                       first_len);
-      prev_first_len = first_len;
-    }
-  */
     // Set prev_input based on last block.
     prev_input = inputs[3];
     // Advance.
