@@ -41,8 +41,8 @@ checkRegressions = [
     go = assertBool "\\244\\176\\181\\139 is too high to be valid" .
          not . B.isValidUtf8 $ tooHigh
     tooHigh :: ByteString
-    tooHigh = fromList $ replicate 56 48 <> -- 56 ASCII zeroes
-                         [244, 176, 181, 139] <> -- our invalid sequence
+    tooHigh = fromList $ replicate 56 48 ++ -- 56 ASCII zeroes
+                         [244, 176, 181, 139] ++ -- our invalid sequence
                          (take 68 . cycle $ [194, 162]) -- 68 cent symbols
 
 -- Helpers
