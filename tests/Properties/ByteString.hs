@@ -239,9 +239,11 @@ tests =
 #endif
 
   , testProperty "drop" $
-    \n x -> B.unpack (B.drop n x) === drop (fromIntegral n) (B.unpack x)
+    \n x -> B.unpack (B.drop n x) === List.genericDrop n (B.unpack x)
   , testProperty "drop 10" $
-    \x -> B.unpack (B.drop 10 x) === drop 10 (B.unpack x)
+    \x -> let n = 10 in B.unpack (B.drop n x) === List.genericDrop n (B.unpack x)
+  , testProperty "drop 2^31" $
+    \x -> let n = 2^31 in B.unpack (B.drop n x) === List.genericDrop n (B.unpack x)
   , testProperty "dropWhile" $
     \f x -> B.unpack (B.dropWhile f x) === dropWhile f (B.unpack x)
   , testProperty "dropWhile ==" $
@@ -254,9 +256,11 @@ tests =
 #endif
 
   , testProperty "take" $
-    \n x -> B.unpack (B.take n x) === take (fromIntegral n) (B.unpack x)
+    \n x -> B.unpack (B.take n x) === List.genericTake n (B.unpack x)
   , testProperty "take 10" $
-    \x -> B.unpack (B.take 10 x) === take 10 (B.unpack x)
+    \x -> let n = 10 in B.unpack (B.take n x) === List.genericTake n (B.unpack x)
+  , testProperty "take 2^31" $
+    \x -> let n = 2^31 in B.unpack (B.take n x) === List.genericTake n (B.unpack x)
   , testProperty "takeWhile" $
     \f x -> B.unpack (B.takeWhile f x) === takeWhile f (B.unpack x)
   , testProperty "takeWhile ==" $
@@ -391,8 +395,13 @@ tests =
   , testProperty "splitWith length" $
     \f x -> let splits = B.splitWith f x; l1 = fromIntegral (length splits); l2 = B.length (B.filter f x) in
       (l1 == l2 || l1 == l2 + 1) && sum (map B.length splits) + l2 == B.length x
+
   , testProperty "splitAt" $
-    \n x -> (B.unpack *** B.unpack) (B.splitAt n x) === splitAt (fromIntegral n) (B.unpack x)
+    \n x -> (B.unpack *** B.unpack) (B.splitAt n x) === List.genericSplitAt n (B.unpack x)
+  , testProperty "splitAt 10" $
+    \x -> let n = 10 in (B.unpack *** B.unpack) (B.splitAt n x) === List.genericSplitAt n (B.unpack x)
+  , testProperty "splitAt (2^31)" $
+    \x -> let n = 2^31 in (B.unpack *** B.unpack) (B.splitAt n x) === List.genericSplitAt n (B.unpack x)
 
   , testProperty "head" $
     \x -> not (B.null x) ==> B.head x === head (B.unpack x)
