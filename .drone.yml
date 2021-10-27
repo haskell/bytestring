@@ -26,7 +26,10 @@ steps:
     - cabal update
     # We need to break dependency circuit between optparse-applicative,
     # process, unix and bytestring. Newer versions of Cabal are capable
-    # to come up with optparse-applicative -process automatically, but
-    # older ones need a hint.
+    # of coming up with these automatically, but older ones need a hint.
+    # Specifically, we need to inform Cabal that:
+    #
+    # * optparse-applicative doesn't use process; and
+    # * QuickCheck uses the old random package.
     - cabal install --dependencies-only --enable-tests --constraint 'optparse-applicative -process' --constraint 'QuickCheck +old-random'
     - cabal test
