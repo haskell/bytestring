@@ -8,5 +8,5 @@ cabal.sandbox.config
 .hsenv
 *~
 dist-newstyle/
-.nvimrc
 cabal.project.local*
+.nvimrc
