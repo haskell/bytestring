@@ -1,5 +1,4 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE MagicHash #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TupleSections #-}
 {-# OPTIONS_HADDOCK prune #-}
@@ -1536,10 +1535,10 @@ isInfixOf p s = null p || not (null $ snd $ breakSubstring p s)
 -- @since 0.11.2.0
 isValidUtf8 :: ByteString -> Bool
 isValidUtf8 (BS ptr len) = accursedUnutterablePerformIO $ unsafeWithForeignPtr ptr $ \p -> do 
-  CInt i <- isValidUtf8# p (CSize . fromIntegral $ len)
+  CInt i <- cIsValidUtf8 p (CSize . fromIntegral $ len)
   pure $ i /= 0
 
-foreign import ccall unsafe "bytestring_is_valid_utf8" isValidUtf8#
+foreign import ccall unsafe "bytestring_is_valid_utf8" cIsValidUtf8
   :: Ptr Word8 -> CSize -> IO CInt
 
 -- | Break a string on a substring, returning a pair of the part of the
