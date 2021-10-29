@@ -12,15 +12,15 @@ import Test.QuickCheck (Property, forAll, (===))
 import Test.QuickCheck.Arbitrary (Arbitrary (arbitrary, shrink))
 import Test.QuickCheck.Gen (oneof, Gen, choose, vectorOf, listOf1, sized, resize,
                             elements)
-import Test.Tasty (defaultMain, testGroup, localOption, TestTree)
+import Test.Tasty (defaultMain, testGroup, adjustOption, TestTree)
 import Test.Tasty.HUnit (testCase, assertBool)
 import Test.Tasty.QuickCheck (testProperty, QuickCheckTests)
 
 main :: IO ()
 main = defaultMain . testGroup "UTF-8 validation" $ [
-  localOption testCount . testProperty "Valid UTF-8" $ goValid,
-  localOption testCount . testProperty "Invalid UTF-8" $ goInvalid,
-  testGroup "Regressons" checkRegressions
+  adjustOption (max testCount) . testProperty "Valid UTF-8" $ goValid,
+  adjustOption (max testCount) . testProperty "Invalid UTF-8" $ goInvalid,
+  testGroup "Regressions" checkRegressions
   ]
   where
     goValid :: Property
