@@ -1535,7 +1535,7 @@ isInfixOf p s = null p || not (null $ snd $ breakSubstring p s)
 -- @since 0.11.2.0
 isValidUtf8 :: ByteString -> Bool
 isValidUtf8 (BS ptr len) = accursedUnutterablePerformIO $ unsafeWithForeignPtr ptr $ \p -> do 
-  CInt i <- cIsValidUtf8 p (CSize . fromIntegral $ len)
+  i <- cIsValidUtf8 p (fromIntegral len)
   pure $ i /= 0
 
 foreign import ccall unsafe "bytestring_is_valid_utf8" cIsValidUtf8
