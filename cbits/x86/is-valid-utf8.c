@@ -473,16 +473,25 @@ check_block_avx2(__m256i const prev_input, __m256i const prev_first_len,
                  __m256i const range_min_tbl, __m256i const range_max_tbl,
                  __m256i const df_ee_tbl, __m256i const ef_fe_tbl,
                  __m256i const input, __m256i const first_len) {
+  // Set range index to 8 for bytes in [C0, FF] by lookup (first byte).
   __m256i range =
       _mm256_shuffle_epi8(first_range_tbl, high_nibbles_of_avx2(input));
+  // Reduce the range index based on first_len (second byte)
+  // This is 0 for [00, 7F], 1 for [C0, DF], 2 for [E0, EF], 3 for [F0, FF].
   range = _mm256_or_si256(range,
                           push_last_byte_of_a_to_b(prev_first_len, first_len));
+  // Set range index to the saturation of (first_len - 1) (third byte).
+  // This is 0 for [00, 7F], 0 for [C0, DF], 1 for [E0, EF], 2 for [F0, FF].
   __m256i tmp1 = push_last_2bytes_of_a_to_b(prev_first_len, first_len);
   __m256i tmp2 = _mm256_subs_epu8(tmp1, _mm256_set1_epi8(0x01));
   range = _mm256_or_si256(range, tmp2);
+  // Set range index to the saturation of (first_len - 2) (fourth byte).
   tmp1 = push_last_3bytes_of_a_to_b(prev_first_len, first_len);
   tmp2 = _mm256_subs_epu8(tmp1, _mm256_set1_epi8(0x02));
   range = _mm256_or_si256(range, tmp2);
+  // At this stage, we have calculated range indices correctly, except for
+  // special cases for first bytes (E0, ED, F0, F4). We repair this to avoid
+  // missing in the range table.
   __m256i const shift1 = push_last_byte_of_a_to_b(prev_input, input);
   __m256i pos = _mm256_sub_epi8(shift1, _mm256_set1_epi8(0xEF));
   tmp1 = _mm256_subs_epu8(pos, _mm256_set1_epi8(0xF0));
@@ -490,8 +499,11 @@ check_block_avx2(__m256i const prev_input, __m256i const prev_first_len,
   tmp2 = _mm256_adds_epu8(pos, _mm256_set1_epi8(0x70));
   range2 = _mm256_add_epi8(range2, _mm256_shuffle_epi8(ef_fe_tbl, tmp2));
   range = _mm256_add_epi8(range, range2);
+  // We can now load minimum and maximum values from our tables based on the
+  // calculated indices.
   __m256i const minv = _mm256_shuffle_epi8(range_min_tbl, range);
   __m256i const maxv = _mm256_shuffle_epi8(range_max_tbl, range);
+  // Calculate the error, if any.
   errors[0] = _mm256_or_si256(errors[0], _mm256_cmpgt_epi8(minv, input));
   errors[1] = _mm256_or_si256(errors[1], _mm256_cmpgt_epi8(input, maxv));
 }
