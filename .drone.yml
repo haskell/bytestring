@@ -29,7 +29,8 @@ steps:
     # of coming up with these automatically, but older ones need a hint.
     # Specifically, we need to inform Cabal that:
     #
-    # * optparse-applicative doesn't use process; and
-    # * QuickCheck uses the old random package.
-    - cabal install --dependencies-only --enable-tests --constraint 'optparse-applicative -process' --constraint 'QuickCheck +old-random'
+    # * optparse-applicative doesn't use process; 
+    # * QuickCheck uses the old random package; and
+    # * tasty doesn't use unix.
+    - cabal install --dependencies-only --enable-tests --constraint 'optparse-applicative -process' --constraint 'QuickCheck +old-random' --constraint 'tasty -unix'
     - cabal test
