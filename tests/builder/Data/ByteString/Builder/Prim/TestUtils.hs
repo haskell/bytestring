@@ -82,7 +82,6 @@ import           Numeric (showHex)
 import           System.IO.Unsafe (unsafePerformIO)
 
 import           Test.Tasty
-import           Test.Tasty.HUnit (assertBool, testCase)
 import           Test.Tasty.QuickCheck (Arbitrary(..), testProperty)
 
 #include <ghcautoconf.h>
@@ -96,8 +95,8 @@ testBoundedProperty :: forall a. (Arbitrary a, Show a, Bounded a)
                     => String -> (a -> Bool) -> TestTree
 testBoundedProperty name p = testGroup name
   [ testProperty name p
-  , testCase (name ++ " minBound") $ assertBool "minBound" (p (minBound :: a))
-  , testCase (name ++ " maxBound") $ assertBool "minBound" (p (maxBound :: a))
+  , testProperty (name ++ " minBound") (p (minBound :: a))
+  , testProperty (name ++ " maxBound") (p (maxBound :: a))
   ]
 
 -- | Quote a 'String' nicely.
