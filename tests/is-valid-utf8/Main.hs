@@ -13,7 +13,6 @@ import Test.QuickCheck.Arbitrary (Arbitrary (arbitrary, shrink))
 import Test.QuickCheck.Gen (oneof, Gen, choose, vectorOf, listOf1, sized, resize,
                             elements)
 import Test.Tasty (defaultMain, testGroup, adjustOption, TestTree)
-import Test.Tasty.HUnit (testCase, assertBool)
 import Test.Tasty.QuickCheck (testProperty, QuickCheckTests)
 
 main :: IO ()
@@ -34,15 +33,12 @@ main = defaultMain . testGroup "UTF-8 validation" $ [
 
 checkRegressions :: [TestTree]
 checkRegressions = [
-  testCase "Too high code point" go
+  testProperty "Too high code point" $ not $ B.isValidUtf8 tooHigh
   ]
   where
-    go :: IO ()
-    go = assertBool "\\244\\176\\181\\139 is too high to be valid" .
-         not . B.isValidUtf8 $ tooHigh
     tooHigh :: ByteString
     tooHigh = fromList $ replicate 56 48 ++ -- 56 ASCII zeroes
-                         [244, 176, 181, 139] ++ -- our invalid sequence
+                         [244, 176, 181, 139] ++ -- our invalid sequence too high to be valid
                          (take 68 . cycle $ [194, 162]) -- 68 cent symbols
 
 -- Helpers
