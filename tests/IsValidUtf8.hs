@@ -1,6 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 
-module Main (main) where
+module IsValidUtf8 (testSuite) where
 
 import Data.Bits (shiftR, (.&.), shiftL)
 import Data.ByteString (ByteString)
@@ -12,11 +12,11 @@ import Test.QuickCheck (Property, forAll, (===))
 import Test.QuickCheck.Arbitrary (Arbitrary (arbitrary, shrink))
 import Test.QuickCheck.Gen (oneof, Gen, choose, vectorOf, listOf1, sized, resize,
                             elements)
-import Test.Tasty (defaultMain, testGroup, adjustOption, TestTree)
+import Test.Tasty (testGroup, adjustOption, TestTree)
 import Test.Tasty.QuickCheck (testProperty, QuickCheckTests)
 
-main :: IO ()
-main = defaultMain . testGroup "UTF-8 validation" $ [
+testSuite :: TestTree
+testSuite = testGroup "UTF-8 validation" $ [
   adjustOption (max testCount) . testProperty "Valid UTF-8" $ goValid,
   adjustOption (max testCount) . testProperty "Invalid UTF-8" $ goInvalid,
   testGroup "Regressions" checkRegressions
