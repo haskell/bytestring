@@ -1,0 +1,37 @@
+name: s390x
+on:
+  push:
+    branches:
+      - master
+      - bytestring-0.11
+  pull_request: {}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  # Emulation on s390x platform is incredibly slow and memory demanding.
+  # It seems that any executable with GHC RTS takes at least 7-8 Gb of RAM, so we can
+  # run `cabal` or `ghc` on their own, but cannot run them both at the same time, striking
+  # out `cabal test`. Instead we unpack packages and invoke `ghc --make` manually, and
+  # even so `ghc -O` is prohibitively expensive. This is indeed a fragile and hacky workflow,
+  # but it allows us to test a big-endian platform.
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: uraimo/run-on-arch-action@v2.1.1
+      timeout-minutes: 60
+      with:
+        arch: s390x
+        distro: ubuntu20.04
+        githubToken: ${{ github.token }}
+        install: |
+          apt-get update -y
+          apt-get install -y ghc libghc-tasty-quickcheck-dev
+        run: |
+          ghc --version
+          sed -i -e 's/OPTIONS_GHC -O1/OPTIONS_GHC -O0/g' tests/Properties/ByteString.hs
+          ghc --make -Iinclude -itests:tests/builder -o Main cbits/*.c tests/Main.hs +RTS -s
+          ./Main --quickcheck-tests 50 +RTS -s
