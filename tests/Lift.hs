@@ -1,17 +1,17 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE OverloadedStrings #-}
-module Main (main) where
+module Lift (testSuite) where
 
-import           Test.Tasty (defaultMain, testGroup)
+import           Test.Tasty (TestTree, testGroup)
 import           Test.Tasty.QuickCheck (testProperty, (===))
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Short as SBS
 import qualified Language.Haskell.TH.Syntax as TH
 
-main :: IO ()
-main = defaultMain $ testGroup "bytestring-th"
+testSuite :: TestTree
+testSuite = testGroup "Lift"
   [ testGroup "strict"
     [ testProperty "normal" $
         let bs = "foobar" :: BS.ByteString in

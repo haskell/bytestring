@@ -134,66 +134,35 @@ library
   includes:          fpstring.h
   install-includes:  fpstring.h
 
-test-suite prop-compiled
+test-suite bytestring-tests
   type:             exitcode-stdio-1.0
-  main-is:          Properties.hs
-  other-modules:    QuickCheckUtils
+  main-is:          Main.hs
+  other-modules:    Builder
+                    Data.ByteString.Builder.Prim.TestUtils
+                    Data.ByteString.Builder.Prim.Tests
+                    Data.ByteString.Builder.Tests
+                    IsValidUtf8
+                    LazyHClose
+                    Lift
+                    Properties
                     Properties.ByteString
                     Properties.ByteStringChar8
                     Properties.ByteStringLazy
                     Properties.ByteStringLazyChar8
-  hs-source-dirs:   tests
-  include-dirs:     tests/Properties
-  build-depends:    base, bytestring, ghc-prim, deepseq,
-                    tasty, tasty-quickcheck
-  ghc-options:      -fwarn-unused-binds
-                    -threaded -rtsopts
-  default-language: Haskell2010
-
-test-suite lazy-hclose
-  type:             exitcode-stdio-1.0
-  main-is:          LazyHClose.hs
-  hs-source-dirs:   tests
-  build-depends:    base, bytestring, ghc-prim, deepseq,
-                    tasty, tasty-quickcheck
-  ghc-options:      -fwarn-unused-binds
-                    -threaded -rtsopts
-  default-language: Haskell2010
-
-test-suite test-builder
-  type:             exitcode-stdio-1.0
-  hs-source-dirs:   tests/builder
-  main-is:          TestSuite.hs
-  other-modules:    Data.ByteString.Builder.Prim.TestUtils
-                    Data.ByteString.Builder.Prim.Tests
-                    Data.ByteString.Builder.Tests
-  build-depends:    base, bytestring, ghc-prim,
+                    QuickCheckUtils
+  hs-source-dirs:   tests,
+                    tests/builder
+  build-depends:    base,
+                    bytestring,
                     deepseq,
-                    transformers               >= 0.3,
+                    ghc-prim,
+                    QuickCheck,
                     tasty,
-                    tasty-quickcheck
-  ghc-options:      -Wall -fwarn-tabs -threaded -rtsopts
-  default-language: Haskell2010
-
-test-suite bytestring-th
-  type:             exitcode-stdio-1.0
-  hs-source-dirs:   tests
-  main-is:          bytestring-th.hs
-  other-extensions: TemplateHaskell
-  build-depends:    base, bytestring, template-haskell, tasty, tasty-quickcheck
-  ghc-options:      -Wall -fwarn-tabs -threaded -rtsopts
-  default-language: Haskell2010
-
-test-suite is-valid-utf8
-  type:             exitcode-stdio-1.0
-  hs-source-dirs:   tests/is-valid-utf8
-  main-is:          Main.hs
-  build-depends:    base, 
-                    bytestring, 
-                    tasty, 
-                    tasty-quickcheck, 
-                    QuickCheck
-  ghc-options:      -Wall -fwarn-tabs -threaded -rtsopts
+                    tasty-quickcheck,
+                    template-haskell,
+                    transformers >= 0.3
+  ghc-options:      -fwarn-unused-binds
+                    -threaded -rtsopts
   default-language: Haskell2010
 
 benchmark bytestring-bench

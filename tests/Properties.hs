@@ -2,6 +2,8 @@
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE UnboxedTuples #-}
 
+module Properties (testSuite) where
+
 import Foreign.C.String (withCString)
 import Foreign.Storable
 import Foreign.ForeignPtr
@@ -472,8 +474,8 @@ explosiveTail = (`L.append` error "Tail of this byte string is undefined!")
 ------------------------------------------------------------------------
 -- The entry point
 
-main :: IO ()
-main = defaultMain $ testGroup "All"
+testSuite :: TestTree
+testSuite = testGroup "Properties"
   [ testGroup "StrictWord8" PropBS.tests
   , testGroup "StrictChar8" PropBS8.tests
   , testGroup "LazyWord8"   PropBL.tests
