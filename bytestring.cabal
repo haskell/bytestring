@@ -119,6 +119,8 @@ library
   
   if (arch(x86_64) || arch(i386))
     c-sources:        cbits/x86/is-valid-utf8.c
+  elif (arch(aarch64))
+    c-sources:        cbits/aarch64/is-valid-utf8.c
   else
     c-sources:        cbits/is-valid-utf8.c
   
