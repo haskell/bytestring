@@ -9,11 +9,13 @@
 -- This module primarily exposes `floatDec` and `doubleDec` which do the
 -- equivalent of converting through `string7 . show`.
 --
--- Experimentally, it also exposes `formatFloat` and `formatDouble` which
--- accept the same arguments as `GHC.Float.formatRealFloat`. Currently,
--- precision is not supported for the general and scientific notation versions
--- of this API.
+-- It also exposes `formatFloat` and `formatDouble` with a similar API as
+-- `GHC.Float.formatRealFloat`.
 --
+-- NB: this implementation matches `show`'s output (specifically with respect
+-- to default rounding and length). In particular, there are boundary cases
+-- where the closest and 'shortest' string representations are not used.
+-- Mentions of 'shortest' in the docs below are with this caveat.
 
 module Data.ByteString.Builder.RealFloat
   ( FloatFormat(..)
@@ -53,14 +55,27 @@ data FloatFormat
 
 -- TODO: support precision argument for FGeneric and FExponent
 -- | Returns a rendered Float. Matches the API of `formatRealFloat` but does
--- not currently handle the precision argument in case of `FGeneric` and
--- `FExponent`
+-- not currently handle the precision argument in scientific notation.
+--
+-- The precision argument is used to truncate (or extend with 0s) the
+-- 'shortest' rendered Float. A precision of 'Nothing' does no such
+-- modifications and will return as many decimal places as the representation
+-- demands.
 --
 -- e.g
 --
--- > formatFloat FFixed (Just 2) 12.345 = "12.34"
--- > formatFloat FFixed (Just 5) 12.345 = "12.34500"
--- > formatFloat FGeneric Nothing 12.345 = "12.345"
+-- >>> formatFloat FFixed (Just 1) 1.2345e-2
+-- "0.0"
+-- >>> formatFloat FFixed (Just 5) 1.2345e-2
+-- "0.01234"
+-- >>> formatFloat FFixed (Just 10) 1.2345e-2
+-- "0.0123450000"
+-- >>> formatFloat FFixed Nothing 1.2345e-2
+-- "0.01234"
+-- >>> formatFloat FExponent Nothing 12.345
+-- "1.2345e1"
+-- >>> formatFloat FGeneric Nothing 12.345
+-- "12.345"
 {-# INLINABLE formatFloat #-}
 formatFloat :: FloatFormat-> Maybe Int -> Float -> Builder
 formatFloat fmt prec f =
@@ -82,14 +97,27 @@ formatFloat fmt prec f =
 
 -- TODO: support precision argument for FGeneric and FExponent
 -- | Returns a rendered Double. Matches the API of `formatRealFloat` but does
--- not currently handle the precision argument in case of `FGeneric` and
--- `FExponent`
+-- not currently handle the precision argument in scientific notation
+--
+-- The precision argument is used to truncate (or extend with 0s) the
+-- 'shortest' rendered Double. A precision of 'Nothing' does no such
+-- modifications and will return as many decimal places as the representation
+-- demands.
 --
 -- e.g
 --
--- > formatDouble FFixed (Just 2) 12.345 = "12.34"
--- > formatDouble FFixed (Just 5) 12.345 = "12.34500"
--- > formatDouble FGeneric Nothing 12.345 = "12.345"
+-- >>> formatDouble FFixed (Just 1) 1.2345e-2
+-- "0.0"
+-- >>> formatDouble FFixed (Just 5) 1.2345e-2
+-- "0.01234"
+-- >>> formatDouble FFixed (Just 10) 1.2345e-2
+-- "0.0123450000"
+-- >>> formatDouble FFixed Nothing 1.2345e-2
+-- "0.01234"
+-- >>> formatDouble FExponent Nothing 12.345
+-- "1.2345e1"
+-- >>> formatDouble FGeneric Nothing 12.345
+-- "12.345"
 {-# INLINABLE formatDouble #-}
 formatDouble :: FloatFormat-> Maybe Int -> Double -> Builder
 formatDouble fmt prec f =
