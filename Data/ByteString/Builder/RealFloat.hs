@@ -29,7 +29,7 @@ import qualified Data.ByteString.Builder.RealFloat.F2S as RF
 import qualified Data.ByteString.Builder.RealFloat.D2S as RD
 import qualified Data.ByteString.Builder.Prim as BP
 import GHC.Float (roundTo)
-import GHC.Word (Word32, Word64)
+import GHC.Word (Word64)
 import GHC.Show (intToDigit)
 
 -- | Returns a rendered Float. Matches `show` in displaying in fixed or
@@ -70,14 +70,15 @@ formatFloat fmt prec f =
         Just b -> b
         Nothing ->
           if e' >= 0 && e' <= 7
-             then sign f `mappend` showFixed (word32ToWord64 m) e' prec
+             then sign f `mappend` showFixed (R.word32ToWord64 m) e' prec
              else BP.primBounded (R.toCharsScientific (f < 0) m e) ()
-      where (RF.FloatingDecimal m e) = RF.f2Intermediate f
-            e' = R.int32ToInt e + R.decimalLength9 m
-            word32ToWord64 :: Word32 -> Word64
-            word32ToWord64 = fromIntegral
     FExponent -> RF.f2s f
-    FFixed -> d2Fixed (realToFrac f) prec
+    FFixed ->
+      case specialStr f of
+        Just b -> b
+        Nothing -> sign f `mappend` showFixed (R.word32ToWord64 m) e' prec
+  where (RF.FloatingDecimal m e) = RF.f2Intermediate f
+        e' = R.int32ToInt e + R.decimalLength9 m
 
 -- TODO: support precision argument for FGeneric and FExponent
 -- | Returns a rendered Double. Matches the API of `formatRealFloat` but does
@@ -100,21 +101,13 @@ formatDouble fmt prec f =
           if e' >= 0 && e' <= 7
              then sign f `mappend` showFixed m e' prec
              else BP.primBounded (R.toCharsScientific (f < 0) m e) ()
-      where (RD.FloatingDecimal m e) = RD.d2Intermediate f
-            e' = R.int32ToInt e + R.decimalLength17 m
     FExponent -> RD.d2s f
-    FFixed -> d2Fixed f prec
-
--- | Show fixed floating point matching show / formatRealFloat output by
--- dropping digits after exponentiation precision
-d2Fixed :: Double -> Maybe Int -> Builder
-d2Fixed f prec =
-  case specialStr f of
-    Just b -> b
-    Nothing -> sign f `mappend` showFixed m e' prec
+    FFixed ->
+      case specialStr f of
+        Just b -> b
+        Nothing -> sign f `mappend` showFixed m e' prec
   where (RD.FloatingDecimal m e) = RD.d2Intermediate f
-        -- NB: exponent in exponential format is e' - 1
-        e' = R.int32ToInt e + R.decimalLength17 m :: Int
+        e' = R.int32ToInt e + R.decimalLength17 m
 
 -- | Char7 encode a 'Char'.
 {-# INLINE char7 #-}
