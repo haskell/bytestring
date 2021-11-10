@@ -1,6 +1,13 @@
-{-# LANGUAGE FlexibleInstances, FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeApplications #-}
 
-module QuickCheckUtils (Char8(..), String8(..), CByteString(..)) where
+module QuickCheckUtils
+  ( Char8(..)
+  , String8(..)
+  , CByteString(..)
+  , Sqrt(..)
+  ) where
 
 import Test.Tasty.QuickCheck
 import Text.Show.Functions
@@ -84,3 +91,13 @@ instance Arbitrary String8 where
       toChar :: Word8 -> Char
       toChar = toEnum . fromIntegral
   shrink (String8 xs) = fmap String8 (shrink xs)
+
+-- | If a test takes O(n^2) time or memory, it's useful to wrap its inputs
+-- into 'Sqrt' so that increasing number of tests affects run time linearly.
+newtype Sqrt a = Sqrt { unSqrt :: a }
+  deriving (Eq, Show)
+
+instance Arbitrary a => Arbitrary (Sqrt a) where
+  arbitrary = Sqrt <$> sized
+    (\n -> resize (round @Double $ sqrt $ fromIntegral n) arbitrary)
+  shrink = map Sqrt . shrink . unSqrt

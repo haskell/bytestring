@@ -141,13 +141,13 @@ tests =
     B.unpack mempty === []
 
   , testProperty "concat" $
-    \xs -> B.unpack (B.concat xs) === concat (map B.unpack xs)
+    \(Sqrt xs) -> B.unpack (B.concat xs) === concat (map B.unpack xs)
   , testProperty "concat [x,x]" $
     \x -> B.unpack (B.concat [x, x]) === concat [B.unpack x, B.unpack x]
   , testProperty "concat [x,[]]" $
     \x -> B.unpack (B.concat [x, B.empty]) === concat [B.unpack x, []]
   , testProperty "mconcat" $
-    \xs -> B.unpack (mconcat xs) === mconcat (map B.unpack xs)
+    \(Sqrt xs) -> B.unpack (mconcat xs) === mconcat (map B.unpack xs)
   , testProperty "mconcat [x,x]" $
     \x -> B.unpack (mconcat [x, x]) === mconcat [B.unpack x, B.unpack x]
   , testProperty "mconcat [x,[]]" $
@@ -186,7 +186,7 @@ tests =
   , testProperty "<>" $
     \x y -> B.unpack (x <> y) === B.unpack x <> B.unpack y
   , testProperty "stimes" $
-    \(NonNegative n) x -> stimes (n :: Int) (x :: B.ByteString) === mtimesDefault n x
+    \(Sqrt (NonNegative n)) (Sqrt x) -> stimes (n :: Int) (x :: B.ByteString) === mtimesDefault n x
 
   , testProperty "break" $
     \f x -> (B.unpack *** B.unpack) (B.break f x) === break f (B.unpack x)
@@ -434,10 +434,10 @@ tests =
   , testProperty "foldr cons" $
     \x -> B.foldr B.cons B.empty x === x
   , testProperty "foldl special" $
-    \x (toElem -> c) -> B.unpack (B.foldl (\acc t -> if t == c then acc else B.cons t acc) B.empty x) ===
+    \(Sqrt x) (toElem -> c) -> B.unpack (B.foldl (\acc t -> if t == c then acc else B.cons t acc) B.empty x) ===
       foldl (\acc t -> if t == c then acc else t : acc) [] (B.unpack x)
   , testProperty "foldr special" $
-    \x (toElem -> c) -> B.unpack (B.foldr (\t acc -> if t == c then acc else B.cons t acc) B.empty x) ===
+    \(Sqrt x) (toElem -> c) -> B.unpack (B.foldr (\t acc -> if t == c then acc else B.cons t acc) B.empty x) ===
       foldr (\t acc -> if t == c then acc else t : acc) [] (B.unpack x)
 
   , testProperty "foldl1" $
@@ -486,7 +486,7 @@ tests =
   , testProperty "intersperse" $
     \(toElem -> c) x -> B.unpack (B.intersperse c x) === List.intersperse c (B.unpack x)
   , testProperty "intercalate" $
-    \x ys -> B.unpack (B.intercalate x ys) === List.intercalate (B.unpack x) (map B.unpack ys)
+    \(Sqrt x) (Sqrt ys) -> B.unpack (B.intercalate x ys) === List.intercalate (B.unpack x) (map B.unpack ys)
   , testProperty "intercalate 'c' [x,y]" $
     \(toElem -> c) x y -> B.unpack (B.intercalate (B.singleton c) [x, y]) === List.intercalate [c] [B.unpack x, B.unpack y]
   , testProperty "intercalate split" $
