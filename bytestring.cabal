@@ -1,4 +1,3 @@
-Cabal-Version:       2.2
 Name:                bytestring
 Version:             0.11.2.0
 Synopsis:            Fast, compact, strict and lazy byte strings with a list interface
@@ -41,8 +40,9 @@ Description:
     .
     > import qualified Data.ByteString as BS
 
-License:             BSD-3-Clause
+License:             BSD3
 License-file:        LICENSE
+Cabal-Version:       1.18
 Category:            Data
 Copyright:           Copyright (c) Don Stewart          2005-2009,
                                (c) Duncan Coutts        2006-2015,
@@ -119,9 +119,10 @@ library
   
   if (arch(x86_64) || arch(i386))
       c-sources:        cbits/x86/is-valid-utf8.c
-  elif (arch(arm64))
+  else 
+    if (arch(arm64))
       c-sources:        cbits/aarch64/is-valid-utf8.c
-  else
+    else
       c-sources:        cbits/is-valid-utf8.c
   
   cc-options:        -std=c11
