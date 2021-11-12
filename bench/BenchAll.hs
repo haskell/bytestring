@@ -42,6 +42,7 @@ import BenchBoundsCheckFusion
 import BenchCount
 import BenchCSV
 import BenchIndices
+import BenchReadInt
 
 ------------------------------------------------------------------------------
 -- Benchmark support
@@ -467,4 +468,5 @@ main = do
     , benchCount
     , benchCSV
     , benchIndices
+    , benchReadInt
     ]

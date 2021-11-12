@@ -92,13 +92,7 @@ module Data.ByteString.Internal (
 
         -- * Exported compatibility shim
         plusForeignPtr,
-        unsafeWithForeignPtr,
-
-        -- * Internal constants
-        intmaxQuot10,
-        intmaxRem10,
-        intminQuot10,
-        intminRem10
+        unsafeWithForeignPtr
   ) where
 
 import Prelude hiding (concat, null)
@@ -785,22 +779,6 @@ isSpaceChar8 = isSpaceWord8 . c2w
 
 overflowError :: String -> a
 overflowError fun = error $ "Data.ByteString." ++ fun ++ ": size overflow"
-
--- | Bounds for Word# multiplication by 10 without overflow, and
--- absolute values of Int bounds.
-intmaxWord, intminWord, intmaxQuot10, intmaxRem10, intminQuot10, intminRem10 :: Word
-intmaxWord = fromIntegral (maxBound :: Int)
-{-# INLINE intmaxWord #-}
-intminWord = fromIntegral (negate (minBound :: Int))
-{-# INLINE intminWord #-}
-intmaxQuot10 = intmaxWord `quot` 10
-{-# INLINE intmaxQuot10 #-}
-intmaxRem10 = intmaxWord `rem` 10
-{-# INLINE intmaxRem10 #-}
-intminQuot10 = intminWord `quot` 10
-{-# INLINE intminQuot10 #-}
-intminRem10 = intminWord `rem` 10
-{-# INLINE intminRem10 #-}
 
 ------------------------------------------------------------------------
 
