@@ -99,5 +99,5 @@ newtype Sqrt a = Sqrt { unSqrt :: a }
 
 instance Arbitrary a => Arbitrary (Sqrt a) where
   arbitrary = Sqrt <$> sized
-    (\n -> resize (round @Double $ sqrt $ fromIntegral n) arbitrary)
+    (\n -> resize (round @Double $ sqrt $ fromIntegral @Int n) arbitrary)
   shrink = map Sqrt . shrink . unSqrt
