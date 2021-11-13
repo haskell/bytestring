@@ -4,7 +4,7 @@ on:
     branches:
       - master
       - bytestring-0.11
-  pull_request: {}
+  pull_request: {} # Validate all PRs
 
 defaults:
   run:
