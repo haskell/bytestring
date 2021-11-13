@@ -16,7 +16,7 @@ jobs:
   # run `cabal` or `ghc` on their own, but cannot run them both at the same time, striking
   # out `cabal test`. Instead we unpack packages and invoke `ghc --make` manually, and
   # even so `ghc -O` is prohibitively expensive. This is indeed a fragile and hacky workflow,
-  # but it allows us to test a 64-but platform without vectorised instructions.
+  # but it allows us to test a 64-bit platform without vectorised instructions.
   build:
     runs-on: ubuntu-latest
     steps:
