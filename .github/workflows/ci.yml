@@ -64,7 +64,7 @@ jobs:
   # Emulation is incredibly slow and memory demanding. It seems that any
   # executable with GHC RTS takes at least 7-8 Gb of RAM, so we can run
   # `cabal` or `ghc` on their own, but cannot run them both at the same time,
-  # striking out `cabal test`. Instead we unpack packages and invoke
+  # striking out `cabal test`. Instead we rely on system packages and invoke
   # `ghc --make` manually, and even so `ghc -O` is prohibitively expensive.
   emulated:
     needs: build
