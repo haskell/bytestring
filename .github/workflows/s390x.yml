@@ -32,6 +32,5 @@ jobs:
           apt-get install -y ghc libghc-tasty-quickcheck-dev
         run: |
           ghc --version
-          sed -i -e 's/OPTIONS_GHC -O1/OPTIONS_GHC -O0/g' tests/Properties/ByteString.hs
           ghc --make -Iinclude -itests:tests/builder -o Main cbits/*.c tests/Main.hs +RTS -s
-          ./Main --quickcheck-tests 50 +RTS -s
+          ./Main +RTS -s
