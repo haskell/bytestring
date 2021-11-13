@@ -29,7 +29,7 @@ testSuite = testGroup "UTF-8 validation" $ [
     goInvalid = forAll arbitrary $ 
       \inv -> (B.isValidUtf8 . toByteString $ inv) === False
     testCount :: QuickCheckTests
-    testCount = 100000
+    testCount = 1000
 
 checkRegressions :: [TestTree]
 checkRegressions = [
