@@ -709,7 +709,7 @@ testsFloating =
         , ( 2.0019531      , "2.0019531" )
         , ( 2.001953       , "2.001953" )
         ]
-  , testExpected "f2sScientific" (formatFloat FExponent Nothing)
+  , testExpected "f2sScientific" (formatFloat FScientific Nothing)
         [ ( 0.0            , "0.0e0"         )
         , ( 8388608.0      , "8.388608e6"    )
         , ( 1.6777216e7    , "1.6777216e7"   )
@@ -773,7 +773,7 @@ testsFloating =
         , ( (-6.9741824662760956e19), "-6.9741824662760956e19" )
         , ( 4.3816050601147837e18   , "4.3816050601147837e18" )
         ]
-  , testExpected "d2sScientific" (formatDouble FExponent Nothing)
+  , testExpected "d2sScientific" (formatDouble FScientific Nothing)
         [ ( 0.0         , "0.0e0"         )
         , ( 1.2345678   , "1.2345678e0"   )
         , ( 4.294967294 , "4.294967294e0" )

@@ -48,12 +48,12 @@ doubleDec = formatDouble FGeneric Nothing
 
 -- | ByteString float-to-string format
 data FloatFormat
-  = FExponent       -- ^ scientific notation
+  = FScientific     -- ^ scientific notation
   | FFixed          -- ^ fixed precision with `Maybe Int` digits after the decimal
-  | FGeneric        -- ^ dispatches to fixed or exponent based on the exponent
+  | FGeneric        -- ^ dispatches to fixed precision or scientific notation based on the exponent
   deriving Show
 
--- TODO: support precision argument for FGeneric and FExponent
+-- TODO: support precision argument for FGeneric and FScientific
 -- | Returns a rendered Float. Matches the API of `formatRealFloat` but does
 -- not currently handle the precision argument in scientific notation.
 --
@@ -72,7 +72,7 @@ data FloatFormat
 -- "0.0123450000"
 -- >>> formatFloat FFixed Nothing 1.2345e-2
 -- "0.01234"
--- >>> formatFloat FExponent Nothing 12.345
+-- >>> formatFloat FScientific Nothing 12.345
 -- "1.2345e1"
 -- >>> formatFloat FGeneric Nothing 12.345
 -- "12.345"
@@ -87,7 +87,7 @@ formatFloat fmt prec f =
           if e' >= 0 && e' <= 7
              then sign f `mappend` showFixed (R.word32ToWord64 m) e' prec
              else BP.primBounded (R.toCharsScientific (f < 0) m e) ()
-    FExponent -> RF.f2s f
+    FScientific -> RF.f2s f
     FFixed ->
       case specialStr f of
         Just b -> b
@@ -95,7 +95,7 @@ formatFloat fmt prec f =
   where (RF.FloatingDecimal m e) = RF.f2Intermediate f
         e' = R.int32ToInt e + R.decimalLength9 m
 
--- TODO: support precision argument for FGeneric and FExponent
+-- TODO: support precision argument for FGeneric and FScientific
 -- | Returns a rendered Double. Matches the API of `formatRealFloat` but does
 -- not currently handle the precision argument in scientific notation
 --
@@ -114,7 +114,7 @@ formatFloat fmt prec f =
 -- "0.0123450000"
 -- >>> formatDouble FFixed Nothing 1.2345e-2
 -- "0.01234"
--- >>> formatDouble FExponent Nothing 12.345
+-- >>> formatDouble FScientific Nothing 12.345
 -- "1.2345e1"
 -- >>> formatDouble FGeneric Nothing 12.345
 -- "12.345"
@@ -129,7 +129,7 @@ formatDouble fmt prec f =
           if e' >= 0 && e' <= 7
              then sign f `mappend` showFixed m e' prec
              else BP.primBounded (R.toCharsScientific (f < 0) m e) ()
-    FExponent -> RD.d2s f
+    FScientific -> RD.d2s f
     FFixed ->
       case specialStr f of
         Just b -> b
