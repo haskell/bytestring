@@ -18,9 +18,13 @@
 -- Mentions of 'shortest' in the docs below are with this caveat.
 
 module Data.ByteString.Builder.RealFloat
-  ( FloatFormat(..)
+  ( FloatFormat
   , floatDec
   , doubleDec
+  , fixed
+  , fixedDefaultPrecision
+  , scientific
+  , generic
   , formatFloat
   , formatDouble
   ) where
@@ -38,19 +42,42 @@ import GHC.Show (intToDigit)
 -- scientific notation
 {-# INLINABLE floatDec #-}
 floatDec :: Float -> Builder
-floatDec = formatFloat FGeneric Nothing
+floatDec = formatFloat generic
 
 -- | Returns a rendered Double. Matches `show` in displaying in fixed or
 -- scientific notation
 {-# INLINABLE doubleDec #-}
 doubleDec :: Double -> Builder
-doubleDec = formatDouble FGeneric Nothing
+doubleDec = formatDouble generic
+
+-- | An opaque wrapper around `FloatFormat'` and an optional precision argument
+-- used by `formatFloat` and `formatDouble`.
+data FloatFormat = MkFloatFormat
+  { floatFormat' :: FloatFormat'
+  , precision :: Maybe Int
+  }
+
+-- | Standard notation with `n` decimal places
+fixed :: Int -> FloatFormat
+fixed n = MkFloatFormat FFixed (Just n)
+
+-- | Standard notation with the default precision (number of decimal places)
+fixedDefaultPrecision :: FloatFormat
+fixedDefaultPrecision = MkFloatFormat FFixed Nothing
+
+-- | Scientific notation with default precision
+scientific :: FloatFormat
+scientific = MkFloatFormat FScientific Nothing
+
+-- | Standard or scientific notation depending on the exponent. Matches `show`
+generic :: FloatFormat
+generic = MkFloatFormat FGeneric Nothing
 
 -- | ByteString float-to-string format
-data FloatFormat
+data FloatFormat'
   = FScientific     -- ^ scientific notation
-  | FFixed          -- ^ fixed precision with `Maybe Int` digits after the decimal
-  | FGeneric        -- ^ dispatches to fixed precision or scientific notation based on the exponent
+  | FFixed          -- ^ standard notation with `Maybe Int` digits after the decimal
+  | FGeneric        -- ^ dispatches to scientific or standard notation based on the exponent
   deriving Show
 
 -- TODO: support precision argument for FGeneric and FScientific
@@ -64,21 +91,21 @@ data FloatFormat
 --
 -- e.g
 --
--- >>> formatFloat FFixed (Just 1) 1.2345e-2
+-- >>> formatFloat (fixed 1) 1.2345e-2
 -- "0.0"
--- >>> formatFloat FFixed (Just 5) 1.2345e-2
+-- >>> formatFloat (fixed 5) 1.2345e-2
 -- "0.01234"
--- >>> formatFloat FFixed (Just 10) 1.2345e-2
+-- >>> formatFloat (fixed 10) 1.2345e-2
 -- "0.0123450000"
--- >>> formatFloat FFixed Nothing 1.2345e-2
+-- >>> formatFloat fixedDefaultPrecision 1.2345e-2
 -- "0.01234"
--- >>> formatFloat FScientific Nothing 12.345
+-- >>> formatFloat scientific 12.345
 -- "1.2345e1"
--- >>> formatFloat FGeneric Nothing 12.345
+-- >>> formatFloat generic 12.345
 -- "12.345"
 {-# INLINABLE formatFloat #-}
-formatFloat :: FloatFormat-> Maybe Int -> Float -> Builder
-formatFloat fmt prec f =
+formatFloat :: FloatFormat -> Float -> Builder
+formatFloat (MkFloatFormat fmt prec) f =
   case fmt of
     FGeneric ->
       case specialStr f of
@@ -106,21 +133,21 @@ formatFloat fmt prec f =
 --
 -- e.g
 --
--- >>> formatDouble FFixed (Just 1) 1.2345e-2
+-- >>> formatDouble (fixed 1) 1.2345e-2
 -- "0.0"
--- >>> formatDouble FFixed (Just 5) 1.2345e-2
+-- >>> formatDouble (fixed 5) 1.2345e-2
 -- "0.01234"
--- >>> formatDouble FFixed (Just 10) 1.2345e-2
+-- >>> formatDouble (fixed 10) 1.2345e-2
 -- "0.0123450000"
--- >>> formatDouble FFixed Nothing 1.2345e-2
+-- >>> formatDouble fixedDefaultPrecision 1.2345e-2
 -- "0.01234"
--- >>> formatDouble FScientific Nothing 12.345
+-- >>> formatDouble scientific 12.345
 -- "1.2345e1"
--- >>> formatDouble FGeneric Nothing 12.345
+-- >>> formatDouble generic 12.345
 -- "12.345"
 {-# INLINABLE formatDouble #-}
-formatDouble :: FloatFormat-> Maybe Int -> Double -> Builder
-formatDouble fmt prec f =
+formatDouble :: FloatFormat -> Double -> Builder
+formatDouble (MkFloatFormat fmt prec) f =
   case fmt of
     FGeneric ->
       case specialStr f of

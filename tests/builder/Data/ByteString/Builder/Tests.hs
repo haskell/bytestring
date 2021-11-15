@@ -709,7 +709,7 @@ testsFloating =
         , ( 2.0019531      , "2.0019531" )
         , ( 2.001953       , "2.001953" )
         ]
-  , testExpected "f2sScientific" (formatFloat FScientific Nothing)
+  , testExpected "f2sScientific" (formatFloat scientific)
         [ ( 0.0            , "0.0e0"         )
         , ( 8388608.0      , "8.388608e6"    )
         , ( 1.6777216e7    , "1.6777216e7"   )
@@ -773,17 +773,17 @@ testsFloating =
         , ( (-6.9741824662760956e19), "-6.9741824662760956e19" )
         , ( 4.3816050601147837e18   , "4.3816050601147837e18" )
         ]
-  , testExpected "d2sScientific" (formatDouble FScientific Nothing)
+  , testExpected "d2sScientific" (formatDouble scientific)
         [ ( 0.0         , "0.0e0"         )
         , ( 1.2345678   , "1.2345678e0"   )
         , ( 4.294967294 , "4.294967294e0" )
         , ( 4.294967295 , "4.294967295e0" )
         ]
   , testProperty "d2sFixed" $ conjoin
-        [ singleMatches (formatDouble FFixed (Just 2)) (flip (showFFloat (Just 2)) []) ( 12.345 , "12.34"    )
-        , singleMatches (formatDouble FFixed (Just 2)) (flip (showFFloat (Just 2)) []) ( 0.0050 , "0.00"     )
-        , singleMatches (formatDouble FFixed (Just 2)) (flip (showFFloat (Just 2)) []) ( 0.0051 , "0.01"     )
-        , singleMatches (formatDouble FFixed (Just 5)) (flip (showFFloat (Just 5)) []) ( 12.345 , "12.34500" )
+        [ singleMatches (formatDouble (fixed 2)) (flip (showFFloat (Just 2)) []) ( 12.345 , "12.34"    )
+        , singleMatches (formatDouble (fixed 2)) (flip (showFFloat (Just 2)) []) ( 0.0050 , "0.00"     )
+        , singleMatches (formatDouble (fixed 2)) (flip (showFFloat (Just 2)) []) ( 0.0051 , "0.01"     )
+        , singleMatches (formatDouble (fixed 5)) (flip (showFFloat (Just 5)) []) ( 12.345 , "12.34500" )
         ]
   , testMatches "d2sLooksLikePowerOf5" doubleDec show
         [ ( (coerceWord64ToDouble 0x4830F0CF064DD592) , "5.764607523034235e39" )
