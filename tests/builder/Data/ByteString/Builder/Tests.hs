@@ -779,11 +779,11 @@ testsFloating =
         , ( 4.294967294 , "4.294967294e0" )
         , ( 4.294967295 , "4.294967295e0" )
         ]
-  , testProperty "d2sFixed" $ conjoin
-        [ singleMatches (formatDouble (fixed 2)) (flip (showFFloat (Just 2)) []) ( 12.345 , "12.34"    )
-        , singleMatches (formatDouble (fixed 2)) (flip (showFFloat (Just 2)) []) ( 0.0050 , "0.00"     )
-        , singleMatches (formatDouble (fixed 2)) (flip (showFFloat (Just 2)) []) ( 0.0051 , "0.01"     )
-        , singleMatches (formatDouble (fixed 5)) (flip (showFFloat (Just 5)) []) ( 12.345 , "12.34500" )
+  , testProperty "d2sStandard" $ conjoin
+        [ singleMatches (formatDouble (standard 2)) (flip (showFFloat (Just 2)) []) ( 12.345 , "12.34"    )
+        , singleMatches (formatDouble (standard 2)) (flip (showFFloat (Just 2)) []) ( 0.0050 , "0.00"     )
+        , singleMatches (formatDouble (standard 2)) (flip (showFFloat (Just 2)) []) ( 0.0051 , "0.01"     )
+        , singleMatches (formatDouble (standard 5)) (flip (showFFloat (Just 5)) []) ( 12.345 , "12.34500" )
         ]
   , testMatches "d2sLooksLikePowerOf5" doubleDec show
         [ ( (coerceWord64ToDouble 0x4830F0CF064DD592) , "5.764607523034235e39" )

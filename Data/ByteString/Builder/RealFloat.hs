@@ -18,15 +18,17 @@
 -- Mentions of 'shortest' in the docs below are with this caveat.
 
 module Data.ByteString.Builder.RealFloat
-  ( FloatFormat
-  , floatDec
+  ( floatDec
   , doubleDec
-  , fixed
-  , fixedDefaultPrecision
-  , scientific
-  , generic
+
+  -- * Custom formatting
   , formatFloat
   , formatDouble
+  , FloatFormat
+  , standard
+  , standardDefaultPrecision
+  , scientific
+  , generic
   ) where
 
 import Data.ByteString.Builder.Internal (Builder)
@@ -38,32 +40,36 @@ import GHC.Float (roundTo)
 import GHC.Word (Word64)
 import GHC.Show (intToDigit)
 
--- | Returns a rendered Float. Matches `show` in displaying in fixed or
+-- | Returns a rendered Float. Matches `show` in displaying in standard or
 -- scientific notation
+--
+-- @
+-- floatDec = 'formatFloat' 'generic'
+-- @
 {-# INLINABLE floatDec #-}
 floatDec :: Float -> Builder
 floatDec = formatFloat generic
 
--- | Returns a rendered Double. Matches `show` in displaying in fixed or
+-- | Returns a rendered Double. Matches `show` in displaying in standard or
 -- scientific notation
+--
+-- @
+-- doubleDec = 'formatDouble' 'generic'
+-- @
 {-# INLINABLE doubleDec #-}
 doubleDec :: Double -> Builder
 doubleDec = formatDouble generic
 
--- | An opaque wrapper around `FloatFormat'` and an optional precision argument
--- used by `formatFloat` and `formatDouble`.
-data FloatFormat = MkFloatFormat
-  { floatFormat' :: FloatFormat'
-  , precision :: Maybe Int
-  }
+-- | Format type for use with `formatFloat` and `formatDouble`.
+data FloatFormat = MkFloatFormat FormatMode (Maybe Int)
 
 -- | Standard notation with `n` decimal places
-fixed :: Int -> FloatFormat
-fixed n = MkFloatFormat FFixed (Just n)
+standard :: Int -> FloatFormat
+standard n = MkFloatFormat FStandard (Just n)
 
 -- | Standard notation with the default precision (number of decimal places)
-fixedDefaultPrecision :: FloatFormat
-fixedDefaultPrecision = MkFloatFormat FFixed Nothing
+standardDefaultPrecision :: FloatFormat
+standardDefaultPrecision = MkFloatFormat FStandard Nothing
 
 -- | Scientific notation with default precision
 scientific :: FloatFormat
@@ -74,30 +80,29 @@ generic :: FloatFormat
 generic = MkFloatFormat FGeneric Nothing
 
 -- | ByteString float-to-string format
-data FloatFormat'
+data FormatMode
   = FScientific     -- ^ scientific notation
-  | FFixed          -- ^ standard notation with `Maybe Int` digits after the decimal
+  | FStandard       -- ^ standard notation with `Maybe Int` digits after the decimal
   | FGeneric        -- ^ dispatches to scientific or standard notation based on the exponent
   deriving Show
 
 -- TODO: support precision argument for FGeneric and FScientific
--- | Returns a rendered Float. Matches the API of `formatRealFloat` but does
--- not currently handle the precision argument in scientific notation.
+-- | Returns a rendered Float. Returns the 'shortest' representation in
+-- scientific notation and takes an optional precision argument in standard
+-- notation. Also see `floatDec`.
 --
--- The precision argument is used to truncate (or extend with 0s) the
--- 'shortest' rendered Float. A precision of 'Nothing' does no such
--- modifications and will return as many decimal places as the representation
--- demands.
+-- With standard notation, the precision argument is used to truncate (or
+-- extend with 0s) the 'shortest' rendered Float. The 'default precision' does
+-- no such modifications and will return as many decimal places as the
+-- representation demands.
 --
 -- e.g
 --
--- >>> formatFloat (fixed 1) 1.2345e-2
+-- >>> formatFloat (standard 1) 1.2345e-2
 -- "0.0"
--- >>> formatFloat (fixed 5) 1.2345e-2
--- "0.01234"
--- >>> formatFloat (fixed 10) 1.2345e-2
+-- >>> formatFloat (standard 10) 1.2345e-2
 -- "0.0123450000"
--- >>> formatFloat fixedDefaultPrecision 1.2345e-2
+-- >>> formatFloat standardDefaultPrecision 1.2345e-2
 -- "0.01234"
 -- >>> formatFloat scientific 12.345
 -- "1.2345e1"
@@ -112,34 +117,33 @@ formatFloat (MkFloatFormat fmt prec) f =
         Just b -> b
         Nothing ->
           if e' >= 0 && e' <= 7
-             then sign f `mappend` showFixed (R.word32ToWord64 m) e' prec
+             then sign f `mappend` showStandard (R.word32ToWord64 m) e' prec
              else BP.primBounded (R.toCharsScientific (f < 0) m e) ()
     FScientific -> RF.f2s f
-    FFixed ->
+    FStandard ->
       case specialStr f of
         Just b -> b
-        Nothing -> sign f `mappend` showFixed (R.word32ToWord64 m) e' prec
+        Nothing -> sign f `mappend` showStandard (R.word32ToWord64 m) e' prec
   where (RF.FloatingDecimal m e) = RF.f2Intermediate f
         e' = R.int32ToInt e + R.decimalLength9 m
 
 -- TODO: support precision argument for FGeneric and FScientific
--- | Returns a rendered Double. Matches the API of `formatRealFloat` but does
--- not currently handle the precision argument in scientific notation
+-- | Returns a rendered Double. Returns the 'shortest' representation in
+-- scientific notation and takes an optional precision argument in standard
+-- notation. Also see `doubleDec`.
 --
--- The precision argument is used to truncate (or extend with 0s) the
--- 'shortest' rendered Double. A precision of 'Nothing' does no such
--- modifications and will return as many decimal places as the representation
--- demands.
+-- With standard notation, the precision argument is used to truncate (or
+-- extend with 0s) the 'shortest' rendered Float. The 'default precision' does
+-- no such modifications and will return as many decimal places as the
+-- representation demands.
 --
 -- e.g
 --
--- >>> formatDouble (fixed 1) 1.2345e-2
+-- >>> formatDouble (standard 1) 1.2345e-2
 -- "0.0"
--- >>> formatDouble (fixed 5) 1.2345e-2
--- "0.01234"
--- >>> formatDouble (fixed 10) 1.2345e-2
+-- >>> formatDouble (standard 10) 1.2345e-2
 -- "0.0123450000"
--- >>> formatDouble fixedDefaultPrecision 1.2345e-2
+-- >>> formatDouble standardDefaultPrecision 1.2345e-2
 -- "0.01234"
 -- >>> formatDouble scientific 12.345
 -- "1.2345e1"
@@ -154,13 +158,13 @@ formatDouble (MkFloatFormat fmt prec) f =
         Just b -> b
         Nothing ->
           if e' >= 0 && e' <= 7
-             then sign f `mappend` showFixed m e' prec
+             then sign f `mappend` showStandard m e' prec
              else BP.primBounded (R.toCharsScientific (f < 0) m e) ()
     FScientific -> RD.d2s f
-    FFixed ->
+    FStandard ->
       case specialStr f of
         Just b -> b
-        Nothing -> sign f `mappend` showFixed m e' prec
+        Nothing -> sign f `mappend` showStandard m e' prec
   where (RD.FloatingDecimal m e) = RD.d2Intermediate f
         e' = R.int32ToInt e + R.decimalLength17 m
 
@@ -195,9 +199,9 @@ digits w = go [] w
         go ds c = let (q, r) = R.dquotRem10 c
                    in go ((R.word64ToInt r) : ds) q
 
--- | Show a floating point value in fixed point. Based on GHC.Float.showFloat
-showFixed :: Word64 -> Int -> Maybe Int -> Builder
-showFixed m e prec =
+-- | Show a floating point value in standard notation. Based on GHC.Float.showFloat
+showStandard :: Word64 -> Int -> Maybe Int -> Builder
+showStandard m e prec =
   case prec of
     Nothing
       | e <= 0 -> char7 '0'
