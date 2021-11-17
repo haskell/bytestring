@@ -110,7 +110,9 @@ data FormatMode
 -- "12.345"
 {-# INLINABLE formatFloat #-}
 formatFloat :: FloatFormat -> Float -> Builder
-formatFloat (MkFloatFormat fmt prec) f =
+formatFloat (MkFloatFormat fmt prec) = \f ->
+  let (RF.FloatingDecimal m e) = RF.f2Intermediate f
+      e' = R.int32ToInt e + R.decimalLength9 m in
   case fmt of
     FGeneric ->
       case specialStr f of
@@ -124,8 +126,6 @@ formatFloat (MkFloatFormat fmt prec) f =
       case specialStr f of
         Just b -> b
         Nothing -> sign f `mappend` showStandard (R.word32ToWord64 m) e' prec
-  where (RF.FloatingDecimal m e) = RF.f2Intermediate f
-        e' = R.int32ToInt e + R.decimalLength9 m
 
 -- TODO: support precision argument for FGeneric and FScientific
 -- | Returns a rendered Double. Returns the 'shortest' representation in
@@ -151,7 +151,9 @@ formatFloat (MkFloatFormat fmt prec) f =
 -- "12.345"
 {-# INLINABLE formatDouble #-}
 formatDouble :: FloatFormat -> Double -> Builder
-formatDouble (MkFloatFormat fmt prec) f =
+formatDouble (MkFloatFormat fmt prec) = \f ->
+  let (RD.FloatingDecimal m e) = RD.d2Intermediate f
+      e' = R.int32ToInt e + R.decimalLength17 m in
   case fmt of
     FGeneric ->
       case specialStr f of
@@ -165,8 +167,6 @@ formatDouble (MkFloatFormat fmt prec) f =
       case specialStr f of
         Just b -> b
         Nothing -> sign f `mappend` showStandard m e' prec
-  where (RD.FloatingDecimal m e) = RD.d2Intermediate f
-        e' = R.int32ToInt e + R.decimalLength17 m
 
 -- | Char7 encode a 'Char'.
 {-# INLINE char7 #-}
