@@ -102,11 +102,11 @@ data FloatFormat = MkFloatFormat FormatMode (Maybe Int)
 standard :: Int -> FloatFormat
 standard n = MkFloatFormat FStandard (Just n)
 
--- | Standard notation with the default precision (number of decimal places)
+-- | Standard notation with the \'default precision\' (decimal places matching `show`)
 standardDefaultPrecision :: FloatFormat
 standardDefaultPrecision = MkFloatFormat FStandard Nothing
 
--- | Scientific notation with default precision
+-- | Scientific notation with \'default precision\' (decimal places matching `show`)
 scientific :: FloatFormat
 scientific = MkFloatFormat FScientific Nothing
 
@@ -127,7 +127,7 @@ data FormatMode
 -- notation. Also see `floatDec`.
 --
 -- With standard notation, the precision argument is used to truncate (or
--- extend with 0s) the \'shortest\' rendered Float. The 'default precision' does
+-- extend with 0s) the \'shortest\' rendered Float. The \'default precision\' does
 -- no such modifications and will return as many decimal places as the
 -- representation demands.
 --
@@ -168,8 +168,8 @@ formatFloat (MkFloatFormat fmt prec) = \f ->
 -- notation. Also see `doubleDec`.
 --
 -- With standard notation, the precision argument is used to truncate (or
--- extend with 0s) the \'shortest\' rendered Float. The 'default precision' does
--- no such modifications and will return as many decimal places as the
+-- extend with 0s) the \'shortest\' rendered Float. The \'default precision\'
+-- does no such modifications and will return as many decimal places as the
 -- representation demands.
 --
 -- e.g
