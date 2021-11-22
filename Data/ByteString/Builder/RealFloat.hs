@@ -12,10 +12,45 @@
 -- It also exposes `formatFloat` and `formatDouble` with a similar API as
 -- `GHC.Float.formatRealFloat`.
 --
--- NB: this implementation matches `show`'s output (specifically with respect
--- to default rounding and length). In particular, there are boundary cases
--- where the closest and \'shortest\' string representations are not used.
--- Mentions of \'shortest\' in the docs below are with this caveat.
+-- NB: The float-to-string conversions exposed by this module match `show`'s
+-- output (specifically with respect to default rounding and length). In
+-- particular, there are boundary cases where the closest and \'shortest\'
+-- string representations are not used.  Mentions of \'shortest\' in the docs
+-- below are with this caveat.
+--
+-- For example, for fidelity, we match `show` on the output below.
+--
+-- >>> show (1.0e23 :: Float)
+-- "1.0e23"
+-- >>> show (1.0e23 :: Double)
+-- "9.999999999999999e22"
+-- >>> floatDec 1.0e23
+-- "1.0e23"
+-- >>> doubleDec 1.0e23
+-- "9.999999999999999e22"
+--
+-- Simplifying, we can build a shorter, lossless representation by just using
+-- @"1.0e23"@ since the floating point values that are 1 ULP away are
+--
+-- >>> showHex (castDoubleToWord64 1.0e23) []
+-- "44b52d02c7e14af6"
+-- >>> castWord64ToDouble 0x44b52d02c7e14af5
+-- 9.999999999999997e22
+-- >>> castWord64ToDouble 0x44b52d02c7e14af6
+-- 9.999999999999999e22
+-- >>> castWord64ToDouble 0x44b52d02c7e14af7
+-- 1.0000000000000001e23
+--
+-- In particular, we could use the exact boundary if it is the shortest
+-- representation and the original floating number is even. To experiment with
+-- the shorter rounding, refer to
+-- `Data.ByteString.Builder.RealFloat.Internal.acceptBounds`. This will give us
+--
+-- >>> floatDec 1.0e23
+-- "1.0e23"
+-- >>> doubleDec 1.0e23
+-- "1.0e23"
+
 
 module Data.ByteString.Builder.RealFloat
   ( floatDec

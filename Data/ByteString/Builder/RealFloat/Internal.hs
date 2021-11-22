@@ -281,10 +281,18 @@ toCharsNonNumbersAndZero NonNumbersAndZero{..}
   where signStr = if negative then "-" else ""
 
 -- | Part of the calculation on whether to round up the decimal representation.
--- This is currently a constant function to match behavior in Base `show`.
+-- This is currently a constant function to match behavior in Base `show` and
+-- is implemented as
 --
--- For round-to-even and correct shortest
--- acceptBoundsUnboxed v = ((v `uncheckedShiftRL#` 2#) `and#` 1##) `eqWord#` 0##
+-- @
+-- acceptBounds _ = False
+-- @
+--
+-- For round-to-even and correct shortest, use
+--
+-- @
+-- acceptBounds v = ((v \`quot\` 4) .&. 1) == 0
+-- @
 acceptBounds :: Mantissa a => a -> Bool
 acceptBounds _ = False
 
