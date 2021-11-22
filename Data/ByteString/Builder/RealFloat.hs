@@ -50,6 +50,9 @@
 -- "1.0e23"
 -- >>> doubleDec 1.0e23
 -- "1.0e23"
+--
+-- For more details, please refer to the
+-- <https://dl.acm.org/doi/10.1145/3192366.3192369 Ryu paper>.
 
 
 module Data.ByteString.Builder.RealFloat
