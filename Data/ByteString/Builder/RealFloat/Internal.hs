@@ -12,6 +12,7 @@
 -- floating-size agnostic
 --
 -- This module includes
+--
 -- - Efficient formatting for scientific floating-to-string
 -- - Trailing zero handling when converting to decimal power base
 -- - Approximations for logarithms of powers
@@ -24,6 +25,7 @@ module Data.ByteString.Builder.RealFloat.Internal
     , toCharsNonNumbersAndZero
     , decimalLength9
     , decimalLength17
+    , Mantissa
     , pow5bits
     , log10pow2
     , log10pow5
@@ -126,35 +128,45 @@ castDoubleToWord64 x = unsafePerformIO (with x (peek . castPtr))
 mask :: (Bits a, Integral a) => Int -> a
 mask = flip (-) 1 . unsafeShiftL 1
 
--- | Convert Boolean False to 0 and True to 1
+-- | Convert boolean false to 0 and true to 1
 {-# INLINABLE boolToWord32 #-}
 boolToWord32 :: Bool -> Word32
 boolToWord32 = fromIntegral . fromEnum
 
--- | Convert Boolean False to 0 and True to 1
+-- | Convert boolean false to 0 and true to 1
 {-# INLINABLE boolToWord64 #-}
 boolToWord64 :: Bool -> Word64
 boolToWord64 = fromIntegral . fromEnum
 
--- | Monomorphic conversion for Int32 -> Int
+-- | Monomorphic conversion for @Int32 -> Int@
 {-# INLINABLE int32ToInt #-}
 int32ToInt :: Int32 -> Int
 int32ToInt = fromIntegral
 
--- | Monomorphic conversion for intToInt32 -> Int
+-- | Monomorphic conversion for @Int -> Int32@
 {-# INLINABLE intToInt32 #-}
 intToInt32 :: Int -> Int32
 intToInt32 = fromIntegral
 
--- | Monomorphic conversion for Word32 -> Int
+-- | Monomorphic conversion for @Word32 -> Int@
 {-# INLINABLE word32ToInt #-}
 word32ToInt :: Word32 -> Int
 word32ToInt = fromIntegral
 
--- | Monomorphic conversion for Word64 -> Int
+-- | Monomorphic conversion for @Word64 -> Int@
 {-# INLINABLE word64ToInt #-}
 word64ToInt :: Word64 -> Int
 word64ToInt = fromIntegral
+
+-- | Monomorphic conversion for @Word32 -> Word64@
+{-# INLINABLE word32ToWord64 #-}
+word32ToWord64 :: Word32 -> Word64
+word32ToWord64 = fromIntegral
+
+-- | Monomorphic conversion for @Word64 -> Word32@
+{-# INLINABLE word64ToWord32 #-}
+word64ToWord32 :: Word64 -> Word32
+word64ToWord32 = fromIntegral
 
 
 -- | Returns the number of decimal digits in v, which must not contain more than 9 digits.
@@ -233,24 +245,27 @@ pokeAll s ptr = foldM pokeOne ptr s
 boundString :: String -> BoundedPrim ()
 boundString s = boundedPrim maxEncodedLength $ const (pokeAll s)
 
--- Special rendering for NaN, positive/negative 0, and positive/negative
+-- | Special rendering for NaN, positive\/negative 0, and positive\/negative
 -- infinity. These are based on the IEEE representation of non-numbers.
 --
 -- Infinity
---   sign = 0 for positive infinity, 1 for negative infinity.
---   biased exponent = all 1 bits.
---   fraction = all 0 bits.
+--
+--   * sign = 0 for positive infinity, 1 for negative infinity.
+--   * biased exponent = all 1 bits.
+--   * fraction = all 0 bits.
 --
 -- NaN
---   sign = either 0 or 1 (ignored)
---   biased exponent = all 1 bits.
---   fraction = anything except all 0 bits.
+--
+--   * sign = either 0 or 1 (ignored)
+--   * biased exponent = all 1 bits.
+--   * fraction = anything except all 0 bits.
 --
 -- We also handle 0 specially here so that the exponent rendering is more
 -- correct.
---   sign = either 0 or 1.
---   biased exponent = all 0 bits.
---   fraction = all 0 bits.
+--
+--   * sign = either 0 or 1.
+--   * biased exponent = all 0 bits.
+--   * fraction = all 0 bits.
 data NonNumbersAndZero = NonNumbersAndZero
   { negative :: Bool
   , exponent_all_one :: Bool
@@ -327,80 +342,74 @@ log10pow5 = wrapped log10pow5Unboxed
 -- more detailed explanation.
 -------------------------------------------------------------------------------
 
-word32ToWord64 :: Word32 -> Word64
-word32ToWord64 = fromIntegral
-
-word64ToWord32 :: Word64 -> Word32
-word64ToWord32 = fromIntegral
-
--- | Returns w / 10
+-- | Returns @w / 10@
 fquot10 :: Word32 -> Word32
 fquot10 w = word64ToWord32 ((word32ToWord64 w * 0xCCCCCCCD) `unsafeShiftR` 35)
 
--- | Returns w % 10
+-- | Returns @w % 10@
 frem10 :: Word32 -> Word32
 frem10 w = w - fquot10 w * 10
 
--- | Returns (w / 10, w % 10)
+-- | Returns @(w / 10, w % 10)@
 fquotRem10 :: Word32 -> (Word32, Word32)
 fquotRem10 w =
   let w' = fquot10 w
    in (w', w - fquot10 w * 10)
 
--- | Returns w / 100
+-- | Returns @w / 100@
 fquot100 :: Word32 -> Word32
 fquot100 w = word64ToWord32 ((word32ToWord64 w * 0x51EB851F) `unsafeShiftR` 37)
 
--- | Returns (w / 10000, w % 10000)
+-- | Returns @(w / 10000, w % 10000)@
 fquotRem10000 :: Word32 -> (Word32, Word32)
 fquotRem10000 w =
   let w' = word64ToWord32 ((word32ToWord64 w * 0xD1B71759) `unsafeShiftR` 45)
     in (w', w - w' * 10000)
 
--- | Returns w / 5
+-- | Returns @w / 5@
 fquot5 :: Word32 -> Word32
 fquot5 w = word64ToWord32 ((word32ToWord64 w * 0xCCCCCCCD) `unsafeShiftR` 34)
 
--- | Returns w % 5
+-- | Returns @w % 5@
 frem5 :: Word32 -> Word32
 frem5 w = w - fquot5 w * 5
 
--- | Returns w / 10
+-- | Returns @w / 10@
 dquot10 :: Word64 -> Word64
 dquot10 w =
   let !(rdx, _) = w `timesWord2` 0xCCCCCCCCCCCCCCCD
     in rdx `unsafeShiftR` 3
 
--- | Returns w / 100
+-- | Returns @w / 100@
 dquot100 :: Word64 -> Word64
 dquot100 w =
   let !(rdx, _) = (w `unsafeShiftR` 2) `timesWord2` 0x28F5C28F5C28F5C3
     in rdx `unsafeShiftR` 2
 
--- | Returns (w / 10000, w % 10000)
+-- | Returns @(w / 10000, w % 10000)@
 dquotRem10000 :: Word64 -> (Word64, Word64)
 dquotRem10000 w =
   let !(rdx, _) = w `timesWord2` 0x346DC5D63886594B
       w' = rdx `unsafeShiftR` 11
    in (w', w - w' * 10000)
 
--- | Returns (w / 10, w % 10)
+-- | Returns @(w / 10, w % 10)@
 dquotRem10 :: Word64 -> (Word64, Word64)
 dquotRem10 w =
   let w' = dquot10 w
    in (w', w - w' * 10)
 
--- | Returns w / 5
+-- | Returns @w / 5@
 dquot5 :: Word64 -> Word64
 dquot5 w =
   let !(rdx, _) = w `timesWord2` 0xCCCCCCCCCCCCCCCD
     in rdx `unsafeShiftR` 2
 
--- | Returns w % 5
+-- | Returns @w % 5@
 drem5 :: Word64 -> Word64
 drem5 w = w - dquot5 w * 5
 
--- | Returns (w / 5, w % 5)
+-- | Returns @(w / 5, w % 5)@
 dquotRem5 :: Word64 -> (Word64, Word64)
 dquotRem5 w =
   let w' = dquot5 w
@@ -488,6 +497,7 @@ timesWord2 a b =
 #endif
    in (W64# hi, W64# lo)
 
+-- | #ifdef for 64-bit word that seems to work on both 32- and 64-bit platforms
 type WORD64 =
 #if WORD_SIZE_IN_BITS < 64
   Word64#
@@ -495,7 +505,7 @@ type WORD64 =
   Word#
 #endif
 
--- | Returns the number of times w is divisible by 5
+-- | Returns the number of times @w@ is divisible by @5@
 pow5_factor :: WORD64 -> Int# -> Int#
 pow5_factor w count =
   let !(W64# q, W64# r) = dquotRem5 (W64# w)
@@ -507,11 +517,11 @@ pow5_factor w count =
         0# -> count
         _  -> pow5_factor q (count +# 1#)
 
--- | Returns True if value is divisible by 5^p
+-- | Returns @True@ if value is divisible by @5^p@
 multipleOfPowerOf5 :: Mantissa a => a -> Int -> Bool
 multipleOfPowerOf5 value (I# p) = isTrue# (pow5_factor (raw value) 0# >=# p)
 
--- | Returns Trueif value is divisible by 2^p
+-- | Returns @True@ if value is divisible by @2^p@
 multipleOfPowerOf2 :: Mantissa a => a -> Int -> Bool
 multipleOfPowerOf2 value p = (value .&. mask p) == 0
 
@@ -598,11 +608,11 @@ data BoundsState a = BoundsState
     , vvIsTrailingZeros :: !Bool
     }
 
--- | Trim digits while and update bookkeeping state when the table-computed
+-- | Trim digits and update bookkeeping state when the table-computed
 -- step results in trailing zeros (the general case, happens rarely)
 --
 -- NB: This function isn't actually necessary so long as acceptBounds is always
--- False since we don't do anything different with the trailing-zero
+-- @False@ since we don't do anything different with the trailing-zero
 -- information directly:
 -- - vuIsTrailingZeros is always False.  We can see this by noting that in all
 --   places where vuTrailing can possible be True, we must have acceptBounds be
@@ -650,7 +660,7 @@ trimTrailing !initial = (res, r + r')
         !(vw', _    ) = quotRem10 $ vw d
 
 
--- | Trim digits while and update bookkeeping state when the table-computed
+-- | Trim digits and update bookkeeping state when the table-computed
 -- step results has no trailing zeros (common case)
 trimNoTrailing :: Mantissa a => BoundsState a -> (BoundsState a, Int32)
 trimNoTrailing !(BoundsState u v w ld _ _) =

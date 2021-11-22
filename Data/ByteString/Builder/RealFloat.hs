@@ -4,18 +4,18 @@
 -- License     : BSD-style
 -- Maintainer  : lawrencejwu@gmail.com
 --
--- Floating point formatting for Bytestring.Builder
+-- Floating point formatting for @Bytestring.Builder@
 --
 -- This module primarily exposes `floatDec` and `doubleDec` which do the
--- equivalent of converting through `string7 . show`.
+-- equivalent of converting through @'Data.ByteString.Builder.string7' . 'show'@.
 --
 -- It also exposes `formatFloat` and `formatDouble` with a similar API as
 -- `GHC.Float.formatRealFloat`.
 --
 -- NB: this implementation matches `show`'s output (specifically with respect
 -- to default rounding and length). In particular, there are boundary cases
--- where the closest and 'shortest' string representations are not used.
--- Mentions of 'shortest' in the docs below are with this caveat.
+-- where the closest and \'shortest\' string representations are not used.
+-- Mentions of \'shortest\' in the docs below are with this caveat.
 
 module Data.ByteString.Builder.RealFloat
   ( floatDec
@@ -87,12 +87,12 @@ data FormatMode
   deriving Show
 
 -- TODO: support precision argument for FGeneric and FScientific
--- | Returns a rendered Float. Returns the 'shortest' representation in
+-- | Returns a rendered Float. Returns the \'shortest\' representation in
 -- scientific notation and takes an optional precision argument in standard
 -- notation. Also see `floatDec`.
 --
 -- With standard notation, the precision argument is used to truncate (or
--- extend with 0s) the 'shortest' rendered Float. The 'default precision' does
+-- extend with 0s) the \'shortest\' rendered Float. The 'default precision' does
 -- no such modifications and will return as many decimal places as the
 -- representation demands.
 --
@@ -128,12 +128,12 @@ formatFloat (MkFloatFormat fmt prec) = \f ->
         Nothing -> sign f `mappend` showStandard (R.word32ToWord64 m) e' prec
 
 -- TODO: support precision argument for FGeneric and FScientific
--- | Returns a rendered Double. Returns the 'shortest' representation in
+-- | Returns a rendered Double. Returns the \'shortest\' representation in
 -- scientific notation and takes an optional precision argument in standard
 -- notation. Also see `doubleDec`.
 --
 -- With standard notation, the precision argument is used to truncate (or
--- extend with 0s) the 'shortest' rendered Float. The 'default precision' does
+-- extend with 0s) the \'shortest\' rendered Float. The 'default precision' does
 -- no such modifications and will return as many decimal places as the
 -- representation demands.
 --

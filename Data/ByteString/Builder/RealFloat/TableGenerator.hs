@@ -110,19 +110,19 @@ import GHC.Float (int2Double)
 -- final fixup of the skipped state
 
 
--- | Bound for bits of 2^k / 5^q for floats
+-- | Bound for bits of @2^k / 5^q@ for floats
 float_pow5_inv_bitcount :: Int
 float_pow5_inv_bitcount = 59
 
--- | Bound for bits of 5^-e2-q / 2^k for floats
+-- | Bound for bits of @5^-e2-q / 2^k@ for floats
 float_pow5_bitcount :: Int
 float_pow5_bitcount = 61
 
--- | Bound for bits of 5^-e2-q / 2^k for doubles
+-- | Bound for bits of @5^-e2-q / 2^k@ for doubles
 double_pow5_bitcount :: Int
 double_pow5_bitcount = 125
 
--- | Bound for bits of 2^k / 5^q for doubles
+-- | Bound for bits of @2^k / 5^q@ for doubles
 double_pow5_inv_bitcount :: Int
 double_pow5_inv_bitcount = 125
 
