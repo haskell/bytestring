@@ -132,7 +132,7 @@ static bool is_ascii (uint8x16_t const * const inputs) {
                              vorrq_u8(inputs[2], inputs[3]));
   // ANDing with 0x80 retains any set high-order bits. We then check for zeroes.
   uint64x2_t result = vreinterpretq_u64_u8(vandq_u8(ored, all_80));
-  return !(vgetq_lane_u64(result, 0) || vgetq_lane_u64(result, 1)); 
+  return !(vgetq_lane_u64(result, 0) || vgetq_lane_u64(result, 1));
 }
 
 static void check_block_neon(uint8x16_t const prev_input,
@@ -216,7 +216,7 @@ int bytestring_is_valid_utf8(uint8_t const * const src, size_t const len) {
       vld1q_u8(ptr + 48)
     };
     // Check if we have ASCII
-    if (is_ascii(inputs)) { 
+    if (is_ascii(inputs)) {
       // Prev_first_len cheaply.
       prev_first_len = vqtbl1q_u8(first_len_tbl, vshrq_n_u8(inputs[3], 4));
     } else {
