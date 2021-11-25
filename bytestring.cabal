@@ -42,7 +42,7 @@ Description:
 
 License:             BSD3
 License-file:        LICENSE
-Cabal-Version:       1.18
+Cabal-Version:       1.10
 Category:            Data
 Copyright:           Copyright (c) Don Stewart          2005-2009,
                                (c) Duncan Coutts        2006-2015,
