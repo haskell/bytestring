@@ -264,6 +264,7 @@ import GHC.IO.BufferedIO as Buffered
 import GHC.IO.Encoding          (getFileSystemEncoding)
 import GHC.IO                   (unsafePerformIO, unsafeDupablePerformIO)
 import GHC.Foreign              (newCStringLen, peekCStringLen)
+import GHC.Stack.Types          (HasCallStack)
 import Data.Char                (ord)
 import Foreign.Marshal.Utils    (copyBytes)
 
@@ -398,7 +399,7 @@ snoc (BS x l) c = unsafeCreate (l+1) $ \p -> unsafeWithForeignPtr x $ \f -> do
 
 -- | /O(1)/ Extract the first element of a ByteString, which must be non-empty.
 -- An exception will be thrown in the case of an empty ByteString.
-head :: ByteString -> Word8
+head :: HasCallStack => ByteString -> Word8
 head (BS x l)
     | l <= 0    = errorEmptyList "head"
     | otherwise = accursedUnutterablePerformIO $ unsafeWithForeignPtr x $ \p -> peek p
@@ -406,7 +407,7 @@ head (BS x l)
 
 -- | /O(1)/ Extract the elements after the head of a ByteString, which must be non-empty.
 -- An exception will be thrown in the case of an empty ByteString.
-tail :: ByteString -> ByteString
+tail :: HasCallStack => ByteString -> ByteString
 tail (BS p l)
     | l <= 0    = errorEmptyList "tail"
     | otherwise = BS (plusForeignPtr p 1) (l-1)
@@ -424,7 +425,7 @@ uncons (BS x l)
 
 -- | /O(1)/ Extract the last element of a ByteString, which must be finite and non-empty.
 -- An exception will be thrown in the case of an empty ByteString.
-last :: ByteString -> Word8
+last :: HasCallStack => ByteString -> Word8
 last ps@(BS x l)
     | null ps   = errorEmptyList "last"
     | otherwise = accursedUnutterablePerformIO $
@@ -433,7 +434,7 @@ last ps@(BS x l)
 
 -- | /O(1)/ Return all the elements of a 'ByteString' except the last one.
 -- An exception will be thrown in the case of an empty ByteString.
-init :: ByteString -> ByteString
+init :: HasCallStack => ByteString -> ByteString
 init ps@(BS p l)
     | null ps   = errorEmptyList "init"
     | otherwise = BS p (l-1)
@@ -583,7 +584,7 @@ foldr' k v = \(BS fp len) ->
 -- | 'foldl1' is a variant of 'foldl' that has no starting value
 -- argument, and thus must be applied to non-empty 'ByteString's.
 -- An exception will be thrown in the case of an empty ByteString.
-foldl1 :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
+foldl1 :: HasCallStack => (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldl1 f ps = case uncons ps of
   Nothing     -> errorEmptyList "foldl1"
   Just (h, t) -> foldl f h t
@@ -591,7 +592,7 @@ foldl1 f ps = case uncons ps of
 
 -- | 'foldl1'' is like 'foldl1', but strict in the accumulator.
 -- An exception will be thrown in the case of an empty ByteString.
-foldl1' :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
+foldl1' :: HasCallStack => (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldl1' f ps = case uncons ps of
   Nothing     -> errorEmptyList "foldl1'"
   Just (h, t) -> foldl' f h t
@@ -600,7 +601,7 @@ foldl1' f ps = case uncons ps of
 -- | 'foldr1' is a variant of 'foldr' that has no starting value argument,
 -- and thus must be applied to non-empty 'ByteString's
 -- An exception will be thrown in the case of an empty ByteString.
-foldr1 :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
+foldr1 :: HasCallStack => (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldr1 f ps = case unsnoc ps of
   Nothing -> errorEmptyList "foldr1"
   Just (b, c) -> foldr f c b
@@ -608,7 +609,7 @@ foldr1 f ps = case unsnoc ps of
 
 -- | 'foldr1'' is a variant of 'foldr1', but is strict in the
 -- accumulator.
-foldr1' :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
+foldr1' :: HasCallStack => (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldr1' f ps = case unsnoc ps of
   Nothing -> errorEmptyList "foldr1'"
   Just (b, c) -> foldr' f c b
@@ -683,7 +684,7 @@ all f (BS x len) = accursedUnutterablePerformIO $ unsafeWithForeignPtr x g
 
 -- | /O(n)/ 'maximum' returns the maximum value from a 'ByteString'
 -- An exception will be thrown in the case of an empty ByteString.
-maximum :: ByteString -> Word8
+maximum :: HasCallStack => ByteString -> Word8
 maximum xs@(BS x l)
     | null xs   = errorEmptyList "maximum"
     | otherwise = accursedUnutterablePerformIO $ unsafeWithForeignPtr x $ \p ->
@@ -692,7 +693,7 @@ maximum xs@(BS x l)
 
 -- | /O(n)/ 'minimum' returns the minimum value from a 'ByteString'
 -- An exception will be thrown in the case of an empty ByteString.
-minimum :: ByteString -> Word8
+minimum :: HasCallStack => ByteString -> Word8
 minimum xs@(BS x l)
     | null xs   = errorEmptyList "minimum"
     | otherwise = accursedUnutterablePerformIO $ unsafeWithForeignPtr x $ \p ->
@@ -1238,7 +1239,7 @@ intercalateWithByte c f@(BS ffp l) g@(BS fgp m) = unsafeCreate len $ \ptr ->
 -- Indexing ByteStrings
 
 -- | /O(1)/ 'ByteString' index (subscript) operator, starting from 0.
-index :: ByteString -> Int -> Word8
+index :: HasCallStack => ByteString -> Int -> Word8
 index ps n
     | n < 0          = moduleError "index" ("negative index: " ++ show n)
     | n >= length ps = moduleError "index" ("index too large: " ++ show n
@@ -2014,15 +2015,15 @@ appendFile = modifyFile AppendMode
 
 -- Common up near identical calls to `error' to reduce the number
 -- constant strings created when compiled:
-errorEmptyList :: String -> a
+errorEmptyList :: HasCallStack => String -> a
 errorEmptyList fun = moduleError fun "empty ByteString"
 {-# NOINLINE errorEmptyList #-}
 
-moduleError :: String -> String -> a
+moduleError :: HasCallStack => String -> String -> a
 moduleError fun msg = error (moduleErrorMsg fun msg)
 {-# NOINLINE moduleError #-}
 
-moduleErrorIO :: String -> String -> IO a
+moduleErrorIO :: HasCallStack => String -> String -> IO a
 moduleErrorIO fun msg = throwIO . userError $ moduleErrorMsg fun msg
 {-# NOINLINE moduleErrorIO #-}
 

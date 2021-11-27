@@ -81,6 +81,7 @@ import GHC.Exts ( Int(I#), Int#, Ptr(Ptr), Addr#, Char(C#)
 import GHC.IO
 import GHC.ForeignPtr (ForeignPtr(ForeignPtr), ForeignPtrContents(PlainPtr))
 import GHC.ST         (ST(ST), runST)
+import GHC.Stack.Types (HasCallStack)
 import GHC.Word
 
 import Prelude ( Eq(..), Ord(..), Ordering(..), Read(..), Show(..)
@@ -194,7 +195,7 @@ null :: ShortByteString -> Bool
 null sbs = length sbs == 0
 
 -- | /O(1)/ 'ShortByteString' index (subscript) operator, starting from 0.
-index :: ShortByteString -> Int -> Word8
+index :: HasCallStack => ShortByteString -> Int -> Word8
 index sbs i
   | i >= 0 && i < length sbs = unsafeIndex sbs i
   | otherwise                = indexError sbs i
@@ -222,7 +223,7 @@ indexMaybe sbs i
 unsafeIndex :: ShortByteString -> Int -> Word8
 unsafeIndex sbs = indexWord8Array (asBA sbs)
 
-indexError :: ShortByteString -> Int -> a
+indexError :: HasCallStack => ShortByteString -> Int -> a
 indexError sbs i =
   error $ "Data.ByteString.Short.index: error in array index; " ++ show i
        ++ " not in range [0.." ++ show (length sbs) ++ ")"
@@ -601,7 +602,7 @@ useAsCStringLen bs action =
 -- ---------------------------------------------------------------------
 -- Internal utilities
 
-moduleErrorIO :: String -> String -> IO a
+moduleErrorIO :: HasCallStack => String -> String -> IO a
 moduleErrorIO fun msg = throwIO . userError $ moduleErrorMsg fun msg
 {-# NOINLINE moduleErrorIO #-}
 
