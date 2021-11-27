@@ -239,6 +239,7 @@ import Data.ByteString.Lazy.Internal
 import Control.Monad            (mplus)
 import Data.Word                (Word8)
 import Data.Int                 (Int64)
+import GHC.Stack.Types          (HasCallStack)
 import System.IO                (Handle,openBinaryFile,stdin,stdout,withBinaryFile,IOMode(..)
                                 ,hClose)
 import System.IO.Error          (mkIOError, illegalOperationErrorType)
@@ -341,7 +342,7 @@ snoc cs w = foldrChunks Chunk (singleton w) cs
 {-# INLINE snoc #-}
 
 -- | /O(1)/ Extract the first element of a ByteString, which must be non-empty.
-head :: ByteString -> Word8
+head :: HasCallStack => ByteString -> Word8
 head Empty       = errorEmptyList "head"
 head (Chunk c _) = S.unsafeHead c
 {-# INLINE head #-}
@@ -357,7 +358,7 @@ uncons (Chunk c cs)
 
 -- | /O(1)/ Extract the elements after the head of a ByteString, which must be
 -- non-empty.
-tail :: ByteString -> ByteString
+tail :: HasCallStack => ByteString -> ByteString
 tail Empty          = errorEmptyList "tail"
 tail (Chunk c cs)
   | S.length c == 1 = cs
@@ -366,7 +367,7 @@ tail (Chunk c cs)
 
 -- | /O(n\/c)/ Extract the last element of a ByteString, which must be finite
 -- and non-empty.
-last :: ByteString -> Word8
+last :: HasCallStack => ByteString -> Word8
 last Empty          = errorEmptyList "last"
 last (Chunk c0 cs0) = go c0 cs0
   where go c Empty        = S.unsafeLast c
@@ -374,7 +375,7 @@ last (Chunk c0 cs0) = go c0 cs0
 -- XXX Don't inline this. Something breaks with 6.8.2 (haven't investigated yet)
 
 -- | /O(n\/c)/ Return all the elements of a 'ByteString' except the last one.
-init :: ByteString -> ByteString
+init :: HasCallStack => ByteString -> ByteString
 init Empty          = errorEmptyList "init"
 init (Chunk c0 cs0) = go c0 cs0
   where go c Empty | S.length c == 1 = Empty
@@ -474,18 +475,18 @@ foldr' f a = go
 
 -- | 'foldl1' is a variant of 'foldl' that has no starting value
 -- argument, and thus must be applied to non-empty 'ByteString's.
-foldl1 :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
+foldl1 :: HasCallStack => (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldl1 _ Empty        = errorEmptyList "foldl1"
 foldl1 f (Chunk c cs) = foldl f (S.unsafeHead c) (Chunk (S.unsafeTail c) cs)
 
 -- | 'foldl1'' is like 'foldl1', but strict in the accumulator.
-foldl1' :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
+foldl1' :: HasCallStack => (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldl1' _ Empty        = errorEmptyList "foldl1'"
 foldl1' f (Chunk c cs) = foldl' f (S.unsafeHead c) (Chunk (S.unsafeTail c) cs)
 
 -- | 'foldr1' is a variant of 'foldr' that has no starting value argument,
 -- and thus must be applied to non-empty 'ByteString's
-foldr1 :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
+foldr1 :: HasCallStack => (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldr1 _ Empty          = errorEmptyList "foldr1"
 foldr1 f (Chunk c0 cs0) = go c0 cs0
   where go c Empty         = S.foldr1 f c
@@ -494,7 +495,7 @@ foldr1 f (Chunk c0 cs0) = go c0 cs0
 -- | 'foldr1'' is like 'foldr1', but strict in the accumulator.
 --
 -- @since 0.11.2.0
-foldr1' :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
+foldr1' :: HasCallStack => (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldr1' _ Empty          = errorEmptyList "foldr1'"
 foldr1' f (Chunk c0 cs0) = go c0 cs0
   where go c Empty         = S.foldr1' f c
@@ -535,14 +536,14 @@ all f = foldrChunks (\c rest -> S.all f c && rest) True
 {-# INLINE all #-}
 
 -- | /O(n)/ 'maximum' returns the maximum value from a 'ByteString'
-maximum :: ByteString -> Word8
+maximum :: HasCallStack => ByteString -> Word8
 maximum Empty        = errorEmptyList "maximum"
 maximum (Chunk c cs) = foldlChunks (\n c' -> n `max` S.maximum c')
                                    (S.maximum c) cs
 {-# INLINE maximum #-}
 
 -- | /O(n)/ 'minimum' returns the minimum value from a 'ByteString'
-minimum :: ByteString -> Word8
+minimum :: HasCallStack => ByteString -> Word8
 minimum Empty        = errorEmptyList "minimum"
 minimum (Chunk c cs) = foldlChunks (\n c' -> n `min` S.minimum c')
                                      (S.minimum c) cs
@@ -715,7 +716,7 @@ replicate n w
 -- | 'cycle' ties a finite ByteString into a circular one, or equivalently,
 -- the infinite repetition of the original ByteString.
 --
-cycle :: ByteString -> ByteString
+cycle :: HasCallStack => ByteString -> ByteString
 cycle Empty = errorEmptyList "cycle"
 cycle cs    = cs' where cs' = foldrChunks Chunk cs' cs
 
@@ -1122,7 +1123,7 @@ intercalate s = concat . List.intersperse s
 -- Indexing ByteStrings
 
 -- | /O(c)/ 'ByteString' index (subscript) operator, starting from 0.
-index :: ByteString -> Int64 -> Word8
+index :: HasCallStack => ByteString -> Int64 -> Word8
 index _  i | i < 0  = moduleError "index" ("negative index: " ++ show i)
 index cs0 i         = index' cs0 i
   where index' Empty     n = moduleError "index" ("index too large: " ++ show n)
@@ -1613,11 +1614,11 @@ interact transformer = putStr . transformer =<< getContents
 
 -- Common up near identical calls to `error' to reduce the number
 -- constant strings created when compiled:
-errorEmptyList :: String -> a
+errorEmptyList :: HasCallStack => String -> a
 errorEmptyList fun = moduleError fun "empty ByteString"
 {-# NOINLINE errorEmptyList #-}
 
-moduleError :: String -> String -> a
+moduleError :: HasCallStack => String -> String -> a
 moduleError fun msg = error ("Data.ByteString.Lazy." ++ fun ++ ':':' ':msg)
 {-# NOINLINE moduleError #-}
 
