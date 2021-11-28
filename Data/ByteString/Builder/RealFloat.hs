@@ -258,8 +258,11 @@ showStandard m e prec =
            in mk0 ls `mappend` mkDot rs
       | otherwise ->
           let (ei, is') = roundTo 10 p' (replicate (-e) 0 ++ ds)
-              (b:bs) = digitsToBuilder (if ei > 0 then is' else 0:is')
-           in b `mappend` mkDot bs
+              -- ds' should always be non-empty but use redundant pattern
+              -- matching to silence warning
+              ds' = if ei > 0 then is' else 0:is'
+              (ls, rs) = splitAt 1 $ digitsToBuilder ds'
+           in mk0 ls `mappend` mkDot rs
           where p' = max p 0
   where
     mk0 ls = case ls of [] -> char7 '0'; _ -> mconcat ls
