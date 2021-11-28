@@ -48,12 +48,17 @@ module Data.ByteString.Short.Internal (
     useAsCStringLen
   ) where
 
-import Data.ByteString.Internal (ByteString(..), accursedUnutterablePerformIO)
+import Data.ByteString.Internal
+  ( ByteString(..)
+  , accursedUnutterablePerformIO
+  , checkedAdd
+  )
 import qualified Data.ByteString.Internal as BS
 
 import Data.Typeable    (Typeable)
 import Data.Data        (Data(..), mkNoRepType)
-import Data.Semigroup   (Semigroup((<>)))
+import Data.Semigroup   (Semigroup((<>), sconcat, stimes), stimesMonoid)
+import Data.List.NonEmpty (NonEmpty((:|)))
 import Data.Monoid      (Monoid(..))
 import Data.String      (IsString(..))
 import Control.DeepSeq  (NFData(..))
@@ -153,7 +158,9 @@ instance Ord ShortByteString where
     compare = compareBytes
 
 instance Semigroup ShortByteString where
-    (<>)    = append
+    (<>) = append
+    sconcat (x :| xs) = concat (x : xs)
+    stimes = stimesMonoid
 
 instance Monoid ShortByteString where
     mempty  = empty
@@ -428,7 +435,7 @@ append :: ShortByteString -> ShortByteString -> ShortByteString
 append src1 src2 =
   let !len1 = length src1
       !len2 = length src2
-   in create (len1 + len2) $ \dst -> do
+   in create (checkedAdd "Short.append" len1 len2) $ \dst -> do
         copyByteArray (asBA src1) 0 dst 0    len1
         copyByteArray (asBA src2) 0 dst len1 len2
 
@@ -436,15 +443,16 @@ concat :: [ShortByteString] -> ShortByteString
 concat sbss =
     create (totalLen 0 sbss) (\dst -> copy dst 0 sbss)
   where
-    totalLen !acc []          = acc
-    totalLen !acc (sbs: sbss) = totalLen (acc + length sbs) sbss
+    totalLen !acc [] = acc
+    totalLen !acc (curr : rest)
+      = totalLen (checkedAdd "Short.concat" acc $ length curr) rest
 
     copy :: MBA s -> Int -> [ShortByteString] -> ST s ()
     copy !_   !_   []                           = return ()
-    copy !dst !off (src : sbss) = do
+    copy !dst !off (src : srcs) = do
       let !len = length src
       copyByteArray (asBA src) 0 dst off len
-      copy dst (off + len) sbss
+      copy dst (off + len) srcs
 
 
 ------------------------------------------------------------------------

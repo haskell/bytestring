@@ -655,7 +655,7 @@ append :: ByteString -> ByteString -> ByteString
 append (BS _   0)    b                  = b
 append a             (BS _   0)    = a
 append (BS fp1 len1) (BS fp2 len2) =
-    unsafeCreate (len1+len2) $ \destptr1 -> do
+    unsafeCreate (checkedAdd "append" len1 len2) $ \destptr1 -> do
       let destptr2 = destptr1 `plusPtr` len1
       unsafeWithForeignPtr fp1 $ \p1 -> memcpy destptr1 p1 len1
       unsafeWithForeignPtr fp2 $ \p2 -> memcpy destptr2 p2 len2
@@ -711,9 +711,9 @@ concat = \bss0 -> goLen0 bss0 bss0
    concat [x] = x
  #-}
 
--- | /O(log n)/ Repeats the given ByteString n times.
+-- | Repeats the given ByteString n times.
 times :: Integral a => a -> ByteString -> ByteString
-times n (BS fp len)
+times n_raw (BS fp len)
   | n < 0 = error "stimes: non-negative multiplier expected"
   | n == 0 = mempty
   | n == 1 = BS fp len
@@ -727,7 +727,11 @@ times n (BS fp len)
       memcpy destptr p len
       fillFrom destptr len
   where
-    size = len * fromIntegral n
+    n = toInteger n_raw -- don't mess with lawless Integral instances
+    sizeInteger = toInteger len * n
+    size = if  sizeInteger <= toInteger (maxBound :: Int)
+      then  fromInteger sizeInteger
+      else  overflowError "stimes"
 
     fillFrom :: Ptr Word8 -> Int -> IO ()
     fillFrom destptr copied
