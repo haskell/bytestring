@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns     #-}
+{-# LANGUAGE MagicHash        #-}
 {-# LANGUAGE CPP              #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -43,17 +44,20 @@ import           Data.ByteString.Builder.Internal (Put, putBuilder, fromPut)
 import qualified Data.ByteString.Builder.Internal   as BI
 import qualified Data.ByteString.Builder.Prim       as BP
 import           Data.ByteString.Builder.Prim.TestUtils
+import qualified Data.ByteString.Builder.RealFloat.Internal as BRFI
 
 import           Control.Exception (evaluate)
 import           System.IO (openTempFile, hPutStr, hClose, hSetBinaryMode, hSetEncoding, utf8, hSetNewlineMode, noNewlineTranslation)
 import           Foreign (ForeignPtr, withForeignPtr, castPtr)
 import           Foreign.C.String (withCString)
+import           Numeric (showFFloat)
 import           System.Posix.Internals (c_unlink)
 
 import           Test.Tasty (TestTree, TestName, testGroup)
 import           Test.Tasty.QuickCheck
                    ( Arbitrary(..), oneof, choose, listOf, elements
-                   , counterexample, ioProperty, UnicodeString(..), Property, testProperty )
+                   , counterexample, ioProperty, UnicodeString(..), Property, testProperty
+                   , (===), (.&&.), conjoin )
 
 
 tests :: [TestTree]
@@ -705,6 +709,22 @@ testsFloating =
         , ( 2.0019531      , "2.0019531" )
         , ( 2.001953       , "2.001953" )
         ]
+  , testExpected "f2sScientific" (formatFloat scientific)
+        [ ( 0.0            , "0.0e0"         )
+        , ( 8388608.0      , "8.388608e6"    )
+        , ( 1.6777216e7    , "1.6777216e7"   )
+        , ( 3.3554436e7    , "3.3554436e7"   )
+        , ( 6.7131496e7    , "6.7131496e7"   )
+        , ( 1.9310392e-38  , "1.9310392e-38" )
+        , ( (-2.47e-43)    , "-2.47e-43"     )
+        , ( 1.993244e-38   , "1.993244e-38"  )
+        , ( 4103.9003      , "4.1039004e3"   )
+        , ( 0.0010310042   , "1.0310042e-3"  )
+        , ( 0.007812537    , "7.812537e-3"   )
+        , ( 200.0          , "2.0e2"         )
+        , ( 2.0019531      , "2.0019531e0"   )
+        , ( 2.001953       , "2.001953e0"    )
+        ]
   , testMatches "f2sLooksLikePowerOf5" floatDec show
         [ ( coerceWord32ToFloat 0x5D1502F9 , "6.7108864e17" )
         , ( coerceWord32ToFloat 0x5D9502F9 , "1.3421773e18" )
@@ -753,10 +773,27 @@ testsFloating =
         , ( (-6.9741824662760956e19), "-6.9741824662760956e19" )
         , ( 4.3816050601147837e18   , "4.3816050601147837e18" )
         ]
+  , testExpected "d2sScientific" (formatDouble scientific)
+        [ ( 0.0         , "0.0e0"         )
+        , ( 1.2345678   , "1.2345678e0"   )
+        , ( 4.294967294 , "4.294967294e0" )
+        , ( 4.294967295 , "4.294967295e0" )
+        ]
+  , testProperty "d2sStandard" $ conjoin
+        [ singleMatches (formatDouble (standard 2)) (flip (showFFloat (Just 2)) []) ( 12.345 , "12.34"    )
+        , singleMatches (formatDouble (standard 2)) (flip (showFFloat (Just 2)) []) ( 0.0050 , "0.00"     )
+        , singleMatches (formatDouble (standard 2)) (flip (showFFloat (Just 2)) []) ( 0.0051 , "0.01"     )
+        , singleMatches (formatDouble (standard 5)) (flip (showFFloat (Just 5)) []) ( 12.345 , "12.34500" )
+        ]
   , testMatches "d2sLooksLikePowerOf5" doubleDec show
         [ ( (coerceWord64ToDouble 0x4830F0CF064DD592) , "5.764607523034235e39" )
         , ( (coerceWord64ToDouble 0x4840F0CF064DD592) , "1.152921504606847e40" )
         , ( (coerceWord64ToDouble 0x4850F0CF064DD592) , "2.305843009213694e40" )
+        , ( (coerceWord64ToDouble 0x4400000000000004) , "3.689348814741914e19" )
+
+        -- here v- is a power of 5 but since we don't accept bounds there is no
+        -- interesting trailing behavior
+        , ( (coerceWord64ToDouble 0x440000000000301d) , "3.6893488147520004e19" )
         ]
   , testMatches "d2sOutputLength" doubleDec show
         [ ( 1                  , "1.0" )
@@ -921,12 +958,22 @@ testsFloating =
         fmap asShowRef [read ("1.0e" ++ show x) :: Float | x <- [-46..39 :: Int]]
   , testMatches "d2sPowersOf10" doubleDec show $
         fmap asShowRef [read ("1.0e" ++ show x) :: Double | x <- [-324..309 :: Int]]
+  , testProperty "float_max_split" $ BRFI.float_max_split === 46
+  , testProperty "float_max_inv_split" $ BRFI.float_max_inv_split === 30
+  , testProperty "double_max_split" $ BRFI.double_max_split === 325
+  , testProperty "double_max_inv_split" $ BRFI.double_max_inv_split === 291
   ]
+  ++ testsLogApprox
   where
-    testMatches :: (Show a) => TestName -> (a -> Builder) -> (a -> String) -> [(a, String)] -> TestTree
-    testMatches name dec refdec lst = testProperty name $
-      all (\(x, ref) -> L.unpack (toLazyByteString (dec x)) == encodeASCII (refdec x)
-                        && refdec x == ref) lst
+    testExpected :: TestName -> (a -> Builder) -> [(a, String)] -> TestTree
+    testExpected name dec lst = testProperty name . conjoin $
+      fmap (\(x, ref) -> L.unpack (toLazyByteString (dec x)) === encodeASCII ref) lst
+
+    singleMatches :: (a -> Builder) -> (a -> String) -> (a, String) -> Property
+    singleMatches dec refdec (x, ref) = L.unpack (toLazyByteString (dec x)) === encodeASCII (refdec x) .&&. refdec x === ref
+
+    testMatches :: TestName -> (a -> Builder) -> (a -> String) -> [(a, String)] -> TestTree
+    testMatches name dec refdec lst = testProperty name . conjoin $ fmap (singleMatches dec refdec) lst
 
     maxMantissa = (1 `shiftL` 53) - 1 :: Word64
 
@@ -935,6 +982,29 @@ testsFloating =
         coerceWord64ToDouble $ (fromIntegral (fromEnum sign) `shiftL` 63) .|. (fromIntegral expo `shiftL` 52) .|. mantissa
 
     asShowRef x = (x, show x)
+
+testsLogApprox :: [TestTree]
+testsLogApprox =
+  [ testProperty "pow5bits" . conjoin $ flip fmap [1..3528] (\e ->
+      BRFI.pow5bits e === fromIntegral (ilog2ceiling (5^e)))
+  , testProperty "log10pow2" . conjoin $ flip fmap [0..1650] (\e ->
+      BRFI.log10pow2 e === fromIntegral (ilog10floor (2^e)))
+  , testProperty "log10pow5" . conjoin $ flip fmap [0..2620] (\e ->
+      BRFI.log10pow5 e === fromIntegral (ilog10floor (5^e)))
+  ]
+  where
+    -- trial division logarithms
+    ilog2ceiling :: Integer -> Integer
+    ilog2ceiling x
+      | x == 1    = 1
+      | x > 1     = 1 + ilog2ceiling (x `div` 2)
+      | otherwise = error "Bad integer log2"
+
+    ilog10floor :: Integer -> Integer
+    ilog10floor x
+      | x >= 1 && x <= 9 = 0
+      | x >= 10          = 1 + ilog10floor (x `div` 10)
+      | otherwise = error "Bad integer log10"
 
 testsChar8 :: [TestTree]
 testsChar8 =
