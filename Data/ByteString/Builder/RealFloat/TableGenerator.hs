@@ -172,13 +172,13 @@ get_range f =
    in ( (-emin') - floor (int2Double (-emin') * logBase 10 5)
       , floor (int2Double emax' * logBase 10 2))
 
-float_max_split :: Int
-float_max_inv_split :: Int
+float_max_split :: Int     -- = 46
+float_max_inv_split :: Int -- = 30
 (float_max_split, float_max_inv_split) = get_range (undefined :: Float)
 
 -- we take a slightly different codepath s.t we need one extra entry
-double_max_split :: Int
-double_max_inv_split :: Int
+double_max_split :: Int     -- = 325
+double_max_inv_split :: Int -- = 291
 (double_max_split, double_max_inv_split) =
     let (m, mi) = get_range (undefined :: Double)
      in (m + 1, mi)
