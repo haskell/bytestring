@@ -81,19 +81,10 @@ import           Data.ByteString.Lazy                           as L
 import           Data.ByteString.Builder.Internal (Builder)
 import qualified Data.ByteString.Builder.Prim                   as P
 import qualified Data.ByteString.Builder.Prim.Internal          as P
+import           Data.ByteString.Builder.RealFloat (floatDec, doubleDec)
 
 import           Foreign
 import           Foreign.C.Types
-
-------------------------------------------------------------------------------
--- Decimal Encoding
-------------------------------------------------------------------------------
-
-
--- | Encode a 'String' using 'P.char7'.
-{-# INLINE string7 #-}
-string7 :: String -> Builder
-string7 = P.primMapListFixed P.char7
 
 ------------------------------------------------------------------------------
 -- Decimal Encoding
@@ -161,22 +152,6 @@ word64Dec = P.primBounded P.word64Dec
 {-# INLINE wordDec #-}
 wordDec :: Word -> Builder
 wordDec = P.primBounded P.wordDec
-
-
--- Floating point numbers
--------------------------
-
--- TODO: Use Bryan O'Sullivan's double-conversion package to speed it up.
-
--- | /Currently slow./ Decimal encoding of an IEEE 'Float'.
-{-# INLINE floatDec #-}
-floatDec :: Float -> Builder
-floatDec = string7 . show
-
--- | /Currently slow./ Decimal encoding of an IEEE 'Double'.
-{-# INLINE doubleDec #-}
-doubleDec :: Double -> Builder
-doubleDec = string7 . show
 
 
 ------------------------------------------------------------------------------

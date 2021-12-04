@@ -85,15 +85,20 @@ library
                      Data.ByteString.Builder
                      Data.ByteString.Builder.Extra
                      Data.ByteString.Builder.Prim
+                     Data.ByteString.Builder.RealFloat
 
                      -- perhaps only exposed temporarily
                      Data.ByteString.Builder.Internal
                      Data.ByteString.Builder.Prim.Internal
+                     Data.ByteString.Builder.RealFloat.Internal
   other-modules:     Data.ByteString.Builder.ASCII
                      Data.ByteString.Builder.Prim.ASCII
                      Data.ByteString.Builder.Prim.Binary
                      Data.ByteString.Builder.Prim.Internal.Base16
                      Data.ByteString.Builder.Prim.Internal.Floating
+                     Data.ByteString.Builder.RealFloat.F2S
+                     Data.ByteString.Builder.RealFloat.D2S
+                     Data.ByteString.Builder.RealFloat.TableGenerator
                      Data.ByteString.Lazy.Internal.Deque
 
   default-language:  Haskell2010
