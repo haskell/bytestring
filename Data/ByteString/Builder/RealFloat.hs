@@ -53,7 +53,8 @@
 --
 -- For more details, please refer to the
 -- <https://dl.acm.org/doi/10.1145/3192366.3192369 Ryu paper>.
-
+--
+-- @since 0.11.2.0
 
 module Data.ByteString.Builder.RealFloat
   ( floatDec
@@ -99,21 +100,31 @@ doubleDec :: Double -> Builder
 doubleDec = formatDouble generic
 
 -- | Format type for use with `formatFloat` and `formatDouble`.
+--
+-- @since 0.11.2.0
 data FloatFormat = MkFloatFormat FormatMode (Maybe Int)
 
 -- | Standard notation with `n` decimal places
+--
+-- @since 0.11.2.0
 standard :: Int -> FloatFormat
 standard n = MkFloatFormat FStandard (Just n)
 
 -- | Standard notation with the \'default precision\' (decimal places matching `show`)
+--
+-- @since 0.11.2.0
 standardDefaultPrecision :: FloatFormat
 standardDefaultPrecision = MkFloatFormat FStandard Nothing
 
 -- | Scientific notation with \'default precision\' (decimal places matching `show`)
+--
+-- @since 0.11.2.0
 scientific :: FloatFormat
 scientific = MkFloatFormat FScientific Nothing
 
 -- | Standard or scientific notation depending on the exponent. Matches `show`
+--
+-- @since 0.11.2.0
 generic :: FloatFormat
 generic = MkFloatFormat FGeneric Nothing
 
@@ -146,6 +157,8 @@ data FormatMode
 -- "1.2345e1"
 -- >>> formatFloat generic 12.345
 -- "12.345"
+--
+-- @since 0.11.2.0
 {-# INLINABLE formatFloat #-}
 formatFloat :: FloatFormat -> Float -> Builder
 formatFloat (MkFloatFormat fmt prec) = \f ->
@@ -187,6 +200,8 @@ formatFloat (MkFloatFormat fmt prec) = \f ->
 -- "1.2345e1"
 -- >>> formatDouble generic 12.345
 -- "12.345"
+--
+-- @since 0.11.2.0
 {-# INLINABLE formatDouble #-}
 formatDouble :: FloatFormat -> Double -> Builder
 formatDouble (MkFloatFormat fmt prec) = \f ->
