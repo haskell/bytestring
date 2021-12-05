@@ -65,6 +65,8 @@ module Data.ByteString.Internal (
 
         -- * Utilities
         nullForeignPtr,
+        SizeOverflowException,
+        overflowError,
         checkedAdd,
 
         -- * Standard C Functions
@@ -117,7 +119,7 @@ import Control.DeepSeq          (NFData(rnf))
 
 import Data.String              (IsString(..))
 
-import Control.Exception        (assert)
+import Control.Exception        (assert, throw, Exception)
 
 import Data.Bits                ((.&.))
 import Data.Char                (ord)
@@ -740,14 +742,6 @@ times n_raw (BS fp len)
         fillFrom destptr (copied * 2)
       | otherwise = memcpy (destptr `plusPtr` copied) destptr (size - copied)
 
--- | Add two non-negative numbers. Errors out on overflow.
-checkedAdd :: String -> Int -> Int -> Int
-checkedAdd fun x y
-  | r >= 0    = r
-  | otherwise = overflowError fun
-  where r = x + y
-{-# INLINE checkedAdd #-}
-
 ------------------------------------------------------------------------
 
 -- | Conversion between 'Word8' and 'Char'. Should compile to a no-op.
@@ -781,8 +775,32 @@ isSpaceChar8 :: Char -> Bool
 isSpaceChar8 = isSpaceWord8 . c2w
 {-# INLINE isSpaceChar8 #-}
 
+------------------------------------------------------------------------
+
+-- | The type of exception raised on failure by
+-- 'checkedAdd' and 'overflowError'.
+newtype SizeOverflowException
+  = SizeOverflowException String
+
+instance Show SizeOverflowException where
+  show (SizeOverflowException err) = err
+
+instance Exception SizeOverflowException
+
+-- | Raises a 'SizeOverflowException',
+-- with a message using the given function name.
 overflowError :: String -> a
-overflowError fun = error $ "Data.ByteString." ++ fun ++ ": size overflow"
+overflowError fun = throw $ SizeOverflowException msg
+  where msg = "Data.ByteString." ++ fun ++ ": size overflow"
+
+-- | Add two non-negative numbers.
+-- Calls 'overflowError' on overflow.
+checkedAdd :: String -> Int -> Int -> Int
+checkedAdd fun x y
+  | r >= 0    = r
+  | otherwise = overflowError fun
+  where r = assert (min x y >= 0) $ x + y
+{-# INLINE checkedAdd #-}
 
 ------------------------------------------------------------------------
 

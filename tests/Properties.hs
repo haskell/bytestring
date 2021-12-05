@@ -30,6 +30,8 @@ import qualified Data.List as List
 import Data.Char
 import Data.Word
 import Data.Maybe
+import Data.Either (isLeft)
+import Data.Bits (finiteBitSize, bit)
 import Data.Int (Int8, Int16, Int32, Int64)
 import Data.Semigroup
 import GHC.Exts (Int(..), newPinnedByteArray#, unsafeFreezeByteArray#)
@@ -242,6 +244,50 @@ prop_readIntBoundsLC     =     rdWordBounds @Word
         && rdIntD @a (spackLong1 (smin @a)) == Nothing
         -- Overflow within chunk
         && rdIntD @a (spackLong2 (smin @a)) == Nothing
+
+------------------------------------------------------------------------
+
+expectSizeOverflow :: a -> Property
+expectSizeOverflow val = ioProperty $ do
+  isLeft <$> try @P.SizeOverflowException (evaluate val)
+
+prop_stimesOverflowBasic bs = forAll genPosInt $ \n ->
+  toInteger n * len > maxInt ==> expectSizeOverflow (stimes n bs)
+  where
+    maxInt = toInteger @Int (maxBound @Int)
+    len    = toInteger @Int (P.length bs)
+    maxReps = maxInt * 5 `quot` max 5 len
+    genPosInt = chooseInt (1, fromInteger @Int maxReps)
+
+prop_stimesOverflowScary bs =
+  -- "Scary" because this test will cause heap corruption
+  -- (not just memory exhaustion) with the old stimes implementation.
+  n > 1 ==> expectSizeOverflow (stimes reps bs)
+  where
+    n = P.length bs
+    reps = maxBound @Word `quot` fromIntegral @Int @Word n + 1
+
+concat32bitOverflow :: (Int -> a) -> ([a] -> a) -> (a -> Int) -> Property
+concat32bitOverflow replicateLike concatLike lengthLike = let
+  intBits = finiteBitSize @Int 0
+  largeBS = concatLike $ replicate (bit 14) $ replicateLike (bit 17)
+  in if intBits /= 32
+     then label "skipped due to non-32-bit Int" True
+     else expectSizeOverflow largeBS
+
+prop_32bitOverflow_Strict_mconcat :: Property
+prop_32bitOverflow_Strict_mconcat =
+  concat32bitOverflow (`P.replicate` 0) mconcat P.length
+
+prop_32bitOverflow_Lazy_toStrict :: Property
+prop_32bitOverflow_Lazy_toStrict =
+  concat32bitOverflow (`P.replicate` 0) (L.toStrict . L.fromChunks) P.length
+
+prop_32bitOverflow_Short_mconcat :: Property
+prop_32bitOverflow_Short_mconcat =
+  concat32bitOverflow makeShort mconcat Short.length
+  where makeShort n = Short.toShort $ P.replicate n 0
+
 
 ------------------------------------------------------------------------
 
@@ -555,6 +601,7 @@ testSuite = testGroup "Properties"
   , testGroup "StrictChar8" PropBS8.tests
   , testGroup "LazyWord8"   PropBL.tests
   , testGroup "LazyChar8"   PropBL8.tests
+  , testGroup "Overflow"    overflow_tests
   , testGroup "Misc"        misc_tests
   , testGroup "IO"          io_tests
   , testGroup "Short"       short_tests
@@ -573,6 +620,14 @@ io_tests =
     , testProperty "appendFile        " prop_append_file_D
 
     , testProperty "packAddress       " prop_packAddress
+    ]
+
+overflow_tests =
+    [ testProperty "StrictByteString stimes (basic)" prop_stimesOverflowBasic
+    , testProperty "StrictByteString stimes (scary)" prop_stimesOverflowScary
+    , testProperty "StrictByteString mconcat" prop_32bitOverflow_Strict_mconcat
+    , testProperty "LazyByteString toStrict"  prop_32bitOverflow_Lazy_toStrict
+    , testProperty "ShortByteString mconcat"  prop_32bitOverflow_Short_mconcat
     ]
 
 misc_tests =
