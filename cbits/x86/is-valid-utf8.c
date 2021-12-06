@@ -35,6 +35,11 @@ SUCH DAMAGE.
 #include <stddef.h>
 #include <stdint.h>
 #include <tmmintrin.h>
+#include <cpuid.h>
+
+#ifndef __STDC_NO_ATOMICS__
+#include <stdatomic.h>
+#endif
 
 #include <MachDeps.h>
 
@@ -606,17 +611,34 @@ is_valid_utf8_avx2(uint8_t const *const src, size_t const len) {
 }
 
 #if __SSE2__
+
+bool has_ssse3() {
+  uint32_t eax = 0, ebx = 0, ecx = 0, edx = 0;
+  __get_cpuid_count(1, 0, &eax, &ebx, &ecx, &edx);
+  // https://en.wikipedia.org/wiki/CPUID#EAX=1:_Processor_Info_and_Feature_Bits
+  return ecx & (1 << 9);
+}
+
+bool has_avx2() {
+  uint32_t eax = 0, ebx = 0, ecx = 0, edx = 0;
+  __get_cpuid_count(7, 0, &eax, &ebx, &ecx, &edx);
+  // https://en.wikipedia.org/wiki/CPUID#EAX=7,_ECX=0:_Extended_Features
+  return ebx & (1 << 5);
+}
+
+typedef int (*is_valid_utf8_t) (uint8_t const *const, size_t const);
+
 int bytestring_is_valid_utf8(uint8_t const *const src, size_t const len) {
   if (len == 0) {
     return 1;
   }
-  __builtin_cpu_init();
-  if (__builtin_cpu_supports("avx2")) {
-    return is_valid_utf8_avx2(src, len);
-  } else if (__builtin_cpu_supports("ssse3")) {
-    return is_valid_utf8_ssse3(src, len);
+  static _Atomic is_valid_utf8_t s_impl = (is_valid_utf8_t)NULL;
+  is_valid_utf8_t impl = atomic_load_explicit(&s_impl, memory_order_relaxed);
+  if (!impl) {
+    impl = has_avx2() ? is_valid_utf8_avx2 : (has_ssse3() ? is_valid_utf8_ssse3 : is_valid_utf8_sse2);
+    atomic_store_explicit(&s_impl, impl, memory_order_relaxed);
   }
-  return is_valid_utf8_sse2(src, len);
+  return (*impl)(src, len);
 }
 #else
 // 0x80 in every 'lane'.
