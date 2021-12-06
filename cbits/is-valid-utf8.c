@@ -33,6 +33,14 @@ SUCH DAMAGE.
 #include <stddef.h>
 #include <stdint.h>
 
+#include <MachDeps.h>
+
+#ifdef WORDS_BIGENDIAN
+#define to_little_endian(x) __builtin_bswap64(x)
+#else
+#define to_little_endian(x) (x)
+#endif
+
 // 0x80 in every 'lane'.
 static uint64_t const high_bits_mask = 0x8080808080808080ULL;
 
@@ -46,7 +54,6 @@ int bytestring_is_valid_utf8(uint8_t const *const src, size_t const len) {
     // Check if the byte is ASCII.
     if (byte <= 0x7F) {
       ptr++;
-      /*
       // If we saw one ASCII byte, as long as it's not whitespace, it's quite
       // likely we'll see more.
       bool is_not_whitespace = byte > 32;
@@ -56,10 +63,10 @@ int bytestring_is_valid_utf8(uint8_t const *const src, size_t const len) {
         // Non-ASCII bytes have a set MSB. Thus, if we AND with 0x80 in every
         // 'lane', we will get 0 if everything is ASCII, and something else
         // otherwise.
-        uint64_t results[4] = {(*big_ptr) & high_bits_mask,
-                               (*(big_ptr + 1)) & high_bits_mask,
-                               (*(big_ptr + 2)) & high_bits_mask,
-                               (*(big_ptr + 3)) & high_bits_mask};
+        uint64_t results[4] = {to_little_endian(*big_ptr) & high_bits_mask,
+                               to_little_endian(*(big_ptr + 1)) & high_bits_mask,
+                               to_little_endian(*(big_ptr + 2)) & high_bits_mask,
+                               to_little_endian(*(big_ptr + 3)) & high_bits_mask};
         if (results[0] == 0) {
           ptr += 8;
           if (results[1] == 0) {
@@ -81,7 +88,6 @@ int bytestring_is_valid_utf8(uint8_t const *const src, size_t const len) {
           ptr += (__builtin_ctzl(results[0]) / 8);
         }
       }
-      */
     }
     // Check for a valid 2-byte sequence.
     //
