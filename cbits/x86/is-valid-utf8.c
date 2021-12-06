@@ -610,41 +610,10 @@ is_valid_utf8_avx2(uint8_t const *const src, size_t const len) {
   return is_valid_utf8_fallback(small_ptr, small_len);
 }
 
-#if __SSE2__
-
-bool has_ssse3() {
-  uint32_t eax = 0, ebx = 0, ecx = 0, edx = 0;
-  __get_cpuid_count(1, 0, &eax, &ebx, &ecx, &edx);
-  // https://en.wikipedia.org/wiki/CPUID#EAX=1:_Processor_Info_and_Feature_Bits
-  return ecx & (1 << 9);
-}
-
-bool has_avx2() {
-  uint32_t eax = 0, ebx = 0, ecx = 0, edx = 0;
-  __get_cpuid_count(7, 0, &eax, &ebx, &ecx, &edx);
-  // https://en.wikipedia.org/wiki/CPUID#EAX=7,_ECX=0:_Extended_Features
-  return ebx & (1 << 5);
-}
-
-typedef int (*is_valid_utf8_t) (uint8_t const *const, size_t const);
-
-int bytestring_is_valid_utf8(uint8_t const *const src, size_t const len) {
-  if (len == 0) {
-    return 1;
-  }
-  static _Atomic is_valid_utf8_t s_impl = (is_valid_utf8_t)NULL;
-  is_valid_utf8_t impl = atomic_load_explicit(&s_impl, memory_order_relaxed);
-  if (!impl) {
-    impl = has_avx2() ? is_valid_utf8_avx2 : (has_ssse3() ? is_valid_utf8_ssse3 : is_valid_utf8_sse2);
-    atomic_store_explicit(&s_impl, impl, memory_order_relaxed);
-  }
-  return (*impl)(src, len);
-}
-#else
 // 0x80 in every 'lane'.
 static uint64_t const high_bits_mask = 0x8080808080808080ULL;
 
-int bytestring_is_valid_utf8(uint8_t const *const src, size_t const len) {
+int bytestring_is_valid_utf8_fallback(uint8_t const *const src, size_t const len) {
   uint8_t const *ptr = (uint8_t const *)src;
   // This is 'one past the end' to make loop termination and bounds checks
   // easier.
@@ -743,5 +712,40 @@ int bytestring_is_valid_utf8(uint8_t const *const src, size_t const len) {
   return 1;
 }
 
-#endif
+bool has_sse2() {
+  uint32_t eax = 0, ebx = 0, ecx = 0, edx = 0;
+  __get_cpuid_count(1, 0, &eax, &ebx, &ecx, &edx);
+  // https://en.wikipedia.org/wiki/CPUID#EAX=1:_Processor_Info_and_Feature_Bits
+  return edx & (1 << 26);
+}
+
+bool has_ssse3() {
+  uint32_t eax = 0, ebx = 0, ecx = 0, edx = 0;
+  __get_cpuid_count(1, 0, &eax, &ebx, &ecx, &edx);
+  // https://en.wikipedia.org/wiki/CPUID#EAX=1:_Processor_Info_and_Feature_Bits
+  return ecx & (1 << 9);
+}
+
+bool has_avx2() {
+  uint32_t eax = 0, ebx = 0, ecx = 0, edx = 0;
+  __get_cpuid_count(7, 0, &eax, &ebx, &ecx, &edx);
+  // https://en.wikipedia.org/wiki/CPUID#EAX=7,_ECX=0:_Extended_Features
+  return ebx & (1 << 5);
+}
+
+typedef int (*is_valid_utf8_t) (uint8_t const *const, size_t const);
+
+int bytestring_is_valid_utf8(uint8_t const *const src, size_t const len) {
+  if (len == 0) {
+    return 1;
+  }
+  static _Atomic is_valid_utf8_t s_impl = (is_valid_utf8_t)NULL;
+  is_valid_utf8_t impl = atomic_load_explicit(&s_impl, memory_order_relaxed);
+  if (!impl) {
+    impl = has_avx2() ? is_valid_utf8_avx2 : (has_ssse3() ? is_valid_utf8_ssse3 : (has_sse2() ? is_valid_utf8_sse2 : bytestring_is_valid_utf8_fallback));
+    atomic_store_explicit(&s_impl, impl, memory_order_relaxed);
+  }
+  return (*impl)(src, len);
+}
+
 #pragma GCC pop_options
