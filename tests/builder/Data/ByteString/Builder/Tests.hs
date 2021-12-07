@@ -44,7 +44,6 @@ import           Data.ByteString.Builder.Internal (Put, putBuilder, fromPut)
 import qualified Data.ByteString.Builder.Internal   as BI
 import qualified Data.ByteString.Builder.Prim       as BP
 import           Data.ByteString.Builder.Prim.TestUtils
-import qualified Data.ByteString.Builder.RealFloat.Internal as BRFI
 
 import           Control.Exception (evaluate)
 import           System.IO (openTempFile, hPutStr, hClose, hSetBinaryMode, hSetEncoding, utf8, hSetNewlineMode, noNewlineTranslation)
@@ -958,12 +957,7 @@ testsFloating =
         fmap asShowRef [read ("1.0e" ++ show x) :: Float | x <- [-46..39 :: Int]]
   , testMatches "d2sPowersOf10" doubleDec show $
         fmap asShowRef [read ("1.0e" ++ show x) :: Double | x <- [-324..309 :: Int]]
-  , testProperty "float_max_split" $ BRFI.float_max_split === 46
-  , testProperty "float_max_inv_split" $ BRFI.float_max_inv_split === 30
-  , testProperty "double_max_split" $ BRFI.double_max_split === 325
-  , testProperty "double_max_inv_split" $ BRFI.double_max_inv_split === 291
   ]
-  ++ testsLogApprox
   where
     testExpected :: TestName -> (a -> Builder) -> [(a, String)] -> TestTree
     testExpected name dec lst = testProperty name . conjoin $
@@ -982,29 +976,6 @@ testsFloating =
         coerceWord64ToDouble $ (fromIntegral (fromEnum sign) `shiftL` 63) .|. (fromIntegral expo `shiftL` 52) .|. mantissa
 
     asShowRef x = (x, show x)
-
-testsLogApprox :: [TestTree]
-testsLogApprox =
-  [ testProperty "pow5bits" . conjoin $ flip fmap [1..3528] (\e ->
-      BRFI.pow5bits e === fromIntegral (ilog2ceiling (5^e)))
-  , testProperty "log10pow2" . conjoin $ flip fmap [0..1650] (\e ->
-      BRFI.log10pow2 e === fromIntegral (ilog10floor (2^e)))
-  , testProperty "log10pow5" . conjoin $ flip fmap [0..2620] (\e ->
-      BRFI.log10pow5 e === fromIntegral (ilog10floor (5^e)))
-  ]
-  where
-    -- trial division logarithms
-    ilog2ceiling :: Integer -> Integer
-    ilog2ceiling x
-      | x == 1    = 1
-      | x > 1     = 1 + ilog2ceiling (x `div` 2)
-      | otherwise = error "Bad integer log2"
-
-    ilog10floor :: Integer -> Integer
-    ilog10floor x
-      | x >= 1 && x <= 9 = 0
-      | x >= 10          = 1 + ilog10floor (x `div` 10)
-      | otherwise = error "Bad integer log10"
 
 testsChar8 :: [TestTree]
 testsChar8 =

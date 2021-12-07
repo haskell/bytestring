@@ -90,7 +90,6 @@ library
                      -- perhaps only exposed temporarily
                      Data.ByteString.Builder.Internal
                      Data.ByteString.Builder.Prim.Internal
-                     Data.ByteString.Builder.RealFloat.Internal
   other-modules:     Data.ByteString.Builder.ASCII
                      Data.ByteString.Builder.Prim.ASCII
                      Data.ByteString.Builder.Prim.Binary
@@ -98,6 +97,7 @@ library
                      Data.ByteString.Builder.Prim.Internal.Floating
                      Data.ByteString.Builder.RealFloat.F2S
                      Data.ByteString.Builder.RealFloat.D2S
+                     Data.ByteString.Builder.RealFloat.Internal
                      Data.ByteString.Builder.RealFloat.TableGenerator
                      Data.ByteString.Lazy.Internal.Deque
 

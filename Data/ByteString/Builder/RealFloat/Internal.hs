@@ -86,7 +86,7 @@ import qualified Foreign.Storable as S (poke)
 #include <ghcautoconf.h>
 #include "MachDeps.h"
 
-#if WORD_SIZE_IN_BITS < 64
+#if WORD_SIZE_IN_BITS < 64 && __GLASGOW_HASKELL__ < 903
 import GHC.IntWord64
 #endif
 
@@ -467,7 +467,13 @@ timesWord2 a b =
   let ra = raw a
       rb = raw b
 #if WORD_SIZE_IN_BITS >= 64
+#if __GLASGOW_HASKELL__ < 903
       !(# hi, lo #) = ra `timesWord2#` rb
+#else
+      !(# hi_, lo_ #) = word64ToWord# ra `timesWord2#` word64ToWord# rb
+      hi = wordToWord64# hi_
+      lo = wordToWord64# lo_
+#endif
 #else
       !(# x_h, x_l #) = unpackWord64 ra
       !(# y_h, y_l #) = unpackWord64 rb
@@ -507,7 +513,7 @@ timesWord2 a b =
 
 -- | #ifdef for 64-bit word that seems to work on both 32- and 64-bit platforms
 type WORD64 =
-#if WORD_SIZE_IN_BITS < 64
+#if WORD_SIZE_IN_BITS < 64 || __GLASGOW_HASKELL__ >= 903
   Word64#
 #else
   Word#
@@ -517,7 +523,7 @@ type WORD64 =
 pow5_factor :: WORD64 -> Int# -> Int#
 pow5_factor w count =
   let !(W64# q, W64# r) = dquotRem5 (W64# w)
-#if WORD_SIZE_IN_BITS >= 64
+#if WORD_SIZE_IN_BITS >= 64 && __GLASGOW_HASKELL__ < 903
    in case r `eqWord#` 0## of
 #else
    in case r `eqWord64#` wordToWord64# 0## of
@@ -554,7 +560,7 @@ instance Mantissa Word32 where
 #else
   unsafeRaw (W32# w) = w
 #endif
-#if WORD_SIZE_IN_BITS >= 64
+#if WORD_SIZE_IN_BITS >= 64 && __GLASGOW_HASKELL__ < 903
   raw = unsafeRaw
 #else
   raw w = wordToWord64# (unsafeRaw w)
@@ -579,7 +585,7 @@ instance Mantissa Word32 where
   quotRem10000 = fquotRem10000
 
 instance Mantissa Word64 where
-#if WORD_SIZE_IN_BITS >= 64
+#if WORD_SIZE_IN_BITS >= 64 && __GLASGOW_HASKELL__ < 903
   unsafeRaw (W64# w) = w
 #else
   unsafeRaw (W64# w) = word64ToWord# w

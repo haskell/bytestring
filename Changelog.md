@@ -5,14 +5,19 @@
 
 [0.12.0.0]: https://github.com/haskell/bytestring/compare/0.11.2.0...0.12.0.0
 
-[0.11.2.0] — Unreleased
+[0.11.2.0] — December 2021
 
+* [Add `Data.ByteString.isValidUtf8`](https://github.com/haskell/bytestring/pull/423)
+* [Speed up `floatDec` and `doubleDec` using the Ryu algorithm](https://github.com/haskell/bytestring/pull/365)
+  - `Data.ByteString.Builder.RealFloat` offers additional custom formatters
+    for floating point numbers.
 * [Add `StrictByteString` and `LazyByteString` type aliases](https://github.com/haskell/bytestring/pull/378)
 * [Add `foldr'`, `foldr1'`, `scanl1`, `scanr`, `scanr1` to `Data.ByteString.Lazy{,.Char8}`](https://github.com/haskell/bytestring/pull/364)
 * [Add `takeEnd`, `dropEnd`, `takeWhileEnd`, `dropWhileEnd`, `spanEnd`, `breakEnd` to `Data.ByteString.Lazy{,.Char8}`](https://github.com/haskell/bytestring/pull/395)
 * [Add `Data.ByteString.Builder.writeFile` to write `Builder` to file directly](https://github.com/haskell/bytestring/pull/408)
 * [Add `Data.ByteString.{from,to}FilePath` for encoding-aware conversions](https://github.com/haskell/bytestring/pull/403)
 * [Add `Lift` instances for all flavors of `ByteString`](https://github.com/haskell/bytestring/pull/392)
+* [Add `HasCallStack` for partial functions](https://github.com/haskell/bytestring/pull/440)
 * [Define `foldl`, `foldl'`, `foldr`, `foldr'`, `mapAccumL`, `mapAccumR`, `scanl`, `scanr` and `filter` with one argument less to allow more inlining](https://github.com/haskell/bytestring/pull/345)
 * [Speed up internal loop in `unfoldrN`](https://github.com/haskell/bytestring/pull/356)
 * [Speed up `count` with SSE and AVX instructions](https://github.com/haskell/bytestring/pull/202)
@@ -20,7 +25,6 @@
 * [Use `unsafeWithForeignPtr` whenever possible](https://github.com/haskell/bytestring/pull/401)
 * [Remove `integer-simple` flag](https://github.com/haskell/bytestring/pull/371)
 * [Remove misleading mentions of fusion](https://github.com/haskell/bytestring/pull/412)
-* Add `Data.ByteString.isValidUtf8`
 
 [0.11.2.0]: https://github.com/haskell/bytestring/compare/0.11.1.0...0.11.2.0
 
