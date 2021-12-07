@@ -652,21 +652,21 @@ is_valid_utf8_avx2(uint8_t const *const src, size_t const len) {
 #endif
 
 #ifdef __x86_64__
-bool has_sse2() {
+static inline bool has_sse2() {
   uint32_t eax = 0, ebx = 0, ecx = 0, edx = 0;
   __get_cpuid_count(1, 0, &eax, &ebx, &ecx, &edx);
   // https://en.wikipedia.org/wiki/CPUID#EAX=1:_Processor_Info_and_Feature_Bits
   return edx & (1 << 26);
 }
 
-bool has_ssse3() {
+static inline bool has_ssse3() {
   uint32_t eax = 0, ebx = 0, ecx = 0, edx = 0;
   __get_cpuid_count(1, 0, &eax, &ebx, &ecx, &edx);
   // https://en.wikipedia.org/wiki/CPUID#EAX=1:_Processor_Info_and_Feature_Bits
   return ecx & (1 << 9);
 }
 
-bool has_avx2() {
+static inline bool has_avx2() {
   uint32_t eax = 0, ebx = 0, ecx = 0, edx = 0;
   __get_cpuid_count(7, 0, &eax, &ebx, &ecx, &edx);
   // https://en.wikipedia.org/wiki/CPUID#EAX=7,_ECX=0:_Extended_Features
