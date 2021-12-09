@@ -35,6 +35,9 @@ module Data.ByteString.Short.Internal (
     -- * Low level operations
     createFromPtr, copyToPtr,
 
+    -- ** Encoding validation
+    isValidUtf8,
+
     -- * Low level conversions
     -- ** Packing 'CString's and pointers
     packCString,
@@ -598,6 +601,17 @@ useAsCStringLen bs action =
       copyToPtr bs 0 buf (fromIntegral l)
       action (buf, l)
   where l = length bs
+
+-- | /O(n)/ Check whether a 'ShortByteString' represents valid UTF-8.
+--
+-- @since 0.11.3.0
+isValidUtf8 :: ShortByteString -> Bool
+isValidUtf8 sbs@(SBS ba#) = accursedUnutterablePerformIO $ do
+  i <- cIsValidUtf8 ba# (fromIntegral (length sbs))
+  return $ i /= 0
+
+foreign import ccall unsafe "bytestring_is_valid_utf8" cIsValidUtf8
+  :: ByteArray# -> CSize -> IO CInt
 
 -- ---------------------------------------------------------------------
 -- Internal utilities
