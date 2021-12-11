@@ -256,7 +256,12 @@ prop_stimesOverflowBasic bs = forAll genPosInt $ \n ->
   where
     maxInt = toInteger @Int (maxBound @Int)
     len    = toInteger @Int (P.length bs)
+
     maxReps = maxInt * 5 `quot` max 5 len
+    -- This choice creates result lengths roughly in the range
+    -- [0..5*(maxBound @Int)], which results in a roughly even split
+    -- between positive and negative overflowed Int results.
+    -- But other choices can probably work well, too.
     genPosInt = chooseInt (1, fromInteger @Int maxReps)
 
 prop_stimesOverflowScary bs =

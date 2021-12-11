@@ -715,7 +715,7 @@ concat = \bss0 -> goLen0 bss0 bss0
 
 -- | Repeats the given ByteString n times.
 times :: Integral a => a -> ByteString -> ByteString
-times n_raw (BS fp len)
+times nRaw (BS fp len)
   | n < 0 = error "stimes: non-negative multiplier expected"
   | n == 0 = mempty
   | n == 1 = BS fp len
@@ -729,11 +729,11 @@ times n_raw (BS fp len)
       memcpy destptr p len
       fillFrom destptr len
   where
-    n = toInteger n_raw -- don't mess with lawless Integral instances
+    n = toInteger nRaw -- don't mess with lawless Integral instances
     sizeInteger = toInteger len * n
-    size = if  sizeInteger <= toInteger (maxBound :: Int)
-      then  fromInteger sizeInteger
-      else  overflowError "stimes"
+    size = if sizeInteger <= toInteger (maxBound :: Int)
+      then fromInteger sizeInteger
+      else overflowError "stimes"
 
     fillFrom :: Ptr Word8 -> Int -> IO ()
     fillFrom destptr copied

@@ -129,10 +129,9 @@ module Data.ByteString.Builder.Internal (
 import           Control.Arrow (second)
 
 #if !(MIN_VERSION_base(4,11,0))
-import           Data.Semigroup (Semigroup((<>), stimes), stimesMonoid)
-#else
-import           Data.Semigroup (Semigroup(stimes), stimesMonoid)
+import           Data.Semigroup (Semigroup((<>)))
 #endif
+import           Data.Semigroup (Semigroup(stimes), stimesMonoid)
 
 import qualified Data.ByteString               as S
 import qualified Data.ByteString.Internal      as S
