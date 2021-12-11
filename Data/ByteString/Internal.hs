@@ -121,15 +121,17 @@ import Data.String              (IsString(..))
 
 import Control.Exception        (assert, throw, Exception)
 
-import Data.Bits                ((.&.))
+import Data.Bits                ((.&.), toIntegralSized)
 import Data.Char                (ord)
+import Data.Int
 import Data.Word
+import Numeric.Natural          (Natural)
 
 import Data.Typeable            (Typeable)
 import Data.Data                (Data(..), mkNoRepType)
 
 import GHC.Base                 (nullAddr#,realWorld#,unsafeChr)
-import GHC.Exts                 (IsList(..))
+import GHC.Exts                 (IsList(..), timesInt2#, isTrue#)
 import GHC.CString              (unpackCString#)
 import GHC.Prim                 (Addr#)
 import GHC.IO                   (IO(IO),unsafeDupablePerformIO)
@@ -715,7 +717,8 @@ concat = \bss0 -> goLen0 bss0 bss0
 
 -- | Repeats the given ByteString n times.
 times :: Integral a => a -> ByteString -> ByteString
-times nRaw (BS fp len)
+{-# INLINABLE times #-}
+times nRaw (BS fp len@(I# len#))
   | n < 0 = error "stimes: non-negative multiplier expected"
   | n == 0 = mempty
   | n == 1 = BS fp len
@@ -729,11 +732,15 @@ times nRaw (BS fp len)
       memcpy destptr p len
       fillFrom destptr len
   where
-    n = toInteger nRaw -- don't mess with lawless Integral instances
-    sizeInteger = toInteger len * n
-    size = if sizeInteger <= toInteger (maxBound :: Int)
-      then fromInteger sizeInteger
-      else overflowError "stimes"
+    n = case checkedToInt nRaw of
+      Just v -> v
+      Nothing -> onOverflow
+    size = case n of
+      I# n# -> case timesInt2# n# len# of
+        (# oflo, _, result #) -> if isTrue# oflo
+          then onOverflow
+          else I# result
+    onOverflow = overflowError "stimes"
 
     fillFrom :: Ptr Word8 -> Int -> IO ()
     fillFrom destptr copied
@@ -741,6 +748,29 @@ times nRaw (BS fp len)
         memcpy (destptr `plusPtr` copied) destptr copied
         fillFrom destptr (copied * 2)
       | otherwise = memcpy (destptr `plusPtr` copied) destptr (size - copied)
+
+checkedToInt :: Integral t => t -> Maybe Int
+{-# RULES
+   "checkedToInt/Int"   checkedToInt = id
+ ; "checkedToInt/Int8"  checkedToInt = toIntegralSized :: Int8  -> Maybe Int
+ ; "checkedToInt/Int16" checkedToInt = toIntegralSized :: Int16 -> Maybe Int
+ ; "checkedToInt/Int32" checkedToInt = toIntegralSized :: Int32 -> Maybe Int
+ ; "checkedToInt/Int64" checkedToInt = toIntegralSized :: Int64 -> Maybe Int
+ ; "checkedToInt/Word"   checkedToInt = toIntegralSized :: Word   -> Maybe Int
+ ; "checkedToInt/Word8"  checkedToInt = toIntegralSized :: Word8  -> Maybe Int
+ ; "checkedToInt/Word16" checkedToInt = toIntegralSized :: Word16 -> Maybe Int
+ ; "checkedToInt/Word32" checkedToInt = toIntegralSized :: Word32 -> Maybe Int
+ ; "checkedToInt/Word64" checkedToInt = toIntegralSized :: Word64 -> Maybe Int
+ ; "checkedToInt/Integer" checkedToInt = toIntegralSized :: Integer -> Maybe Int
+ ; "checkedToInt/Natural" checkedToInt = toIntegralSized :: Natural -> Maybe Int
+#-}
+{-# NOINLINE [1] checkedToInt #-}
+checkedToInt x
+  | toInteger (minBound :: Int) <= y && y <= toInteger (maxBound :: Int)
+  = Just (fromInteger y)
+  | otherwise
+  = Nothing
+  where  y = toInteger x
 
 ------------------------------------------------------------------------
 

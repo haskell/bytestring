@@ -262,7 +262,7 @@ prop_stimesOverflowBasic bs = forAll genPosInt $ \n ->
     -- [0..5*(maxBound @Int)], which results in a roughly even split
     -- between positive and negative overflowed Int results.
     -- But other choices can probably work well, too.
-    genPosInt = chooseInt (1, fromInteger @Int maxReps)
+    genPosInt = choose (1, fromInteger @Int maxReps)
 
 prop_stimesOverflowScary bs =
   -- "Scary" because this test will cause heap corruption
