@@ -4,6 +4,7 @@ module IsValidUtf8 (testSuite) where
 
 import Data.Bits (shiftR, (.&.), shiftL)
 import Data.ByteString (ByteString)
+import qualified Data.ByteString.Short as SBS
 import qualified Data.ByteString as B
 import Data.Char (chr, ord)
 import Data.Word (Word8)
@@ -17,17 +18,25 @@ import Test.Tasty.QuickCheck (testProperty, QuickCheckTests)
 
 testSuite :: TestTree
 testSuite = testGroup "UTF-8 validation" $ [
-  adjustOption (max testCount) . testProperty "Valid UTF-8" $ goValid,
-  adjustOption (max testCount) . testProperty "Invalid UTF-8" $ goInvalid,
+  adjustOption (max testCount) . testProperty "Valid UTF-8 ByteString" $ goValidBS,
+  adjustOption (max testCount) . testProperty "Invalid UTF-8 ByteString" $ goInvalidBS,
+  adjustOption (max testCount) . testProperty "Valid UTF-8 ShortByteString" $ goValidSBS,
+  adjustOption (max testCount) . testProperty "Invalid UTF-8 ShortByteString" $ goInvalidSBS,
   testGroup "Regressions" checkRegressions
   ]
   where
-    goValid :: Property
-    goValid = forAll arbitrary $
+    goValidBS :: Property
+    goValidBS = forAll arbitrary $
       \(ValidUtf8 ss) -> (B.isValidUtf8 . foldMap sequenceToBS $ ss) === True
-    goInvalid :: Property
-    goInvalid = forAll arbitrary $ 
+    goInvalidBS :: Property
+    goInvalidBS = forAll arbitrary $
       \inv -> (B.isValidUtf8 . toByteString $ inv) === False
+    goValidSBS :: Property
+    goValidSBS = forAll arbitrary $
+      \(ValidUtf8 ss) -> (SBS.isValidUtf8 . SBS.toShort . foldMap sequenceToBS $ ss) === True
+    goInvalidSBS :: Property
+    goInvalidSBS = forAll arbitrary $
+      \inv -> (SBS.isValidUtf8 . SBS.toShort . toByteString $ inv) === False
     testCount :: QuickCheckTests
     testCount = 1000
 
