@@ -109,11 +109,10 @@ import Foreign.Storable         (Storable(..))
 import Foreign.C.Types          (CInt(..), CSize(..))
 import Foreign.C.String         (CString)
 
-#if MIN_VERSION_base(4,13,0)
-import Data.Semigroup           (Semigroup (sconcat, stimes))
-#else
-import Data.Semigroup           (Semigroup ((<>), sconcat, stimes))
+#if !MIN_VERSION_base(4,13,0)
+import Data.Semigroup           (Semigroup ((<>)))
 #endif
+import Data.Semigroup           (Semigroup (sconcat, stimes))
 import Data.List.NonEmpty       (NonEmpty ((:|)))
 
 import Control.DeepSeq          (NFData(rnf))
@@ -122,7 +121,7 @@ import Data.String              (IsString(..))
 
 import Control.Exception        (assert, throw, Exception)
 
-import Data.Bits                ((.&.), toIntegralSized)
+import Data.Bits                (Bits, (.&.), toIntegralSized)
 import Data.Char                (ord)
 import Data.Int
 import Data.Word
@@ -132,7 +131,7 @@ import Data.Typeable            (Typeable)
 import Data.Data                (Data(..), mkNoRepType)
 
 import GHC.Base                 (nullAddr#,realWorld#,unsafeChr)
-import GHC.Exts                 (IsList(..))
+import GHC.Exts                 (IsList(..), inline)
 import GHC.CString              (unpackCString#)
 import GHC.Prim                 (Addr#)
 
@@ -253,7 +252,8 @@ instance Ord ByteString where
 instance Semigroup ByteString where
     (<>)    = append
     sconcat (b:|bs) = concat (b:bs)
-    stimes  = times
+    {-# INLINE stimes #-}
+    stimes  = stimesPolymorphic
 
 instance Monoid ByteString where
     mempty  = BS nullForeignPtr 0
@@ -729,25 +729,30 @@ concat = \bss0 -> goLen0 bss0 bss0
  #-}
 
 -- | Repeats the given ByteString n times.
-times :: Integral a => a -> ByteString -> ByteString
-{-# INLINABLE times #-}
-times nRaw (BS fp len)
+-- Polymorphic wrapper to make sure any generated
+-- specializations are reasonably small.
+stimesPolymorphic :: Integral a => a -> ByteString -> ByteString
+{-# INLINABLE stimesPolymorphic #-}
+stimesPolymorphic nRaw bs = case checkedToInt nRaw of
+  Just n  -> stimesInt n bs
+  Nothing -> overflowError "stimes"
+
+-- | Repeats the given ByteString n times.
+stimesInt :: Int -> ByteString -> ByteString
+stimesInt n (BS fp len)
   | n < 0 = error "stimes: non-negative multiplier expected"
   | n == 0 = mempty
   | n == 1 = BS fp len
   | len == 0 = mempty
-  | len == 1 = unsafeCreate size $ \destptr ->
+  | len == 1 = unsafeCreate n $ \destptr ->
     unsafeWithForeignPtr fp $ \p -> do
       byte <- peek p
-      void $ memset destptr byte (fromIntegral size)
+      void $ memset destptr byte (fromIntegral n)
   | otherwise = unsafeCreate size $ \destptr ->
     unsafeWithForeignPtr fp $ \p -> do
       memcpy destptr p len
       fillFrom destptr len
   where
-    n = case checkedToInt nRaw of
-      Just v -> v
-      Nothing -> overflowError "stimes"
     size = checkedMul "stimes" n len
 
     fillFrom :: Ptr Word8 -> Int -> IO ()
@@ -833,28 +838,32 @@ checkedMul fun !x@(I# x#) !y@(I# y#) = assert (min x y >= 0) $
   where !(I# shiftAmt) = finiteBitSize (0 :: Word) - 1
 #endif
 
+_toIntegralSized :: (Integral a, Integral b, Bits a, Bits b) => a -> Maybe b
+{-# INLINE _toIntegralSized #-}
+-- stupid hack to make sure 'toIntegralSized' specializes, without
+-- generating spcializations for every version of 'times'
+_toIntegralSized = inline toIntegralSized
+
 checkedToInt :: Integral t => t -> Maybe Int
 {-# RULES
-   "checkedToInt/Int"   checkedToInt = id
- ; "checkedToInt/Int8"  checkedToInt = toIntegralSized :: Int8  -> Maybe Int
- ; "checkedToInt/Int16" checkedToInt = toIntegralSized :: Int16 -> Maybe Int
- ; "checkedToInt/Int32" checkedToInt = toIntegralSized :: Int32 -> Maybe Int
- ; "checkedToInt/Int64" checkedToInt = toIntegralSized :: Int64 -> Maybe Int
- ; "checkedToInt/Word"   checkedToInt = toIntegralSized :: Word   -> Maybe Int
- ; "checkedToInt/Word8"  checkedToInt = toIntegralSized :: Word8  -> Maybe Int
- ; "checkedToInt/Word16" checkedToInt = toIntegralSized :: Word16 -> Maybe Int
- ; "checkedToInt/Word32" checkedToInt = toIntegralSized :: Word32 -> Maybe Int
- ; "checkedToInt/Word64" checkedToInt = toIntegralSized :: Word64 -> Maybe Int
- ; "checkedToInt/Integer" checkedToInt = toIntegralSized :: Integer -> Maybe Int
- ; "checkedToInt/Natural" checkedToInt = toIntegralSized :: Natural -> Maybe Int
+   "checkedToInt/Int"   checkedToInt = _toIntegralSized :: Int   -> Maybe Int
+ ; "checkedToInt/Int8"  checkedToInt = _toIntegralSized :: Int8  -> Maybe Int
+ ; "checkedToInt/Int16" checkedToInt = _toIntegralSized :: Int16 -> Maybe Int
+ ; "checkedToInt/Int32" checkedToInt = _toIntegralSized :: Int32 -> Maybe Int
+ ; "checkedToInt/Int64" checkedToInt = _toIntegralSized :: Int64 -> Maybe Int
+ ; "checkedToInt/Word"   checkedToInt = _toIntegralSized :: Word   -> Maybe Int
+ ; "checkedToInt/Word8"  checkedToInt = _toIntegralSized :: Word8  -> Maybe Int
+ ; "checkedToInt/Word16" checkedToInt = _toIntegralSized :: Word16 -> Maybe Int
+ ; "checkedToInt/Word32" checkedToInt = _toIntegralSized :: Word32 -> Maybe Int
+ ; "checkedToInt/Word64" checkedToInt = _toIntegralSized :: Word64 -> Maybe Int
+ ; "checkedToInt/Integer" checkedToInt = _toIntegralSized :: Integer -> Maybe Int
+ ; "checkedToInt/Natural" checkedToInt = _toIntegralSized :: Natural -> Maybe Int
 #-}
 {-# NOINLINE [1] checkedToInt #-}
-checkedToInt x
-  | toInteger (minBound :: Int) <= y && y <= toInteger (maxBound :: Int)
-  = Just (fromInteger y)
-  | otherwise
-  = Nothing
-  where  y = toInteger x
+checkedToInt x = if toInteger x == toInteger res
+  then Just res
+  else Nothing
+  where res = fromIntegral x :: Int
 
 
 ------------------------------------------------------------------------

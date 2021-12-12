@@ -251,10 +251,10 @@ expectSizeOverflow val = ioProperty $ do
   isLeft <$> try @P.SizeOverflowException (evaluate val)
 
 prop_checkedAdd = forAll (vectorOf 2 nonNeg) $ \[x, y] -> if oflo x y
-  then  expectSizeOverflow (P.checkedAdd "" x y)
-  else  property $ P.checkedAdd "" x y == x + y
-  where  nonNeg = choose (0, (maxBound @Int))
-         oflo x y = toInteger x + toInteger y /= toInteger (x + y)
+  then expectSizeOverflow (P.checkedAdd "" x y)
+  else property $ P.checkedAdd "" x y == x + y
+  where nonNeg = choose (0, (maxBound @Int))
+        oflo x y = toInteger x + toInteger y /= toInteger (x + y)
 
 multCompl :: Int -> Gen Int
 multCompl x = choose (0, fromInteger @Int maxc)
@@ -265,13 +265,13 @@ multCompl x = choose (0, fromInteger @Int maxc)
   where maxc = toInteger (maxBound @Int) * 5 `quot` max 5 (abs $ toInteger x)
 
 prop_checkedMul = forAll genScale $ \scale ->
-  forAll (genVal scale) $ \x -> (x >= 0) ==>
+  forAll (genVal scale) $ \x ->
     forAll (multCompl x) $ \y -> if oflo x y
-      then  expectSizeOverflow (P.checkedMul "" x y)
-      else  property $ P.checkedMul "" x y == x * y
-  where  genScale = choose (0, finiteBitSize @Int 0 - 1)
-         genVal scale = choose (0, 2 * bit scale - 1)
-         oflo x y = toInteger x * toInteger y /= toInteger (x * y)
+      then expectSizeOverflow (P.checkedMul "" x y)
+      else property $ P.checkedMul "" x y == x * y
+  where genScale = choose (0, finiteBitSize @Int 0 - 1)
+        genVal scale = choose (0, bit scale - 1)
+        oflo x y = toInteger x * toInteger y /= toInteger (x * y)
 
 prop_stimesOverflowBasic bs = forAll (multCompl len) $ \n ->
   toInteger n * toInteger len > maxInt ==> expectSizeOverflow (stimes n bs)
