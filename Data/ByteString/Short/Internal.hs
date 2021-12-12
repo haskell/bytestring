@@ -77,6 +77,9 @@ import GHC.Exts ( Int(I#), Int#, Ptr(Ptr), Addr#, Char(C#)
                 , isByteArrayPinned#
                 , isTrue#
 #endif
+#if MIN_VERSION_base(4,11,0)
+                , compareByteArrays#
+#endif
                 , sizeofByteArray#
                 , indexWord8Array#, indexCharArray#
                 , writeWord8Array#, writeCharArray#
@@ -86,6 +89,7 @@ import GHC.ForeignPtr (ForeignPtr(ForeignPtr), ForeignPtrContents(PlainPtr))
 import GHC.ST         (ST(ST), runST)
 import GHC.Stack.Types (HasCallStack)
 import GHC.Word
+
 
 import Prelude ( Eq(..), Ord(..), Ordering(..), Read(..), Show(..)
                , ($), ($!), error, (++), (.)
@@ -402,16 +406,14 @@ equateBytes sbs1 sbs2 =
     let !len1 = length sbs1
         !len2 = length sbs2
      in len1 == len2
-     && 0 == accursedUnutterablePerformIO
-               (memcmp_ByteArray (asBA sbs1) (asBA sbs2) len1)
+     && 0 == memcmp_ByteArray (asBA sbs1) (asBA sbs2) len1
 
 compareBytes :: ShortByteString -> ShortByteString -> Ordering
 compareBytes sbs1 sbs2 =
     let !len1 = length sbs1
         !len2 = length sbs2
         !len  = min len1 len2
-     in case accursedUnutterablePerformIO
-               (memcmp_ByteArray (asBA sbs1) (asBA sbs2) len) of
+     in case memcmp_ByteArray (asBA sbs1) (asBA sbs2) len of
           i | i    < 0    -> LT
             | i    > 0    -> GT
             | len2 > len1 -> LT
@@ -524,12 +526,18 @@ copyByteArray (BA# src#) (I# src_off#) (MBA# dst#) (I# dst_off#) (I# len#) =
 ------------------------------------------------------------------------
 -- FFI imports
 
-memcmp_ByteArray :: BA -> BA -> Int -> IO CInt
+memcmp_ByteArray :: BA -> BA -> Int -> Int
+#if MIN_VERSION_base(4,11,0)
+memcmp_ByteArray (BA# ba1#) (BA# ba2#) (I# len#) =
+  I# (compareByteArrays#  ba1# 0# ba2# 0# len#)
+#else
 memcmp_ByteArray (BA# ba1#) (BA# ba2#) len =
-  c_memcmp_ByteArray ba1# ba2# (fromIntegral len)
+  fromIntegral $ accursedUnutterablePerformIO $
+    c_memcmp_ByteArray ba1# ba2# (fromIntegral len)
 
 foreign import ccall unsafe "string.h memcmp"
   c_memcmp_ByteArray :: ByteArray# -> ByteArray# -> CSize -> IO CInt
+#endif
 
 
 ------------------------------------------------------------------------
