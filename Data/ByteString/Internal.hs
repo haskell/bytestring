@@ -68,6 +68,7 @@ module Data.ByteString.Internal (
         SizeOverflowException,
         overflowError,
         checkedAdd,
+        checkedMul,
 
         -- * Standard C Functions
         c_strlen,
@@ -131,9 +132,23 @@ import Data.Typeable            (Typeable)
 import Data.Data                (Data(..), mkNoRepType)
 
 import GHC.Base                 (nullAddr#,realWorld#,unsafeChr)
-import GHC.Exts                 (IsList(..), timesInt2#, isTrue#)
+import GHC.Exts                 (IsList(..))
 import GHC.CString              (unpackCString#)
 import GHC.Prim                 (Addr#)
+
+#define TIMES_INT_2_AVAILABLE MIN_VERSION_ghc_prim(0,7,0)
+#if TIMES_INT_2_AVAILABLE
+import GHC.Prim                (timesInt2#)
+#else
+import GHC.Prim                ( timesWord2#
+                               , or#
+                               , uncheckedShiftRL#
+                               , int2Word#
+                               , word2Int#
+                               )
+import Data.Bits               (finiteBitSize)
+#endif
+
 import GHC.IO                   (IO(IO),unsafeDupablePerformIO)
 import GHC.ForeignPtr           (ForeignPtr(ForeignPtr)
 #if __GLASGOW_HASKELL__ < 900
@@ -154,9 +169,7 @@ import GHC.ForeignPtr           (ForeignPtrContents(FinalPtr))
 import GHC.Ptr                  (Ptr(..))
 #endif
 
-#if (__GLASGOW_HASKELL__ < 802) || (__GLASGOW_HASKELL__ >= 811)
 import GHC.Types                (Int (..))
-#endif
 
 #if MIN_VERSION_base(4,15,0)
 import GHC.ForeignPtr           (unsafeWithForeignPtr)
@@ -718,7 +731,7 @@ concat = \bss0 -> goLen0 bss0 bss0
 -- | Repeats the given ByteString n times.
 times :: Integral a => a -> ByteString -> ByteString
 {-# INLINABLE times #-}
-times nRaw (BS fp len@(I# len#))
+times nRaw (BS fp len)
   | n < 0 = error "stimes: non-negative multiplier expected"
   | n == 0 = mempty
   | n == 1 = BS fp len
@@ -734,13 +747,8 @@ times nRaw (BS fp len@(I# len#))
   where
     n = case checkedToInt nRaw of
       Just v -> v
-      Nothing -> onOverflow
-    size = case n of
-      I# n# -> case timesInt2# n# len# of
-        (# oflo, _, result #) -> if isTrue# oflo
-          then onOverflow
-          else I# result
-    onOverflow = overflowError "stimes"
+      Nothing -> overflowError "stimes"
+    size = checkedMul "stimes" n len
 
     fillFrom :: Ptr Word8 -> Int -> IO ()
     fillFrom destptr copied
@@ -748,29 +756,6 @@ times nRaw (BS fp len@(I# len#))
         memcpy (destptr `plusPtr` copied) destptr copied
         fillFrom destptr (copied * 2)
       | otherwise = memcpy (destptr `plusPtr` copied) destptr (size - copied)
-
-checkedToInt :: Integral t => t -> Maybe Int
-{-# RULES
-   "checkedToInt/Int"   checkedToInt = id
- ; "checkedToInt/Int8"  checkedToInt = toIntegralSized :: Int8  -> Maybe Int
- ; "checkedToInt/Int16" checkedToInt = toIntegralSized :: Int16 -> Maybe Int
- ; "checkedToInt/Int32" checkedToInt = toIntegralSized :: Int32 -> Maybe Int
- ; "checkedToInt/Int64" checkedToInt = toIntegralSized :: Int64 -> Maybe Int
- ; "checkedToInt/Word"   checkedToInt = toIntegralSized :: Word   -> Maybe Int
- ; "checkedToInt/Word8"  checkedToInt = toIntegralSized :: Word8  -> Maybe Int
- ; "checkedToInt/Word16" checkedToInt = toIntegralSized :: Word16 -> Maybe Int
- ; "checkedToInt/Word32" checkedToInt = toIntegralSized :: Word32 -> Maybe Int
- ; "checkedToInt/Word64" checkedToInt = toIntegralSized :: Word64 -> Maybe Int
- ; "checkedToInt/Integer" checkedToInt = toIntegralSized :: Integer -> Maybe Int
- ; "checkedToInt/Natural" checkedToInt = toIntegralSized :: Natural -> Maybe Int
-#-}
-{-# NOINLINE [1] checkedToInt #-}
-checkedToInt x
-  | toInteger (minBound :: Int) <= y && y <= toInteger (maxBound :: Int)
-  = Just (fromInteger y)
-  | otherwise
-  = Nothing
-  where  y = toInteger x
 
 ------------------------------------------------------------------------
 
@@ -807,8 +792,8 @@ isSpaceChar8 = isSpaceWord8 . c2w
 
 ------------------------------------------------------------------------
 
--- | The type of exception raised on failure by
--- 'checkedAdd' and 'overflowError'.
+-- | The type of exception raised by 'overflowError'
+-- and on failure by overflow-checked arithmetic operations.
 newtype SizeOverflowException
   = SizeOverflowException String
 
@@ -831,6 +816,46 @@ checkedAdd fun x y
   | otherwise = overflowError fun
   where r = assert (min x y >= 0) $ x + y
 {-# INLINE checkedAdd #-}
+
+-- | Multiplies two non-negative numbers.
+-- Calls 'overflowError' on overflow.
+checkedMul :: String -> Int -> Int -> Int
+checkedMul fun !x@(I# x#) !y@(I# y#) = assert (min x y >= 0) $
+#if TIMES_INT_2_AVAILABLE
+  case timesInt2# x# y# of
+    (# 0#, _, result #) -> I# result
+    _ -> overflowError fun
+#else
+  case timesWord2# (int2Word# x#) (int2Word# y#) of
+    (# hi, lo #) -> case word2Int# (or# hi (uncheckedShiftRL# lo shiftAmt)) of
+      0# -> I# (word2Int# lo)
+      _  -> overflowError fun
+  where !(I# shiftAmt) = finiteBitSize (0 :: Word) - 1
+#endif
+
+checkedToInt :: Integral t => t -> Maybe Int
+{-# RULES
+   "checkedToInt/Int"   checkedToInt = id
+ ; "checkedToInt/Int8"  checkedToInt = toIntegralSized :: Int8  -> Maybe Int
+ ; "checkedToInt/Int16" checkedToInt = toIntegralSized :: Int16 -> Maybe Int
+ ; "checkedToInt/Int32" checkedToInt = toIntegralSized :: Int32 -> Maybe Int
+ ; "checkedToInt/Int64" checkedToInt = toIntegralSized :: Int64 -> Maybe Int
+ ; "checkedToInt/Word"   checkedToInt = toIntegralSized :: Word   -> Maybe Int
+ ; "checkedToInt/Word8"  checkedToInt = toIntegralSized :: Word8  -> Maybe Int
+ ; "checkedToInt/Word16" checkedToInt = toIntegralSized :: Word16 -> Maybe Int
+ ; "checkedToInt/Word32" checkedToInt = toIntegralSized :: Word32 -> Maybe Int
+ ; "checkedToInt/Word64" checkedToInt = toIntegralSized :: Word64 -> Maybe Int
+ ; "checkedToInt/Integer" checkedToInt = toIntegralSized :: Integer -> Maybe Int
+ ; "checkedToInt/Natural" checkedToInt = toIntegralSized :: Natural -> Maybe Int
+#-}
+{-# NOINLINE [1] checkedToInt #-}
+checkedToInt x
+  | toInteger (minBound :: Int) <= y && y <= toInteger (maxBound :: Int)
+  = Just (fromInteger y)
+  | otherwise
+  = Nothing
+  where  y = toInteger x
+
 
 ------------------------------------------------------------------------
 

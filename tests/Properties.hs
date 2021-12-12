@@ -57,7 +57,6 @@ import qualified Data.ByteString.Lazy.Char8 as LC
 import qualified Data.ByteString.Lazy.Char8 as D
 
 import qualified Data.ByteString.Lazy.Internal as L
-import Prelude hiding (abs)
 
 import QuickCheckUtils
 import Test.Tasty
@@ -251,18 +250,34 @@ expectSizeOverflow :: a -> Property
 expectSizeOverflow val = ioProperty $ do
   isLeft <$> try @P.SizeOverflowException (evaluate val)
 
-prop_stimesOverflowBasic bs = forAll genPosInt $ \n ->
-  toInteger n * len > maxInt ==> expectSizeOverflow (stimes n bs)
+prop_checkedAdd = forAll (vectorOf 2 nonNeg) $ \[x, y] -> if oflo x y
+  then  expectSizeOverflow (P.checkedAdd "" x y)
+  else  property $ P.checkedAdd "" x y == x + y
+  where  nonNeg = choose (0, (maxBound @Int))
+         oflo x y = toInteger x + toInteger y /= toInteger (x + y)
+
+multCompl :: Int -> Gen Int
+multCompl x = choose (0, fromInteger @Int maxc)
+  -- This choice creates products with magnitude roughly in the range
+  -- [0..5*(maxBound @Int)], which results in a roughly even split
+  -- between positive and negative overflowed Int results, while still
+  -- producing a fair number of non-overflowing products.
+  where maxc = toInteger (maxBound @Int) * 5 `quot` max 5 (abs $ toInteger x)
+
+prop_checkedMul = forAll genScale $ \scale ->
+  forAll (genVal scale) $ \x -> (x >= 0) ==>
+    forAll (multCompl x) $ \y -> if oflo x y
+      then  expectSizeOverflow (P.checkedMul "" x y)
+      else  property $ P.checkedMul "" x y == x * y
+  where  genScale = choose (0, finiteBitSize @Int 0 - 1)
+         genVal scale = choose (0, 2 * bit scale - 1)
+         oflo x y = toInteger x * toInteger y /= toInteger (x * y)
+
+prop_stimesOverflowBasic bs = forAll (multCompl len) $ \n ->
+  toInteger n * toInteger len > maxInt ==> expectSizeOverflow (stimes n bs)
   where
     maxInt = toInteger @Int (maxBound @Int)
-    len    = toInteger @Int (P.length bs)
-
-    maxReps = maxInt * 5 `quot` max 5 len
-    -- This choice creates result lengths roughly in the range
-    -- [0..5*(maxBound @Int)], which results in a roughly even split
-    -- between positive and negative overflowed Int results.
-    -- But other choices can probably work well, too.
-    genPosInt = choose (1, fromInteger @Int maxReps)
+    len = P.length bs
 
 prop_stimesOverflowScary bs =
   -- "Scary" because this test will cause heap corruption
@@ -628,7 +643,9 @@ io_tests =
     ]
 
 overflow_tests =
-    [ testProperty "StrictByteString stimes (basic)" prop_stimesOverflowBasic
+    [ testProperty "checkedAdd" prop_checkedAdd
+    , testProperty "checkedMul" prop_checkedMul
+    , testProperty "StrictByteString stimes (basic)" prop_stimesOverflowBasic
     , testProperty "StrictByteString stimes (scary)" prop_stimesOverflowScary
     , testProperty "StrictByteString mconcat" prop_32bitOverflow_Strict_mconcat
     , testProperty "LazyByteString toStrict"  prop_32bitOverflow_Lazy_toStrict
