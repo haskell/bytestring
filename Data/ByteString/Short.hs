@@ -76,6 +76,9 @@ module Data.ByteString.Short (
     -- * Other operations
     empty, null, length, index, indexMaybe, (!?),
 
+    -- ** Encoding validation
+    isValidUtf8,
+
     -- * Low level conversions
     -- ** Packing 'Foreign.C.String.CString's and pointers
     packCString,
