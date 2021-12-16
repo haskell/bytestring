@@ -100,6 +100,10 @@ library
                      Data.ByteString.Builder.RealFloat.Internal
                      Data.ByteString.Builder.RealFloat.TableGenerator
                      Data.ByteString.Lazy.Internal.Deque
+                     Data.ByteString.Lazy.ReadInt
+                     Data.ByteString.Lazy.ReadNat
+                     Data.ByteString.ReadInt
+                     Data.ByteString.ReadNat
 
   default-language:  Haskell2010
   other-extensions:  CPP,
@@ -176,6 +180,7 @@ benchmark bytestring-bench
                     BenchCount
                     BenchCSV
                     BenchIndices
+                    BenchReadInt
   type:             exitcode-stdio-1.0
   hs-source-dirs:   bench
   default-language: Haskell2010

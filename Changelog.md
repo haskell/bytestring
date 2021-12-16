@@ -1,5 +1,6 @@
 [0.12.0.0] — Unreleased
 
+* [New sized and/or unsigned variants of `readInt` and `readInteger`](https://github.com/haskell/bytestring/pull/438)
 * [`readInt` returns `Nothing`, if the sequence of digits cannot be represented by an `Int`, instead of overflowing silently](https://github.com/haskell/bytestring/pull/309)
 * [Remove `zipWith` rewrite rule](https://github.com/haskell/bytestring/pull/387)
 

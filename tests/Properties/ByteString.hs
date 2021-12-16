@@ -4,7 +4,16 @@
 -- License     : BSD-style
 
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
+
+-- We need @AllowAmbiguousTypes@ in order to be able to use @TypeApplications@
+-- to disambiguate the desired instance of class methods whose instance cannot
+-- be inferred from the caller's context.  We would otherwise have to use
+-- proxy arguments.  Here the 'RdInt' class methods used to generate tests for
+-- all the various 'readInt' types require explicit type applications.
 
 -- We are happy to sacrifice optimizations in exchange for faster compilation,
 -- but need to test rewrite rules. As one can check using -ddump-rule-firings,
@@ -30,8 +39,6 @@ import qualified Data.ByteString.Lazy as B
 import qualified Data.ByteString.Lazy.Internal as B (invariant)
 #endif
 
-import Data.Word
-
 #else
 
 #ifndef BYTESTRING_LAZY
@@ -42,6 +49,9 @@ module Properties.ByteStringLazyChar8 (tests) where
 import qualified Data.ByteString.Lazy.Char8 as B
 import qualified Data.ByteString.Lazy.Internal as B (invariant)
 #endif
+
+import Data.Int
+import Numeric.Natural (Natural)
 
 import Text.Read
 
@@ -54,6 +64,7 @@ import qualified Data.List as List
 import Data.Semigroup
 import Data.String
 import Data.Tuple
+import Data.Word
 import Test.Tasty
 import Test.Tasty.QuickCheck
 import QuickCheckUtils
@@ -64,6 +75,42 @@ toElem = id
 #else
 toElem :: Char8 -> Char
 toElem (Char8 c) = c
+
+class (Integral a, Show a) => RdInt a where
+    bread :: B.ByteString -> Maybe (a, B.ByteString)
+    sread :: String -> Maybe (a, String)
+
+instance RdInt Int    where { bread = B.readInt;     sread = readInt }
+instance RdInt Int8   where { bread = B.readInt8;    sread = readInt8 }
+instance RdInt Int16  where { bread = B.readInt16;   sread = readInt16 }
+instance RdInt Int32  where { bread = B.readInt32;   sread = readInt32 }
+instance RdInt Int64  where { bread = B.readInt64;   sread = readInt64 }
+--
+instance RdInt Word   where { bread = B.readWord;    sread = readWord }
+instance RdInt Word8  where { bread = B.readWord8;   sread = readWord8 }
+instance RdInt Word16 where { bread = B.readWord16;  sread = readWord16 }
+instance RdInt Word32 where { bread = B.readWord32;  sread = readWord32 }
+instance RdInt Word64 where { bread = B.readWord64;  sread = readWord64 }
+--
+instance RdInt Integer where { bread = B.readInteger; sread = readInteger }
+instance RdInt Natural where { bread = B.readNatural; sread = readNatural }
+
+instance Arbitrary Natural where
+    arbitrary = i2n <$> arbitrary
+      where i2n :: Integer -> Natural
+            i2n i | i >= 0 = fromIntegral i
+                  | otherwise = fromIntegral $ negate i
+
+testRdInt :: forall a. (Arbitrary a, RdInt a) => String -> TestTree
+testRdInt s = testGroup s $
+    [ testProperty "from string" $ \ prefix value suffix ->
+        let si = show @a value
+            b  = prefix <> B.pack si <> suffix
+         in fmap (second B.unpack) (bread @a b)
+            === sread @a (B.unpack prefix ++ si ++ B.unpack suffix)
+    , testProperty "from number" $ \n ->
+        bread @a (B.pack (show n)) === Just (n, B.empty)
+    ]
 #endif
 
 tests :: [TestTree]
@@ -520,14 +567,18 @@ tests =
 #ifdef BYTESTRING_CHAR8
   , testProperty "isString" $
     \x -> x === fromString (B.unpack x)
-  , testProperty "readInt 1" $
-    \x -> fmap (second B.unpack) (B.readInt x) === readInt (B.unpack x)
-  , testProperty "readInt 2" $
-    \n -> B.readInt (B.pack (show n)) === Just (n, B.empty)
-  , testProperty "readInteger 1" $
-    \x -> fmap (second B.unpack) (B.readInteger x) === readInteger (B.unpack x)
-  , testProperty "readInteger 2" $
-    \n -> B.readInteger (B.pack (show n)) === Just (n, B.empty)
+  , testRdInt @Int    "readInt"
+  , testRdInt @Int8   "readInt8"
+  , testRdInt @Int16  "readInt16"
+  , testRdInt @Int32  "readInt32"
+  , testRdInt @Int64  "readInt64"
+  , testRdInt @Word   "readWord"
+  , testRdInt @Word8  "readWord8"
+  , testRdInt @Word16 "readWord16"
+  , testRdInt @Word32 "readWord32"
+  , testRdInt @Word64 "readWord64"
+  , testRdInt @Integer "readInteger"
+  , testRdInt @Natural "readNatural"
   , testProperty "lines" $
     \x -> map B.unpack (B.lines x) === lines (B.unpack x)
   , testProperty "lines \\n" $ once $
@@ -608,10 +659,70 @@ readInt xs = case readInteger xs of
     | y' <- fromInteger y, toInteger y' == y -> Just (y', zs)
   otherwise -> Nothing
 
+readWord :: String -> Maybe (Word, String)
+readWord xs = case readIntegerUnsigned xs of
+  Just (y, zs)
+    | y' <- fromInteger y, toInteger y' == y -> Just (y', zs)
+  otherwise -> Nothing
+
+readInt8 :: String -> Maybe (Int8, String)
+readInt8 xs = case readInteger xs of
+  Just (y, zs)
+    | y' <- fromInteger y, toInteger y' == y -> Just (y', zs)
+  otherwise -> Nothing
+
+readWord8 :: String -> Maybe (Word8, String)
+readWord8 xs = case readIntegerUnsigned xs of
+  Just (y, zs)
+    | y' <- fromInteger y, toInteger y' == y -> Just (y', zs)
+  otherwise -> Nothing
+
+readInt16 :: String -> Maybe (Int16, String)
+readInt16 xs = case readInteger xs of
+  Just (y, zs)
+    | y' <- fromInteger y, toInteger y' == y -> Just (y', zs)
+  otherwise -> Nothing
+
+readWord16 :: String -> Maybe (Word16, String)
+readWord16 xs = case readIntegerUnsigned xs of
+  Just (y, zs)
+    | y' <- fromInteger y, toInteger y' == y -> Just (y', zs)
+  otherwise -> Nothing
+
+readInt32 :: String -> Maybe (Int32, String)
+readInt32 xs = case readInteger xs of
+  Just (y, zs)
+    | y' <- fromInteger y, toInteger y' == y -> Just (y', zs)
+  otherwise -> Nothing
+
+readWord32 :: String -> Maybe (Word32, String)
+readWord32 xs = case readIntegerUnsigned xs of
+  Just (y, zs)
+    | y' <- fromInteger y, toInteger y' == y -> Just (y', zs)
+  otherwise -> Nothing
+
+readInt64 :: String -> Maybe (Int64, String)
+readInt64 xs = case readInteger xs of
+  Just (y, zs)
+    | y' <- fromInteger y, toInteger y' == y -> Just (y', zs)
+  otherwise -> Nothing
+
+readWord64 :: String -> Maybe (Word64, String)
+readWord64 xs = case readIntegerUnsigned xs of
+  Just (y, zs)
+    | y' <- fromInteger y, toInteger y' == y -> Just (y', zs)
+  otherwise -> Nothing
+
 readInteger :: String -> Maybe (Integer, String)
 readInteger ('+' : xs) = readIntegerUnsigned xs
 readInteger ('-' : xs) = fmap (first negate) (readIntegerUnsigned xs)
 readInteger xs = readIntegerUnsigned xs
+
+readNatural :: String -> Maybe (Natural, String)
+readNatural xs = case readIntegerUnsigned xs of
+  Just (y, zs)
+    | y >= 0 -> Just (fromIntegral @Integer @Natural y, zs)
+  _          -> Nothing
 
 readIntegerUnsigned :: String -> Maybe (Integer, String)
 readIntegerUnsigned xs = case readMaybe ys of

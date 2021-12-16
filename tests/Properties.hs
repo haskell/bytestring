@@ -1,6 +1,15 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE MagicHash #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE UnboxedTuples #-}
+
+-- We need @AllowAmbiguousTypes@ in order to be able to use @TypeApplications@
+-- to disambiguate the desired instance of class methods whose instance cannot
+-- be inferred from the caller's context.  We would otherwise have to use
+-- proxy arguments.  Here the 'RdInt' class methods used to generate tests for
+-- all the various 'readInt' types require explicit type applications.
 
 module Properties (testSuite) where
 
@@ -21,7 +30,7 @@ import qualified Data.List as List
 import Data.Char
 import Data.Word
 import Data.Maybe
-import Data.Int (Int64)
+import Data.Int (Int8, Int16, Int32, Int64)
 import Data.Semigroup
 import GHC.Exts (Int(..), newPinnedByteArray#, unsafeFreezeByteArray#)
 import GHC.ST (ST(..), runST)
@@ -82,36 +91,54 @@ prop_lines_lazy2 =
 
 prop_strip x = C.strip x == (C.dropSpace . C.reverse . C.dropSpace . C.reverse) x
 
--- Ensure that readInt and readInteger over lazy ByteStrings are not
+class (Bounded a, Integral a, Show a) => RdInt a where
+    rdIntC :: C.ByteString -> Maybe (a, C.ByteString)
+    rdIntD :: D.ByteString -> Maybe (a, D.ByteString)
+
+instance RdInt Int    where { rdIntC = C.readInt;    rdIntD = D.readInt }
+instance RdInt Int8   where { rdIntC = C.readInt8;   rdIntD = D.readInt8 }
+instance RdInt Int16  where { rdIntC = C.readInt16;  rdIntD = D.readInt16 }
+instance RdInt Int32  where { rdIntC = C.readInt32;  rdIntD = D.readInt32 }
+instance RdInt Int64  where { rdIntC = C.readInt64;  rdIntD = D.readInt64 }
+--
+instance RdInt Word   where { rdIntC = C.readWord;   rdIntD = D.readWord }
+instance RdInt Word8  where { rdIntC = C.readWord8;  rdIntD = D.readWord8 }
+instance RdInt Word16 where { rdIntC = C.readWord16; rdIntD = D.readWord16 }
+instance RdInt Word32 where { rdIntC = C.readWord32; rdIntD = D.readWord32 }
+instance RdInt Word64 where { rdIntC = C.readWord64; rdIntD = D.readWord64 }
+
+smax :: forall a. (Bounded a, Show a) => String
+smax = show $ maxBound @a
+smax1 :: forall a. (Bounded a, Integral a) => String
+smax1 = show $ fromIntegral @a @Integer maxBound + 1
+smax10 :: forall a. (Bounded a, Integral a) => String
+smax10 = show $ fromIntegral @a @Integer maxBound + 10
+
+smin :: forall a. (Bounded a, Show a) => String
+smin = show (minBound @a)
+smin1 :: forall a. (Bounded a, Integral a) => String
+smin1 = show $ fromIntegral @a @Integer minBound - 1
+smin10 :: forall a. (Bounded a, Integral a) => String
+smin10 = show $ fromIntegral @a @Integer minBound - 10
+
+-- Ensure that readWord64 and readInteger over lazy ByteStrings are not
 -- excessively strict.
-prop_readIntSafe         = (fst . fromJust . D.readInt) (Chunk (C.pack "1z") Empty)         == 1
-prop_readIntUnsafe       = (fst . fromJust . D.readInt) (Chunk (C.pack "2z") undefined)     == 2
+prop_readWordSafe        = (fst . fromJust . D.readWord64) (Chunk (C.pack "1z") Empty)      == 1
+prop_readWordUnsafe      = (fst . fromJust . D.readWord64) (Chunk (C.pack "2z") undefined)  == 2
 prop_readIntegerSafe     = (fst . fromJust . D.readInteger) (Chunk (C.pack "1z") Empty)     == 1
 prop_readIntegerUnsafe   = (fst . fromJust . D.readInteger) (Chunk (C.pack "2z") undefined) == 2
-prop_readIntBoundsCC     = let !smax   = show (maxBound :: Int)
-                               !smin   = show (minBound :: Int)
-                               !smax1  = show (fromIntegral (maxBound :: Int) + 1 :: Integer)
-                               !smin1  = show (fromIntegral (minBound :: Int) - 1 :: Integer)
-                               !smax10 = show (fromIntegral (maxBound :: Int) + 10 :: Integer)
-                               !smin10 = show (fromIntegral (minBound :: Int) - 10 :: Integer)
-                            --
-                            in C.readInt (spack smax) == good maxBound
-                            && C.readInt (spack smin) == good minBound
-                            --
-                            && C.readInt (spackPlus smax) == good maxBound
-                            && C.readInt (spackMinus smax) == good (negate maxBound)
-                            --
-                            && C.readInt (spackZeros smax) == good maxBound
-                            && C.readInt (spackZeros smin) == good minBound
-                            --
-                            && C.readInt (spack smax1 ) == Nothing
-                            && C.readInt (spack smin1 ) == Nothing
-                            --
-                            && C.readInt (spack smax10) == Nothing
-                            && C.readInt (spack smin10) == Nothing
-                            --
-                            && C.readInt (spackLong smax) == Nothing
-                            && C.readInt (spackLong smin) == Nothing
+prop_readNaturalSafe     = (fst . fromJust . D.readNatural) (Chunk (C.pack "1z") Empty)     == 1
+prop_readNaturalUnsafe   = (fst . fromJust . D.readNatural) (Chunk (C.pack "2z") undefined) == 2
+prop_readIntBoundsCC     =     rdWordBounds @Word
+                            && rdWordBounds @Word8
+                            && rdWordBounds @Word16
+                            && rdWordBounds @Word32
+                            && rdWordBounds @Word64
+                            && rdIntBounds  @Int
+                            && rdIntBounds  @Int8
+                            && rdIntBounds  @Int16
+                            && rdIntBounds  @Int32
+                            && rdIntBounds  @Int64
   where
     tailStr      = " tail"
     zeroStr      = "000000000000000000000000000"
@@ -124,36 +151,47 @@ prop_readIntBoundsCC     = let !smax   = show (maxBound :: Int)
                     '-':num -> C.pack $ '-' : zeroStr ++ num ++ tailStr
                     num     -> C.pack $ zeroStr ++ num ++ tailStr
     good i       = Just (i, C.pack tailStr)
-prop_readIntBoundsLC     = let !smax   = show (maxBound :: Int)
-                               !smin   = show (minBound :: Int)
-                               !smax1  = show (fromIntegral (maxBound :: Int) + 1 :: Integer)
-                               !smin1  = show (fromIntegral (minBound :: Int) - 1 :: Integer)
-                               !smax10 = show (fromIntegral (maxBound :: Int) + 10 :: Integer)
-                               !smin10 = show (fromIntegral (minBound :: Int) - 10 :: Integer)
-                            -- Plain min/maxBound
-                            in LC.readInt (spack smax) == good maxBound
-                            && LC.readInt (spack smin) == good minBound
-                            -- With explicit [+-] sign for maxBound
-                            && LC.readInt (spackPlus smax) == good maxBound
-                            && LC.readInt (spackMinus smax) == good (negate maxBound)
-                            -- With leading zeros
-                            && LC.readInt (spackZeros smax) == good maxBound
-                            && LC.readInt (spackZeros smin) == good minBound
-                            -- Overflow in last digit
-                            && LC.readInt (spack smax1 ) == Nothing
-                            && LC.readInt (spack smin1 ) == Nothing
-                            -- Overflow in 2nd-last digit
-                            && LC.readInt (spack smax10) == Nothing
-                            && LC.readInt (spack smin10) == Nothing
-                            -- Overflow across chunk boundary
-                            && LC.readInt (spackLong1 smax) == Nothing
-                            && LC.readInt (spackLong1 smin) == Nothing
-                            -- Overflow within chunk
-                            && LC.readInt (spackLong2 smax) == Nothing
-                            && LC.readInt (spackLong2 smin) == Nothing
-                            -- Sign with no digits
-                            && LC.readInt (LC.pack "+ foo") == Nothing
-                            && LC.readInt (LC.pack "-bar") == Nothing
+    --
+    rdWordBounds :: forall a. RdInt a => Bool
+    rdWordBounds =
+        -- Upper bound
+        rdIntC @a (spack (smax @a)) == good maxBound
+        -- With leading zeros
+        && rdIntC @a (spackZeros (smax @a)) == good maxBound
+        -- Overflow in last digit
+        && rdIntC @a (spack (smax1 @a)) == Nothing
+        -- Overflow in 2nd-last digit
+        && rdIntC @a (spack (smax10 @a)) == Nothing
+        -- Trailing zeros
+        && rdIntC @a (spackLong (smax @a)) == Nothing
+    --
+    rdIntBounds :: forall a. RdInt a => Bool
+    rdIntBounds =
+        rdWordBounds @a
+        -- Lower bound
+        && rdIntC @a (spack (smin @a)) == good minBound
+        -- With leading signs
+        && rdIntC @a (spackPlus (smax @a)) == good maxBound
+        && rdIntC @a (spackMinus (smax @a)) == good (negate maxBound)
+        -- With leading zeros
+        && rdIntC @a (spackZeros (smax @a)) == good maxBound
+        -- Underflow in last digit
+        && rdIntC @a (spack (smin1 @a)) == Nothing
+        -- Underflow in 2nd-last digit
+        && rdIntC @a (spack (smin10 @a)) == Nothing
+        -- Trailing zeros
+        && rdIntC @a (spackLong (smin @a)) == Nothing
+
+prop_readIntBoundsLC     =     rdWordBounds @Word
+                            && rdWordBounds @Word8
+                            && rdWordBounds @Word16
+                            && rdWordBounds @Word32
+                            && rdWordBounds @Word64
+                            && rdIntBounds  @Int
+                            && rdIntBounds  @Int8
+                            && rdIntBounds  @Int16
+                            && rdIntBounds  @Int32
+                            && rdIntBounds  @Int64
   where
     tailStr      = " tail"
     zeroStr      = "000000000000000000000000000"
@@ -167,6 +205,43 @@ prop_readIntBoundsLC     = let !smax   = show (maxBound :: Int)
                     '-':num -> LC.pack ('-' : zeroStr) `D.append` LC.pack (num ++ tailStr)
                     num     -> LC.pack $ zeroStr ++ num ++ tailStr
     good i       = Just (i, LC.pack tailStr)
+    --
+    rdWordBounds :: forall a. RdInt a => Bool
+    rdWordBounds =
+        -- Upper bound
+        rdIntD @a (spack (smax @a)) == good maxBound
+        -- With leading zeros
+        && rdIntD @a (spackZeros (smax @a)) == good maxBound
+        -- Overflow in last digit
+        && rdIntD @a (spack (smax1 @a)) == Nothing
+        -- Overflow in 2nd-last digit
+        && rdIntD @a (spack (smax10 @a)) == Nothing
+        -- Overflow across chunk boundary
+        && rdIntD @a (spackLong1 (smax @a)) == Nothing
+        -- Overflow within chunk
+        && rdIntD @a (spackLong2 (smax @a)) == Nothing
+        -- Sign with no digits
+        && rdIntD @a (LC.pack "+ foo") == Nothing
+        && rdIntD @a (LC.pack "-bar") == Nothing
+    --
+    rdIntBounds :: forall a. RdInt a => Bool
+    rdIntBounds =
+        rdWordBounds @a
+        -- Lower bound
+        && rdIntD @a (spack (smin @a)) == good minBound
+        -- With leading signs
+        && rdIntD @a (spackPlus (smax @a)) == good maxBound
+        && rdIntD @a (spackMinus (smax @a)) == good (negate maxBound)
+        -- With leading zeros
+        && rdIntD @a (spackZeros (smin @a)) == good minBound
+        -- Overflow in last digit
+        && rdIntD @a (spack (smin1 @a)) == Nothing
+        -- Overflow in 2nd-last digit
+        && rdIntD @a (spack (smin10 @a)) == Nothing
+        -- Overflow across chunk boundary
+        && rdIntD @a (spackLong1 (smin @a)) == Nothing
+        -- Overflow within chunk
+        && rdIntD @a (spackLong2 (smin @a)) == Nothing
 
 ------------------------------------------------------------------------
 
@@ -536,12 +611,14 @@ misc_tests =
     , testProperty "strip"          prop_strip
     , testProperty "isSpace"        prop_isSpaceWord8
 
-    , testProperty "readIntSafe"       prop_readIntSafe
-    , testProperty "readIntUnsafe"     prop_readIntUnsafe
+    , testProperty "readWordSafe"      prop_readWordSafe
+    , testProperty "readWordUnsafe"    prop_readWordUnsafe
     , testProperty "readIntBoundsCC"   prop_readIntBoundsCC
     , testProperty "readIntBoundsLC"   prop_readIntBoundsLC
     , testProperty "readIntegerSafe"   prop_readIntegerSafe
     , testProperty "readIntegerUnsafe" prop_readIntegerUnsafe
+    , testProperty "readNaturalSafe"   prop_readNaturalSafe
+    , testProperty "readNaturalUnsafe" prop_readNaturalUnsafe
     ]
 
 strictness_checks =

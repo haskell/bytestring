@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
-{-# OPTIONS_HADDOCK prune #-}
 {-# LANGUAGE Trustworthy #-}
+{-# LANGUAGE TypeApplications #-}
+{-# OPTIONS_HADDOCK prune #-}
 
 -- |
 -- Module      : Data.ByteString.Lazy.Char8
@@ -177,8 +178,28 @@ module Data.ByteString.Lazy.Char8 (
         copy,
 
         -- * Reading from ByteStrings
+        -- | Note that a lazy 'ByteString' may hold an unbounded stream of
+        -- @\'0\'@ digits, in which case the functions below may never return.
+        -- If that's a concern, you can use 'take' to first truncate the input
+        -- to an acceptable length.  Non-termination is also possible when
+        -- reading arbitrary precision numbers via 'readInteger' or
+        -- 'readNatural', if the input is an unbounded stream of arbitrary
+        -- decimal digits.
+        --
         readInt,
+        readInt64,
+        readInt32,
+        readInt16,
+        readInt8,
+
+        readWord,
+        readWord64,
+        readWord32,
+        readWord16,
+        readWord8,
+
         readInteger,
+        readNatural,
 
         -- * I\/O with 'ByteString's
         -- | ByteString I/O uses binary mode, without any character decoding
@@ -223,19 +244,15 @@ import Data.ByteString.Lazy
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString as S (ByteString) -- typename only
 import qualified Data.ByteString as B
-import qualified Data.ByteString.Internal as BI
 import qualified Data.ByteString.Unsafe as B
 import Data.ByteString.Lazy.Internal
+import Data.ByteString.Lazy.ReadInt
+import Data.ByteString.Lazy.ReadNat
 
-import Data.ByteString.Internal (c2w,w2c,isSpaceWord8
-                                ,intmaxQuot10,intmaxRem10
-                                ,intminQuot10,intminRem10)
+import Data.ByteString.Internal (c2w,w2c,isSpaceWord8)
 
 import Data.Int (Int64)
-import Data.Word
 import qualified Data.List as List
-import Foreign.Ptr (Ptr, plusPtr)
-import Foreign.Storable (peek)
 
 import Prelude hiding
         (reverse,head,tail,last,init,null,length,map,lines,foldl,foldr,unlines
@@ -911,156 +928,6 @@ words = List.filter (not . L.null) . L.splitWith isSpaceWord8
 unwords :: [ByteString] -> ByteString
 unwords = intercalate (singleton ' ')
 {-# INLINE unwords #-}
-
--- | Try to read an 'Int' value from the 'ByteString', returning @Just (val,
--- str)@ on success, where @val@ is the value read and @str@ is the rest of the
--- input string.  If the sequence of digits decodes to a value larger than can
--- be represented by an 'Int', the returned value will be 'Nothing'.
---
--- Note that a lazy 'ByteString' may, after an optional plus or minus sign,
--- consist of an unbounded stream of @0@ digits, in which case 'readInt'
--- would diverge (never return).  If that's a concern, you can use 'take' to
--- obtain a bounded initial segment to pass to 'readInt' instead.
---
--- 'readInt' does not ignore leading whitespace, the value must start
--- immediately at the beginning of the input stream.
---
--- ==== __Examples__
--- >>> readInt "-1729 = (-10)^3 + (-9)^3 = (-12)^3 + (-1)^3"
--- Just (-1729," = (-10)^3 + (-9)^3 = (-12)^3 + (-1)^3")
--- >>> readInt "not a decimal number")
--- Nothing
--- >>> readInt "12345678901234567890 overflows maxBound")
--- Nothing
--- >>> readInt "-12345678901234567890 underflows minBound")
--- Nothing
---
-readInt :: ByteString -> Maybe (Int, ByteString)
-{-# INLINABLE readInt #-}
-readInt bs = case L.uncons bs of
-    Just (w, rest) | w - 0x30 <= 9 -> readDec True bs    -- starts with digit
-                   | w == 0x2d     -> readDec False rest -- starts with minus
-                   | w == 0x2b     -> readDec True rest  -- starts with plus
-    _                              -> Nothing            -- not signed decimal
-  where
-
-    -- | Read a decimal 'Int' without overflow.  The caller has already
-    -- read any explicit sign (setting @positive@ to 'False' as needed).
-    -- Here we just deal with the digits.
-    {-# INLINE readDec #-}
-    readDec !positive = loop 0 0
-      where
-        loop !nbytes !acc = \ str -> case str of
-            Empty -> result nbytes acc str
-            Chunk c cs -> case B.length c of
-                0 -> loop nbytes acc cs -- skip empty segment
-                l -> case accumWord acc c of
-                     (0, !_, !inrange) -- no more digits or overflow
-                         | inrange   -> result nbytes acc str
-                         | otherwise -> Nothing
-                     (!n, !a, !inrange)
-                         | not inrange -> Nothing
-                         | n < l -- input not entirely digits
-                           -> result (nbytes + n) a $ Chunk (B.drop n c) cs
-                         | otherwise
-                           -- read more digits from the remaining chunks
-                           -> loop (nbytes + n) a cs
-
-        -- | Process as many digits as we can, returning the additional
-        -- number of digits found, the updated accumulator, and whether
-        -- the input decimal did not overflow prior to processing all
-        -- the provided digits (end of input or non-digit encountered).
-        accumWord acc (BI.BS fp len) =
-            BI.accursedUnutterablePerformIO $
-                BI.unsafeWithForeignPtr fp $ \ptr -> do
-                    let end = ptr `plusPtr` len
-                    x@(!_, !_, !_) <- if positive
-                        then digits intmaxQuot10 intmaxRem10 end ptr 0 acc
-                        else digits intminQuot10 intminRem10 end ptr 0 acc
-                    return x
-          where
-            digits !maxq !maxr !e !ptr = go ptr
-              where
-                go :: Ptr Word8 -> Int -> Word -> IO (Int, Word, Bool)
-                go !p !b !a | p == e = return (b, a, True)
-                go !p !b !a = do
-                    !w <- fromIntegral <$> peek p
-                    let !d = w - 0x30
-                    if d > 9 -- No more digits
-                        then return (b, a, True)
-                        else if a < maxq -- Look for more
-                        then go (p `plusPtr` 1) (b + 1) (a * 10 + d)
-                        else if a > maxq -- overflow
-                        then return (b, a, False)
-                        else if d <= maxr -- Ideally this will be the last digit
-                        then go (p `plusPtr` 1) (b + 1) (a * 10 + d)
-                        else return (b, a, False) -- overflow
-
-        -- | Plausible success, provided we got at least one digit!
-        result !nbytes !acc str
-            | nbytes > 0 = let !i = w2int acc in Just (i, str)
-            | otherwise  = Nothing
-
-        -- This assumes that @negate . fromIntegral@ correctly produces
-        -- @minBound :: Int@ when given its positive 'Word' value as an
-        -- input.  This is true in both 2s-complement and 1s-complement
-        -- arithmetic, so seems like a safe bet.  Tests cover this case,
-        -- though the CI may not run on sufficiently exotic CPUs.
-        w2int !n | positive = fromIntegral n
-                 | otherwise = negate $! fromIntegral n
-
--- | readInteger reads an Integer from the beginning of the ByteString.  If
--- there is no integer at the beginning of the string, it returns Nothing,
--- otherwise it just returns the int read, and the rest of the string.
-readInteger :: ByteString -> Maybe (Integer, ByteString)
-readInteger Empty = Nothing
-readInteger (Chunk c0 cs0) =
-        case w2c (B.unsafeHead c0) of
-            '-' -> first (B.unsafeTail c0) cs0 >>= \(n, cs') -> return (-n, cs')
-            '+' -> first (B.unsafeTail c0) cs0
-            _   -> first c0 cs0
-
-    where first c cs
-              | B.null c = case cs of
-                  Empty          -> Nothing
-                  (Chunk c' cs') -> first' c' cs'
-              | otherwise = first' c cs
-
-          first' c cs = case B.unsafeHead c of
-              w | w >= 0x30 && w <= 0x39 -> Just $
-                  loop 1 (fromIntegral w - 0x30) [] (B.unsafeTail c) cs
-                | otherwise              -> Nothing
-
-          loop :: Int -> Int -> [Integer]
-               -> S.ByteString -> ByteString -> (Integer, ByteString)
-          loop !d !acc ns !c cs
-              | B.null c = case cs of
-                             Empty          -> combine d acc ns c cs
-                             (Chunk c' cs') -> loop d acc ns c' cs'
-              | otherwise =
-                  case B.unsafeHead c of
-                   w | w >= 0x30 && w <= 0x39 ->
-                       if d < 9 then loop (d+1)
-                                          (10*acc + (fromIntegral w - 0x30))
-                                          ns (B.unsafeTail c) cs
-                                else loop 1 (fromIntegral w - 0x30)
-                                          (fromIntegral acc : ns)
-                                          (B.unsafeTail c) cs
-                     | otherwise -> combine d acc ns c cs
-
-          combine _ acc [] c cs = end (fromIntegral acc) c cs
-          combine d acc ns c cs =
-              end (10^d * combine1 1000000000 ns + fromIntegral acc) c cs
-
-          combine1 _ [n] = n
-          combine1 b ns  = combine1 (b*b) $ combine2 b ns
-
-          combine2 b (n:m:ns) = let !t = n+m*b in t : combine2 b ns
-          combine2 _ ns       = ns
-
-          end n c cs = let !c' = chunk c cs
-                        in (n, c')
-
 
 -- | Write a ByteString to a handle, appending a newline byte
 --
