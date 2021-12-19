@@ -287,8 +287,11 @@ prop_stimesOverflowScary bs =
     n = P.length bs
     reps = maxBound @Word `quot` fromIntegral @Int @Word n + 1
 
-concat32bitOverflow :: (Int -> a) -> ([a] -> a) -> (a -> Int) -> Property
-concat32bitOverflow replicateLike concatLike lengthLike = let
+prop_stimesOverflowEmpty = forAll (choose (0, maxBound @Word)) $ \n ->
+  stimes n mempty === mempty @P.ByteString
+
+concat32bitOverflow :: (Int -> a) -> ([a] -> a) -> Property
+concat32bitOverflow replicateLike concatLike = let
   intBits = finiteBitSize @Int 0
   largeBS = concatLike $ replicate (bit 14) $ replicateLike (bit 17)
   in if intBits /= 32
@@ -297,15 +300,15 @@ concat32bitOverflow replicateLike concatLike lengthLike = let
 
 prop_32bitOverflow_Strict_mconcat :: Property
 prop_32bitOverflow_Strict_mconcat =
-  concat32bitOverflow (`P.replicate` 0) mconcat P.length
+  concat32bitOverflow (`P.replicate` 0) mconcat
 
 prop_32bitOverflow_Lazy_toStrict :: Property
 prop_32bitOverflow_Lazy_toStrict =
-  concat32bitOverflow (`P.replicate` 0) (L.toStrict . L.fromChunks) P.length
+  concat32bitOverflow (`P.replicate` 0) (L.toStrict . L.fromChunks)
 
 prop_32bitOverflow_Short_mconcat :: Property
 prop_32bitOverflow_Short_mconcat =
-  concat32bitOverflow makeShort mconcat Short.length
+  concat32bitOverflow makeShort mconcat
   where makeShort n = Short.toShort $ P.replicate n 0
 
 
@@ -647,6 +650,7 @@ overflow_tests =
     , testProperty "checkedMul" prop_checkedMul
     , testProperty "StrictByteString stimes (basic)" prop_stimesOverflowBasic
     , testProperty "StrictByteString stimes (scary)" prop_stimesOverflowScary
+    , testProperty "StrictByteString stimes (empty)" prop_stimesOverflowEmpty
     , testProperty "StrictByteString mconcat" prop_32bitOverflow_Strict_mconcat
     , testProperty "LazyByteString toStrict"  prop_32bitOverflow_Lazy_toStrict
     , testProperty "ShortByteString mconcat"  prop_32bitOverflow_Short_mconcat

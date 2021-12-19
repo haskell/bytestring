@@ -123,9 +123,7 @@ import Control.Exception        (assert, throw, Exception)
 
 import Data.Bits                (Bits, (.&.), toIntegralSized)
 import Data.Char                (ord)
-import Data.Int
 import Data.Word
-import Numeric.Natural          (Natural)
 
 import Data.Typeable            (Typeable)
 import Data.Data                (Data(..), mkNoRepType)
@@ -735,12 +733,30 @@ stimesPolymorphic :: Integral a => a -> ByteString -> ByteString
 {-# INLINABLE stimesPolymorphic #-}
 stimesPolymorphic nRaw bs = case checkedToInt nRaw of
   Just n  -> stimesInt n bs
-  Nothing -> overflowError "stimes"
+  _ | nRaw < 0
+      -- It may seem odd to check for negative input in both the
+      -- polymorphic wrapper and the specialized Int worker. But
+      -- checking here before converting to Int would not remove the
+      -- need to check inside the worker, since the Ord instance can
+      -- potentially behave arbitrarily. At the moment this isn't a
+      -- memory-safety issue for StrictByteString since
+      -- mallocPlainForeignPtrBytes checks for negative sizes, but
+      -- this seems like a dangerous behavior to rely on. The same is
+      -- not true for ShortByteString and newByteArray#, for example.
+      -> stimesNegativeErr
+    | otherwise -> case bs of
+        BS _ 0 -> mempty -- "null" is only defined in Data.ByteString
+        _      -> stimesOverflowErr
+
+stimesNegativeErr :: ByteString
+stimesNegativeErr = error "stimes: non-negative multiplier expected"
+stimesOverflowErr :: ByteString
+stimesOverflowErr = overflowError "stimes"
 
 -- | Repeats the given ByteString n times.
 stimesInt :: Int -> ByteString -> ByteString
 stimesInt n (BS fp len)
-  | n < 0 = error "stimes: non-negative multiplier expected"
+  | n < 0 = stimesNegativeErr
   | n == 0 = mempty
   | n == 1 = BS fp len
   | len == 0 = mempty
@@ -754,10 +770,11 @@ stimesInt n (BS fp len)
       fillFrom destptr len
   where
     size = checkedMul "stimes" n len
+    halfSize = (size - 1) `div` 2
 
     fillFrom :: Ptr Word8 -> Int -> IO ()
     fillFrom destptr copied
-      | 2 * copied < size = do
+      | copied <= halfSize = do
         memcpy (destptr `plusPtr` copied) destptr copied
         fillFrom destptr (copied * 2)
       | otherwise = memcpy (destptr `plusPtr` copied) destptr (size - copied)
@@ -832,38 +849,31 @@ checkedMul fun !x@(I# x#) !y@(I# y#) = assert (min x y >= 0) $
     _ -> overflowError fun
 #else
   case timesWord2# (int2Word# x#) (int2Word# y#) of
-    (# hi, lo #) -> case word2Int# (or# hi (uncheckedShiftRL# lo shiftAmt)) of
-      0# -> I# (word2Int# lo)
-      _  -> overflowError fun
+    (# hi, lo #) -> case or# hi (uncheckedShiftRL# lo shiftAmt) of
+      0## -> I# (word2Int# lo)
+      _   -> overflowError fun
   where !(I# shiftAmt) = finiteBitSize (0 :: Word) - 1
 #endif
 
+
 _toIntegralSized :: (Integral a, Integral b, Bits a, Bits b) => a -> Maybe b
 {-# INLINE _toIntegralSized #-}
--- stupid hack to make sure 'toIntegralSized' specializes, without
--- generating spcializations for every version of 'times'
+-- stupid hack to make sure specialized versions of 'toIntegralSized'
+-- are generated when the checkedToInt RULES fire
 _toIntegralSized = inline toIntegralSized
 
 checkedToInt :: Integral t => t -> Maybe Int
 {-# RULES
-   "checkedToInt/Int"   checkedToInt = _toIntegralSized :: Int   -> Maybe Int
- ; "checkedToInt/Int8"  checkedToInt = _toIntegralSized :: Int8  -> Maybe Int
- ; "checkedToInt/Int16" checkedToInt = _toIntegralSized :: Int16 -> Maybe Int
- ; "checkedToInt/Int32" checkedToInt = _toIntegralSized :: Int32 -> Maybe Int
- ; "checkedToInt/Int64" checkedToInt = _toIntegralSized :: Int64 -> Maybe Int
- ; "checkedToInt/Word"   checkedToInt = _toIntegralSized :: Word   -> Maybe Int
- ; "checkedToInt/Word8"  checkedToInt = _toIntegralSized :: Word8  -> Maybe Int
- ; "checkedToInt/Word16" checkedToInt = _toIntegralSized :: Word16 -> Maybe Int
- ; "checkedToInt/Word32" checkedToInt = _toIntegralSized :: Word32 -> Maybe Int
- ; "checkedToInt/Word64" checkedToInt = _toIntegralSized :: Word64 -> Maybe Int
- ; "checkedToInt/Integer" checkedToInt = _toIntegralSized :: Integer -> Maybe Int
- ; "checkedToInt/Natural" checkedToInt = _toIntegralSized :: Natural -> Maybe Int
+   "checkedToInt/Int"  checkedToInt = _toIntegralSized :: Int  -> Maybe Int
+ ; "checkedToInt/Word" checkedToInt = _toIntegralSized :: Word -> Maybe Int
 #-}
 {-# NOINLINE [1] checkedToInt #-}
-checkedToInt x = if toInteger x == toInteger res
-  then Just res
-  else Nothing
-  where res = fromIntegral x :: Int
+checkedToInt x
+  | xi == toInteger res = Just res
+  | otherwise = Nothing
+  where
+    xi = toInteger x
+    res = fromInteger xi :: Int
 
 
 ------------------------------------------------------------------------
