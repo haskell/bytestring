@@ -47,6 +47,7 @@ module Data.ByteString.Internal (
         unsafePackLiteral, unsafePackLenLiteral,
 
         -- * Low level imperative construction
+        empty,
         create,
         createUptoN,
         createUptoN',
@@ -235,7 +236,6 @@ instance Ord ByteString where
 
 instance Semigroup ByteString where
     (<>)    = append
-    {-# INLINABLE sconcat #-}
     sconcat (b:|bs) = concat (b:bs)
     stimes  = times
 
@@ -653,6 +653,7 @@ compareBytes (BS fp1 len1) (BS fp2 len2) =
                     x   -> x
 
 
+-- | /O(1)/ The empty 'ByteString'
 empty :: ByteString
 -- This enables bypassing #457 by not using (polymorphic) mempty in
 -- any definitions used by the (Monoid ByteString) instance
