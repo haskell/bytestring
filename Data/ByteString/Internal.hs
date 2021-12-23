@@ -654,6 +654,8 @@ compareBytes (BS fp1 len1) (BS fp2 len2) =
 
 
 empty :: ByteString
+-- This enables bypassing #457 by not using (polymorphic) mempty in
+-- any definitions used by the (Monoid ByteString) instance
 empty = BS nullForeignPtr 0
 
 append :: ByteString -> ByteString -> ByteString
