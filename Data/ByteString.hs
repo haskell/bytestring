@@ -276,7 +276,7 @@ import GHC.Word hiding (Word8)
 
 -- | /O(1)/ The empty 'ByteString'
 empty :: ByteString
-empty = BS nullForeignPtr 0
+empty = mempty
 
 -- | /O(1)/ Convert a 'Word8' into a 'ByteString'
 singleton :: Word8 -> ByteString
