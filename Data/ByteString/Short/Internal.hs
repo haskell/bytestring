@@ -57,8 +57,7 @@ import qualified Data.ByteString.Internal as BS
 
 import Data.Typeable    (Typeable)
 import Data.Data        (Data(..), mkNoRepType)
-import Data.Semigroup   (Semigroup((<>), sconcat, stimes), stimesMonoid)
-import Data.List.NonEmpty (NonEmpty((:|)))
+import Data.Semigroup   (Semigroup((<>)))
 import Data.Monoid      (Monoid(..))
 import Data.String      (IsString(..))
 import Control.DeepSeq  (NFData(..))
@@ -158,9 +157,7 @@ instance Ord ShortByteString where
     compare = compareBytes
 
 instance Semigroup ShortByteString where
-    (<>) = append
-    sconcat (x :| xs) = concat (x : xs)
-    stimes = stimesMonoid
+    (<>)    = append
 
 instance Monoid ShortByteString where
     mempty  = empty
@@ -449,10 +446,10 @@ concat sbss =
 
     copy :: MBA s -> Int -> [ShortByteString] -> ST s ()
     copy !_   !_   []                           = return ()
-    copy !dst !off (src : srcs) = do
+    copy !dst !off (src : sbss) = do
       let !len = length src
       copyByteArray (asBA src) 0 dst off len
-      copy dst (off + len) srcs
+      copy dst (off + len) sbss
 
 
 ------------------------------------------------------------------------

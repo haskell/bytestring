@@ -131,7 +131,6 @@ import           Control.Arrow (second)
 #if !(MIN_VERSION_base(4,11,0))
 import           Data.Semigroup (Semigroup((<>)))
 #endif
-import           Data.Semigroup (Semigroup(stimes), stimesMonoid)
 
 import qualified Data.ByteString               as S
 import qualified Data.ByteString.Internal      as S
@@ -386,7 +385,6 @@ append (Builder b1) (Builder b2) = Builder $ b1 . b2
 instance Semigroup Builder where
   {-# INLINE (<>) #-}
   (<>) = append
-  stimes = stimesMonoid
 
 instance Monoid Builder where
   {-# INLINE mempty #-}
