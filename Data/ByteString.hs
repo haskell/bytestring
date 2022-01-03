@@ -1209,7 +1209,22 @@ groupBy k xs = case uncons xs of
 -- 'ByteString's and concatenates the list after interspersing the first
 -- argument between each element of the list.
 intercalate :: ByteString -> [ByteString] -> ByteString
-intercalate s = concat . List.intersperse s
+intercalate _ [] = mempty
+intercalate (BS f_sep_ptr sep_len) (BS f_h_ptr h_len : t) =
+  unsafeCreate total_len $ \dst_ptr0 ->
+    unsafeWithForeignPtr f_sep_ptr $ \sep_ptr -> do
+      unsafeWithForeignPtr f_h_ptr $ \h_ptr ->
+        memcpy dst_ptr0 h_ptr (fromIntegral h_len)
+      let go _ [] = pure ()
+          go dst_ptr (BS f_chunk_ptr chunk_len : chunks) = do
+            memcpy dst_ptr sep_ptr (fromIntegral sep_len)
+            let dest_ptr' = dst_ptr `plusPtr` sep_len
+            unsafeWithForeignPtr f_chunk_ptr $ \chunk_ptr ->
+              memcpy dest_ptr' chunk_ptr (fromIntegral chunk_len)
+            go (dest_ptr' `plusPtr` chunk_len) chunks
+      go (dst_ptr0 `plusPtr` h_len) t
+  where
+  total_len = List.foldl' (\acc (BS _ chunk_len) -> acc + chunk_len + sep_len) h_len t
 {-# INLINE [1] intercalate #-}
 
 {-# RULES
