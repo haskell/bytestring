@@ -248,7 +248,7 @@ import qualified Data.ByteString.Internal as B
 import qualified Data.ByteString.Unsafe as B
 
 -- Listy functions transparently exported
-import Data.ByteString (empty,null,length,tail,init,append
+import Data.ByteString (null,length,tail,init,append
                        ,inits,tails,reverse,transpose
                        ,concat,take,takeEnd,drop,dropEnd,splitAt
                        ,intercalate,sort,isPrefixOf,isSuffixOf
