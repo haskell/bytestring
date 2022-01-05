@@ -47,6 +47,7 @@ module Data.ByteString.Internal (
         unsafePackLiteral, unsafePackLenLiteral,
 
         -- * Low level imperative construction
+        empty,
         create,
         createUptoN,
         createUptoN',
@@ -239,7 +240,7 @@ instance Semigroup ByteString where
     stimes  = times
 
 instance Monoid ByteString where
-    mempty  = BS nullForeignPtr 0
+    mempty  = empty
     mappend = (<>)
     mconcat = concat
 
@@ -651,6 +652,13 @@ compareBytes (BS fp1 len1) (BS fp2 len2) =
                     EQ  -> len1 `compare` len2
                     x   -> x
 
+
+-- | /O(1)/ The empty 'ByteString'
+empty :: ByteString
+-- This enables bypassing #457 by not using (polymorphic) mempty in
+-- any definitions used by the (Monoid ByteString) instance
+empty = BS nullForeignPtr 0
+
 append :: ByteString -> ByteString -> ByteString
 append (BS _   0)    b                  = b
 append a             (BS _   0)    = a
@@ -680,7 +688,7 @@ concat = \bss0 -> goLen0 bss0 bss0
     -- closures which would result in unnecessary closure allocation.
   where
     -- It's still possible that the result is empty
-    goLen0 _    []                     = mempty
+    goLen0 _    []                     = empty
     goLen0 bss0 (BS _ 0     :bss)    = goLen0 bss0 bss
     goLen0 bss0 (bs           :bss)    = goLen1 bss0 bs bss
 
@@ -705,8 +713,8 @@ concat = \bss0 -> goLen0 bss0 bss0
 {-# NOINLINE concat #-}
 
 {-# RULES
-"ByteString concat [] -> mempty"
-   concat [] = mempty
+"ByteString concat [] -> empty"
+   concat [] = empty
 "ByteString concat [bs] -> bs" forall x.
    concat [x] = x
  #-}
@@ -715,9 +723,9 @@ concat = \bss0 -> goLen0 bss0 bss0
 times :: Integral a => a -> ByteString -> ByteString
 times n (BS fp len)
   | n < 0 = error "stimes: non-negative multiplier expected"
-  | n == 0 = mempty
+  | n == 0 = empty
   | n == 1 = BS fp len
-  | len == 0 = mempty
+  | len == 0 = empty
   | len == 1 = unsafeCreate size $ \destptr ->
     unsafeWithForeignPtr fp $ \p -> do
       byte <- peek p
