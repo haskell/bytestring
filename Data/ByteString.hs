@@ -274,10 +274,6 @@ import GHC.Word hiding (Word8)
 -- -----------------------------------------------------------------------------
 -- Introducing and eliminating 'ByteString's
 
--- | /O(1)/ The empty 'ByteString'
-empty :: ByteString
-empty = BS nullForeignPtr 0
-
 -- | /O(1)/ Convert a 'Word8' into a 'ByteString'
 singleton :: Word8 -> ByteString
 singleton c = unsafeCreate 1 $ \p -> poke p c
