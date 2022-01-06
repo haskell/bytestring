@@ -254,7 +254,7 @@ prop_checkedAdd = forAll (vectorOf 2 nonNeg) $ \[x, y] -> if oflo x y
   then expectSizeOverflow (P.checkedAdd "" x y)
   else property $ P.checkedAdd "" x y == x + y
   where nonNeg = choose (0, (maxBound @Int))
-        oflo x y = toInteger x + toInteger y /= toInteger (x + y)
+        oflo x y = toInteger x + toInteger y /= toInteger @Int (x + y)
 
 multCompl :: Int -> Gen Int
 multCompl x = choose (0, fromInteger @Int maxc)
@@ -264,14 +264,14 @@ multCompl x = choose (0, fromInteger @Int maxc)
   -- producing a fair number of non-overflowing products.
   where maxc = toInteger (maxBound @Int) * 5 `quot` max 5 (abs $ toInteger x)
 
-prop_checkedMul = forAll genScale $ \scale ->
+prop_checkedMultiply = forAll genScale $ \scale ->
   forAll (genVal scale) $ \x ->
     forAll (multCompl x) $ \y -> if oflo x y
-      then expectSizeOverflow (P.checkedMul "" x y)
-      else property $ P.checkedMul "" x y == x * y
+      then expectSizeOverflow (P.checkedMultiply "" x y)
+      else property $ P.checkedMultiply "" x y == x * y
   where genScale = choose (0, finiteBitSize @Int 0 - 1)
         genVal scale = choose (0, bit scale - 1)
-        oflo x y = toInteger x * toInteger y /= toInteger (x * y)
+        oflo x y = toInteger x * toInteger y /= toInteger @Int (x * y)
 
 prop_stimesOverflowBasic bs = forAll (multCompl len) $ \n ->
   toInteger n * toInteger len > maxInt ==> expectSizeOverflow (stimes n bs)
@@ -647,7 +647,7 @@ io_tests =
 
 overflow_tests =
     [ testProperty "checkedAdd" prop_checkedAdd
-    , testProperty "checkedMul" prop_checkedMul
+    , testProperty "checkedMultiply" prop_checkedMultiply
     , testProperty "StrictByteString stimes (basic)" prop_stimesOverflowBasic
     , testProperty "StrictByteString stimes (scary)" prop_stimesOverflowScary
     , testProperty "StrictByteString stimes (empty)" prop_stimesOverflowEmpty

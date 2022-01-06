@@ -68,7 +68,7 @@ module Data.ByteString.Internal (
         SizeOverflowException,
         overflowError,
         checkedAdd,
-        checkedMul,
+        checkedMultiply,
 
         -- * Standard C Functions
         c_strlen,
@@ -733,7 +733,8 @@ stimesPolymorphic :: Integral a => a -> ByteString -> ByteString
 {-# INLINABLE stimesPolymorphic #-}
 stimesPolymorphic nRaw bs = case checkedToInt nRaw of
   Just n  -> stimesInt n bs
-  _ | nRaw < 0
+  Nothing
+    | nRaw < 0
       -- It may seem odd to check for negative input in both the
       -- polymorphic wrapper and the specialized Int worker. But
       -- checking here before converting to Int would not remove the
@@ -744,13 +745,16 @@ stimesPolymorphic nRaw bs = case checkedToInt nRaw of
       -- this seems like a dangerous behavior to rely on. The same is
       -- not true for ShortByteString and newByteArray#, for example.
       -> stimesNegativeErr
-    | otherwise -> case bs of
-        BS _ 0 -> mempty -- "null" is only defined in Data.ByteString
-        _      -> stimesOverflowErr
+    | BS _ 0 <- bs  -> mempty
+    | otherwise     -> stimesOverflowErr
 
 stimesNegativeErr :: ByteString
-stimesNegativeErr = error "stimes: non-negative multiplier expected"
+stimesNegativeErr
+  = error "stimes @ByteString: non-negative multiplier expected"
+
 stimesOverflowErr :: ByteString
+-- Although this only appears once, it is extracted here to prevent it
+-- from being duplicated in specializations of 'stimesPolymorphic'
 stimesOverflowErr = overflowError "stimes"
 
 -- | Repeats the given ByteString n times.
@@ -769,7 +773,7 @@ stimesInt n (BS fp len)
       memcpy destptr p len
       fillFrom destptr len
   where
-    size = checkedMul "stimes" n len
+    size = checkedMultiply "stimes" n len
     halfSize = (size - 1) `div` 2
 
     fillFrom :: Ptr Word8 -> Int -> IO ()
@@ -841,8 +845,8 @@ checkedAdd fun x y
 
 -- | Multiplies two non-negative numbers.
 -- Calls 'overflowError' on overflow.
-checkedMul :: String -> Int -> Int -> Int
-checkedMul fun !x@(I# x#) !y@(I# y#) = assert (min x y >= 0) $
+checkedMultiply :: String -> Int -> Int -> Int
+checkedMultiply fun !x@(I# x#) !y@(I# y#) = assert (min x y >= 0) $
 #if TIMES_INT_2_AVAILABLE
   case timesInt2# x# y# of
     (# 0#, _, result #) -> I# result
