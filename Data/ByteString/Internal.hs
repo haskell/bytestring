@@ -734,16 +734,7 @@ stimesPolymorphic :: Integral a => a -> ByteString -> ByteString
 stimesPolymorphic nRaw bs = case checkedToInt nRaw of
   Just n  -> stimesInt n bs
   Nothing
-    | nRaw < 0
-      -- It may seem odd to check for negative input in both the
-      -- polymorphic wrapper and the specialized Int worker. But
-      -- checking here before converting to Int would not remove the
-      -- need to check inside the worker, since the Ord instance can
-      -- potentially behave arbitrarily. At the moment this isn't a
-      -- memory-safety issue for StrictByteString since
-      -- mallocPlainForeignPtrBytes checks for negative sizes, but
-      -- this seems like a dangerous behavior to rely on. The same is
-      -- not true for ShortByteString and newByteArray#, for example.
+    | toInteger nRaw < 0 -- See Note [stimes negativity checks]
       -> stimesNegativeErr
     | BS _ 0 <- bs  -> mempty
     | otherwise     -> stimesOverflowErr
@@ -760,7 +751,7 @@ stimesOverflowErr = overflowError "stimes"
 -- | Repeats the given ByteString n times.
 stimesInt :: Int -> ByteString -> ByteString
 stimesInt n (BS fp len)
-  | n < 0 = stimesNegativeErr
+  | n < 0 = stimesNegativeErr -- See Note [stimes negativity checks]
   | n == 0 = mempty
   | n == 1 = BS fp len
   | len == 0 = mempty
@@ -782,6 +773,20 @@ stimesInt n (BS fp len)
         memcpy (destptr `plusPtr` copied) destptr copied
         fillFrom destptr (copied * 2)
       | otherwise = memcpy (destptr `plusPtr` copied) destptr (size - copied)
+
+{-
+Note [stimes negativity checks]
+
+It may seem odd to check for negative input in both stimesInt and
+stimesPolymorphic. However, because the Ord instance from the Integral
+constraint in stimesPolymorphic may not agree with the ordering
+suggested by toInteger and because Integer-related operations are
+currently mostly opaque to GHC's optimizer, it is not convenient to
+safely check for negative input in stimesPolymorphic without an
+Integer being allocated and inspected for Word and Int. The current
+code is a compromise so that this only happens on the unhappy path of
+an overflowed Word-to-Int conversion.
+-}
 
 ------------------------------------------------------------------------
 
