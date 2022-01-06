@@ -383,13 +383,13 @@ infixl 5 `snoc`
 cons :: Word8 -> ByteString -> ByteString
 cons c (BS x l) = unsafeCreate (l+1) $ \p -> unsafeWithForeignPtr x $ \f -> do
         poke p c
-        memcpy (p `plusPtr` 1) f (fromIntegral l)
+        memcpy (p `plusPtr` 1) f l
 {-# INLINE cons #-}
 
 -- | /O(n)/ Append a byte to the end of a 'ByteString'
 snoc :: ByteString -> Word8 -> ByteString
 snoc (BS x l) c = unsafeCreate (l+1) $ \p -> unsafeWithForeignPtr x $ \f -> do
-        memcpy p f (fromIntegral l)
+        memcpy p f l
         poke (p `plusPtr` l) c
 {-# INLINE snoc #-}
 
@@ -1210,21 +1210,21 @@ groupBy k xs = case uncons xs of
 -- argument between each element of the list.
 intercalate :: ByteString -> [ByteString] -> ByteString
 intercalate _ [] = mempty
-intercalate (BS f_sep_ptr sep_len) (BS f_h_ptr h_len : t) =
-  unsafeCreate total_len $ \dst_ptr0 ->
-    unsafeWithForeignPtr f_sep_ptr $ \sep_ptr -> do
-      unsafeWithForeignPtr f_h_ptr $ \h_ptr ->
-        memcpy dst_ptr0 h_ptr (fromIntegral h_len)
+intercalate (BS fSepPtr sepLen) (BS fhPtr hLen : t) =
+  unsafeCreate totalLen $ \dstPtr0 ->
+    unsafeWithForeignPtr fSepPtr $ \sepPtr -> do
+      unsafeWithForeignPtr fhPtr $ \hPtr ->
+        memcpy dstPtr0 hPtr hLen
       let go _ [] = pure ()
-          go dst_ptr (BS f_chunk_ptr chunk_len : chunks) = do
-            memcpy dst_ptr sep_ptr (fromIntegral sep_len)
-            let dest_ptr' = dst_ptr `plusPtr` sep_len
-            unsafeWithForeignPtr f_chunk_ptr $ \chunk_ptr ->
-              memcpy dest_ptr' chunk_ptr (fromIntegral chunk_len)
-            go (dest_ptr' `plusPtr` chunk_len) chunks
-      go (dst_ptr0 `plusPtr` h_len) t
+          go dstPtr (BS fChunkPtr chunkLen : chunks) = do
+            memcpy dstPtr sepPtr sepLen
+            let destPtr' = dstPtr `plusPtr` sepLen
+            unsafeWithForeignPtr fChunkPtr $ \chunkPtr ->
+              memcpy destPtr' chunkPtr chunkLen
+            go (destPtr' `plusPtr` chunkLen) chunks
+      go (dstPtr0 `plusPtr` hLen) t
   where
-  total_len = List.foldl' (\acc (BS _ chunk_len) -> acc + chunk_len + sep_len) h_len t
+  totalLen = List.foldl' (\acc (BS _ chunkLen) -> acc + chunkLen + sepLen) hLen t
 {-# INLINE [1] intercalate #-}
 
 {-# RULES
@@ -1239,9 +1239,9 @@ intercalateWithByte :: Word8 -> ByteString -> ByteString -> ByteString
 intercalateWithByte c f@(BS ffp l) g@(BS fgp m) = unsafeCreate len $ \ptr ->
     unsafeWithForeignPtr ffp $ \fp ->
     unsafeWithForeignPtr fgp $ \gp -> do
-        memcpy ptr fp (fromIntegral l)
+        memcpy ptr fp l
         poke (ptr `plusPtr` l) c
-        memcpy (ptr `plusPtr` (l + 1)) gp (fromIntegral m)
+        memcpy (ptr `plusPtr` (l + 1)) gp m
     where
       len = length f + length g + 1
 {-# INLINE intercalateWithByte #-}
@@ -1707,7 +1707,7 @@ sort :: ByteString -> ByteString
 sort (BS input l)
   -- qsort outperforms counting sort for small arrays
   | l <= 20 = unsafeCreate l $ \ptr -> unsafeWithForeignPtr input $ \inp -> do
-    memcpy ptr inp (fromIntegral l)
+    memcpy ptr inp l
     c_sort ptr (fromIntegral l)
   | otherwise = unsafeCreate l $ \p -> allocaArray 256 $ \arr -> do
 
@@ -1744,7 +1744,7 @@ useAsCString (BS fp l) action =
   allocaBytes (l+1) $ \buf ->
     -- Cannot use unsafeWithForeignPtr, because action can diverge
     withForeignPtr fp $ \p -> do
-      memcpy buf p (fromIntegral l)
+      memcpy buf p l
       pokeByteOff buf l (0::Word8)
       action (castPtr buf)
 
@@ -1771,7 +1771,7 @@ packCString cstr = do
 -- Haskell heap.
 packCStringLen :: CStringLen -> IO ByteString
 packCStringLen (cstr, len) | len >= 0 = create len $ \p ->
-    memcpy p (castPtr cstr) (fromIntegral len)
+    memcpy p (castPtr cstr) len
 packCStringLen (_, len) =
     moduleErrorIO "packCStringLen" ("negative length: " ++ show len)
 
@@ -1785,7 +1785,7 @@ packCStringLen (_, len) =
 --
 copy :: ByteString -> ByteString
 copy (BS x l) = unsafeCreate l $ \p -> unsafeWithForeignPtr x $ \f ->
-    memcpy p f (fromIntegral l)
+    memcpy p f l
 
 -- ---------------------------------------------------------------------
 -- Line IO
