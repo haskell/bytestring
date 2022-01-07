@@ -1227,25 +1227,6 @@ intercalate (BS fSepPtr sepLen) (BS fhPtr hLen : t) =
   totalLen = List.foldl' (\acc (BS _ chunkLen) -> acc + chunkLen + sepLen) hLen t
 {-# INLINE [1] intercalate #-}
 
-{-# RULES
-"ByteString specialise intercalate c -> intercalateByte" forall c s1 s2 .
-    intercalate (singleton c) [s1, s2] = intercalateWithByte c s1 s2
-  #-}
-
--- | /O(n)/ intercalateWithByte. An efficient way to join to two ByteStrings
--- with a char. Around 4 times faster than the generalised join.
---
-intercalateWithByte :: Word8 -> ByteString -> ByteString -> ByteString
-intercalateWithByte c f@(BS ffp l) g@(BS fgp m) = unsafeCreate len $ \ptr ->
-    unsafeWithForeignPtr ffp $ \fp ->
-    unsafeWithForeignPtr fgp $ \gp -> do
-        memcpy ptr fp l
-        poke (ptr `plusPtr` l) c
-        memcpy (ptr `plusPtr` (l + 1)) gp m
-    where
-      len = length f + length g + 1
-{-# INLINE intercalateWithByte #-}
-
 -- ---------------------------------------------------------------------
 -- Indexing ByteStrings
 
