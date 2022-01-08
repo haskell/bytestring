@@ -102,7 +102,8 @@ import qualified Data.List as List
 import Control.Monad            (void)
 
 import Foreign.ForeignPtr       (ForeignPtr, withForeignPtr)
-import Foreign.Ptr              (Ptr, FunPtr, plusPtr, minusPtr)
+import Foreign.Ptr              (FunPtr, plusPtr, minusPtr)
+import GHC.Ptr                  (Ptr(..))
 import Foreign.Storable         (Storable(..))
 import Foreign.C.Types          (CInt(..), CSize(..))
 import Foreign.C.String         (CString)
@@ -128,11 +129,19 @@ import Data.Typeable            (Typeable)
 import Data.Data                (Data(..), mkNoRepType)
 
 import GHC.Base                 (nullAddr#,realWorld#,unsafeChr)
-import GHC.Exts                 (IsList(..))
+import GHC.Exts                 (IsList(..)
+                                , Int#
+                                , State#
+                                , RealWorld
+                                , MutableByteArray#
+                                , Int(..)
+                                , unsafeCoerce#
+                                , byteArrayContents#
+                                , newPinnedByteArray# )
 import GHC.CString              (unpackCString#)
 import GHC.Prim                 (Addr#)
-import GHC.IO                   (IO(IO),unsafeDupablePerformIO)
-import GHC.ForeignPtr           (ForeignPtr(ForeignPtr)
+import GHC.IO                   (IO(IO), unIO)
+import GHC.ForeignPtr           (ForeignPtr(ForeignPtr), ForeignPtrContents(PlainPtr)
 #if __GLASGOW_HASKELL__ < 900
                                 , newForeignPtr_
 #endif
@@ -140,23 +149,22 @@ import GHC.ForeignPtr           (ForeignPtr(ForeignPtr)
 
 #if MIN_VERSION_base(4,10,0)
 import GHC.ForeignPtr           (plusForeignPtr)
+import GHC.Exts (runRW#)
 #else
 import GHC.Prim                 (plusAddr#)
+import GHC.Magic (runRW#)
 #endif
 
 #if __GLASGOW_HASKELL__ >= 811
 import GHC.CString              (cstringLength#)
 import GHC.ForeignPtr           (ForeignPtrContents(FinalPtr))
-#else
-import GHC.Ptr                  (Ptr(..))
-#endif
-
-#if (__GLASGOW_HASKELL__ < 802) || (__GLASGOW_HASKELL__ >= 811)
-import GHC.Types                (Int (..))
 #endif
 
 #if MIN_VERSION_base(4,15,0)
 import GHC.ForeignPtr           (unsafeWithForeignPtr)
+import GHC.Exts                 (keepAlive#)
+#else
+import GHC.Exts                 (touch#)
 #endif
 
 import qualified Language.Haskell.TH.Lib as TH
@@ -165,6 +173,14 @@ import qualified Language.Haskell.TH.Syntax as TH
 #if !MIN_VERSION_base(4,15,0)
 unsafeWithForeignPtr :: ForeignPtr a -> (Ptr a -> IO b) -> IO b
 unsafeWithForeignPtr = withForeignPtr
+
+keepMBAAlive# :: MutableByteArray# RealWorld -> (State# RealWorld -> (# State# RealWorld, b #)) -> State# RealWorld -> (# State# RealWorld, b #)
+keepMBAAlive# a act s = case act s of
+  (# s', r #) -> (# touch# a s', r #)
+{-# NOINLINE keepMBAAlive# #-}
+#else
+keepMBAAlive# :: MutableByteArray# RealWorld -> (State# RealWorld -> (# State# RealWorld, b #)) -> State# RealWorld -> (# State# RealWorld, b #)
+keepMBAAlive# a act s = keepAlive# a s act
 #endif
 
 -- CFILES stuff is Hugs only
@@ -544,7 +560,7 @@ toForeignPtr0 (BS ps l) = (ps, l)
 -- | A way of creating ByteStrings outside the IO monad. The @Int@
 -- argument gives the final size of the ByteString.
 unsafeCreate :: Int -> (Ptr Word8 -> IO ()) -> ByteString
-unsafeCreate l f = unsafeDupablePerformIO (create l f)
+unsafeCreate l f = unsafeCreatorPBS (createPBS l f)
 {-# INLINE unsafeCreate #-}
 
 -- | Like 'unsafeCreate' but instead of giving the final size of the
@@ -552,13 +568,29 @@ unsafeCreate l f = unsafeDupablePerformIO (create l f)
 -- the actual size. Unlike 'createAndTrim' the ByteString is not
 -- reallocated if the final size is less than the estimated size.
 unsafeCreateUptoN :: Int -> (Ptr Word8 -> IO Int) -> ByteString
-unsafeCreateUptoN l f = unsafeDupablePerformIO (createUptoN l f)
+unsafeCreateUptoN l f = unsafeCreatorPBS (createUptoNPBS l f)
 {-# INLINE unsafeCreateUptoN #-}
 
 -- | @since 0.10.12.0
 unsafeCreateUptoN' :: Int -> (Ptr Word8 -> IO (Int, a)) -> (ByteString, a)
-unsafeCreateUptoN' l f = unsafeDupablePerformIO (createUptoN' l f)
+unsafeCreateUptoN' l f = unsafeCreatorPBS' (createUptoNPBS' l f)
 {-# INLINE unsafeCreateUptoN' #-}
+
+-- | @unsafeCreatorPBS act = pbsToBs . unsafeDupablePerformIO act@
+-- but the resulting 'ByteString' can be unboxed by the compiler.
+unsafeCreatorPBS :: IO PlainByteString -> ByteString
+unsafeCreatorPBS action = case runRW# (\s ->
+  case unIO action s of { (# s', PlainByteString addr mbar sz #) ->
+    (# s', (# addr, mbar, sz #) #) }) of
+    (# _, (# addr, mbar, sz #) #) -> BS (ForeignPtr addr (PlainPtr mbar)) (I# sz)
+{-# INLINE unsafeCreatorPBS #-}
+
+unsafeCreatorPBS' :: IO (PlainByteString, a) -> (ByteString, a)
+unsafeCreatorPBS' action = case runRW# (\s ->
+  case unIO action s of { (# s', (PlainByteString addr mbar sz, a) #) ->
+    (# s', (# addr, mbar, sz, a #) #) }) of
+    (# _, (# addr, mbar, sz, a #) #) -> (BS (ForeignPtr addr (PlainPtr mbar)) (I# sz), a)
+{-# INLINE unsafeCreatorPBS' #-}
 
 -- | Create ByteString of size @l@ and use action @f@ to fill its contents.
 create :: Int -> (Ptr Word8 -> IO ()) -> IO ByteString
@@ -568,6 +600,22 @@ create l action = do
     withForeignPtr fp $ \p -> action p
     return $! BS fp l
 {-# INLINE create #-}
+
+-- | Create PlainByteString of size @l@ and use action @f@ to fill its contents.
+createPBS :: Int -> (Ptr Word8 -> IO ()) -> IO PlainByteString
+createPBS (I# sz) action = IO $ \s ->
+    case newPinnedByteArray# sz s of { (# s', mbarr# #) ->
+    let contents = byteArrayContents# (unsafeCoerce# mbarr#) in
+    case keepMBAAlive# mbarr# (unIO (action (Ptr contents))) s' of { (# s'', ~() #) ->
+      (# s'', PlainByteString contents mbarr# sz #) }}
+{-# INLINE createPBS #-}
+
+
+data PlainByteString = PlainByteString Addr# (MutableByteArray# RealWorld) Int#
+
+--pbsToBs :: PlainByteString -> ByteString
+--pbsToBs (PlainByteString addr mba i) =
+--  BS (ForeignPtr addr (PlainPtr mba)) (I# i)
 
 -- | Given a maximum size @l@ and an action @f@ that fills the 'ByteString'
 -- starting at the given 'Ptr' and returns the actual utilized length,
@@ -580,6 +628,14 @@ createUptoN l action = do
     assert (l' <= l) $ return $! BS fp l'
 {-# INLINE createUptoN #-}
 
+createUptoNPBS :: Int -> (Ptr Word8 -> IO Int) -> IO PlainByteString
+createUptoNPBS (I# sz) action = IO $ \s ->
+    case newPinnedByteArray# sz s of { (# s', mbarr# #) ->
+    let contents = byteArrayContents# (unsafeCoerce# mbarr#) in
+    case keepMBAAlive# mbarr# (unIO (action (Ptr contents))) s' of { (# s'', I# sz' #) ->
+        (# s'', assert (I# sz' <= I# sz) $ PlainByteString contents mbarr# sz' #) }}
+{-# INLINE createUptoNPBS #-}
+
 -- | Like 'createUptoN', but also returns an additional value created by the
 -- action.
 --
@@ -591,6 +647,14 @@ createUptoN' l action = do
     (l', res) <- withForeignPtr fp $ \p -> action p
     assert (l' <= l) $ return (BS fp l', res)
 {-# INLINE createUptoN' #-}
+
+createUptoNPBS' :: Int -> (Ptr Word8 -> IO (Int, a)) -> IO (PlainByteString, a)
+createUptoNPBS' (I# sz) action = IO $ \s ->
+    case newPinnedByteArray# sz s of { (# s', mbarr# #) ->
+    let contents = byteArrayContents# (unsafeCoerce# mbarr#) in
+    case keepMBAAlive# mbarr# (unIO (action (Ptr contents))) s' of { (# s'', (I# sz', a) #) ->
+        (# s'', assert (I# sz' <= I# sz) $ (PlainByteString contents mbarr# sz', a) #) }}
+{-# INLINE createUptoNPBS' #-}
 
 -- | Given the maximum size needed and a function to make the contents
 -- of a ByteString, createAndTrim makes the 'ByteString'. The generating
