@@ -102,7 +102,7 @@ import qualified Data.List as List
 import Control.Monad            (void)
 
 import Foreign.ForeignPtr       (ForeignPtr, withForeignPtr)
-import Foreign.Ptr              (Ptr, FunPtr, plusPtr, minusPtr)
+import Foreign.Ptr              (FunPtr, plusPtr, minusPtr)
 import Foreign.Storable         (Storable(..))
 import Foreign.C.Types          (CInt(..), CSize(..))
 import Foreign.C.String         (CString)
@@ -128,31 +128,40 @@ import Data.Typeable            (Typeable)
 import Data.Data                (Data(..), mkNoRepType)
 
 import GHC.Base                 (nullAddr#,realWorld#,unsafeChr)
-import GHC.Exts                 (IsList(..))
+import GHC.Exts                 ( IsList(..)
+                                , Int(..)
+                                , Ptr(..)
+                                , State#
+                                , RealWorld
+                                , MutableByteArray#
+                                , byteArrayContents#
+                                , unsafeCoerce#
+                                , newPinnedByteArray#
+                                , copyAddrToByteArray#)
 import GHC.CString              (unpackCString#)
 import GHC.Prim                 (Addr#)
-import GHC.IO                   (IO(IO),unsafeDupablePerformIO)
-import GHC.ForeignPtr           (ForeignPtr(ForeignPtr)
+import GHC.IO                   (IO(IO),unIO,unsafeDupablePerformIO)
+import GHC.ForeignPtr           ( ForeignPtr(ForeignPtr)
+                                , ForeignPtrContents(PlainPtr)
 #if __GLASGOW_HASKELL__ < 900
                                 , newForeignPtr_
 #endif
                                 , mallocPlainForeignPtrBytes)
-
 #if MIN_VERSION_base(4,10,0)
 import GHC.ForeignPtr           (plusForeignPtr)
 #else
 import GHC.Prim                 (plusAddr#)
 #endif
 
+#if MIN_VERSION_base(4,10,0)
+import GHC.Exts (runRW#)
+#else
+import GHC.Magic (runRW#)
+#endif
+
 #if __GLASGOW_HASKELL__ >= 811
 import GHC.CString              (cstringLength#)
 import GHC.ForeignPtr           (ForeignPtrContents(FinalPtr))
-#else
-import GHC.Ptr                  (Ptr(..))
-#endif
-
-#if (__GLASGOW_HASKELL__ < 802) || (__GLASGOW_HASKELL__ >= 811)
-import GHC.Types                (Int (..))
 #endif
 
 #if MIN_VERSION_base(4,15,0)
@@ -659,14 +668,37 @@ empty :: ByteString
 -- any definitions used by the (Monoid ByteString) instance
 empty = BS nullForeignPtr 0
 
+-- The implementation is rather ugly, but this is the only way I was able to
+-- get GHC to be able to avoid boxing the result.
 append :: ByteString -> ByteString -> ByteString
 append (BS _   0)    b                  = b
 append a             (BS _   0)    = a
-append (BS fp1 len1) (BS fp2 len2) =
-    unsafeCreate (len1+len2) $ \destptr1 -> do
-      let destptr2 = destptr1 `plusPtr` len1
-      unsafeWithForeignPtr fp1 $ \p1 -> memcpy destptr1 p1 len1
-      unsafeWithForeignPtr fp2 $ \p2 -> memcpy destptr2 p2 len2
+append (BS fp1 (I# len1)) (BS fp2 (I# len2))
+  | I# len < 0 = appendOverflow
+  | otherwise = BS (ForeignPtr (byteArrayContents# (unsafeCoerce# mbarr#))
+                               (PlainPtr mbarr#))
+                   (I# len)
+  where
+    !(I# len) = I# len1 + I# len2
+    !(# _, mbarr# #) = runRW# $ blargh (I# len) $ \mba -> do
+            unsafeWithForeignPtr fp1 $ \(Ptr p1) ->
+              IO (\s -> (# copyAddrToByteArray# p1 mba 0# len1 s, () #))
+            unsafeWithForeignPtr fp2 $ \(Ptr p2) ->
+              IO (\s -> (# copyAddrToByteArray# p2 mba len1 len2 s, () #))
+
+{-# NOINLINE appendOverflow #-}
+appendOverflow :: a
+appendOverflow = error "append: total length must not exceed maxBound @Int"
+
+blargh :: Int -- ^ size of string to create (must be >=0)
+  -> (MutableByteArray# RealWorld -> IO ())  -- ^ how to mutate it
+  -> State# RealWorld -> (# State# RealWorld, MutableByteArray# RealWorld #)
+blargh (I# size) builder s
+  = case newPinnedByteArray# size s of { (# s', mbarr# #) ->
+    case unIO (builder mbarr#) s'   of { (# s'', ~() #) ->
+       (# s'', mbarr# #)
+     }}
+{-# INLINE blargh #-}
 
 concat :: [ByteString] -> ByteString
 concat = \bss0 -> goLen0 bss0 bss0
