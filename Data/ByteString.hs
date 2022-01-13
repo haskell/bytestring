@@ -383,13 +383,13 @@ infixl 5 `snoc`
 cons :: Word8 -> ByteString -> ByteString
 cons c (BS x l) = unsafeCreate (l+1) $ \p -> unsafeWithForeignPtr x $ \f -> do
         poke p c
-        memcpy (p `plusPtr` 1) f (fromIntegral l)
+        memcpy (p `plusPtr` 1) f l
 {-# INLINE cons #-}
 
 -- | /O(n)/ Append a byte to the end of a 'ByteString'
 snoc :: ByteString -> Word8 -> ByteString
 snoc (BS x l) c = unsafeCreate (l+1) $ \p -> unsafeWithForeignPtr x $ \f -> do
-        memcpy p f (fromIntegral l)
+        memcpy p f l
         poke (p `plusPtr` l) c
 {-# INLINE snoc #-}
 
@@ -1209,27 +1209,23 @@ groupBy k xs = case uncons xs of
 -- 'ByteString's and concatenates the list after interspersing the first
 -- argument between each element of the list.
 intercalate :: ByteString -> [ByteString] -> ByteString
-intercalate s = concat . List.intersperse s
+intercalate _ [] = mempty
+intercalate (BS fSepPtr sepLen) (BS fhPtr hLen : t) =
+  unsafeCreate totalLen $ \dstPtr0 ->
+    unsafeWithForeignPtr fSepPtr $ \sepPtr -> do
+      unsafeWithForeignPtr fhPtr $ \hPtr ->
+        memcpy dstPtr0 hPtr hLen
+      let go _ [] = pure ()
+          go dstPtr (BS fChunkPtr chunkLen : chunks) = do
+            memcpy dstPtr sepPtr sepLen
+            let destPtr' = dstPtr `plusPtr` sepLen
+            unsafeWithForeignPtr fChunkPtr $ \chunkPtr ->
+              memcpy destPtr' chunkPtr chunkLen
+            go (destPtr' `plusPtr` chunkLen) chunks
+      go (dstPtr0 `plusPtr` hLen) t
+  where
+  totalLen = List.foldl' (\acc (BS _ chunkLen) -> acc + chunkLen + sepLen) hLen t
 {-# INLINE [1] intercalate #-}
-
-{-# RULES
-"ByteString specialise intercalate c -> intercalateByte" forall c s1 s2 .
-    intercalate (singleton c) [s1, s2] = intercalateWithByte c s1 s2
-  #-}
-
--- | /O(n)/ intercalateWithByte. An efficient way to join to two ByteStrings
--- with a char. Around 4 times faster than the generalised join.
---
-intercalateWithByte :: Word8 -> ByteString -> ByteString -> ByteString
-intercalateWithByte c f@(BS ffp l) g@(BS fgp m) = unsafeCreate len $ \ptr ->
-    unsafeWithForeignPtr ffp $ \fp ->
-    unsafeWithForeignPtr fgp $ \gp -> do
-        memcpy ptr fp (fromIntegral l)
-        poke (ptr `plusPtr` l) c
-        memcpy (ptr `plusPtr` (l + 1)) gp (fromIntegral m)
-    where
-      len = length f + length g + 1
-{-# INLINE intercalateWithByte #-}
 
 -- ---------------------------------------------------------------------
 -- Indexing ByteStrings
@@ -1697,7 +1693,7 @@ sort :: ByteString -> ByteString
 sort (BS input l)
   -- qsort outperforms counting sort for small arrays
   | l <= 20 = unsafeCreate l $ \ptr -> unsafeWithForeignPtr input $ \inp -> do
-    memcpy ptr inp (fromIntegral l)
+    memcpy ptr inp l
     c_sort ptr (fromIntegral l)
   | otherwise = unsafeCreate l $ \p -> allocaArray 256 $ \arr -> do
 
@@ -1734,7 +1730,7 @@ useAsCString (BS fp l) action =
   allocaBytes (l+1) $ \buf ->
     -- Cannot use unsafeWithForeignPtr, because action can diverge
     withForeignPtr fp $ \p -> do
-      memcpy buf p (fromIntegral l)
+      memcpy buf p l
       pokeByteOff buf l (0::Word8)
       action (castPtr buf)
 
@@ -1761,7 +1757,7 @@ packCString cstr = do
 -- Haskell heap.
 packCStringLen :: CStringLen -> IO ByteString
 packCStringLen (cstr, len) | len >= 0 = create len $ \p ->
-    memcpy p (castPtr cstr) (fromIntegral len)
+    memcpy p (castPtr cstr) len
 packCStringLen (_, len) =
     moduleErrorIO "packCStringLen" ("negative length: " ++ show len)
 
@@ -1775,7 +1771,7 @@ packCStringLen (_, len) =
 --
 copy :: ByteString -> ByteString
 copy (BS x l) = unsafeCreate l $ \p -> unsafeWithForeignPtr x $ \f ->
-    memcpy p f (fromIntegral l)
+    memcpy p f l
 
 -- ---------------------------------------------------------------------
 -- Line IO

@@ -375,6 +375,11 @@ main = do
       [ bench "intersperse" $ whnf (S.intersperse 32) byteStringData
       , bench "intersperse (unaligned)" $ whnf (S.intersperse 32) (S.drop 1 byteStringData)
       ]
+    , bgroup "intercalate"
+      [ bench "intercalate (large)" $ whnf (S.intercalate $ S8.pack " and also ") (replicate 300 (S8.pack "expression"))
+      , bench "intercalate (small)" $ whnf (S.intercalate $ S8.pack "&") (replicate 30 (S8.pack "foo"))
+      , bench "intercalate (tiny)" $ whnf (S.intercalate $ S8.pack "&") (S8.pack <$> ["foo", "bar", "baz"])
+      ]
     , bgroup "partition"
       [
         bgroup "strict"
