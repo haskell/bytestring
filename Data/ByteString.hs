@@ -1224,7 +1224,8 @@ intercalate (BS fSepPtr sepLen) (BS fhPtr hLen : t) =
             go (destPtr' `plusPtr` chunkLen) chunks
       go (dstPtr0 `plusPtr` hLen) t
   where
-  totalLen = List.foldl' (\acc (BS _ chunkLen) -> acc + chunkLen + sepLen) hLen t
+  totalLen = List.foldl' (\acc chunk -> acc +! sepLen +! length chunk) hLen t
+  (+!) = checkedAdd "intercalate"
 {-# INLINE [1] intercalate #-}
 
 -- ---------------------------------------------------------------------
