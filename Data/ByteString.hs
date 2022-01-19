@@ -1225,7 +1225,7 @@ intercalate (BS fSepPtr sepLen) (BS fhPtr hLen : t) =
   where
   totalLen = List.foldl' (\acc chunk -> acc +! sepLen +! length chunk) hLen t
   (+!) = checkedAdd "intercalate"
-
+{-# INLINABLE intercalate #-}
 
 -- ---------------------------------------------------------------------
 -- Indexing ByteStrings
