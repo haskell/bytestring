@@ -1208,6 +1208,7 @@ groupBy k xs = case uncons xs of
 -- argument between each element of the list.
 intercalate :: ByteString -> [ByteString] -> ByteString
 intercalate _ [] = mempty
+intercalate _ [x] = x -- This branch exists for laziness, not speed
 intercalate (BS fSepPtr sepLen) (BS fhPtr hLen : t) =
   unsafeCreate totalLen $ \dstPtr0 ->
     unsafeWithForeignPtr fSepPtr $ \sepPtr -> do
