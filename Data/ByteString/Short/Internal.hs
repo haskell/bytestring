@@ -675,7 +675,7 @@ infixr 5 `cons` --same as list (:)
 infixl 5 `snoc`
 
 -- | /O(n)/ Append a byte to the end of a 'ShortByteString'
--- 
+--
 -- Note: copies the entire byte array
 --
 -- @since 0.11.3.0
@@ -718,7 +718,7 @@ last = \sbs -> case null sbs of
 --
 -- @since 0.11.3.0
 tail :: HasCallStack => ShortByteString -> ShortByteString
-tail = \sbs -> 
+tail = \sbs ->
   let l  = length sbs
       nl = l - 1
   in case null sbs of
@@ -814,7 +814,7 @@ reverse = \sbs ->
   where
     go :: forall s. BA -> MBA s -> Int -> ST s ()
     go !ba !mba !l = do
-      -- this is equivalent to: (q, r) = l `quotRem` 8 
+      -- this is equivalent to: (q, r) = l `quotRem` 8
       let q = l `shiftR` 3
           r = l .&. 7
       i' <- goWord8Chunk 0 r
@@ -1038,7 +1038,7 @@ drop = \n -> \sbs ->
   let len = length sbs
   in if | n <= 0    -> sbs
         | n >= len  -> empty
-        | otherwise -> 
+        | otherwise ->
             let newLen = len - n
             in create newLen $ \mba -> copyByteArray (asBA sbs) n mba 0 newLen
 
@@ -1139,7 +1139,7 @@ splitAt n = \sbs -> if
   | otherwise ->
       let slen = length sbs
       in if | n >= length sbs -> (sbs, empty)
-            | otherwise -> 
+            | otherwise ->
                 let llen = min slen (max 0 n)
                     rlen = max 0 (slen - max 0 n)
                     lsbs = create llen $ \mba -> copyByteArray (asBA sbs) 0 mba 0 llen
@@ -1198,7 +1198,7 @@ stripSuffix :: ShortByteString -> ShortByteString -> Maybe ShortByteString
 stripSuffix sbs1 = \sbs2 -> do
   let l1 = length sbs1
       l2 = length sbs2
-  if | isSuffixOf sbs1 sbs2 -> 
+  if | isSuffixOf sbs1 sbs2 ->
          if null sbs1
          then Just sbs2
          else Just $! create (l2 - l1) $ \dst -> do
@@ -1679,7 +1679,7 @@ compareByteArraysOff (BA# ba1#) ba1off (BA# ba2#) ba2off len =
                        ba2#
                        ba2off
                        (fromIntegral len)
-  
+
 
 foreign import ccall unsafe "static sbs_memcmp_off"
   c_memcmp_ByteArray :: ByteArray# -> Int -> ByteArray# -> Int -> CSize -> IO CInt
@@ -1767,10 +1767,31 @@ useAsCStringLen sbs action =
 -- @since 0.11.3.0
 isValidUtf8 :: ShortByteString -> Bool
 isValidUtf8 sbs@(SBS ba#) = accursedUnutterablePerformIO $ do
-  i <- cIsValidUtf8 ba# (fromIntegral (length sbs))
+  let n = length sbs
+#if MIN_VERSION_base(4,10,0)
+  -- Use a safe FFI call for large inputs to avoid GC synchronization pauses
+  -- in multithreaded contexts.
+  -- This specific limit was chosen based on results of a simple benchmark, see:
+  -- https://github.com/haskell/bytestring/issues/451#issuecomment-991879338
+  -- When changing this function, also consider changing the related function:
+  -- Data.ByteString.isValidUtf8
+  i <- if n < 1000000 || not (isTrue# (isByteArrayPinned# ba#))
+     then cIsValidUtf8 ba# (fromIntegral n)
+     else cIsValidUtf8Safe ba# (fromIntegral n)
+#else
+  i <- cIsValidUtf8 ba# (fromIntegral n)
+#endif
   return $ i /= 0
 
+-- We import bytestring_is_valid_utf8 both unsafe and safe. For small inputs
+-- we can use the unsafe version to get a bit more performance, but for large
+-- inputs the safe version should be used to avoid GC synchronization pauses
+-- in multithreaded contexts.
+
 foreign import ccall unsafe "bytestring_is_valid_utf8" cIsValidUtf8
+  :: ByteArray# -> CSize -> IO CInt
+
+foreign import ccall safe "bytestring_is_valid_utf8" cIsValidUtf8Safe
   :: ByteArray# -> CSize -> IO CInt
 
 -- ---------------------------------------------------------------------
