@@ -277,9 +277,7 @@ import GHC.Word hiding (Word8)
 -- | /O(1)/ Convert a 'Word8' into a 'ByteString'
 singleton :: Word8 -> ByteString
 singleton c = unsafeCreate 1 $ \p -> poke p c
-{-# INLINE [1] singleton #-}
-
--- Inline [1] for intercalate rule
+{-# INLINE singleton #-}
 
 --
 -- XXX The use of unsafePerformIO in allocating functions (unsafeCreate) is critical!
@@ -1210,6 +1208,7 @@ groupBy k xs = case uncons xs of
 -- argument between each element of the list.
 intercalate :: ByteString -> [ByteString] -> ByteString
 intercalate _ [] = mempty
+intercalate _ [x] = x -- This branch exists for laziness, not speed
 intercalate (BS fSepPtr sepLen) (BS fhPtr hLen : t) =
   unsafeCreate totalLen $ \dstPtr0 ->
     unsafeWithForeignPtr fSepPtr $ \sepPtr -> do
@@ -1225,7 +1224,7 @@ intercalate (BS fSepPtr sepLen) (BS fhPtr hLen : t) =
       go (dstPtr0 `plusPtr` hLen) t
   where
   totalLen = List.foldl' (\acc (BS _ chunkLen) -> acc + chunkLen + sepLen) hLen t
-{-# INLINE [1] intercalate #-}
+{-# INLINE intercalate #-}
 
 -- ---------------------------------------------------------------------
 -- Indexing ByteStrings
