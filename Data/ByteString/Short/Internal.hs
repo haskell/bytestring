@@ -136,7 +136,7 @@ module Data.ByteString.Short.Internal (
     useAsCStringLen,
   ) where
 
-import Data.ByteString.Internal (ByteString(..), accursedUnutterablePerformIO, memcmp)
+import Data.ByteString.Internal (ByteString(..), accursedUnutterablePerformIO)
 import qualified Data.ByteString.Internal as BS
 
 import Data.Bifunctor   ( first, bimap )
@@ -153,8 +153,10 @@ import Control.Monad    ((>>))
 import Control.DeepSeq  (NFData(..))
 import Foreign.C.String (CString, CStringLen)
 import Foreign.C.Types  (CSize(..), CInt(..))
+#if !MIN_VERSION_base(4,11,0)
 import Foreign.Ptr      (plusPtr)
-import Foreign.Marshal.Alloc (allocaBytes, mallocBytes, free)
+#endif
+import Foreign.Marshal.Alloc (allocaBytes) 
 import Foreign.ForeignPtr (touchForeignPtr)
 import Foreign.ForeignPtr.Unsafe (unsafeForeignPtrToPtr)
 import Foreign.Storable (pokeByteOff)
@@ -1008,22 +1010,12 @@ stripSuffix sbs1 sbs2 = do
       l2 = length sbs2
   if | l1 == 0   -> Just sbs2
      | l2 < l1   -> Nothing
-     | otherwise -> unsafeDupablePerformIO $ do
-         p1 <- mallocBytes l1
-         p2 <- mallocBytes l2
-         copyToPtr sbs1 0 p1 l1
-         copyToPtr sbs2 0 p2 l2
-         i <- memcmp p1 (p2 `plusPtr` (l2 - l1)) (fromIntegral l1)
-         if i == 0
-          then do
-            sbs <- createFromPtr p2 (fromIntegral (l2 - l1))
-            free p1
-            free p2
-            return $! Just sbs
-          else do
-            free p1
-            free p2
-            return Nothing
+     | otherwise ->
+         let i = compareByteArraysOff (asBA sbs1) 0 (asBA sbs2) (l2 - l1) l1
+         in if i == 0
+              then Just $! create (l2 - l1) $ \dst -> do
+                             copyByteArray (asBA sbs2) 0 dst 0 (l2 - l1)
+              else Nothing
 
 -- | /O(n)/ The 'stripPrefix' function takes two ShortByteStrings and returns 'Just'
 -- the remainder of the second iff the first is its prefix, and otherwise
@@ -1036,22 +1028,12 @@ stripPrefix sbs1 sbs2 = do
       l2 = length sbs2
   if | l1 == 0   -> Just sbs2
      | l2 < l1   -> Nothing
-     | otherwise -> unsafeDupablePerformIO $ do
-         p1 <- mallocBytes l1
-         p2 <- mallocBytes l2
-         copyToPtr sbs1 0 p1 l1
-         copyToPtr sbs2 0 p2 l2
-         i <- memcmp p1 p2 (fromIntegral l1)
-         if i == 0
-          then do
-            sbs <- createFromPtr (p2 `plusPtr` l1) (l2 - l1)
-            free p1
-            free p2
-            return $! Just sbs
-          else do
-            free p1
-            free p2
-            return Nothing
+     | otherwise -> 
+         let i = compareByteArraysOff (asBA sbs1) 0 (asBA sbs2) 0 l1
+         in if i == 0
+              then Just $! create (l2 - l1) $ \dst -> do
+                             copyByteArray (asBA sbs2) l1 dst 0 (l2 - l1)
+              else Nothing
 
 
 -- ---------------------------------------------------------------------
@@ -1144,15 +1126,9 @@ isPrefixOf sbs1 sbs2 = do
       l2 = length sbs2
   if | l1 == 0   -> True
      | l2 < l1   -> False
-     | otherwise -> unsafeDupablePerformIO $ do
-         p1 <- mallocBytes l1
-         p2 <- mallocBytes l2
-         copyToPtr sbs1 0 p1 l1
-         copyToPtr sbs2 0 p2 l2
-         i <- memcmp p1 p2 (fromIntegral l1)
-         free p1
-         free p2
-         return $! i == 0
+     | otherwise ->
+         let i = compareByteArraysOff (asBA sbs1) 0 (asBA sbs2) 0 l1
+         in i == 0
 
 -- | /O(n)/ The 'isSuffixOf' function takes two ShortByteStrings and returns 'True'
 -- iff the first is a suffix of the second.
@@ -1168,15 +1144,9 @@ isSuffixOf sbs1 sbs2 = do
       l2 = length sbs2
   if | l1 == 0   -> True
      | l2 < l1   -> False
-     | otherwise -> unsafeDupablePerformIO $ do
-         p1 <- mallocBytes l1
-         p2 <- mallocBytes l2
-         copyToPtr sbs1 0 p1 l1
-         copyToPtr sbs2 0 p2 l2
-         i <- memcmp p1 (p2 `plusPtr` (l2 - l1)) (fromIntegral l1)
-         free p1
-         free p2
-         return $! i == 0
+     | otherwise ->
+         let i = compareByteArraysOff (asBA sbs1) 0 (asBA sbs2) (l2 - l1) l1
+         in i == 0
 
 -- | Break a string on a substring, returning a pair of the part of the
 -- string prior to the match, and the rest of the string.
@@ -1438,18 +1408,27 @@ copyByteArray (BA# src#) (I# src_off#) (MBA# dst#) (I# dst_off#) (I# len#) =
 
 ------------------------------------------------------------------------
 -- FFI imports
-
+--
 compareByteArrays :: BA -> BA -> Int -> Int
+compareByteArrays ba1 ba2 = compareByteArraysOff ba1 0 ba2 0
+
+compareByteArraysOff :: BA -> Int -> BA -> Int -> Int -> Int
 #if MIN_VERSION_base(4,11,0)
-compareByteArrays (BA# ba1#) (BA# ba2#) (I# len#) =
-  I# (compareByteArrays#  ba1# 0# ba2# 0# len#)
+compareByteArraysOff (BA# ba1#) (I# ba1off#) (BA# ba2#) (I# ba2off#) (I# len#) =
+  I# (compareByteArrays#  ba1# ba1off# ba2# ba2off# len#)
 #else
-compareByteArrays (BA# ba1#) (BA# ba2#) len =
+compareByteArraysOff ba1 ba1off ba2 ba2off len =
   fromIntegral $ accursedUnutterablePerformIO $
-    c_memcmp_ByteArray ba1# ba2# (fromIntegral len)
+    c_memcmp_ByteArray (byteArrayContents' ba1 `plusPtr` ba1off)
+                       (byteArrayContents' ba2 `plusPtr` ba2off)
+                       (fromIntegral len)
+ where
+  byteArrayContents' :: BA -> Ptr Word8
+  byteArrayContents' (BA# arr#) = Ptr (byteArrayContents# arr#)
+  
 
 foreign import ccall unsafe "string.h memcmp"
-  c_memcmp_ByteArray :: ByteArray# -> ByteArray# -> CSize -> IO CInt
+  c_memcmp_ByteArray :: Ptr Word8 -> Ptr Word8 -> CSize -> IO CInt
 #endif
 
 
