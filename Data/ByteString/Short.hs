@@ -2,10 +2,10 @@
 
 -- |
 -- Module      : Data.ByteString.Short
--- Copyright   : (c) Duncan Coutts 2012-2013
+-- Copyright   : (c) Duncan Coutts 2012-2013, Julian Ospald 2022
 -- License     : BSD-style
 --
--- Maintainer  : duncan@community.haskell.org
+-- Maintainer  : hasufell@posteo.de
 -- Stability   : stable
 -- Portability : ghc only
 --
@@ -67,26 +67,111 @@ module Data.ByteString.Short (
     -- small unpinned strings are allocated in the same way as normal heap
     -- allocations, rather than in a separate pinned area.
 
-    -- * Conversions
-    toShort,
-    fromShort,
+    -- * Introducing and eliminating 'ShortByteString's
+    empty,
+    singleton,
     pack,
     unpack,
+    fromShort,
+    toShort,
 
-    -- * Other operations
-    empty, null, length, index, indexMaybe, (!?),
+    -- * Basic interface
+    snoc,
+    cons,
+    append,
+    last,
+    tail,
+    head,
+    init,
+    null,
+    length,
 
-    -- ** Encoding validation
+    -- * Encoding validation
     isValidUtf8,
 
+    -- * Transforming ShortByteStrings
+    map,
+    reverse,
+    intercalate,
+
+    -- * Reducing 'ShortByteString's (folds)
+    foldl,
+    foldl',
+    foldl1,
+    foldl1',
+
+    foldr,
+    foldr',
+    foldr1,
+    foldr1',
+
+    -- ** Special folds
+    all,
+    any,
+    concat,
+
+    -- ** Generating and unfolding ByteStrings
+    replicate,
+    unfoldr,
+    unfoldrN,
+
+    -- * Substrings
+
+    -- ** Breaking strings
+    take,
+    takeEnd,
+    takeWhileEnd,
+    takeWhile,
+    drop,
+    dropEnd,
+    dropWhile,
+    dropWhileEnd,
+    breakEnd,
+    break,
+    span,
+    spanEnd,
+    splitAt,
+    split,
+    splitWith,
+    stripSuffix,
+    stripPrefix,
+
+    -- * Predicates
+    isInfixOf,
+    isPrefixOf,
+    isSuffixOf,
+
+    -- ** Search for arbitrary substrings
+    breakSubstring,
+
+    -- * Searching ShortByteStrings
+
+    -- ** Searching by equality
+    elem,
+
+    -- ** Searching with a predicate
+    find,
+    filter,
+    partition,
+
+    -- * Indexing ShortByteStrings
+    index,
+    indexMaybe,
+    (!?),
+    elemIndex,
+    elemIndices,
+    count,
+    findIndex,
+    findIndices,
+
     -- * Low level conversions
-    -- ** Packing 'Foreign.C.String.CString's and pointers
+    -- ** Packing 'CString's and pointers
     packCString,
     packCStringLen,
 
-    -- ** Using ByteStrings as 'Foreign.C.String.CString's
+    -- ** Using ShortByteStrings as 'CString's
     useAsCString,
-    useAsCStringLen
+    useAsCStringLen,
   ) where
 
 import Data.ByteString.Short.Internal

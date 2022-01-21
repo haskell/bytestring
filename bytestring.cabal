@@ -1,5 +1,5 @@
 Name:                bytestring
-Version:             0.11.2.0
+Version:             0.11.3.0
 Synopsis:            Fast, compact, strict and lazy byte strings with a list interface
 Description:
     An efficient compact, immutable byte string type (both strict and lazy)
@@ -158,6 +158,7 @@ test-suite bytestring-tests
                     Properties.ByteStringChar8
                     Properties.ByteStringLazy
                     Properties.ByteStringLazyChar8
+                    Properties.ShortByteString
                     QuickCheckUtils
   hs-source-dirs:   tests,
                     tests/builder
