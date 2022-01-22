@@ -39,8 +39,10 @@ module Data.ByteString.Short.Internal (
     append,
     last,
     tail,
+    uncons,
     head,
     init,
+    unsnoc,
     null,
     length,
 
@@ -623,6 +625,18 @@ tail = \sbs ->
       False -> create nl $ \mba -> copyByteArray (asBA sbs) 1 mba 0 nl
 {-# INLINE tail #-}
 
+-- | /O(n)/ Extract the head and tail of a ByteString, returning Nothing
+-- if it is empty.
+uncons :: ShortByteString -> Maybe (Word8, ShortByteString)
+uncons sbs =
+  let l = length sbs
+      nl = l - 1
+  in if | l <= 0 -> Nothing
+        | otherwise -> let h = indexWord8Array (asBA sbs) 0
+                           t = create nl $ \mba -> copyByteArray (asBA sbs) 1 mba 0 nl
+                       in Just (h, t)
+{-# INLINE uncons #-}
+
 -- | /O(1)/ Extract the first element of a ShortByteString, which must be non-empty.
 -- An exception will be thrown in the case of an empty ShortByteString.
 --
@@ -647,6 +661,18 @@ init = \sbs ->
       True -> error "empty ShortByteString"
       False -> create nl $ \mba -> copyByteArray (asBA sbs) 0 mba 0 nl
 {-# INLINE init #-}
+
+-- | /O(n)/ Extract the 'init' and 'last' of a ByteString, returning Nothing
+-- if it is empty.
+unsnoc :: ShortByteString -> Maybe (ShortByteString, Word8)
+unsnoc sbs =
+  let l = length sbs
+      nl = l - 1
+  in if | l <= 0 -> Nothing
+        | otherwise -> let l' = indexWord8Array (asBA sbs) (l - 1)
+                           i = create nl $ \mba -> copyByteArray (asBA sbs) 0 mba 0 nl
+                       in Just (i, l')
+{-# INLINE unsnoc #-}
 
 
 -- ---------------------------------------------------------------------

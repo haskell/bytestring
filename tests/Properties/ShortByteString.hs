@@ -192,10 +192,14 @@ tests =
     \(toElem -> c) x -> B.unpack (B.cons c x) === c : B.unpack x
   , testProperty "cons []" $
     \(toElem -> c) -> B.unpack (B.cons c B.empty) === [c]
+  , testProperty "uncons" $
+    \x -> fmap (second B.unpack) (B.uncons x) === L.uncons (B.unpack x)
   , testProperty "snoc" $
     \(toElem -> c) x -> B.unpack (B.snoc x c) === B.unpack x ++ [c]
   , testProperty "snoc []" $
     \(toElem -> c) -> B.unpack (B.snoc B.empty c) === [c]
+  , testProperty "unsnoc" $
+    \x -> fmap (first B.unpack) (B.unsnoc x) === unsnoc (B.unpack x)
 
   , testProperty "drop" $
     \n x -> B.unpack (B.drop n x) === drop (fromIntegral n) (B.unpack x)
@@ -401,6 +405,10 @@ tests =
     \x -> not (B.any (== _nul) x)
       ==> monadicIO $ run (B.useAsCStringLen x B.packCStringLen >>= \x' -> pure (x === x'))
   ]
+
+unsnoc :: [a] -> Maybe ([a], a)
+unsnoc [] = Nothing
+unsnoc xs = Just (init xs, last xs)
 
 stripSuffix :: Eq a => [a] -> [a] -> Maybe [a]
 stripSuffix x y = fmap reverse (stripPrefix (reverse x) (reverse y))
