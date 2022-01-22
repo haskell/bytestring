@@ -593,7 +593,7 @@ cons c = \sbs -> let l = length sbs
 -- An exception will be thrown in the case of an empty ShortByteString.
 --
 -- @since 0.11.3.0
-last :: ShortByteString -> Word8
+last :: HasCallStack => ShortByteString -> Word8
 last = \sbs -> case null sbs of
   True -> error "empty ShortByteString"
   False -> indexWord8Array (asBA sbs) (length sbs - 1)
@@ -605,7 +605,7 @@ last = \sbs -> case null sbs of
 -- Note: copies the entire byte array
 --
 -- @since 0.11.3.0
-tail :: ShortByteString -> ShortByteString
+tail :: HasCallStack => ShortByteString -> ShortByteString
 tail = \sbs -> 
   let l = length sbs
       nl = l - 1
@@ -618,7 +618,7 @@ tail = \sbs ->
 -- An exception will be thrown in the case of an empty ShortByteString.
 --
 -- @since 0.11.3.0
-head :: ShortByteString -> Word8
+head :: HasCallStack => ShortByteString -> Word8
 head = \sbs -> case null sbs of
   True -> error "empty ShortByteString"
   False -> indexWord8Array (asBA sbs) 0
@@ -630,7 +630,7 @@ head = \sbs -> case null sbs of
 -- Note: copies the entire byte array
 --
 -- @since 0.11.3.0
-init :: ShortByteString -> ShortByteString
+init :: HasCallStack => ShortByteString -> ShortByteString
 init = \sbs ->
   let l = length sbs
       nl = l - 1
@@ -761,7 +761,7 @@ foldr' k v = Foldable.foldr' k v . unpack
 -- An exception will be thrown in the case of an empty ShortByteString.
 --
 -- @since 0.11.3.0
-foldl1 :: (Word8 -> Word8 -> Word8) -> ShortByteString -> Word8
+foldl1 :: HasCallStack => (Word8 -> Word8 -> Word8) -> ShortByteString -> Word8
 foldl1 k = List.foldl1 k . unpack
 {-# INLINE foldl1 #-}
 
@@ -769,7 +769,7 @@ foldl1 k = List.foldl1 k . unpack
 -- An exception will be thrown in the case of an empty ShortByteString.
 --
 -- @since 0.11.3.0
-foldl1' :: (Word8 -> Word8 -> Word8) -> ShortByteString -> Word8
+foldl1' :: HasCallStack => (Word8 -> Word8 -> Word8) -> ShortByteString -> Word8
 foldl1' k = List.foldl1' k . unpack
 
 -- | 'foldr1' is a variant of 'foldr' that has no starting value argument,
@@ -777,7 +777,7 @@ foldl1' k = List.foldl1' k . unpack
 -- An exception will be thrown in the case of an empty ShortByteString.
 --
 -- @since 0.11.3.0
-foldr1 :: (Word8 -> Word8 -> Word8) -> ShortByteString -> Word8
+foldr1 :: HasCallStack => (Word8 -> Word8 -> Word8) -> ShortByteString -> Word8
 foldr1 k = List.foldr1 k . unpack
 {-# INLINE foldr1 #-}
 
@@ -785,7 +785,7 @@ foldr1 k = List.foldr1 k . unpack
 -- accumulator.
 --
 -- @since 0.11.3.0
-foldr1' :: (Word8 -> Word8 -> Word8) -> ShortByteString -> Word8
+foldr1' :: HasCallStack => (Word8 -> Word8 -> Word8) -> ShortByteString -> Word8
 foldr1' k = \sbs -> if null sbs then errorEmptyList "foldr1'" else foldr' k (last sbs) (init sbs)
 {-# INLINE foldr1' #-}
 
