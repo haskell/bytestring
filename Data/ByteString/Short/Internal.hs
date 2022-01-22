@@ -136,7 +136,7 @@ module Data.ByteString.Short.Internal (
     useAsCStringLen,
   ) where
 
-import Data.ByteString.Internal (ByteString(..), accursedUnutterablePerformIO)
+import Data.ByteString.Internal (ByteString(..), accursedUnutterablePerformIO, memchr)
 import qualified Data.ByteString.Internal as BS
 
 import Data.Bifunctor   ( first, bimap )
@@ -156,6 +156,7 @@ import Foreign.C.Types  (CSize(..), CInt(..))
 #if !MIN_VERSION_base(4,11,0)
 import Foreign.Ptr      (plusPtr)
 #endif
+import Foreign.Ptr      (minusPtr, nullPtr)
 import Foreign.Marshal.Alloc (allocaBytes) 
 import Foreign.ForeignPtr (touchForeignPtr)
 import Foreign.ForeignPtr.Unsafe (unsafeForeignPtrToPtr)
@@ -1295,7 +1296,12 @@ partition f = \s -> if
 --
 -- @since 0.11.3.0
 elemIndex :: Word8 -> ShortByteString -> Maybe Int
-elemIndex k = findIndex (==k)
+elemIndex c = \(SBS barr#) -> do
+    let ptr = Ptr (byteArrayContents# barr#)
+        l   = I# (sizeofByteArray# barr#)
+    accursedUnutterablePerformIO $ do
+      q <- memchr ptr c (fromIntegral l)
+      return $! if q == nullPtr then Nothing else Just $! q `minusPtr` ptr
 {-# INLINE elemIndex #-}
 
 -- | /O(n)/ The 'elemIndices' function extends 'elemIndex', by returning
