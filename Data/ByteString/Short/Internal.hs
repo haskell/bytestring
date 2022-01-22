@@ -895,7 +895,7 @@ takeWhile :: (Word8 -> Bool) -> ShortByteString -> ShortByteString
 takeWhile f ps = take (findIndexOrLength (not . f) ps) ps
 {-# INLINE takeWhile #-}
 
--- | /O(1)/ @'takeEnd' n xs@ is equivalent to @'drop' ('length' xs - n) xs@.
+-- | /O(n)/ @'takeEnd' n xs@ is equivalent to @'drop' ('length' xs - n) xs@.
 -- Takes @n@ elements from end of bytestring.
 --
 -- >>> takeEnd 3 "abcdefg"
@@ -937,7 +937,7 @@ drop = \n -> \sbs ->
         | otherwise -> create newLen $ \mba -> copyByteArray (asBA sbs) n mba 0 newLen
 {-# INLINE drop #-}
 
--- | /O(1)/ @'dropEnd' n xs@ is equivalent to @'take' ('length' xs - n) xs@.
+-- | /O(n)/ @'dropEnd' n xs@ is equivalent to @'take' ('length' xs - n) xs@.
 -- Drops @n@ elements from end of bytestring.
 --
 -- >>> dropEnd 3 "abcdefg"
