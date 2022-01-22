@@ -149,7 +149,10 @@ import Data.Semigroup   (Semigroup((<>)))
 import Data.Monoid      (Monoid(..))
 import Data.String      (IsString(..))
 import Control.Applicative (pure)
-import Control.Monad    ((>>), void)
+import Control.Monad    ((>>))
+#if MIN_VERSION_base(4,12,0)
+import Control.Monad    (void)
+#endif
 import Control.DeepSeq  (NFData(..))
 import Foreign.C.String (CString, CStringLen)
 import Foreign.C.Types  (CSize(..), CInt(..))
@@ -179,9 +182,13 @@ import GHC.Exts ( Int(I#), Int#, Ptr(Ptr), Addr#, Char(C#)
                 , compareByteArrays#
 #endif
                 , sizeofByteArray#
-                , indexWord8Array#, indexWord8ArrayAsWord64#, indexCharArray#
-                , writeWord8Array#, writeWord64Array#, writeCharArray#
+                , indexWord8Array#, indexCharArray#
+                , writeWord8Array#, writeCharArray#
                 , unsafeFreezeByteArray#
+#if MIN_VERSION_base(4,12,0)
+                ,writeWord64Array#
+                ,indexWord8ArrayAsWord64#
+#endif
                 , setByteArray# )
 import GHC.IO
 import GHC.ForeignPtr (ForeignPtr(ForeignPtr), ForeignPtrContents(PlainPtr))
@@ -201,7 +208,9 @@ import Prelude ( Eq(..), Ord(..), Ordering(..), Read(..), Show(..)
                , Maybe(..)
                , not
                , snd
+#if MIN_VERSION_base(4,12,0)
                , quotRem
+#endif
                )
 
 import qualified Language.Haskell.TH.Lib as TH
@@ -669,6 +678,7 @@ reverse :: ShortByteString -> ShortByteString
 reverse = \sbs ->
     let l = length sbs
         ba = asBA sbs
+#if MIN_VERSION_base(4,12,0)
     in create l (\mba -> go ba mba l)
   where
     go :: BA -> MBA s -> Int -> ST s ()
@@ -692,6 +702,17 @@ reverse = \sbs ->
             let w = indexWord8Array ba i
             writeWord8Array mba (l - 1 - i) w
             goWord8Chunk (i+1) cl
+#else
+    in create l (\mba -> go ba mba 0 l)
+   where
+    go :: BA -> MBA s -> Int -> Int -> ST s ()
+    go !ba !mba !i !l
+      | i >= l = return ()
+      | otherwise = do
+          let w = indexWord8Array ba i
+          writeWord8Array mba (l - 1 - i) w
+          go ba mba (i+1) l
+#endif
 
 
 -- | /O(n)/ The 'intercalate' function takes a 'ShortByteString' and a list of
@@ -1400,8 +1421,10 @@ indexCharArray (BA# ba#) (I# i#) = C# (indexCharArray# ba# i#)
 indexWord8Array :: BA -> Int -> Word8
 indexWord8Array (BA# ba#) (I# i#) = W8# (indexWord8Array# ba# i#)
 
+#if MIN_VERSION_base(4,12,0)
 indexWord64Array :: BA -> Int -> Word64
 indexWord64Array (BA# ba#) (I# i#) = W64# (indexWord8ArrayAsWord64# ba# i#)
+#endif
 
 newByteArray :: Int -> ST s (MBA s)
 newByteArray (I# len#) =
@@ -1428,10 +1451,12 @@ writeWord8Array (MBA# mba#) (I# i#) (W8# w#) =
   ST $ \s -> case writeWord8Array# mba# i# w# s of
                s -> (# s, () #)
 
+#if MIN_VERSION_base(4,12,0)
 writeWord64Array :: MBA s -> Int -> Word64 -> ST s ()
 writeWord64Array (MBA# mba#) (I# i#) (W64# w#) =
   ST $ \s -> case writeWord64Array# mba# i# w# s of
                s -> (# s, () #)
+#endif
 
 copyAddrToByteArray :: Ptr a -> MBA RealWorld -> Int -> Int -> ST RealWorld ()
 copyAddrToByteArray (Ptr src#) (MBA# dst#) (I# dst_off#) (I# len#) =
