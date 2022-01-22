@@ -405,7 +405,7 @@ fromShortIO sbs = do
 -- @since 0.11.3.0
 singleton :: Word8 -> ShortByteString
 singleton = \w -> create 1 (\mba -> writeWord8Array mba 0 w)
-{-# INLINE [1] singleton #-}
+{-# INLINE singleton #-}
 
 ------------------------------------------------------------------------
 -- Packing and unpacking from lists
@@ -699,7 +699,7 @@ reverse = \sbs ->
 -- @since 0.11.3.0
 intercalate :: ShortByteString -> [ShortByteString] -> ShortByteString
 intercalate s = concat . List.intersperse s
-{-# INLINE [1] intercalate #-}
+{-# INLINE intercalate #-}
 
 
 -- ---------------------------------------------------------------------
@@ -801,7 +801,7 @@ any k = \sbs ->
       go !n | n >= l    = False
             | otherwise = k (w n) || go (n + 1)
   in go 0
-{-# INLINE [1] any #-}
+{-# INLINE any #-}
 
 
 
@@ -827,7 +827,7 @@ take = \n -> \sbs ->
 -- @since 0.11.3.0
 takeWhile :: (Word8 -> Bool) -> ShortByteString -> ShortByteString
 takeWhile f ps = take (findIndexOrLength (not . f) ps) ps
-{-# INLINE [1] takeWhile #-}
+{-# INLINE takeWhile #-}
 
 -- | /O(1)/ @'takeEnd' n xs@ is equivalent to @'drop' ('length' xs - n) xs@.
 -- Takes @n@ elements from end of bytestring.
@@ -929,7 +929,7 @@ breakEnd p = \sbs -> splitAt (findFromEndUntil p sbs) sbs
 -- @since 0.11.3.0
 break :: (Word8 -> Bool) -> ShortByteString -> (ShortByteString, ShortByteString)
 break = \p -> \ps -> case findIndexOrLength p ps of n -> (take n ps, drop n ps)
-{-# INLINE [1] break #-}
+{-# INLINE break #-}
 
 -- | Similar to 'P.span',
 -- returns the longest (possibly empty) prefix of elements
@@ -1341,7 +1341,7 @@ findIndices k = \sbs ->
             | k (w n)   = n : go (n + 1)
             | otherwise = go (n + 1)
   in go 0
-{-# INLINE [1] findIndices #-}
+{-# INLINE findIndices #-}
 
 
 
