@@ -136,7 +136,7 @@ module Data.ByteString.Short.Internal (
     useAsCStringLen,
   ) where
 
-import Data.ByteString.Internal (ByteString(..), accursedUnutterablePerformIO, memchr)
+import Data.ByteString.Internal (ByteString(..), accursedUnutterablePerformIO, memchr, checkedAdd)
 import qualified Data.ByteString.Internal as BS
 
 import Data.Bifunctor   ( first, bimap )
@@ -700,7 +700,24 @@ reverse = \sbs ->
 --
 -- @since 0.11.3.0
 intercalate :: ShortByteString -> [ShortByteString] -> ShortByteString
-intercalate s = concat . List.intersperse s
+intercalate _ [] = mempty
+intercalate _ [x] = x -- This branch exists for laziness, not speed
+intercalate inc (sbs:t) = create totalLen (\mba ->
+                                              let l = length sbs
+                                              in copyByteArray (asBA sbs) 0 mba 0 l >> go mba l t)
+ where
+  go :: MBA s -> Int -> [ShortByteString] -> ST s ()
+  go _ _ [] = pure ()
+  go mba !off (chunk:chunks) = do
+    let lc = length chunk
+    copyByteArray ba 0 mba off lba
+    copyByteArray (asBA chunk) 0 mba (off + lba) lc
+    go mba (off + lc + lba) chunks
+
+  totalLen = List.foldl' (\acc chunk -> acc +! length inc +! length chunk) (length sbs) t
+  (+!) = checkedAdd "intercalate"
+  ba = asBA inc
+  lba = length inc
 {-# INLINE intercalate #-}
 
 
