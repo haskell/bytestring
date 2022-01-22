@@ -522,7 +522,7 @@ dropWhile f = B.dropWhile (f . w2c)
     dropWhile isSpace = dropSpace
   #-}
 
--- | 'dropWhile' @p xs@ returns the prefix remaining after 'takeWhileEnd' @p
+-- | 'dropWhileEnd' @p xs@ returns the prefix remaining after 'takeWhileEnd' @p
 -- xs@.
 --
 -- @since 0.10.12.0
