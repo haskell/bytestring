@@ -181,7 +181,8 @@ import GHC.Exts ( Int(I#), Int#, Ptr(Ptr), Addr#, Char(C#)
                 , sizeofByteArray#
                 , indexWord8Array#, indexWord8ArrayAsWord64#, indexCharArray#
                 , writeWord8Array#, writeWord64Array#, writeCharArray#
-                , unsafeFreezeByteArray# )
+                , unsafeFreezeByteArray#
+                , setByteArray# )
 import GHC.IO
 import GHC.ForeignPtr (ForeignPtr(ForeignPtr), ForeignPtrContents(PlainPtr))
 import GHC.ST         (ST(ST), runST)
@@ -1067,13 +1068,9 @@ stripPrefix sbs1 sbs2 = do
 replicate :: Int -> Word8 -> ShortByteString
 replicate w c
     | w <= 0    = empty
-    | otherwise = create w (\mba -> go mba 0)
-  where
-    go :: MBA s -> Int -> ST s ()
-    go mba ix
-      | ix < 0 || ix >= w = pure ()
-      | otherwise = writeWord8Array mba ix c >> go mba (ix + 1)
+    | otherwise = create w (\mba -> setByteArray mba 0 w (fromIntegral c))
 {-# INLINE replicate #-}
+
 
 -- | /O(n)/, where /n/ is the length of the result.  The 'unfoldr'
 -- function is analogous to the List \'unfoldr\'.  'unfoldr' builds a
@@ -1432,6 +1429,11 @@ copyByteArrayToAddr (BA# src#) (I# src_off#) (Ptr dst#) (I# len#) =
 copyByteArray :: BA -> Int -> MBA s -> Int -> Int -> ST s ()
 copyByteArray (BA# src#) (I# src_off#) (MBA# dst#) (I# dst_off#) (I# len#) =
     ST $ \s -> case copyByteArray# src# src_off# dst# dst_off# len# s of
+                 s -> (# s, () #)
+
+setByteArray :: MBA s -> Int -> Int -> Int -> ST s ()
+setByteArray (MBA# dst#) (I# off#) (I# len#) (I# c#) =
+    ST $ \s -> case setByteArray# dst# off# len# c# s of
                  s -> (# s, () #)
 
 
