@@ -9,6 +9,16 @@
 {-# LANGUAGE TupleSections #-}
 {-# OPTIONS_HADDOCK not-home #-}
 
+-- Not all architectures are forgiving of unaligned accesses; whitelist ones
+-- which are known not to trap (either to the kernel for emulation, or crash).
+#if defined(i386_HOST_ARCH) || defined(x86_64_HOST_ARCH) \
+    || ((defined(arm_HOST_ARCH) || defined(aarch64_HOST_ARCH)) \
+        && defined(__ARM_FEATURE_UNALIGNED)) \
+    || defined(powerpc_HOST_ARCH) || defined(powerpc64_HOST_ARCH) \
+    || defined(powerpc64le_HOST_ARCH)
+#define SAFE_UNALIGNED 1
+#endif
+
 -- |
 -- Module      : Data.ByteString.Short.Internal
 -- Copyright   : (c) Duncan Coutts 2012-2013, Julian Ospald 2022
@@ -152,7 +162,7 @@ import Data.Monoid      (Monoid(..))
 import Data.String      (IsString(..))
 import Control.Applicative (pure)
 import Control.Monad    ((>>))
-#if MIN_VERSION_base(4,12,0)
+#if MIN_VERSION_base(4,12,0) && defined(SAFE_UNALIGNED)
 import Control.Monad    (void)
 #endif
 import Control.DeepSeq  (NFData(..))
@@ -187,7 +197,7 @@ import GHC.Exts ( Int(I#), Int#, Ptr(Ptr), Addr#, Char(C#)
                 , indexWord8Array#, indexCharArray#
                 , writeWord8Array#, writeCharArray#
                 , unsafeFreezeByteArray#
-#if MIN_VERSION_base(4,12,0)
+#if MIN_VERSION_base(4,12,0) && defined(SAFE_UNALIGNED)
                 ,writeWord64Array#
                 ,indexWord8ArrayAsWord64#
 #endif
@@ -210,7 +220,7 @@ import Prelude ( Eq(..), Ord(..), Ordering(..), Read(..), Show(..)
                , Maybe(..)
                , not
                , snd
-#if MIN_VERSION_base(4,12,0)
+#if MIN_VERSION_base(4,12,0) && defined(SAFE_UNALIGNED)
                , quotRem
 #endif
                )
@@ -704,7 +714,7 @@ reverse :: ShortByteString -> ShortByteString
 reverse = \sbs ->
     let l = length sbs
         ba = asBA sbs
-#if MIN_VERSION_base(4,12,0)
+#if MIN_VERSION_base(4,12,0) && defined(SAFE_UNALIGNED)
     in create l (\mba -> go ba mba l)
   where
     go :: BA -> MBA s -> Int -> ST s ()
@@ -1447,7 +1457,7 @@ indexCharArray (BA# ba#) (I# i#) = C# (indexCharArray# ba# i#)
 indexWord8Array :: BA -> Int -> Word8
 indexWord8Array (BA# ba#) (I# i#) = W8# (indexWord8Array# ba# i#)
 
-#if MIN_VERSION_base(4,12,0)
+#if MIN_VERSION_base(4,12,0) && defined(SAFE_UNALIGNED)
 indexWord64Array :: BA -> Int -> Word64
 indexWord64Array (BA# ba#) (I# i#) = W64# (indexWord8ArrayAsWord64# ba# i#)
 #endif
@@ -1477,7 +1487,7 @@ writeWord8Array (MBA# mba#) (I# i#) (W8# w#) =
   ST $ \s -> case writeWord8Array# mba# i# w# s of
                s -> (# s, () #)
 
-#if MIN_VERSION_base(4,12,0)
+#if MIN_VERSION_base(4,12,0) && defined(SAFE_UNALIGNED)
 writeWord64Array :: MBA s -> Int -> Word64 -> ST s ()
 writeWord64Array (MBA# mba#) (I# i#) (W64# w#) =
   ST $ \s -> case writeWord64Array# mba# i# w# s of
