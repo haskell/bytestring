@@ -182,6 +182,7 @@ benchmark bytestring-bench
                     BenchCSV
                     BenchIndices
                     BenchReadInt
+                    BenchShort
   type:             exitcode-stdio-1.0
   hs-source-dirs:   bench
   default-language: Haskell2010
