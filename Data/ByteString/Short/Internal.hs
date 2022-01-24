@@ -628,6 +628,8 @@ tail = \sbs ->
 
 -- | /O(n)/ Extract the head and tail of a ByteString, returning Nothing
 -- if it is empty.
+--
+-- @since 0.11.3.0
 uncons :: ShortByteString -> Maybe (Word8, ShortByteString)
 uncons = \sbs ->
   let l = length sbs
@@ -665,6 +667,8 @@ init = \sbs ->
 
 -- | /O(n)/ Extract the 'init' and 'last' of a ByteString, returning Nothing
 -- if it is empty.
+--
+-- @since 0.11.3.0
 unsnoc :: ShortByteString -> Maybe (ShortByteString, Word8)
 unsnoc = \sbs ->
   let l = length sbs
