@@ -140,11 +140,11 @@ module Data.ByteString.Short.Internal (
     isValidUtf8,
 
     -- * Low level conversions
-    -- ** Packing 'CString's and pointers
+    -- ** Packing 'Foreign.C.String.CString's and pointers
     packCString,
     packCStringLen,
 
-    -- ** Using ShortByteStrings as 'CString's
+    -- ** Using ShortByteStrings as 'Foreign.C.String.CString's
     useAsCString,
     useAsCStringLen,
   ) where
