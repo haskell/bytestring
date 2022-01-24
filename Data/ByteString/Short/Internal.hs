@@ -196,7 +196,7 @@ import GHC.Exts ( Int(I#), Int#, Ptr(Ptr), Addr#, Char(C#)
 #endif
                 , sizeofByteArray#
                 , indexWord8Array#, indexCharArray#
-                , writeWord8Array#, writeCharArray#
+                , writeWord8Array#
                 , unsafeFreezeByteArray#
 #if MIN_VERSION_base(4,12,0) && defined(SAFE_UNALIGNED)
                 ,writeWord64Array#
@@ -443,20 +443,10 @@ unpack :: ShortByteString -> [Word8]
 unpack = unpackBytes
 
 packChars :: [Char] -> ShortByteString
-packChars cs = packLenChars (List.length cs) cs
+packChars = \cs -> packLenBytes (List.length cs) (List.map BS.c2w cs)
 
 packBytes :: [Word8] -> ShortByteString
-packBytes cs = packLenBytes (List.length cs) cs
-
-packLenChars :: Int -> [Char] -> ShortByteString
-packLenChars len cs0 =
-    create len (\mba -> go mba 0 cs0)
-  where
-    go :: MBA s -> Int -> [Char] -> ST s ()
-    go !_   !_ []     = return ()
-    go !mba !i (c:cs) = do
-      writeCharArray mba i c
-      go mba (i+1) cs
+packBytes = \ws -> packLenBytes (List.length ws) ws
 
 packLenBytes :: Int -> [Word8] -> ShortByteString
 packLenBytes len ws0 =
@@ -1475,11 +1465,6 @@ unsafeFreezeByteArray :: MBA s -> ST s BA
 unsafeFreezeByteArray (MBA# mba#) =
     ST $ \s -> case unsafeFreezeByteArray# mba# s of
                  (# s, ba# #) -> (# s, BA# ba# #)
-
-writeCharArray :: MBA s -> Int -> Char -> ST s ()
-writeCharArray (MBA# mba#) (I# i#) (C# c#) =
-  ST $ \s -> case writeCharArray# mba# i# c# s of
-               s -> (# s, () #)
 
 writeWord8Array :: MBA s -> Int -> Word8 -> ST s ()
 writeWord8Array (MBA# mba#) (I# i#) (W8# w#) =
