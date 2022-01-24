@@ -7,6 +7,7 @@
 {-# LANGUAGE TemplateHaskellQuotes #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE LambdaCase #-}
 {-# OPTIONS_HADDOCK not-home #-}
 
 -- Not all architectures are forgiving of unaligned accesses; whitelist ones
@@ -565,7 +566,7 @@ append src1 src2 =
         copyByteArray (asBA src2) 0 dst len1 len2
 
 concat :: [ShortByteString] -> ShortByteString
-concat sbss =
+concat = \sbss ->
     create (totalLen 0 sbss) (\dst -> copy dst 0 sbss)
   where
     totalLen !acc []          = acc
@@ -638,7 +639,7 @@ tail = \sbs ->
 -- | /O(n)/ Extract the head and tail of a ByteString, returning Nothing
 -- if it is empty.
 uncons :: ShortByteString -> Maybe (Word8, ShortByteString)
-uncons sbs =
+uncons = \sbs ->
   let l = length sbs
       nl = l - 1
   in if | l <= 0 -> Nothing
@@ -675,7 +676,7 @@ init = \sbs ->
 -- | /O(n)/ Extract the 'init' and 'last' of a ByteString, returning Nothing
 -- if it is empty.
 unsnoc :: ShortByteString -> Maybe (ShortByteString, Word8)
-unsnoc sbs =
+unsnoc = \sbs ->
   let l = length sbs
       nl = l - 1
   in if | l <= 0 -> Nothing
@@ -757,12 +758,16 @@ reverse = \sbs ->
 --
 -- @since 0.11.3.0
 intercalate :: ShortByteString -> [ShortByteString] -> ShortByteString
-intercalate _ [] = mempty
-intercalate _ [x] = x -- This branch exists for laziness, not speed
-intercalate inc (sbs:t) = create totalLen (\mba ->
-                                              let l = length sbs
-                                              in copyByteArray (asBA sbs) 0 mba 0 l >> go mba l t)
+intercalate inc = \case
+                    [] -> mempty
+                    [x] -> x -- This branch exists for laziness, not speed
+                    (sbs:t) -> let !totalLen = List.foldl' (\acc chunk -> acc +! length inc +! length chunk) (length sbs) t
+                               in create totalLen (\mba ->
+                                      let !l = length sbs
+                                      in copyByteArray (asBA sbs) 0 mba 0 l >> go mba l t)
  where
+  ba = asBA inc
+  lba = length inc
   go :: MBA s -> Int -> [ShortByteString] -> ST s ()
   go _ _ [] = pure ()
   go mba !off (chunk:chunks) = do
@@ -770,11 +775,7 @@ intercalate inc (sbs:t) = create totalLen (\mba ->
     copyByteArray ba 0 mba off lba
     copyByteArray (asBA chunk) 0 mba (off + lba) lc
     go mba (off + lc + lba) chunks
-
-  totalLen = List.foldl' (\acc chunk -> acc +! length inc +! length chunk) (length sbs) t
   (+!) = checkedAdd "intercalate"
-  ba = asBA inc
-  lba = length inc
 {-# INLINE intercalate #-}
 
 
@@ -902,7 +903,7 @@ take = \n -> \sbs ->
 --
 -- @since 0.11.3.0
 takeWhile :: (Word8 -> Bool) -> ShortByteString -> ShortByteString
-takeWhile f ps = take (findIndexOrLength (not . f) ps) ps
+takeWhile f = \ps -> take (findIndexOrLength (not . f) ps) ps
 {-# INLINE takeWhile #-}
 
 -- | /O(n)/ @'takeEnd' n xs@ is equivalent to @'drop' ('length' xs - n) xs@.
@@ -917,10 +918,9 @@ takeWhile f ps = take (findIndexOrLength (not . f) ps) ps
 --
 -- @since 0.11.3.0
 takeEnd :: Int -> ShortByteString -> ShortByteString
-takeEnd n sbs
-    | n >= length sbs  = sbs
-    | n <= 0           = empty
-    | otherwise        = drop (length sbs - n) sbs
+takeEnd n = \sbs -> if | n >= length sbs  -> sbs
+                       | n <= 0           -> empty
+                       | otherwise        -> drop (length sbs - n) sbs
 {-# INLINE takeEnd #-}
 
 -- | Returns the longest (possibly empty) suffix of elements
@@ -930,7 +930,7 @@ takeEnd n sbs
 --
 -- @since 0.11.3.0
 takeWhileEnd :: (Word8 -> Bool) -> ShortByteString -> ShortByteString
-takeWhileEnd f ps = drop (findFromEndUntil (not . f) ps) ps
+takeWhileEnd f = \ps -> drop (findFromEndUntil (not . f) ps) ps
 {-# INLINE takeWhileEnd #-}
 
 -- | /O(n)/ 'drop' @n@ @xs@ returns the suffix of @xs@ after the first n elements, or @[]@ if @n > 'length' xs@.
@@ -959,10 +959,9 @@ drop = \n -> \sbs ->
 --
 -- @since 0.11.3.0
 dropEnd :: Int -> ShortByteString -> ShortByteString
-dropEnd n sbs
-    | n <= 0           = sbs
-    | n >= length sbs  = empty
-    | otherwise        = take (length sbs - n) sbs
+dropEnd n = \sbs -> if | n <= 0           -> sbs
+                       | n >= length sbs  -> empty
+                       | otherwise        -> take (length sbs - n) sbs
 
 {-# INLINE dropEnd #-}
 -- | Similar to 'P.dropWhile',
@@ -1096,7 +1095,7 @@ splitWith p = \sbs -> if
 --
 -- @since 0.11.3.0
 stripSuffix :: ShortByteString -> ShortByteString -> Maybe ShortByteString
-stripSuffix sbs1 sbs2 = do
+stripSuffix sbs1 = \sbs2 -> do
   let l1 = length sbs1
       l2 = length sbs2
   if | l1 == 0   -> Just sbs2
@@ -1114,7 +1113,7 @@ stripSuffix sbs1 sbs2 = do
 --
 -- @since 0.11.3.0
 stripPrefix :: ShortByteString -> ShortByteString -> Maybe ShortByteString
-stripPrefix sbs1 sbs2 = do
+stripPrefix sbs1 = \sbs2 -> do
   let l1 = length sbs1
       l2 = length sbs2
   if | l1 == 0   -> Just sbs2
@@ -1164,7 +1163,7 @@ replicate w c
 --
 -- @since 0.11.3.0
 unfoldr :: (a -> Maybe (Word8, a)) -> a -> ShortByteString
-unfoldr f x0 = packBytesRev $ go x0 mempty
+unfoldr f = \x0 -> packBytesRev $ go x0 mempty
  where
    go x words' = case f x of
                     Nothing -> words'
@@ -1185,7 +1184,7 @@ unfoldr f x0 = packBytesRev $ go x0 mempty
 --
 -- @since 0.11.3.0
 unfoldrN :: Int -> (a -> Maybe (Word8, a)) -> a -> (ShortByteString, Maybe a)
-unfoldrN i f x0 = first packBytesRev $ go (i - 1) x0 mempty
+unfoldrN i f = \x0 -> first packBytesRev $ go (i - 1) x0 mempty
  where
    go i' x words'
     | i' < 0     = (words', Just x)
@@ -1202,13 +1201,13 @@ unfoldrN i f x0 = first packBytesRev $ go (i - 1) x0 mempty
 --
 -- @since 0.11.3.0
 isInfixOf :: ShortByteString -> ShortByteString -> Bool
-isInfixOf p s = null p || not (null $ snd $ breakSubstring p s)
+isInfixOf p = \s -> null p || not (null $ snd $ breakSubstring p s)
 
 -- |/O(n)/ The 'isPrefixOf' function takes two ShortByteStrings and returns 'True'
 --
 -- @since 0.11.3.0
 isPrefixOf :: ShortByteString -> ShortByteString -> Bool
-isPrefixOf sbs1 sbs2 = do
+isPrefixOf sbs1 = \sbs2 -> do
   let l1 = length sbs1
       l2 = length sbs2
   if | l1 == 0   -> True
@@ -1226,7 +1225,7 @@ isPrefixOf sbs1 sbs2 = do
 --
 -- @since 0.11.3.0
 isSuffixOf :: ShortByteString -> ShortByteString -> Bool
-isSuffixOf sbs1 sbs2 = do
+isSuffixOf sbs1 = \sbs2 -> do
   let l1 = length sbs1
       l2 = length sbs2
   if | l1 == 0   -> True
