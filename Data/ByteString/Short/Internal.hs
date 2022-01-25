@@ -2,7 +2,7 @@
              ForeignFunctionInterface, MagicHash, UnboxedTuples,
              UnliftedFFITypes #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
+{-# OPTIONS_GHC -fno-warn-name-shadowing -fexpose-all-unfoldings #-}
 {-# LANGUAGE Unsafe #-}
 {-# LANGUAGE TemplateHaskellQuotes #-}
 {-# LANGUAGE MultiWayIf #-}
@@ -343,7 +343,6 @@ indexMaybe :: ShortByteString -> Int -> Maybe Word8
 indexMaybe sbs i
   | i >= 0 && i < length sbs = Just $! unsafeIndex sbs i
   | otherwise                = Nothing
-{-# INLINE indexMaybe #-}
 
 -- | /O(1)/ 'ShortByteString' index, starting from 0, that returns 'Just' if:
 --
@@ -352,7 +351,6 @@ indexMaybe sbs i
 -- @since 0.11.0.0
 (!?) :: ShortByteString -> Int -> Maybe Word8
 (!?) = indexMaybe
-{-# INLINE (!?) #-}
 
 unsafeIndex :: ShortByteString -> Int -> Word8
 unsafeIndex sbs = indexWord8Array (asBA sbs)
@@ -380,7 +378,6 @@ create len fill =
       fill mba
       BA# ba# <- unsafeFreezeByteArray mba
       return (SBS ba#)
-{-# INLINE create #-}
 
 ------------------------------------------------------------------------
 -- Conversion to and from ByteString
@@ -429,7 +426,6 @@ fromShortIO sbs = do
 -- @since 0.11.3.0
 singleton :: Word8 -> ShortByteString
 singleton = \w -> create 1 (\mba -> writeWord8Array mba 0 w)
-{-# INLINE singleton #-}
 
 ------------------------------------------------------------------------
 -- Packing and unpacking from lists
@@ -586,7 +582,6 @@ snoc = \sbs c -> let l = length sbs
   in create nl $ \mba -> do
       copyByteArray (asBA sbs) 0 mba 0 l
       writeWord8Array mba l c
-{-# INLINE snoc #-}
 
 -- | /O(n)/ 'cons' is analogous to (:) for lists.
 --
@@ -599,7 +594,6 @@ cons c = \sbs -> let l = length sbs
   in create nl $ \mba -> do
       writeWord8Array mba 0 c
       copyByteArray (asBA sbs) 0 mba 1 l
-{-# INLINE cons #-}
 
 -- | /O(1)/ Extract the last element of a ShortByteString, which must be finite and non-empty.
 -- An exception will be thrown in the case of an empty ShortByteString.
@@ -609,7 +603,6 @@ last :: HasCallStack => ShortByteString -> Word8
 last = \sbs -> case null sbs of
   True -> error "empty ShortByteString"
   False -> indexWord8Array (asBA sbs) (length sbs - 1)
-{-# INLINE last #-}
 
 -- | /O(n)/ Extract the elements after the head of a ShortByteString, which must be non-empty.
 -- An exception will be thrown in the case of an empty ShortByteString.
@@ -624,7 +617,6 @@ tail = \sbs ->
   in case null sbs of
       True -> error "empty ShortByteString"
       False -> create nl $ \mba -> copyByteArray (asBA sbs) 1 mba 0 nl
-{-# INLINE tail #-}
 
 -- | /O(n)/ Extract the head and tail of a ByteString, returning Nothing
 -- if it is empty.
@@ -638,7 +630,6 @@ uncons = \sbs ->
         | otherwise -> let h = indexWord8Array (asBA sbs) 0
                            t = create nl $ \mba -> copyByteArray (asBA sbs) 1 mba 0 nl
                        in Just (h, t)
-{-# INLINE uncons #-}
 
 -- | /O(1)/ Extract the first element of a ShortByteString, which must be non-empty.
 -- An exception will be thrown in the case of an empty ShortByteString.
@@ -648,7 +639,6 @@ head :: HasCallStack => ShortByteString -> Word8
 head = \sbs -> case null sbs of
   True -> error "empty ShortByteString"
   False -> indexWord8Array (asBA sbs) 0
-{-# INLINE head #-}
 
 -- | /O(n)/ Return all the elements of a 'ShortByteString' except the last one.
 -- An exception will be thrown in the case of an empty ShortByteString.
@@ -663,7 +653,6 @@ init = \sbs ->
   in case null sbs of
       True -> error "empty ShortByteString"
       False -> create nl $ \mba -> copyByteArray (asBA sbs) 0 mba 0 nl
-{-# INLINE init #-}
 
 -- | /O(n)/ Extract the 'init' and 'last' of a ByteString, returning Nothing
 -- if it is empty.
@@ -677,7 +666,6 @@ unsnoc = \sbs ->
         | otherwise -> let l' = indexWord8Array (asBA sbs) (l - 1)
                            i = create nl $ \mba -> copyByteArray (asBA sbs) 0 mba 0 nl
                        in Just (i, l')
-{-# INLINE unsnoc #-}
 
 
 -- ---------------------------------------------------------------------
@@ -770,7 +758,6 @@ intercalate inc = \case
     copyByteArray (asBA chunk) 0 mba (off + lba) lc
     go mba (off + lc + lba) chunks
   (+!) = checkedAdd "intercalate"
-{-# INLINE intercalate #-}
 
 
 -- ---------------------------------------------------------------------
@@ -783,14 +770,12 @@ intercalate inc = \case
 -- @since 0.11.3.0
 foldl :: (a -> Word8 -> a) -> a -> ShortByteString -> a
 foldl f v = List.foldl f v . unpack
-{-# INLINE foldl #-}
 
 -- | 'foldl'' is like 'foldl', but strict in the accumulator.
 --
 -- @since 0.11.3.0
 foldl' :: (a -> Word8 -> a) -> a -> ShortByteString -> a
 foldl' f v = List.foldl' f v . unpack
-{-# INLINE foldl' #-}
 
 -- | 'foldr', applied to a binary operator, a starting value
 -- (typically the right-identity of the operator), and a ShortByteString,
@@ -799,14 +784,12 @@ foldl' f v = List.foldl' f v . unpack
 -- @since 0.11.3.0
 foldr :: (Word8 -> a -> a) -> a -> ShortByteString -> a
 foldr f v = List.foldr f v . unpack
-{-# INLINE foldr #-}
 
 -- | 'foldr'' is like 'foldr', but strict in the accumulator.
 --
 -- @since 0.11.3.0
 foldr' :: (Word8 -> a -> a) -> a -> ShortByteString -> a
 foldr' k v = Foldable.foldr' k v . unpack
-{-# INLINE foldr' #-}
 
 -- | 'foldl1' is a variant of 'foldl' that has no starting value
 -- argument, and thus must be applied to non-empty 'ShortByteString's.
@@ -815,7 +798,6 @@ foldr' k v = Foldable.foldr' k v . unpack
 -- @since 0.11.3.0
 foldl1 :: HasCallStack => (Word8 -> Word8 -> Word8) -> ShortByteString -> Word8
 foldl1 k = List.foldl1 k . unpack
-{-# INLINE foldl1 #-}
 
 -- | 'foldl1'' is like 'foldl1', but strict in the accumulator.
 -- An exception will be thrown in the case of an empty ShortByteString.
@@ -831,7 +813,6 @@ foldl1' k = List.foldl1' k . unpack
 -- @since 0.11.3.0
 foldr1 :: HasCallStack => (Word8 -> Word8 -> Word8) -> ShortByteString -> Word8
 foldr1 k = List.foldr1 k . unpack
-{-# INLINE foldr1 #-}
 
 -- | 'foldr1'' is a variant of 'foldr1', but is strict in the
 -- accumulator.
@@ -839,7 +820,6 @@ foldr1 k = List.foldr1 k . unpack
 -- @since 0.11.3.0
 foldr1' :: HasCallStack => (Word8 -> Word8 -> Word8) -> ShortByteString -> Word8
 foldr1' k = \sbs -> if null sbs then errorEmptyList "foldr1'" else foldr' k (last sbs) (init sbs)
-{-# INLINE foldr1' #-}
 
 
 
@@ -872,7 +852,6 @@ any k = \sbs ->
       go !n | n >= l    = False
             | otherwise = k (w n) || go (n + 1)
   in go 0
-{-# INLINE any #-}
 
 
 
@@ -889,7 +868,6 @@ take :: Int -> ShortByteString -> ShortByteString
 take = \n -> \sbs ->
   let len = min (length sbs) (max 0 n)
   in create len $ \mba -> copyByteArray (asBA sbs) 0 mba 0 len
-{-# INLINE take #-}
 
 -- | Similar to 'P.takeWhile',
 -- returns the longest (possibly empty) prefix of elements
@@ -898,7 +876,6 @@ take = \n -> \sbs ->
 -- @since 0.11.3.0
 takeWhile :: (Word8 -> Bool) -> ShortByteString -> ShortByteString
 takeWhile f = \ps -> take (findIndexOrLength (not . f) ps) ps
-{-# INLINE takeWhile #-}
 
 -- | /O(n)/ @'takeEnd' n xs@ is equivalent to @'drop' ('length' xs - n) xs@.
 -- Takes @n@ elements from end of bytestring.
@@ -915,7 +892,6 @@ takeEnd :: Int -> ShortByteString -> ShortByteString
 takeEnd n = \sbs -> if | n >= length sbs  -> sbs
                        | n <= 0           -> empty
                        | otherwise        -> drop (length sbs - n) sbs
-{-# INLINE takeEnd #-}
 
 -- | Returns the longest (possibly empty) suffix of elements
 -- satisfying the predicate.
@@ -925,7 +901,6 @@ takeEnd n = \sbs -> if | n >= length sbs  -> sbs
 -- @since 0.11.3.0
 takeWhileEnd :: (Word8 -> Bool) -> ShortByteString -> ShortByteString
 takeWhileEnd f = \ps -> drop (findFromEndUntil (not . f) ps) ps
-{-# INLINE takeWhileEnd #-}
 
 -- | /O(n)/ 'drop' @n@ @xs@ returns the suffix of @xs@ after the first n elements, or @[]@ if @n > 'length' xs@.
 --
@@ -939,7 +914,6 @@ drop = \n -> \sbs ->
   in if | n <= 0    -> sbs
         | n >= len  -> empty
         | otherwise -> create newLen $ \mba -> copyByteArray (asBA sbs) n mba 0 newLen
-{-# INLINE drop #-}
 
 -- | /O(n)/ @'dropEnd' n xs@ is equivalent to @'take' ('length' xs - n) xs@.
 -- Drops @n@ elements from end of bytestring.
@@ -957,7 +931,6 @@ dropEnd n = \sbs -> if | n <= 0           -> sbs
                        | n >= length sbs  -> empty
                        | otherwise        -> take (length sbs - n) sbs
 
-{-# INLINE dropEnd #-}
 -- | Similar to 'P.dropWhile',
 -- drops the longest (possibly empty) prefix of elements
 -- satisfying the predicate and returns the remainder.
@@ -977,7 +950,6 @@ dropWhile f = \ps -> drop (findIndexOrLength (not . f) ps) ps
 -- @since 0.11.3.0
 dropWhileEnd :: (Word8 -> Bool) -> ShortByteString -> ShortByteString
 dropWhileEnd f = \ps -> take (findFromEndUntil (not . f) ps) ps
-{-# INLINE dropWhileEnd #-}
 
 -- | Returns the longest (possibly empty) suffix of elements which __do not__
 -- satisfy the predicate and the remainder of the string.
@@ -987,7 +959,6 @@ dropWhileEnd f = \ps -> take (findFromEndUntil (not . f) ps) ps
 -- @since 0.11.3.0
 breakEnd :: (Word8 -> Bool) -> ShortByteString -> (ShortByteString, ShortByteString)
 breakEnd p = \sbs -> splitAt (findFromEndUntil p sbs) sbs
-{-# INLINE breakEnd #-}
 
 -- | Similar to 'P.break',
 -- returns the longest (possibly empty) prefix of elements which __do not__
@@ -998,7 +969,6 @@ breakEnd p = \sbs -> splitAt (findFromEndUntil p sbs) sbs
 -- @since 0.11.3.0
 break :: (Word8 -> Bool) -> ShortByteString -> (ShortByteString, ShortByteString)
 break = \p -> \ps -> case findIndexOrLength p ps of n -> (take n ps, drop n ps)
-{-# INLINE break #-}
 
 -- | Similar to 'P.span',
 -- returns the longest (possibly empty) prefix of elements
@@ -1136,7 +1106,6 @@ replicate :: Int -> Word8 -> ShortByteString
 replicate w c
     | w <= 0    = empty
     | otherwise = create w (\mba -> setByteArray mba 0 w (fromIntegral c))
-{-# INLINE replicate #-}
 
 
 -- | /O(n)/, where /n/ is the length of the result.  The 'unfoldr'
@@ -1162,7 +1131,6 @@ unfoldr f = \x0 -> packBytesRev $ go x0 mempty
    go x words' = case f x of
                     Nothing -> words'
                     Just (w, x') -> go x' (w:words')
-{-# INLINE unfoldr #-}
 
 -- | /O(n)/ Like 'unfoldr', 'unfoldrN' builds a ShortByteString from a seed
 -- value.  However, the length of the result is limited by the first
@@ -1185,7 +1153,6 @@ unfoldrN i f = \x0 -> first packBytesRev $ go (i - 1) x0 mempty
     | otherwise = case f x of
                     Nothing -> (words', Nothing)
                     Just (w, x') -> go (i' - 1) x' (w:words')
-{-# INLINE unfoldrN #-}
 
 
 -- --------------------------------------------------------------------
@@ -1284,7 +1251,6 @@ breakSubstring pat =
             hs' = hs * k +
                   get i -
                   m * get (i - lp)
-    {-# INLINE karpRabin #-}
 
     shift :: ShortByteString -> (ShortByteString, ShortByteString)
     shift !src
@@ -1302,7 +1268,6 @@ breakSubstring pat =
           where
             b  = fromIntegral (unsafeIndex src i)
             w' = mask' .&. ((w `shiftL` 8) .|. b)
-    {-# INLINE shift #-}
 
 
 -- --------------------------------------------------------------------
@@ -1323,7 +1288,6 @@ filter :: (Word8 -> Bool) -> ShortByteString -> ShortByteString
 filter k = \sbs -> if
     | null sbs  -> sbs
     | otherwise -> pack . List.filter k . unpack $ sbs
-{-# INLINE filter #-}
 
 -- | /O(n)/ The 'find' function takes a predicate and a ByteString,
 -- and returns the first element in matching the predicate, or 'Nothing'
@@ -1336,7 +1300,6 @@ find :: (Word8 -> Bool) -> ShortByteString -> Maybe Word8
 find f = \p -> case findIndex f p of
                     Just n -> Just (p `index` n)
                     _      -> Nothing
-{-# INLINE find #-}
 
 -- | /O(n)/ The 'partition' function takes a predicate a ByteString and returns
 -- the pair of ByteStrings with elements which do and do not satisfy the
@@ -1366,7 +1329,6 @@ elemIndex c = \(SBS barr#) -> do
     accursedUnutterablePerformIO $ do
       q <- memchr ptr c (fromIntegral l)
       return $! if q == nullPtr then Nothing else Just $! q `minusPtr` ptr
-{-# INLINE elemIndex #-}
 
 -- | /O(n)/ The 'elemIndices' function extends 'elemIndex', by returning
 -- the indices of all elements equal to the query element, in ascending order.
@@ -1395,7 +1357,6 @@ findIndex k = \sbs ->
             | k (w n)   = Just n
             | otherwise = go (n + 1)
   in go 0
-{-# INLINE findIndex #-}
 
 
 -- | /O(n)/ The 'findIndices' function extends 'findIndex', by returning the
@@ -1411,7 +1372,6 @@ findIndices k = \sbs ->
             | k (w n)   = n : go (n + 1)
             | otherwise = go (n + 1)
   in go 0
-{-# INLINE findIndices #-}
 
 
 
@@ -1630,7 +1590,6 @@ findFromEndUntil k sbs = go (length sbs - 1)
     go !n | n < 0     = 0
           | k (w n)   = n + 1
           | otherwise = go (n - 1)
-{-# INLINE findFromEndUntil #-}
 
 findIndexOrLength :: (Word8 -> Bool) -> ShortByteString -> Int
 findIndexOrLength k sbs = go 0
@@ -1641,7 +1600,6 @@ findIndexOrLength k sbs = go 0
     go !n | n >= l    = l
           | k (w n)   = n
           | otherwise = go (n + 1)
-{-# INLINE findIndexOrLength #-}
 
 
 packBytesRev :: [Word8] -> ShortByteString
@@ -1662,5 +1620,4 @@ breakByte :: Word8 -> ShortByteString -> (ShortByteString, ShortByteString)
 breakByte c p = case elemIndex c p of
     Nothing -> (p, mempty)
     Just n  -> (take n p, drop n p)
-{-# INLINE breakByte #-}
 
