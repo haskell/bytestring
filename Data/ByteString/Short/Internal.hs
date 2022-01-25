@@ -8,6 +8,7 @@
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_HADDOCK not-home #-}
 
 -- Not all architectures are forgiving of unaligned accesses; whitelist ones
@@ -701,7 +702,7 @@ reverse = \sbs ->
 #if MIN_VERSION_base(4,12,0) && defined(SAFE_UNALIGNED)
     in create l (\mba -> go ba mba l)
   where
-    go :: BA -> MBA s -> Int -> ST s ()
+    go :: forall s. BA -> MBA s -> Int -> ST s ()
     go !ba !mba !l = case l `quotRem` 8 of
       (0, r) -> void $ goWord8Chunk 0 r
       (q, 0) -> goWord64Chunk 0 0 q
@@ -714,17 +715,22 @@ reverse = \sbs ->
       quotRem x i = let q = x `quot` i
                         r = x `rem` i
                     in (q, r)
+
+      goWord64Chunk :: Int -> Int -> Int -> ST s ()
       goWord64Chunk !off !i' !cl = loop i'
        where
+        loop :: Int -> ST s ()
         loop !i
           | i >= cl = return ()
           | otherwise = do
-              let w = indexWord64Array ba (off + (i * 8)) -- 64-bit offset
+              let w = indexWord64Array ba (off + (i * 8))
               writeWord64Array mba (cl - 1 - i) (byteSwap64 w)
               loop (i+1)
 
+      goWord8Chunk :: Int -> Int -> ST s Int
       goWord8Chunk !i' !cl = loop i'
        where
+        loop :: Int -> ST s Int
         loop !i
           | i >= cl = return i
           | otherwise = do
