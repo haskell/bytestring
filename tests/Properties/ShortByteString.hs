@@ -4,6 +4,7 @@
 -- License     : BSD-style
 
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 -- We are happy to sacrifice optimizations in exchange for faster compilation,
@@ -20,6 +21,7 @@ module Properties.ShortByteString (tests) where
 
 import qualified Data.ByteString.Short as B
 import Data.ByteString.Short (ShortByteString)
+import Data.ByteString.Internal (isSpaceWord8)
 
 import Data.Word
 
@@ -37,47 +39,19 @@ import Text.Show.Functions ()
 -- from word8 package
 
 isSpace :: Word8 -> Bool
-isSpace w = w == _space
-         || w == _tab
-         || w == _lf
-         || w == _cr
-         || w == _np
-         || w == _vt
-         || w == _nbsp
+isSpace = isSpaceWord8
 
-_nul, _tab, _lf, _vt, _np, _cr :: Word8
+_nul :: Word8
 _nul = 0x00
-_tab = 0x09
-_lf  = 0x0a
-_vt  = 0x0b
-_np  = 0x0c
-_cr  = 0x0d
-
-_nbsp :: Word8
-_nbsp = 0xa0
-
-_space :: Word8
-_space = 0x20
-
 
 -------
-
-toElem :: Word8 -> Word8
-toElem = id
-
-swapW :: Word8 -> Word8
-swapW = id
-
 
 sizedByteString :: Int -> Gen ShortByteString
 sizedByteString n = do m <- choose(0, n)
                        fmap B.pack $ vectorOf m arbitrary
 
 instance Arbitrary ShortByteString where
-  arbitrary = do
-    bs <- sized sizedByteString
-    n  <- choose (0, 2)
-    return (B.drop n bs) -- to give us some with non-0 offset
+  arbitrary = sized sizedByteString
   shrink = map B.pack . shrink . B.unpack
 
 instance CoArbitrary ShortByteString where
@@ -88,7 +62,7 @@ tests =
   [ testProperty "pack . unpack" $
     \x -> x === B.pack (B.unpack x)
   , testProperty "unpack . pack" $
-    \(map toElem -> xs) -> xs === B.unpack (B.pack xs)
+    \xs -> xs === B.unpack (B.pack xs)
   , testProperty "read . show" $
     \x -> (x :: ShortByteString) === read (show x)
 
@@ -102,13 +76,13 @@ tests =
     \x -> x == B.pack (B.unpack x)
 
   , testProperty "compare" $
-    \x y -> compare x y === compare (swapW <$> B.unpack x) (swapW <$> B.unpack y)
+    \x y -> compare x y === compare (B.unpack x) (B.unpack y)
   , testProperty "compare EQ" $
     \x -> compare (x :: ShortByteString) x == EQ
   , testProperty "compare GT" $
-    \x (toElem -> c) -> compare (B.snoc x c) x == GT
+    \x c -> compare (B.snoc x c) x == GT
   , testProperty "compare LT" $
-    \x (toElem -> c) -> compare x (B.snoc x c) == LT
+    \x c -> compare x (B.snoc x c) == LT
   , testProperty "compare GT empty" $
     \x -> not (B.null x) ==> compare x B.empty == GT
   , testProperty "compare LT empty" $
@@ -116,7 +90,7 @@ tests =
   , testProperty "compare GT concat" $
     \x y -> not (B.null y) ==> compare (x <> y) x == GT
   , testProperty "compare char" $
-    \(toElem -> c) (toElem -> d) -> compare (swapW c) (swapW d) == compare (B.singleton c) (B.singleton d)
+    \c d -> compare c d == compare (B.singleton c) (B.singleton d)
   , testProperty "compare unsigned" $ once $
     compare (B.singleton 255) (B.singleton 127) == GT
 
@@ -151,11 +125,11 @@ tests =
   , testProperty "all" $
     \f x -> B.all f x === all f (B.unpack x)
   , testProperty "all ==" $
-    \(toElem -> c) x -> B.all (== c) x === all (== c) (B.unpack x)
+    \c x -> B.all (== c) x === all (== c) (B.unpack x)
   , testProperty "any" $
     \f x -> B.any f x === any f (B.unpack x)
   , testProperty "any ==" $
-    \(toElem -> c) x -> B.any (== c) x === any (== c) (B.unpack x)
+    \c x -> B.any (== c) x === any (== c) (B.unpack x)
   , testProperty "append" $
     \x y -> B.unpack (B.append x y) === B.unpack x ++ B.unpack y
   , testProperty "mappend" $
@@ -168,9 +142,9 @@ tests =
   , testProperty "break" $
     \f x -> (B.unpack *** B.unpack) (B.break f x) === break f (B.unpack x)
   , testProperty "break ==" $
-    \(toElem -> c) x -> (B.unpack *** B.unpack) (B.break (== c) x) === break (== c) (B.unpack x)
+    \c x -> (B.unpack *** B.unpack) (B.break (== c) x) === break (== c) (B.unpack x)
   , testProperty "break /=" $
-    \(toElem -> c) x -> (B.unpack *** B.unpack) (B.break (/= c) x) === break (/= c) (B.unpack x)
+    \c x -> (B.unpack *** B.unpack) (B.break (/= c) x) === break (/= c) (B.unpack x)
   , testProperty "break span" $
     \f x -> B.break f x === B.span (not . f) x
   , testProperty "breakEnd" $
@@ -178,7 +152,7 @@ tests =
   , testProperty "breakEnd" $
     \f x -> B.breakEnd f x === B.spanEnd (not . f) x
   , testProperty "break breakSubstring" $
-    \(toElem -> c) x -> B.break (== c) x === B.breakSubstring (B.singleton c) x
+    \c x -> B.break (== c) x === B.breakSubstring (B.singleton c) x
   , testProperty "breakSubstring" $
     \x y -> not (B.null x) ==> B.null (snd (B.breakSubstring x y)) === not (B.isInfixOf x y)
   , testProperty "breakSubstring empty" $
@@ -187,17 +161,17 @@ tests =
     \x -> (B.unpack *** B.unpack) (B.break isSpace x) === break isSpace (B.unpack x)
 
   , testProperty "singleton" $
-    \(toElem -> c) -> B.unpack (B.singleton c) === [c]
+    \c -> B.unpack (B.singleton c) === [c]
   , testProperty "cons" $
-    \(toElem -> c) x -> B.unpack (B.cons c x) === c : B.unpack x
+    \c x -> B.unpack (B.cons c x) === c : B.unpack x
   , testProperty "cons []" $
-    \(toElem -> c) -> B.unpack (B.cons c B.empty) === [c]
+    \c -> B.unpack (B.cons c B.empty) === [c]
   , testProperty "uncons" $
     \x -> fmap (second B.unpack) (B.uncons x) === L.uncons (B.unpack x)
   , testProperty "snoc" $
-    \(toElem -> c) x -> B.unpack (B.snoc x c) === B.unpack x ++ [c]
+    \c x -> B.unpack (B.snoc x c) === B.unpack x ++ [c]
   , testProperty "snoc []" $
-    \(toElem -> c) -> B.unpack (B.snoc B.empty c) === [c]
+    \c -> B.unpack (B.snoc B.empty c) === [c]
   , testProperty "unsnoc" $
     \x -> fmap (first B.unpack) (B.unsnoc x) === unsnoc (B.unpack x)
 
@@ -208,9 +182,9 @@ tests =
   , testProperty "dropWhile" $
     \f x -> B.unpack (B.dropWhile f x) === dropWhile f (B.unpack x)
   , testProperty "dropWhile ==" $
-    \(toElem -> c) x -> B.unpack (B.dropWhile (== c) x) === dropWhile (== c) (B.unpack x)
+    \c x -> B.unpack (B.dropWhile (== c) x) === dropWhile (== c) (B.unpack x)
   , testProperty "dropWhile /=" $
-    \(toElem -> c) x -> B.unpack (B.dropWhile (/= c) x) === dropWhile (/= c) (B.unpack x)
+    \c x -> B.unpack (B.dropWhile (/= c) x) === dropWhile (/= c) (B.unpack x)
   , testProperty "dropWhile isSpace" $
     \x -> B.unpack (B.dropWhile isSpace x) === dropWhile isSpace (B.unpack x)
 
@@ -221,9 +195,9 @@ tests =
   , testProperty "takeWhile" $
     \f x -> B.unpack (B.takeWhile f x) === takeWhile f (B.unpack x)
   , testProperty "takeWhile ==" $
-    \(toElem -> c) x -> B.unpack (B.takeWhile (== c) x) === takeWhile (== c) (B.unpack x)
+    \c x -> B.unpack (B.takeWhile (== c) x) === takeWhile (== c) (B.unpack x)
   , testProperty "takeWhile /=" $
-    \(toElem -> c) x -> B.unpack (B.takeWhile (/= c) x) === takeWhile (/= c) (B.unpack x)
+    \c x -> B.unpack (B.takeWhile (/= c) x) === takeWhile (/= c) (B.unpack x)
 
   , testProperty "takeWhile isSpace" $
     \x -> B.unpack (B.takeWhile isSpace x) === takeWhile isSpace (B.unpack x)
@@ -240,15 +214,15 @@ tests =
   , testProperty "length" $
     \x -> B.length x === fromIntegral (length (B.unpack x))
   , testProperty "count" $
-    \(toElem -> c) x -> B.count c x === fromIntegral (length (elemIndices c (B.unpack x)))
+    \c x -> B.count c x === fromIntegral (length (elemIndices c (B.unpack x)))
   , testProperty "filter" $
     \f x -> B.unpack (B.filter f x) === filter f (B.unpack x)
   , testProperty "filter compose" $
     \f g x -> B.filter f (B.filter g x) === B.filter (\c -> f c && g c) x
   , testProperty "filter ==" $
-    \(toElem -> c) x -> B.unpack (B.filter (== c) x) === filter (== c) (B.unpack x)
+    \c x -> B.unpack (B.filter (== c) x) === filter (== c) (B.unpack x)
   , testProperty "filter /=" $
-    \(toElem -> c) x -> B.unpack (B.filter (/= c) x) === filter (/= c) (B.unpack x)
+    \c x -> B.unpack (B.filter (/= c) x) === filter (/= c) (B.unpack x)
   , testProperty "partition" $
     \f x -> (B.unpack *** B.unpack) (B.partition f x) === partition f (B.unpack x)
 
@@ -259,16 +233,16 @@ tests =
   , testProperty "findIndices" $
     \f x -> B.findIndices f x === fmap fromIntegral (findIndices f (B.unpack x))
   , testProperty "findIndices ==" $
-    \(toElem -> c) x -> B.findIndices (== c) x === fmap fromIntegral (findIndices (== c) (B.unpack x))
+    \c x -> B.findIndices (== c) x === fmap fromIntegral (findIndices (== c) (B.unpack x))
 
   , testProperty "elem" $
-    \(toElem -> c) x -> B.elem c x === elem c (B.unpack x)
+    \c x -> B.elem c x === elem c (B.unpack x)
   , testProperty "not elem" $
-    \(toElem -> c) x -> not (B.elem c x) === notElem c (B.unpack x)
+    \c x -> not (B.elem c x) === notElem c (B.unpack x)
   , testProperty "elemIndex" $
-    \(toElem -> c) x -> B.elemIndex c x === fmap fromIntegral (elemIndex c (B.unpack x))
+    \c x -> B.elemIndex c x === fmap fromIntegral (elemIndex c (B.unpack x))
   , testProperty "elemIndices" $
-    \(toElem -> c) x -> B.elemIndices c x === fmap fromIntegral (elemIndices c (B.unpack x))
+    \c x -> B.elemIndices c x === fmap fromIntegral (elemIndices c (B.unpack x))
 
   , testProperty "isPrefixOf" $
     \x y -> B.isPrefixOf x y === isPrefixOf (B.unpack x) (B.unpack y)
@@ -282,30 +256,30 @@ tests =
     \x y -> B.isInfixOf x y === isInfixOf (B.unpack x) (B.unpack y)
 
   , testProperty "map" $
-    \f x -> B.unpack (B.map (toElem . f) x) === map (toElem . f) (B.unpack x)
+    \f x -> B.unpack (B.map f x) === map f (B.unpack x)
   , testProperty "map compose" $
-    \f g x -> B.map (toElem . f) (B.map (toElem . g) x) === B.map (toElem . f . toElem . g) x
+    \f g x -> B.map f (B.map g x) === B.map (f . g) x
   , testProperty "replicate" $
-    \n (toElem -> c) -> B.unpack (B.replicate (fromIntegral n) c) === replicate n c
+    \n c -> B.unpack (B.replicate (fromIntegral n) c) === replicate n c
   , testProperty "replicate 0" $
-    \(toElem -> c) -> B.unpack (B.replicate 0 c) === replicate 0 c
+    \c -> B.unpack (B.replicate 0 c) === replicate 0 c
 
   , testProperty "span" $
     \f x -> (B.unpack *** B.unpack) (B.span f x) === span f (B.unpack x)
   , testProperty "span ==" $
-    \(toElem -> c) x -> (B.unpack *** B.unpack) (B.span (== c) x) === span (== c) (B.unpack x)
+    \c x -> (B.unpack *** B.unpack) (B.span (== c) x) === span (== c) (B.unpack x)
   , testProperty "span /=" $
-    \(toElem -> c) x -> (B.unpack *** B.unpack) (B.span (/= c) x) === span (/= c) (B.unpack x)
+    \c x -> (B.unpack *** B.unpack) (B.span (/= c) x) === span (/= c) (B.unpack x)
   , testProperty "spanEnd" $
     \f x -> B.spanEnd f x === swap ((B.reverse *** B.reverse) (B.span f (B.reverse x)))
   , testProperty "split" $
-    \(toElem -> c) x -> map B.unpack (B.split c x) === split c (B.unpack x)
+    \c x -> map B.unpack (B.split c x) === split c (B.unpack x)
   , testProperty "split empty" $
-    \(toElem -> c) -> B.split c B.empty === []
+    \c -> B.split c B.empty === []
   , testProperty "splitWith" $
     \f x -> map B.unpack (B.splitWith f x) === splitWith f (B.unpack x)
   , testProperty "splitWith split" $
-    \(toElem -> c) x -> B.splitWith (== c) x === B.split c x
+    \c x -> B.splitWith (== c) x === B.split c x
   , testProperty "splitWith empty" $
     \f -> B.splitWith f B.empty === []
   , testProperty "splitWith length" $
@@ -328,33 +302,33 @@ tests =
     \x -> not (B.null x) ==> B.length x === 1 + B.length (B.init x)
 
   , testProperty "foldl" $
-    \f (toElem -> c) x -> B.foldl ((toElem .) . f) c x === foldl ((toElem .) . f) c (B.unpack x)
+    \f (c :: Word8) x -> B.foldl f c x === foldl f c (B.unpack x)
   , testProperty "foldl'" $
-    \f (toElem -> c) x -> B.foldl' ((toElem .) . f) c x === foldl' ((toElem .) . f) c (B.unpack x)
+    \f (c :: Word8) x -> B.foldl' f c x === foldl' f c (B.unpack x)
   , testProperty "foldr" $
-    \f (toElem -> c) x -> B.foldr ((toElem .) . f) c x === foldr ((toElem .) . f) c (B.unpack x)
+    \f (c :: Word8) x -> B.foldr f c x === foldr f c (B.unpack x)
   , testProperty "foldr'" $
-    \f (toElem -> c) x -> B.foldr' ((toElem .) . f) c x === foldr' ((toElem .) . f) c (B.unpack x)
+    \f (c :: Word8) x -> B.foldr' f c x === foldr' f c (B.unpack x)
 
   , testProperty "foldl cons" $
     \x -> B.foldl (flip B.cons) B.empty x === B.reverse x
   , testProperty "foldr cons" $
     \x -> B.foldr B.cons B.empty x === x
   , testProperty "foldl special" $
-    \x (toElem -> c) -> B.unpack (B.foldl (\acc t -> if t == c then acc else B.cons t acc) B.empty x) ===
+    \x c -> B.unpack (B.foldl (\acc t -> if t == c then acc else B.cons t acc) B.empty x) ===
       foldl (\acc t -> if t == c then acc else t : acc) [] (B.unpack x)
   , testProperty "foldr special" $
-    \x (toElem -> c) -> B.unpack (B.foldr (\t acc -> if t == c then acc else B.cons t acc) B.empty x) ===
+    \x c -> B.unpack (B.foldr (\t acc -> if t == c then acc else B.cons t acc) B.empty x) ===
       foldr (\t acc -> if t == c then acc else t : acc) [] (B.unpack x)
 
   , testProperty "foldl1" $
-    \f x -> not (B.null x) ==> B.foldl1 ((toElem .) . f) x === foldl1 ((toElem .) . f) (B.unpack x)
+    \f x -> not (B.null x) ==> B.foldl1 f x === foldl1 f (B.unpack x)
   , testProperty "foldl1'" $
-    \f x -> not (B.null x) ==> B.foldl1' ((toElem .) . f) x === foldl1' ((toElem .) . f) (B.unpack x)
+    \f x -> not (B.null x) ==> B.foldl1' f x === foldl1' f (B.unpack x)
   , testProperty "foldr1" $
-    \f x -> not (B.null x) ==> B.foldr1 ((toElem .) . f) x === foldr1 ((toElem .) . f) (B.unpack x)
+    \f x -> not (B.null x) ==> B.foldr1 f x === foldr1 f (B.unpack x)
   , testProperty "foldr1'" $ -- there is not Data.List.foldr1'
-    \f x -> not (B.null x) ==> B.foldr1' ((toElem .) . f) x === foldr1 ((toElem .) . f) (B.unpack x)
+    \f x -> not (B.null x) ==> B.foldr1' f x === foldr1 f (B.unpack x)
 
   , testProperty "foldl1 const" $
     \x -> not (B.null x) ==> B.foldl1 const x === B.head x
@@ -372,9 +346,9 @@ tests =
   , testProperty "intercalate" $
     \x ys -> B.unpack (B.intercalate x ys) === intercalate (B.unpack x) (map B.unpack ys)
   , testProperty "intercalate 'c' [x,y]" $
-    \(toElem -> c) x y -> B.unpack (B.intercalate (B.singleton c) [x, y]) === intercalate [c] [B.unpack x, B.unpack y]
+    \c x y -> B.unpack (B.intercalate (B.singleton c) [x, y]) === intercalate [c] [B.unpack x, B.unpack y]
   , testProperty "intercalate split" $
-    \(toElem -> c) x -> B.intercalate (B.singleton c) (B.split c x) === x
+    \c x -> B.intercalate (B.singleton c) (B.split c x) === x
 
   , testProperty "index" $
     \(NonNegative n) x -> fromIntegral n < B.length x ==> B.index x (fromIntegral n) === B.unpack x !! n
@@ -386,17 +360,17 @@ tests =
     \n x -> B.indexMaybe x (fromIntegral (n :: Int)) === x B.!? (fromIntegral n)
 
   , testProperty "unfoldrN" $
-    \n f (toElem -> c) -> B.unpack (fst (B.unfoldrN n (fmap (first toElem) . f) c)) ===
-      take (fromIntegral n) (unfoldr (fmap (first toElem) . f) c)
+    \n f (c :: Word8) -> B.unpack (fst (B.unfoldrN n f c)) ===
+      take (fromIntegral n) (unfoldr f c)
   , testProperty "unfoldrN replicate" $
-    \n (toElem -> c) -> fst (B.unfoldrN n (\t -> Just (t, t)) c) === B.replicate n c
+    \n c -> fst (B.unfoldrN n (\t -> Just (t, t)) c) === B.replicate n c
   , testProperty "unfoldr" $
-    \n a (toElem -> c) -> B.unpack (B.unfoldr (\x -> if x <= 100 * n then Just (c, x + 1 :: Int) else Nothing) a) ===
+    \n a c -> B.unpack (B.unfoldr (\x -> if x <= 100 * n then Just (c, x + 1 :: Int) else Nothing) a) ===
       unfoldr (\x -> if x <= 100 * n then Just (c, x + 1) else Nothing) a
 
   --, testProperty "unfoldr" $
-  --  \n f (toElem -> a) -> B.unpack (B.take (fromIntegral n) (B.unfoldr (fmap (first toElem) . f) a)) ===
-  --    take n (unfoldr (fmap (first toElem) . f) a)
+  --  \n f a -> B.unpack (B.take (fromIntegral n) (B.unfoldr f a)) ===
+  --    take n (unfoldr f a)
   --
   , testProperty "useAsCString str packCString == str" $
     \x -> not (B.any (== _nul) x)
