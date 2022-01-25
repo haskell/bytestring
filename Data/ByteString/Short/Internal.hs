@@ -222,7 +222,8 @@ import Prelude ( Eq(..), Ord(..), Ordering(..), Read(..), Show(..)
                , not
                , snd
 #if MIN_VERSION_base(4,12,0) && defined(SAFE_UNALIGNED)
-               , quotRem
+               , quot
+               , rem
 #endif
                )
 
@@ -708,19 +709,28 @@ reverse = \sbs ->
         i' <- goWord8Chunk 0 r
         goWord64Chunk i' 0 q
      where
-      goWord64Chunk !off !i !cl
-        | i >= cl = return ()
-        | otherwise = do
-            let w = indexWord64Array ba (off + (i * 8)) -- 64-bit offset
-            writeWord64Array mba (cl - 1 - i) (byteSwap64 w)
-            goWord64Chunk off (i+1) cl
+      -- Bodigrim: "For powers of 2 separate quot and rem are faster than quotRem."
+      quotRem :: Int -> Int -> (Int, Int)
+      quotRem x i = let q = x `quot` i
+                        r = x `rem` i
+                    in (q, r)
+      goWord64Chunk !off !i' !cl = loop i'
+       where
+        loop !i
+          | i >= cl = return ()
+          | otherwise = do
+              let w = indexWord64Array ba (off + (i * 8)) -- 64-bit offset
+              writeWord64Array mba (cl - 1 - i) (byteSwap64 w)
+              loop (i+1)
 
-      goWord8Chunk !i !cl
-        | i >= cl = return i
-        | otherwise = do
-            let w = indexWord8Array ba i
-            writeWord8Array mba (l - 1 - i) w
-            goWord8Chunk (i+1) cl
+      goWord8Chunk !i' !cl = loop i'
+       where
+        loop !i
+          | i >= cl = return i
+          | otherwise = do
+              let w = indexWord8Array ba i
+              writeWord8Array mba (l - 1 - i) w
+              loop (i+1)
 #else
     in create l (\mba -> go ba mba 0 l)
    where
