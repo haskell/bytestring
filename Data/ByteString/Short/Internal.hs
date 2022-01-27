@@ -596,6 +596,8 @@ cons c = \sbs -> let l = length sbs
 -- | /O(1)/ Extract the last element of a ShortByteString, which must be finite and non-empty.
 -- An exception will be thrown in the case of an empty ShortByteString.
 --
+-- This is a partial function, consider using 'unsnoc' instead.
+--
 -- @since 0.11.3.0
 last :: HasCallStack => ShortByteString -> Word8
 last = \sbs -> case null sbs of
@@ -604,6 +606,8 @@ last = \sbs -> case null sbs of
 
 -- | /O(n)/ Extract the elements after the head of a ShortByteString, which must be non-empty.
 -- An exception will be thrown in the case of an empty ShortByteString.
+--
+-- This is a partial function, consider using 'unsnoc' instead.
 --
 -- Note: copies the entire byte array
 --
@@ -632,6 +636,8 @@ uncons = \sbs ->
 -- | /O(1)/ Extract the first element of a ShortByteString, which must be non-empty.
 -- An exception will be thrown in the case of an empty ShortByteString.
 --
+-- This is a partial function, consider using 'unsnoc' instead.
+--
 -- @since 0.11.3.0
 head :: HasCallStack => ShortByteString -> Word8
 head = \sbs -> case null sbs of
@@ -640,6 +646,8 @@ head = \sbs -> case null sbs of
 
 -- | /O(n)/ Return all the elements of a 'ShortByteString' except the last one.
 -- An exception will be thrown in the case of an empty ShortByteString.
+--
+-- This is a partial function, consider using 'unsnoc' instead.
 --
 -- Note: copies the entire byte array
 --
@@ -695,6 +703,7 @@ reverse :: ShortByteString -> ShortByteString
 reverse = \sbs ->
     let l = length sbs
         ba = asBA sbs
+-- https://gitlab.haskell.org/ghc/ghc/-/issues/21015
 #if MIN_VERSION_base(4,12,0) && defined(SAFE_UNALIGNED)
     in create l (\mba -> go ba mba l)
   where
