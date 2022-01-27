@@ -552,15 +552,15 @@ explosiveTail = (`L.append` error "Tail of this byte string is undefined!")
 
 testSuite :: TestTree
 testSuite = testGroup "Properties"
-  [ testGroup "StrictWord8 (ShortSBS)" PropSBS.tests
-  , testGroup "StrictWord8" PropBS.tests
-  , testGroup "StrictChar8" PropBS8.tests
-  , testGroup "LazyWord8"   PropBL.tests
-  , testGroup "LazyChar8"   PropBL8.tests
-  , testGroup "Misc"        misc_tests
-  , testGroup "IO"          io_tests
-  , testGroup "Short"       short_tests
-  , testGroup "Strictness"  strictness_checks
+  [ testGroup "ShortByteString" PropSBS.tests
+  , testGroup "StrictWord8"     PropBS.tests
+  , testGroup "StrictChar8"     PropBS8.tests
+  , testGroup "LazyWord8"       PropBL.tests
+  , testGroup "LazyChar8"       PropBL8.tests
+  , testGroup "Misc"            misc_tests
+  , testGroup "IO"              io_tests
+  , testGroup "Short"           short_tests
+  , testGroup "Strictness"      strictness_checks
   ]
 
 io_tests =

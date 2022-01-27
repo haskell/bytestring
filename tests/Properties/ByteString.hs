@@ -29,12 +29,19 @@
 -- Properties.ByteString{Char8,Lazy,LazyChar8}, which include this file.
 #ifndef BYTESTRING_CHAR8
 
-#ifndef BYTESTRING_LAZY
+#if defined(BYTESTRING_SHORT)
+module Properties.ShortByteString (tests) where
+import qualified Data.ByteString.Short as B
+import qualified Data.ByteString.Short.Internal as B
+#define BYTESTRING_TYPE B.ShortByteString
+#elif !(defined BYTESTRING_LAZY)
 module Properties.ByteString (tests) where
+#define BYTESTRING_TYPE B.ByteString
 import qualified Data.ByteString as B
 import GHC.IO.Encoding
 #else
 module Properties.ByteStringLazy (tests) where
+#define BYTESTRING_TYPE B.ByteString
 import qualified Data.ByteString.Lazy as B
 import qualified Data.ByteString.Lazy.Internal as B (invariant)
 #endif
@@ -44,10 +51,12 @@ import qualified Data.ByteString.Lazy.Internal as B (invariant)
 #ifndef BYTESTRING_LAZY
 module Properties.ByteStringChar8 (tests) where
 import qualified Data.ByteString.Char8 as B
+#define BYTESTRING_TYPE B.ByteString
 #else
 module Properties.ByteStringLazyChar8 (tests) where
 import qualified Data.ByteString.Lazy.Char8 as B
 import qualified Data.ByteString.Lazy.Internal as B (invariant)
+#define BYTESTRING_TYPE B.ByteString
 #endif
 
 import Data.Int
@@ -77,7 +86,7 @@ toElem :: Char8 -> Char
 toElem (Char8 c) = c
 
 class (Integral a, Show a) => RdInt a where
-    bread :: B.ByteString -> Maybe (a, B.ByteString)
+    bread :: BYTESTRING_TYPE -> Maybe (a, BYTESTRING_TYPE)
     sread :: String -> Maybe (a, String)
 
 instance RdInt Int    where { bread = B.readInt;     sread = readInt }
@@ -120,13 +129,14 @@ tests =
   , testProperty "unpack . pack" $
     \(map toElem -> xs) -> xs === B.unpack (B.pack xs)
   , testProperty "read . show" $
-    \x -> (x :: B.ByteString) === read (show x)
+    \x -> (x :: BYTESTRING_TYPE) === read (show x)
+#ifndef BYTESTRING_SHORT
   , testProperty "fromStrict . toStrict" $
     \x -> B.fromStrict (B.toStrict x) === x
   , testProperty "toStrict . fromStrict" $
     \x -> B.toStrict (B.fromStrict x) === x
-#ifndef BYTESTRING_LAZY
-#ifndef BYTESTRING_CHAR8
+#endif
+#if !defined(BYTESTRING_LAZY) && !defined(BYTESTRING_CHAR8) && !defined(BYTESTRING_SHORT)
   , testProperty "toFilePath >>= fromFilePath" $
     \x -> ioProperty $ do
       r <- B.toFilePath x >>= B.fromFilePath
@@ -142,23 +152,24 @@ tests =
       "ASCII" -> property (prop . getASCIIString)
       _       -> property prop
 #endif
-#endif
 
   , testProperty "==" $
     \x y -> (x == y) === (B.unpack x == B.unpack y)
   , testProperty "== refl" $
-    \x -> (x :: B.ByteString) == x
+    \x -> (x :: BYTESTRING_TYPE) == x
   , testProperty "== symm" $
-    \x y -> ((x :: B.ByteString) == y) === (y == x)
+    \x y -> ((x :: BYTESTRING_TYPE) == y) === (y == x)
   , testProperty "== pack unpack" $
     \x -> x == B.pack (B.unpack x)
+#ifndef BYTESTRING_SHORT
   , testProperty "== copy" $
     \x -> x == B.copy x
+#endif
 
   , testProperty "compare" $
     \x y -> compare x y === compare (B.unpack x) (B.unpack y)
   , testProperty "compare EQ" $
-    \x -> compare (x :: B.ByteString) x == EQ
+    \x -> compare (x :: BYTESTRING_TYPE) x == EQ
   , testProperty "compare GT" $
     \x (toElem -> c) -> compare (B.snoc x c) x == GT
   , testProperty "compare LT" $
@@ -204,6 +215,7 @@ tests =
     \x -> B.null x === null (B.unpack x)
   , testProperty "reverse" $
     \x -> B.unpack (B.reverse x) === reverse (B.unpack x)
+#ifndef BYTESTRING_SHORT
   , testProperty "transpose" $
     \xs -> map B.unpack (B.transpose xs) === List.transpose (map B.unpack xs)
   , testProperty "group" $
@@ -218,6 +230,7 @@ tests =
     \x -> map B.unpack (B.inits x) === List.inits (B.unpack x)
   , testProperty "tails" $
     \x -> map B.unpack (B.tails x) === List.tails (B.unpack x)
+#endif
   , testProperty "all" $
     \f x -> B.all f x === all f (B.unpack x)
   , testProperty "all ==" $
@@ -232,8 +245,10 @@ tests =
     \x y -> B.unpack (mappend x y) === B.unpack x `mappend` B.unpack y
   , testProperty "<>" $
     \x y -> B.unpack (x <> y) === B.unpack x <> B.unpack y
+#ifndef BYTESTRING_SHORT
   , testProperty "stimes" $
-    \(Sqrt (NonNegative n)) (Sqrt x) -> stimes (n :: Int) (x :: B.ByteString) === mtimesDefault n x
+    \(Sqrt (NonNegative n)) (Sqrt x) -> stimes (n :: Int) (x :: BYTESTRING_TYPE) === mtimesDefault n x
+#endif
 
   , testProperty "break" $
     \f x -> (B.unpack *** B.unpack) (B.break f x) === break f (B.unpack x)
@@ -261,10 +276,12 @@ tests =
     \x -> (B.unpack *** B.unpack) (B.break isSpace x) === break isSpace (B.unpack x)
 #endif
 
+#ifndef BYTESTRING_SHORT
   , testProperty "concatMap" $
     \f x -> B.unpack (B.concatMap f x) === concatMap (B.unpack . f) (B.unpack x)
   , testProperty "concatMap singleton" $
     \x -> B.unpack (B.concatMap B.singleton x) === concatMap (: []) (B.unpack x)
+#endif
 
   , testProperty "singleton" $
     \(toElem -> c) -> B.unpack (B.singleton c) === [c]
@@ -381,8 +398,10 @@ tests =
     \f x -> B.find f x === find f (B.unpack x)
   , testProperty "findIndex" $
     \f x -> B.findIndex f x === fmap fromIntegral (List.findIndex f (B.unpack x))
+#ifndef BYTESTRING_SHORT
   , testProperty "findIndexEnd" $
     \f x -> B.findIndexEnd f x === fmap fromIntegral (findIndexEnd f (B.unpack x))
+#endif
   , testProperty "findIndices" $
     \f x -> B.findIndices f x === fmap fromIntegral (List.findIndices f (B.unpack x))
   , testProperty "findIndices ==" $
@@ -390,12 +409,16 @@ tests =
 
   , testProperty "elem" $
     \(toElem -> c) x -> B.elem c x === elem c (B.unpack x)
+#ifndef BYTESTRING_SHORT
   , testProperty "notElem" $
     \(toElem -> c) x -> B.notElem c x === notElem c (B.unpack x)
+#endif
   , testProperty "elemIndex" $
     \(toElem -> c) x -> B.elemIndex c x === fmap fromIntegral (List.elemIndex c (B.unpack x))
+#ifndef BYTESTRING_SHORT
   , testProperty "elemIndexEnd" $
     \(toElem -> c) x -> B.elemIndexEnd c x === fmap fromIntegral (elemIndexEnd c (B.unpack x))
+#endif
   , testProperty "elemIndices" $
     \(toElem -> c) x -> B.elemIndices c x === fmap fromIntegral (List.elemIndices c (B.unpack x))
 
@@ -462,10 +485,12 @@ tests =
     \x -> not (B.null x) ==> B.unpack (B.init x) === init (B.unpack x)
   , testProperty "init length" $
     \x -> not (B.null x) ==> B.length x === 1 + B.length (B.init x)
+#ifndef BYTESTRING_SHORT
   , testProperty "maximum" $
     \x -> not (B.null x) ==> B.maximum x === maximum (B.unpack x)
   , testProperty "minimum" $
     \x -> not (B.null x) ==> B.minimum x === minimum (B.unpack x)
+#endif
 
   , testProperty "foldl" $
     \f (toElem -> c) x -> B.foldl ((toElem .) . f) c x === foldl ((toElem .) . f) c (B.unpack x)
@@ -509,6 +534,7 @@ tests =
   , testProperty "foldr1 max" $
     \x -> not (B.null x) ==> B.foldr1 max x === B.foldr max minBound x
 
+#ifndef BYTESTRING_SHORT
   , testProperty "scanl" $
     \f (toElem -> c) x -> B.unpack (B.scanl ((toElem .) . f) c x) === scanl ((toElem .) . f) c (B.unpack x)
   , testProperty "scanl foldl" $
@@ -524,14 +550,17 @@ tests =
     \f x -> B.unpack (B.scanr1 ((toElem .) . f) x) === scanr1 ((toElem .) . f) (B.unpack x)
   , testProperty "scanr1 empty" $
     \f -> B.scanr1 f B.empty === B.empty
+#endif
 
-#ifndef BYTESTRING_LAZY
+#if !defined(BYTESTRING_LAZY) && !defined(BYTESTRING_SHORT)
   , testProperty "sort" $
     \x -> B.unpack (B.sort x) === List.sort (B.unpack x)
 #endif
 
+#ifndef BYTESTRING_SHORT
   , testProperty "intersperse" $
     \(toElem -> c) x -> B.unpack (B.intersperse c x) === List.intersperse c (B.unpack x)
+#endif
   , testProperty "intercalate" $
     \(Sqrt x) (Sqrt ys) -> B.unpack (B.intercalate x ys) === List.intercalate (B.unpack x) (map B.unpack ys)
   , testProperty "intercalate 'c' [x,y]" $
@@ -539,6 +568,7 @@ tests =
   , testProperty "intercalate split" $
     \(toElem -> c) x -> B.intercalate (B.singleton c) (B.split c x) === x
 
+#ifndef BYTESTRING_SHORT
   , testProperty "mapAccumL" $
     \f (toElem -> c) x -> second B.unpack (B.mapAccumL ((second toElem .) . f) c x) ===
       List.mapAccumL ((second toElem .) . f) c (B.unpack x)
@@ -554,6 +584,7 @@ tests =
     \f x y -> B.unpack (B.packZipWith ((toElem .) . f) x y) === zipWith ((toElem .) . f) (B.unpack x) (B.unpack y)
   , testProperty "unzip" $
     \(fmap (toElem *** toElem) -> xs) -> (B.unpack *** B.unpack) (B.unzip xs) === unzip xs
+#endif
 
   , testProperty "index" $
     \(NonNegative n) x -> fromIntegral n < B.length x ==> B.index x (fromIntegral n) === B.unpack x !! n
@@ -631,11 +662,13 @@ unsnoc :: [a] -> Maybe ([a], a)
 unsnoc [] = Nothing
 unsnoc xs = Just (init xs, last xs)
 
+#ifndef BYTESTRING_SHORT
 findIndexEnd :: (a -> Bool) -> [a] -> Maybe Int
 findIndexEnd f xs = fmap (\n -> length xs - 1 - n) (List.findIndex f (reverse xs))
 
 elemIndexEnd :: Eq a => a -> [a] -> Maybe Int
 elemIndexEnd c xs = fmap (\n -> length xs - 1 - n) (List.elemIndex c (reverse xs))
+#endif
 
 stripSuffix :: Eq a => [a] -> [a] -> Maybe [a]
 stripSuffix x y = fmap reverse (List.stripPrefix (reverse x) (reverse y))
