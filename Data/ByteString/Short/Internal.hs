@@ -150,7 +150,7 @@ module Data.ByteString.Short.Internal (
     useAsCStringLen,
   ) where
 
-import Data.ByteString.Internal (ByteString(..), accursedUnutterablePerformIO, memchr, checkedAdd)
+import Data.ByteString.Internal (ByteString(..), accursedUnutterablePerformIO, checkedAdd)
 import qualified Data.ByteString.Internal as BS
 
 import Data.Bifunctor   ( first, bimap )
@@ -173,7 +173,6 @@ import Foreign.C.Types  (CSize(..), CInt(..))
 #if !MIN_VERSION_base(4,11,0)
 import Foreign.Ptr      (plusPtr)
 #endif
-import Foreign.Ptr      (minusPtr, nullPtr)
 import Foreign.Marshal.Alloc (allocaBytes) 
 import Foreign.ForeignPtr (touchForeignPtr)
 import Foreign.ForeignPtr.Unsafe (unsafeForeignPtrToPtr)
@@ -1340,11 +1339,11 @@ partition f = \s -> if
 -- @since 0.11.3.0
 elemIndex :: Word8 -> ShortByteString -> Maybe Int
 elemIndex c = \(SBS barr#) -> do
-    let ptr = Ptr (byteArrayContents# barr#)
-        l   = I# (sizeofByteArray# barr#)
+    let l = I# (sizeofByteArray# barr#)
     accursedUnutterablePerformIO $ do
-      q <- memchr ptr c (fromIntegral l)
-      return $! if q == nullPtr then Nothing else Just $! q `minusPtr` ptr
+      !s <- c_elem_index barr# c (fromIntegral l)
+      return $! if s < 0 then Nothing else Just s
+
 
 -- | /O(n)/ The 'elemIndices' function extends 'elemIndex', by returning
 -- the indices of all elements equal to the query element, in ascending order.
@@ -1490,19 +1489,23 @@ compareByteArraysOff :: BA -> Int -> BA -> Int -> Int -> Int
 compareByteArraysOff (BA# ba1#) (I# ba1off#) (BA# ba2#) (I# ba2off#) (I# len#) =
   I# (compareByteArrays#  ba1# ba1off# ba2# ba2off# len#)
 #else
-compareByteArraysOff ba1 ba1off ba2 ba2off len =
+compareByteArraysOff (BA# ba1#) ba1off (BA# ba2#) ba2off len =
   fromIntegral $ accursedUnutterablePerformIO $
-    c_memcmp_ByteArray (byteArrayContents' ba1 `plusPtr` ba1off)
-                       (byteArrayContents' ba2 `plusPtr` ba2off)
+    c_memcmp_ByteArray ba1#
+                       (I# (sizeofByteArray# ba1#))
+                       ba1off
+                       ba2#
+                       (I# (sizeofByteArray# ba2#))
+                       ba2off
                        (fromIntegral len)
- where
-  byteArrayContents' :: BA -> Ptr Word8
-  byteArrayContents' (BA# arr#) = Ptr (byteArrayContents# arr#)
   
 
-foreign import ccall unsafe "string.h memcmp"
-  c_memcmp_ByteArray :: Ptr Word8 -> Ptr Word8 -> CSize -> IO CInt
+foreign import ccall unsafe "static _memcmp_off"
+  c_memcmp_ByteArray :: ByteArray# -> Int -> Int -> ByteArray# -> Int -> Int -> CSize -> IO CInt
 #endif
+
+foreign import ccall unsafe "static _elem_index"
+    c_elem_index :: ByteArray# -> Word8 -> CSize -> IO Int
 
 
 ------------------------------------------------------------------------
