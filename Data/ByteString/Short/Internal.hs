@@ -1123,8 +1123,6 @@ stripPrefix sbs1 = \sbs2 -> do
 --
 -- > replicate w c = unfoldr w (\u -> Just (u,u)) c
 --
--- This implementation uses @memset(3)@
---
 -- @since 0.11.3.0
 replicate :: Int -> Word8 -> ShortByteString
 replicate w c
