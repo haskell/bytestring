@@ -166,7 +166,7 @@ import Control.Applicative (pure)
 import Control.Monad    ((>>))
 import Control.DeepSeq  (NFData(..))
 import Foreign.C.String (CString, CStringLen)
-import Foreign.C.Types  (CSize(..), CInt(..))
+import Foreign.C.Types  (CSize(..), CInt(..), CPtrdiff(..))
 import Foreign.Marshal.Alloc (allocaBytes)
 import Foreign.ForeignPtr (touchForeignPtr)
 import Foreign.ForeignPtr.Unsafe (unsafeForeignPtrToPtr)
@@ -210,6 +210,7 @@ import Prelude ( Eq(..), Ord(..), Ordering(..), Read(..), Show(..)
                , (+), (-), fromIntegral
                , (*)
                , (^)
+               , (<$>)
                , return
                , Maybe(..)
                , not
@@ -1340,7 +1341,7 @@ partition f = \sbs -> if
 --
 -- @since 0.11.3.0
 elemIndex :: Word8 -> ShortByteString -> Maybe Int
-elemIndex c = \(SBS ba#) -> do
+elemIndex c = \(SBS ba#) -> fromIntegral <$> do
     let l = I# (sizeofByteArray# ba#)
     accursedUnutterablePerformIO $ do
       !s <- c_elem_index ba# c (fromIntegral l)
@@ -1507,7 +1508,7 @@ foreign import ccall unsafe "static sbs_memcmp_off"
 #endif
 
 foreign import ccall unsafe "static sbs_elem_index"
-    c_elem_index :: ByteArray# -> Word8 -> CSize -> IO Int
+    c_elem_index :: ByteArray# -> Word8 -> CSize -> IO CPtrdiff
 
 
 ------------------------------------------------------------------------
