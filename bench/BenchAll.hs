@@ -470,7 +470,10 @@ main = do
       [ bench "map (+1) large" $ nf (S.map (+ 1)) largeTraversalInput
       , bench "map (+1) small" $ nf (S.map (+ 1)) smallTraversalInput
       ]
-    , bench "lazy-unlines" $ nf L8.unlines (map (L8.pack . show) intData)
+    , bgroup "unlines"
+      [ bench "lazy"   $ nf L8.unlines (map (L8.pack . show) intData)
+      , bench "strict" $ nf S8.unlines (map (S8.pack . show) intData)
+      ]
     , benchBoundsCheckFusion
     , benchCount
     , benchCSV
