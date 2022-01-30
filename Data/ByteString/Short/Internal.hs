@@ -781,7 +781,7 @@ intercalate sep = \case
     copyByteArray ba 0 mba off lba
     copyByteArray (asBA chunk) 0 mba (off + lba) lc
     go mba (off + lc + lba) chunks
-  (+!) = checkedAdd "intercalate"
+  (+!) = checkedAdd "Short.intercalate"
 
 
 -- ---------------------------------------------------------------------
