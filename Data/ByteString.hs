@@ -955,7 +955,7 @@ splitAt n ps@(BS x l)
     | otherwise = (BS x n, BS (plusForeignPtr x n) (l-n))
 {-# INLINE splitAt #-}
 
--- | Similar to 'P.takeWhile',
+-- | Similar to 'Prelude.takeWhile',
 -- returns the longest (possibly empty) prefix of elements
 -- satisfying the predicate.
 takeWhile :: (Word8 -> Bool) -> ByteString -> ByteString
@@ -983,7 +983,7 @@ takeWhileEnd :: (Word8 -> Bool) -> ByteString -> ByteString
 takeWhileEnd f ps = unsafeDrop (findFromEndUntil (not . f) ps) ps
 {-# INLINE takeWhileEnd #-}
 
--- | Similar to 'P.dropWhile',
+-- | Similar to 'Prelude.dropWhile',
 -- drops the longest (possibly empty) prefix of elements
 -- satisfying the predicate and returns the remainder.
 dropWhile :: (Word8 -> Bool) -> ByteString -> ByteString
@@ -1001,7 +1001,7 @@ dropWhile f ps = unsafeDrop (findIndexOrLength (not . f) ps) ps
     dropWhile (`eqWord8` x) = snd . spanByte x
   #-}
 
--- | Similar to 'P.dropWhileEnd',
+-- | Similar to 'Prelude.dropWhileEnd',
 -- drops the longest (possibly empty) suffix of elements
 -- satisfying the predicate and returns the remainder.
 --
@@ -1012,7 +1012,7 @@ dropWhileEnd :: (Word8 -> Bool) -> ByteString -> ByteString
 dropWhileEnd f ps = unsafeTake (findFromEndUntil (not . f) ps) ps
 {-# INLINE dropWhileEnd #-}
 
--- | Similar to 'P.break',
+-- | Similar to 'Prelude.break',
 -- returns the longest (possibly empty) prefix of elements which __do not__
 -- satisfy the predicate and the remainder of the string.
 --
@@ -1058,7 +1058,7 @@ breakByte c p = case elemIndex c p of
 breakEnd :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
 breakEnd  p ps = splitAt (findFromEndUntil p ps) ps
 
--- | Similar to 'P.span',
+-- | Similar to 'Prelude.span',
 -- returns the longest (possibly empty) prefix of elements
 -- satisfying the predicate and the remainder of the string.
 --

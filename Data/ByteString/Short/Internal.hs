@@ -907,7 +907,7 @@ take = \n -> \sbs ->
   let len = min (length sbs) (max 0 n)
   in create len $ \mba -> copyByteArray (asBA sbs) 0 mba 0 len
 
--- | Similar to 'P.takeWhile',
+-- | Similar to 'Prelude.takeWhile',
 -- returns the longest (possibly empty) prefix of elements
 -- satisfying the predicate.
 --
@@ -973,7 +973,7 @@ dropEnd n = \sbs -> let sl = length sbs
                           | n <= 0    -> sbs
                           | otherwise -> create nl $ \mba -> copyByteArray (asBA sbs) 0 mba 0 nl
 
--- | Similar to 'P.dropWhile',
+-- | Similar to 'Prelude.dropWhile',
 -- drops the longest (possibly empty) prefix of elements
 -- satisfying the predicate and returns the remainder.
 --
@@ -983,7 +983,7 @@ dropEnd n = \sbs -> let sl = length sbs
 dropWhile :: (Word8 -> Bool) -> ShortByteString -> ShortByteString
 dropWhile f = \sbs -> drop (findIndexOrLength (not . f) sbs) sbs
 
--- | Similar to 'P.dropWhileEnd',
+-- | Similar to 'Prelude.dropWhileEnd',
 -- drops the longest (possibly empty) suffix of elements
 -- satisfying the predicate and returns the remainder.
 --
@@ -1002,7 +1002,7 @@ dropWhileEnd f = \sbs -> take (findFromEndUntil (not . f) sbs) sbs
 breakEnd :: (Word8 -> Bool) -> ShortByteString -> (ShortByteString, ShortByteString)
 breakEnd p = \sbs -> splitAt (findFromEndUntil p sbs) sbs
 
--- | Similar to 'P.break',
+-- | Similar to 'Prelude.break',
 -- returns the longest (possibly empty) prefix of elements which __do not__
 -- satisfy the predicate and the remainder of the string.
 --
@@ -1012,7 +1012,7 @@ breakEnd p = \sbs -> splitAt (findFromEndUntil p sbs) sbs
 break :: (Word8 -> Bool) -> ShortByteString -> (ShortByteString, ShortByteString)
 break = \p -> \sbs -> case findIndexOrLength p sbs of n -> (take n sbs, drop n sbs)
 
--- | Similar to 'P.span',
+-- | Similar to 'Prelude.span',
 -- returns the longest (possibly empty) prefix of elements
 -- satisfying the predicate and the remainder of the string.
 --
