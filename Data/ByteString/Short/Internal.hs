@@ -1184,9 +1184,6 @@ unfoldr f = \x0 -> packBytesRev $ go x0 mempty
 -- argument to 'unfoldrN'.  This function is more efficient than 'unfoldr'
 -- when the maximum length of the result is known.
 --
--- This function is not efficient. It will build a full list of @[Word8]@
--- before creating a 'ShortByteString'.
---
 -- The following equation relates 'unfoldrN' and 'unfoldr':
 --
 -- > fst (unfoldrN n f s) == take n (unfoldr f s)
