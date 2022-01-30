@@ -153,7 +153,7 @@ module Data.ByteString.Short.Internal (
 import Data.ByteString.Internal (ByteString(..), accursedUnutterablePerformIO, checkedAdd)
 import qualified Data.ByteString.Internal as BS
 
-import Data.Bifunctor   ( first, bimap )
+import Data.Bifunctor   ( bimap )
 import Data.Typeable    (Typeable)
 import Data.Data        (Data(..), mkNoRepType)
 import Data.Bits        ( FiniteBits (finiteBitSize), shiftL, (.&.), (.|.) )
@@ -163,6 +163,7 @@ import Data.Semigroup   (Semigroup((<>)))
 import Data.Monoid      (Monoid(..))
 import Data.String      (IsString(..))
 import Control.Applicative (pure)
+import Control.Exception        (assert)
 import Control.Monad    ((>>))
 import Control.DeepSeq  (NFData(..))
 import Foreign.C.String (CString, CStringLen)
@@ -180,6 +181,7 @@ import GHC.Exts ( Int(I#), Int#, Ptr(Ptr), Addr#, Char(C#)
                 , newPinnedByteArray#
                 , byteArrayContents#
                 , unsafeCoerce#
+                , copyMutableByteArray#
 #if MIN_VERSION_base(4,10,0)
                 , isByteArrayPinned#
                 , isTrue#
@@ -376,6 +378,22 @@ create len fill =
       BA# ba# <- unsafeFreezeByteArray mba
       return (SBS ba#)
 {-# INLINE create #-}
+
+createAndTrim :: Int -> (forall s. MBA s -> ST s (Int, Int, a)) -> (ShortByteString, a)
+createAndTrim l fill =
+    runST $ do
+      mba <- newByteArray l
+      (off, l', res) <- fill mba
+      if assert (l' <= l) $ l' >= l
+          then do
+            BA# ba# <- unsafeFreezeByteArray mba
+            return (SBS ba#, res)
+          else do
+            mba2 <- newByteArray l'
+            copyMutableByteArray mba off mba2 0 l'
+            BA# ba# <- unsafeFreezeByteArray mba2
+            return (SBS ba#, res)
+{-# INLINE createAndTrim #-}
 
 ------------------------------------------------------------------------
 -- Conversion to and from ByteString
@@ -1152,7 +1170,8 @@ unfoldr f = \x0 -> packBytesRev $ go x0 mempty
 
 -- | /O(n)/ Like 'unfoldr', 'unfoldrN' builds a ShortByteString from a seed
 -- value.  However, the length of the result is limited by the first
--- argument to 'unfoldrN'.
+-- argument to 'unfoldrN'.  This function is more efficient than 'unfoldr'
+-- when the maximum length of the result is known.
 --
 -- This function is not efficient. It will build a full list of @[Word8]@
 -- before creating a 'ShortByteString'.
@@ -1162,14 +1181,24 @@ unfoldr f = \x0 -> packBytesRev $ go x0 mempty
 -- > fst (unfoldrN n f s) == take n (unfoldr f s)
 --
 -- @since 0.11.3.0
-unfoldrN :: Int -> (a -> Maybe (Word8, a)) -> a -> (ShortByteString, Maybe a)
-unfoldrN i f = \x0 -> first packBytesRev $ go (i - 1) x0 mempty
- where
-   go i' x words'
-    | i' < 0     = (words', Just x)
-    | otherwise = case f x of
-                    Nothing -> (words', Nothing)
-                    Just (w, x') -> go (i' - 1) x' (w:words')
+unfoldrN :: forall a. Int -> (a -> Maybe (Word8, a)) -> a -> (ShortByteString, Maybe a)
+unfoldrN i f = \x0 ->
+  if | i < 0     -> (empty, Just x0)
+     | otherwise -> createAndTrim i $ \mba -> go mba x0 0
+
+  where
+    go :: forall s. MBA s -> a -> Int -> ST s (Int, Int, Maybe a)
+    go !mba !x !n = go' x n
+      where
+        go' :: a -> Int -> ST s (Int, Int, Maybe a)
+        go' !x' !n'
+          | n' == i    = return (0, n', Just x')
+          | otherwise = case f x' of
+                          Nothing       -> return (0, n', Nothing)
+                          Just (w, x'') -> do
+                                             writeWord8Array mba n' w
+                                             go' x'' (n'+1)
+
 
 
 -- --------------------------------------------------------------------
@@ -1477,6 +1506,11 @@ copyByteArray (BA# src#) (I# src_off#) (MBA# dst#) (I# dst_off#) (I# len#) =
 setByteArray :: MBA s -> Int -> Int -> Int -> ST s ()
 setByteArray (MBA# dst#) (I# off#) (I# len#) (I# c#) =
     ST $ \s -> case setByteArray# dst# off# len# c# s of
+                 s -> (# s, () #)
+
+copyMutableByteArray :: MBA s -> Int -> MBA s -> Int -> Int -> ST s ()
+copyMutableByteArray (MBA# src#) (I# src_off#) (MBA# dst#) (I# dst_off#) (I# len#) =
+    ST $ \s -> case copyMutableByteArray# src# src_off# dst# dst_off# len# s of
                  s -> (# s, () #)
 
 
