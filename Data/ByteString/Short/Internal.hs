@@ -927,9 +927,11 @@ takeWhile f = \sbs -> take (findIndexOrLength (not . f) sbs) sbs
 --
 -- @since 0.11.3.0
 takeEnd :: Int -> ShortByteString -> ShortByteString
-takeEnd n = \sbs -> if | n >= length sbs  -> sbs
-                       | n <= 0           -> empty
-                       | otherwise        -> drop (length sbs - n) sbs
+takeEnd n = \sbs -> let sl = length sbs
+                    in if | n >= sl   -> sbs
+                          | n <= 0    -> empty
+                          | otherwise -> create n $ \mba -> copyByteArray (asBA sbs) (max 0 (sl - n)) mba 0 n
+
 
 -- | Returns the longest (possibly empty) suffix of elements
 -- satisfying the predicate.
@@ -965,9 +967,11 @@ drop = \n -> \sbs ->
 --
 -- @since 0.11.3.0
 dropEnd :: Int -> ShortByteString -> ShortByteString
-dropEnd n = \sbs -> if | n <= 0           -> sbs
-                       | n >= length sbs  -> empty
-                       | otherwise        -> take (length sbs - n) sbs
+dropEnd n = \sbs -> let sl = length sbs
+                        nl = sl - n
+                    in if | n >= sl   -> empty
+                          | n <= 0    -> sbs
+                          | otherwise -> create nl $ \mba -> copyByteArray (asBA sbs) 0 mba 0 nl
 
 -- | Similar to 'P.dropWhile',
 -- drops the longest (possibly empty) prefix of elements
@@ -1045,8 +1049,15 @@ spanEnd p = \ps -> splitAt (findFromEndUntil (not.p) ps) ps
 splitAt :: Int -> ShortByteString -> (ShortByteString, ShortByteString)
 splitAt n = \sbs -> if
   | n <= 0 -> (mempty, sbs)
-  | n >= length sbs -> (sbs, mempty)
-  | otherwise -> (take n sbs, drop n sbs)
+  | otherwise ->
+      let slen = length sbs
+      in if | n >= length sbs -> (sbs, mempty)
+            | otherwise -> 
+                let llen = min slen (max 0 n)
+                    rlen = max 0 (slen - max 0 n)
+                    lsbs = create llen $ \mba -> copyByteArray (asBA sbs) 0 mba 0 llen
+                    rsbs = create rlen $ \mba -> copyByteArray (asBA sbs) n mba 0 rlen
+                in (lsbs, rsbs)
 
 -- | /O(n)/ Break a 'ShortByteString' into pieces separated by the byte
 -- argument, consuming the delimiter. I.e.
