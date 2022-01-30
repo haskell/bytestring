@@ -26,7 +26,7 @@
 -- Copyright   : (c) Duncan Coutts 2012-2013, Julian Ospald 2022
 -- License     : BSD-style
 --
--- Maintainer  : hasufell@posteo
+-- Maintainer  : hasufell@posteo.de
 -- Stability   : stable
 -- Portability : ghc only
 --
