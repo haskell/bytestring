@@ -404,12 +404,12 @@ toShortIO (BS fptr len) = do
 --
 fromShort :: ShortByteString -> ByteString
 #if MIN_VERSION_base(4,10,0)
-fromShort (SBS b#)
-  | isTrue# (isByteArrayPinned# b#) = BS fp len
+fromShort (SBS ba#)
+  | isTrue# (isByteArrayPinned# ba#) = BS fp len
   where
-    addr# = byteArrayContents# b#
-    fp = ForeignPtr addr# (PlainPtr (unsafeCoerce# b#))
-    len = I# (sizeofByteArray# b#)
+    addr# = byteArrayContents# ba#
+    fp = ForeignPtr addr# (PlainPtr (unsafeCoerce# ba#))
+    len = I# (sizeofByteArray# ba#)
 #endif
 fromShort !sbs = unsafeDupablePerformIO (fromShortIO sbs)
 
@@ -467,10 +467,10 @@ packLenBytes len ws0 =
 -- unpackAppendChars do the chunks strictly.
 
 unpackChars :: ShortByteString -> [Char]
-unpackChars bs = unpackAppendCharsLazy bs []
+unpackChars sbs = unpackAppendCharsLazy sbs []
 
 unpackBytes :: ShortByteString -> [Word8]
-unpackBytes bs = unpackAppendBytesLazy bs []
+unpackBytes sbs = unpackAppendBytesLazy sbs []
 
 -- Why 100 bytes you ask? Because on a 64bit machine the list we allocate
 -- takes just shy of 4k which seems like a reasonable amount.
@@ -764,16 +764,17 @@ reverse = \sbs ->
 --
 -- @since 0.11.3.0
 intercalate :: ShortByteString -> [ShortByteString] -> ShortByteString
-intercalate inc = \case
+intercalate sep = \case
                     [] -> mempty
                     [x] -> x -- This branch exists for laziness, not speed
-                    (sbs:t) -> let !totalLen = List.foldl' (\acc chunk -> acc +! length inc +! length chunk) (length sbs) t
+                    (sbs:t) -> let !totalLen = List.foldl' (\acc chunk -> acc +! length sep +! length chunk) (length sbs) t
                                in create totalLen (\mba ->
                                       let !l = length sbs
                                       in copyByteArray (asBA sbs) 0 mba 0 l >> go mba l t)
  where
-  ba = asBA inc
-  lba = length inc
+  ba = asBA sep
+  lba = length sep
+
   go :: MBA s -> Int -> [ShortByteString] -> ST s ()
   go _ _ [] = pure ()
   go mba !off (chunk:chunks) = do
@@ -899,7 +900,7 @@ take = \n -> \sbs ->
 --
 -- @since 0.11.3.0
 takeWhile :: (Word8 -> Bool) -> ShortByteString -> ShortByteString
-takeWhile f = \ps -> take (findIndexOrLength (not . f) ps) ps
+takeWhile f = \sbs -> take (findIndexOrLength (not . f) sbs) sbs
 
 -- | /O(n)/ @'takeEnd' n xs@ is equivalent to @'drop' ('length' xs - n) xs@.
 -- Takes @n@ elements from end of bytestring.
@@ -924,7 +925,7 @@ takeEnd n = \sbs -> if | n >= length sbs  -> sbs
 --
 -- @since 0.11.3.0
 takeWhileEnd :: (Word8 -> Bool) -> ShortByteString -> ShortByteString
-takeWhileEnd f = \ps -> drop (findFromEndUntil (not . f) ps) ps
+takeWhileEnd f = \sbs -> drop (findFromEndUntil (not . f) sbs) sbs
 
 -- | /O(n)/ 'drop' @n@ @xs@ returns the suffix of @xs@ after the first n elements, or @[]@ if @n > 'length' xs@.
 --
@@ -963,7 +964,7 @@ dropEnd n = \sbs -> if | n <= 0           -> sbs
 --
 -- @since 0.11.3.0
 dropWhile :: (Word8 -> Bool) -> ShortByteString -> ShortByteString
-dropWhile f = \ps -> drop (findIndexOrLength (not . f) ps) ps
+dropWhile f = \sbs -> drop (findIndexOrLength (not . f) sbs) sbs
 
 -- | Similar to 'P.dropWhileEnd',
 -- drops the longest (possibly empty) suffix of elements
@@ -973,7 +974,7 @@ dropWhile f = \ps -> drop (findIndexOrLength (not . f) ps) ps
 --
 -- @since 0.11.3.0
 dropWhileEnd :: (Word8 -> Bool) -> ShortByteString -> ShortByteString
-dropWhileEnd f = \ps -> take (findFromEndUntil (not . f) ps) ps
+dropWhileEnd f = \sbs -> take (findFromEndUntil (not . f) sbs) sbs
 
 -- | Returns the longest (possibly empty) suffix of elements which __do not__
 -- satisfy the predicate and the remainder of the string.
@@ -992,7 +993,7 @@ breakEnd p = \sbs -> splitAt (findFromEndUntil p sbs) sbs
 --
 -- @since 0.11.3.0
 break :: (Word8 -> Bool) -> ShortByteString -> (ShortByteString, ShortByteString)
-break = \p -> \ps -> case findIndexOrLength p ps of n -> (take n ps, drop n ps)
+break = \p -> \sbs -> case findIndexOrLength p sbs of n -> (take n sbs, drop n sbs)
 
 -- | Similar to 'P.span',
 -- returns the longest (possibly empty) prefix of elements
@@ -1023,16 +1024,16 @@ span p = break (not . p)
 spanEnd :: (Word8 -> Bool) -> ShortByteString -> (ShortByteString, ShortByteString)
 spanEnd p = \ps -> splitAt (findFromEndUntil (not.p) ps) ps
 
--- | /O(n)/ 'splitAt' @n xs@ is equivalent to @('take' n xs, 'drop' n xs)@.
+-- | /O(n)/ 'splitAt' @n sbs@ is equivalent to @('take' n sbs, 'drop' n sbs)@.
 --
 -- Note: copies the substrings
 --
 -- @since 0.11.3.0
 splitAt :: Int -> ShortByteString -> (ShortByteString, ShortByteString)
-splitAt n = \xs -> if
-  | n <= 0 -> (mempty, xs)
-  | n >= length xs -> (xs, mempty)
-  | otherwise -> (take n xs, drop n xs)
+splitAt n = \sbs -> if
+  | n <= 0 -> (mempty, sbs)
+  | n >= length sbs -> (sbs, mempty)
+  | otherwise -> (take n sbs, drop n sbs)
 
 -- | /O(n)/ Break a 'ShortByteString' into pieces separated by the byte
 -- argument, consuming the delimiter. I.e.
@@ -1186,7 +1187,7 @@ unfoldrN i f = \x0 -> first packBytesRev $ go (i - 1) x0 mempty
 --
 -- @since 0.11.3.0
 isInfixOf :: ShortByteString -> ShortByteString -> Bool
-isInfixOf p = \s -> null p || not (null $ snd $ breakSubstring p s)
+isInfixOf sbs = \s -> null sbs || not (null $ snd $ breakSubstring sbs s)
 
 -- |/O(n)/ The 'isPrefixOf' function takes two ShortByteStrings and returns 'True'
 --
@@ -1301,7 +1302,7 @@ breakSubstring pat =
 --
 -- @since 0.11.3.0
 elem :: Word8 -> ShortByteString -> Bool
-elem c = \ps -> case elemIndex c ps of Nothing -> False ; _ -> True
+elem c = \sbs -> case elemIndex c sbs of Nothing -> False ; _ -> True
 
 -- | /O(n)/ 'filter', applied to a predicate and a ByteString,
 -- returns a ByteString containing those characters that satisfy the
@@ -1321,21 +1322,21 @@ filter k = \sbs -> if
 --
 -- @since 0.11.3.0
 find :: (Word8 -> Bool) -> ShortByteString -> Maybe Word8
-find f = \p -> case findIndex f p of
-                    Just n -> Just (p `index` n)
+find f = \sbs -> case findIndex f sbs of
+                    Just n -> Just (sbs `index` n)
                     _      -> Nothing
 
 -- | /O(n)/ The 'partition' function takes a predicate a ByteString and returns
 -- the pair of ByteStrings with elements which do and do not satisfy the
 -- predicate, respectively; i.e.,
 --
--- > partition p bs == (filter p xs, filter (not . p) xs)
+-- > partition p bs == (filter p sbs, filter (not . p) sbs)
 --
 -- @since 0.11.3.0
 partition :: (Word8 -> Bool) -> ShortByteString -> (ShortByteString, ShortByteString)
-partition f = \s -> if
-    | null s    -> (s, s)
-    | otherwise -> bimap pack pack . List.partition f . unpack $ s
+partition f = \sbs -> if
+    | null sbs  -> (sbs, sbs)
+    | otherwise -> bimap pack pack . List.partition f . unpack $ sbs
 
 
 -- --------------------------------------------------------------------
@@ -1347,10 +1348,10 @@ partition f = \s -> if
 --
 -- @since 0.11.3.0
 elemIndex :: Word8 -> ShortByteString -> Maybe Int
-elemIndex c = \(SBS barr#) -> do
-    let l = I# (sizeofByteArray# barr#)
+elemIndex c = \(SBS ba#) -> do
+    let l = I# (sizeofByteArray# ba#)
     accursedUnutterablePerformIO $ do
-      !s <- c_elem_index barr# c (fromIntegral l)
+      !s <- c_elem_index ba# c (fromIntegral l)
       return $! if s < 0 then Nothing else Just s
 
 
@@ -1568,12 +1569,12 @@ packCStringLen (_, len) =
 --
 -- @since 0.10.10.0
 useAsCString :: ShortByteString -> (CString -> IO a) -> IO a
-useAsCString bs action =
+useAsCString sbs action =
   allocaBytes (l+1) $ \buf -> do
-      copyToPtr bs 0 buf (fromIntegral l)
+      copyToPtr sbs 0 buf (fromIntegral l)
       pokeByteOff buf l (0::Word8)
       action buf
-  where l = length bs
+  where l = length sbs
 
 -- | /O(n) construction./ Use a @ShortByteString@ with a function requiring a @CStringLen@.
 -- As for @useAsCString@ this function makes a copy of the original @ShortByteString@.
@@ -1581,11 +1582,11 @@ useAsCString bs action =
 --
 -- @since 0.10.10.0
 useAsCStringLen :: ShortByteString -> (CStringLen -> IO a) -> IO a
-useAsCStringLen bs action =
+useAsCStringLen sbs action =
   allocaBytes l $ \buf -> do
-      copyToPtr bs 0 buf (fromIntegral l)
+      copyToPtr sbs 0 buf (fromIntegral l)
       action (buf, l)
-  where l = length bs
+  where l = length sbs
 
 -- | /O(n)/ Check whether a 'ShortByteString' represents valid UTF-8.
 --
@@ -1645,7 +1646,7 @@ packLenBytesRev len ws0 =
 
 
 breakByte :: Word8 -> ShortByteString -> (ShortByteString, ShortByteString)
-breakByte c p = case elemIndex c p of
-    Nothing -> (p, mempty)
-    Just n  -> (take n p, drop n p)
+breakByte c sbs = case elemIndex c sbs of
+    Nothing -> (sbs, mempty)
+    Just n  -> (take n sbs, drop n sbs)
 
