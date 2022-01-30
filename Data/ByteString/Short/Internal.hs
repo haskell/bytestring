@@ -1492,18 +1492,18 @@ compareByteArraysOff (BA# ba1#) (I# ba1off#) (BA# ba2#) (I# ba2off#) (I# len#) =
   I# (compareByteArrays#  ba1# ba1off# ba2# ba2off# len#)
 #else
 compareByteArraysOff (BA# ba1#) ba1off (BA# ba2#) ba2off len =
-  fromIntegral $ accursedUnutterablePerformIO $
+  assert (ba1off + len <= (I# (sizeofByteArray# ba1#)))
+  $ assert (ba2off + len <= (I# (sizeofByteArray# ba2#)))
+  $ fromIntegral $ accursedUnutterablePerformIO $
     c_memcmp_ByteArray ba1#
-                       (I# (sizeofByteArray# ba1#))
                        ba1off
                        ba2#
-                       (I# (sizeofByteArray# ba2#))
                        ba2off
                        (fromIntegral len)
   
 
 foreign import ccall unsafe "static _memcmp_off"
-  c_memcmp_ByteArray :: ByteArray# -> Int -> Int -> ByteArray# -> Int -> Int -> CSize -> IO CInt
+  c_memcmp_ByteArray :: ByteArray# -> Int -> ByteArray# -> Int -> CSize -> IO CInt
 #endif
 
 foreign import ccall unsafe "static _elem_index"

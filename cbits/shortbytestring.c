@@ -5,16 +5,11 @@
 
 int
 _memcmp_off(const void *s1,
-            size_t len1,
             size_t off1,
             const void *s2,
-            size_t len2,
             size_t off2,
             size_t n)
 {
-    assert(off1 + n <= len1);
-    assert(off2 + n <= len2);
-
     const void *s1o = s1 + off1;
     const void *s2o = s2 + off2;
 
