@@ -945,7 +945,7 @@ takeWhileEnd f = \sbs -> drop (findFromEndUntil (not . f) sbs) sbs
 -- Note: copies the entire byte array
 --
 -- @since 0.11.3.0
-drop  :: Int -> ShortByteString -> ShortByteString
+drop :: Int -> ShortByteString -> ShortByteString
 drop = \n -> \sbs ->
   let len = length sbs
       newLen = max 0 (len - max 0 n)
