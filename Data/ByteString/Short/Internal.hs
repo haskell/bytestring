@@ -609,7 +609,7 @@ last = \sbs -> case null sbs of
 -- | /O(n)/ Extract the elements after the head of a ShortByteString, which must be non-empty.
 -- An exception will be thrown in the case of an empty ShortByteString.
 --
--- This is a partial function, consider using 'unsnoc' instead.
+-- This is a partial function, consider using 'uncons' instead.
 --
 -- Note: copies the entire byte array
 --
@@ -638,7 +638,7 @@ uncons = \sbs ->
 -- | /O(1)/ Extract the first element of a ShortByteString, which must be non-empty.
 -- An exception will be thrown in the case of an empty ShortByteString.
 --
--- This is a partial function, consider using 'unsnoc' instead.
+-- This is a partial function, consider using 'uncons' instead.
 --
 -- @since 0.11.3.0
 head :: HasCallStack => ShortByteString -> Word8
