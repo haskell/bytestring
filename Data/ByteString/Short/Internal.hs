@@ -164,9 +164,6 @@ import Data.Monoid      (Monoid(..))
 import Data.String      (IsString(..))
 import Control.Applicative (pure)
 import Control.Monad    ((>>))
-#if MIN_VERSION_base(4,12,0) && defined(SAFE_UNALIGNED)
-import Control.Monad    (void)
-#endif
 import Control.DeepSeq  (NFData(..))
 import Foreign.C.String (CString, CStringLen)
 import Foreign.C.Types  (CSize(..), CInt(..))
@@ -711,8 +708,6 @@ reverse = \sbs ->
   where
     go :: forall s. BA -> MBA s -> Int -> ST s ()
     go !ba !mba !l = case l `quotRem` 8 of
-      (0, r) -> void $ goWord8Chunk 0 r
-      (q, 0) -> goWord64Chunk 0 0 q
       (q, r) -> do
         i' <- goWord8Chunk 0 r
         goWord64Chunk i' 0 q
