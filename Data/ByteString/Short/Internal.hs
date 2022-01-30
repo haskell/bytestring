@@ -175,7 +175,6 @@ import Foreign.ForeignPtr (touchForeignPtr)
 import Foreign.ForeignPtr.Unsafe (unsafeForeignPtrToPtr)
 import Foreign.Storable (pokeByteOff)
 
-import GHC.List (errorEmptyList)
 import qualified GHC.Exts
 import GHC.Exts ( Int(I#), Int#, Ptr(Ptr), Addr#, Char(C#)
                 , State#, RealWorld
@@ -357,8 +356,8 @@ unsafeIndex sbs = indexWord8Array (asBA sbs)
 
 indexError :: HasCallStack => ShortByteString -> Int -> a
 indexError sbs i =
-  error $ "Data.ByteString.Short.index: error in array index; " ++ show i
-       ++ " not in range [0.." ++ show (length sbs) ++ ")"
+  moduleError "index" $ "error in array index: " ++ show i
+                        ++ " not in range [0.." ++ show (length sbs) ++ "]"
 
 -- | @since 0.11.2.0
 unsafePackLenLiteral :: Int -> Addr# -> ShortByteString
@@ -604,7 +603,7 @@ cons c = \sbs -> let l = length sbs
 -- @since 0.11.3.0
 last :: HasCallStack => ShortByteString -> Word8
 last = \sbs -> case null sbs of
-  True -> error "empty ShortByteString"
+  True -> errorEmptyList "last"
   False -> indexWord8Array (asBA sbs) (length sbs - 1)
 
 -- | /O(n)/ Extract the elements after the head of a ShortByteString, which must be non-empty.
@@ -620,7 +619,7 @@ tail = \sbs ->
   let l = length sbs
       nl = l - 1
   in case null sbs of
-      True -> error "empty ShortByteString"
+      True -> errorEmptyList "tail"
       False -> create nl $ \mba -> copyByteArray (asBA sbs) 1 mba 0 nl
 
 -- | /O(n)/ Extract the head and tail of a ByteString, returning Nothing
@@ -644,7 +643,7 @@ uncons = \sbs ->
 -- @since 0.11.3.0
 head :: HasCallStack => ShortByteString -> Word8
 head = \sbs -> case null sbs of
-  True -> error "empty ShortByteString"
+  True -> errorEmptyList "head"
   False -> indexWord8Array (asBA sbs) 0
 
 -- | /O(n)/ Return all the elements of a 'ShortByteString' except the last one.
@@ -660,7 +659,7 @@ init = \sbs ->
   let l = length sbs
       nl = l - 1
   in case null sbs of
-      True -> error "empty ShortByteString"
+      True -> errorEmptyList "init"
       False -> create nl $ \mba -> copyByteArray (asBA sbs) 0 mba 0 nl
 
 -- | /O(n)/ Extract the 'init' and 'last' of a ByteString, returning Nothing
@@ -1649,4 +1648,14 @@ breakByte :: Word8 -> ShortByteString -> (ShortByteString, ShortByteString)
 breakByte c sbs = case elemIndex c sbs of
     Nothing -> (sbs, mempty)
     Just n  -> (take n sbs, drop n sbs)
+
+-- Common up near identical calls to `error' to reduce the number
+-- constant strings created when compiled:
+errorEmptyList :: HasCallStack => String -> a
+errorEmptyList fun = moduleError fun "empty ShortByteString"
+{-# NOINLINE errorEmptyList #-}
+
+moduleError :: HasCallStack => String -> String -> a
+moduleError fun msg = error (moduleErrorMsg fun msg)
+{-# NOINLINE moduleError #-}
 
