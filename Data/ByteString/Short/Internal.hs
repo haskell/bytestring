@@ -482,6 +482,13 @@ createAndTrim'' l fill =
             return (SBS ba#)
 {-# INLINE createAndTrim'' #-}
 
+isPinned :: ByteArray# -> Bool
+#if MIN_VERSION_base(4,10,0)
+isPinned ba# = isTrue# (isByteArrayPinned# ba#)
+#else
+isPinned _ = False
+#endif
+
 ------------------------------------------------------------------------
 -- Conversion to and from ByteString
 
@@ -501,18 +508,15 @@ toShortIO (BS fptr len) = do
     BA# ba# <- stToIO (unsafeFreezeByteArray mba)
     return (SBS ba#)
 
-
 -- | /O(n)/. Convert a 'ShortByteString' into a 'ByteString'.
 --
 fromShort :: ShortByteString -> ByteString
-#if MIN_VERSION_base(4,10,0)
-fromShort (SBS ba#)
-  | isTrue# (isByteArrayPinned# ba#) = BS fp len
+fromShort (SBS b#)
+  | isPinned b# = BS fp len
   where
-    addr# = byteArrayContents# ba#
-    fp    = ForeignPtr addr# (PlainPtr (unsafeCoerce# ba#))
-    len   = I# (sizeofByteArray# ba#)
-#endif
+    addr# = byteArrayContents# b#
+    fp = ForeignPtr addr# (PlainPtr (unsafeCoerce# b#))
+    len = I# (sizeofByteArray# b#)
 fromShort !sbs = unsafeDupablePerformIO (fromShortIO sbs)
 
 fromShortIO :: ShortByteString -> IO ByteString
@@ -1768,19 +1772,15 @@ useAsCStringLen sbs action =
 isValidUtf8 :: ShortByteString -> Bool
 isValidUtf8 sbs@(SBS ba#) = accursedUnutterablePerformIO $ do
   let n = length sbs
-#if MIN_VERSION_base(4,10,0)
   -- Use a safe FFI call for large inputs to avoid GC synchronization pauses
   -- in multithreaded contexts.
   -- This specific limit was chosen based on results of a simple benchmark, see:
   -- https://github.com/haskell/bytestring/issues/451#issuecomment-991879338
   -- When changing this function, also consider changing the related function:
   -- Data.ByteString.isValidUtf8
-  i <- if n < 1000000 || not (isTrue# (isByteArrayPinned# ba#))
+  i <- if n < 1000000 || not (isPinned ba#)
      then cIsValidUtf8 ba# (fromIntegral n)
      else cIsValidUtf8Safe ba# (fromIntegral n)
-#else
-  i <- cIsValidUtf8 ba# (fromIntegral n)
-#endif
   return $ i /= 0
 
 -- We import bytestring_is_valid_utf8 both unsafe and safe. For small inputs
