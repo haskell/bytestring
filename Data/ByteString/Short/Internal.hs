@@ -1152,8 +1152,7 @@ unfoldr f = \x0 -> packBytesRev $ go x0 mempty
 
 -- | /O(n)/ Like 'unfoldr', 'unfoldrN' builds a ShortByteString from a seed
 -- value.  However, the length of the result is limited by the first
--- argument to 'unfoldrN'.  This function is more efficient than 'unfoldr'
--- when the maximum length of the result is known.
+-- argument to 'unfoldrN'.
 --
 -- This function is not efficient. It will build a full list of @[Word8]@
 -- before creating a 'ShortByteString'.
