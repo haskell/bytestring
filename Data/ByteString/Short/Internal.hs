@@ -218,8 +218,8 @@ import Prelude ( Eq(..), Ord(..), Ordering(..), Read(..), Show(..)
                , not
                , snd
 #if MIN_VERSION_base(4,12,0) && defined(SAFE_UNALIGNED)
-               , quot
-               , rem
+               , div
+               , mod
 #endif
                )
 
@@ -719,8 +719,8 @@ reverse = \sbs ->
      where
       -- Bodigrim: "For powers of 2 separate quot and rem are faster than quotRem."
       quotRem :: Int -> Int -> (Int, Int)
-      quotRem x i = let q = x `quot` i
-                        r = x `rem` i
+      quotRem x i = let q = x `div` i
+                        r = x `mod` i
                     in (q, r)
 
       goWord64Chunk :: Int -> Int -> Int -> ST s ()
