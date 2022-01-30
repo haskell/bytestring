@@ -730,7 +730,7 @@ reverse = \sbs ->
         loop !i
           | i >= cl = return ()
           | otherwise = do
-              let w = indexWord64Array ba (off + (i * 8))
+              let w = indexWord8ArrayAsWord64 ba (off + (i * 8))
               writeWord64Array mba (cl - 1 - i) (byteSwap64 w)
               loop (i+1)
 
@@ -1435,8 +1435,8 @@ indexWord8Array :: BA -> Int -> Word8
 indexWord8Array (BA# ba#) (I# i#) = W8# (indexWord8Array# ba# i#)
 
 #if MIN_VERSION_base(4,12,0) && defined(SAFE_UNALIGNED)
-indexWord64Array :: BA -> Int -> Word64
-indexWord64Array (BA# ba#) (I# i#) = W64# (indexWord8ArrayAsWord64# ba# i#)
+indexWord8ArrayAsWord64 :: BA -> Int -> Word64
+indexWord8ArrayAsWord64 (BA# ba#) (I# i#) = W64# (indexWord8ArrayAsWord64# ba# i#)
 #endif
 
 newByteArray :: Int -> ST s (MBA s)
