@@ -4,7 +4,7 @@
 
 
 int
-_memcmp_off(const void *s1,
+sbs_memcmp_off(const void *s1,
             size_t off1,
             const void *s2,
             size_t off2,
@@ -19,7 +19,7 @@ _memcmp_off(const void *s1,
 }
 
 ptrdiff_t
-_elem_index(const void *s,
+sbs_elem_index(const void *s,
             int c,
             size_t n)
 {

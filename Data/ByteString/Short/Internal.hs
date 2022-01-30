@@ -1502,11 +1502,11 @@ compareByteArraysOff (BA# ba1#) ba1off (BA# ba2#) ba2off len =
                        (fromIntegral len)
   
 
-foreign import ccall unsafe "static _memcmp_off"
+foreign import ccall unsafe "static sbs_memcmp_off"
   c_memcmp_ByteArray :: ByteArray# -> Int -> ByteArray# -> Int -> CSize -> IO CInt
 #endif
 
-foreign import ccall unsafe "static _elem_index"
+foreign import ccall unsafe "static sbs_elem_index"
     c_elem_index :: ByteArray# -> Word8 -> CSize -> IO Int
 
 
