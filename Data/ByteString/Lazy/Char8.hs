@@ -888,9 +888,7 @@ lines (Chunk c0 cs0) = loop0 c0 cs0
 -- | 'unlines' is an inverse operation to 'lines'.  It joins lines,
 -- after appending a terminating newline to each.
 unlines :: [ByteString] -> ByteString
-unlines [] = empty
-unlines ss = concat (List.intersperse nl ss) `append` nl -- half as much space
-    where nl = singleton '\n'
+unlines = concat . List.concatMap (\x -> [x, singleton '\n'])
 
 -- | 'words' breaks a ByteString up into a list of words, which
 -- were delimited by Chars representing white space. And

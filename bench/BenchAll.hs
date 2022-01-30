@@ -23,6 +23,7 @@ import           Prelude                               hiding (words)
 import qualified Data.ByteString                       as S
 import qualified Data.ByteString.Char8                 as S8
 import qualified Data.ByteString.Lazy                  as L
+import qualified Data.ByteString.Lazy.Char8            as L8
 
 import           Data.ByteString.Builder
 import           Data.ByteString.Builder.Extra         (byteStringCopy,
@@ -467,6 +468,10 @@ main = do
     , bgroup "traversals"
       [ bench "map (+1) large" $ nf (S.map (+ 1)) largeTraversalInput
       , bench "map (+1) small" $ nf (S.map (+ 1)) smallTraversalInput
+      ]
+    , bgroup "unlines"
+      [ bench "lazy"   $ nf L8.unlines (map (L8.pack . show) intData)
+      , bench "strict" $ nf S8.unlines (map (S8.pack . show) intData)
       ]
     , benchBoundsCheckFusion
     , benchCount

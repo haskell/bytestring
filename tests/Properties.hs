@@ -491,6 +491,7 @@ strictness_checks =
         D.take (D.length xs + 1) (D.scanl (+.) '\NUL' (explosiveTail (xs <> D.singleton '\SOH'))) === (D.pack . fmap (D.foldr (+.) '\NUL') . D.inits) xs
     , testProperty "scanl1 is lazy" $ \ xs -> D.length xs > 0 ==> let char1 +. char2 = toEnum (fromEnum char1 + fromEnum char2) in
         D.take (D.length xs) (D.scanl1 (+.) (explosiveTail (xs <> D.singleton '\SOH'))) === (D.pack . fmap (D.foldr1 (+.)) . tail . D.inits) xs
+    , testProperty "unlines is lazy" $ \ xs -> D.take (D.length xs + 1) (D.unlines (xs : error "Tail of this list is undefined!")) === xs `D.snoc` '\n'
     ]
   ]
 
