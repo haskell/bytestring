@@ -92,3 +92,24 @@ jobs:
           ghc --version
           ghc --make -Iinclude -itests:tests/builder -o Main cbits/*.c tests/Main.hs +RTS -s
           ./Main +RTS -s
+
+  bounds-checking:
+    runs-on: ubuntu-latest
+    container:
+      image: fedora:34
+    steps:
+    - name: install deps
+      run: |
+          dnf install -y gcc gmp gmp-devel make ncurses ncurses-compat-libs xz perl
+          curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | BOOTSTRAP_HASKELL_NONINTERACTIVE=1 BOOTSTRAP_HASKELL_MINIMAL=1 sh
+          source ~/.ghcup/env
+          ghcup install ghc -u https://downloads.haskell.org/~ghcup/unofficial-bindists/ghc/9.3.20220124/ghc-9.3.20220124-x86_64-linux-fedora-34-bounds-checking-ddf50f4b.tar.xz --set 9.3.20220124
+          ghcup install cabal
+      shell: bash
+    - uses: actions/checkout@v1
+    - name: test
+      run: |
+          source ~/.ghcup/env
+          cabal update
+          cabal run -w ghc-9.3.20220124 --ghc-options='-fcheck-prim-bounds -fno-ignore-asserts' bytestring-tests
+      shell: bash
