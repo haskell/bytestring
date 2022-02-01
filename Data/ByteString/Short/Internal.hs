@@ -624,7 +624,7 @@ cons c = \sbs -> let l = length sbs
 -- @since 0.11.3.0
 last :: HasCallStack => ShortByteString -> Word8
 last = \sbs -> case null sbs of
-  True -> errorEmptyList "last"
+  True -> errorEmptySBS "last"
   False -> indexWord8Array (asBA sbs) (length sbs - 1)
 
 -- | /O(n)/ Extract the elements after the head of a ShortByteString, which must be non-empty.
@@ -640,7 +640,7 @@ tail = \sbs ->
   let l = length sbs
       nl = l - 1
   in case null sbs of
-      True -> errorEmptyList "tail"
+      True -> errorEmptySBS "tail"
       False -> create nl $ \mba -> copyByteArray (asBA sbs) 1 mba 0 nl
 
 -- | /O(n)/ Extract the head and tail of a ByteString, returning Nothing
@@ -664,7 +664,7 @@ uncons = \sbs ->
 -- @since 0.11.3.0
 head :: HasCallStack => ShortByteString -> Word8
 head = \sbs -> case null sbs of
-  True -> errorEmptyList "head"
+  True -> errorEmptySBS "head"
   False -> indexWord8Array (asBA sbs) 0
 
 -- | /O(n)/ Return all the elements of a 'ShortByteString' except the last one.
@@ -680,7 +680,7 @@ init = \sbs ->
   let l = length sbs
       nl = l - 1
   in case null sbs of
-      True -> errorEmptyList "init"
+      True -> errorEmptySBS "init"
       False -> create nl $ \mba -> copyByteArray (asBA sbs) 0 mba 0 nl
 
 -- | /O(n)/ Extract the 'init' and 'last' of a ByteString, returning Nothing
@@ -862,7 +862,7 @@ foldr1 k = List.foldr1 k . unpack
 --
 -- @since 0.11.3.0
 foldr1' :: HasCallStack => (Word8 -> Word8 -> Word8) -> ShortByteString -> Word8
-foldr1' k = \sbs -> if null sbs then errorEmptyList "foldr1'" else foldr' k (last sbs) (init sbs)
+foldr1' k = \sbs -> if null sbs then errorEmptySBS "foldr1'" else foldr' k (last sbs) (init sbs)
 
 
 
@@ -1691,9 +1691,9 @@ breakByte c sbs = case elemIndex c sbs of
 
 -- Common up near identical calls to `error' to reduce the number
 -- constant strings created when compiled:
-errorEmptyList :: HasCallStack => String -> a
-errorEmptyList fun = moduleError fun "empty ShortByteString"
-{-# NOINLINE errorEmptyList #-}
+errorEmptySBS :: HasCallStack => String -> a
+errorEmptySBS fun = moduleError fun "empty ShortByteString"
+{-# NOINLINE errorEmptySBS #-}
 
 moduleError :: HasCallStack => String -> String -> a
 moduleError fun msg = error (moduleErrorMsg fun msg)
