@@ -379,18 +379,23 @@ create len fill =
       return (SBS ba#)
 {-# INLINE create #-}
 
-createAndTrim :: Int -> (forall s. MBA s -> ST s (Int, Int, a)) -> (ShortByteString, a)
+-- | Given the maximum size needed and a function to make the contents
+-- of a ShortByteString, createAndTrim makes the 'ShortByteString'.
+-- The generating function is required to return the actual final size
+-- (<= the maximum size) and the result value. The resulting byte array
+-- is realloced to this size.
+createAndTrim :: Int -> (forall s. MBA s -> ST s (Int, a)) -> (ShortByteString, a)
 createAndTrim l fill =
     runST $ do
       mba <- newByteArray l
-      (off, l', res) <- fill mba
+      (l', res) <- fill mba
       if assert (l' <= l) $ l' >= l
           then do
             BA# ba# <- unsafeFreezeByteArray mba
             return (SBS ba#, res)
           else do
             mba2 <- newByteArray l'
-            copyMutableByteArray mba off mba2 0 l'
+            copyMutableByteArray mba 0 mba2 0 l'
             BA# ba# <- unsafeFreezeByteArray mba2
             return (SBS ba#, res)
 {-# INLINE createAndTrim #-}
@@ -1195,14 +1200,14 @@ unfoldrN i f = \x0 ->
      | otherwise -> createAndTrim i $ \mba -> go mba x0 0
 
   where
-    go :: forall s. MBA s -> a -> Int -> ST s (Int, Int, Maybe a)
+    go :: forall s. MBA s -> a -> Int -> ST s (Int, Maybe a)
     go !mba !x !n = go' x n
       where
-        go' :: a -> Int -> ST s (Int, Int, Maybe a)
+        go' :: a -> Int -> ST s (Int, Maybe a)
         go' !x' !n'
-          | n' == i    = return (0, n', Just x')
+          | n' == i    = return (n', Just x')
           | otherwise = case f x' of
-                          Nothing       -> return (0, n', Nothing)
+                          Nothing       -> return (n', Nothing)
                           Just (w, x'') -> do
                                              writeWord8Array mba n' w
                                              go' x'' (n'+1)
