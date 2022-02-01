@@ -908,10 +908,10 @@ lines (Chunk c0 cs0) = loop0 c0 cs0
                 let !c' = revChunks (B.unsafeTake n c : line)
                  in c' : loop0 (B.unsafeDrop (n+1) c) cs
 
--- | 'unlines' is an inverse operation to 'lines'.  It joins lines,
+-- | 'unlines' is a near-inverse operation to 'lines'.  It joins lines,
 -- after appending a terminating newline to each.
 unlines :: [ByteString] -> ByteString
-unlines = concat . List.concatMap (\x -> [x, singleton '\n'])
+unlines = List.foldr (\x t -> x `append` cons '\n' t) Empty
 
 -- | 'words' breaks a ByteString up into a list of words, which
 -- were delimited by Chars representing white space. And
