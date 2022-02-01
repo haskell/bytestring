@@ -1649,7 +1649,9 @@ moduleErrorMsg :: String -> String -> String
 moduleErrorMsg fun msg = "Data.ByteString.Short." ++ fun ++ ':':' ':msg
 
 
--- Find from the end of the string using predicate
+-- Find from the end of the string using predicate.
+--
+-- Return '0' if the predicate returns false for the entire ShortByteString.
 findFromEndUntil :: (Word8 -> Bool) -> ShortByteString -> Int
 findFromEndUntil k sbs = go (length sbs - 1)
   where
