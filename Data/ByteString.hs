@@ -283,6 +283,9 @@ singleton :: Word8 -> ByteString
 -- can be simplified to a constructor application. This may enable GHC
 -- to perform further optimizations after inlining, and also causes a
 -- fresh singleton to take only 4 words of heap space instead of 9.
+-- (The buffer object itself would take up 3 words: header, size, and
+-- 1 word of content. The ForeignPtrContents object used to keep the
+-- buffer alive would need two more.)
 singleton c = unsafeTake 1 $ unsafeDrop (fromIntegral c) allBytes
 {-# INLINE singleton #-}
 
