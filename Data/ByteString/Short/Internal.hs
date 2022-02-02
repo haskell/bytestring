@@ -233,7 +233,11 @@ import GHC.Exts
   ,indexWord8ArrayAsWord64#
 #endif
   , setByteArray#
-  )
+  , sizeofByteArray#
+  , indexWord8Array#, indexCharArray#
+  , writeWord8Array#
+  , unsafeFreezeByteArray#
+  , touch# )
 import GHC.IO
 import GHC.ForeignPtr
   ( ForeignPtr(ForeignPtr)
@@ -1781,6 +1785,7 @@ isValidUtf8 sbs@(SBS ba#) = accursedUnutterablePerformIO $ do
   i <- if n < 1000000 || not (isPinned ba#)
      then cIsValidUtf8 ba# (fromIntegral n)
      else cIsValidUtf8Safe ba# (fromIntegral n)
+  IO (\s -> (# touch# ba# s, () #))
   return $ i /= 0
 
 -- We import bytestring_is_valid_utf8 both unsafe and safe. For small inputs
