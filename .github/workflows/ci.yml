@@ -92,3 +92,21 @@ jobs:
           ghc --version
           ghc --make -Iinclude -itests:tests/builder -o Main cbits/*.c tests/Main.hs +RTS -s
           ./Main +RTS -s
+
+  old-gcc:
+    runs-on: ubuntu-latest
+    container:
+      image: centos:7
+    steps:
+    - name: install deps
+      run: |
+          yum install -y gcc gmp gmp-devel make ncurses ncurses-compat-libs xz perl
+          curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | BOOTSTRAP_HASKELL_NONINTERACTIVE=1 sh
+      shell: bash
+    - uses: actions/checkout@v2
+    - name: test
+      run: |
+          source ~/.ghcup/env
+          cabal update
+          cabal run bytestring-tests
+      shell: bash
