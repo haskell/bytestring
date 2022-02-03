@@ -33,9 +33,9 @@ module Data.ByteString.Short (
     -- | With GHC, the memory overheads are as follows, expressed in words and
     -- in bytes (words are 4 and 8 bytes on 32 or 64bit machines respectively).
     --
-    -- * 'B.ByteString' unshared: 9 words; 36 or 72 bytes.
+    -- * 'B.ByteString' unshared: 8 words; 32 or 64 bytes.
     --
-    -- * 'B.ByteString' shared substring: 5 words; 20 or 40 bytes.
+    -- * 'B.ByteString' shared substring: 4 words; 16 or 32 bytes.
     --
     -- * 'ShortByteString': 4 words; 16 or 32 bytes.
     --
