@@ -965,8 +965,10 @@ lines (BS x l) = go x l
                     else return [BS f i]
 -}
 
--- | 'unlines' is a near-inverse operation to 'lines'.  It joins lines,
--- after appending a terminating newline to each.
+-- | 'unlines' joins lines, appending a terminating newline after each.
+--
+-- Equivalent to
+--     @'concat' . Data.List.concatMap (\\x -> [x, 'singleton' \'\\n'])@.
 unlines :: [ByteString] -> ByteString
 unlines = \li -> let
   totLen = List.foldl' (\acc s -> acc +! length s +! 1) 0 li
