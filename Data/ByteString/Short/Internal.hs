@@ -737,6 +737,7 @@ reverse = \sbs ->
         goWord64Chunk i' 0 q
      where
       -- Bodigrim: "For powers of 2 separate quot and rem are faster than quotRem."
+      -- clyring: "div/mod by known powers of two are smaller and faster than quot/rem because they can just emit a shift/mask instruction and don't have to work to handle negative inputs correctly"
       quotRem :: Int -> Int -> (Int, Int)
       quotRem x i = let q = x `div` i
                         r = x `mod` i
@@ -1038,13 +1039,13 @@ span p = break (not . p)
 --
 -- and
 --
--- > spanEnd (not . isSpace) ps
+-- > spanEnd (not . isSpace) sbs
 -- >    ==
--- > let (x, y) = span (not . isSpace) (reverse ps) in (reverse y, reverse x)
+-- > let (x, y) = span (not . isSpace) (reverse sbs) in (reverse y, reverse x)
 --
 -- @since 0.11.3.0
 spanEnd :: (Word8 -> Bool) -> ShortByteString -> (ShortByteString, ShortByteString)
-spanEnd p = \ps -> splitAt (findFromEndUntil (not.p) ps) ps
+spanEnd p = \sbs -> splitAt (findFromEndUntil (not . p) sbs) sbs
 
 -- | /O(n)/ 'splitAt' @n sbs@ is equivalent to @('take' n sbs, 'drop' n sbs)@.
 --
@@ -1170,6 +1171,8 @@ replicate w c
 -- This function is not efficient/safe. It will build a list of @[Word8]@
 -- and run the generator until it returns `Nothing`, otherwise recurse infinitely,
 -- then finally create a 'ShortByteString'.
+--
+-- If you know the maximum length, consider using 'unfoldrN'.
 --
 -- Examples:
 --
