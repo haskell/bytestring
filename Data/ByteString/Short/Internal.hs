@@ -156,7 +156,7 @@ import qualified Data.ByteString.Internal as BS
 import Data.Bifunctor   ( bimap )
 import Data.Typeable    (Typeable)
 import Data.Data        (Data(..), mkNoRepType)
-import Data.Bits        ( FiniteBits (finiteBitSize), shiftL, (.&.), (.|.) )
+import Data.Bits        ( FiniteBits (finiteBitSize), shiftL, shiftR, (.&.), (.|.) )
 import qualified Data.List as List
 import qualified Data.Foldable as Foldable
 import Data.Semigroup   (Semigroup((<>)))
@@ -217,10 +217,6 @@ import Prelude ( Eq(..), Ord(..), Ordering(..), Read(..), Show(..)
                , Maybe(..)
                , not
                , snd
-#if MIN_VERSION_base(4,12,0) && defined(SAFE_UNALIGNED)
-               , div
-               , mod
-#endif
                )
 
 import qualified Language.Haskell.TH.Lib as TH
@@ -731,17 +727,13 @@ reverse = \sbs ->
     in create l (\mba -> go ba mba l)
   where
     go :: forall s. BA -> MBA s -> Int -> ST s ()
-    go !ba !mba !l = case l `quotRem` 8 of
-      (q, r) -> do
-        i' <- goWord8Chunk 0 r
-        goWord64Chunk i' 0 q
+    go !ba !mba !l = do
+      -- this is equivalent to: (q, r) = l `quotRem` 8 
+      let q = l `shiftR` 3
+          r = l .&. 7
+      i' <- goWord8Chunk 0 r
+      goWord64Chunk i' 0 q
      where
-      -- Bodigrim: "For powers of 2 separate quot and rem are faster than quotRem."
-      -- clyring: "div/mod by known powers of two are smaller and faster than quot/rem because they can just emit a shift/mask instruction and don't have to work to handle negative inputs correctly"
-      quotRem :: Int -> Int -> (Int, Int)
-      quotRem x i = let q = x `div` i
-                        r = x `mod` i
-                    in (q, r)
 
       goWord64Chunk :: Int -> Int -> Int -> ST s ()
       goWord64Chunk !off !i' !cl = loop i'
