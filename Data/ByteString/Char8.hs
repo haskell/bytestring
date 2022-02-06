@@ -282,7 +282,7 @@ import Data.ByteString.ReadNat
 import Data.Char    ( isSpace )
 -- See bytestring #70
 import GHC.Char (eqChar)
-import qualified Data.List as List (concatMap)
+import qualified Data.List as List
 
 import System.IO    (Handle,stdout)
 import Foreign
@@ -965,10 +965,21 @@ lines (BS x l) = go x l
                     else return [BS f i]
 -}
 
--- | 'unlines' is an inverse operation to 'lines'.  It joins lines,
--- after appending a terminating newline to each.
+-- | 'unlines' joins lines, appending a terminating newline after each.
+--
+-- Equivalent to
+--     @'concat' . Data.List.concatMap (\\x -> [x, 'singleton' \'\\n'])@.
 unlines :: [ByteString] -> ByteString
-unlines = concat . List.concatMap (\x -> [x, singleton '\n'])
+unlines = \li -> let
+  totLen = List.foldl' (\acc s -> acc +! length s +! 1) 0 li
+  (+!) = checkedAdd "Char8.unlines"
+
+  go [] _ = pure ()
+  go (BS srcFP len : srcs) dest = do
+    unsafeWithForeignPtr srcFP $ \src -> memcpy dest src len
+    pokeElemOff dest len (c2w '\n')
+    go srcs $ dest `plusPtr` (len + 1)
+  in  unsafeCreate totLen (go li)
 
 -- | 'words' breaks a ByteString up into a list of words, which
 -- were delimited by Chars representing white space.
