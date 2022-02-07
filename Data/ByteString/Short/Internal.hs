@@ -156,7 +156,14 @@ import qualified Data.ByteString.Internal as BS
 import Data.Bifunctor   ( bimap )
 import Data.Typeable    (Typeable)
 import Data.Data        (Data(..), mkNoRepType)
-import Data.Bits        ( FiniteBits (finiteBitSize), shiftL, shiftR, (.&.), (.|.) )
+import Data.Bits        ( FiniteBits (finiteBitSize)
+                        , shiftL
+#if MIN_VERSION_base(4,12,0) && defined(SAFE_UNALIGNED)
+                        , shiftR
+#endif
+                        , (.&.)
+                        , (.|.)
+                        )
 import qualified Data.List as List
 import qualified Data.Foldable as Foldable
 import Data.Semigroup   (Semigroup((<>)))
