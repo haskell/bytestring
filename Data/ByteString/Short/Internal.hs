@@ -224,6 +224,7 @@ import Prelude ( Eq(..), Ord(..), Ordering(..), Read(..), Show(..)
                , Maybe(..)
                , not
                , snd
+               , fst
                )
 
 import qualified Language.Haskell.TH.Lib as TH
@@ -1348,9 +1349,29 @@ elem c = \sbs -> case elemIndex c sbs of Nothing -> False ; _ -> True
 --
 -- @since 0.11.3.0
 filter :: (Word8 -> Bool) -> ShortByteString -> ShortByteString
-filter k = \sbs -> if
-    | null sbs  -> sbs
-    | otherwise -> pack . List.filter k . unpack $ sbs
+filter k = \sbs -> let l = length sbs
+                   in if | l <= 0    -> sbs
+                         | otherwise -> fst $ createAndTrim l $ \mba -> go mba (asBA sbs) l
+  where
+    go :: forall s. MBA s -- mutable output bytestring
+       -> BA              -- input bytestring
+       -> Int             -- length of input bytestring
+       -> ST s (Int, ())
+    go !mba ba !l = go' 0 0
+      where
+        go' :: Int -- bytes read
+            -> Int -- bytes written
+            -> ST s (Int, ())
+        go' !br !bw
+          | br >= l = return (bw, ())
+          | otherwise = do
+              let w = indexWord8Array ba br
+              if k w
+              then do
+                writeWord8Array mba bw w
+                go' (br+1) (bw+1)
+              else
+                go' (br+1) bw
 
 -- | /O(n)/ The 'find' function takes a predicate and a ByteString,
 -- and returns the first element in matching the predicate, or 'Nothing'
