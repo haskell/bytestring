@@ -1656,9 +1656,8 @@ findFromEndUntil :: (Word8 -> Bool) -> ShortByteString -> Int
 findFromEndUntil k sbs = go (length sbs - 1)
   where
     ba = asBA sbs
-    w = indexWord8Array ba
     go !n | n < 0     = 0
-          | k (w n)   = n + 1
+          | k (indexWord8Array ba n)   = n + 1
           | otherwise = go (n - 1)
 
 findIndexOrLength :: (Word8 -> Bool) -> ShortByteString -> Int
@@ -1666,9 +1665,8 @@ findIndexOrLength k sbs = go 0
   where
     l = length sbs
     ba = asBA sbs
-    w = indexWord8Array ba
     go !n | n >= l    = l
-          | k (w n)   = n
+          | k (indexWord8Array ba n)   = n
           | otherwise = go (n + 1)
 
 
