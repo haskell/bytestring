@@ -1216,7 +1216,7 @@ unfoldrN i f = \x0 ->
 --
 -- @since 0.11.3.0
 isInfixOf :: ShortByteString -> ShortByteString -> Bool
-isInfixOf sbs = \s -> null sbs || not (null $ snd $ breakSubstring sbs s)
+isInfixOf sbs = \s -> null sbs || not (null $ snd $ (GHC.Exts.inline breakSubstring) sbs s)
 
 -- |/O(n)/ The 'isPrefixOf' function takes two ShortByteStrings and returns 'True'
 --
@@ -1305,6 +1305,7 @@ breakSubstring pat =
             hs' = hs * k +
                   get i -
                   m * get (i - lp)
+    {-# INLINE karpRabin #-}
 
     shift :: ShortByteString -> (ShortByteString, ShortByteString)
     shift !src
@@ -1322,6 +1323,8 @@ breakSubstring pat =
           where
             b  = fromIntegral (unsafeIndex src i)
             w' = mask' .&. ((w `shiftL` 8) .|. b)
+    {-# INLINE shift #-}
+{-# INLINABLE breakSubstring #-}
 
 
 -- --------------------------------------------------------------------
