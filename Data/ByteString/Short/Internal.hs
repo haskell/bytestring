@@ -1,14 +1,20 @@
-{-# LANGUAGE DeriveDataTypeable, CPP, BangPatterns, RankNTypes,
-             ForeignFunctionInterface, MagicHash, UnboxedTuples,
-             UnliftedFFITypes #-}
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE BangPatterns             #-}
+{-# LANGUAGE CPP                      #-}
+{-# LANGUAGE DeriveDataTypeable       #-}
+{-# LANGUAGE ForeignFunctionInterface #-}
+{-# LANGUAGE LambdaCase               #-}
+{-# LANGUAGE MagicHash                #-}
+{-# LANGUAGE MultiWayIf               #-}
+{-# LANGUAGE RankNTypes               #-}
+{-# LANGUAGE ScopedTypeVariables      #-}
+{-# LANGUAGE TemplateHaskellQuotes    #-}
+{-# LANGUAGE TupleSections            #-}
+{-# LANGUAGE TypeFamilies             #-}
+{-# LANGUAGE UnboxedTuples            #-}
+{-# LANGUAGE UnliftedFFITypes         #-}
+{-# LANGUAGE Unsafe                   #-}
+
 {-# OPTIONS_GHC -fno-warn-name-shadowing -fexpose-all-unfoldings #-}
-{-# LANGUAGE Unsafe #-}
-{-# LANGUAGE TemplateHaskellQuotes #-}
-{-# LANGUAGE MultiWayIf #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_HADDOCK not-home #-}
 
 -- Not all architectures are forgiving of unaligned accesses; whitelist ones
@@ -150,82 +156,118 @@ module Data.ByteString.Short.Internal (
     useAsCStringLen,
   ) where
 
-import Data.ByteString.Internal (ByteString(..), accursedUnutterablePerformIO, checkedAdd)
-import qualified Data.ByteString.Internal as BS
+import Data.ByteString.Internal
+  ( ByteString(..)
+  , accursedUnutterablePerformIO
+  , checkedAdd
+  )
 
-import Data.Bifunctor   ( bimap )
-import Data.Typeable    (Typeable)
-import Data.Data        (Data(..), mkNoRepType)
-import Data.Bits        ( FiniteBits (finiteBitSize)
-                        , shiftL
+import Data.Bifunctor
+  ( bimap )
+import Data.Bits
+  ( FiniteBits (finiteBitSize)
+  , shiftL
 #if MIN_VERSION_base(4,12,0) && defined(SAFE_UNALIGNED)
-                        , shiftR
+  , shiftR
 #endif
-                        , (.&.)
-                        , (.|.)
-                        )
-import qualified Data.List as List
-import qualified Data.Foldable as Foldable
-import Data.Semigroup   (Semigroup((<>)))
-import Data.Monoid      (Monoid(..))
-import Data.String      (IsString(..))
-import Control.Applicative (pure)
-import Control.Exception        (assert)
-import Control.Monad    ((>>))
-import Control.DeepSeq  (NFData(..))
-import Foreign.C.String (CString, CStringLen)
-import Foreign.C.Types  (CSize(..), CInt(..), CPtrdiff(..))
-import Foreign.Marshal.Alloc (allocaBytes)
-import Foreign.ForeignPtr (touchForeignPtr)
-import Foreign.ForeignPtr.Unsafe (unsafeForeignPtrToPtr)
-import Foreign.Storable (pokeByteOff)
-
-import qualified GHC.Exts
-import GHC.Exts ( Int(I#), Int#, Ptr(Ptr), Addr#, Char(C#)
-                , State#, RealWorld
-                , ByteArray#, MutableByteArray#
-                , newByteArray#
-                , newPinnedByteArray#
-                , byteArrayContents#
-                , unsafeCoerce#
-                , copyMutableByteArray#
+  , (.&.)
+  , (.|.)
+  )
+import Data.Data
+  ( Data(..)
+  , mkNoRepType
+  )
+import Data.Monoid
+  ( Monoid(..) )
+import Data.Semigroup
+  ( Semigroup((<>)) )
+import Data.String
+  ( IsString(..) )
+import Data.Typeable
+  ( Typeable )
+import Control.Applicative
+  ( pure )
+import Control.DeepSeq
+  ( NFData(..) )
+import Control.Exception
+  ( assert )
+import Control.Monad
+  ( (>>) )
+import Foreign.C.String
+  ( CString
+  , CStringLen
+  )
+import Foreign.C.Types
+  ( CSize(..)
+  , CInt(..)
+  , CPtrdiff(..)
+  )
+import Foreign.ForeignPtr
+  ( touchForeignPtr )
+import Foreign.ForeignPtr.Unsafe
+  ( unsafeForeignPtrToPtr )
+import Foreign.Marshal.Alloc
+  ( allocaBytes )
+import Foreign.Storable
+  ( pokeByteOff )
+import GHC.Exts
+  ( Int(I#), Int#, Ptr(Ptr), Addr#, Char(C#)
+  , State#, RealWorld
+  , ByteArray#, MutableByteArray#
+  , newByteArray#
+  , newPinnedByteArray#
+  , byteArrayContents#
+  , unsafeCoerce#
+  , copyMutableByteArray#
 #if MIN_VERSION_base(4,10,0)
-                , isByteArrayPinned#
-                , isTrue#
+  , isByteArrayPinned#
+  , isTrue#
 #endif
 #if MIN_VERSION_base(4,11,0)
-                , compareByteArrays#
+  , compareByteArrays#
 #endif
-                , sizeofByteArray#
-                , indexWord8Array#, indexCharArray#
-                , writeWord8Array#
-                , unsafeFreezeByteArray#
+  , sizeofByteArray#
+  , indexWord8Array#, indexCharArray#
+  , writeWord8Array#
+  , unsafeFreezeByteArray#
 #if MIN_VERSION_base(4,12,0) && defined(SAFE_UNALIGNED)
-                ,writeWord64Array#
-                ,indexWord8ArrayAsWord64#
+  ,writeWord64Array#
+  ,indexWord8ArrayAsWord64#
 #endif
-                , setByteArray# )
+  , setByteArray#
+  )
 import GHC.IO
-import GHC.ForeignPtr (ForeignPtr(ForeignPtr), ForeignPtrContents(PlainPtr))
-import GHC.ST         (ST(ST), runST)
-import GHC.Stack.Types (HasCallStack)
+import GHC.ForeignPtr
+  ( ForeignPtr(ForeignPtr)
+  , ForeignPtrContents(PlainPtr)
+  )
+import GHC.ST
+  ( ST(ST)
+  , runST
+  )
+import GHC.Stack.Types
+  ( HasCallStack )
 import GHC.Word
+import Prelude
+  ( Eq(..), Ord(..), Ordering(..), Read(..), Show(..)
+  , ($), ($!), error, (++), (.), (||)
+  , String, userError
+  , Bool(..), (&&), otherwise
+  , (+), (-), fromIntegral
+  , (*)
+  , (^)
+  , (<$>)
+  , return
+  , Maybe(..)
+  , not
+  , snd
+  )
 
+import qualified Data.ByteString.Internal as BS
 
-import Prelude ( Eq(..), Ord(..), Ordering(..), Read(..), Show(..)
-               , ($), ($!), error, (++), (.), (||)
-               , String, userError
-               , Bool(..), (&&), otherwise
-               , (+), (-), fromIntegral
-               , (*)
-               , (^)
-               , (<$>)
-               , return
-               , Maybe(..)
-               , not
-               , snd
-               )
-
+import qualified Data.Foldable as Foldable
+import qualified Data.List as List
+import qualified GHC.Exts
 import qualified Language.Haskell.TH.Lib as TH
 import qualified Language.Haskell.TH.Syntax as TH
 
@@ -447,8 +489,8 @@ fromShort (SBS ba#)
   | isTrue# (isByteArrayPinned# ba#) = BS fp len
   where
     addr# = byteArrayContents# ba#
-    fp = ForeignPtr addr# (PlainPtr (unsafeCoerce# ba#))
-    len = I# (sizeofByteArray# ba#)
+    fp    = ForeignPtr addr# (PlainPtr (unsafeCoerce# ba#))
+    len   = I# (sizeofByteArray# ba#)
 #endif
 fromShort !sbs = unsafeDupablePerformIO (fromShortIO sbs)
 
@@ -617,7 +659,7 @@ infixl 5 `snoc`
 --
 -- @since 0.11.3.0
 snoc :: ShortByteString -> Word8 -> ShortByteString
-snoc = \sbs c -> let l = length sbs
+snoc = \sbs c -> let l  = length sbs
                      nl = l + 1
   in create nl $ \mba -> do
       copyByteArray (asBA sbs) 0 mba 0 l
@@ -629,7 +671,7 @@ snoc = \sbs c -> let l = length sbs
 --
 -- @since 0.11.3.0
 cons :: Word8 -> ShortByteString -> ShortByteString
-cons c = \sbs -> let l = length sbs
+cons c = \sbs -> let l  = length sbs
                      nl = l + 1
   in create nl $ \mba -> do
       writeWord8Array mba 0 c
@@ -656,7 +698,7 @@ last = \sbs -> case null sbs of
 -- @since 0.11.3.0
 tail :: HasCallStack => ShortByteString -> ShortByteString
 tail = \sbs -> 
-  let l = length sbs
+  let l  = length sbs
       nl = l - 1
   in case null sbs of
       True -> errorEmptySBS "tail"
@@ -668,7 +710,7 @@ tail = \sbs ->
 -- @since 0.11.3.0
 uncons :: ShortByteString -> Maybe (Word8, ShortByteString)
 uncons = \sbs ->
-  let l = length sbs
+  let l  = length sbs
       nl = l - 1
   in if | l <= 0 -> Nothing
         | otherwise -> let h = indexWord8Array (asBA sbs) 0
@@ -696,7 +738,7 @@ head = \sbs -> case null sbs of
 -- @since 0.11.3.0
 init :: HasCallStack => ShortByteString -> ShortByteString
 init = \sbs ->
-  let l = length sbs
+  let l  = length sbs
       nl = l - 1
   in case null sbs of
       True -> errorEmptySBS "init"
@@ -708,11 +750,11 @@ init = \sbs ->
 -- @since 0.11.3.0
 unsnoc :: ShortByteString -> Maybe (ShortByteString, Word8)
 unsnoc = \sbs ->
-  let l = length sbs
+  let l  = length sbs
       nl = l - 1
   in if | l <= 0 -> Nothing
         | otherwise -> let l' = indexWord8Array (asBA sbs) (l - 1)
-                           i = create nl $ \mba -> copyByteArray (asBA sbs) 0 mba 0 nl
+                           i  = create nl $ \mba -> copyByteArray (asBA sbs) 0 mba 0 nl
                        in Just (i, l')
 
 
@@ -725,7 +767,7 @@ unsnoc = \sbs ->
 -- @since 0.11.3.0
 map :: (Word8 -> Word8) -> ShortByteString -> ShortByteString
 map f = \sbs ->
-    let l = length sbs
+    let l  = length sbs
         ba = asBA sbs
     in create l (\mba -> go ba mba 0 l)
   where
@@ -743,7 +785,7 @@ map f = \sbs ->
 -- @since 0.11.3.0
 reverse :: ShortByteString -> ShortByteString
 reverse = \sbs ->
-    let l = length sbs
+    let l  = length sbs
         ba = asBA sbs
 -- https://gitlab.haskell.org/ghc/ghc/-/issues/21015
 #if MIN_VERSION_base(4,12,0) && defined(SAFE_UNALIGNED)
@@ -799,14 +841,14 @@ reverse = \sbs ->
 -- @since 0.11.3.0
 intercalate :: ShortByteString -> [ShortByteString] -> ShortByteString
 intercalate sep = \case
-                    [] -> empty
-                    [x] -> x -- This branch exists for laziness, not speed
+                    []      -> empty
+                    [x]     -> x -- This branch exists for laziness, not speed
                     (sbs:t) -> let !totalLen = List.foldl' (\acc chunk -> acc +! length sep +! length chunk) (length sbs) t
                                in create totalLen (\mba ->
                                       let !l = length sbs
                                       in copyByteArray (asBA sbs) 0 mba 0 l >> go mba l t)
  where
-  ba = asBA sep
+  ba  = asBA sep
   lba = length sep
 
   go :: MBA s -> Int -> [ShortByteString] -> ST s ()
@@ -891,9 +933,9 @@ foldr1' k = \sbs -> if null sbs then errorEmptySBS "foldr1'" else foldr' k (last
 -- @since 0.11.3.0
 all :: (Word8 -> Bool) -> ShortByteString -> Bool
 all k = \sbs ->
-  let l = length sbs
+  let l  = length sbs
       ba = asBA sbs
-      w = indexWord8Array ba
+      w  = indexWord8Array ba
       go !n | n >= l    = True
             | otherwise = k (w n) && go (n + 1)
   in go 0
@@ -905,9 +947,9 @@ all k = \sbs ->
 -- @since 0.11.3.0
 any :: (Word8 -> Bool) -> ShortByteString -> Bool
 any k = \sbs ->
-  let l = length sbs
+  let l  = length sbs
       ba = asBA sbs
-      w = indexWord8Array ba
+      w  = indexWord8Array ba
       go !n | n >= l    = False
             | otherwise = k (w n) || go (n + 1)
   in go 0
@@ -925,8 +967,8 @@ any k = \sbs ->
 -- @since 0.11.3.0
 take :: Int -> ShortByteString -> ShortByteString
 take = \n -> \sbs -> let sl = length sbs
-                     in if | n >= sl -> sbs
-                           | n <= 0  -> empty
+                     in if | n >= sl   -> sbs
+                           | n <= 0    -> empty
                            | otherwise ->
                                create n $ \mba -> copyByteArray (asBA sbs) 0 mba 0 n
 
@@ -1114,7 +1156,7 @@ split w = splitWith (== w)
 -- @since 0.11.3.0
 splitWith :: (Word8 -> Bool) -> ShortByteString -> [ShortByteString]
 splitWith p = \sbs -> if
-  | null sbs -> []
+  | null sbs  -> []
   | otherwise -> go sbs
   where
     go sbs'
@@ -1122,7 +1164,7 @@ splitWith p = \sbs -> if
       | otherwise =
           case break p sbs' of
             (a, b)
-              | null b -> [a]
+              | null b    -> [a]
               | otherwise -> a : go (tail b)
 
 
@@ -1198,7 +1240,7 @@ unfoldr :: (a -> Maybe (Word8, a)) -> a -> ShortByteString
 unfoldr f = \x0 -> packBytesRev $ go x0 []
  where
    go x words' = case f x of
-                    Nothing -> words'
+                    Nothing      -> words'
                     Just (w, x') -> go x' (w:words')
 
 -- | /O(n)/ Like 'unfoldr', 'unfoldrN' builds a ShortByteString from a seed
@@ -1222,7 +1264,7 @@ unfoldrN i f = \x0 ->
       where
         go' :: a -> Int -> ST s (Int, Maybe a)
         go' !x' !n'
-          | n' == i    = return (n', Just x')
+          | n' == i   = return (n', Just x')
           | otherwise = case f x' of
                           Nothing       -> return (n', Nothing)
                           Just (w, x'') -> do
@@ -1311,7 +1353,7 @@ breakSubstring pat =
     karpRabin :: ShortByteString -> (ShortByteString, ShortByteString)
     karpRabin src
         | length src < lp = (src,empty)
-        | otherwise = search (rollingHash $ take lp src) lp
+        | otherwise       = search (rollingHash $ take lp src) lp
       where
         k           = 2891336453 :: Word32
         rollingHash = foldl' (\h b -> h * k + fromIntegral b) 0
@@ -1320,7 +1362,7 @@ breakSubstring pat =
         get = fromIntegral . unsafeIndex src
         search !hs !i
             | hp == hs && pat == take lp b = u
-            | length src <= i           = (src, empty) -- not found
+            | length src <= i              = (src, empty) -- not found
             | otherwise                    = search hs' (i + 1)
           where
             u@(_, b) = splitAt (i - lp) src
@@ -1336,10 +1378,11 @@ breakSubstring pat =
       where
         intoWord :: ShortByteString -> Word
         intoWord = foldl' (\w b -> (w `shiftL` 8) .|. fromIntegral b) 0
-        wp   = intoWord pat
+
+        wp    = intoWord pat
         mask' = (1 `shiftL` (8 * lp)) - 1
         search !w !i
-            | w == wp            = splitAt (i - lp) src
+            | w == wp         = splitAt (i - lp) src
             | length src <= i = (src, empty)
             | otherwise       = search w' (i + 1)
           where
@@ -1377,7 +1420,7 @@ filter k = \sbs -> let l = length sbs
             -> Int -- bytes written
             -> ST s Int
         go' !br !bw
-          | br >= l = return bw
+          | br >= l   = return bw
           | otherwise = do
               let w = indexWord8Array ba br
               if k w
@@ -1449,9 +1492,9 @@ count w = \sbs@(SBS ba#) -> accursedUnutterablePerformIO $
 -- @since 0.11.3.0
 findIndex :: (Word8 -> Bool) -> ShortByteString -> Maybe Int
 findIndex k = \sbs ->
-  let l = length sbs
+  let l  = length sbs
       ba = asBA sbs
-      w = indexWord8Array ba
+      w  = indexWord8Array ba
       go !n | n >= l    = Nothing
             | k (w n)   = Just n
             | otherwise = go (n + 1)
@@ -1464,9 +1507,9 @@ findIndex k = \sbs ->
 -- @since 0.11.3.0
 findIndices :: (Word8 -> Bool) -> ShortByteString -> [Int]
 findIndices k = \sbs ->
-  let l = length sbs
+  let l  = length sbs
       ba = asBA sbs
-      w = indexWord8Array ba
+      w  = indexWord8Array ba
       go !n | n >= l    = []
             | k (w n)   = n : go (n + 1)
             | otherwise = go (n + 1)
@@ -1704,18 +1747,18 @@ findFromEndUntil :: (Word8 -> Bool) -> ShortByteString -> Int
 findFromEndUntil k sbs = go (length sbs - 1)
   where
     ba = asBA sbs
-    go !n | n < 0     = 0
-          | k (indexWord8Array ba n)   = n + 1
-          | otherwise = go (n - 1)
+    go !n | n < 0                    = 0
+          | k (indexWord8Array ba n) = n + 1
+          | otherwise                = go (n - 1)
 
 findIndexOrLength :: (Word8 -> Bool) -> ShortByteString -> Int
 findIndexOrLength k sbs = go 0
   where
     l = length sbs
     ba = asBA sbs
-    go !n | n >= l    = l
-          | k (indexWord8Array ba n)   = n
-          | otherwise = go (n + 1)
+    go !n | n >= l                   = l
+          | k (indexWord8Array ba n) = n
+          | otherwise                = go (n + 1)
 
 
 packBytesRev :: [Word8] -> ShortByteString
