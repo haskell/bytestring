@@ -776,7 +776,7 @@ reverse = \sbs ->
 -- @since 0.11.3.0
 intercalate :: ShortByteString -> [ShortByteString] -> ShortByteString
 intercalate sep = \case
-                    [] -> mempty
+                    [] -> empty
                     [x] -> x -- This branch exists for laziness, not speed
                     (sbs:t) -> let !totalLen = List.foldl' (\acc chunk -> acc +! length sep +! length chunk) (length sbs) t
                                in create totalLen (\mba ->
@@ -1046,10 +1046,10 @@ spanEnd p = \sbs -> splitAt (findFromEndUntil (not . p) sbs) sbs
 -- @since 0.11.3.0
 splitAt :: Int -> ShortByteString -> (ShortByteString, ShortByteString)
 splitAt n = \sbs -> if
-  | n <= 0 -> (mempty, sbs)
+  | n <= 0 -> (empty, sbs)
   | otherwise ->
       let slen = length sbs
-      in if | n >= length sbs -> (sbs, mempty)
+      in if | n >= length sbs -> (sbs, empty)
             | otherwise -> 
                 let llen = min slen (max 0 n)
                     rlen = max 0 (slen - max 0 n)
@@ -1092,7 +1092,7 @@ splitWith p = \sbs -> if
   | otherwise -> go sbs
   where
     go sbs'
-      | null sbs' = [mempty]
+      | null sbs' = [empty]
       | otherwise =
           case break p sbs' of
             (a, b)
@@ -1173,7 +1173,7 @@ replicate w c
 --
 -- @since 0.11.3.0
 unfoldr :: (a -> Maybe (Word8, a)) -> a -> ShortByteString
-unfoldr f = \x0 -> packBytesRev $ go x0 mempty
+unfoldr f = \x0 -> packBytesRev $ go x0 []
  where
    go x words' = case f x of
                     Nothing -> words'
@@ -1279,7 +1279,7 @@ breakSubstring :: ShortByteString -- ^ String to search for
                -> (ShortByteString, ShortByteString) -- ^ Head and tail of string broken at substring
 breakSubstring pat =
   case lp of
-    0 -> (mempty,)
+    0 -> (empty,)
     1 -> breakByte (head pat)
     _ -> if lp * 8 <= finiteBitSize (0 :: Word)
              then shift
@@ -1288,7 +1288,7 @@ breakSubstring pat =
     lp = length pat
     karpRabin :: ShortByteString -> (ShortByteString, ShortByteString)
     karpRabin src
-        | length src < lp = (src,mempty)
+        | length src < lp = (src,empty)
         | otherwise = search (rollingHash $ take lp src) lp
       where
         k           = 2891336453 :: Word32
@@ -1298,7 +1298,7 @@ breakSubstring pat =
         get = fromIntegral . unsafeIndex src
         search !hs !i
             | hp == hs && pat == take lp b = u
-            | length src <= i           = (src, mempty) -- not found
+            | length src <= i           = (src, empty) -- not found
             | otherwise                    = search hs' (i + 1)
           where
             u@(_, b) = splitAt (i - lp) src
@@ -1308,7 +1308,7 @@ breakSubstring pat =
 
     shift :: ShortByteString -> (ShortByteString, ShortByteString)
     shift !src
-        | length src < lp = (src, mempty)
+        | length src < lp = (src, empty)
         | otherwise       = search (intoWord $ take lp src) lp
       where
         intoWord :: ShortByteString -> Word
@@ -1317,7 +1317,7 @@ breakSubstring pat =
         mask' = (1 `shiftL` (8 * lp)) - 1
         search !w !i
             | w == wp            = splitAt (i - lp) src
-            | length src <= i = (src, mempty)
+            | length src <= i = (src, empty)
             | otherwise       = search w' (i + 1)
           where
             b  = fromIntegral (unsafeIndex src i)
@@ -1690,7 +1690,7 @@ packLenBytesRev len ws0 =
 
 breakByte :: Word8 -> ShortByteString -> (ShortByteString, ShortByteString)
 breakByte c sbs = case elemIndex c sbs of
-    Nothing -> (sbs, mempty)
+    Nothing -> (sbs, empty)
     Just n  -> (take n sbs, drop n sbs)
 
 -- Common up near identical calls to `error' to reduce the number
