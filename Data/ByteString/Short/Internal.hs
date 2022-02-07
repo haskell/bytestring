@@ -1395,7 +1395,8 @@ elemIndices k = findIndices (==k)
 --
 -- @since 0.11.3.0
 count :: Word8 -> ShortByteString -> Int
-count w = List.length . elemIndices w
+count w = \sbs@(SBS ba#) -> accursedUnutterablePerformIO $
+    fromIntegral <$> c_count ba# (fromIntegral $ length sbs) w
 
 -- | /O(n)/ The 'findIndex' function takes a predicate and a 'ShortByteString' and
 -- returns the index of the first element in the ByteString
@@ -1555,6 +1556,9 @@ foreign import ccall unsafe "static sbs_memcmp_off"
 
 foreign import ccall unsafe "static sbs_elem_index"
     c_elem_index :: ByteArray# -> Word8 -> CSize -> IO CPtrdiff
+
+foreign import ccall unsafe "static fpstring.h fps_count" c_count
+    :: ByteArray# -> CSize -> Word8 -> IO CSize
 
 
 ------------------------------------------------------------------------
