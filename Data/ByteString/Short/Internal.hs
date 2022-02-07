@@ -1119,8 +1119,11 @@ stripSuffix :: ShortByteString -> ShortByteString -> Maybe ShortByteString
 stripSuffix sbs1 = \sbs2 -> do
   let l1 = length sbs1
       l2 = length sbs2
-  if | isSuffixOf sbs1 sbs2 -> Just $! create (l2 - l1) $ \dst -> do
-                                 copyByteArray (asBA sbs2) 0 dst 0 (l2 - l1)
+  if | isSuffixOf sbs1 sbs2 -> 
+         if null sbs1
+         then Just sbs2
+         else Just $! create (l2 - l1) $ \dst -> do
+                copyByteArray (asBA sbs2) 0 dst 0 (l2 - l1)
      | otherwise -> Nothing
 
 -- | /O(n)/ The 'stripPrefix' function takes two ShortByteStrings and returns 'Just'
@@ -1132,8 +1135,11 @@ stripPrefix :: ShortByteString -> ShortByteString -> Maybe ShortByteString
 stripPrefix sbs1 = \sbs2 -> do
   let l1 = length sbs1
       l2 = length sbs2
-  if | isPrefixOf sbs1 sbs2 -> Just $! create (l2 - l1) $ \dst -> do
-                                 copyByteArray (asBA sbs2) l1 dst 0 (l2 - l1)
+  if | isPrefixOf sbs1 sbs2 ->
+         if null sbs1
+         then Just sbs2
+         else Just $! create (l2 - l1) $ \dst -> do
+                copyByteArray (asBA sbs2) l1 dst 0 (l2 - l1)
      | otherwise -> Nothing
 
 
