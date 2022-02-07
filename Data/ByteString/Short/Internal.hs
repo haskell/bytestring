@@ -973,10 +973,11 @@ takeWhileEnd f = \sbs -> drop (findFromEndUntil (not . f) sbs) sbs
 drop :: Int -> ShortByteString -> ShortByteString
 drop = \n -> \sbs ->
   let len = length sbs
-      newLen = max 0 (len - max 0 n)
   in if | n <= 0    -> sbs
         | n >= len  -> empty
-        | otherwise -> create newLen $ \mba -> copyByteArray (asBA sbs) n mba 0 (len - n)
+        | otherwise -> 
+            let newLen = len - n
+            in create newLen $ \mba -> copyByteArray (asBA sbs) n mba 0 newLen
 
 -- | /O(n)/ @'dropEnd' n xs@ is equivalent to @'take' ('length' xs - n) xs@.
 -- Drops @n@ elements from end of bytestring.
