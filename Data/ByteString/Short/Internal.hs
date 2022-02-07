@@ -1528,7 +1528,12 @@ copyMutableByteArray (MBA# src#) (I# src_off#) (MBA# dst#) (I# dst_off#) (I# len
 compareByteArrays :: BA -> BA -> Int -> Int
 compareByteArrays ba1 ba2 = compareByteArraysOff ba1 0 ba2 0
 
-compareByteArraysOff :: BA -> Int -> BA -> Int -> Int -> Int
+compareByteArraysOff :: BA  -- ^ array 1
+                     -> Int -- ^ offset for array 1
+                     -> BA  -- ^ array 2
+                     -> Int -- ^ offset for array 2
+                     -> Int -- ^ length to compare
+                     -> Int -- ^ like memcmp
 #if MIN_VERSION_base(4,11,0)
 compareByteArraysOff (BA# ba1#) (I# ba1off#) (BA# ba2#) (I# ba2off#) (I# len#) =
   I# (compareByteArrays#  ba1# ba1off# ba2# ba2off# len#)
