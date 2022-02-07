@@ -1331,7 +1331,6 @@ breakSubstring pat =
             b  = fromIntegral (unsafeIndex src i)
             w' = mask' .&. ((w `shiftL` 8) .|. b)
     {-# INLINE shift #-}
-{-# INLINABLE breakSubstring #-}
 
 
 -- --------------------------------------------------------------------
