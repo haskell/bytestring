@@ -1377,8 +1377,8 @@ partition f = \sbs -> if
 --
 -- @since 0.11.3.0
 elemIndex :: Word8 -> ShortByteString -> Maybe Int
-elemIndex c = \(SBS ba#) -> fromIntegral <$> do
-    let l = I# (sizeofByteArray# ba#)
+elemIndex c = \sbs@(SBS ba#) -> fromIntegral <$> do
+    let l = length sbs
     accursedUnutterablePerformIO $ do
       !s <- c_elem_index ba# c (fromIntegral l)
       return $! if s < 0 then Nothing else Just s
