@@ -928,8 +928,7 @@ take = \n -> \sbs -> let sl = length sbs
                      in if | n >= sl -> sbs
                            | n <= 0  -> empty
                            | otherwise ->
-                               let len = min (length sbs) (max 0 n)
-                               in create len $ \mba -> copyByteArray (asBA sbs) 0 mba 0 len
+                               create n $ \mba -> copyByteArray (asBA sbs) 0 mba 0 n
 
 -- | Similar to 'Prelude.takeWhile',
 -- returns the longest (possibly empty) prefix of elements
