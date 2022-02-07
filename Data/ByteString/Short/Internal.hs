@@ -908,9 +908,12 @@ any k = \sbs ->
 --
 -- @since 0.11.3.0
 take :: Int -> ShortByteString -> ShortByteString
-take = \n -> \sbs ->
-  let len = min (length sbs) (max 0 n)
-  in create len $ \mba -> copyByteArray (asBA sbs) 0 mba 0 len
+take = \n -> \sbs -> let sl = length sbs
+                     in if | n >= sl -> sbs
+                           | n <= 0  -> empty
+                           | otherwise ->
+                               let len = min (length sbs) (max 0 n)
+                               in create len $ \mba -> copyByteArray (asBA sbs) 0 mba 0 len
 
 -- | Similar to 'Prelude.takeWhile',
 -- returns the longest (possibly empty) prefix of elements
