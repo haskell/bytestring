@@ -162,8 +162,6 @@ import Data.ByteString.Internal
   , checkedAdd
   )
 
-import Data.Bifunctor
-  ( bimap )
 import Data.Bits
   ( FiniteBits (finiteBitSize)
   , shiftL
@@ -460,6 +458,29 @@ createAndTrim' l fill =
             BA# ba# <- unsafeFreezeByteArray mba2
             return (SBS ba#)
 {-# INLINE createAndTrim' #-}
+
+createAndTrim'' :: Int -> (forall s. MBA s -> MBA s -> ST s (Int, Int)) -> (ShortByteString, ShortByteString)
+createAndTrim'' l fill =
+    runST $ do
+      mba1 <- newByteArray l
+      mba2 <- newByteArray l
+      (l1, l2) <- fill mba1 mba2
+      sbs1 <- freeze' l1 mba1
+      sbs2 <- freeze' l2 mba2
+      pure (sbs1, sbs2)
+  where
+    freeze' :: Int -> MBA s -> ST s ShortByteString
+    freeze' l' mba =
+      if assert (l' <= l) $ l' >= l
+          then do
+            BA# ba# <- unsafeFreezeByteArray mba
+            return (SBS ba#)
+          else do
+            mba2 <- newByteArray l'
+            copyMutableByteArray mba 0 mba2 0 l'
+            BA# ba# <- unsafeFreezeByteArray mba2
+            return (SBS ba#)
+{-# INLINE createAndTrim'' #-}
 
 ------------------------------------------------------------------------
 -- Conversion to and from ByteString
@@ -1450,9 +1471,33 @@ find f = \sbs -> case findIndex f sbs of
 --
 -- @since 0.11.3.0
 partition :: (Word8 -> Bool) -> ShortByteString -> (ShortByteString, ShortByteString)
-partition f = \sbs -> if
-    | null sbs  -> (sbs, sbs)
-    | otherwise -> bimap pack pack . List.partition f . unpack $ sbs
+partition k = \sbs -> let l = length sbs
+                   in if | l <= 0    -> (sbs, sbs)
+                         | otherwise -> createAndTrim'' l $ \mba1 mba2 -> go mba1 mba2 (asBA sbs) l
+  where
+    go :: forall s.
+          MBA s           -- mutable output bytestring1
+       -> MBA s           -- mutable output bytestring2
+       -> BA              -- input bytestring
+       -> Int             -- length of input bytestring
+       -> ST s (Int, Int)
+    go !mba1 !mba2 ba !l = go' 0 0 0
+      where
+        go' :: Int -- bytes read
+            -> Int -- bytes written to b1
+            -> Int -- bytes written to b2
+            -> ST s (Int, Int)
+        go' !br !bw1 !bw2
+          | br >= l   = return (bw1, bw2)
+          | otherwise = do
+              let w = indexWord8Array ba br
+              if k w
+              then do
+                writeWord8Array mba1 bw1 w
+                go' (br+1) (bw1+1) bw2
+              else do
+                writeWord8Array mba2 bw2 w
+                go' (br+1) bw1 (bw2+1)
 
 
 -- --------------------------------------------------------------------
