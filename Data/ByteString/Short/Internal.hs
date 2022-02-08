@@ -1464,11 +1464,11 @@ partition f = \sbs -> if
 --
 -- @since 0.11.3.0
 elemIndex :: Word8 -> ShortByteString -> Maybe Int
-elemIndex c = \sbs@(SBS ba#) -> fromIntegral <$> do
+elemIndex c = \sbs@(SBS ba#) -> do
     let l = length sbs
     accursedUnutterablePerformIO $ do
       !s <- c_elem_index ba# c (fromIntegral l)
-      return $! if s < 0 then Nothing else Just s
+      return $! if s < 0 then Nothing else Just (fromIntegral s)
 
 
 -- | /O(n)/ The 'elemIndices' function extends 'elemIndex', by returning
