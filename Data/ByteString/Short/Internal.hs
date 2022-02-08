@@ -1480,24 +1480,23 @@ partition k = \sbs -> let l = length sbs
        -> MBA s           -- mutable output bytestring2
        -> BA              -- input bytestring
        -> Int             -- length of input bytestring
-       -> ST s (Int, Int)
-    go !mba1 !mba2 ba !l = go' 0 0 0
+       -> ST s (Int, Int) -- (length mba1, length mba2)
+    go !mba1 !mba2 ba !l = go' 0 0
       where
         go' :: Int -- bytes read
-            -> Int -- bytes written to b1
-            -> Int -- bytes written to b2
-            -> ST s (Int, Int)
-        go' !br !bw1 !bw2
-          | br >= l   = return (bw1, bw2)
+            -> Int -- bytes written to bytestring 1
+            -> ST s (Int, Int) -- (length mba1, length mba2)
+        go' !br !bw1
+          | br >= l   = return (bw1, br - bw1)
           | otherwise = do
               let w = indexWord8Array ba br
               if k w
               then do
                 writeWord8Array mba1 bw1 w
-                go' (br+1) (bw1+1) bw2
+                go' (br+1) (bw1+1)
               else do
-                writeWord8Array mba2 bw2 w
-                go' (br+1) bw1 (bw2+1)
+                writeWord8Array mba2 (br - bw1) w
+                go' (br+1) bw1
 
 
 -- --------------------------------------------------------------------
