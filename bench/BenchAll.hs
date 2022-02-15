@@ -43,6 +43,7 @@ import BenchBoundsCheckFusion
 import BenchCount
 import BenchCSV
 import BenchIndices
+import BenchShort
 
 ------------------------------------------------------------------------------
 -- Benchmark support
@@ -477,4 +478,5 @@ main = do
     , benchCount
     , benchCSV
     , benchIndices
+    , benchShort
     ]

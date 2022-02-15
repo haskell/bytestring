@@ -1,5 +1,5 @@
 Name:                bytestring
-Version:             0.11.2.0
+Version:             0.11.3.0
 Synopsis:            Fast, compact, strict and lazy byte strings with a list interface
 Description:
     An efficient compact, immutable byte string type (both strict and lazy)
@@ -121,13 +121,15 @@ library
   
   c-sources:        cbits/fpstring.c
                     cbits/itoa.c
+                    cbits/shortbytestring.c
   
   if (arch(aarch64))
     c-sources:        cbits/aarch64/is-valid-utf8.c
   else
     c-sources:        cbits/is-valid-utf8.c
   
-  cc-options:        -std=c11
+  -- DNDEBUG disables asserts in cbits/
+  cc-options:        -std=c11 -DNDEBUG=1
  
   -- Required, due to the following issues:
   -- * https://gitlab.haskell.org/ghc/ghc/-/issues/20525#note_385580
@@ -154,6 +156,7 @@ test-suite bytestring-tests
                     Properties.ByteStringChar8
                     Properties.ByteStringLazy
                     Properties.ByteStringLazyChar8
+                    Properties.ShortByteString
                     QuickCheckUtils
   hs-source-dirs:   tests,
                     tests/builder
@@ -176,6 +179,7 @@ benchmark bytestring-bench
                     BenchCount
                     BenchCSV
                     BenchIndices
+                    BenchShort
   type:             exitcode-stdio-1.0
   hs-source-dirs:   bench
   default-language: Haskell2010
