@@ -44,6 +44,7 @@ import BenchCount
 import BenchCSV
 import BenchIndices
 import BenchReadInt
+import BenchShort
 
 ------------------------------------------------------------------------------
 -- Benchmark support
@@ -479,4 +480,5 @@ main = do
     , benchCSV
     , benchIndices
     , benchReadInt
+    , benchShort
     ]
