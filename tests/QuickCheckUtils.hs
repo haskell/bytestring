@@ -19,6 +19,7 @@ import Data.Int
 import System.IO
 import Foreign.C (CChar)
 
+import qualified Data.ByteString.Short as SB
 import qualified Data.ByteString      as P
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Lazy.Internal as L (checkInvariant,ByteString(..))
@@ -101,3 +102,16 @@ instance Arbitrary a => Arbitrary (Sqrt a) where
   arbitrary = Sqrt <$> sized
     (\n -> resize (round @Double $ sqrt $ fromIntegral @Int n) arbitrary)
   shrink = map Sqrt . shrink . unSqrt
+
+
+sizedShortByteString :: Int -> Gen SB.ShortByteString
+sizedShortByteString n = do m <- choose(0, n)
+                            fmap SB.pack $ vectorOf m arbitrary
+
+instance Arbitrary SB.ShortByteString where
+  arbitrary = sized sizedShortByteString
+  shrink = map SB.pack . shrink . SB.unpack
+
+instance CoArbitrary SB.ShortByteString where
+  coarbitrary s = coarbitrary (SB.unpack s)
+
