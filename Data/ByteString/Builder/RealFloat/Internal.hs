@@ -86,7 +86,7 @@ import qualified Foreign.Storable as S (poke)
 #include <ghcautoconf.h>
 #include "MachDeps.h"
 
-#if WORD_SIZE_IN_BITS < 64 && __GLASGOW_HASKELL__ < 903
+#if WORD_SIZE_IN_BITS < 64 && __GLASGOW_HASKELL__ < 901
 import GHC.IntWord64
 #endif
 
