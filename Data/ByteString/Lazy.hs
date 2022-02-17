@@ -849,7 +849,7 @@ splitAt i cs0 = splitAt' i cs0
                    in (Chunk c cs', cs'')
 
 
--- | Similar to 'P.takeWhile',
+-- | Similar to 'Prelude.takeWhile',
 -- returns the longest (possibly empty) prefix of elements
 -- satisfying the predicate.
 takeWhile :: (Word8 -> Bool) -> ByteString -> ByteString
@@ -882,7 +882,7 @@ takeWhileEnd f = takeWhileEnd'
                 c' | S.length c' == S.length c -> (True, Chunk c bs)
                    | otherwise                 -> (False, fromStrict c' `append` bs)
 
--- | Similar to 'P.dropWhile',
+-- | Similar to 'Prelude.dropWhile',
 -- drops the longest (possibly empty) prefix of elements
 -- satisfying the predicate and returns the remainder.
 dropWhile :: (Word8 -> Bool) -> ByteString -> ByteString
@@ -893,7 +893,7 @@ dropWhile f = dropWhile'
             n | n < S.length c -> Chunk (S.drop n c) cs
               | otherwise      -> dropWhile' cs
 
--- | Similar to 'P.dropWhileEnd',
+-- | Similar to 'Prelude.dropWhileEnd',
 -- drops the longest (possibly empty) suffix of elements
 -- satisfying the predicate and returns the remainder.
 --
@@ -916,7 +916,7 @@ dropWhileEnd f = go []
                  x' | S.null x' -> dropEndBytes xs
                     | otherwise -> List.foldl' (flip Chunk) Empty (x' : xs)
 
--- | Similar to 'P.break',
+-- | Similar to 'Prelude.break',
 -- returns the longest (possibly empty) prefix of elements which __do not__
 -- satisfy the predicate and the remainder of the string.
 --
@@ -995,7 +995,7 @@ spanByte c (LPS ps) = case (spanByte' ps) of (a,b) -> (LPS a, LPS b)
                       | otherwise  -> (x' : [], x'' : xs)
 -}
 
--- | Similar to 'P.span',
+-- | Similar to 'Prelude.span',
 -- returns the longest (possibly empty) prefix of elements
 -- satisfying the predicate and the remainder of the string.
 --

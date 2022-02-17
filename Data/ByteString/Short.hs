@@ -2,10 +2,10 @@
 
 -- |
 -- Module      : Data.ByteString.Short
--- Copyright   : (c) Duncan Coutts 2012-2013
+-- Copyright   : (c) Duncan Coutts 2012-2013, Julian Ospald 2022
 -- License     : BSD-style
 --
--- Maintainer  : duncan@community.haskell.org
+-- Maintainer  : hasufell@posteo.de
 -- Stability   : stable
 -- Portability : ghc only
 --
@@ -33,9 +33,9 @@ module Data.ByteString.Short (
     -- | With GHC, the memory overheads are as follows, expressed in words and
     -- in bytes (words are 4 and 8 bytes on 32 or 64bit machines respectively).
     --
-    -- * 'B.ByteString' unshared: 9 words; 36 or 72 bytes.
+    -- * 'B.ByteString' unshared: 8 words; 32 or 64 bytes.
     --
-    -- * 'B.ByteString' shared substring: 5 words; 20 or 40 bytes.
+    -- * 'B.ByteString' shared substring: 4 words; 16 or 32 bytes.
     --
     -- * 'ShortByteString': 4 words; 16 or 32 bytes.
     --
@@ -67,26 +67,113 @@ module Data.ByteString.Short (
     -- small unpinned strings are allocated in the same way as normal heap
     -- allocations, rather than in a separate pinned area.
 
-    -- * Conversions
-    toShort,
-    fromShort,
+    -- * Introducing and eliminating 'ShortByteString's
+    empty,
+    singleton,
     pack,
     unpack,
+    fromShort,
+    toShort,
 
-    -- * Other operations
-    empty, null, length, index, indexMaybe, (!?),
+    -- * Basic interface
+    snoc,
+    cons,
+    append,
+    last,
+    tail,
+    uncons,
+    head,
+    init,
+    unsnoc,
+    null,
+    length,
 
-    -- ** Encoding validation
+    -- * Encoding validation
     isValidUtf8,
+
+    -- * Transforming ShortByteStrings
+    map,
+    reverse,
+    intercalate,
+
+    -- * Reducing 'ShortByteString's (folds)
+    foldl,
+    foldl',
+    foldl1,
+    foldl1',
+
+    foldr,
+    foldr',
+    foldr1,
+    foldr1',
+
+    -- ** Special folds
+    all,
+    any,
+    concat,
+
+    -- ** Generating and unfolding ByteStrings
+    replicate,
+    unfoldr,
+    unfoldrN,
+
+    -- * Substrings
+
+    -- ** Breaking strings
+    take,
+    takeEnd,
+    takeWhileEnd,
+    takeWhile,
+    drop,
+    dropEnd,
+    dropWhile,
+    dropWhileEnd,
+    breakEnd,
+    break,
+    span,
+    spanEnd,
+    splitAt,
+    split,
+    splitWith,
+    stripSuffix,
+    stripPrefix,
+
+    -- * Predicates
+    isInfixOf,
+    isPrefixOf,
+    isSuffixOf,
+
+    -- ** Search for arbitrary substrings
+    breakSubstring,
+
+    -- * Searching ShortByteStrings
+
+    -- ** Searching by equality
+    elem,
+
+    -- ** Searching with a predicate
+    find,
+    filter,
+    partition,
+
+    -- * Indexing ShortByteStrings
+    index,
+    indexMaybe,
+    (!?),
+    elemIndex,
+    elemIndices,
+    count,
+    findIndex,
+    findIndices,
 
     -- * Low level conversions
     -- ** Packing 'Foreign.C.String.CString's and pointers
     packCString,
     packCStringLen,
 
-    -- ** Using ByteStrings as 'Foreign.C.String.CString's
+    -- ** Using ShortByteStrings as 'Foreign.C.String.CString's
     useAsCString,
-    useAsCStringLen
+    useAsCStringLen,
   ) where
 
 import Data.ByteString.Short.Internal

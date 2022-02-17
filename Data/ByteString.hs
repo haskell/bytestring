@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE MagicHash #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TupleSections #-}
 {-# OPTIONS_HADDOCK prune #-}
@@ -276,29 +277,22 @@ import GHC.Word hiding (Word8)
 
 -- | /O(1)/ Convert a 'Word8' into a 'ByteString'
 singleton :: Word8 -> ByteString
-singleton c = unsafeCreate 1 $ \p -> poke p c
-{-# INLINE [1] singleton #-}
+-- Taking a slice of some static data rather than allocating a new
+-- buffer for each call is nice for several reasons. Since it doesn't
+-- involve any side effects hidden in a 'GHC.Magic.runRW#' call, it
+-- can be simplified to a constructor application. This may enable GHC
+-- to perform further optimizations after inlining, and also causes a
+-- fresh singleton to take only 4 words of heap space instead of 9.
+-- (The buffer object itself would take up 3 words: header, size, and
+-- 1 word of content. The ForeignPtrContents object used to keep the
+-- buffer alive would need two more.)
+singleton c = unsafeTake 1 $ unsafeDrop (fromIntegral c) allBytes
+{-# INLINE singleton #-}
 
--- Inline [1] for intercalate rule
-
---
--- XXX The use of unsafePerformIO in allocating functions (unsafeCreate) is critical!
---
--- Otherwise:
---
---  singleton 255 `compare` singleton 127
---
--- is compiled to:
---
---  case mallocByteString 2 of
---      ForeignPtr f internals ->
---           case writeWord8OffAddr# f 0 255 of _ ->
---           case writeWord8OffAddr# f 0 127 of _ ->
---           case eqAddr# f f of
---                  False -> case compare (GHC.Prim.plusAddr# f 0)
---                                        (GHC.Prim.plusAddr# f 0)
---
---
+-- | A static blob of all possible bytes (0x00 to 0xff) in order
+allBytes :: ByteString
+allBytes = unsafePackLenLiteral 0x100
+  "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f\x20\x21\x22\x23\x24\x25\x26\x27\x28\x29\x2a\x2b\x2c\x2d\x2e\x2f\x30\x31\x32\x33\x34\x35\x36\x37\x38\x39\x3a\x3b\x3c\x3d\x3e\x3f\x40\x41\x42\x43\x44\x45\x46\x47\x48\x49\x4a\x4b\x4c\x4d\x4e\x4f\x50\x51\x52\x53\x54\x55\x56\x57\x58\x59\x5a\x5b\x5c\x5d\x5e\x5f\x60\x61\x62\x63\x64\x65\x66\x67\x68\x69\x6a\x6b\x6c\x6d\x6e\x6f\x70\x71\x72\x73\x74\x75\x76\x77\x78\x79\x7a\x7b\x7c\x7d\x7e\x7f\x80\x81\x82\x83\x84\x85\x86\x87\x88\x89\x8a\x8b\x8c\x8d\x8e\x8f\x90\x91\x92\x93\x94\x95\x96\x97\x98\x99\x9a\x9b\x9c\x9d\x9e\x9f\xa0\xa1\xa2\xa3\xa4\xa5\xa6\xa7\xa8\xa9\xaa\xab\xac\xad\xae\xaf\xb0\xb1\xb2\xb3\xb4\xb5\xb6\xb7\xb8\xb9\xba\xbb\xbc\xbd\xbe\xbf\xc0\xc1\xc2\xc3\xc4\xc5\xc6\xc7\xc8\xc9\xca\xcb\xcc\xcd\xce\xcf\xd0\xd1\xd2\xd3\xd4\xd5\xd6\xd7\xd8\xd9\xda\xdb\xdc\xdd\xde\xdf\xe0\xe1\xe2\xe3\xe4\xe5\xe6\xe7\xe8\xe9\xea\xeb\xec\xed\xee\xef\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7\xf8\xf9\xfa\xfb\xfc\xfd\xfe\xff"#
 
 -- | /O(n)/ Convert a @['Word8']@ into a 'ByteString'.
 --
@@ -383,13 +377,13 @@ infixl 5 `snoc`
 cons :: Word8 -> ByteString -> ByteString
 cons c (BS x l) = unsafeCreate (l+1) $ \p -> unsafeWithForeignPtr x $ \f -> do
         poke p c
-        memcpy (p `plusPtr` 1) f (fromIntegral l)
+        memcpy (p `plusPtr` 1) f l
 {-# INLINE cons #-}
 
 -- | /O(n)/ Append a byte to the end of a 'ByteString'
 snoc :: ByteString -> Word8 -> ByteString
 snoc (BS x l) c = unsafeCreate (l+1) $ \p -> unsafeWithForeignPtr x $ \f -> do
-        memcpy p f (fromIntegral l)
+        memcpy p f l
         poke (p `plusPtr` l) c
 {-# INLINE snoc #-}
 
@@ -957,7 +951,7 @@ splitAt n ps@(BS x l)
     | otherwise = (BS x n, BS (plusForeignPtr x n) (l-n))
 {-# INLINE splitAt #-}
 
--- | Similar to 'P.takeWhile',
+-- | Similar to 'Prelude.takeWhile',
 -- returns the longest (possibly empty) prefix of elements
 -- satisfying the predicate.
 takeWhile :: (Word8 -> Bool) -> ByteString -> ByteString
@@ -985,7 +979,7 @@ takeWhileEnd :: (Word8 -> Bool) -> ByteString -> ByteString
 takeWhileEnd f ps = unsafeDrop (findFromEndUntil (not . f) ps) ps
 {-# INLINE takeWhileEnd #-}
 
--- | Similar to 'P.dropWhile',
+-- | Similar to 'Prelude.dropWhile',
 -- drops the longest (possibly empty) prefix of elements
 -- satisfying the predicate and returns the remainder.
 dropWhile :: (Word8 -> Bool) -> ByteString -> ByteString
@@ -1003,7 +997,7 @@ dropWhile f ps = unsafeDrop (findIndexOrLength (not . f) ps) ps
     dropWhile (`eqWord8` x) = snd . spanByte x
   #-}
 
--- | Similar to 'P.dropWhileEnd',
+-- | Similar to 'Prelude.dropWhileEnd',
 -- drops the longest (possibly empty) suffix of elements
 -- satisfying the predicate and returns the remainder.
 --
@@ -1014,7 +1008,7 @@ dropWhileEnd :: (Word8 -> Bool) -> ByteString -> ByteString
 dropWhileEnd f ps = unsafeTake (findFromEndUntil (not . f) ps) ps
 {-# INLINE dropWhileEnd #-}
 
--- | Similar to 'P.break',
+-- | Similar to 'Prelude.break',
 -- returns the longest (possibly empty) prefix of elements which __do not__
 -- satisfy the predicate and the remainder of the string.
 --
@@ -1060,7 +1054,7 @@ breakByte c p = case elemIndex c p of
 breakEnd :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
 breakEnd  p ps = splitAt (findFromEndUntil p ps) ps
 
--- | Similar to 'P.span',
+-- | Similar to 'Prelude.span',
 -- returns the longest (possibly empty) prefix of elements
 -- satisfying the predicate and the remainder of the string.
 --
@@ -1209,27 +1203,25 @@ groupBy k xs = case uncons xs of
 -- 'ByteString's and concatenates the list after interspersing the first
 -- argument between each element of the list.
 intercalate :: ByteString -> [ByteString] -> ByteString
-intercalate s = concat . List.intersperse s
-{-# INLINE [1] intercalate #-}
-
-{-# RULES
-"ByteString specialise intercalate c -> intercalateByte" forall c s1 s2 .
-    intercalate (singleton c) [s1, s2] = intercalateWithByte c s1 s2
-  #-}
-
--- | /O(n)/ intercalateWithByte. An efficient way to join to two ByteStrings
--- with a char. Around 4 times faster than the generalised join.
---
-intercalateWithByte :: Word8 -> ByteString -> ByteString -> ByteString
-intercalateWithByte c f@(BS ffp l) g@(BS fgp m) = unsafeCreate len $ \ptr ->
-    unsafeWithForeignPtr ffp $ \fp ->
-    unsafeWithForeignPtr fgp $ \gp -> do
-        memcpy ptr fp (fromIntegral l)
-        poke (ptr `plusPtr` l) c
-        memcpy (ptr `plusPtr` (l + 1)) gp (fromIntegral m)
-    where
-      len = length f + length g + 1
-{-# INLINE intercalateWithByte #-}
+intercalate _ [] = mempty
+intercalate _ [x] = x -- This branch exists for laziness, not speed
+intercalate (BS fSepPtr sepLen) (BS fhPtr hLen : t) =
+  unsafeCreate totalLen $ \dstPtr0 ->
+    unsafeWithForeignPtr fSepPtr $ \sepPtr -> do
+      unsafeWithForeignPtr fhPtr $ \hPtr ->
+        memcpy dstPtr0 hPtr hLen
+      let go _ [] = pure ()
+          go dstPtr (BS fChunkPtr chunkLen : chunks) = do
+            memcpy dstPtr sepPtr sepLen
+            let destPtr' = dstPtr `plusPtr` sepLen
+            unsafeWithForeignPtr fChunkPtr $ \chunkPtr ->
+              memcpy destPtr' chunkPtr chunkLen
+            go (destPtr' `plusPtr` chunkLen) chunks
+      go (dstPtr0 `plusPtr` hLen) t
+  where
+  totalLen = List.foldl' (\acc chunk -> acc +! sepLen +! length chunk) hLen t
+  (+!) = checkedAdd "intercalate"
+{-# INLINABLE intercalate #-}
 
 -- ---------------------------------------------------------------------
 -- Indexing ByteStrings
@@ -1692,7 +1684,7 @@ sort :: ByteString -> ByteString
 sort (BS input l)
   -- qsort outperforms counting sort for small arrays
   | l <= 20 = unsafeCreate l $ \ptr -> unsafeWithForeignPtr input $ \inp -> do
-    memcpy ptr inp (fromIntegral l)
+    memcpy ptr inp l
     c_sort ptr (fromIntegral l)
   | otherwise = unsafeCreate l $ \p -> allocaArray 256 $ \arr -> do
 
@@ -1729,7 +1721,7 @@ useAsCString (BS fp l) action =
   allocaBytes (l+1) $ \buf ->
     -- Cannot use unsafeWithForeignPtr, because action can diverge
     withForeignPtr fp $ \p -> do
-      memcpy buf p (fromIntegral l)
+      memcpy buf p l
       pokeByteOff buf l (0::Word8)
       action (castPtr buf)
 
@@ -1756,7 +1748,7 @@ packCString cstr = do
 -- Haskell heap.
 packCStringLen :: CStringLen -> IO ByteString
 packCStringLen (cstr, len) | len >= 0 = create len $ \p ->
-    memcpy p (castPtr cstr) (fromIntegral len)
+    memcpy p (castPtr cstr) len
 packCStringLen (_, len) =
     moduleErrorIO "packCStringLen" ("negative length: " ++ show len)
 
@@ -1770,7 +1762,7 @@ packCStringLen (_, len) =
 --
 copy :: ByteString -> ByteString
 copy (BS x l) = unsafeCreate l $ \p -> unsafeWithForeignPtr x $ \f ->
-    memcpy p f (fromIntegral l)
+    memcpy p f l
 
 -- ---------------------------------------------------------------------
 -- Line IO
