@@ -32,6 +32,7 @@ SUCH DAMAGE.
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
 #ifdef __x86_64__
 #include <emmintrin.h>
@@ -55,6 +56,12 @@ SUCH DAMAGE.
 // 0x80 in every 'lane'.
 static uint64_t const high_bits_mask = 0x8080808080808080ULL;
 
+static inline uint64_t read_uint64(const uint64_t *p) {
+  uint64_t r;
+  memcpy(&r, p, 8);
+  return r;
+}
+
 static inline int is_valid_utf8_fallback(uint8_t const *const src, size_t const len) {
   uint8_t const *ptr = (uint8_t const *)src;
   // This is 'one past the end' to make loop termination and bounds checks
@@ -74,10 +81,10 @@ static inline int is_valid_utf8_fallback(uint8_t const *const src, size_t const 
         // Non-ASCII bytes have a set MSB. Thus, if we AND with 0x80 in every
         // 'lane', we will get 0 if everything is ASCII, and something else
         // otherwise.
-        uint64_t results[4] = {to_little_endian(*big_ptr) & high_bits_mask,
-                               to_little_endian(*(big_ptr + 1)) & high_bits_mask,
-                               to_little_endian(*(big_ptr + 2)) & high_bits_mask,
-                               to_little_endian(*(big_ptr + 3)) & high_bits_mask};
+        uint64_t results[4] = {to_little_endian(read_uint64(big_ptr)) & high_bits_mask,
+                               to_little_endian(read_uint64((big_ptr + 1))) & high_bits_mask,
+                               to_little_endian(read_uint64((big_ptr + 2))) & high_bits_mask,
+                               to_little_endian(read_uint64((big_ptr + 3))) & high_bits_mask};
         if (results[0] == 0) {
           ptr += 8;
           if (results[1] == 0) {
