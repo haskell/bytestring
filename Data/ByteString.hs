@@ -1522,11 +1522,27 @@ isInfixOf p s = null p || not (null $ snd $ breakSubstring p s)
 --
 -- @since 0.11.2.0
 isValidUtf8 :: ByteString -> Bool
-isValidUtf8 (BS ptr len) = accursedUnutterablePerformIO $ unsafeWithForeignPtr ptr $ \p -> do 
-  i <- cIsValidUtf8 p (fromIntegral len)
+isValidUtf8 (BS ptr len) = accursedUnutterablePerformIO $ unsafeWithForeignPtr ptr $ \p -> do
+  -- Use a safe FFI call for large inputs to avoid GC synchronization pauses
+  -- in multithreaded contexts.
+  -- This specific limit was chosen based on results of a simple benchmark, see:
+  -- https://github.com/haskell/bytestring/issues/451#issuecomment-991879338
+  -- When changing this function, also consider changing the related function:
+  -- Data.ByteString.Short.Internal.isValidUtf8
+  i <- if len < 1000000
+     then cIsValidUtf8 p (fromIntegral len)
+     else cIsValidUtf8Safe p (fromIntegral len)
   pure $ i /= 0
 
+-- We import bytestring_is_valid_utf8 both unsafe and safe. For small inputs
+-- we can use the unsafe version to get a bit more performance, but for large
+-- inputs the safe version should be used to avoid GC synchronization pauses
+-- in multithreaded contexts.
+
 foreign import ccall unsafe "bytestring_is_valid_utf8" cIsValidUtf8
+  :: Ptr Word8 -> CSize -> IO CInt
+
+foreign import ccall safe "bytestring_is_valid_utf8" cIsValidUtf8Safe
   :: Ptr Word8 -> CSize -> IO CInt
 
 -- | Break a string on a substring, returning a pair of the part of the
