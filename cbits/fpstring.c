@@ -38,8 +38,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#ifndef __STDC_NO_ATOMICS__
+#if defined(__x86_64__) && (__GNUC__ >= 6 || defined(__clang_major__)) && !defined(__STDC_NO_ATOMICS__)
 #include <stdatomic.h>
+#define USE_SIMD_COUNT
 #endif
 
 /* copy a string in reverse */
@@ -114,9 +115,6 @@ size_t fps_count_naive(unsigned char *str, size_t len, unsigned char w) {
     return c;
 }
 
-#if defined(__x86_64__) && (__GNUC__ >= 6 || defined(__clang_major__)) && !defined(__STDC_NO_ATOMICS__)
-#define USE_SIMD_COUNT
-#endif
 
 #ifdef USE_SIMD_COUNT
 __attribute__((target("sse4.2")))
