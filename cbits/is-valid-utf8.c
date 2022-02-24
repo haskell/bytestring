@@ -37,12 +37,14 @@ SUCH DAMAGE.
 #ifdef __x86_64__
 #include <emmintrin.h>
 #include <immintrin.h>
-#include <tmmintrin.h>
 #include <cpuid.h>
-#endif
-
-#ifndef __STDC_NO_ATOMICS__
+#if (__GNUC__ >= 6 || defined(__clang_major__)) && !defined(__STDC_NO_ATOMICS__)
+#include <tmmintrin.h>
 #include <stdatomic.h>
+#else
+// This is needed to support CentOS 7, which has a very old GCC.
+#define CRUFTY_GCC
+#endif
 #endif
 
 #include <MachDeps.h>
@@ -161,7 +163,7 @@ static inline int is_valid_utf8_fallback(uint8_t const *const src, size_t const 
   return 1;
 }
 
-#ifdef __x86_64__
+#if defined(__x86_64__) && !defined(CRUFTY_GCC)
 
 // SSE2
 
@@ -658,7 +660,7 @@ is_valid_utf8_avx2(uint8_t const *const src, size_t const len) {
 
 #endif
 
-#ifdef __x86_64__
+#if defined(__x86_64__) && !defined(CRUFTY_GCC)
 static inline bool has_sse2() {
   uint32_t eax = 0, ebx = 0, ecx = 0, edx = 0;
   __get_cpuid_count(1, 0, &eax, &ebx, &ecx, &edx);
@@ -687,7 +689,7 @@ int bytestring_is_valid_utf8(uint8_t const *const src, size_t const len) {
   if (len == 0) {
     return 1;
   }
-#ifdef __x86_64__
+#if defined(__x86_64__) && !defined(CRUFTY_GCC)
   static _Atomic is_valid_utf8_t s_impl = (is_valid_utf8_t)NULL;
   is_valid_utf8_t impl = atomic_load_explicit(&s_impl, memory_order_relaxed);
   if (!impl) {
