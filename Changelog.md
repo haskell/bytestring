@@ -8,7 +8,7 @@
 
 [0.11.3.0] — February 2022
 
-* [Merge `shortbytestring` package back into `bytestring`](https://github.com/haskell/bytestring/pull/471)
+* [Enhance `ShortByteString` API](https://github.com/haskell/bytestring/pull/471)
   - Add `all`, `any`, `append`, `break`, `breakEnd`, `breakSubstring`, `concat`, `cons`, `count`, `drop`, `dropEnd`, `dropWhile`, `dropWhileEnd`, `elem`, `elemIndex`, `elemIndices`, `filter`, `find`, `findIndex`, `findIndices`, `foldl'`, `foldl`, `foldl1'`, `foldl1`, `foldr'`, `foldr`, `foldr1'`, `foldr1`, `head`, `init`, `intercalate`, `isInfixOf`, `isPrefixOf`, `isSuffixOf`, `last`, `map`, `partition`, `replicate`, `reverse`, `singleton`, `snoc`, `span`, `spanEnd`, `split`, `splitAt`, `splitWith`, `stripPrefix`, `stripSuffix`, `tail`, `take`, `takeEnd`, `takeWhile`, `takeWhileEnd`, `uncons`, `unfoldr`, `unfoldrN`, `unsnoc` to `Data.ByteString.Short`.
 * [Add `Data.ByteString.Short.isValidUtf8`](https://github.com/haskell/bytestring/pull/450)
 * [Use safe `isValidUtf8` for large inputs](https://github.com/haskell/bytestring/pull/470)
