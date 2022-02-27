@@ -122,7 +122,7 @@ import Data.String              (IsString(..))
 
 import Control.Exception        (assert, throw, Exception)
 
-import Data.Bits                (Bits, (.&.), toIntegralSized)
+import Data.Bits                ((.&.))
 import Data.Char                (ord)
 import Data.Word
 
@@ -130,7 +130,7 @@ import Data.Typeable            (Typeable)
 import Data.Data                (Data(..), mkNoRepType)
 
 import GHC.Base                 (nullAddr#,realWorld#,unsafeChr)
-import GHC.Exts                 (IsList(..), inline)
+import GHC.Exts                 (IsList(..))
 import GHC.CString              (unpackCString#)
 import GHC.Prim                 (Addr#)
 
@@ -739,13 +739,18 @@ concat = \bss0 -> goLen0 bss0 bss0
 -- specializations are reasonably small.
 stimesPolymorphic :: Integral a => a -> ByteString -> ByteString
 {-# INLINABLE stimesPolymorphic #-}
-stimesPolymorphic nRaw bs = case checkedToInt nRaw of
-  Just n  -> stimesInt n bs
+stimesPolymorphic nRaw bs = case checkedIntegerToInt n of
+  Just nInt
+    | nInt >= 0  -> stimesNonNegativeInt nInt bs
+    | otherwise  -> stimesNegativeErr
   Nothing
-    | toInteger nRaw < 0 -- See Note [stimes negativity checks]
-      -> stimesNegativeErr
+    | n < 0  -> stimesNegativeErr
     | BS _ 0 <- bs  -> empty
     | otherwise     -> stimesOverflowErr
+  where  n = toInteger nRaw
+  -- By exclusively using n instead of nRaw, the semantics are kept simple
+  -- and the likelihood of potentially dangerous mistakes minimized.
+
 
 stimesNegativeErr :: ByteString
 stimesNegativeErr
@@ -757,9 +762,8 @@ stimesOverflowErr :: ByteString
 stimesOverflowErr = overflowError "stimes"
 
 -- | Repeats the given ByteString n times.
-stimesInt :: Int -> ByteString -> ByteString
-stimesInt n (BS fp len)
-  | n < 0 = stimesNegativeErr -- See Note [stimes negativity checks]
+stimesNonNegativeInt :: Int -> ByteString -> ByteString
+stimesNonNegativeInt n (BS fp len)
   | n == 0 = empty
   | n == 1 = BS fp len
   | len == 0 = empty
@@ -773,7 +777,7 @@ stimesInt n (BS fp len)
       fillFrom destptr len
   where
     size = checkedMultiply "stimes" n len
-    halfSize = (size - 1) `div` 2
+    halfSize = (size - 1) `div` 2 -- subtraction and division won't overflow
 
     fillFrom :: Ptr Word8 -> Int -> IO ()
     fillFrom destptr copied
@@ -782,19 +786,6 @@ stimesInt n (BS fp len)
         fillFrom destptr (copied * 2)
       | otherwise = memcpy (destptr `plusPtr` copied) destptr (size - copied)
 
-{-
-Note [stimes negativity checks]
-
-It may seem odd to check for negative input in both stimesInt and
-stimesPolymorphic. However, because the Ord instance from the Integral
-constraint in stimesPolymorphic may not agree with the ordering
-suggested by toInteger and because Integer-related operations are
-currently mostly opaque to GHC's optimizer, it is not convenient to
-safely check for negative input in stimesPolymorphic without an
-Integer being allocated and inspected for Word and Int. The current
-code is a compromise so that this only happens on the unhappy path of
-an overflowed Word-to-Int conversion.
--}
 
 ------------------------------------------------------------------------
 
@@ -873,24 +864,11 @@ checkedMultiply fun !x@(I# x#) !y@(I# y#) = assert (min x y >= 0) $
 #endif
 
 
-_toIntegralSized :: (Integral a, Integral b, Bits a, Bits b) => a -> Maybe b
-{-# INLINE _toIntegralSized #-}
--- stupid hack to make sure specialized versions of 'toIntegralSized'
--- are generated when the checkedToInt RULES fire
-_toIntegralSized = inline toIntegralSized
-
-checkedToInt :: Integral t => t -> Maybe Int
-{-# RULES
-   "checkedToInt/Int"  checkedToInt = _toIntegralSized :: Int  -> Maybe Int
- ; "checkedToInt/Word" checkedToInt = _toIntegralSized :: Word -> Maybe Int
-#-}
-{-# NOINLINE [1] checkedToInt #-}
-checkedToInt x
-  | xi == toInteger res = Just res
+checkedIntegerToInt :: Integer -> Maybe Int
+checkedIntegerToInt x
+  | x == toInteger res = Just res
   | otherwise = Nothing
-  where
-    xi = toInteger x
-    res = fromInteger xi :: Int
+  where  res = fromInteger x :: Int
 
 
 ------------------------------------------------------------------------
