@@ -841,15 +841,16 @@ overflowError fun = throw $ SizeOverflowException msg
 -- | Add two non-negative numbers.
 -- Calls 'overflowError' on overflow.
 checkedAdd :: String -> Int -> Int -> Int
+{-# INLINE checkedAdd #-}
 checkedAdd fun x y
   | r >= 0    = r
   | otherwise = overflowError fun
   where r = assert (min x y >= 0) $ x + y
-{-# INLINE checkedAdd #-}
 
 -- | Multiplies two non-negative numbers.
 -- Calls 'overflowError' on overflow.
 checkedMultiply :: String -> Int -> Int -> Int
+{-# INLINE checkedMultiply #-}
 checkedMultiply fun !x@(I# x#) !y@(I# y#) = assert (min x y >= 0) $
 #if TIMES_INT_2_AVAILABLE
   case timesInt2# x# y# of
@@ -867,6 +868,7 @@ checkedMultiply fun !x@(I# x#) !y@(I# y#) = assert (min x y >= 0) $
 -- | Attempts to convert an 'Integer' value to an 'Int', returning
 -- 'Nothing' if doing so would result in an overflow.
 checkedIntegerToInt :: Integer -> Maybe Int
+{-# INLINE checkedIntegerToInt #-}
 -- We could use Data.Bits.toIntegralSized, but this hand-rolled
 -- version is currently a bit faster as of GHC 9.2.
 -- It's even faster to just match on the Integer constructors, but
