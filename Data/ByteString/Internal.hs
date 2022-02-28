@@ -864,7 +864,13 @@ checkedMultiply fun !x@(I# x#) !y@(I# y#) = assert (min x y >= 0) $
 #endif
 
 
+-- | Attempts to convert an 'Integer' value to an 'Int', returning
+-- 'Nothing' if doing so would result in an overflow.
 checkedIntegerToInt :: Integer -> Maybe Int
+-- We could use Data.Bits.toIntegralSized, but this hand-rolled
+-- version is currently a bit faster as of GHC 9.2.
+-- It's even faster to just match on the Integer constructors, but
+-- we'd still need a fallback implementation for integer-simple.
 checkedIntegerToInt x
   | x == toInteger res = Just res
   | otherwise = Nothing
