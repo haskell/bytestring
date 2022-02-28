@@ -739,7 +739,7 @@ concat = \bss0 -> goLen0 bss0 bss0
 -- specializations are reasonably small.
 stimesPolymorphic :: Integral a => a -> ByteString -> ByteString
 {-# INLINABLE stimesPolymorphic #-}
-stimesPolymorphic nRaw bs = case checkedIntegerToInt n of
+stimesPolymorphic nRaw = \ !bs -> case checkedIntegerToInt n of
   Just nInt
     | nInt >= 0  -> stimesNonNegativeInt nInt bs
     | otherwise  -> stimesNegativeErr
