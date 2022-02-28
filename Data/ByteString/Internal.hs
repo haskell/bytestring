@@ -66,7 +66,10 @@ module Data.ByteString.Internal (
 
         -- * Utilities
         nullForeignPtr,
+        SizeOverflowException,
+        overflowError,
         checkedAdd,
+        checkedMultiply,
 
         -- * Standard C Functions
         c_strlen,
@@ -107,18 +110,17 @@ import Foreign.Storable         (Storable(..))
 import Foreign.C.Types          (CInt(..), CSize(..))
 import Foreign.C.String         (CString)
 
-#if MIN_VERSION_base(4,13,0)
-import Data.Semigroup           (Semigroup (sconcat, stimes))
-#else
-import Data.Semigroup           (Semigroup ((<>), sconcat, stimes))
+#if !MIN_VERSION_base(4,13,0)
+import Data.Semigroup           (Semigroup ((<>)))
 #endif
+import Data.Semigroup           (Semigroup (sconcat, stimes))
 import Data.List.NonEmpty       (NonEmpty ((:|)))
 
 import Control.DeepSeq          (NFData(rnf))
 
 import Data.String              (IsString(..))
 
-import Control.Exception        (assert)
+import Control.Exception        (assert, throw, Exception)
 
 import Data.Bits                ((.&.))
 import Data.Char                (ord)
@@ -131,6 +133,20 @@ import GHC.Base                 (nullAddr#,realWorld#,unsafeChr)
 import GHC.Exts                 (IsList(..))
 import GHC.CString              (unpackCString#)
 import GHC.Prim                 (Addr#)
+
+#define TIMES_INT_2_AVAILABLE MIN_VERSION_ghc_prim(0,7,0)
+#if TIMES_INT_2_AVAILABLE
+import GHC.Prim                (timesInt2#)
+#else
+import GHC.Prim                ( timesWord2#
+                               , or#
+                               , uncheckedShiftRL#
+                               , int2Word#
+                               , word2Int#
+                               )
+import Data.Bits               (finiteBitSize)
+#endif
+
 import GHC.IO                   (IO(IO),unsafeDupablePerformIO)
 import GHC.ForeignPtr           (ForeignPtr(ForeignPtr)
 #if __GLASGOW_HASKELL__ < 900
@@ -151,9 +167,7 @@ import GHC.ForeignPtr           (ForeignPtrContents(FinalPtr))
 import GHC.Ptr                  (Ptr(..))
 #endif
 
-#if (__GLASGOW_HASKELL__ < 802) || (__GLASGOW_HASKELL__ >= 811)
 import GHC.Types                (Int (..))
-#endif
 
 #if MIN_VERSION_base(4,15,0)
 import GHC.ForeignPtr           (unsafeWithForeignPtr)
@@ -237,7 +251,8 @@ instance Ord ByteString where
 instance Semigroup ByteString where
     (<>)    = append
     sconcat (b:|bs) = concat (b:bs)
-    stimes  = times
+    {-# INLINE stimes #-}
+    stimes  = stimesPolymorphic
 
 instance Monoid ByteString where
     mempty  = empty
@@ -663,7 +678,7 @@ append :: ByteString -> ByteString -> ByteString
 append (BS _   0)    b                  = b
 append a             (BS _   0)    = a
 append (BS fp1 len1) (BS fp2 len2) =
-    unsafeCreate (len1+len2) $ \destptr1 -> do
+    unsafeCreate (checkedAdd "append" len1 len2) $ \destptr1 -> do
       let destptr2 = destptr1 `plusPtr` len1
       unsafeWithForeignPtr fp1 $ \p1 -> memcpy destptr1 p1 len1
       unsafeWithForeignPtr fp2 $ \p2 -> memcpy destptr2 p2 len2
@@ -719,38 +734,58 @@ concat = \bss0 -> goLen0 bss0 bss0
    concat [x] = x
  #-}
 
--- | /O(log n)/ Repeats the given ByteString n times.
-times :: Integral a => a -> ByteString -> ByteString
-times n (BS fp len)
-  | n < 0 = error "stimes: non-negative multiplier expected"
+-- | Repeats the given ByteString n times.
+-- Polymorphic wrapper to make sure any generated
+-- specializations are reasonably small.
+stimesPolymorphic :: Integral a => a -> ByteString -> ByteString
+{-# INLINABLE stimesPolymorphic #-}
+stimesPolymorphic nRaw = \ !bs -> case checkedIntegerToInt n of
+  Just nInt
+    | nInt >= 0  -> stimesNonNegativeInt nInt bs
+    | otherwise  -> stimesNegativeErr
+  Nothing
+    | n < 0  -> stimesNegativeErr
+    | BS _ 0 <- bs  -> empty
+    | otherwise     -> stimesOverflowErr
+  where  n = toInteger nRaw
+  -- By exclusively using n instead of nRaw, the semantics are kept simple
+  -- and the likelihood of potentially dangerous mistakes minimized.
+
+
+stimesNegativeErr :: ByteString
+stimesNegativeErr
+  = error "stimes @ByteString: non-negative multiplier expected"
+
+stimesOverflowErr :: ByteString
+-- Although this only appears once, it is extracted here to prevent it
+-- from being duplicated in specializations of 'stimesPolymorphic'
+stimesOverflowErr = overflowError "stimes"
+
+-- | Repeats the given ByteString n times.
+stimesNonNegativeInt :: Int -> ByteString -> ByteString
+stimesNonNegativeInt n (BS fp len)
   | n == 0 = empty
   | n == 1 = BS fp len
   | len == 0 = empty
-  | len == 1 = unsafeCreate size $ \destptr ->
+  | len == 1 = unsafeCreate n $ \destptr ->
     unsafeWithForeignPtr fp $ \p -> do
       byte <- peek p
-      void $ memset destptr byte (fromIntegral size)
+      void $ memset destptr byte (fromIntegral n)
   | otherwise = unsafeCreate size $ \destptr ->
     unsafeWithForeignPtr fp $ \p -> do
       memcpy destptr p len
       fillFrom destptr len
   where
-    size = len * fromIntegral n
+    size = checkedMultiply "stimes" n len
+    halfSize = (size - 1) `div` 2 -- subtraction and division won't overflow
 
     fillFrom :: Ptr Word8 -> Int -> IO ()
     fillFrom destptr copied
-      | 2 * copied < size = do
+      | copied <= halfSize = do
         memcpy (destptr `plusPtr` copied) destptr copied
         fillFrom destptr (copied * 2)
       | otherwise = memcpy (destptr `plusPtr` copied) destptr (size - copied)
 
--- | Add two non-negative numbers. Errors out on overflow.
-checkedAdd :: String -> Int -> Int -> Int
-checkedAdd fun x y
-  | r >= 0    = r
-  | otherwise = overflowError fun
-  where r = x + y
-{-# INLINE checkedAdd #-}
 
 ------------------------------------------------------------------------
 
@@ -785,8 +820,64 @@ isSpaceChar8 :: Char -> Bool
 isSpaceChar8 = isSpaceWord8 . c2w
 {-# INLINE isSpaceChar8 #-}
 
+------------------------------------------------------------------------
+
+-- | The type of exception raised by 'overflowError'
+-- and on failure by overflow-checked arithmetic operations.
+newtype SizeOverflowException
+  = SizeOverflowException String
+
+instance Show SizeOverflowException where
+  show (SizeOverflowException err) = err
+
+instance Exception SizeOverflowException
+
+-- | Raises a 'SizeOverflowException',
+-- with a message using the given function name.
 overflowError :: String -> a
-overflowError fun = error $ "Data.ByteString." ++ fun ++ ": size overflow"
+overflowError fun = throw $ SizeOverflowException msg
+  where msg = "Data.ByteString." ++ fun ++ ": size overflow"
+
+-- | Add two non-negative numbers.
+-- Calls 'overflowError' on overflow.
+checkedAdd :: String -> Int -> Int -> Int
+{-# INLINE checkedAdd #-}
+checkedAdd fun x y
+  | r >= 0    = r
+  | otherwise = overflowError fun
+  where r = assert (min x y >= 0) $ x + y
+
+-- | Multiplies two non-negative numbers.
+-- Calls 'overflowError' on overflow.
+checkedMultiply :: String -> Int -> Int -> Int
+{-# INLINE checkedMultiply #-}
+checkedMultiply fun !x@(I# x#) !y@(I# y#) = assert (min x y >= 0) $
+#if TIMES_INT_2_AVAILABLE
+  case timesInt2# x# y# of
+    (# 0#, _, result #) -> I# result
+    _ -> overflowError fun
+#else
+  case timesWord2# (int2Word# x#) (int2Word# y#) of
+    (# hi, lo #) -> case or# hi (uncheckedShiftRL# lo shiftAmt) of
+      0## -> I# (word2Int# lo)
+      _   -> overflowError fun
+  where !(I# shiftAmt) = finiteBitSize (0 :: Word) - 1
+#endif
+
+
+-- | Attempts to convert an 'Integer' value to an 'Int', returning
+-- 'Nothing' if doing so would result in an overflow.
+checkedIntegerToInt :: Integer -> Maybe Int
+{-# INLINE checkedIntegerToInt #-}
+-- We could use Data.Bits.toIntegralSized, but this hand-rolled
+-- version is currently a bit faster as of GHC 9.2.
+-- It's even faster to just match on the Integer constructors, but
+-- we'd still need a fallback implementation for integer-simple.
+checkedIntegerToInt x
+  | x == toInteger res = Just res
+  | otherwise = Nothing
+  where  res = fromInteger x :: Int
+
 
 ------------------------------------------------------------------------
 

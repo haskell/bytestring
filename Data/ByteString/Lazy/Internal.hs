@@ -307,11 +307,11 @@ toStrict = \cs -> goLen0 cs cs
     goLen1 _   bs Empty = bs
     goLen1 cs0 bs (Chunk (S.BS _ 0) cs) = goLen1 cs0 bs cs
     goLen1 cs0 (S.BS _ bl) (Chunk (S.BS _ cl) cs) =
-        goLen cs0 (S.checkedAdd "Lazy.concat" bl cl) cs
+        goLen cs0 (S.checkedAdd "Lazy.toStrict" bl cl) cs
 
     -- General case, just find the total length we'll need
     goLen cs0 !total (Chunk (S.BS _ cl) cs) =
-      goLen cs0 (S.checkedAdd "Lazy.concat" total cl) cs
+      goLen cs0 (S.checkedAdd "Lazy.toStrict" total cl) cs
     goLen cs0 total Empty =
       S.unsafeCreate total $ \ptr -> goCopy cs0 ptr
 

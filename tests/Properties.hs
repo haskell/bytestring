@@ -30,6 +30,8 @@ import qualified Data.List as List
 import Data.Char
 import Data.Word
 import Data.Maybe
+import Data.Either (isLeft)
+import Data.Bits (finiteBitSize, bit)
 import Data.Int (Int8, Int16, Int32, Int64)
 import Data.Semigroup
 import GHC.Exts (Int(..), newPinnedByteArray#, unsafeFreezeByteArray#)
@@ -55,7 +57,6 @@ import qualified Data.ByteString.Lazy.Char8 as LC
 import qualified Data.ByteString.Lazy.Char8 as D
 
 import qualified Data.ByteString.Lazy.Internal as L
-import Prelude hiding (abs)
 
 import QuickCheckUtils
 import Test.Tasty
@@ -243,6 +244,74 @@ prop_readIntBoundsLC     =     rdWordBounds @Word
         && rdIntD @a (spackLong1 (smin @a)) == Nothing
         -- Overflow within chunk
         && rdIntD @a (spackLong2 (smin @a)) == Nothing
+
+------------------------------------------------------------------------
+
+expectSizeOverflow :: a -> Property
+expectSizeOverflow val = ioProperty $ do
+  isLeft <$> try @P.SizeOverflowException (evaluate val)
+
+prop_checkedAdd = forAll (vectorOf 2 nonNeg) $ \[x, y] -> if oflo x y
+  then expectSizeOverflow (P.checkedAdd "" x y)
+  else property $ P.checkedAdd "" x y == x + y
+  where nonNeg = choose (0, (maxBound @Int))
+        oflo x y = toInteger x + toInteger y /= toInteger @Int (x + y)
+
+multCompl :: Int -> Gen Int
+multCompl x = choose (0, fromInteger @Int maxc)
+  -- This choice creates products with magnitude roughly in the range
+  -- [0..5*(maxBound @Int)], which results in a roughly even split
+  -- between positive and negative overflowed Int results, while still
+  -- producing a fair number of non-overflowing products.
+  where maxc = toInteger (maxBound @Int) * 5 `quot` max 5 (abs $ toInteger x)
+
+prop_checkedMultiply = forAll genScale $ \scale ->
+  forAll (genVal scale) $ \x ->
+    forAll (multCompl x) $ \y -> if oflo x y
+      then expectSizeOverflow (P.checkedMultiply "" x y)
+      else property $ P.checkedMultiply "" x y == x * y
+  where genScale = choose (0, finiteBitSize @Int 0 - 1)
+        genVal scale = choose (0, bit scale - 1)
+        oflo x y = toInteger x * toInteger y /= toInteger @Int (x * y)
+
+prop_stimesOverflowBasic bs = forAll (multCompl len) $ \n ->
+  toInteger n * toInteger len > maxInt ==> expectSizeOverflow (stimes n bs)
+  where
+    maxInt = toInteger @Int (maxBound @Int)
+    len = P.length bs
+
+prop_stimesOverflowScary bs =
+  -- "Scary" because this test will cause heap corruption
+  -- (not just memory exhaustion) with the old stimes implementation.
+  n > 1 ==> expectSizeOverflow (stimes reps bs)
+  where
+    n = P.length bs
+    reps = maxBound @Word `quot` fromIntegral @Int @Word n + 1
+
+prop_stimesOverflowEmpty = forAll (choose (0, maxBound @Word)) $ \n ->
+  stimes n mempty === mempty @P.ByteString
+
+concat32bitOverflow :: (Int -> a) -> ([a] -> a) -> Property
+concat32bitOverflow replicateLike concatLike = let
+  intBits = finiteBitSize @Int 0
+  largeBS = concatLike $ replicate (bit 14) $ replicateLike (bit 17)
+  in if intBits /= 32
+     then label "skipped due to non-32-bit Int" True
+     else expectSizeOverflow largeBS
+
+prop_32bitOverflow_Strict_mconcat :: Property
+prop_32bitOverflow_Strict_mconcat =
+  concat32bitOverflow (`P.replicate` 0) mconcat
+
+prop_32bitOverflow_Lazy_toStrict :: Property
+prop_32bitOverflow_Lazy_toStrict =
+  concat32bitOverflow (`P.replicate` 0) (L.toStrict . L.fromChunks)
+
+prop_32bitOverflow_Short_mconcat :: Property
+prop_32bitOverflow_Short_mconcat =
+  concat32bitOverflow makeShort mconcat
+  where makeShort n = Short.toShort $ P.replicate n 0
+
 
 ------------------------------------------------------------------------
 
@@ -557,6 +626,7 @@ testSuite = testGroup "Properties"
   , testGroup "StrictChar8"     PropBS8.tests
   , testGroup "LazyWord8"       PropBL.tests
   , testGroup "LazyChar8"       PropBL8.tests
+  , testGroup "Overflow"        overflow_tests
   , testGroup "Misc"            misc_tests
   , testGroup "IO"              io_tests
   , testGroup "Short"           short_tests
@@ -575,6 +645,17 @@ io_tests =
     , testProperty "appendFile        " prop_append_file_D
 
     , testProperty "packAddress       " prop_packAddress
+    ]
+
+overflow_tests =
+    [ testProperty "checkedAdd" prop_checkedAdd
+    , testProperty "checkedMultiply" prop_checkedMultiply
+    , testProperty "StrictByteString stimes (basic)" prop_stimesOverflowBasic
+    , testProperty "StrictByteString stimes (scary)" prop_stimesOverflowScary
+    , testProperty "StrictByteString stimes (empty)" prop_stimesOverflowEmpty
+    , testProperty "StrictByteString mconcat" prop_32bitOverflow_Strict_mconcat
+    , testProperty "LazyByteString toStrict"  prop_32bitOverflow_Lazy_toStrict
+    , testProperty "ShortByteString mconcat"  prop_32bitOverflow_Short_mconcat
     ]
 
 misc_tests =

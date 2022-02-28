@@ -16,6 +16,7 @@ module Main (main) where
 
 import           Data.Foldable                         (foldMap)
 import           Data.Monoid
+import           Data.Semigroup
 import           Data.String
 import           Test.Tasty.Bench
 import           Prelude                               hiding (words)
@@ -407,6 +408,11 @@ main = do
         ]
       ]
     , bgroup "sort" $ map (\s -> bench (S8.unpack s) $ nf S.sort s) sortInputs
+    , bgroup "stimes" $ let  st = stimes :: Int -> S.ByteString -> S.ByteString
+     in
+      [ bench "strict (tiny)" $ whnf (st 4) (S8.pack "test")
+      , bench "strict (large)" $ whnf (st 50) byteStringData
+      ]
     , bgroup "words"
       [ bench "lorem ipsum" $ nf S8.words loremIpsum
       , bench "one huge word" $ nf S8.words byteStringData

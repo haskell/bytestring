@@ -658,7 +658,7 @@ append :: ShortByteString -> ShortByteString -> ShortByteString
 append src1 src2 =
   let !len1 = length src1
       !len2 = length src2
-   in create (len1 + len2) $ \dst -> do
+   in create (checkedAdd "Short.append" len1 len2) $ \dst -> do
         copyByteArray (asBA src1) 0 dst 0    len1
         copyByteArray (asBA src2) 0 dst len1 len2
 
@@ -666,8 +666,9 @@ concat :: [ShortByteString] -> ShortByteString
 concat = \sbss ->
     create (totalLen 0 sbss) (\dst -> copy dst 0 sbss)
   where
-    totalLen !acc []          = acc
-    totalLen !acc (sbs: sbss) = totalLen (acc + length sbs) sbss
+    totalLen !acc [] = acc
+    totalLen !acc (curr : rest)
+      = totalLen (checkedAdd "Short.concat" acc $ length curr) rest
 
     copy :: MBA s -> Int -> [ShortByteString] -> ST s ()
     copy !_   !_   []                           = return ()
