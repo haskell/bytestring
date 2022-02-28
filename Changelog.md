@@ -6,11 +6,16 @@
 
 [0.12.0.0]: https://github.com/haskell/bytestring/compare/0.11.3.0...0.12.0.0
 
-[0.11.3.0] — Unreleased
+[0.11.3.0] — February 2022
 
-* merge `shortbytestring` package back into `bytestring` wrt [#444](https://github.com/haskell/bytestring/issues/444),
-  adding lots of additional API:
-    - [Add `all`, `any`, `append`, `break`, `breakEnd`, `breakSubstring`, `concat`, `cons`, `count`, `drop`, `dropEnd`, `dropWhile`, `dropWhileEnd`, `elem`, `elemIndex`, `elemIndices`, `filter`, `find`, `findIndex`, `findIndices`, `foldl'`, `foldl`, `foldl1'`, `foldl1`, `foldr'`, `foldr`, `foldr1'`, `foldr1`, `head`, `init`, `intercalate`, `isInfixOf`, `isPrefixOf`, `isSuffixOf`, `last`, `map`, `partition`, `replicate`, `reverse`, `singleton`, `snoc`, `span`, `spanEnd`, `split`, `splitAt`, `splitWith`, `stripPrefix`, `stripSuffix`, `tail`, `take`, `takeEnd`, `takeWhile`, `takeWhileEnd`, `uncons`, `unfoldr`, `unfoldrN`, `unsnoc`](https://github.com/haskell/bytestring/pull/471)
+* [Enhance `ShortByteString` API](https://github.com/haskell/bytestring/pull/471)
+  - Add `all`, `any`, `append`, `break`, `breakEnd`, `breakSubstring`, `concat`, `cons`, `count`, `drop`, `dropEnd`, `dropWhile`, `dropWhileEnd`, `elem`, `elemIndex`, `elemIndices`, `filter`, `find`, `findIndex`, `findIndices`, `foldl'`, `foldl`, `foldl1'`, `foldl1`, `foldr'`, `foldr`, `foldr1'`, `foldr1`, `head`, `init`, `intercalate`, `isInfixOf`, `isPrefixOf`, `isSuffixOf`, `last`, `map`, `partition`, `replicate`, `reverse`, `singleton`, `snoc`, `span`, `spanEnd`, `split`, `splitAt`, `splitWith`, `stripPrefix`, `stripSuffix`, `tail`, `take`, `takeEnd`, `takeWhile`, `takeWhileEnd`, `uncons`, `unfoldr`, `unfoldrN`, `unsnoc` to `Data.ByteString.Short`.
+* [Add `Data.ByteString.Short.isValidUtf8`](https://github.com/haskell/bytestring/pull/450)
+* [Use safe `isValidUtf8` for large inputs](https://github.com/haskell/bytestring/pull/470)
+* [Make `unlines` lazier](https://github.com/haskell/bytestring/pull/477)
+* [Improve performance of `unlines`](https://github.com/haskell/bytestring/pull/479)
+* [Make `singleton` return a slice of a static buffer](https://github.com/haskell/bytestring/pull/480)
+* [Improve performance of `intercalate`](https://github.com/haskell/bytestring/pull/459)
 
 [0.11.3.0]: https://github.com/haskell/bytestring/compare/0.11.2.0...0.11.3.0
 
