@@ -339,17 +339,17 @@ packChars cs = unsafePackLenChars (List.length cs) cs
  #-}
 
 unsafePackLenBytes :: Int -> [Word8] -> ByteString
-unsafePackLenBytes len xs =
-    unsafeCreate len $ \p0 -> foldr
+unsafePackLenBytes len =
+    unsafeCreate len . foldr
       (\x go p -> poke p x >> go (p `plusPtr` 1))
-      (\_ -> return ()) xs p0
+      (\_ -> return ())
 {-# INLINE unsafePackLenBytes #-}
 
 unsafePackLenChars :: Int -> [Char] -> ByteString
-unsafePackLenChars len cs =
-    unsafeCreate len $ \p0 -> foldr
+unsafePackLenChars len =
+    unsafeCreate len . foldr
       (\x go p -> poke p (c2w x) >> go (p `plusPtr` 1))
-      (\_ -> return ()) cs p0
+      (\_ -> return ())
 {-# INLINE unsafePackLenChars #-}
 
 
