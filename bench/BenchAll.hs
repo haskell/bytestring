@@ -482,9 +482,18 @@ main = do
       [ bench "lazy"   $ nf L8.unlines (map (L8.pack . show) intData)
       , bench "strict" $ nf S8.unlines (map (S8.pack . show) intData)
       ]
-    , bench "pack" $ nf S.pack (fromIntegral <$> intData)
-    , bench "unsafePackLenBytes" $ nf (SI.unsafePackLenBytes nRepl) (fromIntegral <$> intData)
-    , bench "unsafePackLenChars" $ nf (SI.unsafePackLenChars nRepl) (take nRepl (cycle ['\0'..'\255']))
+    , bgroup "pack"
+      [ bench "not fused" $ nf S.pack (replicate nRepl 0)
+      , bench "fused" $ nf (S.pack . replicate nRepl) 0
+      ]
+    , bgroup "unsafePackLenBytes"
+      [ bench "not fused" $ nf (SI.unsafePackLenBytes nRepl) (replicate nRepl 0)
+      , bench "fused" $ nf (SI.unsafePackLenBytes nRepl . replicate nRepl) 0
+      ]
+    , bgroup "unsafePackLenChar"
+      [ bench "not fused" $ nf (SI.unsafePackLenChars nRepl) (replicate nRepl 'A')
+      , bench "fused" $ nf (SI.unsafePackLenChars nRepl . replicate nRepl) 'A'
+      ]
     , benchBoundsCheckFusion
     , benchCount
     , benchCSV
