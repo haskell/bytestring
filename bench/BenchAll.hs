@@ -23,6 +23,7 @@ import           Prelude                               hiding (words)
 
 import qualified Data.ByteString                       as S
 import qualified Data.ByteString.Char8                 as S8
+import qualified Data.ByteString.Internal              as SI
 import qualified Data.ByteString.Lazy                  as L
 import qualified Data.ByteString.Lazy.Char8            as L8
 
@@ -481,6 +482,9 @@ main = do
       [ bench "lazy"   $ nf L8.unlines (map (L8.pack . show) intData)
       , bench "strict" $ nf S8.unlines (map (S8.pack . show) intData)
       ]
+    , bench "pack" $ nf S.pack (fromIntegral <$> intData)
+    , bench "unsafePackLenBytes" $ nf (SI.unsafePackLenBytes nRepl) (fromIntegral <$> intData)
+    , bench "unsafePackLenChars" $ nf (SI.unsafePackLenChars nRepl) (take nRepl (cycle ['\0'..'\255']))
     , benchBoundsCheckFusion
     , benchCount
     , benchCSV
