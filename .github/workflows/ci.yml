@@ -17,7 +17,7 @@ jobs:
       fail-fast: true
       matrix:
         os: [ubuntu-latest]
-        ghc: ['8.0', '8.2', '8.4', '8.6', '8.8', '8.10', '9.0', '9.2.1']
+        ghc: ['8.0', '8.2', '8.4', '8.6', '8.8', '8.10', '9.0', '9.2']
         include:
         - os: windows-latest
           ghc: 'latest'
@@ -47,8 +47,6 @@ jobs:
         cabal sdist -z -o .
         cabal get bytestring-*.tar.gz
         cd bytestring-*/
-        echo packages:. > cabal.project
-        echo allow-newer:splitmix:base >> cabal.project
         bld() { cabal build bytestring:tests --enable-tests --enable-benchmarks; }
         bld || bld || bld
         cabal test --enable-tests --enable-benchmarks --test-show-details=direct all -j1
@@ -59,7 +57,7 @@ jobs:
     - name: Haddock
       run: |
         cd bytestring-*/
-        cabal haddock
+        cabal haddock all
     - name: Cabal check
       run: |
         cd bytestring-*/
@@ -94,27 +92,28 @@ jobs:
           ./Main +RTS -s
 
   bounds-checking:
+    needs: build
     runs-on: ubuntu-latest
-    container:
-      image: fedora:34
     steps:
-    - name: install deps
-      run: |
-          dnf install -y gcc gmp gmp-devel make ncurses ncurses-compat-libs xz perl
-          curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | BOOTSTRAP_HASKELL_NONINTERACTIVE=1 BOOTSTRAP_HASKELL_MINIMAL=1 sh
-          source ~/.ghcup/env
-          ghcup install ghc -u https://downloads.haskell.org/~ghcup/unofficial-bindists/ghc/9.3.20220124/ghc-9.3.20220124-x86_64-linux-fedora-34-bounds-checking-ddf50f4b.tar.xz --set 9.3.20220124
-          ghcup install cabal
-      shell: bash
-    - uses: actions/checkout@v1
-    - name: test
-      run: |
-          source ~/.ghcup/env
-          cabal update
-          cabal run -w ghc-9.3.20220124 --ghc-options='-fcheck-prim-bounds -fno-ignore-asserts' bytestring-tests
-      shell: bash
+    - uses: actions/checkout@v2
+    - uses: haskell/actions/setup@v1
+      id: setup-haskell-cabal
+      with:
+        ghc-version: "9.2.2"
+    - name: Update cabal package database
+      run: cabal update
+    - uses: actions/cache@v2
+      name: Cache cabal stuff
+      with:
+        path: |
+          ${{ steps.setup-haskell-cabal.outputs.cabal-store }}
+          dist-newstyle
+        key: ${{ runner.os }}-9.2.2
+    - name: Test
+      run: cabal test --ghc-options='-fcheck-prim-bounds -fno-ignore-asserts'
 
   old-gcc:
+    needs: build
     runs-on: ubuntu-latest
     container:
       image: centos:7
