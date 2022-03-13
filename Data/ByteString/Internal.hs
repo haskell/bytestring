@@ -610,7 +610,7 @@ createUptoN' l action = do
 -- | Given the maximum size needed and a function to make the contents
 -- of a ByteString, createAndTrim makes the 'ByteString'. The generating
 -- function is required to return the actual final size (<= the maximum
--- size), and the resulting byte array is realloced to this size.
+-- size), and the resulting byte array is reallocated to this size.
 --
 -- createAndTrim is the main mechanism for creating custom, efficient
 -- ByteString functions, using Haskell or C functions to fill the space.

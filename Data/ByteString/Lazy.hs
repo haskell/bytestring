@@ -962,7 +962,7 @@ breakEnd  f = go []
 --
 
 {-
--- | 'breakByte' breaks its ByteString argument at the first occurence
+-- | 'breakByte' breaks its ByteString argument at the first occurrence
 -- of the specified byte. It is more efficient than 'break' as it is
 -- implemented with @memchr(3)@. I.e.
 --
@@ -979,7 +979,7 @@ breakByte c (LPS ps) = case (breakByte' ps) of (a,b) -> (LPS a, LPS b)
                         in (x : xs', xs'')
 
 -- | 'spanByte' breaks its ByteString argument at the first
--- occurence of a byte other than its argument. It is more efficient
+-- occurrence of a byte other than its argument. It is more efficient
 -- than 'span (==)'
 --
 -- > span  (==99) "abcd" == spanByte 99 "abcd" -- fromEnum 'c' == 99

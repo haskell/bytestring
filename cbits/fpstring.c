@@ -106,7 +106,7 @@ void fps_sort(unsigned char *p, size_t len) {
     return qsort(p, len, 1, fps_compare);
 }
 
-/* count the number of occurences of a char in a string */
+/* count the number of occurrences of a char in a string */
 size_t fps_count_naive(unsigned char *str, size_t len, unsigned char w) {
     size_t c;
     for (c = 0; len-- != 0; ++str)
