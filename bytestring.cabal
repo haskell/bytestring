@@ -135,7 +135,7 @@ library
   -- * https://gitlab.haskell.org/ghc/ghc/-/issues/20525#note_385580
   -- * https://gitlab.haskell.org/ghc/ghc/-/issues/19417
   if os(windows)
-    extra-libraries:  gcc_s gcc
+    extra-libraries:  gcc
 
   include-dirs:      include
   includes:          fpstring.h

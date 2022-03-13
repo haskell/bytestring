@@ -19,10 +19,50 @@ jobs:
         os: [ubuntu-latest]
         ghc: ['8.0', '8.2', '8.4', '8.6', '8.8', '8.10', '9.0', '9.2']
         include:
-        - os: windows-latest
-          ghc: 'latest'
         - os: macOS-latest
           ghc: 'latest'
+    steps:
+    - uses: actions/checkout@v2
+    - uses: haskell/actions/setup@v1
+      id: setup-haskell-cabal
+      with:
+        ghc-version: ${{ matrix.ghc }}
+    - name: Update cabal package database
+      run: cabal update
+    - uses: actions/cache@v2
+      name: Cache cabal stuff
+      with:
+        path: |
+          ${{ steps.setup-haskell-cabal.outputs.cabal-store }}
+          dist-newstyle
+        key: ${{ runner.os }}-${{ matrix.ghc }}
+    - name: Test
+      run: |
+        cabal sdist -z -o .
+        cabal get bytestring-*.tar.gz
+        cd bytestring-*/
+        cabal build bytestring:tests --enable-tests --enable-benchmarks
+        cabal test --enable-tests --enable-benchmarks --test-show-details=direct all
+    - name: Bench
+      run: |
+        cd bytestring-*/
+        cabal bench --enable-tests --enable-benchmarks --benchmark-option=-l all
+    - name: Haddock
+      run: |
+        cd bytestring-*/
+        cabal haddock all
+    - name: Cabal check
+      run: |
+        cd bytestring-*/
+        cabal check
+
+  windows-build:
+    runs-on: windows-latest
+    needs: build
+    strategy:
+      fail-fast: true
+      matrix:
+        ghc: ['latest']
     steps:
     - uses: actions/checkout@v2
     - uses: haskell/actions/setup@v1
@@ -42,14 +82,22 @@ jobs:
     # https://github.com/haskell/actions/issues/36
     # We also use --enable-tests and --enable-benchmarks to avoid
     # test and bench commands from reconfiguring and thus rebuilding.
-    - name: Test
+    - name: Build Test
       run: |
         cabal sdist -z -o .
         cabal get bytestring-*.tar.gz
         cd bytestring-*/
         bld() { cabal build bytestring:tests --enable-tests --enable-benchmarks; }
         bld || bld || bld
-        cabal test --enable-tests --enable-benchmarks --test-show-details=direct all -j1
+        
+    - name: Run Test
+      # test broken linking on windows: https://github.com/haskell/bytestring/issues/497
+      run: |
+        $bin = cabal list-bin bytestring-tests
+        $env:PATH = ''
+        & "$bin"
+      shell: pwsh
+
     - name: Bench
       run: |
         cd bytestring-*/
