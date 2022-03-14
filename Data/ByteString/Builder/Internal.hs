@@ -417,7 +417,7 @@ flush = builder step
 -- compression library or the conversion from Base64 encoded data to
 -- 8-bit data). For a 'Builder', the only way to handle and report such a
 -- failure is ignore it or call 'error'.  In contrast, 'Put' actions are
--- expressive enough to allow reportng and handling such a failure in a pure
+-- expressive enough to allow reporting and handling such a failure in a pure
 -- fashion.
 --
 -- @'Put' ()@ actions are isomorphic to 'Builder's. The functions 'putBuilder'

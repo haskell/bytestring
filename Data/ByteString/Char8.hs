@@ -559,7 +559,7 @@ break f = B.break (f . w2c)
 
 -- INTERNAL:
 
--- | 'breakChar' breaks its ByteString argument at the first occurence
+-- | 'breakChar' breaks its ByteString argument at the first occurrence
 -- of the specified char. It is more efficient than 'break' as it is
 -- implemented with @memchr(3)@. I.e.
 --
