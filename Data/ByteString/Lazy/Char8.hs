@@ -571,7 +571,7 @@ spanEnd f = L.spanEnd (f . w2c)
 {-# INLINE spanEnd #-}
 
 {-
--- | 'breakChar' breaks its ByteString argument at the first occurence
+-- | 'breakChar' breaks its ByteString argument at the first occurrence
 -- of the specified Char. It is more efficient than 'break' as it is
 -- implemented with @memchr(3)@. I.e.
 --
@@ -582,7 +582,7 @@ breakChar = L.breakByte . c2w
 {-# INLINE breakChar #-}
 
 -- | 'spanChar' breaks its ByteString argument at the first
--- occurence of a Char other than its argument. It is more efficient
+-- occurrence of a Char other than its argument. It is more efficient
 -- than 'span (==)'
 --
 -- > span  (=='c') "abcd" == spanByte 'c' "abcd"

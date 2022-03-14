@@ -1034,7 +1034,7 @@ break p ps = case findIndexOrLength p ps of n -> (unsafeTake n ps, unsafeDrop n 
 
 -- INTERNAL:
 
--- | 'breakByte' breaks its ByteString argument at the first occurence
+-- | 'breakByte' breaks its ByteString argument at the first occurrence
 -- of the specified byte. It is more efficient than 'break' as it is
 -- implemented with @memchr(3)@. I.e.
 --
@@ -1065,7 +1065,7 @@ span p = break (not . p)
 {-# INLINE [1] span #-}
 
 -- | 'spanByte' breaks its ByteString argument at the first
--- occurence of a byte other than its argument. It is more efficient
+-- occurrence of a byte other than its argument. It is more efficient
 -- than 'span (==)'
 --
 -- > span  (==99) "abcd" == spanByte 99 "abcd" -- fromEnum 'c' == 99
@@ -1557,7 +1557,7 @@ foreign import ccall safe "bytestring_is_valid_utf8" cIsValidUtf8Safe
 -- > tokenise x y = h : if null t then [] else tokenise x (drop (length x) t)
 -- >     where (h,t) = breakSubstring x y
 --
--- To skip to the first occurence of a string:
+-- To skip to the first occurrence of a string:
 --
 -- > snd (breakSubstring x y)
 --
