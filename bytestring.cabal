@@ -131,9 +131,6 @@ library
   -- DNDEBUG disables asserts in cbits/
   cc-options:        -std=c11 -DNDEBUG=1
  
-  -- Required, due to the following issues:
-  -- * https://gitlab.haskell.org/ghc/ghc/-/issues/20525#note_385580
-  -- * https://gitlab.haskell.org/ghc/ghc/-/issues/19417
   if os(windows)
     extra-libraries:  gcc
 
