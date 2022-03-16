@@ -38,7 +38,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#if defined(__x86_64__) && (__GNUC__ >= 6 || defined(__clang_major__)) && !defined(__STDC_NO_ATOMICS__)
+#if defined(__x86_64__) && (__GNUC__ >= 7 || __GNUC__ == 6 && __GNUC_MINOR__ >= 3 || defined(__clang_major__)) && !defined(__STDC_NO_ATOMICS__)
 #include <stdatomic.h>
 #define USE_SIMD_COUNT
 #endif

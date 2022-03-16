@@ -38,7 +38,7 @@ SUCH DAMAGE.
 #include <emmintrin.h>
 #include <immintrin.h>
 #include <cpuid.h>
-#if (__GNUC__ >= 6 || defined(__clang_major__)) && !defined(__STDC_NO_ATOMICS__)
+#if (__GNUC__ >= 7 || __GNUC__ == 6 && __GNUC_MINOR__ >= 3 || defined(__clang_major__)) && !defined(__STDC_NO_ATOMICS__)
 #include <tmmintrin.h>
 #include <stdatomic.h>
 #else
