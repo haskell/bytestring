@@ -29,8 +29,8 @@ Description:
     serialisation or pretty printing.
     .
     There is also a 'ShortByteString' type which has a lower memory overhead
-    and can can be converted to or from a 'ByteString', but supports very few
-    other operations. It is suitable for keeping many short strings in memory.
+    and can be converted to or from a 'ByteString'. It is suitable for keeping
+    many short strings in memory.
     .
     'ByteString's are not designed for Unicode. For Unicode strings you should
     use the 'Text' type from the @text@ package.
