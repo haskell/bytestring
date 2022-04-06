@@ -340,7 +340,7 @@ builder :: (forall r. BuildStep r -> BuildStep r)
         -- multiple times with equally sized 'BufferRange's must result in the
         -- same sequence of bytes being written. If you need mutable state,
         -- then you must allocate it anew upon each call of this function.
-        -- Moroever, this function must call the continuation once its done.
+        -- Moreover, this function must call the continuation once its done.
         -- Otherwise, concatenation of 'Builder's does not work. Finally, this
         -- function must write to all bytes that it claims it has written.
         -- Otherwise, the resulting 'Builder' is not guaranteed to be
@@ -440,7 +440,7 @@ put :: (forall r. (a -> BuildStep r) -> BuildStep r)
     -- multiple times with equally sized 'BufferRange's must result in the
     -- same sequence of bytes being written and the same value being
     -- computed. If you need mutable state, then you must allocate it anew
-    -- upon each call of this function. Moroever, this function must call
+    -- upon each call of this function. Moreover, this function must call
     -- the continuation once its done. Otherwise, monadic sequencing of
     -- 'Put's does not work. Finally, this function must write to all bytes
     -- that it claims it has written. Otherwise, the resulting 'Put' is
@@ -596,9 +596,9 @@ hPut h p = do
         --
         --   1. GHC.IO.Handle.Internals mentions in "Note [async]" that
         --      we should never do any side-effecting operations before
-        --      an interuptible operation that may raise an async. exception
+        --      an interruptible operation that may raise an async. exception
         --      as long as we are inside 'wantWritableHandle' and the like.
-        --      We possibly run the interuptible 'flushWriteBuffer' right at
+        --      We possibly run the interruptible 'flushWriteBuffer' right at
         --      the start of 'fillHandle', hence entering it a second time is
         --      not safe, as it could lead to a 'BuildStep' being run twice.
         --

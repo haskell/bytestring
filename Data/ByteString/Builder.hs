@@ -184,7 +184,7 @@ module Data.ByteString.Builder
       -- signal to the driver telling it that it is either done, has filled the
       -- current buffer, or wants to directly insert a reference to a chunk of
       -- memory. In the last two cases, the 'Builder' also returns a
-      -- continutation 'Builder' that the driver can call to fill the next
+      -- continuation 'Builder' that the driver can call to fill the next
       -- buffer. Here, we provide the two drivers that satisfy almost all use
       -- cases. See "Data.ByteString.Builder.Extra", for information
       -- about fine-tuning them.
