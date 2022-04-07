@@ -439,7 +439,7 @@ module Data.ByteString.Builder.Prim (
 {-
   -- * Testing support
   -- | The following four functions are intended for testing use
-  -- only. They are /not/ efficient. Basic encodings are efficently executed by
+  -- only. They are /not/ efficient. Basic encodings are efficiently executed by
   -- creating 'Builder's from them using the @encodeXXX@ functions explained at
   -- the top of this module.
 
