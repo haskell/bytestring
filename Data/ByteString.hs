@@ -917,7 +917,7 @@ takeEnd n ps@(BS x len)
 {-# INLINE takeEnd #-}
 
 -- | /O(1)/ 'drop' @n xs@ returns the suffix of @xs@ after the first @n@
--- elements, or @[]@ if @n > 'length' xs@.
+-- elements, or 'empty' if @n > 'length' xs@.
 drop  :: Int -> ByteString -> ByteString
 drop n ps@(BS x l)
     | n <= 0    = ps
