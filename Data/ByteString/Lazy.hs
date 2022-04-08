@@ -773,7 +773,7 @@ takeEnd i cs0        = takeEnd' i cs0
             | otherwise      = (0, Chunk (S.takeEnd (fromIntegral n) c) cs)
 
 -- | /O(n\/c)/ 'drop' @n xs@ returns the suffix of @xs@ after the first @n@
--- elements, or @[]@ if @n > 'length' xs@.
+-- elements, or 'empty' if @n > 'length' xs@.
 drop  :: Int64 -> ByteString -> ByteString
 drop i p | i <= 0 = p
 drop i cs0 = drop' i cs0
