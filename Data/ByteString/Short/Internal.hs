@@ -1037,7 +1037,7 @@ takeEnd n = \sbs -> let sl = length sbs
 takeWhileEnd :: (Word8 -> Bool) -> ShortByteString -> ShortByteString
 takeWhileEnd f = \sbs -> drop (findFromEndUntil (not . f) sbs) sbs
 
--- | /O(n)/ 'drop' @n@ @xs@ returns the suffix of @xs@ after the first n elements, or @[]@ if @n > 'length' xs@.
+-- | /O(n)/ 'drop' @n@ @xs@ returns the suffix of @xs@ after the first n elements, or 'empty' if @n > 'length' xs@.
 --
 -- Note: copies the entire byte array
 --
