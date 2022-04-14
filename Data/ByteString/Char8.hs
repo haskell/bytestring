@@ -437,7 +437,7 @@ minimum = w2c . B.minimum
 -- | The 'mapAccumL' function behaves like a combination of 'map' and
 -- 'foldl'; it applies a function to each element of a ByteString,
 -- passing an accumulating parameter from left to right, and returning a
--- final value of this accumulator together with the new list.
+-- final value of this accumulator together with the new ByteString.
 mapAccumL :: (acc -> Char -> (acc, Char)) -> acc -> ByteString -> (acc, ByteString)
 mapAccumL f = B.mapAccumL (\acc w -> case f acc (w2c w) of (acc', c) -> (acc', c2w c))
 
