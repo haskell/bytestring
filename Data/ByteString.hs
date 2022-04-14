@@ -695,7 +695,7 @@ minimum xs@(BS x l)
 -- | The 'mapAccumL' function behaves like a combination of 'map' and
 -- 'foldl'; it applies a function to each element of a ByteString,
 -- passing an accumulating parameter from left to right, and returning a
--- final value of this accumulator together with the new list.
+-- final value of this accumulator together with the new ByteString.
 mapAccumL :: (acc -> Word8 -> (acc, Word8)) -> acc -> ByteString -> (acc, ByteString)
 mapAccumL f acc = \(BS fp len) -> unsafeDupablePerformIO $ unsafeWithForeignPtr fp $ \a -> do
                -- see fold inlining
@@ -1176,7 +1176,7 @@ split w (BS x l) = loop 0
 
 -- | The 'group' function takes a ByteString and returns a list of
 -- ByteStrings such that the concatenation of the result is equal to the
--- argument.  Moreover, each sublist in the result contains only equal
+-- argument.  Moreover, each string in the result contains only equal
 -- elements.  For example,
 --
 -- > group "Mississippi" = ["M","i","ss","i","ss","i","pp","i"]
