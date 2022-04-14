@@ -1070,7 +1070,7 @@ split w (Chunk c0 cs0) = comb [] (S.split w c0) cs0
 
 -- | The 'group' function takes a ByteString and returns a list of
 -- ByteStrings such that the concatenation of the result is equal to the
--- argument.  Moreover, each sublist in the result contains only equal
+-- argument.  Moreover, each string in the result contains only equal
 -- elements.  For example,
 --
 -- > group "Mississippi" = ["M","i","ss","i","ss","i","pp","i"]
