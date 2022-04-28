@@ -131,7 +131,9 @@ library
   -- DNDEBUG disables asserts in cbits/
   cc-options:        -std=c11 -DNDEBUG=1
  
-  if os(windows)
+  -- No need to link to libgcc on ghc-9.4 and later which uses a clang-based
+  -- toolchain.
+  if os(windows) && impl(ghc < 9.3)
     extra-libraries:  gcc
 
   include-dirs:      include
