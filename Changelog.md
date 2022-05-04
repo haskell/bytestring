@@ -6,6 +6,14 @@
 
 [0.12.0.0]: https://github.com/haskell/bytestring/compare/0.11.3.0...0.12.0.0
 
+[0.11.3.1] — May 2022
+
+* [Windows: Do not link against `gcc_s`](https://github.com/haskell/bytestring/pull/500)
+* [Windows: Do not link against `gcc`  when GHC >= 9.4](https://github.com/haskell/bytestring/pull/512)
+* [Refine CPP for obsolete versions of `gcc`](https://github.com/haskell/bytestring/pull/505)
+
+[0.11.3.1]: https://github.com/haskell/bytestring/compare/0.11.3.0...0.11.3.1
+
 [0.11.3.0] — February 2022
 
 * [Enhance `ShortByteString` API](https://github.com/haskell/bytestring/pull/471)
