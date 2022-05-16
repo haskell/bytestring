@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE BangPatterns, MagicHash #-}
 -- |
@@ -20,12 +21,16 @@ import Data.ByteString.Builder.Internal (Builder)
 import Data.ByteString.Builder.Prim (primBounded)
 import Data.ByteString.Builder.RealFloat.Internal
 import GHC.Int (Int32(..))
-import GHC.Ptr (Ptr(..))
 import GHC.Word (Word32(..), Word64(..))
+
+#if !PURE_HASKELL
+import GHC.Ptr (Ptr(..))
+#endif
 
 -- See Data.ByteString.Builder.RealFloat.TableGenerator for a high-level
 -- explanation of the ryu algorithm
 
+#if !PURE_HASKELL
 -- | Table of 2^k / 5^q + 1
 --
 -- > fmap (finv float_pow5_inv_bitcount) [0..float_max_inv_split]
@@ -37,6 +42,7 @@ foreign import ccall "&hs_bytestring_float_pow5_inv_split"
 -- > fmap (fnorm float_pow5_bitcount) [0..float_max_split]
 foreign import ccall "&hs_bytestring_float_pow5_split"
   float_pow5_split :: Ptr Word64
+#endif
 
 -- | Number of mantissa bits of a 32-bit float. The number of significant bits
 -- (floatDigits (undefined :: Float)) is 24 since we have a leading 1 for
@@ -70,11 +76,99 @@ mulShift32 m factor shift =
 
 -- | Index into the 64-bit word lookup table float_pow5_inv_split
 get_float_pow5_inv_split :: Int -> Word64
+#if !PURE_HASKELL
 get_float_pow5_inv_split = getWord64At float_pow5_inv_split
+#else
+-- > putStr $ case64 (finv float_pow5_inv_bitcount) [0..float_max_inv_split]
+get_float_pow5_inv_split i = case i of
+  0  -> 0x800000000000001
+  1  -> 0x666666666666667
+  2  -> 0x51eb851eb851eb9
+  3  -> 0x4189374bc6a7efa
+  4  -> 0x68db8bac710cb2a
+  5  -> 0x53e2d6238da3c22
+  6  -> 0x431bde82d7b634e
+  7  -> 0x6b5fca6af2bd216
+  8  -> 0x55e63b88c230e78
+  9  -> 0x44b82fa09b5a52d
+  10 -> 0x6df37f675ef6eae
+  11 -> 0x57f5ff85e592558
+  12 -> 0x465e6604b7a8447
+  13 -> 0x709709a125da071
+  14 -> 0x5a126e1a84ae6c1
+  15 -> 0x480ebe7b9d58567
+  16 -> 0x734aca5f6226f0b
+  17 -> 0x5c3bd5191b525a3
+  18 -> 0x49c97747490eae9
+  19 -> 0x760f253edb4ab0e
+  20 -> 0x5e72843249088d8
+  21 -> 0x4b8ed0283a6d3e0
+  22 -> 0x78e480405d7b966
+  23 -> 0x60b6cd004ac9452
+  24 -> 0x4d5f0a66a23a9db
+  25 -> 0x7bcb43d769f762b
+  26 -> 0x63090312bb2c4ef
+  27 -> 0x4f3a68dbc8f03f3
+  28 -> 0x7ec3daf94180651
+  29 -> 0x65697bfa9acd1da
+  _  -> 0x51212ffbaf0a7e2
+#endif
 
 -- | Index into the 64-bit word lookup table float_pow5_split
 get_float_pow5_split :: Int -> Word64
+#if !PURE_HASKELL
 get_float_pow5_split = getWord64At float_pow5_split
+#else
+-- > putStr $ case64 (fnorm float_pow5_bitcount) [0..float_max_split]
+get_float_pow5_split i = case i of
+  0  -> 0x1000000000000000
+  1  -> 0x1400000000000000
+  2  -> 0x1900000000000000
+  3  -> 0x1f40000000000000
+  4  -> 0x1388000000000000
+  5  -> 0x186a000000000000
+  6  -> 0x1e84800000000000
+  7  -> 0x1312d00000000000
+  8  -> 0x17d7840000000000
+  9  -> 0x1dcd650000000000
+  10 -> 0x12a05f2000000000
+  11 -> 0x174876e800000000
+  12 -> 0x1d1a94a200000000
+  13 -> 0x12309ce540000000
+  14 -> 0x16bcc41e90000000
+  15 -> 0x1c6bf52634000000
+  16 -> 0x11c37937e0800000
+  17 -> 0x16345785d8a00000
+  18 -> 0x1bc16d674ec80000
+  19 -> 0x1158e460913d0000
+  20 -> 0x15af1d78b58c4000
+  21 -> 0x1b1ae4d6e2ef5000
+  22 -> 0x10f0cf064dd59200
+  23 -> 0x152d02c7e14af680
+  24 -> 0x1a784379d99db420
+  25 -> 0x108b2a2c28029094
+  26 -> 0x14adf4b7320334b9
+  27 -> 0x19d971e4fe8401e7
+  28 -> 0x1027e72f1f128130
+  29 -> 0x1431e0fae6d7217c
+  30 -> 0x193e5939a08ce9db
+  31 -> 0x1f8def8808b02452
+  32 -> 0x13b8b5b5056e16b3
+  33 -> 0x18a6e32246c99c60
+  34 -> 0x1ed09bead87c0378
+  35 -> 0x13426172c74d822b
+  36 -> 0x1812f9cf7920e2b6
+  37 -> 0x1e17b84357691b64
+  38 -> 0x12ced32a16a1b11e
+  39 -> 0x178287f49c4a1d66
+  40 -> 0x1d6329f1c35ca4bf
+  41 -> 0x125dfa371a19e6f7
+  42 -> 0x16f578c4e0a060b5
+  43 -> 0x1cb2d6f618c878e3
+  44 -> 0x11efc659cf7d4b8d
+  45 -> 0x166bb7f0435c9e71
+  _  -> 0x1c06a5ec5433c60d
+#endif
 
 -- | Take the high bits of m * 2^k / 5^q / 2^-e2+q+k
 mulPow5InvDivPow2 :: Word32 -> Int -> Int -> Word32

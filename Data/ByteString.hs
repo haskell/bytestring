@@ -264,7 +264,6 @@ import Control.Exception        (IOException, catch, finally, assert, throwIO)
 import Control.Monad            (when)
 
 import Foreign.C.String         (CString, CStringLen)
-import Foreign.C.Types          (CSize (CSize), CInt (CInt))
 import Foreign.ForeignPtr       (ForeignPtr, touchForeignPtr)
 import Foreign.ForeignPtr.Unsafe(unsafeForeignPtrToPtr)
 import Foreign.Marshal.Alloc    (allocaBytes)
@@ -1561,17 +1560,6 @@ isValidUtf8 (BS ptr len) = accursedUnutterablePerformIO $ unsafeWithForeignPtr p
      then cIsValidUtf8 p (fromIntegral len)
      else cIsValidUtf8Safe p (fromIntegral len)
   pure $ i /= 0
-
--- We import bytestring_is_valid_utf8 both unsafe and safe. For small inputs
--- we can use the unsafe version to get a bit more performance, but for large
--- inputs the safe version should be used to avoid GC synchronization pauses
--- in multithreaded contexts.
-
-foreign import ccall unsafe "bytestring_is_valid_utf8" cIsValidUtf8
-  :: Ptr Word8 -> CSize -> IO CInt
-
-foreign import ccall safe "bytestring_is_valid_utf8" cIsValidUtf8Safe
-  :: Ptr Word8 -> CSize -> IO CInt
 
 -- | Break a string on a substring, returning a pair of the part of the
 -- string prior to the match, and the rest of the string.
