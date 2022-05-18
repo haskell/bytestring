@@ -243,7 +243,7 @@ import Control.Monad            (when, void)
 
 import Foreign.C.String         (CString, CStringLen)
 import Foreign.C.Types          (CSize (CSize), CInt (CInt))
-import Foreign.ForeignPtr       (ForeignPtr, withForeignPtr, touchForeignPtr)
+import Foreign.ForeignPtr       (ForeignPtr, touchForeignPtr)
 import Foreign.ForeignPtr.Unsafe(unsafeForeignPtrToPtr)
 import Foreign.Marshal.Alloc    (allocaBytes)
 import Foreign.Marshal.Array    (allocaArray)
@@ -1734,12 +1734,10 @@ sort (BS input l)
 -- subcomputation finishes.
 useAsCString :: ByteString -> (CString -> IO a) -> IO a
 useAsCString (BS fp l) action =
-  allocaBytes (l+1) $ \buf ->
-    -- Cannot use unsafeWithForeignPtr, because action can diverge
-    withForeignPtr fp $ \p -> do
-      memcpy buf p l
-      pokeByteOff buf l (0::Word8)
-      action (castPtr buf)
+  allocaBytes (l+1) $ \buf -> do
+    unsafeWithForeignPtr fp $ \p -> memcpy buf p l
+    pokeByteOff buf l (0::Word8)
+    action (castPtr buf)
 
 -- | /O(n) construction/ Use a @ByteString@ with a function requiring a @CStringLen@.
 -- As for @useAsCString@ this function makes a copy of the original @ByteString@.
