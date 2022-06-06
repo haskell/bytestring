@@ -929,12 +929,22 @@ unwords :: [ByteString] -> ByteString
 unwords = intercalate (singleton ' ')
 {-# INLINE unwords #-}
 
--- | Write a ByteString to a handle, appending a newline byte
+-- | Write a ByteString to a handle, appending a newline byte.
+--
+-- The chunks will be
+-- written one at a time, followed by a newline.
+-- Other threads might write to the 'Handle' in between,
+-- and hence 'hPutStrLn' alone is not suitable for concurrent writes.
 --
 hPutStrLn :: Handle -> ByteString -> IO ()
 hPutStrLn h ps = hPut h ps >> hPut h (L.singleton 0x0a)
 
--- | Write a ByteString to stdout, appending a newline byte
+-- | Write a ByteString to 'stdout', appending a newline byte.
+--
+-- The chunks will be
+-- written one at a time, followed by a newline.
+-- Other threads might write to the 'stdout' in between,
+-- and hence 'putStrLn' alone is not suitable for concurrent writes.
 --
 putStrLn :: ByteString -> IO ()
 putStrLn = hPutStrLn stdout

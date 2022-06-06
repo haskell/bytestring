@@ -1867,11 +1867,11 @@ hPutNonBlocking h bs@(BS ps l) = do
   bytesWritten <- unsafeWithForeignPtr ps $ \p-> hPutBufNonBlocking h p l
   return $! drop bytesWritten bs
 
--- | A synonym for @hPut@, for compatibility
+-- | A synonym for 'hPut', for compatibility
 hPutStr :: Handle -> ByteString -> IO ()
 hPutStr = hPut
 
--- | Write a ByteString to stdout
+-- | Write a ByteString to 'stdout'.
 putStr :: ByteString -> IO ()
 putStr = hPut stdout
 
