@@ -21,6 +21,8 @@ steps:
   commands:
     - uname -a # check platform
     - getconf LONG_BIT # check bitness
+    - apt-get update
+    - apt-get install -y libnuma-dev
     - cabal update
     - cabal new-test
 ---
