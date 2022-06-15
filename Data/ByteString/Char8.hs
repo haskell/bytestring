@@ -1065,12 +1065,20 @@ readInteger as
 ------------------------------------------------------------------------
 -- For non-binary text processing:
 
--- | Write a ByteString to a handle, appending a newline byte
+-- | Write a ByteString to a handle, appending a newline byte.
+--
+-- Unlike 'hPutStr', this is not atomic: other threads might write
+-- to the handle between writing of the bytestring and the newline.
+--
 hPutStrLn :: Handle -> ByteString -> IO ()
 hPutStrLn h ps
     | length ps < 1024 = hPut h (ps `B.snoc` 0x0a)
     | otherwise        = hPut h ps >> hPut h (B.singleton 0x0a) -- don't copy
 
--- | Write a ByteString to stdout, appending a newline byte
+-- | Write a ByteString to 'stdout', appending a newline byte.
+--
+-- Unlike 'putStr', this is not atomic: other threads might write
+-- to 'stdout' between writing of the bytestring and the newline.
+--
 putStrLn :: ByteString -> IO ()
 putStrLn = hPutStrLn stdout
