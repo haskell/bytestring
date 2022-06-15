@@ -1568,9 +1568,11 @@ appendFile = modifyFile AppendMode
 getContents :: IO ByteString
 getContents = hGetContents stdin
 
--- | Outputs a 'ByteString' to the specified 'Handle'. The chunks will be
--- written one at a time. Other threads might write to the 'Handle' between the
--- writes, and hence 'hPut' alone might not be suitable for concurrent writes.
+-- | Outputs a 'ByteString' to the specified 'Handle'.
+--
+-- The chunks will be
+-- written one at a time. Other threads might write to the 'Handle' in between,
+-- and hence 'hPut' alone is not suitable for concurrent writes.
 --
 hPut :: Handle -> ByteString -> IO ()
 hPut h = foldrChunks (\c rest -> S.hPut h c >> rest) (return ())
@@ -1592,12 +1594,17 @@ hPutNonBlocking h bs@(Chunk c cs) = do
     0                     -> return bs
     _                     -> return (Chunk c' cs)
 
--- | A synonym for @hPut@, for compatibility
+-- | A synonym for 'hPut', for compatibility
 --
 hPutStr :: Handle -> ByteString -> IO ()
 hPutStr = hPut
 
--- | Write a ByteString to stdout
+-- | Write a ByteString to 'stdout'.
+--
+-- The chunks will be
+-- written one at a time. Other threads might write to the 'stdout' in between,
+-- and hence 'putStr' alone is not suitable for concurrent writes.
+--
 putStr :: ByteString -> IO ()
 putStr = hPut stdout
 
