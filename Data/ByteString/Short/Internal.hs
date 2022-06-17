@@ -173,7 +173,14 @@ import Data.Bits
   , (.|.)
   )
 import Data.Data
-  ( Data(..) )
+  ( Data(..)
+  , mkNoRepType
+  , mkConstr
+  , mkDataType
+  , Constr
+  , DataType
+  , Fixity(Prefix)
+  )
 import Data.Monoid
   ( Monoid(..) )
 import Data.Semigroup
@@ -281,7 +288,7 @@ newtype ShortByteString =
   { unShortByteString :: ByteArray
   -- ^ @since 0.12.0.0
   }
-  deriving (Eq, TH.Lift, Data, NFData)
+  deriving (Eq, TH.Lift, NFData)
 
 -- | Prior to @bytestring-0.12@ 'SBS' was a genuine constructor of 'ShortByteString',
 -- but now it is a bundled pattern synonym, provided as a compatibility shim.
@@ -330,6 +337,18 @@ instance GHC.Exts.IsList ShortByteString where
 -- e.g. "枯朶に烏のとまりけり秋の暮" becomes �6k�nh~�Q��n�
 instance IsString ShortByteString where
     fromString = packChars
+
+instance Data ShortByteString where
+  gfoldl f z txt = z packBytes `f` unpackBytes txt
+  toConstr _     = packConstr
+  gunfold _ _    = error "Data.ByteString.Short.ShortByteString.gunfold"
+  dataTypeOf _   = mkNoRepType "Data.ByteString.Short.ShortByteString"
+
+packConstr :: Constr
+packConstr = mkConstr byteStringDataType "pack" [] Prefix
+
+byteStringDataType :: DataType
+byteStringDataType = mkDataType "Data.ByteString.Short.ShortByteString" [packConstr]
 
 ------------------------------------------------------------------------
 -- Simple operations
