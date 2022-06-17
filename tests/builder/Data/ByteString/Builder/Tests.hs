@@ -43,6 +43,7 @@ import qualified Data.ByteString.Builder.Internal   as BI
 import qualified Data.ByteString.Builder.Prim       as BP
 import           Data.ByteString.Builder.Prim.TestUtils
 
+import           Data.Data (toConstr, showConstr)
 import           Control.Exception (evaluate)
 import           System.IO (openTempFile, hPutStr, hClose, hSetBinaryMode, hSetEncoding, utf8, hSetNewlineMode, noNewlineTranslation)
 import           Foreign (ForeignPtr, withForeignPtr, castPtr)
@@ -69,6 +70,7 @@ tests =
   , testRunBuilder
   , testWriteFile
   , testStimes
+  , testToConstr
   ] ++
   testsEncodingToBuilder ++
   testsBinary ++
@@ -426,7 +428,6 @@ test_encodeUnfoldrB =
       where
         go []     = Nothing
         go (c:cs) = Just (c, cs)
-
 
 ------------------------------------------------------------------------------
 -- Testing the Put monad
@@ -984,3 +985,9 @@ testsUtf8 =
   [ testBuilderConstr "charUtf8" charUtf8_list charUtf8
   , testBuilderConstr "stringUtf8" (foldMap charUtf8_list) stringUtf8
   ]
+
+testToConstr :: TestTree
+testToConstr = compareImpls "toConstr" s (showConstr . toConstr)
+  where
+    s :: S.ByteString -> String
+    s _ = "pack"
