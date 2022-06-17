@@ -136,7 +136,7 @@ import Data.Char                (ord)
 import Data.Word
 
 import Data.Typeable            (Typeable)
-import Data.Data                (Data(..), mkNoRepType)
+import Data.Data                (Data(..), mkNoRepType, mkConstr ,mkDataType, Constr, DataType, Fixity(Prefix))
 
 import GHC.Base                 (nullAddr#,realWorld#,unsafeChr)
 import GHC.Exts                 (IsList(..))
@@ -309,9 +309,15 @@ instance IsString ByteString where
 
 instance Data ByteString where
   gfoldl f z txt = z packBytes `f` unpackBytes txt
-  toConstr _     = error "Data.ByteString.ByteString.toConstr"
+  toConstr _     = packConstr
   gunfold _ _    = error "Data.ByteString.ByteString.gunfold"
   dataTypeOf _   = mkNoRepType "Data.ByteString.ByteString"
+
+packConstr :: Constr
+packConstr = mkConstr byteStringDataType "pack" [] Prefix
+
+byteStringDataType :: DataType
+byteStringDataType = mkDataType "Data.ByteString" [packConstr]
 
 -- | @since 0.11.2.0
 instance TH.Lift ByteString where
