@@ -65,7 +65,7 @@ import Control.DeepSeq  (NFData, rnf)
 import Data.String      (IsString(..))
 
 import Data.Typeable            (Typeable)
-import Data.Data                (Data(..), mkNoRepType)
+import Data.Data                (Data(..), mkNoRepType, mkConstr ,mkDataType, Constr, DataType, Fixity(Prefix))
 
 import GHC.Exts                 (IsList(..))
 
@@ -126,9 +126,15 @@ instance IsString ByteString where
 
 instance Data ByteString where
   gfoldl f z txt = z packBytes `f` unpackBytes txt
-  toConstr _     = error "Data.ByteString.Lazy.ByteString.toConstr"
+  toConstr _     = packConstr
   gunfold _ _    = error "Data.ByteString.Lazy.ByteString.gunfold"
   dataTypeOf _   = mkNoRepType "Data.ByteString.Lazy.ByteString"
+
+packConstr :: Constr
+packConstr = mkConstr byteStringDataType "pack" [] Prefix
+
+byteStringDataType :: DataType
+byteStringDataType = mkDataType "Data.ByteString.Lazy.ByteString" [packConstr]
 
 ------------------------------------------------------------------------
 -- Packing and unpacking from lists
