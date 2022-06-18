@@ -108,7 +108,8 @@ prop_lines_lazy3 =
 
 prop_strip x = C.strip x == (C.dropSpace . C.reverse . C.dropSpace . C.reverse) x
 
-prop_toConstr =  True ==> "pack" == ((showConstr . toConstr) "pack")
+prop_toConstr :: P.ByteString -> Property
+prop_toConstr bs = True ==> "pack" == ((showConstr  . toConstr) bs)
 
 class (Bounded a, Integral a, Show a) => RdInt a where
     rdIntC :: C.ByteString -> Maybe (a, C.ByteString)
