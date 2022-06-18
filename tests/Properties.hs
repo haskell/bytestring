@@ -29,6 +29,7 @@ import System.Posix.Internals (c_unlink)
 
 import qualified Data.List as List
 import Data.Char
+import Data.Data (toConstr, showConstr)
 import Data.Word
 import Data.Maybe
 import Data.Either (isLeft)
@@ -106,6 +107,8 @@ prop_lines_lazy3 =
     d = Chunk c d
 
 prop_strip x = C.strip x == (C.dropSpace . C.reverse . C.dropSpace . C.reverse) x
+
+prop_toConstr =  True ==> "pack" == ((showConstr . toConstr) "pack")
 
 class (Bounded a, Integral a, Show a) => RdInt a where
     rdIntC :: C.ByteString -> Maybe (a, C.ByteString)
@@ -718,6 +721,7 @@ misc_tests =
     , testProperty "readIntegerUnsafe" prop_readIntegerUnsafe
     , testProperty "readNaturalSafe"   prop_readNaturalSafe
     , testProperty "readNaturalUnsafe" prop_readNaturalUnsafe
+    , testProperty "instance Data toConstr" prop_toConstr
     ]
 
 strictness_checks =
