@@ -169,7 +169,7 @@ test-suite bytestring-tests
                     ghc-prim,
                     QuickCheck,
                     tasty,
-                    tasty-quickcheck,
+                    tasty-quickcheck >= 0.8.1,
                     template-haskell,
                     transformers >= 0.3
   ghc-options:      -fwarn-unused-binds
