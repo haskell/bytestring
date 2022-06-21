@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveLift #-}
+{-# LANGUAGE MagicHash #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE Unsafe #-}
@@ -71,6 +72,7 @@ import Data.String      (IsString(..))
 
 import Data.Data                (Data(..), mkNoRepType)
 
+import GHC.CString              (unpackCString#, unpackCStringUtf8#)
 import GHC.Exts                 (IsList(..))
 
 import qualified Language.Haskell.TH.Syntax as TH
@@ -149,7 +151,26 @@ instance IsList ByteString where
 -- | Beware: 'fromString' truncates multi-byte characters to octets.
 -- e.g. "枯朶に烏のとまりけり秋の暮" becomes �6k�nh~�Q��n�
 instance IsString ByteString where
-    fromString = packChars
+    fromString = packCharsWrapper
+
+packCharsWrapper :: String -> ByteString
+packCharsWrapper = packCharsSafe
+{-# NOINLINE packCharsWrapper #-}
+
+{-# RULES
+"ByteString packCharsWrapper/ASCII" forall s .
+  packCharsWrapper (unpackCString# s) = packChars (unpackCString# s)
+"ByteString packCharsWrapper/Unicode" forall s .
+  packCharsWrapper (unpackCStringUtf8# s) = packCharsSafe (unpackCStringUtf8# s)
+"ByteString packCharsWrapper/naked" [0]
+  packCharsWrapper = error "instance IsString LazyByteString can be applied only to statically-known strings"
+#-}
+
+packCharsSafe :: String -> ByteString
+packCharsSafe xs
+  | Prelude.all (< '\256') xs = packChars xs
+  | otherwise = error $ "instance IsString LazyByteString: detected characters outside of Latin1 range in " ++ xs
+
 
 instance Data ByteString where
   gfoldl f z txt = z packBytes `f` unpackBytes txt

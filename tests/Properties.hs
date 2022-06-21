@@ -581,8 +581,8 @@ prop_short_mappend xs ys =
 prop_short_mconcat xss =
     mconcat xss == Short.unpack (mconcat (map Short.pack xss))
 
-prop_short_fromString s =
-    fromString s == Short.fromShort (fromString s)
+prop_short_fromString xs = expectFailure $
+    length (Short.unpack (fromString xs)) `seq` ()
 
 prop_short_show xs =
     show (Short.pack xs) == show (map P.w2c xs)

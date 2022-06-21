@@ -141,7 +141,7 @@ import Data.Data                (Data(..), mkNoRepType)
 
 import GHC.Base                 (nullAddr#,realWorld#,unsafeChr)
 import GHC.Exts                 (IsList(..), Addr#, minusAddr#)
-import GHC.CString              (unpackCString#)
+import GHC.CString              (unpackCString#, unpackCStringUtf8#)
 import GHC.Magic                (runRW#, lazy)
 
 #define TIMES_INT_2_AVAILABLE MIN_VERSION_ghc_prim(0,7,0)
@@ -350,7 +350,25 @@ instance IsList ByteString where
 -- e.g. "枯朶に烏のとまりけり秋の暮" becomes �6k�nh~�Q��n�
 instance IsString ByteString where
     {-# INLINE fromString #-}
-    fromString = packChars
+    fromString = packCharsWrapper
+
+packCharsWrapper :: String -> ByteString
+packCharsWrapper = packCharsSafe
+{-# NOINLINE packCharsWrapper #-}
+
+{-# RULES
+"ByteString packCharsWrapper/ASCII" forall s .
+  packCharsWrapper (unpackCString# s) = packChars (unpackCString# s)
+"ByteString packCharsWrapper/Unicode" forall s .
+  packCharsWrapper (unpackCStringUtf8# s) = packCharsSafe (unpackCStringUtf8# s)
+"ByteString packCharsWrapper/naked" [0]
+  packCharsWrapper = error "instance IsString StrictByteString can be applied only to statically-known strings"
+#-}
+
+packCharsSafe :: String -> ByteString
+packCharsSafe xs
+  | all (< '\256') xs = packChars xs
+  | otherwise = error $ "instance IsString StrictByteString: detected characters outside of Latin1 range in " ++ xs
 
 instance Data ByteString where
   gfoldl f z txt = z packBytes `f` unpackBytes txt

@@ -212,6 +212,10 @@ import Foreign.Marshal.Alloc
   ( allocaBytes )
 import Foreign.Storable
   ( pokeByteOff )
+import GHC.CString
+  ( unpackCString#
+  , unpackCStringUtf8#
+  )
 import GHC.Exts
   ( Int(I#), Int#, Ptr(Ptr), Addr#, Char(C#)
   , State#, RealWorld
@@ -268,6 +272,7 @@ import Prelude
   , not
   , snd
   )
+import qualified Prelude
 
 import qualified Data.ByteString.Internal.Type as BS
 
@@ -335,7 +340,25 @@ instance GHC.Exts.IsList ShortByteString where
 -- | Beware: 'fromString' truncates multi-byte characters to octets.
 -- e.g. "枯朶に烏のとまりけり秋の暮" becomes �6k�nh~�Q��n�
 instance IsString ShortByteString where
-    fromString = packChars
+    fromString = packCharsWrapper
+
+packCharsWrapper :: String -> ShortByteString
+packCharsWrapper = packCharsSafe
+{-# NOINLINE packCharsWrapper #-}
+
+{-# RULES
+"ByteString packCharsWrapper/ASCII" forall s .
+  packCharsWrapper (unpackCString# s) = packChars (unpackCString# s)
+"ByteString packCharsWrapper/Unicode" forall s .
+  packCharsWrapper (unpackCStringUtf8# s) = packCharsSafe (unpackCStringUtf8# s)
+"ByteString packCharsWrapper/naked" [0]
+  packCharsWrapper = error "instance IsString ShortByteString can be applied only to statically-known strings"
+#-}
+
+packCharsSafe :: String -> ShortByteString
+packCharsSafe xs
+  | Prelude.all (< '\256') xs = packChars xs
+  | otherwise = error $ "instance IsString ShortByteString: detected characters outside of Latin1 range in " ++ xs
 
 ------------------------------------------------------------------------
 -- Simple operations
