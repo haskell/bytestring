@@ -343,7 +343,7 @@ snoc cs w = foldrChunks Chunk (singleton w) cs
 
 -- | /O(1)/ Extract the first element of a ByteString, which must be non-empty.
 --
--- This is a partial function, please consider using 'uncons' instead.
+-- This is a partial function, consider using 'uncons' instead.
 head :: HasCallStack => ByteString -> Word8
 head Empty       = errorEmptyList "head"
 head (Chunk c _) = S.unsafeHead c
@@ -361,7 +361,7 @@ uncons (Chunk c cs)
 -- | /O(1)/ Extract the elements after the head of a ByteString, which must be
 -- non-empty.
 --
--- This is a partial function, please consider using 'uncons' instead.
+-- This is a partial function, consider using 'uncons' instead.
 tail :: HasCallStack => ByteString -> ByteString
 tail Empty          = errorEmptyList "tail"
 tail (Chunk c cs)
@@ -372,7 +372,7 @@ tail (Chunk c cs)
 -- | /O(n\/c)/ Extract the last element of a ByteString, which must be finite
 -- and non-empty.
 --
--- This is a partial function, please consider using 'unsnoc' instead.
+-- This is a partial function, consider using 'unsnoc' instead.
 last :: HasCallStack => ByteString -> Word8
 last Empty          = errorEmptyList "last"
 last (Chunk c0 cs0) = go c0 cs0
@@ -382,7 +382,7 @@ last (Chunk c0 cs0) = go c0 cs0
 
 -- | /O(n\/c)/ Return all the elements of a 'ByteString' except the last one.
 --
--- This is a partial function, please consider using 'unsnoc' instead.
+-- This is a partial function, consider using 'unsnoc' instead.
 init :: HasCallStack => ByteString -> ByteString
 init Empty          = errorEmptyList "init"
 init (Chunk c0 cs0) = go c0 cs0
@@ -1132,7 +1132,7 @@ intercalate s = concat . List.intersperse s
 
 -- | /O(c)/ 'ByteString' index (subscript) operator, starting from 0.
 --
--- This is a partial function, please consider using 'indexMaybe' instead.
+-- This is a partial function, consider using 'indexMaybe' instead.
 index :: HasCallStack => ByteString -> Int64 -> Word8
 index _  i | i < 0  = moduleError "index" ("negative index: " ++ show i)
 index cs0 i         = index' cs0 i

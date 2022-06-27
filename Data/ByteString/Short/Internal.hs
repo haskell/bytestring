@@ -368,7 +368,7 @@ null sbs = length sbs == 0
 
 -- | /O(1)/ 'ShortByteString' index (subscript) operator, starting from 0.
 --
--- This is a partial function, please consider using 'indexMaybe' instead.
+-- This is a partial function, consider using 'indexMaybe' instead.
 index :: HasCallStack => ShortByteString -> Int -> Word8
 index sbs i
   | i >= 0 && i < length sbs = unsafeIndex sbs i

@@ -390,7 +390,7 @@ snoc (BS x l) c = unsafeCreate (l+1) $ \p -> unsafeWithForeignPtr x $ \f -> do
 -- | /O(1)/ Extract the first element of a ByteString, which must be non-empty.
 -- An exception will be thrown in the case of an empty ByteString.
 --
--- There are zero reasons to use 'head': it is both partial and slow.
+-- This function is both partial and slow.
 -- Please consider using either 'uncons', which is total, or, if you are
 -- adamant that the argument is non-empty, 'Data.ByteString.Unsafe.unsafeHead',
 -- which is branchless and fast.
@@ -403,7 +403,7 @@ head (BS x l)
 -- | /O(1)/ Extract the elements after the head of a ByteString, which must be non-empty.
 -- An exception will be thrown in the case of an empty ByteString.
 --
--- There are zero reasons to use 'tail': it is both partial and slow.
+-- This function is both partial and slow.
 -- Please consider using either 'uncons', which is total, or, if you are
 -- adamant that the argument is non-empty, 'Data.ByteString.Unsafe.unsafeTail',
 -- which is branchless and fast.
@@ -426,7 +426,7 @@ uncons (BS x l)
 -- | /O(1)/ Extract the last element of a ByteString, which must be finite and non-empty.
 -- An exception will be thrown in the case of an empty ByteString.
 --
--- There are zero reasons to use 'last': it is both partial and slow.
+-- This function is both partial and slow.
 -- Please consider using either 'unsnoc', which is total, or, if you are
 -- adamant that the argument is non-empty, 'Data.ByteString.Unsafe.unsafeLast',
 -- which is branchless and fast.
@@ -440,7 +440,7 @@ last ps@(BS x l)
 -- | /O(1)/ Return all the elements of a 'ByteString' except the last one.
 -- An exception will be thrown in the case of an empty ByteString.
 --
--- There are zero reasons to use 'init': it is both partial and slow.
+-- This function is both partial and slow.
 -- Please consider using either 'unsnoc', which is total, or, if you are
 -- adamant that the argument is non-empty, 'Data.ByteString.Unsafe.unsafeInit',
 -- which is branchless and fast.
@@ -1248,7 +1248,7 @@ intercalate (BS fSepPtr sepLen) (BS fhPtr hLen : t) =
 
 -- | /O(1)/ 'ByteString' index (subscript) operator, starting from 0.
 --
--- There are zero reasons to use 'index': it is both partial and slow.
+-- This function is both partial and slow.
 -- Please consider using either 'indexMaybe', which is total, or
 -- 'Data.ByteString.Unsafe.unsafeIndex',
 -- which is branchless and fast.
