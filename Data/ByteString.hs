@@ -390,10 +390,7 @@ snoc (BS x l) c = unsafeCreate (l+1) $ \p -> unsafeWithForeignPtr x $ \f -> do
 -- | /O(1)/ Extract the first element of a ByteString, which must be non-empty.
 -- An exception will be thrown in the case of an empty ByteString.
 --
--- This function is both partial and slow.
--- Please consider using either 'uncons', which is total, or, if you are
--- adamant that the argument is non-empty, 'Data.ByteString.Unsafe.unsafeHead',
--- which is branchless and fast.
+-- This is a partial function, consider using 'uncons' instead.
 head :: HasCallStack => ByteString -> Word8
 head (BS x l)
     | l <= 0    = errorEmptyList "head"
@@ -403,10 +400,7 @@ head (BS x l)
 -- | /O(1)/ Extract the elements after the head of a ByteString, which must be non-empty.
 -- An exception will be thrown in the case of an empty ByteString.
 --
--- This function is both partial and slow.
--- Please consider using either 'uncons', which is total, or, if you are
--- adamant that the argument is non-empty, 'Data.ByteString.Unsafe.unsafeTail',
--- which is branchless and fast.
+-- This is a partial function, consider using 'uncons' instead.
 tail :: HasCallStack => ByteString -> ByteString
 tail (BS p l)
     | l <= 0    = errorEmptyList "tail"
@@ -426,10 +420,7 @@ uncons (BS x l)
 -- | /O(1)/ Extract the last element of a ByteString, which must be finite and non-empty.
 -- An exception will be thrown in the case of an empty ByteString.
 --
--- This function is both partial and slow.
--- Please consider using either 'unsnoc', which is total, or, if you are
--- adamant that the argument is non-empty, 'Data.ByteString.Unsafe.unsafeLast',
--- which is branchless and fast.
+-- This is a partial function, consider using 'unsnoc' instead.
 last :: HasCallStack => ByteString -> Word8
 last ps@(BS x l)
     | null ps   = errorEmptyList "last"
@@ -440,10 +431,7 @@ last ps@(BS x l)
 -- | /O(1)/ Return all the elements of a 'ByteString' except the last one.
 -- An exception will be thrown in the case of an empty ByteString.
 --
--- This function is both partial and slow.
--- Please consider using either 'unsnoc', which is total, or, if you are
--- adamant that the argument is non-empty, 'Data.ByteString.Unsafe.unsafeInit',
--- which is branchless and fast.
+-- This is a partial function, consider using 'unsnoc' instead.
 init :: HasCallStack => ByteString -> ByteString
 init ps@(BS p l)
     | null ps   = errorEmptyList "init"
@@ -1248,10 +1236,7 @@ intercalate (BS fSepPtr sepLen) (BS fhPtr hLen : t) =
 
 -- | /O(1)/ 'ByteString' index (subscript) operator, starting from 0.
 --
--- This function is both partial and slow.
--- Please consider using either 'indexMaybe', which is total, or
--- 'Data.ByteString.Unsafe.unsafeIndex',
--- which is branchless and fast.
+-- This is a partial function, consider using 'indexMaybe' instead.
 index :: HasCallStack => ByteString -> Int -> Word8
 index ps n
     | n < 0          = moduleError "index" ("negative index: " ++ show n)
