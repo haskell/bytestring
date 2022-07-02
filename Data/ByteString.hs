@@ -389,6 +389,8 @@ snoc (BS x l) c = unsafeCreate (l+1) $ \p -> unsafeWithForeignPtr x $ \f -> do
 
 -- | /O(1)/ Extract the first element of a ByteString, which must be non-empty.
 -- An exception will be thrown in the case of an empty ByteString.
+--
+-- This is a partial function, consider using 'uncons' instead.
 head :: HasCallStack => ByteString -> Word8
 head (BS x l)
     | l <= 0    = errorEmptyList "head"
@@ -397,13 +399,15 @@ head (BS x l)
 
 -- | /O(1)/ Extract the elements after the head of a ByteString, which must be non-empty.
 -- An exception will be thrown in the case of an empty ByteString.
+--
+-- This is a partial function, consider using 'uncons' instead.
 tail :: HasCallStack => ByteString -> ByteString
 tail (BS p l)
     | l <= 0    = errorEmptyList "tail"
     | otherwise = BS (plusForeignPtr p 1) (l-1)
 {-# INLINE tail #-}
 
--- | /O(1)/ Extract the head and tail of a ByteString, returning Nothing
+-- | /O(1)/ Extract the 'head' and 'tail' of a ByteString, returning 'Nothing'
 -- if it is empty.
 uncons :: ByteString -> Maybe (Word8, ByteString)
 uncons (BS x l)
@@ -415,6 +419,8 @@ uncons (BS x l)
 
 -- | /O(1)/ Extract the last element of a ByteString, which must be finite and non-empty.
 -- An exception will be thrown in the case of an empty ByteString.
+--
+-- This is a partial function, consider using 'unsnoc' instead.
 last :: HasCallStack => ByteString -> Word8
 last ps@(BS x l)
     | null ps   = errorEmptyList "last"
@@ -424,13 +430,15 @@ last ps@(BS x l)
 
 -- | /O(1)/ Return all the elements of a 'ByteString' except the last one.
 -- An exception will be thrown in the case of an empty ByteString.
+--
+-- This is a partial function, consider using 'unsnoc' instead.
 init :: HasCallStack => ByteString -> ByteString
 init ps@(BS p l)
     | null ps   = errorEmptyList "init"
     | otherwise = BS p (l-1)
 {-# INLINE init #-}
 
--- | /O(1)/ Extract the 'init' and 'last' of a ByteString, returning Nothing
+-- | /O(1)/ Extract the 'init' and 'last' of a ByteString, returning 'Nothing'
 -- if it is empty.
 unsnoc :: ByteString -> Maybe (ByteString, Word8)
 unsnoc (BS x l)
@@ -1226,6 +1234,8 @@ intercalate (BS fSepPtr sepLen) (BS fhPtr hLen : t) =
 -- Indexing ByteStrings
 
 -- | /O(1)/ 'ByteString' index (subscript) operator, starting from 0.
+--
+-- This is a partial function, consider using 'indexMaybe' instead.
 index :: HasCallStack => ByteString -> Int -> Word8
 index ps n
     | n < 0          = moduleError "index" ("negative index: " ++ show n)
