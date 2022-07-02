@@ -85,7 +85,7 @@ module Data.ByteString.Short.Internal (
     any,
     concat,
 
-    -- ** Generating and unfolding ByteStrings
+    -- ** Generating and unfolding ShortByteStrings
     replicate,
     unfoldr,
     unfoldrN,
@@ -280,12 +280,6 @@ import qualified Language.Haskell.TH.Syntax as TH
 -- 'ByteString' (at the cost of copying the string data). It supports very few
 -- other operations.
 --
--- It is suitable for use as an internal representation for code that needs
--- to keep many short strings in memory, but it /should not/ be used as an
--- interchange type. That is, it should not generally be used in public APIs.
--- The 'ByteString' type is usually more suitable for use in interfaces; it is
--- more flexible and it supports a wide range of operations.
---
 data ShortByteString = SBS ByteArray#
     deriving Typeable
 
@@ -373,6 +367,8 @@ null :: ShortByteString -> Bool
 null sbs = length sbs == 0
 
 -- | /O(1)/ 'ShortByteString' index (subscript) operator, starting from 0.
+--
+-- This is a partial function, consider using 'indexMaybe' instead.
 index :: HasCallStack => ShortByteString -> Int -> Word8
 index sbs i
   | i >= 0 && i < length sbs = unsafeIndex sbs i
@@ -733,7 +729,7 @@ tail = \sbs ->
       True -> errorEmptySBS "tail"
       False -> create nl $ \mba -> copyByteArray (asBA sbs) 1 mba 0 nl
 
--- | /O(n)/ Extract the head and tail of a ByteString, returning Nothing
+-- | /O(n)/ Extract the 'head' and 'tail' of a ShortByteString, returning 'Nothing'
 -- if it is empty.
 --
 -- @since 0.11.3.0
@@ -773,7 +769,7 @@ init = \sbs ->
       True -> errorEmptySBS "init"
       False -> create nl $ \mba -> copyByteArray (asBA sbs) 0 mba 0 nl
 
--- | /O(n)/ Extract the 'init' and 'last' of a ByteString, returning Nothing
+-- | /O(n)/ Extract the 'init' and 'last' of a ShortByteString, returning 'Nothing'
 -- if it is empty.
 --
 -- @since 0.11.3.0
@@ -891,7 +887,7 @@ intercalate sep = \case
 
 
 -- ---------------------------------------------------------------------
--- Reducing 'ByteString's
+-- Reducing 'ShortByteString's
 
 -- | 'foldl', applied to a binary operator, a starting value (typically
 -- the left-identity of the operator), and a ShortByteString, reduces the
@@ -970,8 +966,8 @@ all k = \sbs ->
   in go 0
 
 
--- | /O(n)/ Applied to a predicate and a ByteString, 'any' determines if
--- any element of the 'ByteString' satisfies the predicate.
+-- | /O(n)/ Applied to a predicate and a 'ShortByteString', 'any' determines if
+-- any element of the 'ShortByteString' satisfies the predicate.
 --
 -- @since 0.11.3.0
 any :: (Word8 -> Bool) -> ShortByteString -> Bool
@@ -1234,7 +1230,7 @@ stripPrefix sbs1 = \sbs2 -> do
 -- Unfolds and replicates
 
 
--- | /O(n)/ 'replicate' @n x@ is a ByteString of length @n@ with @x@
+-- | /O(n)/ 'replicate' @n x@ is a ShortByteString of length @n@ with @x@
 -- the value of every element. The following holds:
 --
 -- > replicate w c = unfoldr w (\u -> Just (u,u)) c
@@ -1429,8 +1425,8 @@ breakSubstring pat =
 elem :: Word8 -> ShortByteString -> Bool
 elem c = \sbs -> case elemIndex c sbs of Nothing -> False ; _ -> True
 
--- | /O(n)/ 'filter', applied to a predicate and a ByteString,
--- returns a ByteString containing those characters that satisfy the
+-- | /O(n)/ 'filter', applied to a predicate and a ShortByteString,
+-- returns a ShortByteString containing those characters that satisfy the
 -- predicate.
 --
 -- @since 0.11.3.0
@@ -1459,7 +1455,7 @@ filter k = \sbs -> let l = length sbs
               else
                 go' (br+1) bw
 
--- | /O(n)/ The 'find' function takes a predicate and a ByteString,
+-- | /O(n)/ The 'find' function takes a predicate and a ShortByteString,
 -- and returns the first element in matching the predicate, or 'Nothing'
 -- if there is no such element.
 --
@@ -1471,8 +1467,8 @@ find f = \sbs -> case findIndex f sbs of
                     Just n -> Just (sbs `index` n)
                     _      -> Nothing
 
--- | /O(n)/ The 'partition' function takes a predicate a ByteString and returns
--- the pair of ByteStrings with elements which do and do not satisfy the
+-- | /O(n)/ The 'partition' function takes a predicate a ShortByteString and returns
+-- the pair of ShortByteStrings with elements which do and do not satisfy the
 -- predicate, respectively; i.e.,
 --
 -- > partition p bs == (filter p sbs, filter (not . p) sbs)
@@ -1538,7 +1534,7 @@ count w = \sbs@(SBS ba#) -> accursedUnutterablePerformIO $
     fromIntegral <$> c_count ba# (fromIntegral $ length sbs) w
 
 -- | /O(n)/ The 'findIndex' function takes a predicate and a 'ShortByteString' and
--- returns the index of the first element in the ByteString
+-- returns the index of the first element in the ShortByteString
 -- satisfying the predicate.
 --
 -- @since 0.11.3.0
