@@ -82,6 +82,7 @@ module Data.ByteString.Short (
     last,
     tail,
     uncons,
+    unconsN,
     head,
     init,
     unsnoc,

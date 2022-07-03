@@ -656,6 +656,17 @@ tests =
   , testProperty "fromString literal" $
     fromString "\0\1\2\3\4" == B.pack [0,1,2,3,4]
 #endif
+#ifdef BYTESTRING_SHORT
+  , testProperty "unconsN == unpack" $
+    \x i -> B.unconsN i x === (if B.length x < i || i < 1 then Nothing else let u = B.unpack x
+                                                                                l = take i u
+                                                                                r = B.pack (drop i u)
+                                                                            in Just (l, r))
+  , testProperty "unconsN 1 == uncons" $
+    \x -> B.unconsN 1 x === fmap (\(x, y) -> ([x], y)) (B.uncons x)
+  , testProperty "length of items matches input (unconsN)" $
+    \x i -> maybe i (\(xs, _) -> length xs) (B.unconsN i x) === i
+#endif
   ]
 
 unsnoc :: [a] -> Maybe ([a], a)
