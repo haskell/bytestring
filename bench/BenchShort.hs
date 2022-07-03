@@ -6,6 +6,7 @@
 
 module BenchShort (benchShort) where
 
+import           Control.DeepSeq                       (force)
 import           Data.Foldable                         (foldMap)
 import           Data.Maybe                            (listToMaybe)
 import           Data.Monoid
@@ -106,6 +107,9 @@ w = fromIntegral
 
 hashWord8 :: Word8 -> Word8
 hashWord8 = fromIntegral . hashInt . fromIntegral
+
+foldInputs' :: [[Word8]]
+foldInputs' = force (S.unpack <$> foldInputs)
 
 foldInputs :: [S.ShortByteString]
 foldInputs = map (\k -> S.pack $ if k <= 6 then take (2 ^ k) [32..95] else concat (replicate (2 ^ (k - 6)) [32..95])) [0..16]
@@ -231,5 +235,12 @@ benchShort = bgroup "ShortByteString"
         , bench "FindIndex/inlined"       $ nf (S.findIndex      (== nl)) absurdlong
         , bench "FindIndex/non-inlined"   $ nf (S.findIndex   (nilEq nl)) absurdlong
         ]
+    , bgroup "ShortByteString conversions" $
+        [ bgroup "unpack" $ map (\s -> bench (show $ S.length s) $
+            nf (\x -> S.unpack x) s) foldInputs
+        , bgroup "pack" $ map (\s -> bench (show $ length s) $
+            nf S.pack s) foldInputs'
+        , bench "unpack and get last element" $ nf (\x -> last . S.unpack $ x) absurdlong
+        , bench "unpack and get first 120 elements" $ nf (\x -> take 120 . S.unpack $ x) absurdlong
+        ]
     ]
-
