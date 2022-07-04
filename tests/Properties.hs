@@ -99,11 +99,11 @@ prop_strip x = C.strip x == (C.dropSpace . C.reverse . C.dropSpace . C.reverse) 
 prop_toConstr :: P.ByteString -> Property
 prop_toConstr bs = True ==> "(pack)" == ((showConstr  . toConstr) bs)
 
-pror_gshow_empty :: P.ByteString -> Property
-pror_gshow_empty b = (not . null . Char8.unpack) b ==> (not . null . gshow) b
+prop_gshow_empty :: P.ByteString -> Property
+prop_gshow_empty b = (not . null . Char8.unpack) b ==> (not . null . gshow) b
 
-pror_gshow_equal :: P.ByteString -> Property
-pror_gshow_equal b = True ==> read_bs b == read_string b
+prop_gshow_equal :: P.ByteString -> Property
+prop_gshow_equal b = True ==> read_bs b == read_string b
     where
         read_bs :: P.ByteString -> [(P.ByteString, String)]
         read_bs = gread . gshow
@@ -720,8 +720,8 @@ misc_tests =
     , testProperty "readNaturalSafe"   prop_readNaturalSafe
     , testProperty "readNaturalUnsafe" prop_readNaturalUnsafe
     , testProperty "instance Data toConstr" prop_toConstr
-    , testProperty "gshow empty" pror_gshow_empty
-    , testProperty "gshow equal" pror_gshow_equal
+    , testProperty "gshow empty" prop_gshow_empty
+    , testProperty "gshow equal" prop_gshow_equal
     ]
 
 strictness_checks =
