@@ -97,7 +97,7 @@ prop_lines_lazy2 =
 prop_strip x = C.strip x == (C.dropSpace . C.reverse . C.dropSpace . C.reverse) x
 
 prop_toConstr :: P.ByteString -> Property
-prop_toConstr bs = True ==> "(pack)" == ((showConstr  . toConstr) bs)
+prop_toConstr bs = True ==> "pack" == ((showConstr  . toConstr) bs)
 
 prop_gshow_empty :: P.ByteString -> Property
 prop_gshow_empty b = (not . null . Char8.unpack) b ==> (not . null . gshow) b
@@ -109,6 +109,9 @@ prop_gshow_equal b = True ==> read_bs b == read_string b
         read_bs = gread . gshow
         read_string :: P.ByteString -> [(P.ByteString, String)]
         read_string = gread . Char8.unpack
+
+prop_gshow_string :: P.ByteString -> Property
+prop_gshow_string b = True ==> (gshow . Char8.pack) "A" == "(pack ((:) (65) ([])))"
 
 class (Bounded a, Integral a, Show a) => RdInt a where
     rdIntC :: C.ByteString -> Maybe (a, C.ByteString)
@@ -722,6 +725,7 @@ misc_tests =
     , testProperty "instance Data toConstr" prop_toConstr
     , testProperty "gshow empty" prop_gshow_empty
     , testProperty "gshow equal" prop_gshow_equal
+    , testProperty "gshow string" prop_gshow_string
     ]
 
 strictness_checks =
