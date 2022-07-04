@@ -192,8 +192,12 @@ benchShort = bgroup "ShortByteString"
       ]
     , bgroup "folds"
       [ bgroup "strict"
-        [ bgroup "foldl'" $ map (\s -> bench (show $ S.length s) $
+        [ bgroup "foldl" $ map (\s -> bench (show $ S.length s) $
+            nf (S.foldl (\acc x -> acc + fromIntegral x) (0 :: Int)) s) foldInputs
+        , bgroup "foldl'" $ map (\s -> bench (show $ S.length s) $
             nf (S.foldl' (\acc x -> acc + fromIntegral x) (0 :: Int)) s) foldInputs
+        , bgroup "foldr" $ map (\s -> bench (show $ S.length s) $
+            nf (S.foldr (\x acc -> fromIntegral x + acc) (0 :: Int)) s) foldInputs
         , bgroup "foldr'" $ map (\s -> bench (show $ S.length s) $
             nf (S.foldr' (\x acc -> fromIntegral x + acc) (0 :: Int)) s) foldInputs
         , bgroup "foldr1'" $ map (\s -> bench (show $ S.length s) $
