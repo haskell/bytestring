@@ -1142,11 +1142,10 @@ splitAt n = \sbs -> if
   | n <= 0 -> (empty, sbs)
   | otherwise ->
       let slen = length sbs
-      in if | n >= length sbs -> (sbs, empty)
+      in if | n >= slen -> (sbs, empty)
             | otherwise ->
-                let llen = min slen (max 0 n)
-                    rlen = max 0 (slen - max 0 n)
-                    lsbs = create llen $ \mba -> copyByteArray (asBA sbs) 0 mba 0 llen
+                let rlen = slen - n
+                    lsbs = create n $ \mba -> copyByteArray (asBA sbs) 0 mba 0 n
                     rsbs = create rlen $ \mba -> copyByteArray (asBA sbs) n mba 0 rlen
                 in (lsbs, rsbs)
 
