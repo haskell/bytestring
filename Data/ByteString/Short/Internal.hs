@@ -359,12 +359,10 @@ empty = create 0 (\_ -> return ())
 -- | /O(1)/ The length of a 'ShortByteString'.
 length :: ShortByteString -> Int
 length (SBS barr#) = I# (sizeofByteArray# barr#)
-{-# INLINE length #-}
 
 -- | /O(1)/ Test whether a 'ShortByteString' is empty.
 null :: ShortByteString -> Bool
 null sbs = length sbs == 0
-{-# INLINE null #-}
 
 -- | /O(1)/ 'ShortByteString' index (subscript) operator, starting from 0.
 --
@@ -543,17 +541,26 @@ pack = packBytes
 
 -- | /O(n)/. Convert a 'ShortByteString' into a list.
 unpack :: ShortByteString -> [Word8]
-unpack sbs = let ix = length sbs - 1
-             in List.map (unsafeIndex sbs) [0..ix]
+unpack sbs = GHC.Exts.build (unpackFoldr sbs)
 {-# INLINE unpack #-}
+
+--
+-- Have unpack fuse with good list consumers
+--
+unpackFoldr :: ShortByteString -> (Word8 -> a -> a) -> a -> a
+unpackFoldr sbs k z = foldr k z sbs
+{-# INLINE [0] unpackFoldr #-}
+
+{-# RULES
+"ShortByteString unpack-list" [1]  forall bs .
+    unpackFoldr bs (:) [] = unpackBytes bs
+ #-}
 
 packChars :: [Char] -> ShortByteString
 packChars = \cs -> packLenBytes (List.length cs) (List.map BS.c2w cs)
-{-# INLINE packChars #-}
 
 packBytes :: [Word8] -> ShortByteString
 packBytes = \ws -> packLenBytes (List.length ws) ws
-{-# INLINE packBytes #-}
 
 packLenBytes :: Int -> [Word8] -> ShortByteString
 packLenBytes len ws0 =
@@ -564,15 +571,69 @@ packLenBytes len ws0 =
     go !mba !i (w:ws) = do
       writeWord8Array mba i w
       go mba (i+1) ws
-{-# INLINE packLenBytes #-}
 
+-- Unpacking bytestrings into lists efficiently is a tradeoff: on the one hand
+-- we would like to write a tight loop that just blats the list into memory, on
+-- the other hand we want it to be unpacked lazily so we don't end up with a
+-- massive list data structure in memory.
+--
+-- Our strategy is to combine both: we will unpack lazily in reasonable sized
+-- chunks, where each chunk is unpacked strictly.
+--
+-- unpackChars does the lazy loop, while unpackAppendBytes and
+-- unpackAppendChars do the chunks strictly.
 
 unpackChars :: ShortByteString -> [Char]
-unpackChars sbs = let ix = length sbs - 1
-                  in List.map (indexCharArray (asBA sbs)) [0..ix]
-{-# INLINE unpackChars #-}
+unpackChars sbs = unpackAppendCharsLazy sbs []
+
+unpackBytes :: ShortByteString -> [Word8]
+unpackBytes sbs = unpackAppendBytesLazy sbs []
 
 
+-- Why 100 bytes you ask? Because on a 64bit machine the list we allocate
+-- takes just shy of 4k which seems like a reasonable amount.
+-- (5 words per list element, 8 bytes per word, 100 elements = 4000 bytes)
+
+unpackAppendCharsLazy :: ShortByteString -> [Char] -> [Char]
+unpackAppendCharsLazy sbs = go 0 (length sbs)
+  where
+    sz = 100
+
+    go off len cs
+      | len <= sz = unpackAppendCharsStrict sbs off len cs
+      | otherwise = unpackAppendCharsStrict sbs off sz  remainder
+                      where remainder = go (off+sz) (len-sz) cs
+
+unpackAppendBytesLazy :: ShortByteString -> [Word8] -> [Word8]
+unpackAppendBytesLazy sbs = go 0 (length sbs)
+  where
+    sz = 100
+
+    go off len ws
+      | len <= sz = unpackAppendBytesStrict sbs off len ws
+      | otherwise = unpackAppendBytesStrict sbs off sz  remainder
+                      where remainder = go (off+sz) (len-sz) ws
+
+-- For these unpack functions, since we're unpacking the whole list strictly we
+-- build up the result list in an accumulator. This means we have to build up
+-- the list starting at the end. So our traversal starts at the end of the
+-- buffer and loops down until we hit the sentinal:
+
+unpackAppendCharsStrict :: ShortByteString -> Int -> Int -> [Char] -> [Char]
+unpackAppendCharsStrict !sbs off len = go (off-1) (off-1 + len)
+  where
+    go !sentinal !i acc
+      | i == sentinal = acc
+      | otherwise     = let !c = indexCharArray (asBA sbs) i
+                        in go sentinal (i-1) (c:acc)
+
+unpackAppendBytesStrict :: ShortByteString -> Int -> Int -> [Word8] -> [Word8]
+unpackAppendBytesStrict !sbs off len = go (off-1) (off-1 + len)
+  where
+    go !sentinal !i acc
+      | i == sentinal = acc
+      | otherwise     = let !w = indexWord8Array (asBA sbs) i
+                         in go sentinal (i-1) (w:acc)
 
 
 ------------------------------------------------------------------------
@@ -848,14 +909,12 @@ intercalate sep = \case
 -- @since 0.11.3.0
 foldl :: (a -> Word8 -> a) -> a -> ShortByteString -> a
 foldl f v = List.foldl f v . unpack
-{-# INLINE foldl #-}
 
 -- | 'foldl'' is like 'foldl', but strict in the accumulator.
 --
 -- @since 0.11.3.0
 foldl' :: (a -> Word8 -> a) -> a -> ShortByteString -> a
 foldl' f v = List.foldl' f v . unpack
-{-# INLINE foldl' #-}
 
 -- | 'foldr', applied to a binary operator, a starting value
 -- (typically the right-identity of the operator), and a ShortByteString,
@@ -892,7 +951,6 @@ foldr' k v = \sbs ->
 -- @since 0.11.3.0
 foldl1 :: HasCallStack => (Word8 -> Word8 -> Word8) -> ShortByteString -> Word8
 foldl1 k = List.foldl1 k . unpack
-{-# INLINE foldl1 #-}
 
 -- | 'foldl1'' is like 'foldl1', but strict in the accumulator.
 -- An exception will be thrown in the case of an empty ShortByteString.
@@ -900,7 +958,6 @@ foldl1 k = List.foldl1 k . unpack
 -- @since 0.11.3.0
 foldl1' :: HasCallStack => (Word8 -> Word8 -> Word8) -> ShortByteString -> Word8
 foldl1' k = List.foldl1' k . unpack
-{-# INLINE foldl1' #-}
 
 -- | 'foldr1' is a variant of 'foldr' that has no starting value argument,
 -- and thus must be applied to non-empty 'ShortByteString's
@@ -909,7 +966,6 @@ foldl1' k = List.foldl1' k . unpack
 -- @since 0.11.3.0
 foldr1 :: HasCallStack => (Word8 -> Word8 -> Word8) -> ShortByteString -> Word8
 foldr1 k = List.foldr1 k . unpack
-{-# INLINE foldr1 #-}
 
 -- | 'foldr1'' is a variant of 'foldr1', but is strict in the
 -- accumulator.
@@ -917,7 +973,6 @@ foldr1 k = List.foldr1 k . unpack
 -- @since 0.11.3.0
 foldr1' :: HasCallStack => (Word8 -> Word8 -> Word8) -> ShortByteString -> Word8
 foldr1' k = \sbs -> if null sbs then errorEmptySBS "foldr1'" else foldr' k (last sbs) (init sbs)
-{-# INLINE foldr1' #-}
 
 
 
