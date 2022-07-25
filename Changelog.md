@@ -3,6 +3,8 @@
 * [New sized and/or unsigned variants of `readInt` and `readInteger`](https://github.com/haskell/bytestring/pull/438)
 * [`readInt` returns `Nothing`, if the sequence of digits cannot be represented by an `Int`, instead of overflowing silently](https://github.com/haskell/bytestring/pull/309)
 * [Remove `zipWith` rewrite rule](https://github.com/haskell/bytestring/pull/387)
+* [Export `unsafeIndex` for ShortByteString which had been accidentally removed in v0.11.3.0](https://github.com/haskell/bytestring/pull/532)
+
 
 [0.12.0.0]: https://github.com/haskell/bytestring/compare/0.11.3.0...0.12.0.0
 
