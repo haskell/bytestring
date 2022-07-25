@@ -138,6 +138,7 @@ module Data.ByteString.Short.Internal (
     count,
     findIndex,
     findIndices,
+    unsafeIndex,
 
     -- * Low level operations
     createFromPtr,
@@ -394,6 +395,7 @@ indexMaybe sbs i
 (!?) = indexMaybe
 {-# INLINE (!?) #-}
 
+-- | /O(1)/ Unsafe indexing without bounds checking.
 unsafeIndex :: ShortByteString -> Int -> Word8
 unsafeIndex sbs = indexWord8Array (asBA sbs)
 
