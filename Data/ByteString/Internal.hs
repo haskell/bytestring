@@ -97,6 +97,10 @@ module Data.ByteString.Internal (
         -- * Exported compatibility shim
         plusForeignPtr,
         unsafeWithForeignPtr
+
+        -- * Usage Notes
+        --
+        -- $continuation-termination
   ) where
 
 import Prelude hiding (concat, null)
@@ -104,7 +108,10 @@ import qualified Data.List as List
 
 import Control.Monad            (void)
 
-import Foreign.ForeignPtr       (ForeignPtr, withForeignPtr)
+import Foreign.ForeignPtr       (ForeignPtr)
+#if !MIN_VERSION_base(4,15,0)
+import Foreign.ForeignPtr       (withForeignPtr)
+#endif
 import Foreign.Ptr              (Ptr, FunPtr, plusPtr, minusPtr)
 import Foreign.Storable         (Storable(..))
 import Foreign.C.Types          (CInt(..), CSize(..))
@@ -558,6 +565,9 @@ toForeignPtr0 (BS ps l) = (ps, l)
 
 -- | A way of creating ByteStrings outside the IO monad. The @Int@
 -- argument gives the final size of the ByteString.
+--
+-- Note that the provided continuation must satisfy the conditions described in
+-- $continuation-termination.
 unsafeCreate :: Int -> (Ptr Word8 -> IO ()) -> ByteString
 unsafeCreate l f = unsafeDupablePerformIO (create l f)
 {-# INLINE unsafeCreate #-}
@@ -566,60 +576,82 @@ unsafeCreate l f = unsafeDupablePerformIO (create l f)
 -- ByteString, it is just an upper bound. The inner action returns
 -- the actual size. Unlike 'createAndTrim' the ByteString is not
 -- reallocated if the final size is less than the estimated size.
+--
+-- Note that the provided continuation must satisfy the conditions described in
+-- $continuation-termination.
 unsafeCreateUptoN :: Int -> (Ptr Word8 -> IO Int) -> ByteString
 unsafeCreateUptoN l f = unsafeDupablePerformIO (createUptoN l f)
 {-# INLINE unsafeCreateUptoN #-}
 
--- | @since 0.10.12.0
+-- | Like 'unsafeCreateUptoN' but allowing an additional result to be returned.
+--
+-- Note that the provided continuation must satisfy the conditions described in
+-- $continuation-termination.
+--
+-- @since 0.10.12.0
 unsafeCreateUptoN' :: Int -> (Ptr Word8 -> IO (Int, a)) -> (ByteString, a)
 unsafeCreateUptoN' l f = unsafeDupablePerformIO (createUptoN' l f)
 {-# INLINE unsafeCreateUptoN' #-}
 
 -- | Create ByteString of size @l@ and use action @f@ to fill its contents.
+--
+-- Note that the provided continuation must satisfy the conditions described in
+-- $continuation-termination.
+--
 create :: Int -> (Ptr Word8 -> IO ()) -> IO ByteString
 create l action = do
     fp <- mallocByteString l
     -- Cannot use unsafeWithForeignPtr, because action can diverge
-    withForeignPtr fp $ \p -> action p
+    unsafeWithForeignPtr fp $ \p -> action p
     return $! BS fp l
 {-# INLINE create #-}
 
 -- | Given a maximum size @l@ and an action @f@ that fills the 'ByteString'
 -- starting at the given 'Ptr' and returns the actual utilized length,
 -- @`createUptoN'` l f@ returns the filled 'ByteString'.
+--
+-- Note that the provided continuation must satisfy the conditions described in
+-- $continuation-termination.
+--
 createUptoN :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
 createUptoN l action = do
     fp <- mallocByteString l
     -- Cannot use unsafeWithForeignPtr, because action can diverge
-    l' <- withForeignPtr fp $ \p -> action p
+    l' <- unsafeWithForeignPtr fp $ \p -> action p
     assert (l' <= l) $ return $! BS fp l'
 {-# INLINE createUptoN #-}
 
 -- | Like 'createUptoN', but also returns an additional value created by the
 -- action.
 --
+-- Note that the provided continuation must satisfy the conditions described in
+-- $continuation-termination.
+--
 -- @since 0.10.12.0
 createUptoN' :: Int -> (Ptr Word8 -> IO (Int, a)) -> IO (ByteString, a)
 createUptoN' l action = do
     fp <- mallocByteString l
     -- Cannot use unsafeWithForeignPtr, because action can diverge
-    (l', res) <- withForeignPtr fp $ \p -> action p
+    (l', res) <- unsafeWithForeignPtr fp $ \p -> action p
     assert (l' <= l) $ return (BS fp l', res)
 {-# INLINE createUptoN' #-}
 
 -- | Given the maximum size needed and a function to make the contents
--- of a ByteString, createAndTrim makes the 'ByteString'. The generating
+-- of a 'ByteString', @createAndTrim@ makes the 'ByteString'. The generating
 -- function is required to return the actual final size (<= the maximum
 -- size), and the resulting byte array is reallocated to this size.
 --
--- createAndTrim is the main mechanism for creating custom, efficient
--- ByteString functions, using Haskell or C functions to fill the space.
+-- @createAndTrim@ is the main mechanism for creating custom, efficient
+-- @ByteString@ functions, using Haskell or C functions to fill the space.
+--
+-- Note that the provided continuation must satisfy the conditions described in
+-- $continuation-termination.
 --
 createAndTrim :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
 createAndTrim l action = do
     fp <- mallocByteString l
     -- Cannot use unsafeWithForeignPtr, because action can diverge
-    withForeignPtr fp $ \p -> do
+    unsafeWithForeignPtr fp $ \p -> do
         l' <- action p
         if assert (l' <= l) $ l' >= l
             then return $! BS fp l
@@ -630,7 +662,7 @@ createAndTrim' :: Int -> (Ptr Word8 -> IO (Int, Int, a)) -> IO (ByteString, a)
 createAndTrim' l action = do
     fp <- mallocByteString l
     -- Cannot use unsafeWithForeignPtr, because action can diverge
-    withForeignPtr fp $ \p -> do
+    unsafeWithForeignPtr fp $ \p -> do
         (off, l', res) <- action p
         if assert (l' <= l) $ l' >= l
             then return (BS fp l, res)
@@ -975,3 +1007,14 @@ foreign import ccall unsafe "static fpstring.h fps_count" c_count
 
 foreign import ccall unsafe "static fpstring.h fps_sort" c_sort
     :: Ptr Word8 -> CSize -> IO ()
+
+-- $continuation-termination
+-- Several functions provided by this module take continuation arguments which
+-- have access to a C pointer to the contents of a 'ByteString' (e.g.
+-- 'create'). For the sake of efficiency, these use GHC's
+-- 'unsafeWithForeignPtr' internally. Consequently, the continuation given to
+-- these functions must *not* be statically known to diverge (e.g. by
+-- unconditional throwing of an exception or non-termination by way of, e.g.,
+-- 'Control.Monad.forever').
+--
+-- Failure to respect this requirement may result in undefined behavior.
