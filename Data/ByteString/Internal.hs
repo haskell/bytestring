@@ -185,8 +185,6 @@ import GHC.Types                (Int (..))
 
 #if MIN_VERSION_base(4,15,0)
 import GHC.ForeignPtr           (unsafeWithForeignPtr)
-#else
-import GHC.ForeignPtr           (withForeignPtr)
 #endif
 
 import qualified Language.Haskell.TH.Lib as TH
