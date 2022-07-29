@@ -434,9 +434,11 @@ intersperse w (Chunk c cs) = Chunk (S.intersperse w c)
                                    (foldrChunks (Chunk . intersperse') Empty cs)
   where intersperse' :: P.ByteString -> P.ByteString
         intersperse' (S.BS fp l) =
-          S.unsafeCreate (2*l) $ \p' -> S.unsafeWithForeignPtr fp $ \p -> do
-            poke p' w
-            S.c_intersperse (p' `plusPtr` 1) p (fromIntegral l) w
+          S.unsafeCreatef (2*l) $ \fp' ->
+            S.unsafeWithForeignPtr fp' $ \p' ->
+              S.unsafeWithForeignPtr fp $ \p -> do
+                poke p' w
+                S.c_intersperse (p' `plusPtr` 1) p (fromIntegral l) w
 
 -- | The 'transpose' function transposes the rows and columns of its
 -- 'ByteString' argument.

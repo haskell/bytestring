@@ -975,11 +975,11 @@ unlines = \li -> let
   (+!) = checkedAdd "Char8.unlines"
 
   go [] _ = pure ()
-  go (BS srcFP len : srcs) dest = do
-    unsafeWithForeignPtr srcFP $ \src -> memcpy dest src len
-    pokeElemOff dest len (c2w '\n')
-    go srcs $ dest `plusPtr` (len + 1)
-  in  unsafeCreate totLen (go li)
+  go (BS src len : srcs) dest = do
+    memcpyf dest src len
+    pokefpByteOff dest len (c2w '\n')
+    go srcs $ dest `plusForeignPtr` (len + 1)
+  in  unsafeCreatef totLen (go li)
 
 -- | 'words' breaks a ByteString up into a list of words, which
 -- were delimited by Chars representing white space.

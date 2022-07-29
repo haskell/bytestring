@@ -52,7 +52,6 @@ import Prelude hiding (concat)
 import qualified Data.ByteString.Internal as S
 
 import Data.Word (Word8)
-import Foreign.Ptr (plusPtr)
 import Foreign.Storable (Storable(sizeOf))
 
 #if MIN_VERSION_base(4,13,0)
@@ -313,14 +312,13 @@ toStrict = \cs -> goLen0 cs cs
     goLen cs0 !total (Chunk (S.BS _ cl) cs) =
       goLen cs0 (S.checkedAdd "Lazy.toStrict" total cl) cs
     goLen cs0 total Empty =
-      S.unsafeCreate total $ \ptr -> goCopy cs0 ptr
+      S.unsafeCreatef total $ \ptr -> goCopy cs0 ptr
 
     -- Copy the data
     goCopy Empty                    !_   = return ()
     goCopy (Chunk (S.BS _  0  ) cs) !ptr = goCopy cs ptr
-    goCopy (Chunk (S.BS fp len) cs) !ptr =
-      S.unsafeWithForeignPtr fp $ \p -> do
-        S.memcpy ptr p len
-        goCopy cs (ptr `plusPtr` len)
+    goCopy (Chunk (S.BS fp len) cs) !ptr = do
+      S.memcpyf ptr fp len
+      goCopy cs (ptr `S.plusForeignPtr` len)
 -- See the comment on Data.ByteString.Internal.concat for some background on
 -- this implementation.

@@ -1099,8 +1099,8 @@ buildStepToCIOS (AllocationStrategy nextBuffer bufSize trim) =
         wrapChunk !op' mkCIOS
           | chunkSize == 0      = mkCIOS True
           | trim chunkSize size = do
-              bs <- S.create chunkSize $ \pbuf' ->
-                        copyBytes pbuf' pbuf chunkSize
+              bs <- S.createf chunkSize $ \fpbuf' ->
+                        S.memcpyf fpbuf' fpbuf chunkSize
               -- FIXME: We could reuse the trimmed buffer here.
               return $ Yield1 bs (mkCIOS False)
           | otherwise            =
