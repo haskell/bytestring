@@ -279,12 +279,12 @@ instance TH.Lift ByteString where
 -- of the string if no element is found, rather than Nothing.
 findIndexOrLength :: (Word8 -> Bool) -> ByteString -> Int
 findIndexOrLength k (BS x l) =
-    accursedUnutterablePerformIO $ unsafeWithForeignPtr x g
+    accursedUnutterablePerformIO $ g x
   where
     g ptr = go 0
       where
         go !n | n >= l    = return l
-              | otherwise = do w <- peek $ ptr `plusPtr` n
+              | otherwise = do w <- peekfp $ ptr `plusForeignPtr` n
                                if k w
                                  then return n
                                  else go (n+1)
@@ -527,6 +527,7 @@ toForeignPtr0 (BS ps l) = (ps, l)
 
 wrapAction :: (Ptr Word8 -> IO res) -> ForeignPtr Word8 -> IO res
 wrapAction = flip withForeignPtr
+  -- Cannot use unsafeWithForeignPtr, because action can diverge
 
 -- | A way of creating ByteStrings outside the IO monad. The @Int@
 -- argument gives the final size of the ByteString.
@@ -702,9 +703,8 @@ stimesNonNegativeInt n (BS fp len)
   | n == 0 = empty
   | n == 1 = BS fp len
   | len == 0 = empty
-  | len == 1 = unsafeCreatef n $ \destfptr ->
-    unsafeWithForeignPtr fp $ \p -> do
-      byte <- peek p
+  | len == 1 = unsafeCreatef n $ \destfptr -> do
+      byte <- peekfp fp
       void $ unsafeWithForeignPtr destfptr $ \destptr ->
         memset destptr byte (fromIntegral n)
   | otherwise = unsafeCreatef size $ \destptr -> do
