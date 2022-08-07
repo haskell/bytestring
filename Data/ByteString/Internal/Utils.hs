@@ -9,6 +9,7 @@ module Data.ByteString.Internal.Utils (
   plusForeignPtr,
   minusForeignPtr,
   memcpyf,
+  unsafeWithForeignPtr,
 
   createf,
   createfUptoN,
@@ -33,7 +34,9 @@ import Foreign.Storable (Storable(..))
 import GHC.Exts (Int(I#), minusAddr#)
 import GHC.ForeignPtr
   ( ForeignPtr(ForeignPtr)
+#if MIN_VERSION_base(4,15,0)
   , unsafeWithForeignPtr
+#endif
   , mallocPlainForeignPtrBytes
   )
 import GHC.IO (unsafeDupablePerformIO)
@@ -84,6 +87,10 @@ pokefpByteOff :: Storable a => ForeignPtr b -> Int -> a -> IO ()
 pokefpByteOff fp off val = unsafeWithForeignPtr fp $ \p ->
   pokeByteOff p off val
 
+#if !MIN_VERSION_base(4,15,0)
+unsafeWithForeignPtr :: ForeignPtr a -> (Ptr a -> IO b) -> IO b
+unsafeWithForeignPtr = withForeignPtr
+#endif
 
 
 -- Utilities for ByteString creation

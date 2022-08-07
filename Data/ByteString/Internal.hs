@@ -164,17 +164,8 @@ import GHC.Ptr                  (Ptr(..))
 
 import GHC.Types                (Int (..))
 
-#if MIN_VERSION_base(4,15,0)
-import GHC.ForeignPtr           (unsafeWithForeignPtr)
-#endif
-
 import qualified Language.Haskell.TH.Lib as TH
 import qualified Language.Haskell.TH.Syntax as TH
-
-#if !MIN_VERSION_base(4,15,0)
-unsafeWithForeignPtr :: ForeignPtr a -> (Ptr a -> IO b) -> IO b
-unsafeWithForeignPtr = withForeignPtr
-#endif
 
 -- CFILES stuff is Hugs only
 {-# CFILES cbits/fpstring.c #-}
