@@ -32,13 +32,14 @@ import Foreign.C.Types (CSize(..))
 import Foreign.Ptr (Ptr)
 import Foreign.Storable (Storable(..))
 import GHC.Exts (Int(I#), minusAddr#)
-import GHC.ForeignPtr
-  ( ForeignPtr(ForeignPtr)
+import GHC.ForeignPtr (ForeignPtr(ForeignPtr), mallocPlainForeignPtrBytes)
+
 #if MIN_VERSION_base(4,15,0)
-  , unsafeWithForeignPtr
+import GHC.ForeignPtr (unsafeWithForeignPtr)
+#else
+import Foreign.ForeignPtr (withForeignPtr)
 #endif
-  , mallocPlainForeignPtrBytes
-  )
+
 import GHC.IO (unsafeDupablePerformIO)
 
 #if MIN_VERSION_base(4,10,0)
