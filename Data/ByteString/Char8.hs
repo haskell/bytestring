@@ -976,10 +976,10 @@ unlines = \li -> let
 
   go [] _ = pure ()
   go (BS src len : srcs) dest = do
-    memcpyf dest src len
-    pokefpByteOff dest len (c2w '\n')
+    memcpyFp dest src len
+    pokeFpByteOff dest len (c2w '\n')
     go srcs $ dest `plusForeignPtr` (len + 1)
-  in  unsafeCreatef totLen (go li)
+  in  unsafeCreateFp totLen (go li)
 
 -- | 'words' breaks a ByteString up into a list of words, which
 -- were delimited by Chars representing white space.

@@ -48,14 +48,14 @@ module Data.ByteString.Internal (
 
         -- * Low level imperative construction
         empty,
-        createf,
-        createfUptoN,
-        createfUptoN',
-        createfAndTrim,
-        createfAndTrim',
-        unsafeCreatef,
-        unsafeCreatefUptoN,
-        unsafeCreatefUptoN',
+        createFp,
+        createFpUptoN,
+        createFpUptoN',
+        createFpAndTrim,
+        createFpAndTrim',
+        unsafeCreateFp,
+        unsafeCreateFpUptoN,
+        unsafeCreateFpUptoN',
         create,
         createUptoN,
         createUptoN',
@@ -74,12 +74,12 @@ module Data.ByteString.Internal (
 
         -- * Utilities
         nullForeignPtr,
-        peekfp,
-        pokefp,
-        peekfpByteOff,
-        pokefpByteOff,
+        peekFp,
+        pokeFp,
+        peekFpByteOff,
+        pokeFpByteOff,
         minusForeignPtr,
-        memcpyf,
+        memcpyFp,
         SizeOverflowException,
         overflowError,
         checkedAdd,
@@ -221,18 +221,18 @@ minusForeignPtr :: ForeignPtr a -> ForeignPtr b -> Int
 minusForeignPtr (ForeignPtr addr1 _) (ForeignPtr addr2 _)
   = I# (minusAddr# addr1 addr2)
 
-peekfp :: Storable a => ForeignPtr a -> IO a
-peekfp fp = unsafeWithForeignPtr fp peek
+peekFp :: Storable a => ForeignPtr a -> IO a
+peekFp fp = unsafeWithForeignPtr fp peek
 
-pokefp :: Storable a => ForeignPtr a -> a -> IO ()
-pokefp fp val = unsafeWithForeignPtr fp $ \p -> poke p val
+pokeFp :: Storable a => ForeignPtr a -> a -> IO ()
+pokeFp fp val = unsafeWithForeignPtr fp $ \p -> poke p val
 
-peekfpByteOff :: Storable a => ForeignPtr a -> Int -> IO a
-peekfpByteOff fp off = unsafeWithForeignPtr fp $ \p ->
+peekFpByteOff :: Storable a => ForeignPtr a -> Int -> IO a
+peekFpByteOff fp off = unsafeWithForeignPtr fp $ \p ->
   peekByteOff p off
 
-pokefpByteOff :: Storable a => ForeignPtr b -> Int -> a -> IO ()
-pokefpByteOff fp off val = unsafeWithForeignPtr fp $ \p ->
+pokeFpByteOff :: Storable a => ForeignPtr b -> Int -> a -> IO ()
+pokeFpByteOff fp off val = unsafeWithForeignPtr fp $ \p ->
   pokeByteOff p off val
 
 -- -----------------------------------------------------------------------------
@@ -348,7 +348,7 @@ findIndexOrLength k (BS x l) =
     g ptr = go 0
       where
         go !n | n >= l    = return l
-              | otherwise = do w <- peekfp $ ptr `plusForeignPtr` n
+              | otherwise = do w <- peekFp $ ptr `plusForeignPtr` n
                                if k w
                                  then return n
                                  else go (n+1)
@@ -372,17 +372,17 @@ packChars cs = unsafePackLenChars (List.length cs) cs
 
 unsafePackLenBytes :: Int -> [Word8] -> ByteString
 unsafePackLenBytes len xs0 =
-    unsafeCreatef len $ \p -> go p xs0
+    unsafeCreateFp len $ \p -> go p xs0
   where
     go !_ []     = return ()
-    go !p (x:xs) = pokefp p x >> go (p `plusForeignPtr` 1) xs
+    go !p (x:xs) = pokeFp p x >> go (p `plusForeignPtr` 1) xs
 
 unsafePackLenChars :: Int -> [Char] -> ByteString
 unsafePackLenChars len cs0 =
-    unsafeCreatef len $ \p -> go p cs0
+    unsafeCreateFp len $ \p -> go p cs0
   where
     go !_ []     = return ()
-    go !p (c:cs) = pokefp p (c2w c) >> go (p `plusForeignPtr` 1) cs
+    go !p (c:cs) = pokeFp p (c2w c) >> go (p `plusForeignPtr` 1) cs
 
 
 -- | /O(n)/ Pack a null-terminated sequence of bytes, pointed to by an
@@ -467,20 +467,20 @@ unsafePackLenLiteral len addr# =
 
 packUptoLenBytes :: Int -> [Word8] -> (ByteString, [Word8])
 packUptoLenBytes len xs0 =
-    unsafeCreatefUptoN' len $ \p0 ->
+    unsafeCreateFpUptoN' len $ \p0 ->
       let p_end = plusForeignPtr p0 len
           go !p []              = return (p `minusForeignPtr` p0, [])
           go !p xs | p == p_end = return (len, xs)
-          go !p (x:xs)          = pokefp p x >> go (p `plusForeignPtr` 1) xs
+          go !p (x:xs)          = pokeFp p x >> go (p `plusForeignPtr` 1) xs
       in go p0 xs0
 
 packUptoLenChars :: Int -> [Char] -> (ByteString, [Char])
 packUptoLenChars len cs0 =
-    unsafeCreatefUptoN' len $ \p0 ->
+    unsafeCreateFpUptoN' len $ \p0 ->
       let p_end = plusForeignPtr p0 len
           go !p []              = return (p `minusForeignPtr` p0, [])
           go !p cs | p == p_end = return (len, cs)
-          go !p (c:cs)          = pokefp p (c2w c) >> go (p `plusForeignPtr` 1) cs
+          go !p (c:cs)          = pokeFp p (c2w c) >> go (p `plusForeignPtr` 1) cs
       in go p0 cs0
 
 -- Unpacking bytestrings into lists efficiently is a tradeoff: on the one hand
@@ -590,77 +590,77 @@ toForeignPtr0 (BS ps l) = (ps, l)
 
 -- | A way of creating ByteStrings outside the IO monad. The @Int@
 -- argument gives the final size of the ByteString.
-unsafeCreatef :: Int -> (ForeignPtr Word8 -> IO ()) -> ByteString
-unsafeCreatef l f = unsafeDupablePerformIO (createf l f)
-{-# INLINE unsafeCreatef #-}
+unsafeCreateFp :: Int -> (ForeignPtr Word8 -> IO ()) -> ByteString
+unsafeCreateFp l f = unsafeDupablePerformIO (createFp l f)
+{-# INLINE unsafeCreateFp #-}
 
--- | Like 'unsafeCreatef' but instead of giving the final size of the
+-- | Like 'unsafeCreateFp' but instead of giving the final size of the
 -- ByteString, it is just an upper bound. The inner action returns
--- the actual size. Unlike 'createfAndTrim' the ByteString is not
+-- the actual size. Unlike 'createFpAndTrim' the ByteString is not
 -- reallocated if the final size is less than the estimated size.
-unsafeCreatefUptoN :: Int -> (ForeignPtr Word8 -> IO Int) -> ByteString
-unsafeCreatefUptoN l f = unsafeDupablePerformIO (createfUptoN l f)
-{-# INLINE unsafeCreatefUptoN #-}
+unsafeCreateFpUptoN :: Int -> (ForeignPtr Word8 -> IO Int) -> ByteString
+unsafeCreateFpUptoN l f = unsafeDupablePerformIO (createFpUptoN l f)
+{-# INLINE unsafeCreateFpUptoN #-}
 
-unsafeCreatefUptoN'
+unsafeCreateFpUptoN'
   :: Int -> (ForeignPtr Word8 -> IO (Int, a)) -> (ByteString, a)
-unsafeCreatefUptoN' l f = unsafeDupablePerformIO (createfUptoN' l f)
-{-# INLINE unsafeCreatefUptoN' #-}
+unsafeCreateFpUptoN' l f = unsafeDupablePerformIO (createFpUptoN' l f)
+{-# INLINE unsafeCreateFpUptoN' #-}
 
 -- | Create ByteString of size @l@ and use action @f@ to fill its contents.
-createf :: Int -> (ForeignPtr Word8 -> IO ()) -> IO ByteString
-createf l action = do
+createFp :: Int -> (ForeignPtr Word8 -> IO ()) -> IO ByteString
+createFp l action = do
     fp <- mallocByteString l
     action fp
     return $! BS fp l
-{-# INLINE createf #-}
+{-# INLINE createFp #-}
 
 -- | Given a maximum size @l@ and an action @f@ that fills the 'ByteString'
 -- starting at the given 'Ptr' and returns the actual utilized length,
--- @`createfUptoN'` l f@ returns the filled 'ByteString'.
-createfUptoN :: Int -> (ForeignPtr Word8 -> IO Int) -> IO ByteString
-createfUptoN l action = do
+-- @`createFpUptoN'` l f@ returns the filled 'ByteString'.
+createFpUptoN :: Int -> (ForeignPtr Word8 -> IO Int) -> IO ByteString
+createFpUptoN l action = do
     fp <- mallocByteString l
     l' <- action fp
     assert (l' <= l) $ return $! BS fp l'
-{-# INLINE createfUptoN #-}
+{-# INLINE createFpUptoN #-}
 
--- | Like 'createfUptoN', but also returns an additional value created by the
+-- | Like 'createFpUptoN', but also returns an additional value created by the
 -- action.
-createfUptoN' :: Int -> (ForeignPtr Word8 -> IO (Int, a)) -> IO (ByteString, a)
-createfUptoN' l action = do
+createFpUptoN' :: Int -> (ForeignPtr Word8 -> IO (Int, a)) -> IO (ByteString, a)
+createFpUptoN' l action = do
     fp <- mallocByteString l
     (l', res) <- action fp
     assert (l' <= l) $ return (BS fp l', res)
-{-# INLINE createfUptoN' #-}
+{-# INLINE createFpUptoN' #-}
 
 -- | Given the maximum size needed and a function to make the contents
--- of a ByteString, createfAndTrim makes the 'ByteString'. The generating
+-- of a ByteString, createFpAndTrim makes the 'ByteString'. The generating
 -- function is required to return the actual final size (<= the maximum
 -- size), and the resulting byte array is reallocated to this size.
 --
--- createfAndTrim is the main mechanism for creating custom, efficient
+-- createFpAndTrim is the main mechanism for creating custom, efficient
 -- ByteString functions, using Haskell or C functions to fill the space.
 --
-createfAndTrim :: Int -> (ForeignPtr Word8 -> IO Int) -> IO ByteString
-createfAndTrim l action = do
+createFpAndTrim :: Int -> (ForeignPtr Word8 -> IO Int) -> IO ByteString
+createFpAndTrim l action = do
     fp <- mallocByteString l
     l' <- action fp
     if assert (0 <= l' && l' <= l) $ l' >= l
         then return $! BS fp l
-        else createf l' $ \fp' -> memcpyf fp' fp l'
-{-# INLINE createfAndTrim #-}
+        else createFp l' $ \fp' -> memcpyFp fp' fp l'
+{-# INLINE createFpAndTrim #-}
 
-createfAndTrim' :: Int -> (ForeignPtr Word8 -> IO (Int, Int, a)) -> IO (ByteString, a)
-createfAndTrim' l action = do
+createFpAndTrim' :: Int -> (ForeignPtr Word8 -> IO (Int, Int, a)) -> IO (ByteString, a)
+createFpAndTrim' l action = do
     fp <- mallocByteString l
     (off, l', res) <- action fp
     if assert (0 <= l' && l' <= l) $ l' >= l
         then return (BS fp l, res)
-        else do ps <- createf l' $ \fp' ->
-                        memcpyf fp' (fp `plusForeignPtr` off) l'
+        else do ps <- createFp l' $ \fp' ->
+                        memcpyFp fp' (fp `plusForeignPtr` off) l'
                 return (ps, res)
-{-# INLINE createfAndTrim' #-}
+{-# INLINE createFpAndTrim' #-}
 
 
 wrapAction :: (Ptr Word8 -> IO res) -> ForeignPtr Word8 -> IO res
@@ -670,7 +670,7 @@ wrapAction = flip withForeignPtr
 -- | A way of creating ByteStrings outside the IO monad. The @Int@
 -- argument gives the final size of the ByteString.
 unsafeCreate :: Int -> (Ptr Word8 -> IO ()) -> ByteString
-unsafeCreate l f = unsafeCreatef l (wrapAction f)
+unsafeCreate l f = unsafeCreateFp l (wrapAction f)
 {-# INLINE unsafeCreate #-}
 
 -- | Like 'unsafeCreate' but instead of giving the final size of the
@@ -678,24 +678,24 @@ unsafeCreate l f = unsafeCreatef l (wrapAction f)
 -- the actual size. Unlike 'createAndTrim' the ByteString is not
 -- reallocated if the final size is less than the estimated size.
 unsafeCreateUptoN :: Int -> (Ptr Word8 -> IO Int) -> ByteString
-unsafeCreateUptoN l f = unsafeCreatefUptoN l (wrapAction f)
+unsafeCreateUptoN l f = unsafeCreateFpUptoN l (wrapAction f)
 {-# INLINE unsafeCreateUptoN #-}
 
 -- | @since 0.10.12.0
 unsafeCreateUptoN' :: Int -> (Ptr Word8 -> IO (Int, a)) -> (ByteString, a)
-unsafeCreateUptoN' l f = unsafeCreatefUptoN' l (wrapAction f)
+unsafeCreateUptoN' l f = unsafeCreateFpUptoN' l (wrapAction f)
 {-# INLINE unsafeCreateUptoN' #-}
 
 -- | Create ByteString of size @l@ and use action @f@ to fill its contents.
 create :: Int -> (Ptr Word8 -> IO ()) -> IO ByteString
-create l action = createf l (wrapAction action)
+create l action = createFp l (wrapAction action)
 {-# INLINE create #-}
 
 -- | Given a maximum size @l@ and an action @f@ that fills the 'ByteString'
 -- starting at the given 'Ptr' and returns the actual utilized length,
 -- @`createUptoN'` l f@ returns the filled 'ByteString'.
 createUptoN :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
-createUptoN l action = createfUptoN l (wrapAction action)
+createUptoN l action = createFpUptoN l (wrapAction action)
 {-# INLINE createUptoN #-}
 
 -- | Like 'createUptoN', but also returns an additional value created by the
@@ -703,7 +703,7 @@ createUptoN l action = createfUptoN l (wrapAction action)
 --
 -- @since 0.10.12.0
 createUptoN' :: Int -> (Ptr Word8 -> IO (Int, a)) -> IO (ByteString, a)
-createUptoN' l action = createfUptoN' l (wrapAction action)
+createUptoN' l action = createFpUptoN' l (wrapAction action)
 {-# INLINE createUptoN' #-}
 
 -- | Given the maximum size needed and a function to make the contents
@@ -715,11 +715,11 @@ createUptoN' l action = createfUptoN' l (wrapAction action)
 -- ByteString functions, using Haskell or C functions to fill the space.
 --
 createAndTrim :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
-createAndTrim l action = createfAndTrim l (wrapAction action)
+createAndTrim l action = createFpAndTrim l (wrapAction action)
 {-# INLINE createAndTrim #-}
 
 createAndTrim' :: Int -> (Ptr Word8 -> IO (Int, Int, a)) -> IO (ByteString, a)
-createAndTrim' l action = createfAndTrim' l (wrapAction action)
+createAndTrim' l action = createFpAndTrim' l (wrapAction action)
 {-# INLINE createAndTrim' #-}
 
 
@@ -762,10 +762,10 @@ append :: ByteString -> ByteString -> ByteString
 append (BS _   0)    b                  = b
 append a             (BS _   0)    = a
 append (BS fp1 len1) (BS fp2 len2) =
-    unsafeCreatef (checkedAdd "append" len1 len2) $ \destptr1 -> do
+    unsafeCreateFp (checkedAdd "append" len1 len2) $ \destptr1 -> do
       let destptr2 = destptr1 `plusForeignPtr` len1
-      memcpyf destptr1 fp1 len1
-      memcpyf destptr2 fp2 len2
+      memcpyFp destptr1 fp1 len1
+      memcpyFp destptr2 fp2 len2
 
 concat :: [ByteString] -> ByteString
 concat = \bss0 -> goLen0 bss0 bss0
@@ -801,13 +801,13 @@ concat = \bss0 -> goLen0 bss0 bss0
     goLen bss0 !total (BS _ len:bss) = goLen bss0 total' bss
       where total' = checkedAdd "concat" total len
     goLen bss0 total [] =
-      unsafeCreatef total $ \ptr -> goCopy bss0 ptr
+      unsafeCreateFp total $ \ptr -> goCopy bss0 ptr
 
     -- Copy the data
     goCopy []                  !_   = return ()
     goCopy (BS _  0  :bss) !ptr = goCopy bss ptr
     goCopy (BS fp len:bss) !ptr = do
-      memcpyf ptr fp len
+      memcpyFp ptr fp len
       goCopy bss (ptr `plusForeignPtr` len)
 {-# NOINLINE concat #-}
 
@@ -851,12 +851,12 @@ stimesNonNegativeInt n (BS fp len)
   | n == 0 = empty
   | n == 1 = BS fp len
   | len == 0 = empty
-  | len == 1 = unsafeCreatef n $ \destfptr -> do
-      byte <- peekfp fp
+  | len == 1 = unsafeCreateFp n $ \destfptr -> do
+      byte <- peekFp fp
       void $ unsafeWithForeignPtr destfptr $ \destptr ->
         memset destptr byte (fromIntegral n)
-  | otherwise = unsafeCreatef size $ \destptr -> do
-      memcpyf destptr fp len
+  | otherwise = unsafeCreateFp size $ \destptr -> do
+      memcpyFp destptr fp len
       fillFrom destptr len
   where
     size = checkedMultiply "stimes" n len
@@ -865,9 +865,9 @@ stimesNonNegativeInt n (BS fp len)
     fillFrom :: ForeignPtr Word8 -> Int -> IO ()
     fillFrom destptr copied
       | copied <= halfSize = do
-        memcpyf (destptr `plusForeignPtr` copied) destptr copied
+        memcpyFp (destptr `plusForeignPtr` copied) destptr copied
         fillFrom destptr (copied * 2)
-      | otherwise = memcpyf (destptr `plusForeignPtr` copied) destptr (size - copied)
+      | otherwise = memcpyFp (destptr `plusForeignPtr` copied) destptr (size - copied)
 
 
 ------------------------------------------------------------------------
@@ -1021,9 +1021,9 @@ foreign import ccall unsafe "string.h memcpy" c_memcpy
 memcpy :: Ptr Word8 -> Ptr Word8 -> Int -> IO ()
 memcpy p q s = void $ c_memcpy p q (fromIntegral s)
 
-memcpyf :: ForeignPtr Word8 -> ForeignPtr Word8 -> Int -> IO ()
-memcpyf fp fq s = unsafeWithForeignPtr fp $ \p ->
-                    unsafeWithForeignPtr fq $ \q -> memcpy p q s
+memcpyFp :: ForeignPtr Word8 -> ForeignPtr Word8 -> Int -> IO ()
+memcpyFp fp fq s = unsafeWithForeignPtr fp $ \p ->
+                     unsafeWithForeignPtr fq $ \q -> memcpy p q s
 
 {-
 foreign import ccall unsafe "string.h memmove" c_memmove
