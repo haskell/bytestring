@@ -231,7 +231,6 @@ import Prelude hiding           (reverse,head,tail,last,init,null
 import Data.Bits                (finiteBitSize, shiftL, (.|.), (.&.))
 
 import Data.ByteString.Internal
-import Data.ByteString.Internal.Utils
 import Data.ByteString.Lazy.Internal (fromStrict, toStrict)
 import Data.ByteString.Unsafe
 

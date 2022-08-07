@@ -134,7 +134,6 @@ import           Data.Semigroup (Semigroup((<>)))
 
 import qualified Data.ByteString               as S
 import qualified Data.ByteString.Internal      as S
-import qualified Data.ByteString.Internal.Utils as S
 import qualified Data.ByteString.Lazy.Internal as L
 import qualified Data.ByteString.Short.Internal as Sh
 
