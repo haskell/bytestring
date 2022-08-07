@@ -9,7 +9,7 @@
 {-# OPTIONS_HADDOCK not-home #-}
 
 -- |
--- Module      : Data.ByteString.Internal
+-- Module      : Data.ByteString.Internal.Type
 -- Copyright   : (c) Don Stewart 2006-2008
 --               (c) Duncan Coutts 2006-2012
 -- License     : BSD-style
@@ -17,15 +17,10 @@
 -- Stability   : unstable
 -- Portability : non-portable
 --
--- A module containing semi-public 'ByteString' internals. This exposes the
--- 'ByteString' representation and low level construction functions. As such
--- all the functions in this module are unsafe. The API is also not stable.
+-- A module containing private 'ByteString' internals.
+-- For now, it contains exactly what was once in Data.ByteString.Internal.
 --
--- Where possible application should instead use the functions from the normal
--- public interface modules, such as "Data.ByteString.Unsafe". Packages that
--- extend the ByteString system at a low level will need to use this module.
---
-module Data.ByteString.Internal (
+module Data.ByteString.Internal.Type (
 
         -- * The @ByteString@ type and representation
         ByteString

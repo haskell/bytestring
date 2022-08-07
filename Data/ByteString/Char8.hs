@@ -275,7 +275,7 @@ import Data.ByteString (null,length,tail,init,append
                        ,useAsCString,useAsCStringLen
                        )
 
-import Data.ByteString.Internal
+import Data.ByteString.Internal.Type
 import Data.ByteString.ReadInt
 import Data.ByteString.ReadNat
 

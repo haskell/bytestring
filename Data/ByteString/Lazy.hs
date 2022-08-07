@@ -231,7 +231,7 @@ import qualified Data.List              as List
 import qualified Data.Bifunctor         as BF
 import qualified Data.ByteString        as P  (ByteString) -- type name only
 import qualified Data.ByteString        as S  -- S for strict (hmm...)
-import qualified Data.ByteString.Internal as S
+import qualified Data.ByteString.Internal.Type as S
 import qualified Data.ByteString.Unsafe as S
 import qualified Data.ByteString.Lazy.Internal.Deque as D
 import Data.ByteString.Lazy.Internal

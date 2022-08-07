@@ -49,7 +49,7 @@ module Data.ByteString.Lazy.Internal (
 
 import Prelude hiding (concat)
 
-import qualified Data.ByteString.Internal as S
+import qualified Data.ByteString.Internal.Type as S
 
 import Data.Word (Word8)
 import Foreign.Storable (Storable(sizeOf))
