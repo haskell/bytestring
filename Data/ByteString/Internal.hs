@@ -573,6 +573,9 @@ createUptoN' l action = createfUptoN' l (wrapAction action)
 -- function is required to return the actual final size (<= the maximum
 -- size), and the resulting byte array is reallocated to this size.
 --
+-- createAndTrim is the main mechanism for creating custom, efficient
+-- ByteString functions, using Haskell or C functions to fill the space.
+--
 createAndTrim :: Int -> (Ptr Word8 -> IO Int) -> IO ByteString
 createAndTrim l action = createfAndTrim l (wrapAction action)
 {-# INLINE createAndTrim #-}
