@@ -679,7 +679,7 @@ cstring =
     step !addr !k br@(BufferRange op0@(Ptr op0#) ope)
       | W8# ch == 0 = k br
       | op0 == ope =
-          return $ bufferFull defaultChunkSize op0 (step addr k)
+          return $ bufferFull 1 op0 (step addr k)
       | otherwise = do
           IO $ \s -> case writeWord8OffAddr# op0# 0# ch s of
                        s' -> (# s', () #)
@@ -700,7 +700,7 @@ cstringUtf8 =
     step !addr !k br@(BufferRange op0@(Ptr op0#) ope)
       | W8# ch == 0 = k br
       | op0 == ope =
-          return $ bufferFull defaultChunkSize op0 (step addr k)
+          return $ bufferFull 1 op0 (step addr k)
         -- NULL is encoded as 0xc0 0x80
       | W8# ch == 0xc0
       , W8# (indexWord8OffAddr# addr 1#) == 0x80 = do
