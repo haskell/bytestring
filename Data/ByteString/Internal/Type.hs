@@ -17,8 +17,8 @@
 -- Stability   : unstable
 -- Portability : non-portable
 --
--- A module containing private 'ByteString' internals.
--- For now, it contains exactly what was once in Data.ByteString.Internal.
+-- The 'ByteString' type, its instances, and whatever related
+-- utilities the bytestring developers see fit to use internally.
 --
 module Data.ByteString.Internal.Type (
 
