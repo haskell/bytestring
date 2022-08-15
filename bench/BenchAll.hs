@@ -23,6 +23,7 @@ import           Prelude                               hiding (words)
 
 import qualified Data.ByteString                       as S
 import qualified Data.ByteString.Char8                 as S8
+import qualified Data.ByteString.Internal              as SI
 import qualified Data.ByteString.Lazy                  as L
 import qualified Data.ByteString.Lazy.Char8            as L8
 
@@ -480,6 +481,18 @@ main = do
     , bgroup "unlines"
       [ bench "lazy"   $ nf L8.unlines (map (L8.pack . show) intData)
       , bench "strict" $ nf S8.unlines (map (S8.pack . show) intData)
+      ]
+    , bgroup "pack"
+      [ bench "not fused" $ nf S.pack (replicate nRepl 0)
+      , bench "fused" $ nf (S.pack . replicate nRepl) 0
+      ]
+    , bgroup "unsafePackLenBytes"
+      [ bench "not fused" $ nf (SI.unsafePackLenBytes nRepl) (replicate nRepl 0)
+      , bench "fused" $ nf (SI.unsafePackLenBytes nRepl . replicate nRepl) 0
+      ]
+    , bgroup "unsafePackLenChar"
+      [ bench "not fused" $ nf (SI.unsafePackLenChars nRepl) (replicate nRepl 'A')
+      , bench "fused" $ nf (SI.unsafePackLenChars nRepl . replicate nRepl) 'A'
       ]
     , benchBoundsCheckFusion
     , benchCount

@@ -339,18 +339,18 @@ packChars cs = unsafePackLenChars (List.length cs) cs
  #-}
 
 unsafePackLenBytes :: Int -> [Word8] -> ByteString
-unsafePackLenBytes len xs0 =
-    unsafeCreate len $ \p -> go p xs0
-  where
-    go !_ []     = return ()
-    go !p (x:xs) = poke p x >> go (p `plusPtr` 1) xs
+unsafePackLenBytes len =
+    unsafeCreate len . foldr
+      (\x go p -> poke p x >> go (p `plusPtr` 1))
+      (\_ -> return ())
+{-# INLINE unsafePackLenBytes #-}
 
 unsafePackLenChars :: Int -> [Char] -> ByteString
-unsafePackLenChars len cs0 =
-    unsafeCreate len $ \p -> go p cs0
-  where
-    go !_ []     = return ()
-    go !p (c:cs) = poke p (c2w c) >> go (p `plusPtr` 1) cs
+unsafePackLenChars len =
+    unsafeCreate len . foldr
+      (\x go p -> poke p (c2w x) >> go (p `plusPtr` 1))
+      (\_ -> return ())
+{-# INLINE unsafePackLenChars #-}
 
 
 -- | /O(n)/ Pack a null-terminated sequence of bytes, pointed to by an
