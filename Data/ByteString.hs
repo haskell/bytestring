@@ -1839,9 +1839,7 @@ hGetLine h =
 
 mkPS :: RawBuffer Word8 -> Int -> Int -> IO ByteString
 mkPS buf start end =
- createFp len $ \fp ->
-  unsafeWithForeignPtr fp $ \p ->
-   withRawBuffer buf $ \pbuf -> memcpy p (pbuf `plusPtr` start) len
+ createFp len $ \fp -> memcpyFp fp (buf `plusForeignPtr` start) len
  where
    len = end - start
 
