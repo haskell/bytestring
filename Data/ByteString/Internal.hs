@@ -429,7 +429,11 @@ unsafePackLenLiteral len addr# =
 #if __GLASGOW_HASKELL__ >= 811
   BS (ForeignPtr addr# FinalPtr) len
 #else
-  BS (accursedUnutterablePerformIO (newForeignPtr_ (Ptr addr#))) len
+  -- newForeignPtr_ allocates a MutVar# internally. If that MutVar#
+  -- gets commoned up with the MutVar# of some unrelated ForeignPtr,
+  -- it may prevent automatic finalization for that other ForeignPtr.
+  -- So we avoid accursedUnutterablePerformIO here.
+  BS (unsafeDupablePerformIO (newForeignPtr_ (Ptr addr#))) len
 #endif
 {-# INLINE unsafePackLenLiteral #-}
 
@@ -899,6 +903,8 @@ checkedIntegerToInt x
 -- * <https://ghc.haskell.org/trac/ghc/ticket/3487>
 --
 -- * <https://ghc.haskell.org/trac/ghc/ticket/7270>
+--
+-- * <https://gitlab.haskell.org/ghc/ghc/-/issues/22204>
 --
 -- Do not talk about \"safe\"! You do not know what is safe!
 --
