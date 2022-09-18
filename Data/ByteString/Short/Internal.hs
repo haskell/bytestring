@@ -407,7 +407,8 @@ indexError sbs i =
 -- | @since 0.11.2.0
 unsafePackLenLiteral :: Int -> Addr# -> ShortByteString
 unsafePackLenLiteral len addr# =
-    accursedUnutterablePerformIO $ createFromPtr (Ptr addr#) len
+    -- createFromPtr allocates, so accursedUnutterablePerformIO is wrong
+    unsafeDupablePerformIO $ createFromPtr (Ptr addr#) len
 
 ------------------------------------------------------------------------
 -- Internal utils

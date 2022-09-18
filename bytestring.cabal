@@ -54,8 +54,10 @@ Author:              Don Stewart,
 Maintainer:          Haskell Bytestring Team <andrew.lelechenko@gmail.com>, Core Libraries Committee
 Homepage:            https://github.com/haskell/bytestring
 Bug-reports:         https://github.com/haskell/bytestring/issues
-Tested-With:         GHC==9.0.1,
-                     GHC==8.10.4,
+Tested-With:         GHC==9.4.1,
+                     GHC==9.2.4,
+                     GHC==9.0.2,
+                     GHC==8.10.7,
                      GHC==8.8.4,
                      GHC==8.6.5,
                      GHC==8.4.4,
