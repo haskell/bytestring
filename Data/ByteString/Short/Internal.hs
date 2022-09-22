@@ -1128,7 +1128,7 @@ breakEnd p = \sbs -> splitAt (findFromEndUntil p sbs) sbs
 --
 -- @since 0.11.3.0
 break :: (Word8 -> Bool) -> ShortByteString -> (ShortByteString, ShortByteString)
-break = \p -> \sbs -> case findIndexOrLength p sbs of n -> (take n sbs, drop n sbs)
+break p = \sbs -> case findIndexOrLength p sbs of n -> (take n sbs, drop n sbs)
 {-# INLINE break #-}
 
 -- | Similar to 'Prelude.span',
