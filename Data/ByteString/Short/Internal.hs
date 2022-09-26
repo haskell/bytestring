@@ -13,10 +13,9 @@
 {-# LANGUAGE UnboxedTuples            #-}
 {-# LANGUAGE UnliftedFFITypes         #-}
 {-# LANGUAGE Unsafe                   #-}
-
-{-# OPTIONS_GHC -fno-warn-name-shadowing -fexpose-all-unfoldings #-}
 {-# OPTIONS_HADDOCK not-home #-}
 
+{-# OPTIONS_GHC -fno-warn-name-shadowing -fexpose-all-unfoldings #-}
 -- Not all architectures are forgiving of unaligned accesses; whitelist ones
 -- which are known not to trap (either to the kernel for emulation, or crash).
 #if defined(i386_HOST_ARCH) || defined(x86_64_HOST_ARCH) \
@@ -268,7 +267,6 @@ import Prelude
 
 import qualified Data.ByteString.Internal as BS
 
-import qualified Data.Foldable as Foldable
 import qualified Data.List as List
 import qualified GHC.Exts
 import qualified Language.Haskell.TH.Lib as TH
@@ -339,7 +337,7 @@ instance Read ShortByteString where
 instance GHC.Exts.IsList ShortByteString where
   type Item ShortByteString = Word8
   fromList = packBytes
-  toList   = unpackBytes
+  toList   = unpack
 
 -- | Beware: 'fromString' truncates multi-byte characters to octets.
 -- e.g. "枯朶に烏のとまりけり秋の暮" becomes �6k�nh~�Q��n�
@@ -347,7 +345,7 @@ instance IsString ShortByteString where
     fromString = packChars
 
 instance Data ShortByteString where
-  gfoldl f z txt = z packBytes `f` unpackBytes txt
+  gfoldl f z txt = z packBytes `f` unpack txt
   toConstr _     = error "Data.ByteString.Short.ShortByteString.toConstr"
   gunfold _ _    = error "Data.ByteString.Short.ShortByteString.gunfold"
   dataTypeOf _   = mkNoRepType "Data.ByteString.Short.ShortByteString"
@@ -546,7 +544,20 @@ pack = packBytes
 
 -- | /O(n)/. Convert a 'ShortByteString' into a list.
 unpack :: ShortByteString -> [Word8]
-unpack = unpackBytes
+unpack sbs = GHC.Exts.build (unpackFoldr sbs)
+{-# INLINE unpack #-}
+
+--
+-- Have unpack fuse with good list consumers
+--
+unpackFoldr :: ShortByteString -> (Word8 -> a -> a) -> a -> a
+unpackFoldr sbs k z = foldr k z sbs
+{-# INLINE [0] unpackFoldr #-}
+
+{-# RULES
+"ShortByteString unpack-list" [1]  forall bs .
+    unpackFoldr bs (:) [] = unpackBytes bs
+ #-}
 
 packChars :: [Char] -> ShortByteString
 packChars = \cs -> packLenBytes (List.length cs) (List.map BS.c2w cs)
@@ -581,6 +592,7 @@ unpackChars sbs = unpackAppendCharsLazy sbs []
 unpackBytes :: ShortByteString -> [Word8]
 unpackBytes sbs = unpackAppendBytesLazy sbs []
 
+
 -- Why 100 bytes you ask? Because on a 64bit machine the list we allocate
 -- takes just shy of 4k which seems like a reasonable amount.
 -- (5 words per list element, 8 bytes per word, 100 elements = 4000 bytes)
@@ -613,7 +625,7 @@ unpackAppendBytesLazy sbs = go 0 (length sbs)
 unpackAppendCharsStrict :: ShortByteString -> Int -> Int -> [Char] -> [Char]
 unpackAppendCharsStrict !sbs off len = go (off-1) (off-1 + len)
   where
-    go !sentinal !i !acc
+    go !sentinal !i acc
       | i == sentinal = acc
       | otherwise     = let !c = indexCharArray (asBA sbs) i
                         in go sentinal (i-1) (c:acc)
@@ -621,7 +633,7 @@ unpackAppendCharsStrict !sbs off len = go (off-1) (off-1 + len)
 unpackAppendBytesStrict :: ShortByteString -> Int -> Int -> [Word8] -> [Word8]
 unpackAppendBytesStrict !sbs off len = go (off-1) (off-1 + len)
   where
-    go !sentinal !i !acc
+    go !sentinal !i acc
       | i == sentinal = acc
       | otherwise     = let !w = indexWord8Array (asBA sbs) i
                          in go sentinal (i-1) (w:acc)
@@ -912,13 +924,27 @@ foldl' f v = List.foldl' f v . unpack
 --
 -- @since 0.11.3.0
 foldr :: (Word8 -> a -> a) -> a -> ShortByteString -> a
-foldr f v = List.foldr f v . unpack
+foldr k v = \sbs ->
+  let l  = length sbs
+      ba = asBA sbs
+      w  = indexWord8Array ba
+      go !n | n >= l    = v
+            | otherwise = k (w n) (go (n + 1))
+  in go 0
+{-# INLINE foldr #-}
 
 -- | 'foldr'' is like 'foldr', but strict in the accumulator.
 --
 -- @since 0.11.3.0
 foldr' :: (Word8 -> a -> a) -> a -> ShortByteString -> a
-foldr' k v = Foldable.foldr' k v . unpack
+foldr' k v = \sbs ->
+  let l  = length sbs
+      ba = asBA sbs
+      w  = indexWord8Array ba
+      go !ix !v' | ix < 0    = v'
+                 | otherwise = go (ix - 1) (k (w ix) v')
+  in go (l - 1) v
+{-# INLINE foldr' #-}
 
 -- | 'foldl1' is a variant of 'foldl' that has no starting value
 -- argument, and thus must be applied to non-empty 'ShortByteString's.
@@ -1104,7 +1130,8 @@ breakEnd p = \sbs -> splitAt (findFromEndUntil p sbs) sbs
 --
 -- @since 0.11.3.0
 break :: (Word8 -> Bool) -> ShortByteString -> (ShortByteString, ShortByteString)
-break = \p -> \sbs -> case findIndexOrLength p sbs of n -> (take n sbs, drop n sbs)
+break p = \sbs -> case findIndexOrLength p sbs of n -> (take n sbs, drop n sbs)
+{-# INLINE break #-}
 
 -- | Similar to 'Prelude.span',
 -- returns the longest (possibly empty) prefix of elements
@@ -1297,6 +1324,7 @@ unfoldrN i f = \x0 ->
                           Just (w, x'') -> do
                                              writeWord8Array mba n' w
                                              go' x'' (n'+1)
+{-# INLINE unfoldrN #-}
 
 
 
@@ -1456,6 +1484,7 @@ filter k = \sbs -> let l = length sbs
                 go' (br+1) (bw+1)
               else
                 go' (br+1) bw
+{-# INLINE filter #-}
 
 -- | /O(n)/ The 'find' function takes a predicate and a ShortByteString,
 -- and returns the first element in matching the predicate, or 'Nothing'
@@ -1468,6 +1497,7 @@ find :: (Word8 -> Bool) -> ShortByteString -> Maybe Word8
 find f = \sbs -> case findIndex f sbs of
                     Just n -> Just (sbs `index` n)
                     _      -> Nothing
+{-# INLINE find #-}
 
 -- | /O(n)/ The 'partition' function takes a predicate a ShortByteString and returns
 -- the pair of ShortByteStrings with elements which do and do not satisfy the
@@ -1549,6 +1579,7 @@ findIndex k = \sbs ->
             | k (w n)   = Just n
             | otherwise = go (n + 1)
   in go 0
+{-# INLINE findIndex #-}
 
 
 -- | /O(n)/ The 'findIndices' function extends 'findIndex', by returning the
