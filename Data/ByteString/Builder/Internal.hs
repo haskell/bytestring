@@ -133,7 +133,7 @@ import           Data.Semigroup (Semigroup((<>)))
 #endif
 
 import qualified Data.ByteString               as S
-import qualified Data.ByteString.Internal      as S
+import qualified Data.ByteString.Internal.Type as S
 import qualified Data.ByteString.Lazy.Internal as L
 import qualified Data.ByteString.Short.Internal as Sh
 
@@ -1099,8 +1099,8 @@ buildStepToCIOS (AllocationStrategy nextBuffer bufSize trim) =
         wrapChunk !op' mkCIOS
           | chunkSize == 0      = mkCIOS True
           | trim chunkSize size = do
-              bs <- S.create chunkSize $ \pbuf' ->
-                        copyBytes pbuf' pbuf chunkSize
+              bs <- S.createFp chunkSize $ \fpbuf' ->
+                        S.memcpyFp fpbuf' fpbuf chunkSize
               -- FIXME: We could reuse the trimmed buffer here.
               return $ Yield1 bs (mkCIOS False)
           | otherwise            =

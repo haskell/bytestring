@@ -231,7 +231,7 @@ import qualified Data.List              as List
 import qualified Data.Bifunctor         as BF
 import qualified Data.ByteString        as P  (ByteString) -- type name only
 import qualified Data.ByteString        as S  -- S for strict (hmm...)
-import qualified Data.ByteString.Internal as S
+import qualified Data.ByteString.Internal.Type as S
 import qualified Data.ByteString.Unsafe as S
 import qualified Data.ByteString.Lazy.Internal.Deque as D
 import Data.ByteString.Lazy.Internal
@@ -434,9 +434,11 @@ intersperse w (Chunk c cs) = Chunk (S.intersperse w c)
                                    (foldrChunks (Chunk . intersperse') Empty cs)
   where intersperse' :: P.ByteString -> P.ByteString
         intersperse' (S.BS fp l) =
-          S.unsafeCreate (2*l) $ \p' -> S.unsafeWithForeignPtr fp $ \p -> do
-            poke p' w
-            S.c_intersperse (p' `plusPtr` 1) p (fromIntegral l) w
+          S.unsafeCreateFp (2*l) $ \fp' ->
+            S.unsafeWithForeignPtr fp' $ \p' ->
+              S.unsafeWithForeignPtr fp $ \p -> do
+                poke p' w
+                S.c_intersperse (p' `plusPtr` 1) p (fromIntegral l) w
 
 -- | The 'transpose' function transposes the rows and columns of its
 -- 'ByteString' argument.
