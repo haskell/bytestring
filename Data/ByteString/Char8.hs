@@ -263,7 +263,7 @@ import Data.ByteString (null,length,tail,init,append
                        ,useAsCString,useAsCStringLen
                        )
 
-import Data.ByteString.Internal
+import Data.ByteString.Internal.Type
 
 import Data.Char    ( isSpace )
 -- See bytestring #70
@@ -969,11 +969,11 @@ unlines = \li -> let
   (+!) = checkedAdd "Char8.unlines"
 
   go [] _ = pure ()
-  go (BS srcFP len : srcs) dest = do
-    unsafeWithForeignPtr srcFP $ \src -> memcpy dest src len
-    pokeElemOff dest len (c2w '\n')
-    go srcs $ dest `plusPtr` (len + 1)
-  in  unsafeCreate totLen (go li)
+  go (BS src len : srcs) dest = do
+    memcpyFp dest src len
+    pokeFpByteOff dest len (c2w '\n')
+    go srcs $ dest `plusForeignPtr` (len + 1)
+  in  unsafeCreateFp totLen (go li)
 
 -- | 'words' breaks a ByteString up into a list of words, which
 -- were delimited by Chars representing white space.

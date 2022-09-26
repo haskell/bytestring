@@ -101,6 +101,7 @@ library
                      Data.ByteString.Builder.RealFloat.D2S
                      Data.ByteString.Builder.RealFloat.Internal
                      Data.ByteString.Builder.RealFloat.TableGenerator
+                     Data.ByteString.Internal.Type
                      Data.ByteString.Lazy.Internal.Deque
 
   default-language:  Haskell2010
