@@ -12,6 +12,7 @@
 {-# LANGUAGE TypeFamilies             #-}
 {-# LANGUAGE UnboxedTuples            #-}
 {-# LANGUAGE UnliftedFFITypes         #-}
+{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE Unsafe                   #-}
 {-# OPTIONS_HADDOCK not-home #-}
 
@@ -217,27 +218,27 @@ import GHC.Exts
   , byteArrayContents#
   , unsafeCoerce#
   , copyMutableByteArray#
-#if MIN_VERSION_base(4,10,0)
+
   , isByteArrayPinned#
   , isTrue#
-#endif
-#if MIN_VERSION_base(4,11,0)
+
+
   , compareByteArrays#
-#endif
+
   , sizeofByteArray#
   , indexWord8Array#, indexCharArray#
   , writeWord8Array#
   , unsafeFreezeByteArray#
-#if MIN_VERSION_base(4,12,0) && defined(SAFE_UNALIGNED)
+
   ,writeWord64Array#
   ,indexWord8ArrayAsWord64#
-#endif
+
   , setByteArray#
   , sizeofByteArray#
   , indexWord8Array#, indexCharArray#
   , writeWord8Array#
   , unsafeFreezeByteArray#
-  , touch# )
+  , touch#, mutableByteArrayContents#, sizeofMutableByteArray#, keepAlive# )
 import GHC.IO
 import GHC.ForeignPtr
   ( ForeignPtr(ForeignPtr)
@@ -263,14 +264,19 @@ import Prelude
   , Maybe(..)
   , not
   , snd
+  , Monad(..)
   )
 
 import qualified Data.ByteString.Internal as BS
-
+import qualified Data.ByteString as BS
 import qualified Data.List as List
 import qualified GHC.Exts
 import qualified Language.Haskell.TH.Lib as TH
 import qualified Language.Haskell.TH.Syntax as TH
+import System.IO (IOMode, Handle)
+import Foreign.Ptr (plusPtr)
+import qualified System.IO as IO
+import Control.Monad ((=<<))
 
 -- | A compact representation of a 'Word8' vector.
 --
@@ -411,6 +417,30 @@ unsafePackLenLiteral len addr# =
 ------------------------------------------------------------------------
 -- Internal utils
 
+-- | Yields a pinned byte sequence whose contents are identical to those
+-- of the original byte sequence. If the @ByteArray@ backing the argument
+-- was already pinned, this simply aliases the argument and does not perform
+-- any copying.
+pin :: ShortByteString -> ShortByteString
+pin b@(SBS (BA# -> src)) = case isByteArrayPinned src of
+  True -> b
+  False ->
+    ( runST $ do
+        let len = sizeofByteArray src
+        dst <- newPinnedByteArray len
+        copyByteArray src 0 dst 0 len
+        (\(BA# res) -> SBS res) <$> unsafeFreezeByteArray dst
+    )
+
+-- | Invariant: @arr@ must be pinned. This is not checked.
+withPinnedSBS :: ShortByteString -> (Ptr a -> IO b) -> IO b
+withPinnedSBS (SBS (BA# -> arr)) f = IO $ \s ->
+  case f (byteArrayContents arr) of
+    IO action# -> keepAlive# arr s action#
+    
+withSBS :: ShortByteString -> (Ptr a -> IO b) -> IO b
+withSBS arr f = withPinnedSBS (pin arr) f
+
 asBA :: ShortByteString -> BA
 asBA (SBS ba#) = BA# ba#
 
@@ -528,6 +558,29 @@ fromShortIO sbs = do
     let fp = ForeignPtr (byteArrayContents# (unsafeCoerce# mba#))
                         (PlainPtr mba#)
     return (BS fp len)
+
+unsafePlainToShort :: ByteString -> ShortByteString
+unsafePlainToShort = unsafeDupablePerformIO . unsafePlainToShortIO
+
+-- | /O(1)/ zero cost conversion between 'ByteString' and 'ShortByteString'.
+-- There are three invariants.
+-- The 'ByteString' must also not be used after the function is called because we use `unsafeFreezeByteArray#' internally.
+-- The 'ByteString' must be created using the @mallocPlain*@ functions.
+-- The 'ByteString' must not be a slice.
+-- That is, the 'ForeignPtr' should point to the start of the pinned 'MutableByteArray#' and
+-- the length should be equal to @sizeofMutableByteArray# marr#@.
+unsafePlainToShortIO :: ByteString -> IO ShortByteString
+unsafePlainToShortIO (BS (ForeignPtr addr# fpc) l) =
+   case fpc of
+    PlainPtr marr# -> do
+      (BA# arr#) <- stToIO $ unsafeFreezeByteArray (MBA# marr#)
+      let baseP = Ptr (mutableByteArrayContents# marr#)
+          p = Ptr addr#
+      if baseP == p && l == I# (sizeofMutableByteArray# marr#)
+        then pure $ SBS arr#
+        else error "Data.ByteString.Short.Internal: not a slice"
+    _ -> error "Data.ByteString.Short.Internal: must be PlainPtr"
+
 
 -- | /O(1)/ Convert a 'Word8' into a 'ShortByteString'
 --
@@ -1649,6 +1702,12 @@ newPinnedByteArray (I# len#) =
     ST $ \s -> case newPinnedByteArray# len# s of
                  (# s, mba# #) -> (# s, MBA# mba# #)
 
+sizeofByteArray :: BA -> Int
+sizeofByteArray (BA# ba#) = I# (sizeofByteArray# ba#)
+
+byteArrayContents :: BA -> Ptr a
+byteArrayContents (BA# ba#) = Ptr (byteArrayContents# ba#)
+
 unsafeFreezeByteArray :: MBA s -> ST s BA
 unsafeFreezeByteArray (MBA# mba#) =
     ST $ \s -> case unsafeFreezeByteArray# mba# s of
@@ -1690,6 +1749,22 @@ copyMutableByteArray :: MBA s -> Int -> MBA s -> Int -> Int -> ST s ()
 copyMutableByteArray (MBA# src#) (I# src_off#) (MBA# dst#) (I# dst_off#) (I# len#) =
     ST $ \s -> case copyMutableByteArray# src# src_off# dst# dst_off# len# s of
                  s -> (# s, () #)
+                 
+isByteArrayPinned :: BA -> Bool
+{-# INLINE isByteArrayPinned #-}
+#if __GLASGOW_HASKELL__ >= 802
+-- | Check whether or not the byte array is pinned. Pinned byte arrays cannot
+-- be moved by the garbage collector. It is safe to use 'byteArrayContents' on
+-- such byte arrays.
+--
+-- Caution: This function is only available when compiling with GHC 8.2 or
+-- newer.
+--
+-- @since 0.6.4.0
+isByteArrayPinned (BA# arr#) = isTrue# (isByteArrayPinned# arr#)
+#else
+isByteArrayPinned _ = False
+#endif
 
 
 ------------------------------------------------------------------------
@@ -1890,3 +1965,41 @@ moduleError :: HasCallStack => String -> String -> a
 moduleError fun msg = error (moduleErrorMsg fun msg)
 {-# NOINLINE moduleError #-}
 
+------------------------------------------------------------------------
+-- IO
+
+-- | Outputs 'ShortByteString' to the specified 'Handle'. This is implemented
+-- with 'IO.hPutBuf'.
+unsafeHPutOff :: Handle -> ShortByteString -> Int -> Int -> IO ()
+unsafeHPutOff handle sbs off len = withSBS sbs $ \p -> IO.hPutBuf handle (p `plusPtr` off) len
+
+hPut :: Handle -> ShortByteString -> IO ()
+hPut h sbs = unsafeHPutOff h sbs 0 (length sbs)
+
+-- | Write a ShortByteString to 'stdout'.
+putStr :: ShortByteString -> IO ()
+putStr = hPut IO.stdout
+
+modifyFile :: IOMode -> FilePath -> ShortByteString -> IO ()
+modifyFile mode f txt = IO.withBinaryFile f mode (`hPut` txt)
+
+-- | Write a 'ShortByteString' to a file.
+writeFile :: FilePath -> ShortByteString -> IO ()
+writeFile = modifyFile IO.WriteMode
+
+-- | Append a 'ShortByteString' to a file.
+appendFile :: FilePath -> ShortByteString -> IO ()
+appendFile = modifyFile IO.AppendMode
+
+readFile :: FilePath -> IO ShortByteString
+readFile path = unsafePlainToShortIO =<< BS.readFile path 
+
+hGetLine :: Handle -> IO ShortByteString
+hGetLine h = unsafePlainToShortIO =<< BS.hGetLine h
+
+-- | Read a line from stdin.
+getLine :: IO ShortByteString
+getLine = hGetLine IO.stdin
+
+hGet :: Handle -> Int -> IO ShortByteString
+hGet h i = unsafePlainToShortIO =<< BS.hGet h i
