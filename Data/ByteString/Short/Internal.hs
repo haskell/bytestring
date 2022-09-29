@@ -442,13 +442,13 @@ pin b@(SBS (BA# -> src)) =
     
 
 -- | Invariant: @arr@ must be pinned. This is not checked.
-withPinnedSBSPtr :: ShortByteString -> (Ptr a -> IO b) -> IO b
-withPinnedSBSPtr (SBS (BA# -> arr)) f = IO $ \s ->
+pinnedWithPtr :: ShortByteString -> (Ptr a -> IO b) -> IO b
+pinnedWithPtr (SBS (BA# -> arr)) f = IO $ \s ->
   case f (byteArrayContents arr) of
     IO action# -> keepAlive# arr s action#
     
-withSBSPtr :: ShortByteString -> (Ptr a -> IO b) -> IO b
-withSBSPtr arr = withPinnedSBSPtr $ pin arr
+withPtr :: ShortByteString -> (Ptr a -> IO b) -> IO b
+withPtr arr = pinnedWithPtr $ pin arr
 
 asBA :: ShortByteString -> BA
 asBA (SBS ba#) = BA# ba#
@@ -1980,7 +1980,7 @@ moduleError fun msg = error (moduleErrorMsg fun msg)
 -- with 'IO.hPutBuf'. The offset and length are used because we don't have slices of 'ByteArray' yet.
 -- The function is unsafe because the offset and length is not checked.
 unsafeHPutOff :: Handle -> ShortByteString -> Int -> Int -> IO ()
-unsafeHPutOff handle sbs off len = withSBSPtr sbs $ \p -> IO.hPutBuf handle (p `plusPtr` off) len
+unsafeHPutOff handle sbs off len = withPtr sbs $ \p -> IO.hPutBuf handle (p `plusPtr` off) len
 
 hPut :: Handle -> ShortByteString -> IO ()
 hPut h sbs = unsafeHPutOff h sbs 0 (length sbs)
