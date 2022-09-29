@@ -586,7 +586,7 @@ unsafePlainToShortIO (BS (ForeignPtr (Ptr -> p) fpc) l) =
       let baseP = Ptr (mutableByteArrayContents# marr#)
       if baseP == p && l == I# (sizeofMutableByteArray# marr#)
         then pure $ SBS arr#
-        else error "Data.ByteString.Short.Internal: not a slice"
+        else error "Data.ByteString.Short.Internal: cannot be a slice"
     _ -> error "Data.ByteString.Short.Internal: must be PlainPtr"
 
 
