@@ -247,7 +247,10 @@ import GHC.Exts
   , indexWord8Array#, indexCharArray#
   , writeWord8Array#
   , unsafeFreezeByteArray#
-  , touch#, mutableByteArrayContents#, sizeofMutableByteArray#, keepAlive#
+  , touch#
+#if __GLASGOW_HASKELL__ >= 901
+  , keepAlive#
+#endif
 #if __GLASGOW_HASKELL__ >= 801
   , getSizeofMutableByteArray#
 #endif
@@ -447,9 +450,16 @@ pin b@(SBS (BA# -> src)) =
 
 -- | Invariant: @arr@ must be pinned. This is not checked.
 pinnedWithPtr :: ShortByteString -> (Ptr a -> IO b) -> IO b
+#if __GLASGOW_HASKELL__ >= 901
 pinnedWithPtr (SBS (BA# -> arr)) f = IO $ \s ->
   case f (byteArrayContents arr) of
     IO action# -> keepAlive# arr s action#
+#else
+pinnedWithPtr (SBS (BA# -> arr)) f = do
+  x <- f (byteArrayContents arr)
+  touchByteArrayIO arr
+  pure x
+#endif
     
 withPtr :: ShortByteString -> (Ptr a -> IO b) -> IO b
 withPtr arr = pinnedWithPtr $ pin arr
@@ -1772,7 +1782,6 @@ mutableByteArrayContents (MBA# arr#) = Ptr (byteArrayContents# (unsafeCoerce# ar
 -- | Get the size of a byte array in bytes. Unlike 'sizeofMutableByteArray',
 -- this function ensures sequencing in the presence of resizing.
 getSizeofMutableByteArray :: MBA s -> ST s Int
-{-# INLINE getSizeofMutableByteArray #-}
 #if __GLASGOW_HASKELL__ >= 801
 getSizeofMutableByteArray (MBA# arr#) =
   ST (\s# -> case getSizeofMutableByteArray# arr# s# of (# s'#, n# #) -> (# s'#, I# n# #))
@@ -1790,13 +1799,15 @@ getSizeofMutableByteArray arr
 --
 -- @since 0.6.4.0
 isByteArrayPinned :: BA -> Bool
-{-# INLINE isByteArrayPinned #-}
 #if __GLASGOW_HASKELL__ >= 802
 isByteArrayPinned (BA# arr#) = isTrue# (isByteArrayPinned# arr#)
 #else
 isByteArrayPinned _ = False
 #endif
 
+touchByteArrayIO :: BA -> IO ()
+touchByteArrayIO (BA# arr) = IO $ \s -> case touch# arr s of
+  s -> (# s, () #)
 
 ------------------------------------------------------------------------
 -- FFI imports
