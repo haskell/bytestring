@@ -1853,7 +1853,7 @@ mkBigPS _ pss = return $! concat (P.reverse pss)
 -- | Outputs a 'ByteString' to the specified 'Handle'.
 hPut :: Handle -> ByteString -> IO ()
 hPut _ (BS _  0) = return ()
-hPut h (BS ps l) = unsafeWithForeignPtr ps $ \p-> hPutBuf h p l
+hPut h (BS ps l) = unsafeWithForeignPtr ps $ \p -> hPutBuf h p l
 
 -- | Similar to 'hPut' except that it will never block. Instead it returns
 -- any tail that did not get written. This tail may be 'empty' in the case that
