@@ -155,6 +155,15 @@ module Data.ByteString.Short.Internal (
     -- ** Using ShortByteStrings as 'Foreign.C.String.CString's
     useAsCString,
     useAsCStringLen,
+    
+    -- * Low level I\/O with 'ShortByteString's
+    unsafeHPutOff,
+    hPut,
+    readFile,
+    hGetContents,
+    hGetLine,
+    hGet,
+    hGetSome,
   ) where
 
 import Data.ByteString.Internal
@@ -422,15 +431,15 @@ unsafePackLenLiteral len addr# =
 -- was already pinned, this simply aliases the argument and does not perform
 -- any copying.
 pin :: ShortByteString -> ShortByteString
-pin b@(SBS (BA# -> src)) = case isByteArrayPinned src of
-  True -> b
-  False ->
-    ( runST $ do
-        let len = sizeofByteArray src
-        dst <- newPinnedByteArray len
-        copyByteArray src 0 dst 0 len
-        (\(BA# res) -> SBS res) <$> unsafeFreezeByteArray dst
-    )
+pin b@(SBS (BA# -> src)) =
+  if isByteArrayPinned src
+    then b
+    else runST $ do
+      let len = sizeofByteArray src
+      dst <- newPinnedByteArray len
+      copyByteArray src 0 dst 0 len
+      (\(BA# res) -> SBS res) <$> unsafeFreezeByteArray dst
+    
 
 -- | Invariant: @arr@ must be pinned. This is not checked.
 withPinnedSBS :: ShortByteString -> (Ptr a -> IO b) -> IO b
@@ -439,7 +448,7 @@ withPinnedSBS (SBS (BA# -> arr)) f = IO $ \s ->
     IO action# -> keepAlive# arr s action#
     
 withSBS :: ShortByteString -> (Ptr a -> IO b) -> IO b
-withSBS arr f = withPinnedSBS (pin arr) f
+withSBS arr = withPinnedSBS $ pin arr
 
 asBA :: ShortByteString -> BA
 asBA (SBS ba#) = BA# ba#
@@ -570,12 +579,11 @@ unsafePlainToShort = unsafeDupablePerformIO . unsafePlainToShortIO
 -- That is, the 'ForeignPtr' should point to the start of the pinned 'MutableByteArray#' and
 -- the length should be equal to @sizeofMutableByteArray# marr#@.
 unsafePlainToShortIO :: ByteString -> IO ShortByteString
-unsafePlainToShortIO (BS (ForeignPtr addr# fpc) l) =
+unsafePlainToShortIO (BS (ForeignPtr (Ptr -> p) fpc) l) =
    case fpc of
     PlainPtr marr# -> do
       (BA# arr#) <- stToIO $ unsafeFreezeByteArray (MBA# marr#)
       let baseP = Ptr (mutableByteArrayContents# marr#)
-          p = Ptr addr#
       if baseP == p && l == I# (sizeofMutableByteArray# marr#)
         then pure $ SBS arr#
         else error "Data.ByteString.Short.Internal: not a slice"
@@ -1750,9 +1758,6 @@ copyMutableByteArray (MBA# src#) (I# src_off#) (MBA# dst#) (I# dst_off#) (I# len
     ST $ \s -> case copyMutableByteArray# src# src_off# dst# dst_off# len# s of
                  s -> (# s, () #)
                  
-isByteArrayPinned :: BA -> Bool
-{-# INLINE isByteArrayPinned #-}
-#if __GLASGOW_HASKELL__ >= 802
 -- | Check whether or not the byte array is pinned. Pinned byte arrays cannot
 -- be moved by the garbage collector. It is safe to use 'byteArrayContents' on
 -- such byte arrays.
@@ -1761,6 +1766,9 @@ isByteArrayPinned :: BA -> Bool
 -- newer.
 --
 -- @since 0.6.4.0
+isByteArrayPinned :: BA -> Bool
+{-# INLINE isByteArrayPinned #-}
+#if __GLASGOW_HASKELL__ >= 802
 isByteArrayPinned (BA# arr#) = isTrue# (isByteArrayPinned# arr#)
 #else
 isByteArrayPinned _ = False
@@ -1969,37 +1977,25 @@ moduleError fun msg = error (moduleErrorMsg fun msg)
 -- IO
 
 -- | Outputs 'ShortByteString' to the specified 'Handle'. This is implemented
--- with 'IO.hPutBuf'.
+-- with 'IO.hPutBuf'. The offset and length are used because we don't have slices of 'ByteArray' yet.
+-- The function is unsafe because the offset and length is not checked.
 unsafeHPutOff :: Handle -> ShortByteString -> Int -> Int -> IO ()
 unsafeHPutOff handle sbs off len = withSBS sbs $ \p -> IO.hPutBuf handle (p `plusPtr` off) len
 
 hPut :: Handle -> ShortByteString -> IO ()
 hPut h sbs = unsafeHPutOff h sbs 0 (length sbs)
 
--- | Write a ShortByteString to 'stdout'.
-putStr :: ShortByteString -> IO ()
-putStr = hPut IO.stdout
-
-modifyFile :: IOMode -> FilePath -> ShortByteString -> IO ()
-modifyFile mode f txt = IO.withBinaryFile f mode (`hPut` txt)
-
--- | Write a 'ShortByteString' to a file.
-writeFile :: FilePath -> ShortByteString -> IO ()
-writeFile = modifyFile IO.WriteMode
-
--- | Append a 'ShortByteString' to a file.
-appendFile :: FilePath -> ShortByteString -> IO ()
-appendFile = modifyFile IO.AppendMode
-
 readFile :: FilePath -> IO ShortByteString
 readFile path = unsafePlainToShortIO =<< BS.readFile path 
+
+hGetContents :: Handle -> IO ShortByteString
+hGetContents h = unsafePlainToShortIO =<< BS.hGetContents h
 
 hGetLine :: Handle -> IO ShortByteString
 hGetLine h = unsafePlainToShortIO =<< BS.hGetLine h
 
--- | Read a line from stdin.
-getLine :: IO ShortByteString
-getLine = hGetLine IO.stdin
-
 hGet :: Handle -> Int -> IO ShortByteString
 hGet h i = unsafePlainToShortIO =<< BS.hGet h i
+
+hGetSome :: Handle -> Int -> IO ShortByteString
+hGetSome h i = unsafePlainToShortIO =<< BS.hGetSome h i
