@@ -247,7 +247,11 @@ import GHC.Exts
   , indexWord8Array#, indexCharArray#
   , writeWord8Array#
   , unsafeFreezeByteArray#
-  , touch#, mutableByteArrayContents#, sizeofMutableByteArray#, keepAlive# )
+  , touch#, mutableByteArrayContents#, sizeofMutableByteArray#, keepAlive#
+#if __GLASGOW_HASKELL__ >= 801
+  , getSizeofMutableByteArray#
+#endif
+  )
 import GHC.IO
 import GHC.ForeignPtr
   ( ForeignPtr(ForeignPtr)
@@ -580,11 +584,12 @@ unsafePlainToShort = unsafeDupablePerformIO . unsafePlainToShortIO
 -- the length should be equal to @sizeofMutableByteArray# marr#@.
 unsafePlainToShortIO :: ByteString -> IO ShortByteString
 unsafePlainToShortIO (BS (ForeignPtr (Ptr -> p) fpc) l) =
-   case fpc of
-    PlainPtr marr# -> do
-      (BA# arr#) <- stToIO $ unsafeFreezeByteArray (MBA# marr#)
-      let baseP = Ptr (mutableByteArrayContents# marr#)
-      if baseP == p && l == I# (sizeofMutableByteArray# marr#)
+  case fpc of
+    PlainPtr (MBA# -> marr) -> do
+      (BA# arr#) <- stToIO $ unsafeFreezeByteArray marr
+      let baseP = mutableByteArrayContents marr
+      marrSize <- stToIO $ getSizeofMutableByteArray marr
+      if baseP == p && l == marrSize
         then pure $ SBS arr#
         else error "Data.ByteString.Short.Internal: cannot be a slice"
     _ -> error "Data.ByteString.Short.Internal: must be PlainPtr"
@@ -1757,6 +1762,24 @@ copyMutableByteArray :: MBA s -> Int -> MBA s -> Int -> Int -> ST s ()
 copyMutableByteArray (MBA# src#) (I# src_off#) (MBA# dst#) (I# dst_off#) (I# len#) =
     ST $ \s -> case copyMutableByteArray# src# src_off# dst# dst_off# len# s of
                  s -> (# s, () #)
+
+-- | Yield a pointer to the array's data. This operation is only safe on
+-- /pinned/ byte arrays allocated by 'newPinnedByteArray' or
+-- 'newAlignedPinnedByteArray'.
+mutableByteArrayContents :: MBA s -> Ptr Word8
+mutableByteArrayContents (MBA# arr#) = Ptr (byteArrayContents# (unsafeCoerce# arr#))
+
+-- | Get the size of a byte array in bytes. Unlike 'sizeofMutableByteArray',
+-- this function ensures sequencing in the presence of resizing.
+getSizeofMutableByteArray :: MBA s -> ST s Int
+{-# INLINE getSizeofMutableByteArray #-}
+#if __GLASGOW_HASKELL__ >= 801
+getSizeofMutableByteArray (MBA# arr#) =
+  ST (\s# -> case getSizeofMutableByteArray# arr# s# of (# s'#, n# #) -> (# s'#, I# n# #))
+#else
+getSizeofMutableByteArray arr
+  = return (sizeofMutableByteArray arr)
+#endif
                  
 -- | Check whether or not the byte array is pinned. Pinned byte arrays cannot
 -- be moved by the garbage collector. It is safe to use 'byteArrayContents' on
