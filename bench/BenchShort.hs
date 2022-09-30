@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns        #-}
+{-# LANGUAGE ViewPatterns        #-}
 {-# LANGUAGE PackageImports      #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE MagicHash           #-}
@@ -251,6 +252,7 @@ benchShort = bgroup "ShortByteString"
         [ bench "unpack and look at first 5 elements"   $ nf (unpack5) absurdlong
         , bench "uncons consecutively 5 times"          $ nf (uncons5) absurdlong
         , bench "unconsN 5"                             $ nf (unconsN) absurdlong
+        , bench "unconsNViaSplit 5"                     $ nf (unconsNViaSplit) absurdlong
         ]
     ]
 
@@ -275,3 +277,8 @@ unconsN sbs = case S.unconsN 5 sbs of
                 Just ([a, b, c, d, e], xs) -> True
                 Just _ -> error "oops"
                 _      -> False
+
+unconsNViaSplit :: ShortByteString -> Bool
+unconsNViaSplit sbs = case S.splitAt 5 sbs of
+                (S.unpack -> [a, b, c, d, e], xs) -> True
+                _                                 -> False
