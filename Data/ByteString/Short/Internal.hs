@@ -251,6 +251,8 @@ import GHC.Exts
 #endif
 #if __GLASGOW_HASKELL__ >= 801
   , getSizeofMutableByteArray#
+#else
+  , sizeofMutableByteArray#
 #endif
   )
 import GHC.IO
@@ -287,7 +289,6 @@ import qualified Data.List as List
 import qualified GHC.Exts
 import qualified Language.Haskell.TH.Lib as TH
 import qualified Language.Haskell.TH.Syntax as TH
-import System.IO (IOMode, Handle)
 import Foreign.Ptr (plusPtr)
 import qualified System.IO as IO
 import Control.Monad ((=<<))
@@ -1784,8 +1785,7 @@ getSizeofMutableByteArray :: MBA s -> ST s Int
 getSizeofMutableByteArray (MBA# arr#) =
   ST (\s# -> case getSizeofMutableByteArray# arr# s# of (# s'#, n# #) -> (# s'#, I# n# #))
 #else
-getSizeofMutableByteArray arr
-  = return (sizeofMutableByteArray arr)
+getSizeofMutableByteArray (MBA# arr#) = pure (I# (sizeofMutableByteArray# arr#))
 #endif
                  
 -- | Check whether or not the byte array is pinned. Pinned byte arrays cannot
@@ -2011,23 +2011,23 @@ moduleError fun msg = error (moduleErrorMsg fun msg)
 -- | Outputs 'ShortByteString' to the specified 'Handle'. This is implemented
 -- with 'IO.hPutBuf'. The offset and length are used because we don't have slices of 'ByteArray' yet.
 -- The function is unsafe because the offset and length is not checked.
-unsafeHPutOff :: Handle -> ShortByteString -> Int -> Int -> IO ()
+unsafeHPutOff :: IO.Handle -> ShortByteString -> Int -> Int -> IO ()
 unsafeHPutOff handle sbs off len = withPtr sbs $ \p -> IO.hPutBuf handle (p `plusPtr` off) len
 
-hPut :: Handle -> ShortByteString -> IO ()
+hPut :: IO.Handle -> ShortByteString -> IO ()
 hPut h sbs = unsafeHPutOff h sbs 0 (length sbs)
 
 readFile :: FilePath -> IO ShortByteString
 readFile path = unsafePlainToShortIO =<< BS.readFile path 
 
-hGetContents :: Handle -> IO ShortByteString
+hGetContents :: IO.Handle -> IO ShortByteString
 hGetContents h = unsafePlainToShortIO =<< BS.hGetContents h
 
-hGetLine :: Handle -> IO ShortByteString
+hGetLine :: IO.Handle -> IO ShortByteString
 hGetLine h = unsafePlainToShortIO =<< BS.hGetLine h
 
-hGet :: Handle -> Int -> IO ShortByteString
+hGet :: IO.Handle -> Int -> IO ShortByteString
 hGet h i = unsafePlainToShortIO =<< BS.hGet h i
 
-hGetSome :: Handle -> Int -> IO ShortByteString
+hGetSome :: IO.Handle -> Int -> IO ShortByteString
 hGetSome h i = unsafePlainToShortIO =<< BS.hGetSome h i
