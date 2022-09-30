@@ -199,8 +199,6 @@ import Control.DeepSeq
   ( NFData(..) )
 import Control.Exception
   ( assert )
-import Control.Monad
-  ( (>>) )
 import Foreign.C.String
   ( CString
   , CStringLen
@@ -227,21 +225,21 @@ import GHC.Exts
   , byteArrayContents#
   , unsafeCoerce#
   , copyMutableByteArray#
-
+#if MIN_VERSION_base(4,10,0)
   , isByteArrayPinned#
   , isTrue#
-
-
+#endif
+#if MIN_VERSION_base(4,11,0)
   , compareByteArrays#
-
+#endif
   , sizeofByteArray#
   , indexWord8Array#, indexCharArray#
   , writeWord8Array#
   , unsafeFreezeByteArray#
-
+#if MIN_VERSION_base(4,12,0) && defined(SAFE_UNALIGNED)
   ,writeWord64Array#
   ,indexWord8ArrayAsWord64#
-
+#endif
   , setByteArray#
   , sizeofByteArray#
   , indexWord8Array#, indexCharArray#
