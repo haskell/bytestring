@@ -4,6 +4,8 @@
 * [`readInt` returns `Nothing`, if the sequence of digits cannot be represented by an `Int`, instead of overflowing silently](https://github.com/haskell/bytestring/pull/309)
 * [Remove `zipWith` rewrite rule](https://github.com/haskell/bytestring/pull/387)
 * [Export `unsafeIndex` for ShortByteString which had been accidentally removed in v0.11.3.0](https://github.com/haskell/bytestring/pull/532)
+* [`ShortByteString` is now a wrapper over boxed `Data.Array.Byte.ByteArray` instead of unboxed `ByteArray#` directly](https://github.com/haskell/bytestring/pull/410)
+* [`fromListN` from `instance IsList ShortByteString` throws an exception if the first argument does not match the length of the second instead of silent ignore](https://github.com/haskell/bytestring/pull/410)
 
 
 [0.12.0.0]: https://github.com/haskell/bytestring/compare/0.11.3.0...0.12.0.0
