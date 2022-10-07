@@ -280,9 +280,16 @@ import qualified Language.Haskell.TH.Syntax as TH
 -- 'ByteString' (at the cost of copying the string data). It supports very few
 -- other operations.
 --
-newtype ShortByteString = ShortByteString { unShortByteString :: ByteArray }
+newtype ShortByteString =
+  -- | @since 0.12.0.0
+  ShortByteString
+  { unShortByteString :: ByteArray
+  -- ^ @since 0.12.0.0
+  }
   deriving (Eq, Semigroup, Monoid, TH.Lift, Data, NFData)
 
+-- | Prior to @bytestring-0.12@ 'SBS' was a genuine constructor of 'ShortByteString',
+-- but now it is a bundled pattern synonym, provided as a compatibility shim.
 pattern SBS :: ByteArray# -> ShortByteString
 pattern SBS x = ShortByteString (ByteArray x)
 {-# COMPLETE SBS #-}
