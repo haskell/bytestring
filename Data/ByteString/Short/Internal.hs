@@ -182,7 +182,7 @@ import Data.Data
 import Data.Monoid
   ( Monoid(..) )
 import Data.Semigroup
-  ( Semigroup )
+  ( Semigroup((<>)) )
 import Data.String
   ( IsString(..) )
 import Control.Applicative
@@ -286,7 +286,7 @@ newtype ShortByteString =
   { unShortByteString :: ByteArray
   -- ^ @since 0.12.0.0
   }
-  deriving (Eq, Semigroup, Monoid, TH.Lift, Data, NFData)
+  deriving (Eq, TH.Lift, Data, NFData)
 
 -- | Prior to @bytestring-0.12@ 'SBS' was a genuine constructor of 'ShortByteString',
 -- but now it is a bundled pattern synonym, provided as a compatibility shim.
@@ -297,6 +297,21 @@ pattern SBS x = ShortByteString (ByteArray x)
 -- | Lexicographic order.
 instance Ord ShortByteString where
     compare = compareBytes
+
+-- Instead of deriving Semigroup / Monoid , we stick to our own implementations
+-- of mappend / mconcat, because they are safer with regards to overflows
+-- (see prop_32bitOverflow_Short_mconcat test).
+-- ByteArray is likely to catch up starting from GHC 9.6:
+-- * https://gitlab.haskell.org/ghc/ghc/-/merge_requests/8272
+-- * https://gitlab.haskell.org/ghc/ghc/-/merge_requests/9128
+
+instance Semigroup ShortByteString where
+    (<>)    = append
+
+instance Monoid ShortByteString where
+    mempty  = empty
+    mappend = (<>)
+    mconcat = concat
 
 instance Show ShortByteString where
     showsPrec p ps r = showsPrec p (unpackChars ps) r
