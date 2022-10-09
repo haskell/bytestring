@@ -1,10 +1,13 @@
 {-# LANGUAGE BangPatterns             #-}
 {-# LANGUAGE CPP                      #-}
 {-# LANGUAGE DeriveDataTypeable       #-}
+{-# LANGUAGE DeriveLift               #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase               #-}
 {-# LANGUAGE MagicHash                #-}
 {-# LANGUAGE MultiWayIf               #-}
+{-# LANGUAGE PatternSynonyms          #-}
 {-# LANGUAGE RankNTypes               #-}
 {-# LANGUAGE ScopedTypeVariables      #-}
 {-# LANGUAGE TemplateHaskellQuotes    #-}
@@ -13,6 +16,7 @@
 {-# LANGUAGE UnboxedTuples            #-}
 {-# LANGUAGE UnliftedFFITypes         #-}
 {-# LANGUAGE Unsafe                   #-}
+
 {-# OPTIONS_HADDOCK not-home #-}
 
 {-# OPTIONS_GHC -fno-warn-name-shadowing -fexpose-all-unfoldings #-}
@@ -40,7 +44,7 @@
 module Data.ByteString.Short.Internal (
 
     -- * The @ShortByteString@ type and representation
-    ShortByteString(..),
+    ShortByteString(.., SBS),
 
     -- * Introducing and eliminating 'ShortByteString's
     empty,
@@ -162,6 +166,8 @@ import Data.ByteString.Internal
   , checkedAdd
   )
 
+import Data.Array.Byte
+  ( ByteArray(..) )
 import Data.Bits
   ( FiniteBits (finiteBitSize)
   , shiftL
@@ -172,21 +178,17 @@ import Data.Bits
   , (.|.)
   )
 import Data.Data
-  ( Data(..)
-  , mkNoRepType
-  )
+  ( Data(..) )
 import Data.Monoid
   ( Monoid(..) )
 import Data.Semigroup
   ( Semigroup((<>)) )
 import Data.String
   ( IsString(..) )
-import Data.Typeable
-  ( Typeable )
 import Control.Applicative
   ( pure )
 import Control.DeepSeq
-  ( NFData(..) )
+  ( NFData )
 import Control.Exception
   ( assert )
 import Control.Monad
@@ -269,7 +271,6 @@ import qualified Data.ByteString.Internal as BS
 
 import qualified Data.List as List
 import qualified GHC.Exts
-import qualified Language.Haskell.TH.Lib as TH
 import qualified Language.Haskell.TH.Syntax as TH
 
 -- | A compact representation of a 'Word8' vector.
@@ -279,42 +280,30 @@ import qualified Language.Haskell.TH.Syntax as TH
 -- 'ByteString' (at the cost of copying the string data). It supports very few
 -- other operations.
 --
-data ShortByteString = SBS ByteArray#
-    deriving Typeable
+newtype ShortByteString =
+  -- | @since 0.12.0.0
+  ShortByteString
+  { unShortByteString :: ByteArray
+  -- ^ @since 0.12.0.0
+  }
+  deriving (Eq, TH.Lift, Data, NFData)
 
--- | @since 0.11.2.0
-instance TH.Lift ShortByteString where
-#if MIN_VERSION_template_haskell(2,16,0)
-  lift sbs = [| unsafePackLenLiteral |]
-    `TH.appE` TH.litE (TH.integerL (fromIntegral len))
-    `TH.appE` TH.litE (TH.BytesPrimL $ TH.Bytes ptr 0 (fromIntegral len))
-    where
-      BS ptr len = fromShort sbs
-#else
-  lift sbs = [| unsafePackLenLiteral |]
-    `TH.appE` TH.litE (TH.integerL (fromIntegral len))
-    `TH.appE` TH.litE (TH.StringPrimL $ BS.unpackBytes bs)
-    where
-      bs@(BS _ len) = fromShort sbs
-#endif
+-- | Prior to @bytestring-0.12@ 'SBS' was a genuine constructor of 'ShortByteString',
+-- but now it is a bundled pattern synonym, provided as a compatibility shim.
+pattern SBS :: ByteArray# -> ShortByteString
+pattern SBS x = ShortByteString (ByteArray x)
+{-# COMPLETE SBS #-}
 
-#if MIN_VERSION_template_haskell(2,17,0)
-  liftTyped = TH.unsafeCodeCoerce . TH.lift
-#elif MIN_VERSION_template_haskell(2,16,0)
-  liftTyped = TH.unsafeTExpCoerce . TH.lift
-#endif
-
--- The ByteArray# representation is always word sized and aligned but with a
--- known byte length. Our representation choice for ShortByteString is to leave
--- the 0--3 trailing bytes undefined. This means we can use word-sized writes,
--- but we have to be careful with reads, see equateBytes and compareBytes below.
-
-
-instance Eq ShortByteString where
-    (==)    = equateBytes
-
+-- | Lexicographic order.
 instance Ord ShortByteString where
     compare = compareBytes
+
+-- Instead of deriving Semigroup / Monoid , we stick to our own implementations
+-- of mappend / mconcat, because they are safer with regards to overflows
+-- (see prop_32bitOverflow_Short_mconcat test).
+-- ByteArray is likely to catch up starting from GHC 9.6:
+-- * https://gitlab.haskell.org/ghc/ghc/-/merge_requests/8272
+-- * https://gitlab.haskell.org/ghc/ghc/-/merge_requests/9128
 
 instance Semigroup ShortByteString where
     (<>)    = append
@@ -323,9 +312,6 @@ instance Monoid ShortByteString where
     mempty  = empty
     mappend = (<>)
     mconcat = concat
-
-instance NFData ShortByteString where
-    rnf SBS{} = ()
 
 instance Show ShortByteString where
     showsPrec p ps r = showsPrec p (unpackChars ps) r
@@ -336,19 +322,14 @@ instance Read ShortByteString where
 -- | @since 0.10.12.0
 instance GHC.Exts.IsList ShortByteString where
   type Item ShortByteString = Word8
-  fromList = packBytes
-  toList   = unpack
+  fromList  = ShortByteString . GHC.Exts.fromList
+  fromListN = (ShortByteString .) . GHC.Exts.fromListN
+  toList    = GHC.Exts.toList . unShortByteString
 
 -- | Beware: 'fromString' truncates multi-byte characters to octets.
 -- e.g. "枯朶に烏のとまりけり秋の暮" becomes �6k�nh~�Q��n�
 instance IsString ShortByteString where
     fromString = packChars
-
-instance Data ShortByteString where
-  gfoldl f z txt = z packBytes `f` unpack txt
-  toConstr _     = error "Data.ByteString.Short.ShortByteString.toConstr"
-  gunfold _ _    = error "Data.ByteString.Short.ShortByteString.gunfold"
-  dataTypeOf _   = mkNoRepType "Data.ByteString.Short.ShortByteString"
 
 ------------------------------------------------------------------------
 -- Simple operations
@@ -401,12 +382,6 @@ indexError :: HasCallStack => ShortByteString -> Int -> a
 indexError sbs i =
   moduleError "index" $ "error in array index: " ++ show i
                         ++ " not in range [0.." ++ show (length sbs) ++ "]"
-
--- | @since 0.11.2.0
-unsafePackLenLiteral :: Int -> Addr# -> ShortByteString
-unsafePackLenLiteral len addr# =
-    -- createFromPtr allocates, so accursedUnutterablePerformIO is wrong
-    unsafeDupablePerformIO $ createFromPtr (Ptr addr#) len
 
 ------------------------------------------------------------------------
 -- Internal utils
@@ -642,13 +617,6 @@ unpackAppendBytesStrict !sbs off len = go (off-1) (off-1 + len)
 ------------------------------------------------------------------------
 -- Eq and Ord implementations
 
-equateBytes :: ShortByteString -> ShortByteString -> Bool
-equateBytes sbs1 sbs2 =
-    let !len1 = length sbs1
-        !len2 = length sbs2
-     in len1 == len2
-     && 0 == compareByteArrays (asBA sbs1) (asBA sbs2) len1
-
 compareBytes :: ShortByteString -> ShortByteString -> Ordering
 compareBytes sbs1 sbs2 =
     let !len1 = length sbs1
@@ -660,7 +628,6 @@ compareBytes sbs1 sbs2 =
             | len2 > len1 -> LT
             | len2 < len1 -> GT
             | otherwise   -> EQ
-
 
 ------------------------------------------------------------------------
 -- Appending and concatenation
@@ -1596,8 +1563,6 @@ findIndices k = \sbs ->
             | k (w n)   = n : go (n + 1)
             | otherwise = go (n + 1)
   in go 0
-
-
 
 ------------------------------------------------------------------------
 -- Exported low level operations
