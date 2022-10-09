@@ -114,4 +114,3 @@ instance Arbitrary SB.ShortByteString where
 
 instance CoArbitrary SB.ShortByteString where
   coarbitrary s = coarbitrary (SB.unpack s)
-

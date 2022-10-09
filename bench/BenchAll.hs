@@ -268,14 +268,11 @@ main = do
             P.primMapLazyByteStringFixed P.word8
         ]
       , bgroup "ByteString insertion" $
-          let dataName = " byteStringChunks" ++
-                         show (S.length (head byteStringChunksData)) ++ "Data"
-          in
-            [ benchB ("foldMap byteStringInsert" ++ dataName) byteStringChunksData
+            [ benchB "foldMap byteStringInsert" byteStringChunksData
                 (foldMap byteStringInsert)
-            , benchB ("foldMap byteString" ++ dataName) byteStringChunksData
+            , benchB "foldMap byteString" byteStringChunksData
                 (foldMap byteString)
-            , benchB ("foldMap byteStringCopy" ++ dataName) byteStringChunksData
+            , benchB "foldMap byteStringCopy" byteStringChunksData
                 (foldMap byteStringCopy)
             ]
 
