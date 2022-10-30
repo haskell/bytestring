@@ -123,7 +123,7 @@ library
                      RankNTypes
                      NamedFieldPuns
 
-  ghc-options:      -Wall -fwarn-tabs
+  ghc-options:      -Wall -fwarn-tabs -Wincomplete-uni-patterns
                     -O2
                     -fmax-simplifier-iterations=10
                     -fdicts-cheap
