@@ -13,9 +13,11 @@
 {-# LANGUAGE UnboxedTuples            #-}
 {-# LANGUAGE UnliftedFFITypes         #-}
 {-# LANGUAGE Unsafe                   #-}
+{-# LANGUAGE ViewPatterns             #-}
+
 {-# OPTIONS_HADDOCK not-home #-}
 
-{-# OPTIONS_GHC -fno-warn-name-shadowing -fexpose-all-unfoldings #-}
+{-# OPTIONS_GHC -fexpose-all-unfoldings #-}
 -- Not all architectures are forgiving of unaligned accesses; whitelist ones
 -- which are known not to trap (either to the kernel for emulation, or crash).
 #if defined(i386_HOST_ARCH) || defined(x86_64_HOST_ARCH) \
@@ -359,7 +361,7 @@ empty = create 0 (\_ -> return ())
 
 -- | /O(1)/ The length of a 'ShortByteString'.
 length :: ShortByteString -> Int
-length (SBS barr#) = I# (sizeofByteArray# barr#)
+length (unSBS -> barr#) = I# (sizeofByteArray# barr#)
 
 -- | /O(1)/ Test whether a 'ShortByteString' is empty.
 null :: ShortByteString -> Bool
@@ -412,7 +414,10 @@ unsafePackLenLiteral len addr# =
 -- Internal utils
 
 asBA :: ShortByteString -> BA
-asBA (SBS ba#) = BA# ba#
+asBA (unSBS -> ba#) = BA# ba#
+
+unSBS :: ShortByteString -> ByteArray#
+unSBS (SBS ba#) = ba#
 
 create :: Int -> (forall s. MBA s -> ST s ()) -> ShortByteString
 create len fill =
@@ -512,7 +517,7 @@ toShortIO (BS fptr len) = do
 -- | /O(n)/. Convert a 'ShortByteString' into a 'ByteString'.
 --
 fromShort :: ShortByteString -> ByteString
-fromShort (SBS b#)
+fromShort (unSBS -> b#)
   | isPinned b# = BS fp len
   where
     addr# = byteArrayContents# b#
@@ -1544,7 +1549,7 @@ partition k = \sbs -> let l = length sbs
 --
 -- @since 0.11.3.0
 elemIndex :: Word8 -> ShortByteString -> Maybe Int
-elemIndex c = \sbs@(SBS ba#) -> do
+elemIndex c = \sbs@(unSBS -> ba#) -> do
     let l = length sbs
     accursedUnutterablePerformIO $ do
       !s <- c_elem_index ba# c (fromIntegral l)
@@ -1562,7 +1567,7 @@ elemIndices k = findIndices (==k)
 --
 -- @since 0.11.3.0
 count :: Word8 -> ShortByteString -> Int
-count w = \sbs@(SBS ba#) -> accursedUnutterablePerformIO $
+count w = \sbs@(unSBS -> ba#) -> accursedUnutterablePerformIO $
     fromIntegral <$> c_count ba# (fromIntegral $ length sbs) w
 
 -- | /O(n)/ The 'findIndex' function takes a predicate and a 'ShortByteString' and
@@ -1641,54 +1646,54 @@ indexWord8ArrayAsWord64 (BA# ba#) (I# i#) = W64# (indexWord8ArrayAsWord64# ba# i
 newByteArray :: Int -> ST s (MBA s)
 newByteArray (I# len#) =
     ST $ \s -> case newByteArray# len# s of
-                 (# s, mba# #) -> (# s, MBA# mba# #)
+                 (# s', mba# #) -> (# s', MBA# mba# #)
 
 newPinnedByteArray :: Int -> ST s (MBA s)
 newPinnedByteArray (I# len#) =
     ST $ \s -> case newPinnedByteArray# len# s of
-                 (# s, mba# #) -> (# s, MBA# mba# #)
+                 (# s', mba# #) -> (# s', MBA# mba# #)
 
 unsafeFreezeByteArray :: MBA s -> ST s BA
 unsafeFreezeByteArray (MBA# mba#) =
     ST $ \s -> case unsafeFreezeByteArray# mba# s of
-                 (# s, ba# #) -> (# s, BA# ba# #)
+                 (# s', ba# #) -> (# s', BA# ba# #)
 
 writeWord8Array :: MBA s -> Int -> Word8 -> ST s ()
 writeWord8Array (MBA# mba#) (I# i#) (W8# w#) =
   ST $ \s -> case writeWord8Array# mba# i# w# s of
-               s -> (# s, () #)
+               s' -> (# s', () #)
 
 #if MIN_VERSION_base(4,12,0) && defined(SAFE_UNALIGNED)
 writeWord64Array :: MBA s -> Int -> Word64 -> ST s ()
 writeWord64Array (MBA# mba#) (I# i#) (W64# w#) =
   ST $ \s -> case writeWord64Array# mba# i# w# s of
-               s -> (# s, () #)
+               s' -> (# s', () #)
 #endif
 
 copyAddrToByteArray :: Ptr a -> MBA RealWorld -> Int -> Int -> ST RealWorld ()
 copyAddrToByteArray (Ptr src#) (MBA# dst#) (I# dst_off#) (I# len#) =
     ST $ \s -> case copyAddrToByteArray# src# dst# dst_off# len# s of
-                 s -> (# s, () #)
+                 s' -> (# s', () #)
 
 copyByteArrayToAddr :: BA -> Int -> Ptr a -> Int -> ST RealWorld ()
 copyByteArrayToAddr (BA# src#) (I# src_off#) (Ptr dst#) (I# len#) =
     ST $ \s -> case copyByteArrayToAddr# src# src_off# dst# len# s of
-                 s -> (# s, () #)
+                 s' -> (# s', () #)
 
 copyByteArray :: BA -> Int -> MBA s -> Int -> Int -> ST s ()
 copyByteArray (BA# src#) (I# src_off#) (MBA# dst#) (I# dst_off#) (I# len#) =
     ST $ \s -> case copyByteArray# src# src_off# dst# dst_off# len# s of
-                 s -> (# s, () #)
+                 s' -> (# s', () #)
 
 setByteArray :: MBA s -> Int -> Int -> Int -> ST s ()
 setByteArray (MBA# dst#) (I# off#) (I# len#) (I# c#) =
     ST $ \s -> case setByteArray# dst# off# len# c# s of
-                 s -> (# s, () #)
+                 s' -> (# s', () #)
 
 copyMutableByteArray :: MBA s -> Int -> MBA s -> Int -> Int -> ST s ()
 copyMutableByteArray (MBA# src#) (I# src_off#) (MBA# dst#) (I# dst_off#) (I# len#) =
     ST $ \s -> case copyMutableByteArray# src# src_off# dst# dst_off# len# s of
-                 s -> (# s, () #)
+                 s' -> (# s', () #)
 
 
 ------------------------------------------------------------------------
@@ -1803,7 +1808,7 @@ useAsCStringLen sbs action =
 --
 -- @since 0.11.3.0
 isValidUtf8 :: ShortByteString -> Bool
-isValidUtf8 sbs@(SBS ba#) = accursedUnutterablePerformIO $ do
+isValidUtf8 sbs@(unSBS -> ba#) = accursedUnutterablePerformIO $ do
   let n = length sbs
   -- Use a safe FFI call for large inputs to avoid GC synchronization pauses
   -- in multithreaded contexts.
