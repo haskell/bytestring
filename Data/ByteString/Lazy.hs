@@ -1433,7 +1433,7 @@ unzip ls = (pack (List.map fst ls), pack (List.map snd ls))
 inits :: ByteString -> [ByteString]
 inits = (Empty :) . inits'
   where inits' Empty        = []
-        inits' (Chunk c cs) = List.map (`Chunk` Empty) (List.tail (S.inits c))
+        inits' (Chunk c cs) = List.map (`Chunk` Empty) (List.drop 1 (S.inits c))
                            ++ List.map (Chunk c) (inits' cs)
 
 -- | /O(n)/ Return all final segments of the given 'ByteString', longest first.

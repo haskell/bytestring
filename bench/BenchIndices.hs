@@ -15,7 +15,7 @@ import           Data.Maybe                            (listToMaybe)
 import           Data.Monoid
 import           Data.String
 import           Test.Tasty.Bench
-import           Prelude                               hiding (words)
+import           Prelude                               hiding (words, head, tail)
 import           Data.Word                             (Word8)
 
 import qualified Data.ByteString                       as S
@@ -54,8 +54,8 @@ benchIndices = bgroup "Indices"
         , bench "ElemIndex"   $ nf (S.elemIndex     nl)  absurdlong
         ]
     , bgroup "ByteString strict second index" $
-        [ bench "FindIndices" $ nf (listToMaybe . tail . S.findIndices (== nl)) absurdlong
-        , bench "ElemIndices" $ nf (listToMaybe . tail . S.elemIndices     nl)  absurdlong
+        [ bench "FindIndices" $ nf (listToMaybe . drop 1 . S.findIndices (== nl)) absurdlong
+        , bench "ElemIndices" $ nf (listToMaybe . drop 1 . S.elemIndices     nl)  absurdlong
         , bench "FindIndex"   $ nf bench_find_index_second absurdlong
         , bench "ElemIndex"   $ nf bench_elem_index_second absurdlong
         ]

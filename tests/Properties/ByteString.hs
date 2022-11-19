@@ -59,6 +59,7 @@ import qualified Data.ByteString.Lazy.Internal as B (invariant)
 #define BYTESTRING_TYPE B.ByteString
 #endif
 
+import Prelude hiding (head, tail)
 import Data.Int
 import Numeric.Natural (Natural)
 
@@ -474,11 +475,15 @@ tests =
     \x -> let n = 2^31 in (B.unpack *** B.unpack) (B.splitAt n x) === List.genericSplitAt n (B.unpack x)
 
   , testProperty "head" $
-    \x -> not (B.null x) ==> B.head x === head (B.unpack x)
+    \x -> case B.unpack x of
+      []     -> property True
+      hd : _ -> B.head x === hd
   , testProperty "last" $
     \x -> not (B.null x) ==> B.last x === last (B.unpack x)
   , testProperty "tail" $
-    \x -> not (B.null x) ==> B.unpack (B.tail x) === tail (B.unpack x)
+    \x -> case B.unpack x of
+      []     -> property True
+      _ : tl -> B.unpack (B.tail x) === tl
   , testProperty "tail length" $
     \x -> not (B.null x) ==> B.length x === 1 + B.length (B.tail x)
   , testProperty "init" $

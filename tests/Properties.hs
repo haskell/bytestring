@@ -13,6 +13,7 @@
 
 module Properties (testSuite) where
 
+import Prelude hiding (head, tail)
 import Foreign.C.String (withCString)
 import Foreign.Storable
 import Foreign.ForeignPtr
@@ -76,20 +77,13 @@ prop_unsafeIndexBB xs =
 prop_bijectionBB  (Char8 c) = (P.w2c . P.c2w) c == id c
 prop_bijectionBB'        w  = (P.c2w . P.w2c) w == id w
 
-prop_head2BB xs    = (not (null xs)) ==> head xs   == (P.unsafeHead . P.pack) xs
+prop_unsafeHead xs = not (P.null xs) ==> P.head xs === P.unsafeHead xs
+prop_unsafeTail xs = not (P.null xs) ==> P.tail xs === P.unsafeTail xs
+prop_unsafeLast xs = not (P.null xs) ==> P.last xs === P.unsafeLast xs
+prop_unsafeInit xs = not (P.null xs) ==> P.init xs === P.unsafeInit xs
 
-prop_tail1BB xs    = (not (null xs)) ==> tail xs    == (P.unpack . P.unsafeTail. P.pack) xs
-
-prop_last1BB xs    = (not (null xs)) ==> last xs    == (P.unsafeLast . P.pack) xs
-
-prop_init1BB xs     =
-    (not (null xs)) ==>
-    init xs    == (P.unpack . P.unsafeInit . P.pack) xs
-
-prop_lines_lazy1 =
-    head (LC.lines (LC.append (LC.pack "a\nb\n") undefined)) == LC.pack "a"
-prop_lines_lazy2 =
-    head (tail (LC.lines (LC.append (LC.pack "a\nb\n") undefined))) == LC.pack "b"
+prop_lines_lazy =
+    take 2 (LC.lines (LC.append (LC.pack "a\nb\n") undefined)) === [LC.pack "a", LC.pack "b"]
 
 prop_strip x = C.strip x == (C.dropSpace . C.reverse . C.dropSpace . C.reverse) x
 
@@ -683,14 +677,13 @@ misc_tests =
     , testProperty "w2c . c2w"      prop_bijectionBB
     , testProperty "c2w . w2c"      prop_bijectionBB'
 
-    , testProperty "unsafeHead"     prop_head2BB
-    , testProperty "unsafeTail"     prop_tail1BB
-    , testProperty "unsafeLast"     prop_last1BB
-    , testProperty "unsafeInit"     prop_init1BB
+    , testProperty "unsafeHead"     prop_unsafeHead
+    , testProperty "unsafeTail"     prop_unsafeTail
+    , testProperty "unsafeLast"     prop_unsafeLast
+    , testProperty "unsafeInit"     prop_unsafeInit
     , testProperty "unsafeIndex"    prop_unsafeIndexBB
 
-    , testProperty "lines_lazy1"    prop_lines_lazy1
-    , testProperty "lines_lazy2"    prop_lines_lazy2
+    , testProperty "lines_lazy"     prop_lines_lazy
     , testProperty "strip"          prop_strip
     , testProperty "isSpace"        prop_isSpaceWord8
 
@@ -717,7 +710,7 @@ strictness_checks =
     , testProperty "scanl is lazy" $ \ xs ->
         L.take (L.length xs + 1) (L.scanl (+) 0 (explosiveTail (xs <> L.singleton 1))) === (L.pack . fmap (L.foldr (+) 0) . L.inits) xs
     , testProperty "scanl1 is lazy" $ \ xs -> L.length xs > 0 ==>
-        L.take (L.length xs) (L.scanl1 (+) (explosiveTail (xs <> L.singleton 1))) === (L.pack . fmap (L.foldr1 (+)) . tail . L.inits) xs
+        L.take (L.length xs) (L.scanl1 (+) (explosiveTail (xs <> L.singleton 1))) === (L.pack . fmap (L.foldr1 (+)) . drop 1 . L.inits) xs
     ]
   , testGroup "Lazy Char"
     [ testProperty "foldr is lazy" $ \ xs ->
@@ -731,7 +724,7 @@ strictness_checks =
     , testProperty "scanl is lazy" $ \ xs -> let char1 +. char2 = toEnum (fromEnum char1 + fromEnum char2) in
         D.take (D.length xs + 1) (D.scanl (+.) '\NUL' (explosiveTail (xs <> D.singleton '\SOH'))) === (D.pack . fmap (D.foldr (+.) '\NUL') . D.inits) xs
     , testProperty "scanl1 is lazy" $ \ xs -> D.length xs > 0 ==> let char1 +. char2 = toEnum (fromEnum char1 + fromEnum char2) in
-        D.take (D.length xs) (D.scanl1 (+.) (explosiveTail (xs <> D.singleton '\SOH'))) === (D.pack . fmap (D.foldr1 (+.)) . tail . D.inits) xs
+        D.take (D.length xs) (D.scanl1 (+.) (explosiveTail (xs <> D.singleton '\SOH'))) === (D.pack . fmap (D.foldr1 (+.)) . drop 1 . D.inits) xs
     , testProperty "unlines is lazy" $ \ xs -> D.take (D.length xs + 1) (D.unlines (xs : error "Tail of this list is undefined!")) === xs `D.snoc` '\n'
     ]
   ]
