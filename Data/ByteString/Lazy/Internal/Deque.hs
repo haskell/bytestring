@@ -13,7 +13,7 @@ module Data.ByteString.Lazy.Internal.Deque (
 
 import qualified Data.ByteString as S
 import Data.Int (Int64)
-import Prelude hiding (head, length, null)
+import Prelude hiding (head, tail, length, null)
 
 -- A `S.ByteString` Deque used as an accumulator for lazy
 -- Bytestring operations
