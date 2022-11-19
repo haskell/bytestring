@@ -82,10 +82,8 @@ prop_unsafeTail xs = not (P.null xs) ==> P.tail xs === P.unsafeTail xs
 prop_unsafeLast xs = not (P.null xs) ==> P.last xs === P.unsafeLast xs
 prop_unsafeInit xs = not (P.null xs) ==> P.init xs === P.unsafeInit xs
 
-prop_lines_lazy1 =
-    take 1 (LC.lines (LC.append (LC.pack "a\nb\n") undefined)) === [LC.pack "a"]
-prop_lines_lazy2 =
-    take 1 (drop 1 (LC.lines (LC.append (LC.pack "a\nb\n") undefined))) === [LC.pack "b"]
+prop_lines_lazy =
+    take 2 (LC.lines (LC.append (LC.pack "a\nb\n") undefined)) === [LC.pack "a", LC.pack "b"]
 
 prop_strip x = C.strip x == (C.dropSpace . C.reverse . C.dropSpace . C.reverse) x
 
@@ -685,8 +683,7 @@ misc_tests =
     , testProperty "unsafeInit"     prop_unsafeInit
     , testProperty "unsafeIndex"    prop_unsafeIndexBB
 
-    , testProperty "lines_lazy1"    prop_lines_lazy1
-    , testProperty "lines_lazy2"    prop_lines_lazy2
+    , testProperty "lines_lazy"     prop_lines_lazy
     , testProperty "strip"          prop_strip
     , testProperty "isSpace"        prop_isSpaceWord8
 
