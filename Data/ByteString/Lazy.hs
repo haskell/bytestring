@@ -1448,7 +1448,7 @@ initsNE = (Empty :|) . inits' id
     inits' _ Empty = []
     inits' f (Chunk c@(S.BS x len) cs)
       = [f (S.BS x n `Chunk` Empty) | n <- [1..len]]
-      ++ inits' (Chunk c . f) cs
+      ++ inits' (f . Chunk c) cs
 
 -- | /O(n)/ Returns all final segments of the given 'ByteString', longest first.
 tails :: ByteString -> [ByteString]
