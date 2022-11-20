@@ -130,6 +130,8 @@ module Data.ByteString (
         groupBy,
         inits,
         tails,
+        initsNE,
+        tailsNE,
         stripPrefix,
         stripSuffix,
 
@@ -235,6 +237,8 @@ import Data.ByteString.Lazy.Internal (fromStrict, toStrict)
 import Data.ByteString.Unsafe
 
 import qualified Data.List as List
+import qualified Data.List.NonEmpty as NE
+import Data.List.NonEmpty (NonEmpty(..))
 
 import Data.Word                (Word8)
 
@@ -427,7 +431,7 @@ last ps@(BS x l)
                     unsafeWithForeignPtr x $ \p -> peekByteOff p (l-1)
 {-# INLINE last #-}
 
--- | /O(1)/ Return all the elements of a 'ByteString' except the last one.
+-- | /O(1)/ Returns all the elements of a 'ByteString' except the last one.
 -- An exception will be thrown in the case of an empty ByteString.
 --
 -- This is a partial function, consider using 'unsnoc' instead.
@@ -1686,14 +1690,26 @@ unzip ls = (pack (P.map fst ls), pack (P.map snd ls))
 -- ---------------------------------------------------------------------
 -- Special lists
 
--- | /O(n)/ Return all initial segments of the given 'ByteString', shortest first.
+-- | /O(n)/ Returns all initial segments of the given 'ByteString', shortest first.
 inits :: ByteString -> [ByteString]
-inits (BS x l) = [BS x n | n <- [0..l]]
+inits bs = NE.toList $! initsNE bs
 
--- | /O(n)/ Return all final segments of the given 'ByteString', longest first.
+-- | /O(n)/ Returns all initial segments of the given 'ByteString', shortest first.
+--
+-- @since 0.11.4.0
+initsNE :: ByteString -> NonEmpty ByteString
+initsNE (BS x len) = empty :| [BS x n | n <- [1..len]]
+
+-- | /O(n)/ Returns all final segments of the given 'ByteString', longest first.
 tails :: ByteString -> [ByteString]
-tails p | null p    = [empty]
-        | otherwise = p : tails (unsafeTail p)
+tails bs = NE.toList $! tailsNE bs
+
+-- | /O(n)/ Returns all final segments of the given 'ByteString', longest first.
+--
+-- @since 0.11.4.0
+tailsNE :: ByteString -> NonEmpty ByteString
+tailsNE p | null p    = empty :| []
+          | otherwise = p :| tails (unsafeTail p)
 
 -- less efficent spacewise: tails (BS x l) = [BS (plusForeignPtr x n) (l-n) | n <- [0..l]]
 

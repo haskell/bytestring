@@ -124,6 +124,8 @@ module Data.ByteString.Lazy.Char8 (
         groupBy,
         inits,
         tails,
+        initsNE,
+        tailsNE,
         stripPrefix,
         stripSuffix,
 
@@ -233,7 +235,7 @@ import Data.ByteString.Lazy
         (fromChunks, toChunks
         ,empty,null,length,tail,init,append,reverse,transpose,cycle
         ,concat,take,takeEnd,drop,dropEnd,splitAt,intercalate
-        ,isPrefixOf,isSuffixOf,group,inits,tails,copy
+        ,isPrefixOf,isSuffixOf,group,inits,tails,initsNE,tailsNE,copy
         ,stripPrefix,stripSuffix
         ,hGetContents, hGet, hPut, getContents
         ,hGetNonBlocking, hPutNonBlocking

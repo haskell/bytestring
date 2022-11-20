@@ -145,6 +145,8 @@ module Data.ByteString.Lazy (
         groupBy,
         inits,
         tails,
+        initsNE,
+        tailsNE,
         stripPrefix,
         stripSuffix,
 
@@ -228,6 +230,8 @@ import Prelude hiding
     ,getContents,getLine,putStr,putStrLn ,zip,zipWith,unzip,notElem)
 
 import qualified Data.List              as List
+import qualified Data.List.NonEmpty     as NE
+import Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.Bifunctor         as BF
 import qualified Data.ByteString        as P  (ByteString) -- type name only
 import qualified Data.ByteString        as S  -- S for strict (hmm...)
@@ -380,7 +384,7 @@ last (Chunk c0 cs0) = go c0 cs0
         go _ (Chunk c cs) = go c cs
 -- XXX Don't inline this. Something breaks with 6.8.2 (haven't investigated yet)
 
--- | /O(n\/c)/ Return all the elements of a 'ByteString' except the last one.
+-- | /O(n\/c)/ Returns all the elements of a 'ByteString' except the last one.
 --
 -- This is a partial function, consider using 'unsnoc' instead.
 init :: HasCallStack => ByteString -> ByteString
@@ -1429,19 +1433,34 @@ unzip ls = (pack (List.map fst ls), pack (List.map snd ls))
 -- ---------------------------------------------------------------------
 -- Special lists
 
--- | /O(n)/ Return all initial segments of the given 'ByteString', shortest first.
+-- | Returns all initial segments of the given 'ByteString', shortest first.
 inits :: ByteString -> [ByteString]
-inits = (Empty :) . inits'
-  where inits' Empty        = []
-        inits' (Chunk c cs) = List.map (`Chunk` Empty) (List.drop 1 (S.inits c))
-                           ++ List.map (Chunk c) (inits' cs)
+inits bs = NE.toList $! initsNE bs
 
--- | /O(n)/ Return all final segments of the given 'ByteString', longest first.
+-- | Returns all initial segments of the given 'ByteString', shortest first.
+--
+-- @since 0.11.4.0
+initsNE :: ByteString -> NonEmpty ByteString
+initsNE = (Empty :|) . inits' id
+  where
+    inits' :: (ByteString -> ByteString) -> ByteString -> [ByteString]
+    -- inits' f bs === map f (tail (inits bs))
+    inits' _ Empty = []
+    inits' f (Chunk c@(S.BS x len) cs)
+      = [f (S.BS x n `Chunk` Empty) | n <- [1..len]]
+      ++ inits' (Chunk c . f) cs
+
+-- | /O(n)/ Returns all final segments of the given 'ByteString', longest first.
 tails :: ByteString -> [ByteString]
-tails Empty         = [Empty]
-tails cs@(Chunk c cs')
-  | S.length c == 1 = cs : tails cs'
-  | otherwise       = cs : tails (Chunk (S.unsafeTail c) cs')
+tails bs = NE.toList $! tailsNE bs
+
+-- | /O(n)/ Returns all final segments of the given 'ByteString', longest first.
+--
+-- @since 0.11.4.0
+tailsNE :: ByteString -> NonEmpty ByteString
+tailsNE bs = case  uncons bs  of
+  Nothing -> Empty :| []
+  Just (_, tl) -> bs :| tails tl
 
 -- ---------------------------------------------------------------------
 -- Low level constructors
