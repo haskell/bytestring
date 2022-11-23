@@ -1692,26 +1692,42 @@ unzip ls = (pack (P.map fst ls), pack (P.map snd ls))
 
 -- | /O(n)/ Returns all initial segments of the given 'ByteString', shortest first.
 inits :: ByteString -> [ByteString]
+-- see Note [Avoid NonEmpty combinators]
 inits bs = NE.toList $! initsNE bs
 
 -- | /O(n)/ Returns all initial segments of the given 'ByteString', shortest first.
 --
 -- @since 0.11.4.0
 initsNE :: ByteString -> NonEmpty ByteString
+-- see Note [Avoid NonEmpty combinators]
 initsNE (BS x len) = empty :| [BS x n | n <- [1..len]]
 
 -- | /O(n)/ Returns all final segments of the given 'ByteString', longest first.
 tails :: ByteString -> [ByteString]
+-- see Note [Avoid NonEmpty combinators]
 tails bs = NE.toList $! tailsNE bs
 
 -- | /O(n)/ Returns all final segments of the given 'ByteString', longest first.
 --
 -- @since 0.11.4.0
 tailsNE :: ByteString -> NonEmpty ByteString
+-- see Note [Avoid NonEmpty combinators]
 tailsNE p | null p    = empty :| []
           | otherwise = p :| tails (unsafeTail p)
 
 -- less efficent spacewise: tails (BS x l) = [BS (plusForeignPtr x n) (l-n) | n <- [0..l]]
+
+{-
+Note [Avoid NonEmpty combinators]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+As of base-4.17, most of the NonEmpty API is surprisingly lazy.
+Using it without forcing the arguments yourself is just begging GHC
+to make your code waste time allocating useless selector thunks.
+"Refactor" with care!
+-}
+
+
 
 -- ---------------------------------------------------------------------
 -- ** Ordered 'ByteString's

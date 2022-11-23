@@ -1435,12 +1435,14 @@ unzip ls = (pack (List.map fst ls), pack (List.map snd ls))
 
 -- | Returns all initial segments of the given 'ByteString', shortest first.
 inits :: ByteString -> [ByteString]
+-- see Note [Avoid NonEmpty combinators] in Data.ByteString
 inits bs = NE.toList $! initsNE bs
 
 -- | Returns all initial segments of the given 'ByteString', shortest first.
 --
 -- @since 0.11.4.0
 initsNE :: ByteString -> NonEmpty ByteString
+-- see Note [Avoid NonEmpty combinators] in Data.ByteString
 initsNE = (Empty :|) . inits' id
   where
     inits' :: (ByteString -> ByteString) -> ByteString -> [ByteString]
@@ -1452,15 +1454,18 @@ initsNE = (Empty :|) . inits' id
 
 -- | /O(n)/ Returns all final segments of the given 'ByteString', longest first.
 tails :: ByteString -> [ByteString]
+-- see Note [Avoid NonEmpty combinators] in Data.ByteString
 tails bs = NE.toList $! tailsNE bs
 
 -- | /O(n)/ Returns all final segments of the given 'ByteString', longest first.
 --
 -- @since 0.11.4.0
 tailsNE :: ByteString -> NonEmpty ByteString
-tailsNE bs = case  uncons bs  of
+-- see Note [Avoid NonEmpty combinators] in Data.ByteString
+tailsNE bs = case uncons bs of
   Nothing -> Empty :| []
   Just (_, tl) -> bs :| tails tl
+
 
 -- ---------------------------------------------------------------------
 -- Low level constructors
