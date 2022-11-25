@@ -353,9 +353,13 @@ head (Chunk c _) = S.unsafeHead c
 -- if it is empty.
 uncons :: ByteString -> Maybe (Word8, ByteString)
 uncons Empty = Nothing
-uncons (Chunk c cs)
-    = Just (S.unsafeHead c,
-            if S.length c == 1 then cs else Chunk (S.unsafeTail c) cs)
+uncons (Chunk c cs) = case S.length c of
+  -- Don't move this test inside of the Just or (,).
+  -- We don't want to allocate a thunk to put inside of the tuple!
+  -- And if "let !tl = ... in Just (..., tl)" seems more appealing,
+  -- remember that this function must remain lazy in cs.
+  1 -> Just (S.unsafeHead c, cs)
+  _ -> Just (S.unsafeHead c, Chunk (S.unsafeTail c) cs)
 {-# INLINE uncons #-}
 
 -- | /O(1)/ Extract the elements after the head of a ByteString, which must be
