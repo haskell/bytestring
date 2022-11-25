@@ -1724,7 +1724,9 @@ Note [Avoid NonEmpty combinators]
 As of base-4.17, most of the NonEmpty API is surprisingly lazy.
 Using it without forcing the arguments yourself is just begging GHC
 to make your code waste time allocating useless selector thunks.
-"Refactor" with care!
+This may change in the future. See also this CLC issue:
+  https://github.com/haskell/core-libraries-committee/issues/107
+But until then, "refactor" with care!
 -}
 
 
