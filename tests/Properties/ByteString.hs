@@ -56,10 +56,12 @@ import Text.Read
 
 #endif
 
+import Prelude hiding (head, tail)
 import Control.Arrow
 import Data.Char
 import Data.Foldable
 import qualified Data.List as List
+import qualified Data.List.NonEmpty as NE
 import Data.Semigroup
 import Data.String
 import Data.Tuple
@@ -183,6 +185,10 @@ tests =
     \x -> map B.unpack (B.inits x) === List.inits (B.unpack x)
   , testProperty "tails" $
     \x -> map B.unpack (B.tails x) === List.tails (B.unpack x)
+  , testProperty "initsNE" $
+    \x -> NE.map B.unpack (B.initsNE x) === NE.inits (B.unpack x)
+  , testProperty "tailsNE" $
+    \x -> NE.map B.unpack (B.tailsNE x) === NE.tails (B.unpack x)
 #endif
   , testProperty "all" $
     \f x -> B.all f x === all f (B.unpack x)

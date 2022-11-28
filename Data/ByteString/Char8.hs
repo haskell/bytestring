@@ -129,6 +129,8 @@ module Data.ByteString.Char8 (
         groupBy,
         inits,
         tails,
+        initsNE,
+        tailsNE,
         strip,
         stripPrefix,
         stripSuffix,
@@ -249,7 +251,7 @@ import qualified Data.ByteString.Unsafe as B
 
 -- Listy functions transparently exported
 import Data.ByteString (null,length,tail,init,append
-                       ,inits,tails,reverse,transpose
+                       ,inits,tails,initsNE,tailsNE,reverse,transpose
                        ,concat,take,takeEnd,drop,dropEnd,splitAt
                        ,intercalate,sort,isPrefixOf,isSuffixOf
                        ,isInfixOf,stripPrefix,stripSuffix
