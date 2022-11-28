@@ -97,6 +97,12 @@ lazyByteStringData :: L.ByteString
 lazyByteStringData = case S.splitAt (nRepl `div` 2) byteStringData of
     (bs1, bs2) -> L.fromChunks [bs1, bs2]
 
+{-# NOINLINE smallChunksData #-}
+smallChunksData :: L.ByteString
+smallChunksData
+  = L.fromChunks [S.take sz (S.drop n byteStringData)
+                 | let sz = 48, n <- [0, sz .. S.length byteStringData]]
+
 {-# NOINLINE byteStringChunksData #-}
 byteStringChunksData :: [S.ByteString]
 byteStringChunksData = map (S.pack . replicate (4 ) . fromIntegral) intData
@@ -403,6 +409,15 @@ main = do
         , bench "mostlyFalseSlow" $ partitionLazy (\x -> hashWord8 x < w 10)
         , bench "balancedSlow"    $ partitionLazy (\x -> hashWord8 x < w 128)
         ]
+      ]
+    , bgroup "inits"
+      [ bench "strict" $ nf S.inits byteStringData
+      , bench "lazy"   $ nf L.inits lazyByteStringData
+      , bench "lazy (small chunks)" $ nf L.inits smallChunksData
+      ]
+    , bgroup "tails"
+      [ bench "strict" $ nf S.tails byteStringData
+      , bench "lazy"   $ nf L.tails lazyByteStringData
       ]
     , bgroup "sort" $ map (\s -> bench (S8.unpack s) $ nf S.sort s) sortInputs
     , bgroup "stimes" $ let  st = stimes :: Int -> S.ByteString -> S.ByteString
