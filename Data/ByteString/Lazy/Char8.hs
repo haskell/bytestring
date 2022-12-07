@@ -247,6 +247,7 @@ import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString as S (ByteString) -- typename only
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Unsafe as B
+import Data.List.NonEmpty (NonEmpty(..))
 import Data.ByteString.Lazy.Internal
 import Data.ByteString.Lazy.ReadInt
 import Data.ByteString.Lazy.ReadNat
@@ -856,59 +857,50 @@ unzip :: [(Char, Char)] -> (ByteString, ByteString)
 unzip ls = (pack (fmap fst ls), pack (fmap snd ls))
 {-# INLINE unzip #-}
 
--- | 'lines' breaks a ByteString up into a list of ByteStrings at
+-- | 'lines' lazily splits a ByteString into a list of ByteStrings at
 -- newline Chars (@'\\n'@). The resulting strings do not contain newlines.
---
--- As of bytestring 0.9.0.3, this function is stricter than its
--- list cousin.
+-- The first chunk of the result is only strict in the first chunk of the
+-- input.
 --
 -- Note that it __does not__ regard CR (@'\\r'@) as a newline character.
 --
 lines :: ByteString -> [ByteString]
 lines Empty          = []
-lines (Chunk c0 cs0) = loop0 c0 cs0
-    where
-    -- this is a really performance sensitive function but the
-    -- chunked representation makes the general case a bit expensive
-    -- however assuming a large chunk size and normalish line lengths
-    -- we will find line endings much more frequently than chunk
-    -- endings so it makes sense to optimise for that common case.
-    -- So we partition into two special cases depending on whether we
-    -- are keeping back a list of chunks that will eventually be output
-    -- once we get to the end of the current line.
+lines (Chunk c0 cs0) = unNE $! go c0 cs0
+  where
+    -- Natural NonEmpty -> List
+    unNE :: NonEmpty a -> [a]
+    unNE (a :| b) = a : b
 
-    -- the common special case where we have no existing chunks of
-    -- the current line
-    loop0 :: S.ByteString -> ByteString -> [ByteString]
-    loop0 c cs =
-        case B.elemIndex (c2w '\n') c of
-            Nothing -> case cs of
-                           Empty  | B.null c  -> []
-                                  | otherwise -> [Chunk c Empty]
-                           (Chunk c' cs')
-                               | B.null c  -> loop0 c'     cs'
-                               | otherwise -> loop  c' [c] cs'
+    -- Strict in the first argument, lazy in the second.
+    consNE :: ByteString -> NonEmpty ByteString -> NonEmpty ByteString
+    consNE !a b = a :| (unNE $! b)
 
-            Just n | n /= 0    -> Chunk (B.unsafeTake n c) Empty
-                                : loop0 (B.unsafeDrop (n+1) c) cs
-                   | otherwise -> Empty
-                                : loop0 (B.unsafeTail c) cs
+    -- Note invariant: The initial chunk is non-empty on input, and we
+    -- need to be sure to maintain this in internal recursive calls.
+    go :: S.ByteString -> ByteString -> NonEmpty ByteString
+    go c cs = case B.elemIndex (c2w '\n') c of
+        Just n
+            | n1 <- n + 1
+            , n1 < B.length c -> consNE c' $ go (B.unsafeDrop n1 c) cs
+              -- 'c' was a multi-line chunk
+            | otherwise       -> c' :| lines cs
+              -- 'c' was a single-line chunk
+          where
+            !c' = chunk (B.unsafeTake n c) Empty
 
-    -- the general case when we are building a list of chunks that are
-    -- part of the same line
-    loop :: S.ByteString -> [S.ByteString] -> ByteString -> [ByteString]
-    loop c line cs =
-        case B.elemIndex (c2w '\n') c of
-            Nothing ->
-                case cs of
-                    Empty -> let !c' = revChunks (c : line)
-                              in [c']
-
-                    (Chunk c' cs') -> loop c' (c : line) cs'
-
-            Just n ->
-                let !c' = revChunks (B.unsafeTake n c : line)
-                 in c' : loop0 (B.unsafeDrop (n+1) c) cs
+        -- Initial chunk with no new line becomes first chunk of
+        -- first line of result, with the rest of the result lazy!
+        -- In particular, we don't strictly pattern match on 'cs'.
+        --
+        -- We can form `Chunk c ...` because the invariant is maintained
+        -- here and also by using `chunk` in the defintion of `c'` above.
+        Nothing -> let ~(l:|ls) = lazyRest cs
+                    in  Chunk c l :| ls
+          where
+            lazyRest :: ByteString -> NonEmpty ByteString
+            lazyRest (Chunk c' cs') = go c' cs'
+            lazyRest Empty          = Empty :| []
 
 -- | 'unlines' joins lines, appending a terminating newline after each.
 --
@@ -950,10 +942,3 @@ hPutStrLn h ps = hPut h ps >> hPut h (L.singleton 0x0a)
 --
 putStrLn :: ByteString -> IO ()
 putStrLn = hPutStrLn stdout
-
--- ---------------------------------------------------------------------
--- Internal utilities
-
--- reverse a list of possibly-empty chunks into a lazy ByteString
-revChunks :: [S.ByteString] -> ByteString
-revChunks = List.foldl' (flip chunk) Empty
