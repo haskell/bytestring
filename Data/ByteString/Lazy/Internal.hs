@@ -4,6 +4,11 @@
 {-# LANGUAGE DeriveLift #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE Unsafe #-}
+
+#ifdef HS_BYTESTRING_ASSERTIONS
+{-# LANGUAGE PatternSynonyms #-}
+#endif
+
 {-# OPTIONS_HADDOCK not-home #-}
 
 -- |
@@ -24,7 +29,7 @@
 module Data.ByteString.Lazy.Internal (
 
         -- * The lazy @ByteString@ type and representation
-        ByteString(..),
+        ByteString(Empty, Chunk),
         LazyByteString,
         chunk,
         foldrChunks,
@@ -71,6 +76,11 @@ import GHC.Exts                 (IsList(..))
 
 import qualified Language.Haskell.TH.Syntax as TH
 
+#ifdef HS_BYTESTRING_ASSERTIONS
+import Control.Exception (assert)
+#endif
+
+
 -- | A space-efficient representation of a 'Word8' vector, supporting many
 -- efficient operations.
 --
@@ -78,9 +88,23 @@ import qualified Language.Haskell.TH.Syntax as TH
 -- from "Data.ByteString.Lazy.Char8" it can be interpreted as containing
 -- 8-bit characters.
 --
-data ByteString = Empty | Chunk {-# UNPACK #-} !S.ByteString ByteString
+data ByteString = Empty
+#ifndef HS_BYTESTRING_ASSERTIONS
+  | Chunk {-# UNPACK #-} !S.ByteString ByteString
+#else
+  | Chunk_ {-# UNPACK #-} !S.ByteString ByteString
+#endif
     deriving (Typeable, TH.Lift)
 -- See 'invariant' function later in this module for internal invariants.
+
+#ifdef HS_BYTESTRING_ASSERTIONS
+pattern Chunk :: S.ByteString -> ByteString -> ByteString
+pattern Chunk c cs <- Chunk_ c cs where
+  Chunk c@(S.BS _ len) cs = assert (len > 0) Chunk_ c cs
+
+{-# COMPLETE Empty, Chunk #-}
+#endif
+
 
 -- | Type synonym for the lazy flavour of 'ByteString'.
 --
@@ -158,15 +182,19 @@ unpackChars (Chunk c cs) = S.unpackAppendCharsLazy c (unpackChars cs)
 
 ------------------------------------------------------------------------
 
+-- We no longer use these invariant-checking functions internally,
+-- preferring an assertion on `Chunk` itself, controlled by the
+-- HS_BYTESTRING_ASSERTIONS preprocessor macro.
+
 -- | The data type invariant:
 -- Every ByteString is either 'Empty' or consists of non-null 'S.ByteString's.
--- All functions must preserve this, and the QC properties must check this.
+-- All functions must preserve this.
 --
 invariant :: ByteString -> Bool
 invariant Empty                     = True
 invariant (Chunk (S.BS _ len) cs) = len > 0 && invariant cs
 
--- | In a form that checks the invariant lazily.
+-- | ...in a form that checks the invariant lazily.
 checkInvariant :: ByteString -> ByteString
 checkInvariant Empty = Empty
 checkInvariant (Chunk c@(S.BS _ len) cs)
