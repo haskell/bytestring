@@ -2,6 +2,7 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveLift #-}
+{-# LANGUAGE MagicHash #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE Unsafe #-}
 {-# OPTIONS_HADDOCK not-home #-}
@@ -67,7 +68,7 @@ import Data.String      (IsString(..))
 import Data.Typeable            (Typeable)
 import Data.Data                (Data(..), mkNoRepType)
 
-import GHC.Exts                 (IsList(..))
+import GHC.Exts                 (IsList(..), isTrue#, reallyUnsafePtrEquality#)
 
 import qualified Language.Haskell.TH.Syntax as TH
 
@@ -231,27 +232,29 @@ eq :: ByteString -> ByteString -> Bool
 eq Empty Empty = True
 eq Empty _     = False
 eq _     Empty = False
-eq (Chunk a@(S.BS ap al) as) (Chunk b@(S.BS bp bl) bs) =
-  case compare al bl of
-    LT -> a == S.BS bp al && eq as (Chunk (S.BS (S.plusForeignPtr bp al) (bl - al)) bs)
-    EQ -> a == b && eq as bs
-    GT -> S.BS ap bl == b && eq (Chunk (S.BS (S.plusForeignPtr ap bl) (al - bl)) as) bs
+eq ac@(Chunk a@(S.BS ap al) as) bc@(Chunk b@(S.BS bp bl) bs)
+  | isTrue# (reallyUnsafePtrEquality# ac bc) = True
+  | otherwise = case compare al bl of
+      LT -> a == S.BS bp al && eq as (Chunk (S.BS (S.plusForeignPtr bp al) (bl - al)) bs)
+      EQ -> a == b && eq as bs
+      GT -> S.BS ap bl == b && eq (Chunk (S.BS (S.plusForeignPtr ap bl) (al - bl)) as) bs
 
 cmp :: ByteString -> ByteString -> Ordering
 cmp Empty Empty = EQ
 cmp Empty _     = LT
 cmp _     Empty = GT
-cmp (Chunk a@(S.BS ap al) as) (Chunk b@(S.BS bp bl) bs) =
-  case compare al bl of
-    LT -> case compare a (S.BS bp al) of
-            EQ     -> cmp as (Chunk (S.BS (S.plusForeignPtr bp al) (bl - al)) bs)
-            result -> result
-    EQ -> case compare a b of
-            EQ     -> cmp as bs
-            result -> result
-    GT -> case compare (S.BS ap bl) b of
-            EQ     -> cmp (Chunk (S.BS (S.plusForeignPtr ap bl) (al - bl)) as) bs
-            result -> result
+cmp ac@(Chunk a@(S.BS ap al) as) bc@(Chunk b@(S.BS bp bl) bs)
+  | isTrue# (reallyUnsafePtrEquality# ac bc) = EQ
+  | otherwise = case compare al bl of
+      LT -> case compare a (S.BS bp al) of
+              EQ     -> cmp as (Chunk (S.BS (S.plusForeignPtr bp al) (bl - al)) bs)
+              result -> result
+      EQ -> case compare a b of
+              EQ     -> cmp as bs
+              result -> result
+      GT -> case compare (S.BS ap bl) b of
+              EQ     -> cmp (Chunk (S.BS (S.plusForeignPtr ap bl) (al - bl)) as) bs
+              result -> result
 
 append :: ByteString -> ByteString -> ByteString
 append xs ys = foldrChunks Chunk ys xs
