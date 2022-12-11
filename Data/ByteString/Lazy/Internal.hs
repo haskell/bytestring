@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveLift #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE Unsafe #-}
 
@@ -69,7 +69,6 @@ import Control.DeepSeq  (NFData, rnf)
 
 import Data.String      (IsString(..))
 
-import Data.Typeable            (Typeable)
 import Data.Data                (Data(..), mkNoRepType)
 
 import GHC.Exts                 (IsList(..))
@@ -88,22 +87,25 @@ import Control.Exception (assert)
 -- from "Data.ByteString.Lazy.Char8" it can be interpreted as containing
 -- 8-bit characters.
 --
-data ByteString = Empty
 #ifndef HS_BYTESTRING_ASSERTIONS
-  | Chunk {-# UNPACK #-} !S.ByteString ByteString
-#else
-  | Chunk_ {-# UNPACK #-} !S.ByteString ByteString
-#endif
-    deriving (Typeable, TH.Lift)
--- See 'invariant' function later in this module for internal invariants.
+data ByteString = Empty | Chunk  {-# UNPACK #-} !S.ByteString ByteString
+  -- INVARIANT: The S.ByteString field of any Chunk is not empty.
 
-#ifdef HS_BYTESTRING_ASSERTIONS
+  -- To make testing of this invariant convenient, we add an
+  -- assertion to that effect when the HS_BYTESTRING_ASSERTIONS
+  -- preprocessor macro is defined, by renaming the actual constructor
+  -- and providing a pattern synonym that does the checking:
+#else
+data ByteString = Empty | Chunk_ {-# UNPACK #-} !S.ByteString ByteString
+
 pattern Chunk :: S.ByteString -> ByteString -> ByteString
 pattern Chunk c cs <- Chunk_ c cs where
   Chunk c@(S.BS _ len) cs = assert (len > 0) Chunk_ c cs
 
 {-# COMPLETE Empty, Chunk #-}
 #endif
+
+deriving instance TH.Lift ByteString
 
 
 -- | Type synonym for the lazy flavour of 'ByteString'.
@@ -187,14 +189,16 @@ unpackChars (Chunk c cs) = S.unpackAppendCharsLazy c (unpackChars cs)
 -- HS_BYTESTRING_ASSERTIONS preprocessor macro.
 
 -- | The data type invariant:
--- Every ByteString is either 'Empty' or consists of non-null 'S.ByteString's.
--- All functions must preserve this.
+-- Every ByteString is either 'Empty' or consists of non-null
+-- 'S.StrictByteString's. All functions must preserve this.
 --
 invariant :: ByteString -> Bool
 invariant Empty                     = True
 invariant (Chunk (S.BS _ len) cs) = len > 0 && invariant cs
 
--- | ...in a form that checks the invariant lazily.
+-- | Lazily checks that the given 'ByteString' satisfies the data type's
+-- "no empty chunks" invariant, raising an exception in place of the
+-- first chunk that does not satisfy the invariant.
 checkInvariant :: ByteString -> ByteString
 checkInvariant Empty = Empty
 checkInvariant (Chunk c@(S.BS _ len) cs)
