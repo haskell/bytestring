@@ -90,6 +90,7 @@ import Control.Exception (assert)
 #ifndef HS_BYTESTRING_ASSERTIONS
 data ByteString = Empty | Chunk  {-# UNPACK #-} !S.ByteString ByteString
   -- INVARIANT: The S.ByteString field of any Chunk is not empty.
+  -- (See also the 'invariant' and 'checkInvariant' functions.)
 
   -- To make testing of this invariant convenient, we add an
   -- assertion to that effect when the HS_BYTESTRING_ASSERTIONS
