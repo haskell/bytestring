@@ -17,17 +17,17 @@ jobs:
       fail-fast: true
       matrix:
         os: [ubuntu-latest]
-        ghc: ['8.0', '8.2', '8.4', '8.6', '8.8', '8.10', '9.0', '9.2', '9.4.1']
+        ghc: ['8.0', '8.2', '8.4', '8.6', '8.8', '8.10', '9.0', '9.2', '9.4']
         include:
         - os: macOS-latest
           ghc: 'latest'
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Install libncurses5 and libtinfo
-      if: runner.os == 'Linux' && matrix.ghc <= '8.2'
+      if: runner.os == 'Linux' && (matrix.ghc == '8.0' || matrix.ghc == '8.2')
       run: |
         sudo apt-get install libncurses5 libtinfo5
-    - uses: haskell/actions/setup@v1
+    - uses: haskell/actions/setup@v2
       id: setup-haskell-cabal
       with:
         ghc-version: ${{ matrix.ghc }}
@@ -63,16 +63,12 @@ jobs:
   windows-build:
     runs-on: windows-latest
     needs: build
-    strategy:
-      fail-fast: true
-      matrix:
-        ghc: ['latest']
     steps:
-    - uses: actions/checkout@v2
-    - uses: haskell/actions/setup@v1
+    - uses: actions/checkout@v3
+    - uses: haskell/actions/setup@v2
       id: setup-haskell-cabal
       with:
-        ghc-version: ${{ matrix.ghc }}
+        ghc-version: 'latest'
     - name: Update cabal package database
       run: cabal update
     - uses: actions/cache@v2
@@ -81,7 +77,7 @@ jobs:
         path: |
           ${{ steps.setup-haskell-cabal.outputs.cabal-store }}
           dist-newstyle
-        key: ${{ runner.os }}-${{ matrix.ghc }}
+        key: ${{ runner.os }}-latest
     # We rebuild tests several times to avoid intermittent failures on Windows
     # https://github.com/haskell/actions/issues/36
     # We also use --enable-tests and --enable-benchmarks to avoid
@@ -126,9 +122,9 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        arch: ['s390x', 'ppc64le']
+        arch: ['s390x', 'ppc64le', 'armv7', 'aarch64']
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - uses: uraimo/run-on-arch-action@v2.1.1
       timeout-minutes: 60
       with:
@@ -148,11 +144,11 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - uses: haskell/actions/setup@v1
+    - uses: actions/checkout@v3
+    - uses: haskell/actions/setup@v2
       id: setup-haskell-cabal
       with:
-        ghc-version: "9.2.2"
+        ghc-version: 'latest'
     - name: Update cabal package database
       run: cabal update
     - uses: actions/cache@v2
@@ -161,7 +157,7 @@ jobs:
         path: |
           ${{ steps.setup-haskell-cabal.outputs.cabal-store }}
           dist-newstyle
-        key: ${{ runner.os }}-9.2.2
+        key: ${{ runner.os }}-latest
     - name: Test
       run: cabal test --ghc-options='-fcheck-prim-bounds -fno-ignore-asserts'
 
@@ -175,11 +171,34 @@ jobs:
       run: |
           yum install -y gcc gmp gmp-devel make ncurses ncurses-compat-libs xz perl
           curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | BOOTSTRAP_HASKELL_NONINTERACTIVE=1 sh
-      shell: bash
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: test
       run: |
           source ~/.ghcup/env
           cabal update
           cabal run bytestring-tests
-      shell: bash
+
+  i386:
+    needs: build
+    runs-on: ubuntu-latest
+    container:
+      image: i386/ubuntu:bionic
+    steps:
+    - name: Install
+      run: |
+        apt-get update -y
+        apt-get install -y ghc cabal-install
+    - uses: actions/checkout@v1
+    # We need to break dependency circuit between optparse-applicative,
+    # process, unix and bytestring. Newer versions of Cabal are capable
+    # of coming up with these automatically, but older ones need a hint.
+    # Specifically, we need to inform Cabal that:
+    #
+    # * optparse-applicative doesn't use process;
+    # * QuickCheck uses the old random package; and
+    # * tasty doesn't use unix.
+    - name: Test
+      run: |
+        cabal update
+        cabal install --dependencies-only --enable-tests --constraint 'optparse-applicative -process' --constraint 'QuickCheck +old-random' --constraint 'tasty -unix'
+        cabal test
