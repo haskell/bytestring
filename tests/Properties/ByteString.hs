@@ -104,8 +104,9 @@ tests =
     -- but if it is ASCII, we should not generate Unicode filenames.
     enc <- getFileSystemEncoding
     pure $ case textEncodingName enc of
-      "ASCII" -> property (prop . getASCIIString)
-      _       -> property prop
+      "ASCII"          -> property (prop . getASCIIString)
+      "ANSI_X3.4-1968" -> property (prop . getASCIIString)
+      _                -> property prop
 #endif
 
   , testProperty "==" $
