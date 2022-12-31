@@ -12,7 +12,7 @@
 
 * Bug fixes:
   * [Prevent commoning-up of `ShortByteString` literals produced by `TemplateHaskell`](https://github.com/haskell/bytestring/pull/542)
-  * [Improve behavior of `Builder` literals at chunk boundaries](https://github.com/haskell/bytestring/pull/538) (The old behavior was technically allowed but caused problems downstream.)
+  * [Make `Builder` literals demand a sane amount of memory at chunk boundaries](https://github.com/haskell/bytestring/pull/538)
 * API additions and behavior changes:
   * [Export `unsafeIndex` for `ShortByteString` which had been accidentally removed in v0.11.3.0](https://github.com/haskell/bytestring/pull/532)
   * [Make `Data.ByteString.Lazy.Char8.lines` less strict](https://github.com/haskell/bytestring/pull/562)
