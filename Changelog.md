@@ -10,24 +10,29 @@
 
 [0.11.4.0] — January 2023
 
-* [Export `unsafeIndex` for ShortByteString which had been accidentally removed in v0.11.3.0](https://github.com/haskell/bytestring/pull/532)
-* [Simplify `useAsCString`](https://github.com/haskell/bytestring/pull/516)
-* [Remove redundant comparisons in `Data.ByteString.Short.splitAt`](https://github.com/haskell/bytestring/pull/528)
-* [Speed up `Builder`s for non-host endianness](https://github.com/haskell/bytestring/pull/531)
-* [Document possible interleaving of `hPutStrLn` and friends](https://github.com/haskell/bytestring/pull/518)
-* [Documentation tweaks](https://github.com/haskell/bytestring/pull/523)
-* [Add lower bound for `tasty-quickcheck`](https://github.com/haskell/bytestring/pull/520)
-* [Improve behavior of `Builder` literals at chunk boundaries](https://github.com/haskell/bytestring/pull/538)
-* [Prevent commoning-up of `ShortByteString` literals produced by `TemplateHaskell`](https://github.com/haskell/bytestring/pull/542/files)
-* [Work around upstream `keepAlive#` performance regressions](https://github.com/haskell/bytestring/pull/536)
-* [Speed up `unpack` and folds for `ShortByteString`](https://github.com/haskell/bytestring/pull/526)
-* [Improve performance of `uncons` for `LazyByteString`](https://github.com/haskell/bytestring/pull/559)
-* [Add NonEmpty variants of inits and tails](https://github.com/haskell/bytestring/pull/557)
-* [Make `Data.ByteString.Lazy.Char8.lines` less strict](https://github.com/haskell/bytestring/pull/562)
-* Various CI tweaks ([1](https://github.com/haskell/bytestring/pull/539), [2](https://github.com/haskell/bytestring/pull/550), [3](https://github.com/haskell/bytestring/pull/551), [4](https://github.com/haskell/bytestring/pull/563), [5](https://github.com/haskell/bytestring/pull/566), [6](https://github.com/haskell/bytestring/pull/568))
-
+* Bug fixes:
+  * [Prevent commoning-up of `ShortByteString` literals produced by `TemplateHaskell`](https://github.com/haskell/bytestring/pull/542)
+  * [Improve behavior of `Builder` literals at chunk boundaries](https://github.com/haskell/bytestring/pull/538) (The old behavior was technically allowed but caused problems downstream.)
+* API additions and behavior changes:
+  * [Export `unsafeIndex` for `ShortByteString` which had been accidentally removed in v0.11.3.0](https://github.com/haskell/bytestring/pull/532)
+  * [Make `Data.ByteString.Lazy.Char8.lines` less strict](https://github.com/haskell/bytestring/pull/562)
+  * [Add `NonEmpty` variants of `inits` and `tails`](https://github.com/haskell/bytestring/pull/557)
+* Performance improvements:
+  * [Speed up `unpack` and folds for `ShortByteString`](https://github.com/haskell/bytestring/pull/526)
+  * [Speed up `Builder`s for non-host endianness](https://github.com/haskell/bytestring/pull/531)
+  * [Work around upstream `keepAlive#` performance regressions](https://github.com/haskell/bytestring/pull/536)
+  * [Improve performance of `uncons` for `LazyByteString`](https://github.com/haskell/bytestring/pull/559)
+  * [Simplify `useAsCString`](https://github.com/haskell/bytestring/pull/516)
+  * [Remove redundant comparisons in `Data.ByteString.Short.splitAt`](https://github.com/haskell/bytestring/pull/528)
+* Miscellaneous:
+  * [Document possible interleaving of `hPutStrLn` and friends](https://github.com/haskell/bytestring/pull/518)
+  * [Documentation tweaks](https://github.com/haskell/bytestring/pull/523)
+  * [Add lower bound for `tasty-quickcheck`](https://github.com/haskell/bytestring/pull/520)
 <!--
-No entry for #556 or #553.
+* Internal stuff:
+  * Various CI tweaks ([1](https://github.com/haskell/bytestring/pull/539), [2](https://github.com/haskell/bytestring/pull/550), [3](https://github.com/haskell/bytestring/pull/551), [4](https://github.com/haskell/bytestring/pull/563), [5](https://github.com/haskell/bytestring/pull/566), [6](https://github.com/haskell/bytestring/pull/568))
+  * [Avoid pattern-matching with `SBS`, for consistency with master](https://github.com/haskell/bytestring/pull/556)
+  * [Avoid `Prelude.head` and `Prelude.tail`](https://github.com/haskell/bytestring/pull/553)
 -->
 
 [0.11.4.0]: https://github.com/haskell/bytestring/compare/0.11.3.1...0.11.4.0
@@ -42,7 +47,7 @@ No entry for #556 or #553.
 
 [0.11.3.0] — February 2022
 
-Erratum: `unsafeIndex` was accidentally removed from the export list of `Data.ByteString.Short.Internal`. This was corrected in 0.11.4.0.
+Erratum: `unsafeIndex` was accidentally removed from the export list of `Data.ByteString.Short.Internal` in this release. This was corrected in 0.11.4.0.
 
 * [Enhance `ShortByteString` API](https://github.com/haskell/bytestring/pull/471)
   - Add `all`, `any`, `append`, `break`, `breakEnd`, `breakSubstring`, `concat`, `cons`, `count`, `drop`, `dropEnd`, `dropWhile`, `dropWhileEnd`, `elem`, `elemIndex`, `elemIndices`, `filter`, `find`, `findIndex`, `findIndices`, `foldl'`, `foldl`, `foldl1'`, `foldl1`, `foldr'`, `foldr`, `foldr1'`, `foldr1`, `head`, `init`, `intercalate`, `isInfixOf`, `isPrefixOf`, `isSuffixOf`, `last`, `map`, `partition`, `replicate`, `reverse`, `singleton`, `snoc`, `span`, `spanEnd`, `split`, `splitAt`, `splitWith`, `stripPrefix`, `stripSuffix`, `tail`, `take`, `takeEnd`, `takeWhile`, `takeWhileEnd`, `uncons`, `unfoldr`, `unfoldrN`, `unsnoc` to `Data.ByteString.Short`.
