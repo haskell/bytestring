@@ -195,3 +195,25 @@ jobs:
         source ~/.ghcup/env
         cabal update
         cabal test
+
+  arm:
+    # needs: build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+        - os: [self-hosted, Linux, ARM64, aarch32-linux]
+        - os: [self-hosted, macOS, aarch64]
+    steps:
+    - name: Install
+      run: |
+        apt-get update -y
+        apt-get install -y autoconf build-essential zlib1g-dev libgmp-dev curl libncurses5 libtinfo5 libncurses5-dev libtinfo-dev
+        curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | BOOTSTRAP_HASKELL_NONINTERACTIVE=1 sh
+    - uses: actions/checkout@v1
+    - name: Test
+      run: |
+        source ~/.ghcup/env
+        cabal update
+        cabal test
