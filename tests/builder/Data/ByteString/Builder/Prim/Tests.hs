@@ -14,6 +14,7 @@ import           Data.Char  (ord)
 import qualified Data.ByteString.Lazy                  as L
 import qualified Data.ByteString.Lazy.Char8            as LC
 import           Data.ByteString.Builder
+import           Data.ByteString.Builder.Extra         as BE
 import qualified Data.ByteString.Builder.Prim          as BP
 import           Data.ByteString.Builder.Prim.TestUtils
 
@@ -22,17 +23,28 @@ import           Test.Tasty.QuickCheck
 
 tests :: [TestTree]
 tests = concat [ testsBinary, testsASCII, testsChar8, testsUtf8
-               , testsCombinatorsB, [testCString, testCStringUtf8] ]
+               , testsCombinatorsB
+               , [ testCString
+                 , testCStringUtf8 1
+                 , testCStringUtf8 6
+                 , testCStringUtf8 64
+                 ]
+               ]
 
 testCString :: TestTree
 testCString = testProperty "cstring" $
     toLazyByteString (BP.cstring "hello world!"#) ==
       LC.pack "hello" `L.append` L.singleton 0x20 `L.append` LC.pack "world!"
 
-testCStringUtf8 :: TestTree
-testCStringUtf8 = testProperty "cstringUtf8" $
-    toLazyByteString (BP.cstringUtf8 "hello\xc0\x80world!"#) ==
-      LC.pack "hello" `L.append` L.singleton 0x00 `L.append` LC.pack "world!"
+testCStringUtf8 :: Int -> TestTree
+testCStringUtf8 sz = testProperty "cstringUtf8" $
+    BE.toLazyByteStringWith (BE.untrimmedStrategy sz sz) L.empty
+      (BP.cstringUtf8 "hello\xc0\x80\xc0\x80\xd0\xbc\xd0\xb8\xd1\x80\xc0\x80\xC0"#) ==
+      LC.pack "hello" `L.append` L.singleton 0x00
+                      `L.append` L.singleton 0x00
+                      `L.append` LC.pack "\xd0\xbc\xd0\xb8\xd1\x80"
+                      `L.append` L.singleton 0x00
+                      `L.append` L.singleton 0x00
 
 ------------------------------------------------------------------------------
 -- Binary

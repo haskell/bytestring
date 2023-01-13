@@ -1,4 +1,7 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE Trustworthy #-}
+
+#include "bytestring-cpp-macros.h"
 
 {- | Copyright : (c) 2010-2011 Simon Meier
                  (c) 2010      Jasper van der Jeugt
@@ -463,10 +466,11 @@ import           Data.ByteString.Builder.Prim.Binary
 import           Data.ByteString.Builder.Prim.ASCII
 
 import           Foreign
+#if !MIN_VERSION_base(4,15,0)
+import           Foreign.C (CSize(..), CString)
+#endif
 import           Foreign.ForeignPtr.Unsafe (unsafeForeignPtrToPtr)
-import           GHC.Word (Word8 (..))
 import           GHC.Exts
-import           GHC.IO
 
 ------------------------------------------------------------------------------
 -- Creating Builders from bounded primitives
@@ -658,59 +662,36 @@ primMapLazyByteStringBounded w =
     L.foldrChunks (\x b -> primMapByteStringBounded w x `mappend` b) mempty
 
 
-------------------------------------------------------------------------------
--- Raw CString encoding
-------------------------------------------------------------------------------
-
--- | A null-terminated ASCII encoded 'Foreign.C.String.CString'.
--- Null characters are not representable.
+-- | Builder for raw 'Addr#' pointers to null-terminated primitive ASCII
+-- strings that are free of embedded null characters.
 --
 -- @since 0.11.0.0
 cstring :: Addr# -> Builder
-cstring =
-    \addr0 -> builder $ step addr0
-  where
-    step :: Addr# -> BuildStep r -> BuildStep r
-    step !addr !k br@(BufferRange op0@(Ptr op0#) ope)
-      | W8# ch == 0 = k br
-      | op0 == ope =
-          return $ bufferFull 1 op0 (step addr k)
-      | otherwise = do
-          IO $ \s -> case writeWord8OffAddr# op0# 0# ch s of
-                       s' -> (# s', () #)
-          let br' = BufferRange (op0 `plusPtr` 1) ope
-          step (addr `plusAddr#` 1#) k br'
-      where
-        !ch = indexWord8OffAddr# addr 0#
+cstring s = asciiLiteralCopy (Ptr s) (byteCountLiteral s)
+{-# INLINE cstring #-}
 
--- | A null-terminated UTF-8 encoded 'Foreign.C.String.CString'.
--- Null characters can be encoded as @0xc0 0x80@.
+-- | Builder for raw 'Addr#' pointers to null-terminated primitive UTF-8
+-- encoded strings in which any emebded null characters are represented via
+-- the two-byte overlong-encoding: @0xC0 0x80@.
 --
 -- @since 0.11.0.0
 cstringUtf8 :: Addr# -> Builder
-cstringUtf8 =
-    \addr0 -> builder $ step addr0
-  where
-    step :: Addr# -> BuildStep r -> BuildStep r
-    step !addr !k br@(BufferRange op0@(Ptr op0#) ope)
-      | W8# ch == 0 = k br
-      | op0 == ope =
-          return $ bufferFull 1 op0 (step addr k)
-        -- NULL is encoded as 0xc0 0x80
-      | W8# ch == 0xc0
-      , W8# (indexWord8OffAddr# addr 1#) == 0x80 = do
-          let !(W8# nullByte#) = 0
-          IO $ \s -> case writeWord8OffAddr# op0# 0# nullByte# s of
-                       s' -> (# s', () #)
-          let br' = BufferRange (op0 `plusPtr` 1) ope
-          step (addr `plusAddr#` 2#) k br'
-      | otherwise = do
-          IO $ \s -> case writeWord8OffAddr# op0# 0# ch s of
-                       s' -> (# s', () #)
-          let br' = BufferRange (op0 `plusPtr` 1) ope
-          step (addr `plusAddr#` 1#) k br'
-      where
-        !ch = indexWord8OffAddr# addr 0#
+cstringUtf8 s = modUtf8LitCopy (Ptr s) (byteCountLiteral s)
+{-# INLINE cstringUtf8 #-}
+
+-- | Byte count of null-terminated primitive literal string excluding the
+-- terminating null byte.
+byteCountLiteral :: Addr# -> Int
+byteCountLiteral addr# =
+#if HS_cstringLength_AND_FinalPtr_AVAILABLE
+  I# (cstringLength# addr#)
+#else
+  fromIntegral (pure_strlen (Ptr addr#))
+
+foreign import ccall unsafe "string.h strlen" pure_strlen
+    :: CString -> CSize
+#endif
+{-# INLINE byteCountLiteral #-}
 
 ------------------------------------------------------------------------------
 -- Char8 encoding
