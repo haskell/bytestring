@@ -21,6 +21,8 @@ jobs:
         include:
         - os: macOS-latest
           ghc: 'latest'
+        - os: [self-hosted, Linux, ARM64, aarch32-linux]
+          ghc: 'latest'
     steps:
     - uses: actions/checkout@v3
     - name: Install libncurses5 and libtinfo
@@ -198,7 +200,7 @@ jobs:
 
   arm:
     # needs: build
-    runs-on: ['self-hosted', 'Linux', 'ARM64']
+    runs-on: [self-hosted, Linux, ARM64]
     steps:
     - uses: actions/checkout@v1
     - name: Test
