@@ -89,7 +89,7 @@ jobs:
         cd bytestring-*/
         bld() { cabal build bytestring:tests --enable-tests --enable-benchmarks; }
         bld || bld || bld
-        
+
     - name: Run Test
       # test broken linking on windows: https://github.com/haskell/bytestring/issues/497
       run: |
@@ -122,7 +122,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        arch: ['s390x', 'ppc64le', 'armv7', 'aarch64']
+        arch: ['s390x', 'ppc64le']
     steps:
     - uses: actions/checkout@v3
     - uses: uraimo/run-on-arch-action@v2.1.1
@@ -195,3 +195,37 @@ jobs:
         source ~/.ghcup/env
         cabal update
         cabal test
+
+  # We use github.com/haskell self-hosted runners for ARM testing.
+  # If they become unavailable in future, put ['armv7', 'aarch64']
+  # back to emulation jobs above.
+  arm:
+    needs: build
+    runs-on: [self-hosted, Linux, ARM64]
+    strategy:
+      fail-fast: true
+      matrix:
+        arch: [arm32v7, arm64v8]
+    steps:
+      - uses: docker://arm64v8/ubuntu:focal
+        name: Cleanup
+        with:
+          args: "find . -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +"
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # GHC 9.2.2 is the last version available on arm32v7 at the moment.
+      # Check https://github.com/haskell/ghcup-metadata/blob/develop/ghcup-0.0.7.yaml
+      # and look for "A_ARM:" bindists.
+      - if: matrix.arch == 'arm32v7'
+        uses: docker://hasufell/arm32v7-ubuntu-haskell:focal
+        name: Run build (arm32v7 linux)
+        with:
+          args: sh -c "curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | BOOTSTRAP_HASKELL_NONINTERACTIVE=1 BOOTSTRAP_HASKELL_MINIMAL=1 BOOTSTRAP_HASKELL_INSTALL_NO_STACK=1 sh && cabal update && cabal test"
+
+      - if: matrix.arch == 'arm64v8'
+        uses: docker://hasufell/arm64v8-ubuntu-haskell:focal
+        name: Run build (arm64v8 linux)
+        with:
+          args: sh -c "curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | BOOTSTRAP_HASKELL_NONINTERACTIVE=1 BOOTSTRAP_HASKELL_MINIMAL=1 BOOTSTRAP_HASKELL_INSTALL_NO_STACK=1 sh && cabal update && cabal test"
