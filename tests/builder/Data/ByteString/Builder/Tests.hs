@@ -34,6 +34,7 @@ import           Data.Word
 import qualified Data.ByteString          as S
 import qualified Data.ByteString.Internal as S
 import qualified Data.ByteString.Lazy     as L
+import qualified Data.ByteString.Lazy.Char8 as LC
 import qualified Data.ByteString.Short    as Sh
 
 import           Data.ByteString.Builder
@@ -47,6 +48,7 @@ import           Control.Exception (evaluate)
 import           System.IO (openTempFile, hPutStr, hClose, hSetBinaryMode, hSetEncoding, utf8, hSetNewlineMode, noNewlineTranslation)
 import           Foreign (ForeignPtr, withForeignPtr, castPtr)
 import           Foreign.C.String (withCString)
+import           GHC.Ptr (Ptr(..))
 import           Numeric (showFFloat)
 import           System.Posix.Internals (c_unlink)
 
@@ -75,7 +77,8 @@ tests =
   testsASCII ++
   testsFloating ++
   testsChar8 ++
-  testsUtf8
+  testsUtf8 ++
+  testCString
 
 
 ------------------------------------------------------------------------------
@@ -984,3 +987,22 @@ testsUtf8 =
   [ testBuilderConstr "charUtf8" charUtf8_list charUtf8
   , testBuilderConstr "stringUtf8" (foldMap charUtf8_list) stringUtf8
   ]
+
+testCString :: [TestTree]
+testCString =
+    [ testProperty "cstring" $
+        toLazyByteString (asclit (Ptr "hello world!"#)) ==
+        LC.pack "hello" `L.append` L.singleton 0x20
+                        `L.append` LC.pack "world!"
+    , testProperty "cstringUtf8" $
+        toLazyByteString (utflit (Ptr "hello\xc0\x80\xc0\x80world\xc0\x80!"#)) ==
+        LC.pack "hello" `L.append` L.singleton 0x00
+                        `L.append` L.singleton 0x00
+                        `L.append` LC.pack "world"
+                        `L.append` L.singleton 0x00
+                        `L.append` LC.singleton '!'
+    ]
+
+asclit, utflit :: Ptr Word8 -> Builder
+asclit str@(Ptr addr) = BI.ascLiteralCopy str (S.byteCountLiteral addr)
+utflit str@(Ptr addr) = BI.modUtf8LitCopy str (S.byteCountLiteral addr)

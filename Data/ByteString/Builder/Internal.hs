@@ -1,5 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables, CPP, BangPatterns, RankNTypes, TupleSections #-}
-{-# LANGUAGE Unsafe #-}
+{-# LANGUAGE MagicHash, ViewPatterns, Unsafe #-}
 {-# OPTIONS_HADDOCK not-home #-}
 -- | Copyright : (c) 2010 - 2011 Simon Meier
 -- License     : BSD3-style (see LICENSE)
@@ -84,6 +84,8 @@ module Data.ByteString.Builder.Internal (
   -- , sizedChunksInsert
 
   , byteStringCopy
+  , ascLiteralCopy
+  , modUtf8LitCopy
   , byteStringInsert
   , byteStringThreshold
 
@@ -127,6 +129,7 @@ module Data.ByteString.Builder.Internal (
 ) where
 
 import           Control.Arrow (second)
+import           Control.Monad (when)
 
 import           Data.Semigroup (Semigroup(..))
 
@@ -138,10 +141,12 @@ import qualified Data.ByteString.Short.Internal as Sh
 import qualified GHC.IO.Buffer as IO (Buffer(..), newByteBuffer)
 import           GHC.IO.Handle.Internals (wantWritableHandle, flushWriteBuffer)
 import           GHC.IO.Handle.Types (Handle__, haByteBuffer, haBufferMode)
+import           GHC.Ptr (Ptr(..))
 import           System.IO (hFlush, BufferMode(..), Handle)
 import           Data.IORef
 
 import           Foreign
+import           Foreign.C.String (CString)
 import           Foreign.ForeignPtr.Unsafe (unsafeForeignPtrToPtr)
 import           System.IO.Unsafe (unsafeDupablePerformIO)
 
@@ -873,6 +878,75 @@ byteStringCopyStep (S.BS ifp isize) !k0 br0@(BufferRange op ope)
 byteStringInsert :: S.ByteString -> Builder
 byteStringInsert =
     \bs -> builder $ \k (BufferRange op _) -> return $ insertChunk op bs k
+
+
+------------------------------------------------------------------------------
+-- Raw CString encoding
+------------------------------------------------------------------------------
+
+-- | Builder for raw 'Addr#' pointers to null-terminated primitive ASCII
+-- strings that are free of embedded (overlong-encoded as the two-byte sequence
+-- @0xC0 0x80@) null characters.
+--
+-- @since 0.11.5.0
+{-# INLINABLE ascLiteralCopy #-}
+ascLiteralCopy :: Ptr Word8 -> Int -> Builder
+ascLiteralCopy = \ !ip !len -> builder $ \k br -> do
+    let !ipe = ip `plusPtr` len
+    wrappedBytesCopyStep (BufferRange ip ipe) k br
+
+-- | GHC represents @NUL@ in string literals via an overlong 2-byte encoding,
+-- which is part of "modified UTF-8" (GHC does not also implement CESU-8).
+modifiedUtf8NUL :: CString
+modifiedUtf8NUL = Ptr "\xc0\x80"#
+
+-- | Builder for raw 'Addr#' pointers to null-terminated primitive UTF-8
+-- encoded strings that may contain embedded overlong-encodings (as the
+-- two-byte sequence @0xC0 0x80@) of null characters.
+--
+-- @since 0.11.5.0
+{-# INLINABLE modUtf8LitCopy #-}
+modUtf8LitCopy :: Ptr Word8 -> Int -> Builder
+modUtf8LitCopy = \ !ip !len -> builder $ \k br -> do
+    nullAt <- c_strstr (castPtr ip) modifiedUtf8NUL
+    modUtf8_step ip len nullAt k br
+
+modUtf8_step :: Ptr Word8 -> Int -> Ptr Word8 -> BuildStep r -> BuildStep r
+modUtf8_step !ip !len ((== nullPtr) -> True) k br =
+    -- Contains no encoded nulls, use simple copy codepath
+    wrappedBytesCopyStep (BufferRange ip ipe) k br
+  where
+    !ipe = ip `plusPtr` len
+modUtf8_step !ip !len !nullAt k (BufferRange op0 ope)
+    -- Copy as much of the null-free portion of the string as fits into the
+    -- available buffer space. If the string is long enough, we may have asked
+    -- for less than its full length, filling the buffer with the rest will go
+    -- into the next builder step.
+    | avail > nullFree = do
+        when (nullFree > 0) (copyBytes op0 ip nullFree)
+        pokeElemOff op0 nullFree 0
+        let used = nullFree + 2
+            len' = len - used
+            !ip' = ip `plusPtr` used
+            !op' = op0 `plusPtr` (nullFree + 1)
+        nullAt' <- c_strstr ip' modifiedUtf8NUL
+        modUtf8_step ip' len' nullAt' k (BufferRange op' ope)
+    | avail > 0 = do
+        -- avail <= nullFree
+        copyBytes op0 ip avail
+        let len' = len - avail
+            !ip' = ip `plusPtr` avail
+            !op' = op0 `plusPtr` avail
+        return $ bufferFull 1 op' (modUtf8_step ip' len' nullAt k)
+    | otherwise =
+        return $ bufferFull 1 op0 (modUtf8_step ip len nullAt k)
+  where
+    !avail = ope `minusPtr` op0
+    !nullFree = nullAt `minusPtr` ip
+
+foreign import ccall unsafe "string.h strstr" c_strstr
+    :: CString -> CString -> IO (Ptr Word8)
+
 
 -- Short bytestrings
 ------------------------------------------------------------------------------

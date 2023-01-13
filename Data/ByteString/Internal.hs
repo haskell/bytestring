@@ -36,7 +36,7 @@ module Data.ByteString.Internal (
         unpackBytes, unpackAppendBytesLazy, unpackAppendBytesStrict,
         unpackChars, unpackAppendCharsLazy, unpackAppendCharsStrict,
         unsafePackAddress, unsafePackLenAddress,
-        unsafePackLiteral, unsafePackLenLiteral,
+        unsafePackLiteral, unsafePackLenLiteral, byteCountLiteral,
 
         -- * Low level imperative construction
         empty,

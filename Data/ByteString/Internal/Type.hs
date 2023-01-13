@@ -39,7 +39,7 @@ module Data.ByteString.Internal.Type (
         unpackBytes, unpackAppendBytesLazy, unpackAppendBytesStrict,
         unpackChars, unpackAppendCharsLazy, unpackAppendCharsStrict,
         unsafePackAddress, unsafePackLenAddress,
-        unsafePackLiteral, unsafePackLenLiteral,
+        unsafePackLiteral, unsafePackLenLiteral, byteCountLiteral,
 
         -- * Low level imperative construction
         empty,
@@ -481,13 +481,22 @@ unsafePackLenAddress len addr# = do
 -- @since 0.11.1.0
 unsafePackLiteral :: Addr# -> ByteString
 unsafePackLiteral addr# =
-#if __GLASGOW_HASKELL__ >= 811
-  unsafePackLenLiteral (I# (cstringLength# addr#)) addr#
-#else
-  let len = accursedUnutterablePerformIO (c_strlen (Ptr addr#))
-   in unsafePackLenLiteral (fromIntegral len) addr#
-#endif
+  unsafePackLenLiteral (byteCountLiteral addr#) addr#
 {-# INLINE unsafePackLiteral #-}
+
+-- | Byte count of null-terminated primitive literal string excluding the
+-- terminating null byte.
+byteCountLiteral :: Addr# -> Int
+byteCountLiteral addr# =
+#if __GLASGOW_HASKELL__ >= 811
+  I# (cstringLength# addr#)
+#else
+  fromIntegral (pure_strlen (Ptr addr#))
+
+foreign import ccall unsafe "string.h strlen" pure_strlen
+    :: CString -> CSize
+#endif
+{-# INLINE byteCountLiteral #-}
 
 
 -- | See 'unsafePackLiteral'. This function is similar,

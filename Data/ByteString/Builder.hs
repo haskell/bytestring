@@ -263,12 +263,14 @@ import qualified Data.ByteString.Builder.Prim  as P
 import qualified Data.ByteString.Lazy.Internal as L
 import           Data.ByteString.Builder.ASCII
 import           Data.ByteString.Builder.RealFloat
+import           Data.ByteString.Internal (byteCountLiteral)
 
 import           Data.String (IsString(..))
 import           System.IO (Handle, IOMode(..), withBinaryFile)
 import           Foreign
 import           GHC.Base (unpackCString#, unpackCStringUtf8#,
                            unpackFoldrCString#, build)
+import           GHC.Ptr (Ptr(..))
 
 -- | Execute a 'Builder' and return the generated chunks as a lazy 'L.ByteString'.
 -- The work is performed lazy, i.e., only when a chunk of the lazy 'L.ByteString'
@@ -440,7 +442,7 @@ char8 :: Char -> Builder
 char8 = P.primFixed P.char8
 
 -- | Char8 encode a 'String'.
-{-# INLINE [1] string8 #-} -- phased to allow P.cstring rewrite
+{-# NOINLINE string8 #-}
 string8 :: String -> Builder
 string8 = P.primMapListFixed P.char8
 
@@ -448,10 +450,12 @@ string8 = P.primMapListFixed P.char8
 -- to promptly turn into build (unpackFoldrCString# s), so we match on both.
 {-# RULES
 "string8/unpackCString#" forall s.
-  string8 (unpackCString# s) = P.cstring s
+  string8 (unpackCString# s) =
+    ascLiteralCopy (Ptr s) (byteCountLiteral s)
 
 "string8/unpackFoldrCString#" forall s.
-  string8 (build (unpackFoldrCString# s)) = P.cstring s
+  string8 (build (unpackFoldrCString# s)) =
+    ascLiteralCopy (Ptr s) (byteCountLiteral s)
  #-}
 
 ------------------------------------------------------------------------------
@@ -467,19 +471,22 @@ charUtf8 = P.primBounded P.charUtf8
 --
 -- Note that 'stringUtf8' performs no codepoint validation and consequently may
 -- emit invalid UTF-8 if asked (e.g. single surrogates).
-{-# INLINE [1] stringUtf8 #-} -- phased to allow P.cstring rewrite
+{-# NOINLINE stringUtf8 #-}
 stringUtf8 :: String -> Builder
 stringUtf8 = P.primMapListBounded P.charUtf8
 
 {-# RULES
 "stringUtf8/unpackCStringUtf8#" forall s.
-  stringUtf8 (unpackCStringUtf8# s) = P.cstringUtf8 s
+  stringUtf8 (unpackCStringUtf8# s) =
+    modUtf8LitCopy (Ptr s) (byteCountLiteral s)
 
 "stringUtf8/unpackCString#" forall s.
-  stringUtf8 (unpackCString# s) = P.cstring s
+  stringUtf8 (unpackCString# s) =
+    ascLiteralCopy (Ptr s) (byteCountLiteral s)
 
 "stringUtf8/unpackFoldrCString#" forall s.
-  stringUtf8 (build (unpackFoldrCString# s)) = P.cstring s
+  stringUtf8 (build (unpackFoldrCString# s)) =
+    ascLiteralCopy (Ptr s) (byteCountLiteral s)
  #-}
 
 instance IsString Builder where

@@ -25,6 +25,7 @@ import qualified Data.ByteString                       as S
 import qualified Data.ByteString.Char8                 as S8
 import qualified Data.ByteString.Lazy                  as L
 import qualified Data.ByteString.Lazy.Char8            as L8
+import           Data.ByteString.Internal              (byteCountLiteral)
 
 import           Data.ByteString.Builder
 import           Data.ByteString.Builder.Extra         (byteStringCopy,
@@ -33,10 +34,13 @@ import           Data.ByteString.Builder.Extra         (byteStringCopy,
 import           Data.ByteString.Builder.Internal      (ensureFree)
 import           Data.ByteString.Builder.Prim          (BoundedPrim, FixedPrim,
                                                         (>$<))
+import qualified Data.ByteString.Builder.Internal      as BI
 import qualified Data.ByteString.Builder.Prim          as P
 import qualified Data.ByteString.Builder.Prim.Internal as PI
 
 import           Foreign
+import           GHC.Exts (Addr#)
+import           GHC.Ptr (Ptr(..))
 
 import System.Random
 
@@ -247,6 +251,18 @@ largeTraversalInput = S.concat (replicate 10 byteStringData)
 smallTraversalInput :: S.ByteString
 smallTraversalInput = S8.pack "The quick brown fox"
 
+ascBuf, utfBuf :: Ptr Word8
+ascBuf = Ptr "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"#
+utfBuf = Ptr "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\xc0\x80xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"#
+
+asclit, utflit :: Ptr Word8 -> Builder
+asclit str@(Ptr addr) = BI.ascLiteralCopy str (byteCountLiteral addr)
+utflit str@(Ptr addr) = BI.modUtf8LitCopy str (byteCountLiteral addr)
+
+ascStr, utfStr :: String
+ascStr = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+utfStr = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\0xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
 main :: IO ()
 main = do
   defaultMain
@@ -256,9 +272,15 @@ main = do
         , benchB' "ensureFree 8"  ()  (const (ensureFree 8))
         , benchB' "intHost 1"     1   intHost
         , benchB' "UTF-8 String (naive)" "hello world\0" fromString
-        , benchB' "UTF-8 String"  () $ \() -> P.cstringUtf8 "hello world\0"#
+        , benchB' "UTF-8 String"  () $ \() -> utflit (Ptr "hello world\xc0\x80"#)
         , benchB' "String (naive)" "hello world!" fromString
-        , benchB' "String"        () $ \() -> P.cstring "hello world!"#
+        , benchB' "String"        () $ \() -> asclit (Ptr "hello world!"#)
+        , benchB' "AsciiLit"      () $ \() -> asclit ascBuf
+        , benchB' "Utf8Lit"       () $ \() -> utflit utfBuf
+        , benchB' "strLit"        () $ \() -> string8 ascStr
+        , benchB' "utfLit"        () $ \() -> stringUtf8 utfStr
+        , benchB' "strLitInline"  () $ \() -> string8 "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+        , benchB' "utfLitInline"  () $ \() -> stringUtf8 "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\0XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
         ]
 
       , bgroup "Encoding wrappers"
