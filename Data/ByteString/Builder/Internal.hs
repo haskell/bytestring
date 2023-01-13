@@ -1,6 +1,8 @@
-{-# LANGUAGE Unsafe #-}
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE MagicHash #-}
 {-# LANGUAGE NoMonoLocalBinds #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE Unsafe #-}
+{-# LANGUAGE ViewPatterns #-}
 
 {-# OPTIONS_HADDOCK not-home #-}
 
@@ -87,6 +89,8 @@ module Data.ByteString.Builder.Internal (
   -- , sizedChunksInsert
 
   , byteStringCopy
+  , asciiLiteralCopy
+  , modUtf8LitCopy
   , byteStringInsert
   , byteStringThreshold
 
@@ -816,6 +820,7 @@ ensureFree :: Int -> Builder
 ensureFree minFree =
     builder step
   where
+    step :: forall r. BuildStep r -> BuildStep r
     step k br@(BufferRange op ope)
       | ope `minusPtr` op < minFree = return $ bufferFull minFree op k
       | otherwise                   = k br
@@ -839,6 +844,25 @@ wrappedBytesCopyStep bs0 k =
       where
         outRemaining = ope `minusPtr` op
 
+-- | Copy the bytes from a 'BufferRange' into the output stream.
+wrappedBufferRangeCopyStep :: BufferRange  -- ^ Input 'BufferRange'.
+                           -> BuildStep a -> BuildStep a
+wrappedBufferRangeCopyStep (BufferRange ip0 ipe) k =
+    go ip0
+  where
+    go !ip (BufferRange op ope)
+      | inpRemaining <= outRemaining = do
+          copyBytes op ip inpRemaining
+          let !br' = BufferRange (op `plusPtr` inpRemaining) ope
+          k br'
+      | otherwise = do
+          copyBytes op ip outRemaining
+          let !ip' = ip `plusPtr` outRemaining
+          return $ bufferFull 1 ope (go ip')
+      where
+        outRemaining = ope `minusPtr` op
+        inpRemaining = ipe `minusPtr` ip
+
 
 -- Strict ByteStrings
 ------------------------------------------------------------------------------
@@ -858,6 +882,7 @@ byteStringThreshold :: Int -> S.StrictByteString -> Builder
 byteStringThreshold maxCopySize =
     \bs -> builder $ step bs
   where
+    step :: forall r. S.ByteString -> BuildStep r -> BuildStep r
     step bs@(S.BS _ len) k br@(BufferRange !op _)
       | len <= maxCopySize = byteStringCopyStep bs k br
       | otherwise          = return $ insertChunk op bs k
@@ -948,6 +973,87 @@ byteStringCopyStep bs@(S.BS ifp isize) k br@(BufferRange op ope)
 byteStringInsert :: S.StrictByteString -> Builder
 byteStringInsert =
     \bs -> builder $ \k (BufferRange op _) -> return $ insertChunk op bs k
+
+
+------------------------------------------------------------------------------
+-- Raw CString encoding
+------------------------------------------------------------------------------
+
+-- | Builder for raw 'Addr#' pointers to null-terminated primitive ASCII
+-- strings that are free of embedded (overlong-encoded as the two-byte sequence
+-- @0xC0 0x80@) null characters.
+--
+-- @since 0.11.5.0
+{-# INLINABLE asciiLiteralCopy #-}
+asciiLiteralCopy :: Ptr Word8 -> Int -> Builder
+asciiLiteralCopy = \ !ip !len -> builder $ \k br@(BufferRange op ope) ->
+    if len <= ope `minusPtr` op
+    then copyBytes op ip len >> k (BufferRange (op `plusPtr` len) ope)
+    else wrappedBufferRangeCopyStep (BufferRange ip (ip `plusPtr` len)) k br
+
+-- | Builder for pointers to /null-terminated/ primitive UTF-8 encoded strings
+-- that may contain embedded overlong two-byte encodings of the NUL character
+-- as @0xC0 0x80@.  Other deviations from strict UTF-8 are tolerated, but the
+-- result is not well defined.
+--
+-- @since 0.11.5.0
+{-# INLINABLE modUtf8LitCopy #-}
+modUtf8LitCopy :: Ptr Word8 -> Int -> Builder
+modUtf8LitCopy !ip !len
+    | len > 0   = builder (modUtf8_step ip len)
+    | otherwise = builder id
+
+-- | Copy a /non-empty/ UTF-8 input possibly containing denormalised 2-octet
+-- sequences.  While only the NUL byte should ever encoded that way (as @0xC0
+-- 80@), this handles other denormalised @0xC0 0x??@  sequences by keeping the
+-- bottom 6 bits of the second byte.  If the input is non-UTF8 garbage, the the
+-- result may not be what the user expected.
+--
+modUtf8_step :: Ptr Word8 -> Int -> BuildStep r -> BuildStep r
+modUtf8_step !ip !len k (BufferRange op ope)
+    | op == ope = return $ bufferFull 1 op (modUtf8_step ip len k)
+    | otherwise = do
+        let !avail = ope `minusPtr` op
+            !usable = avail `min` len
+        -- null-termination makes it possible to read one more byte than the
+        -- nominal input length, with any unexpected 0xC000 ending interpreted
+        -- as a NUL.  More typically, this simplifies hanlding of inputs where
+        -- 0xC0 0x80 might otherwise be split across the "usable" input window.
+        !ch <- peekElemOff ip (usable - 1)
+        let !use | ch /= 0xC0 = usable
+                 | otherwise  = usable + 1
+        !n <- utf8_copyBytes (ip `plusPtr` use) ip op
+        let !op' = op `plusPtr` n
+            !len' = len - use
+            ip' = ip `plusPtr` use
+        if | len' <= 0 -> k (BufferRange op' ope)
+           | op' < ope -> modUtf8_step ip' len' k (BufferRange op' ope)
+           | otherwise -> return $ bufferFull 1 op' (modUtf8_step ip' len' k)
+
+-- | Consume the supplied input returning the number of bytes written
+utf8_copyBytes :: Ptr Word8 -> Ptr Word8 -> Ptr Word8 -> IO Int
+utf8_copyBytes !ipe = \ ip op -> go 0 ip op
+  where
+    go !n !ip@((< ipe) -> True) !op = do
+        !ch <- peek ip
+        let !ip' = ip `plusPtr` 1
+            !op' = op `plusPtr` 1
+        if | ch /= 0xC0 -> do
+               poke op ch
+               let !cnt = ipe `minusPtr` ip'
+               !runend <- S.memchr ip' 0xC0 (fromIntegral cnt)
+               let !runlen | runend == nullPtr = cnt
+                           | otherwise = runend `minusPtr` ip'
+               if (runlen == 0)
+               then go (n + 1) ip' op'
+               else do
+                   copyBytes op' ip' runlen
+                   go (n + 1 + runlen) (ip' `plusPtr` runlen) (op' `plusPtr` runlen)
+           | otherwise -> do
+               !ch' <- peek ip'
+               poke op (ch' .&. 0x3f)
+               go (n + 1) (ip' `plusPtr` 1) op'
+    go !n _ _ = pure n
 
 -- Short bytestrings
 ------------------------------------------------------------------------------
