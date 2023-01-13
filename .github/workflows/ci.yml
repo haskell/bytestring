@@ -195,3 +195,13 @@ jobs:
         source ~/.ghcup/env
         cabal update
         cabal test
+
+  arm:
+    # needs: build
+    runs-on: ['self-hosted', 'Linux', 'ARM64']
+    steps:
+    - uses: actions/checkout@v1
+    - name: Test
+      run: |
+        cabal update
+        cabal test
