@@ -23,6 +23,8 @@ jobs:
           ghc: 'latest'
         - os: [self-hosted, Linux, ARM64, aarch32-linux]
           ghc: 'latest'
+        - os: [self-hosted, macOS, aarch64]
+          ghc: 'latest'
     steps:
     - uses: actions/checkout@v3
     - name: Install libncurses5 and libtinfo
