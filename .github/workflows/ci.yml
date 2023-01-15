@@ -21,10 +21,6 @@ jobs:
         include:
         - os: macOS-latest
           ghc: 'latest'
-        - os: [self-hosted, Linux, ARM64, aarch32-linux]
-          ghc: 'latest'
-        - os: [self-hosted, macOS, aarch64]
-          ghc: 'latest'
     steps:
     - uses: actions/checkout@v3
     - name: Install libncurses5 and libtinfo
@@ -201,11 +197,77 @@ jobs:
         cabal test
 
   arm:
-    # needs: build
-    runs-on: [self-hosted, Linux, ARM64]
+    name: Build ARM
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - os: [self-hosted, Linux, ARM64, aarch32-linux]
+            GHC_VER: 9.2.2
+            CABAL_VER: 3.6.2.0
+            ARCH: ARM
+          - os: [self-hosted, Linux, ARM64]
+            GHC_VER: 9.2.5
+            CABAL_VER: 3.6.2.0
+            ARCH: ARM64
     steps:
-    - uses: actions/checkout@v1
-    - name: Test
-      run: |
-        cabal update
-        cabal test
+      - uses: docker://arm64v8/ubuntu:focal
+        name: Cleanup (aarch64 linux)
+        with:
+          args: "find . -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +"
+
+      - name: git config
+        run: |
+          git config --global --get-all safe.directory | grep '^\*$' || git config --global --add safe.directory "*"
+        shell: bash
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - if: matrix.ARCH == 'ARM'
+        uses: docker://hasufell/arm32v7-ubuntu-haskell:focal
+        name: Run build (armv7 linux)
+        with:
+          args: sh .github/scripts/ci.sh
+        env:
+          GHC_VER: ${{ matrix.GHC_VER }}
+          CABAL_VER: ${{ matrix.CABAL_VER }}
+
+      - if: matrix.ARCH == 'ARM64'
+        uses: docker://hasufell/arm64v8-ubuntu-haskell:focal
+        name: Run build (aarch64 linux)
+        with:
+          args: sh .github/scripts/ci.sh
+        env:
+          GHC_VER: ${{ matrix.GHC_VER }}
+          CABAL_VER: ${{ matrix.CABAL_VER }}
+
+  arm-darwin:
+    name: Build ARM
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - os: [self-hosted, macOS, ARM64]
+            GHC_VER: 9.2.5
+            CABAL_VER: 3.6.2.0
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Run build
+        run: |
+          bash .github/scripts/brew.sh git coreutils llvm@11 autoconf automake
+          export PATH="$HOME/.brew/opt/llvm@11/bin:$PATH"
+          export CC="$HOME/.brew/opt/llvm@11/bin/clang"
+          export CXX="$HOME/.brew/opt/llvm@11/bin/clang++"
+          export LD=ld
+          export AR="$HOME/.brew/opt/llvm@11/bin/llvm-ar"
+          export RANLIB="$HOME/.brew/opt/llvm@11/bin/llvm-ranlib"
+          bash .github/scripts/ci.sh
+        env:
+          GHC_VER: ${{ matrix.GHC_VER }}
+          CABAL_VER: ${{ matrix.CABAL_VER }}
+          HOMEBREW_CHANGE_ARCH_TO_ARM: 1
