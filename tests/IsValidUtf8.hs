@@ -25,18 +25,14 @@ testSuite = testGroup "UTF-8 validation" $ [
   testGroup "Regressions" checkRegressions
   ]
   where
-    goValidBS :: Property
-    goValidBS = forAll arbitrary $
-      \(ValidUtf8 ss) -> (B.isValidUtf8 . foldMap sequenceToBS $ ss) === True
-    goInvalidBS :: Property
-    goInvalidBS = forAll arbitrary $
-      \inv -> (B.isValidUtf8 . toByteString $ inv) === False
-    goValidSBS :: Property
-    goValidSBS = forAll arbitrary $
-      \(ValidUtf8 ss) -> (SBS.isValidUtf8 . SBS.toShort . foldMap sequenceToBS $ ss) === True
-    goInvalidSBS :: Property
-    goInvalidSBS = forAll arbitrary $
-      \inv -> (SBS.isValidUtf8 . SBS.toShort . toByteString $ inv) === False
+    goValidBS :: ValidUtf8 -> Bool
+    goValidBS = B.isValidUtf8 . foldMap sequenceToBS . unValidUtf8
+    goInvalidBS :: InvalidUtf8 -> Bool
+    goInvalidBS = not . B.isValidUtf8 . toByteString
+    goValidSBS :: ValidUtf8 -> Bool
+    goValidSBS = SBS.isValidUtf8 . SBS.toShort . foldMap sequenceToBS . unValidUtf8
+    goInvalidSBS :: InvalidUtf8 -> Bool
+    goInvalidSBS = not . SBS.isValidUtf8 . SBS.toShort . toByteString
     testCount :: QuickCheckTests
     testCount = 1000
 
@@ -155,7 +151,7 @@ sequenceToBS = B.pack . \case
   Three w1 w2 w3 -> [w1, w2, w3]
   Four w1 w2 w3 w4 -> [w1, w2, w3, w4]
 
-newtype ValidUtf8 = ValidUtf8 [Utf8Sequence]
+newtype ValidUtf8 = ValidUtf8 { unValidUtf8 :: [Utf8Sequence] }
   deriving (Eq)
 
 instance Show ValidUtf8 where
@@ -188,8 +184,8 @@ instance Arbitrary InvalidUtf8 where
     , InvalidUtf8 <$> genValidUtf8 <*> genInvalidUtf8 <*> genValidUtf8
     ]
   shrink (InvalidUtf8 p i s) = 
-    (InvalidUtf8 p i <$> shrinkBS s) ++
-    ((\p' -> InvalidUtf8 p' i s) <$> shrinkBS p)
+    (InvalidUtf8 p i <$> shrinkValidBS s) ++
+    ((\p' -> InvalidUtf8 p' i s) <$> shrinkValidBS p)
 
 toByteString :: InvalidUtf8 -> ByteString
 toByteString (InvalidUtf8 p i s) = p `B.append` i `B.append` s
@@ -270,8 +266,8 @@ genValidUtf8 = sized $ \size ->
       b4 <- elements [0x80 .. 0xBF]
       pure . B.pack $ [b1, b2, b3, b4]
 
-shrinkBS :: ByteString -> [ByteString]
-shrinkBS bs = B.pack <$> (shrink . B.unpack $ bs)
+shrinkValidBS :: ByteString -> [ByteString]
+shrinkValidBS bs = filter B.isValidUtf8 (map B.pack (shrink (B.unpack bs)))
 
 ord2 :: Char -> (Word8, Word8)
 ord2 c = (x, y)
