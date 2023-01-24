@@ -25,18 +25,14 @@ testSuite = testGroup "UTF-8 validation" $ [
   testGroup "Regressions" checkRegressions
   ]
   where
-    goValidBS :: Property
-    goValidBS = forAll arbitrary $
-      \(ValidUtf8 ss) -> (B.isValidUtf8 . foldMap sequenceToBS $ ss) === True
-    goInvalidBS :: Property
-    goInvalidBS = forAll arbitrary $
-      \inv -> (B.isValidUtf8 . toByteString $ inv) === False
-    goValidSBS :: Property
-    goValidSBS = forAll arbitrary $
-      \(ValidUtf8 ss) -> (SBS.isValidUtf8 . SBS.toShort . foldMap sequenceToBS $ ss) === True
-    goInvalidSBS :: Property
-    goInvalidSBS = forAll arbitrary $
-      \inv -> (SBS.isValidUtf8 . SBS.toShort . toByteString $ inv) === False
+    goValidBS :: ValidUtf8 -> Bool
+    goValidBS = B.isValidUtf8 . foldMap sequenceToBS . unValidUtf8
+    goInvalidBS :: InvalidUtf8 -> Bool
+    goInvalidBS = not . B.isValidUtf8 . toByteString
+    goValidSBS :: ValidUtf8 -> Bool
+    goValidSBS = SBS.isValidUtf8 . SBS.toShort . foldMap sequenceToBS . unValidUtf8
+    goInvalidSBS :: InvalidUtf8 -> Bool
+    goInvalidSBS = not . SBS.isValidUtf8 . SBS.toShort . toByteString
     testCount :: QuickCheckTests
     testCount = 1000
 
@@ -155,7 +151,7 @@ sequenceToBS = B.pack . \case
   Three w1 w2 w3 -> [w1, w2, w3]
   Four w1 w2 w3 w4 -> [w1, w2, w3, w4]
 
-newtype ValidUtf8 = ValidUtf8 [Utf8Sequence]
+newtype ValidUtf8 = ValidUtf8 { unValidUtf8 :: [Utf8Sequence] }
   deriving (Eq)
 
 instance Show ValidUtf8 where
