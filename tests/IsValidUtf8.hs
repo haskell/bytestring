@@ -38,13 +38,34 @@ testSuite = testGroup "UTF-8 validation" $ [
 
 checkRegressions :: [TestTree]
 checkRegressions = [
-  testProperty "Too high code point" $ not $ B.isValidUtf8 tooHigh
+  testProperty "Too high code point" $
+    not $ B.isValidUtf8 tooHigh,
+  testProperty "Invalid byte between spaces" $
+    not $ B.isValidUtf8 byteBetweenSpaces,
+  testProperty "Two invalid bytes between spaces" $
+    not $ B.isValidUtf8 twoBytesBetweenSpaces,
+  testProperty "Three invalid bytes between spaces" $
+    not $ B.isValidUtf8 threeBytesBetweenSpaces,
+  testProperty "ASCII stride and invalid multibyte sequence" $
+    not $ B.isValidUtf8 asciiAndInvalidMultiByte
   ]
   where
     tooHigh :: ByteString
     tooHigh = fromList $ replicate 56 48 ++ -- 56 ASCII zeroes
                          [244, 176, 181, 139] ++ -- our invalid sequence too high to be valid
                          (take 68 . cycle $ [194, 162]) -- 68 cent symbols
+
+    byteBetweenSpaces :: ByteString
+    byteBetweenSpaces = fromList $ replicate 127 32 ++ [216] ++ replicate 128 32
+
+    twoBytesBetweenSpaces :: ByteString
+    twoBytesBetweenSpaces = fromList $ replicate 126 32 ++ [235, 167] ++ replicate 128 32
+
+    threeBytesBetweenSpaces :: ByteString
+    threeBytesBetweenSpaces = fromList $ replicate 125 32 ++ [242, 134, 159] ++ replicate 128 32
+
+    asciiAndInvalidMultiByte :: ByteString
+    asciiAndInvalidMultiByte = fromList $ replicate 32 48 ++ [235, 185]
 
 -- Helpers
 
@@ -236,7 +257,8 @@ genValidUtf8 = sized $ \size ->
     B.append <$> genAscii <*> resize (size `div` 2) genValidUtf8,
     B.append <$> gen2Byte <*> resize (size `div` 2) genValidUtf8,
     B.append <$> gen3Byte <*> resize (size `div` 2) genValidUtf8,
-    B.append <$> gen4Byte <*> resize (size `div` 2) genValidUtf8
+    B.append <$> gen4Byte <*> resize (size `div` 2) genValidUtf8,
+    B.replicate <$> resize (size * 16) arbitrary <*> elements [0x00 .. 0x7F]
     ]
   where
     genAscii :: Gen ByteString
