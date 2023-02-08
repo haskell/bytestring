@@ -159,7 +159,7 @@ jobs:
           dist-newstyle
         key: ${{ runner.os }}-latest
     - name: Test
-      run: cabal test --ghc-options='-fcheck-prim-bounds -fno-ignore-asserts'
+      run: cabal test --ghc-options='-fcheck-prim-bounds -fno-ignore-asserts -DHS_BYTESTRING_ASSERTIONS'
 
   old-gcc:
     needs: build

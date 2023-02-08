@@ -22,7 +22,6 @@ import Foreign.C (CChar)
 import qualified Data.ByteString.Short as SB
 import qualified Data.ByteString      as P
 import qualified Data.ByteString.Lazy as L
-import qualified Data.ByteString.Lazy.Internal as L (checkInvariant,ByteString(..))
 
 import qualified Data.ByteString.Char8      as PC
 import qualified Data.ByteString.Lazy.Char8 as LC
@@ -46,8 +45,7 @@ instance Arbitrary L.ByteString where
   arbitrary = sized $ \n -> do numChunks <- choose (0, n)
                                if numChunks == 0
                                    then return L.empty
-                                   else fmap (L.checkInvariant .
-                                              L.fromChunks .
+                                   else fmap (L.fromChunks .
                                               filter (not . P.null)) $
                                             vectorOf numChunks
                                                      (sizedByteString
