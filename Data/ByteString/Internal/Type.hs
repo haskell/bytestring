@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP, ForeignFunctionInterface, BangPatterns #-}
 {-# LANGUAGE UnliftedFFITypes, MagicHash,
-            UnboxedTuples, DeriveDataTypeable #-}
+            UnboxedTuples #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE PatternSynonyms, ViewPatterns #-}
@@ -133,7 +133,6 @@ import Data.Bits                ((.&.))
 import Data.Char                (ord)
 import Data.Word
 
-import Data.Typeable            (Typeable)
 import Data.Data                (Data(..), mkNoRepType)
 
 import GHC.Base                 (nullAddr#,realWorld#,unsafeChr)
@@ -227,7 +226,6 @@ pokeFpByteOff fp off val = unsafeWithForeignPtr fp $ \p ->
 data ByteString = BS {-# UNPACK #-} !(ForeignPtr Word8) -- payload
                      {-# UNPACK #-} !Int                -- length
                      -- ^ @since 0.11.0.0
-    deriving (Typeable)
 
 -- | Type synonym for the strict flavour of 'ByteString'.
 --

@@ -495,12 +495,22 @@ foldr' f a = go
 -- argument, and thus must be applied to non-empty 'ByteString's.
 foldl1 :: HasCallStack => (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldl1 _ Empty        = errorEmptyList "foldl1"
-foldl1 f (Chunk c cs) = foldl f (S.unsafeHead c) (Chunk (S.unsafeTail c) cs)
+foldl1 f (Chunk c cs) = go (S.unsafeHead c) (S.unsafeTail c) cs
+  where
+    go v x xs = let v' = S.foldl f v x
+      in case xs of
+      Empty -> v'
+      Chunk x' xs' -> go v' x' xs'
 
 -- | 'foldl1'' is like 'foldl1', but strict in the accumulator.
 foldl1' :: HasCallStack => (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldl1' _ Empty        = errorEmptyList "foldl1'"
-foldl1' f (Chunk c cs) = foldl' f (S.unsafeHead c) (Chunk (S.unsafeTail c) cs)
+foldl1' f (Chunk c cs) = go (S.unsafeHead c) (S.unsafeTail c) cs
+  where
+    go !v x xs = let v' = S.foldl' f v x
+      in case xs of
+      Empty -> v'
+      Chunk x' xs' -> go v' x' xs'
 
 -- | 'foldr1' is a variant of 'foldr' that has no starting value argument,
 -- and thus must be applied to non-empty 'ByteString's

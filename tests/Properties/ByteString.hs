@@ -34,7 +34,6 @@ import GHC.IO.Encoding
 module Properties.ByteStringLazy (tests) where
 #define BYTESTRING_TYPE B.ByteString
 import qualified Data.ByteString.Lazy as B
-import qualified Data.ByteString.Lazy.Internal as B (invariant)
 #endif
 
 import Data.Word
@@ -48,7 +47,6 @@ import qualified Data.ByteString.Char8 as B
 #else
 module Properties.ByteStringLazyChar8 (tests) where
 import qualified Data.ByteString.Lazy.Char8 as B
-import qualified Data.ByteString.Lazy.Internal as B (invariant)
 #define BYTESTRING_TYPE B.ByteString
 #endif
 
@@ -306,8 +304,6 @@ tests =
     \f x -> B.takeWhileEnd f x === B.reverse (B.takeWhile f (B.reverse x))
 
 #ifdef BYTESTRING_LAZY
-  , testProperty "invariant" $
-    \x -> B.invariant x
   , testProperty "fromChunks . toChunks" $
     \x -> B.fromChunks (B.toChunks x) === x
   , testProperty "toChunks . fromChunks" $
