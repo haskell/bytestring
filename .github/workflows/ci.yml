@@ -89,7 +89,7 @@ jobs:
         cd bytestring-*/
         bld() { cabal build bytestring:tests --enable-tests --enable-benchmarks; }
         bld || bld || bld
-        
+
     - name: Run Test
       # test broken linking on windows: https://github.com/haskell/bytestring/issues/497
       run: |
@@ -122,7 +122,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        arch: ['s390x', 'ppc64le', 'armv7', 'aarch64']
+        arch: ['s390x', 'ppc64le']
     steps:
     - uses: actions/checkout@v3
     - uses: uraimo/run-on-arch-action@v2.1.1
@@ -187,18 +187,42 @@ jobs:
     - name: Install
       run: |
         apt-get update -y
-        apt-get install -y ghc cabal-install
+        apt-get install -y autoconf build-essential zlib1g-dev libgmp-dev curl libncurses5 libtinfo5 libncurses5-dev libtinfo-dev
+        curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | BOOTSTRAP_HASKELL_NONINTERACTIVE=1 BOOTSTRAP_HASKELL_INSTALL_NO_STACK=1 sh
     - uses: actions/checkout@v1
-    # We need to break dependency circuit between optparse-applicative,
-    # process, unix and bytestring. Newer versions of Cabal are capable
-    # of coming up with these automatically, but older ones need a hint.
-    # Specifically, we need to inform Cabal that:
-    #
-    # * optparse-applicative doesn't use process;
-    # * QuickCheck uses the old random package; and
-    # * tasty doesn't use unix.
     - name: Test
       run: |
+        source ~/.ghcup/env
         cabal update
-        cabal install --dependencies-only --enable-tests --constraint 'optparse-applicative -process' --constraint 'QuickCheck +old-random' --constraint 'tasty -unix'
         cabal test
+
+  # We use github.com/haskell self-hosted runners for ARM testing.
+  # If they become unavailable in future, put ['armv7', 'aarch64']
+  # back to emulation jobs above.
+  arm:
+    needs: build
+    runs-on: [self-hosted, Linux, ARM64]
+    strategy:
+      fail-fast: true
+      matrix:
+        arch: [arm32v7, arm64v8]
+    steps:
+      - uses: docker://hasufell/arm64v8-ubuntu-haskell:focal
+        name: Cleanup
+        with:
+          args: "find . -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +"
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - if: matrix.arch == 'arm32v7'
+        uses: docker://hasufell/arm32v7-ubuntu-haskell:focal
+        name: Run build (arm32v7 linux)
+        with:
+          args: sh -c "cabal update && cabal test"
+
+      - if: matrix.arch == 'arm64v8'
+        uses: docker://hasufell/arm64v8-ubuntu-haskell:focal
+        name: Run build (arm64v8 linux)
+        with:
+          args: sh -c "cabal update && cabal test"
