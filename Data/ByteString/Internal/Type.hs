@@ -138,7 +138,7 @@ import Data.Word
 import Data.Data                (Data(..), mkNoRepType)
 
 import GHC.Base                 (nullAddr#,realWorld#,unsafeChr)
-import GHC.Exts                 (IsList(..))
+import GHC.Exts                 (IsList(..), shrinkMutableByteArray#)
 import GHC.CString              (unpackCString#)
 import GHC.Exts                 (Addr#, minusAddr#)
 
@@ -157,10 +157,10 @@ import Data.Bits               (finiteBitSize)
 
 import GHC.IO                   (IO(IO),unsafeDupablePerformIO)
 import GHC.ForeignPtr           (ForeignPtr(ForeignPtr)
-#if __GLASGOW_HASKELL__ < 900
-                                , newForeignPtr_
-#endif
-                                , mallocPlainForeignPtrBytes)
+
+
+
+                                , mallocPlainForeignPtrBytes, ForeignPtrContents (PlainPtr))
 
 #if MIN_VERSION_base(4,10,0)
 import GHC.ForeignPtr           (plusForeignPtr)
@@ -183,6 +183,7 @@ import GHC.ForeignPtr           (unsafeWithForeignPtr)
 
 import qualified Language.Haskell.TH.Lib as TH
 import qualified Language.Haskell.TH.Syntax as TH
+import Data.Functor (($>))
 
 #if !MIN_VERSION_base(4,15,0)
 unsafeWithForeignPtr :: ForeignPtr a -> (Ptr a -> IO b) -> IO b
@@ -641,10 +642,13 @@ createFpUptoN' l action = do
 --
 createFpAndTrim :: Int -> (ForeignPtr Word8 -> IO Int) -> IO ByteString
 createFpAndTrim l action = do
-    fp <- mallocByteString l
-    l' <- action fp
-    if assert (0 <= l' && l' <= l) $ l' >= l
-        then return $! BS fp l
+  fp <- mallocByteString l
+  l' <- action fp
+  if assert (0 <= l' && l' <= l) $ l' >= l
+    then return $! BS fp l
+    else
+      if l < 4096
+        then shrinkFp fp l' $> BS fp l'
         else createFp l' $ \fp' -> memcpyFp fp' fp l'
 {-# INLINE createFpAndTrim #-}
 
@@ -1023,6 +1027,12 @@ memcpy p q s = void $ c_memcpy p q (fromIntegral s)
 memcpyFp :: ForeignPtr Word8 -> ForeignPtr Word8 -> Int -> IO ()
 memcpyFp fp fq s = unsafeWithForeignPtr fp $ \p ->
                      unsafeWithForeignPtr fq $ \q -> memcpy p q s
+                     
+shrinkFp :: ForeignPtr Word8 -> Int -> IO ()
+shrinkFp (ForeignPtr _ (PlainPtr marr)) (I# l#) =
+  IO $ \s1# -> case shrinkMutableByteArray# marr l# s1# of
+    s2# -> (# s2#, () #)
+shrinkFp _ _ = error "Must be PlainPtr"
 
 {-
 foreign import ccall unsafe "string.h memmove" c_memmove
