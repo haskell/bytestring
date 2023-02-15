@@ -38,15 +38,15 @@ nilEq = (==)
 
 -- lines of 200 letters from a to e, followed by repeated letter f
 absurdlong :: S.ByteString
-absurdlong = S.replicate 200 0x61 <> S.singleton nl
+absurdlong = (S.replicate 200 0x61 <> S.singleton nl
           <> S.replicate 200 0x62 <> S.singleton nl
           <> S.replicate 200 0x63 <> S.singleton nl
           <> S.replicate 200 0x64 <> S.singleton nl
-          <> S.replicate 200 0x65 <> S.singleton nl
+          <> S.replicate 200 0x65 <> S.singleton nl)
           <> S.replicate 999999 0x66
 
 benchIndices :: Benchmark
-benchIndices = bgroup "Indices"
+benchIndices = absurdlong `seq` bgroup "Indices"
     [ bgroup "ByteString strict first index" $
         [ bench "FindIndices" $ nf (listToMaybe . S.findIndices (== nl)) absurdlong
         , bench "ElemIndices" $ nf (listToMaybe . S.elemIndices     nl)  absurdlong
