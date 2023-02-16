@@ -138,11 +138,11 @@ nilEq = (==)
 
 -- lines of 200 letters from a to e, followed by repeated letter f
 absurdlong :: S.ShortByteString
-absurdlong = S.replicate 200 0x61 <> S.singleton nl
+absurdlong = (S.replicate 200 0x61 <> S.singleton nl
           <> S.replicate 200 0x62 <> S.singleton nl
           <> S.replicate 200 0x63 <> S.singleton nl
           <> S.replicate 200 0x64 <> S.singleton nl
-          <> S.replicate 200 0x65 <> S.singleton nl
+          <> S.replicate 200 0x65 <> S.singleton nl)
           <> S.replicate 999999 0x66
 
 bench_find_index_second :: ShortByteString -> Maybe Int
@@ -166,7 +166,7 @@ bench_elem_index_second bs =
 -------------
 
 benchShort :: Benchmark
-benchShort = bgroup "ShortByteString"
+benchShort = absurdlong `seq` bgroup "ShortByteString"
     [ bgroup "Small payload"
       [ benchB' "mempty"        ()  (const mempty)
       , benchB' "UTF-8 String (naive)" "hello world\0" fromString
