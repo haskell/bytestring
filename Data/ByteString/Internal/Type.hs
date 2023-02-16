@@ -157,8 +157,9 @@ import Data.Bits               (finiteBitSize)
 
 import GHC.IO                   (IO(IO),unsafeDupablePerformIO)
 import GHC.ForeignPtr           (ForeignPtr(ForeignPtr)
-
-
+#if __GLASGOW_HASKELL__ < 900
+                                , newForeignPtr_
+#endif
 
                                 , mallocPlainForeignPtrBytes, ForeignPtrContents (PlainPtr))
 
