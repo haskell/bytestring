@@ -140,8 +140,9 @@ import Data.Word
 import Data.Data                (Data(..), mkNoRepType)
 
 import GHC.Base                 (nullAddr#,realWorld#,unsafeChr)
-import GHC.Exts                 (IsList(..), Addr#, minusAddr#, noinline, runRW#)
+import GHC.Exts                 (IsList(..), Addr#, minusAddr#)
 import GHC.CString              (unpackCString#)
+import GHC.Magic                (runRW#, lazy)
 
 #define TIMES_INT_2_AVAILABLE MIN_VERSION_ghc_prim(0,7,0)
 #if TIMES_INT_2_AVAILABLE
@@ -245,9 +246,9 @@ pokeFpByteOff fp off val = unsafeWithForeignPtr fp $ \p ->
 -- the (no-op) @'deferForeignPtrAvailability' x@ call is complete.
 deferForeignPtrAvailability :: ForeignPtr a -> IO (ForeignPtr a)
 deferForeignPtrAvailability (ForeignPtr addr0# guts) = IO $ \s0 ->
-  -- The "noinline runRW#" gunk gets erased during CorePrep,
-  -- so this should have no direct overhead.
-  case noinline runRW# (\_ -> (# s0, addr0# #)) of
+  -- The "lazy runRW#" gunk gets erased during CorePrep,
+  -- leaving just the unboxed tuple, so this should have no direct overhead.
+  case lazy runRW# (\_ -> (# s0, addr0# #)) of
     (# s1, addr1# #) -> (# s1, ForeignPtr addr1# guts #)
 
 unsafeDupablePerformIO :: IO a -> a
