@@ -75,6 +75,8 @@ module Data.ByteString.Internal.Type (
         pokeFpByteOff,
         minusForeignPtr,
         memcpyFp,
+        deferForeignPtrAvailability,
+        unsafeDupablePerformIO,
         SizeOverflowException,
         overflowError,
         checkedAdd,
@@ -138,9 +140,8 @@ import Data.Word
 import Data.Data                (Data(..), mkNoRepType)
 
 import GHC.Base                 (nullAddr#,realWorld#,unsafeChr)
-import GHC.Exts                 (IsList(..))
+import GHC.Exts                 (IsList(..), Addr#, minusAddr#, noinline, runRW#)
 import GHC.CString              (unpackCString#)
-import GHC.Exts                 (Addr#, minusAddr#)
 
 #define TIMES_INT_2_AVAILABLE MIN_VERSION_ghc_prim(0,7,0)
 #if TIMES_INT_2_AVAILABLE
@@ -155,7 +156,7 @@ import GHC.Prim                ( timesWord2#
 import Data.Bits               (finiteBitSize)
 #endif
 
-import GHC.IO                   (IO(IO),unsafeDupablePerformIO)
+import GHC.IO                   (IO(IO))
 import GHC.ForeignPtr           (ForeignPtr(ForeignPtr)
 #if __GLASGOW_HASKELL__ < 900
                                 , newForeignPtr_
@@ -228,6 +229,38 @@ peekFpByteOff fp off = unsafeWithForeignPtr fp $ \p ->
 pokeFpByteOff :: Storable a => ForeignPtr b -> Int -> a -> IO ()
 pokeFpByteOff fp off val = unsafeWithForeignPtr fp $ \p ->
   pokeByteOff p off val
+
+-- | Most operations on a 'ByteString' need to read from the buffer
+-- given by its @ForeignPtr Word8@ field.  But since most operations
+-- on @ByteString@ are (nominally) pure, their implementations cannot
+-- see the IO state thread that was used to initialize the contents of
+-- that buffer.  This means that under some circumstances, these
+-- buffer-reads may be executed before the writes used to initialize
+-- the buffer are executed, with unpredictable results.
+--
+-- 'deferForeignPtrAvailability' exists to help solve this problem.
+-- At runtime, a call @'deferForeignPtrAvailability' x@ is equivalent
+-- to @'pure' x@, but the former is more opaque to the simplifier, so
+-- that reads from the pointer in its result cannot be executed until
+-- the (no-op) @'deferForeignPtrAvailability' x@ call is complete.
+deferForeignPtrAvailability :: ForeignPtr a -> IO (ForeignPtr a)
+deferForeignPtrAvailability (ForeignPtr addr0# guts) = IO $ \s0 ->
+  -- The "noinline runRW#" gunk gets erased during CorePrep,
+  -- so this should have no direct overhead.
+  case noinline runRW# (\_ -> (# s0, addr0# #)) of
+    (# s1, addr1# #) -> (# s1, ForeignPtr addr1# guts #)
+
+unsafeDupablePerformIO :: IO a -> a
+-- Why does this exist? As of base-4.18.0.0, the version of
+-- unsafeDupablePerformIO in base prevents unboxing of its results
+-- with an opaque call to lazy, for reasons described in
+-- Note [unsafePerformIO and strictness].  Even if we accept the
+-- (very questionable) premise that the sort of function described
+-- in that note should work, we expect no such calls to be made in
+-- the context of bytestring.  (And we really want unboxing!)
+unsafeDupablePerformIO (IO act) = case runRW# act of (# _, res #) -> res
+
+
 
 -- -----------------------------------------------------------------------------
 
@@ -609,7 +642,8 @@ createFp :: Int -> (ForeignPtr Word8 -> IO ()) -> IO ByteString
 createFp l action = do
     fp <- mallocByteString l
     action fp
-    return $! BS fp l
+    fp' <- deferForeignPtrAvailability fp
+    return $! BS fp' l
 {-# INLINE createFp #-}
 
 -- | Given a maximum size @l@ and an action @f@ that fills the 'ByteString'
@@ -619,7 +653,8 @@ createFpUptoN :: Int -> (ForeignPtr Word8 -> IO Int) -> IO ByteString
 createFpUptoN l action = do
     fp <- mallocByteString l
     l' <- action fp
-    assert (l' <= l) $ return $! BS fp l'
+    fp' <- deferForeignPtrAvailability fp
+    assert (l' <= l) $ return $! BS fp' l'
 {-# INLINE createFpUptoN #-}
 
 -- | Like 'createFpUptoN', but also returns an additional value created by the
@@ -628,7 +663,8 @@ createFpUptoN' :: Int -> (ForeignPtr Word8 -> IO (Int, a)) -> IO (ByteString, a)
 createFpUptoN' l action = do
     fp <- mallocByteString l
     (l', res) <- action fp
-    assert (l' <= l) $ return (BS fp l', res)
+    fp' <- deferForeignPtrAvailability fp
+    assert (l' <= l) $ return (BS fp' l', res)
 {-# INLINE createFpUptoN' #-}
 
 -- | Given the maximum size needed and a function to make the contents
@@ -643,19 +679,21 @@ createFpAndTrim :: Int -> (ForeignPtr Word8 -> IO Int) -> IO ByteString
 createFpAndTrim l action = do
     fp <- mallocByteString l
     l' <- action fp
+    fp' <- deferForeignPtrAvailability fp
     if assert (0 <= l' && l' <= l) $ l' >= l
-        then return $! BS fp l
-        else createFp l' $ \fp' -> memcpyFp fp' fp l'
+        then return $! BS fp' l
+        else createFp l' $ \dest -> memcpyFp dest fp' l'
 {-# INLINE createFpAndTrim #-}
 
 createFpAndTrim' :: Int -> (ForeignPtr Word8 -> IO (Int, Int, a)) -> IO (ByteString, a)
 createFpAndTrim' l action = do
     fp <- mallocByteString l
     (off, l', res) <- action fp
+    fp' <- deferForeignPtrAvailability fp
     if assert (0 <= l' && l' <= l) $ l' >= l
-        then return (BS fp l, res)
-        else do ps <- createFp l' $ \fp' ->
-                        memcpyFp fp' (fp `plusForeignPtr` off) l'
+        then return (BS fp' l, res)
+        else do ps <- createFp l' $ \dest ->
+                        memcpyFp dest (fp' `plusForeignPtr` off) l'
                 return (ps, res)
 {-# INLINE createFpAndTrim' #-}
 
