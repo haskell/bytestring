@@ -8,16 +8,18 @@ import qualified Data.ByteString.Short as SBS
 import qualified Data.ByteString as B
 import Data.Char (chr, ord)
 import Data.Word (Word8)
-import GHC.Exts (fromList)
-import Test.QuickCheck (Property, forAll, (===))
+import Control.Monad (guard)
+import Numeric (showHex)
+import GHC.Exts (fromList, fromListN, toList)
+import Test.QuickCheck (Property, forAll, (===), forAllShrinkShow)
 import Test.QuickCheck.Arbitrary (Arbitrary (arbitrary, shrink))
 import Test.QuickCheck.Gen (oneof, Gen, choose, vectorOf, listOf1, sized, resize,
-                            elements)
+                            elements, choose)
 import Test.Tasty (testGroup, adjustOption, TestTree)
 import Test.Tasty.QuickCheck (testProperty, QuickCheckTests)
 
 testSuite :: TestTree
-testSuite = testGroup "UTF-8 validation" $ [
+testSuite = testGroup "UTF-8 validation" [
   adjustOption (max testCount) . testProperty "Valid UTF-8 ByteString" $ goValidBS,
   adjustOption (max testCount) . testProperty "Invalid UTF-8 ByteString" $ goInvalidBS,
   adjustOption (max testCount) . testProperty "Valid UTF-8 ShortByteString" $ goValidSBS,
@@ -40,6 +42,7 @@ checkRegressions :: [TestTree]
 checkRegressions = [
   testProperty "Too high code point" $
     not $ B.isValidUtf8 tooHigh,
+  testProperty "Invalid byte at end of ASCII block" badBlockEnd,
   testProperty "Invalid byte between spaces" $
     not $ B.isValidUtf8 byteBetweenSpaces,
   testProperty "Two invalid bytes between spaces" $
@@ -62,7 +65,33 @@ checkRegressions = [
     threeBytesBetweenSpaces :: ByteString
     threeBytesBetweenSpaces = fromList $ replicate 125 32 ++ [242, 134, 159] ++ replicate 128 32
 
+    badBlockEnd :: Property
+    badBlockEnd = 
+      forAllShrinkShow genBadBlock shrinkBadBlock showBadBlock $ \(BadBlock bs) -> 
+        not . B.isValidUtf8 $ bs
+
 -- Helpers
+
+-- A 128-byte sequence with a single bad byte at the end, with the rest being
+-- ASCII
+newtype BadBlock = BadBlock ByteString
+
+genBadBlock :: Gen BadBlock
+genBadBlock = do
+  asciiBytes <- vectorOf 127 $ choose (0, 127)
+  pure . BadBlock . fromListN 128 $ asciiBytes  ++ [216]
+
+shrinkBadBlock :: BadBlock -> [BadBlock]
+shrinkBadBlock (BadBlock bs) = BadBlock <$> do
+  let asList = init . toList $ bs
+  init' <- fromList <$> traverse shrink asList
+  guard (B.length init' == 127)
+  pure . B.append init' . B.singleton $ 216
+
+-- Display as hex instead of ASCII-ish
+showBadBlock :: BadBlock -> String
+showBadBlock (BadBlock bs) = let asList = toList bs in
+  foldr showHex "" asList
 
 data Utf8Sequence = 
   One Word8 |
