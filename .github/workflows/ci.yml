@@ -17,7 +17,7 @@ jobs:
       fail-fast: true
       matrix:
         os: [ubuntu-latest]
-        ghc: ['8.0', '8.2', '8.4', '8.6', '8.8', '8.10', '9.0', '9.2', '9.4']
+        ghc: ['8.0', '8.2', '8.4', '8.6', '8.8', '8.10', '9.0', '9.2', '9.4', '9.6']
         include:
         - os: macOS-latest
           ghc: 'latest'
@@ -63,12 +63,16 @@ jobs:
   windows-build:
     runs-on: windows-latest
     needs: build
+    strategy:
+      fail-fast: true
+      matrix:
+        ghc: ['9.2', '9.4', '9.6']
     steps:
     - uses: actions/checkout@v3
     - uses: haskell/actions/setup@v2
       id: setup-haskell-cabal
       with:
-        ghc-version: 'latest'
+        ghc-version: ${{ matrix.ghc }}
     - name: Update cabal package database
       run: cabal update
     - uses: actions/cache@v2
@@ -77,7 +81,7 @@ jobs:
         path: |
           ${{ steps.setup-haskell-cabal.outputs.cabal-store }}
           dist-newstyle
-        key: ${{ runner.os }}-latest
+        key: ${{ runner.os }}-${{ matrix.ghc }}
     # We rebuild tests several times to avoid intermittent failures on Windows
     # https://github.com/haskell/actions/issues/36
     # We also use --enable-tests and --enable-benchmarks to avoid
