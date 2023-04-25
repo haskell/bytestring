@@ -48,7 +48,9 @@ checkRegressions = [
   testProperty "Two invalid bytes between spaces" $
     not $ B.isValidUtf8 twoBytesBetweenSpaces,
   testProperty "Three invalid bytes between spaces" $
-    not $ B.isValidUtf8 threeBytesBetweenSpaces
+    not $ B.isValidUtf8 threeBytesBetweenSpaces,
+  testProperty "ASCII stride and invalid multibyte sequence" $
+    not $ B.isValidUtf8 asciiAndInvalidMultiByte
   ]
   where
     tooHigh :: ByteString
@@ -69,6 +71,9 @@ checkRegressions = [
     badBlockEnd = 
       forAllShrinkShow genBadBlock shrinkBadBlock showBadBlock $ \(BadBlock bs) -> 
         not . B.isValidUtf8 $ bs
+
+    asciiAndInvalidMultiByte :: ByteString
+    asciiAndInvalidMultiByte = fromList $ replicate 32 48 ++ [235, 185]
 
 -- Helpers
 
@@ -229,8 +234,8 @@ instance Arbitrary InvalidUtf8 where
     , InvalidUtf8 <$> genValidUtf8 <*> genInvalidUtf8 <*> genValidUtf8
     ]
   shrink (InvalidUtf8 p i s) = 
-    (InvalidUtf8 p i <$> shrinkBS s) ++
-    ((\p' -> InvalidUtf8 p' i s) <$> shrinkBS p)
+    (InvalidUtf8 p i <$> shrinkValidBS s) ++
+    ((\p' -> InvalidUtf8 p' i s) <$> shrinkValidBS p)
 
 toByteString :: InvalidUtf8 -> ByteString
 toByteString (InvalidUtf8 p i s) = p `B.append` i `B.append` s
@@ -312,8 +317,8 @@ genValidUtf8 = sized $ \size ->
       b4 <- elements [0x80 .. 0xBF]
       pure . B.pack $ [b1, b2, b3, b4]
 
-shrinkBS :: ByteString -> [ByteString]
-shrinkBS bs = B.pack <$> (shrink . B.unpack $ bs)
+shrinkValidBS :: ByteString -> [ByteString]
+shrinkValidBS bs = filter B.isValidUtf8 (map B.pack (shrink (B.unpack bs)))
 
 ord2 :: Char -> (Word8, Word8)
 ord2 c = (x, y)
