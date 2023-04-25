@@ -100,16 +100,16 @@ static inline int is_valid_utf8_fallback(uint8_t const *const src,
               if (results[3] == 0) {
                 ptr += 8;
               } else {
-                ptr += (__builtin_ctzl(results[3]) / 8);
+                ptr += (__builtin_ctzll(results[3]) / 8);
               }
             } else {
-              ptr += (__builtin_ctzl(results[2]) / 8);
+              ptr += (__builtin_ctzll(results[2]) / 8);
             }
           } else {
-            ptr += (__builtin_ctzl(results[1]) / 8);
+            ptr += (__builtin_ctzll(results[1]) / 8);
           }
         } else {
-          ptr += (__builtin_ctzl(results[0]) / 8);
+          ptr += (__builtin_ctzll(results[0]) / 8);
         }
       }
     }
@@ -207,16 +207,16 @@ static inline int is_valid_utf8_sse2(uint8_t const *const src,
               if (result == 0) {
                 ptr += 16;
               } else {
-                ptr += __builtin_ctz(result);
+                ptr += __builtin_ctzll(result);
               }
             } else {
-              ptr += __builtin_ctz(result);
+              ptr += __builtin_ctzll(result);
             }
           } else {
-            ptr += __builtin_ctz(result);
+            ptr += __builtin_ctzll(result);
           }
         } else {
-          ptr += __builtin_ctz(result);
+          ptr += __builtin_ctzll(result);
         }
       }
     }
