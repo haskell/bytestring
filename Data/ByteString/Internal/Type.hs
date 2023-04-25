@@ -882,6 +882,8 @@ overflowError fun = error $ "Data.ByteString." ++ fun ++ ": size overflow"
 --
 -- * <https://github.com/haskell/bytestring/commit/210c656390ae617d9ee3b8bcff5c88dd17cef8da>
 --
+-- * <https://github.com/haskell/aeson/commit/720b857e2e0acf2edc4f5512f2b217a89449a89d>
+--
 -- * <https://ghc.haskell.org/trac/ghc/ticket/3486>
 --
 -- * <https://ghc.haskell.org/trac/ghc/ticket/3487>
