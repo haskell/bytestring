@@ -1,5 +1,5 @@
 Name:                bytestring
-Version:             0.11.4.0
+Version:             0.11.4.0.1
 Synopsis:            Fast, compact, strict and lazy byte strings with a list interface
 Description:
     An efficient compact, immutable byte string type (both strict and lazy)
@@ -121,19 +121,19 @@ library
                     -fmax-simplifier-iterations=10
                     -fdicts-cheap
                     -fspec-constr-count=6
-  
+
   c-sources:        cbits/fpstring.c
                     cbits/itoa.c
                     cbits/shortbytestring.c
-  
+
   if (arch(aarch64))
     c-sources:        cbits/aarch64/is-valid-utf8.c
   else
     c-sources:        cbits/is-valid-utf8.c
-  
+
   -- DNDEBUG disables asserts in cbits/
   cc-options:        -std=c11 -DNDEBUG=1
- 
+
   -- No need to link to libgcc on ghc-9.4 and later which uses a clang-based
   -- toolchain.
   if os(windows) && impl(ghc < 9.3)

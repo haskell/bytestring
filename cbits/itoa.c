@@ -4,12 +4,14 @@
 // inspired by: http://www.jb.man.ac.uk/~slowe/cpp/itoa.html //
 ///////////////////////////////////////////////////////////////
 
-#include <stdio.h>
+#include <stdint.h>
 
 // Decimal Encoding
 ///////////////////
 
 static const char* digits = "0123456789abcdef";
+
+static const char* digits_upper = "0123456789ABCDEF";
 
 // signed integers
 char* _hs_bytestring_int_dec (int x, char* buf)
@@ -212,4 +214,24 @@ char* _hs_bytestring_long_long_uint_hex (long long unsigned int x, char* buf) {
         *buf++ = c;
     }
     return next_free;
+};
+
+// unsigned ints (32 bit words)
+void _hs_bytestring_builder_uint32_fixed_width_hex_upper (int width,
+                                                          uint32_t x,
+                                                          char* buf) {
+    while (--width >= 0) {
+      buf[width] = digits_upper[x & 0xf];
+      x >>= 4;
+    }
+};
+
+// unsigned ints (64 bit words)
+void _hs_bytestring_builder_uint64_fixed_width_hex_upper (int width,
+                                                          uint64_t x,
+                                                          char* buf) {
+    while (--width >= 0) {
+      buf[width] = digits_upper[x & 0xf];
+      x >>= 4;
+    }
 };

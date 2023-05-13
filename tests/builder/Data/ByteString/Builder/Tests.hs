@@ -56,7 +56,7 @@ import           Test.Tasty (TestTree, TestName, testGroup)
 import           Test.Tasty.QuickCheck
                    ( Arbitrary(..), oneof, choose, listOf, elements
                    , counterexample, ioProperty, UnicodeString(..), Property, testProperty
-                   , (===), (.&&.), conjoin )
+                   , (===), (.&&.), conjoin, forAll )
 
 
 tests :: [TestTree]
@@ -553,6 +553,16 @@ testBuilderConstr name ref mkBuilder =
       where
         ws = ref x
 
+testBuilderConstrWidth :: (Arbitrary a, Show a) =>
+      TestName -> Int -> (Int -> a -> [Word8]) -> (Int -> a -> Builder) -> TestTree
+testBuilderConstrWidth name maxDigits ref mkBuilder =
+    testProperty name check
+  where
+    widths = choose (0, maxDigits)
+    check x = forAll widths $ \width ->
+        let ws = ref width x
+        in (ws ++ ws) ==
+           (L.unpack $ toLazyByteString $ mkBuilder width x `BI.append` mkBuilder width x)
 
 testsBinary :: [TestTree]
 testsBinary =
@@ -637,9 +647,17 @@ testsASCII =
 
   , testBuilderConstr "floatHexFixed"  floatHexFixed_list  floatHexFixed
   , testBuilderConstr "doubleHexFixed" doubleHexFixed_list doubleHexFixed
+
+  , testBuilderConstr "word8UpperHexFixed"  (uphex . wordHexFixed_list) word8HexUpperFixed
+  , testBuilderConstrWidth "word64HexUpperFixedWidth" 16
+                           (\width -> uphex . wordHexFixedWidth_list width)
+                           word64HexUpperFixedWidth
   ]
   where
     enlarge (n, e) = n ^ (abs (e `mod` (50 :: Integer)))
+    uphex = map uphex1
+    uphex1 n | n <= 57 = n         --  '9' or below
+             | otherwise = n - 32  --  otherwise assume lower case a-f, convert to A-F
 
 testsFloating :: [TestTree]
 testsFloating =

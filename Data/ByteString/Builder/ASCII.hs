@@ -74,6 +74,10 @@ module Data.ByteString.Builder.ASCII
     , byteStringHex
     , lazyByteStringHex
 
+    , word8HexUpperFixed
+    , word64HexUpperFixedWidth
+    , byteStringHexUpper
+
     ) where
 
 import           Data.ByteString                                as S
@@ -249,6 +253,23 @@ byteStringHex = P.primMapByteStringFixed P.word8HexFixed
 {-# NOINLINE lazyByteStringHex #-} -- share code
 lazyByteStringHex :: L.ByteString -> Builder
 lazyByteStringHex = P.primMapLazyByteStringFixed P.word8HexFixed
+
+-- | Hexadecimal encoding of a 'Word8' using 2 upper-case characters.
+{-# INLINE word8HexUpperFixed #-}
+word8HexUpperFixed :: Word8 -> Builder
+word8HexUpperFixed = P.primFixed P.word8HexUpperFixed
+
+-- | Hexadecimal encoding of a 'Word64' using a specified number of
+--   upper-case characters.
+{-# INLINE word64HexUpperFixedWidth #-}
+word64HexUpperFixedWidth :: Int -> Word64 -> Builder
+word64HexUpperFixedWidth = P.primFixed . P.word64HexUpperFixedWidth
+
+-- | Encode each byte of a 'S.ByteString' using its fixed-width hex
+--   upper-case encoding.
+{-# NOINLINE byteStringHexUpper #-} -- share code
+byteStringHexUpper :: S.ByteString -> Builder
+byteStringHexUpper = P.primMapByteStringFixed P.word8HexUpperFixed
 
 
 ------------------------------------------------------------------------------

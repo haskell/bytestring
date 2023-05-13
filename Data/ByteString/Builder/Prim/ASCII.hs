@@ -75,6 +75,9 @@ module Data.ByteString.Builder.Prim.ASCII
     , floatHexFixed
     , doubleHexFixed
 
+    , word8HexUpperFixed
+    , word64HexUpperFixedWidth
+
     ) where
 
 import Data.ByteString.Builder.Prim.Binary
@@ -283,3 +286,35 @@ floatHexFixed = encodeFloatViaWord32F word32HexFixed
 {-# INLINE doubleHexFixed #-}
 doubleHexFixed :: FixedPrim Double
 doubleHexFixed = encodeDoubleViaWord64F word64HexFixed
+
+-- fixed width; leading zeroes; upper-case
+------------------------------------------
+
+foreign import ccall unsafe "static _hs_bytestring_builder_uint32_fixed_width_hex_upper" c_uint32_fixed_hex_upper
+    :: CInt -> Word32 -> Ptr Word8 -> IO ()
+
+foreign import ccall unsafe "static _hs_bytestring_builder_uint64_fixed_width_hex_upper" c_uint64_fixed_hex_upper
+    :: CInt -> Word64 -> Ptr Word8 -> IO ()
+
+{-# INLINE encodeWordHexUpperFixedWidth #-}
+encodeWordHexUpperFixedWidth :: forall a. (Storable a, Integral a) => Int -> FixedPrim a
+encodeWordHexUpperFixedWidth width = fixedPrim width $ c_uint32_fixed_hex_upper (CInt (fromIntegral width)) . fromIntegral
+
+{-# INLINE encodeWordHexUpperFixed #-}
+encodeWordHexUpperFixed :: forall a. (Storable a, Integral a) => FixedPrim a
+encodeWordHexUpperFixed = encodeWordHexUpperFixedWidth (2 * sizeOf (undefined :: a))
+
+{-# INLINE encodeWord64HexUpperFixedWidth #-}
+encodeWord64HexUpperFixedWidth :: forall a. (Storable a, Integral a) => Int -> FixedPrim a
+encodeWord64HexUpperFixedWidth width = fixedPrim width $ c_uint64_fixed_hex_upper (CInt (fromIntegral width)) . fromIntegral
+
+-- | Hexadecimal encoding of a 'Word8' using 2 upper-case characters.
+{-# INLINE word8HexUpperFixed #-}
+word8HexUpperFixed :: FixedPrim Word8
+word8HexUpperFixed = encodeWordHexUpperFixed
+
+-- | Hexadecimal encoding of a 'Word64' using a specified number of
+--   upper-case characters.
+{-# INLINE word64HexUpperFixedWidth #-}
+word64HexUpperFixedWidth :: Int -> FixedPrim Word64
+word64HexUpperFixedWidth = encodeWord64HexUpperFixedWidth
