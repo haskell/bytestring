@@ -28,9 +28,7 @@ import           Foreign (minusPtr)
 import           Data.Char (chr)
 import           Data.Bits ((.|.), shiftL)
 import           Data.Foldable
-#if !MIN_VERSION_base(4,11,0)
-import           Data.Semigroup
-#endif
+import           Data.Semigroup (Semigroup(..))
 import           Data.Word
 
 import qualified Data.ByteString          as S
@@ -54,7 +52,7 @@ import           System.Posix.Internals (c_unlink)
 
 import           Test.Tasty (TestTree, TestName, testGroup)
 import           Test.Tasty.QuickCheck
-                   ( Arbitrary(..), oneof, choose, listOf, elements
+                   ( Arbitrary(..), oneof, choose, listOf, elements, forAll
                    , counterexample, ioProperty, UnicodeString(..), Property, testProperty
                    , (===), (.&&.), conjoin )
 
@@ -547,11 +545,13 @@ testBuilderConstr :: (Arbitrary a, Show a)
 testBuilderConstr name ref mkBuilder =
     testProperty name check
   where
-    check x =
-        (ws ++ ws) ==
-        (L.unpack $ toLazyByteString $ mkBuilder x `BI.append` mkBuilder x)
-      where
-        ws = ref x
+    check x = forAll (choose (0, 7)) $ \paddingAmount -> let
+      -- we use paddingAmount to make sure we test at unaligned positions
+      ws = ref x
+      b1 = mkBuilder x
+      b2 = stimes paddingAmount (char8 ' ') <> b1 <> b1
+      in (replicate paddingAmount (S.c2w ' ') ++ ws ++ ws) ===
+         (L.unpack $ toLazyByteString b2)
 
 
 testsBinary :: [TestTree]

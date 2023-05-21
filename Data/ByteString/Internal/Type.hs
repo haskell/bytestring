@@ -835,7 +835,7 @@ stimesPolymorphic nRaw !bs = case checkedIntegerToInt n of
 
 stimesNegativeErr :: ByteString
 stimesNegativeErr
-  = error "stimes @ByteString: non-negative multiplier expected"
+  = errorWithoutStackTrace "stimes @ByteString: non-negative multiplier expected"
 
 stimesOverflowErr :: ByteString
 -- Although this only appears once, it is extracted here to prevent it

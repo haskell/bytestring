@@ -10,6 +10,7 @@ which are known not to trap (either to the kernel for emulation, or crash).
 #define HS_UNALIGNED_POKES_OK 1
 #else
 #define HS_UNALIGNED_POKES_OK 0
+#warning "tell me which CI jobs reach this"
 #endif
 
 
