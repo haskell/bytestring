@@ -1,5 +1,8 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE Trustworthy #-}
+
+{-# LANGUAGE TypeApplications #-}
+
 -- | Copyright   : (c) 2010-2011 Simon Meier
 -- License       : BSD3-style (see LICENSE)
 --
@@ -70,7 +73,7 @@ import Foreign
 --
 {-# INLINE word8 #-}
 word8 :: FixedPrim Word8
-word8 = storableToF
+word8 = fixedPrim 1 (flip poke) -- Word8 is always aligned
 
 --
 -- We rely on the fromIntegral to do the right masking for us.
@@ -143,23 +146,43 @@ word64LE = word64Host
 --
 {-# INLINE wordHost #-}
 wordHost :: FixedPrim Word
-wordHost = storableToF
+wordHost = case finiteBitSize (0 :: Word) of
+  32 -> fromIntegral @Word @Word32 >$< word32Host
+  64 -> fromIntegral @Word @Word64 >$< word64Host
+  _ -> error "Data.ByteString.Builder.Prim.Binary.wordHost: unexpected word size"
 
 -- | Encoding 'Word16's in native host order and host endianness.
 {-# INLINE word16Host #-}
 word16Host :: FixedPrim Word16
-word16Host = storableToF
+word16Host = fixedPrim 2 unaligned_write_u16
 
 -- | Encoding 'Word32's in native host order and host endianness.
 {-# INLINE word32Host #-}
 word32Host :: FixedPrim Word32
-word32Host = storableToF
+word32Host = fixedPrim 4 unaligned_write_u32
 
 -- | Encoding 'Word64's in native host order and host endianness.
 {-# INLINE word64Host #-}
 word64Host :: FixedPrim Word64
-word64Host = storableToF
+word64Host = fixedPrim 8 unaligned_write_u64
 
+#if HS_BYTESTRING_UNALIGNED_POKES_OK
+unaligned_write_u16 :: Word16 -> Ptr Word8 -> IO ()
+unaligned_write_u16 x p = poke (castPtr p) x
+
+unaligned_write_u32 :: Word32 -> Ptr Word8 -> IO ()
+unaligned_write_u32 x p = poke (castPtr p) x
+
+unaligned_write_u64 :: Word64 -> Ptr Word8 -> IO ()
+unaligned_write_u64 x p = poke (castPtr p) x
+#else
+foreign import ccall unsafe "static fpstring.h fps_unaligned_write_u16"
+  unaligned_write_u16 :: Word16 -> Ptr Word8 -> IO ()
+foreign import ccall unsafe "static fpstring.h fps_unaligned_write_u32"
+  unaligned_write_u32 :: Word32 -> Ptr Word8 -> IO ()
+foreign import ccall unsafe "static fpstring.h fps_unaligned_write_u64"
+  unaligned_write_u64 :: Word64 -> Ptr Word8 -> IO ()
+#endif
 
 ------------------------------------------------------------------------------
 -- Int encodings
@@ -215,22 +238,22 @@ int64LE = fromIntegral >$< word64LE
 --
 {-# INLINE intHost #-}
 intHost :: FixedPrim Int
-intHost = storableToF
+intHost = fromIntegral @Int @Word >$< wordHost
 
 -- | Encoding 'Int16's in native host order and host endianness.
 {-# INLINE int16Host #-}
 int16Host :: FixedPrim Int16
-int16Host = storableToF
+int16Host = fromIntegral @Int16 @Word16 >$< word16Host
 
 -- | Encoding 'Int32's in native host order and host endianness.
 {-# INLINE int32Host #-}
 int32Host :: FixedPrim Int32
-int32Host = storableToF
+int32Host = fromIntegral @Int32 @Word32 >$< word32Host
 
 -- | Encoding 'Int64's in native host order and host endianness.
 {-# INLINE int64Host #-}
 int64Host :: FixedPrim Int64
-int64Host = storableToF
+int64Host = fromIntegral @Int64 @Word64 >$< word64Host
 
 -- IEEE Floating Point Numbers
 ------------------------------

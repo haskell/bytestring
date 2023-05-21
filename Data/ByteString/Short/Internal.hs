@@ -21,15 +21,8 @@
 {-# OPTIONS_HADDOCK not-home #-}
 
 {-# OPTIONS_GHC -fexpose-all-unfoldings #-}
--- Not all architectures are forgiving of unaligned accesses; whitelist ones
--- which are known not to trap (either to the kernel for emulation, or crash).
-#if defined(i386_HOST_ARCH) || defined(x86_64_HOST_ARCH) \
-    || ((defined(arm_HOST_ARCH) || defined(aarch64_HOST_ARCH)) \
-        && defined(__ARM_FEATURE_UNALIGNED)) \
-    || defined(powerpc_HOST_ARCH) || defined(powerpc64_HOST_ARCH) \
-    || defined(powerpc64le_HOST_ARCH)
-#define SAFE_UNALIGNED 1
-#endif
+
+#include "bytestring-cpp-macros.h"
 
 -- |
 -- Module      : Data.ByteString.Short.Internal
@@ -172,7 +165,7 @@ import Data.Array.Byte
 import Data.Bits
   ( FiniteBits (finiteBitSize)
   , shiftL
-#if MIN_VERSION_base(4,12,0) && defined(SAFE_UNALIGNED)
+#if HS_UNALIGNED_ByteArray_OPS_OK
   , shiftR
 #endif
   , (.&.)
@@ -231,7 +224,7 @@ import GHC.Exts
   , indexWord8Array#, indexCharArray#
   , writeWord8Array#
   , unsafeFreezeByteArray#
-#if MIN_VERSION_base(4,12,0) && defined(SAFE_UNALIGNED)
+#if HS_UNALIGNED_ByteArray_OPS_OK
   ,writeWord64Array#
   ,indexWord8ArrayAsWord64#
 #endif
@@ -803,8 +796,7 @@ reverse :: ShortByteString -> ShortByteString
 reverse = \sbs ->
     let l  = length sbs
         ba = asBA sbs
--- https://gitlab.haskell.org/ghc/ghc/-/issues/21015
-#if MIN_VERSION_base(4,12,0) && defined(SAFE_UNALIGNED)
+#if HS_UNALIGNED_ByteArray_OPS_OK
     in create l (\mba -> go ba mba l)
   where
     go :: forall s. BA -> MBA s -> Int -> ST s ()
@@ -1607,7 +1599,7 @@ indexCharArray (BA# ba#) (I# i#) = C# (indexCharArray# ba# i#)
 indexWord8Array :: BA -> Int -> Word8
 indexWord8Array (BA# ba#) (I# i#) = W8# (indexWord8Array# ba# i#)
 
-#if MIN_VERSION_base(4,12,0) && defined(SAFE_UNALIGNED)
+#if HS_UNALIGNED_ByteArray_OPS_OK
 indexWord8ArrayAsWord64 :: BA -> Int -> Word64
 indexWord8ArrayAsWord64 (BA# ba#) (I# i#) = W64# (indexWord8ArrayAsWord64# ba# i#)
 #endif
@@ -1632,7 +1624,7 @@ writeWord8Array (MBA# mba#) (I# i#) (W8# w#) =
   ST $ \s -> case writeWord8Array# mba# i# w# s of
                s' -> (# s', () #)
 
-#if MIN_VERSION_base(4,12,0) && defined(SAFE_UNALIGNED)
+#if HS_UNALIGNED_ByteArray_OPS_OK
 writeWord64Array :: MBA s -> Int -> Word64 -> ST s ()
 writeWord64Array (MBA# mba#) (I# i#) (W64# w#) =
   ST $ \s -> case writeWord64Array# mba# i# w# s of
