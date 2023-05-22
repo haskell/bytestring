@@ -234,14 +234,14 @@ module Data.ByteString.Char8 (
   ) where
 
 import qualified Prelude as P
-import Prelude hiding           (reverse,head,tail,last,init,null
-                                ,length,map,lines,foldl,foldr,unlines
+import Prelude hiding           (reverse,head,tail,last,init,Foldable(..)
+                                ,map,lines,unlines
                                 ,concat,any,take,drop,splitAt,takeWhile
-                                ,dropWhile,span,break,elem,filter,unwords
-                                ,words,maximum,minimum,all,concatMap
+                                ,dropWhile,span,break,filter,unwords
+                                ,words,all,concatMap
                                 ,scanl,scanl1,scanr,scanr1
                                 ,appendFile,readFile,writeFile
-                                ,foldl1,foldr1,replicate
+                                ,replicate
                                 ,getContents,getLine,putStr,putStrLn,interact
                                 ,zip,zipWith,unzip,notElem)
 

@@ -219,11 +219,11 @@ module Data.ByteString (
   ) where
 
 import qualified Prelude as P
-import Prelude hiding           (reverse,head,tail,last,init,null
-                                ,length,map,lines,foldl,foldr,unlines
+import Prelude hiding           (reverse,head,tail,last,init,Foldable(..)
+                                ,map,lines,unlines
                                 ,concat,any,take,drop,splitAt,takeWhile
-                                ,dropWhile,span,break,elem,filter,maximum
-                                ,minimum,all,concatMap,foldl1,foldr1
+                                ,dropWhile,span,break,filter
+                                ,all,concatMap
                                 ,scanl,scanl1,scanr,scanr1
                                 ,readFile,writeFile,appendFile,replicate
                                 ,getContents,getLine,putStr,putStrLn,interact
