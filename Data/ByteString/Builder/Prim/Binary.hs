@@ -61,6 +61,7 @@ import Data.ByteString.Builder.Prim.Internal.Floating
 import Foreign
 
 #include "MachDeps.h"
+#include "bytestring-cpp-macros.h"
 
 ------------------------------------------------------------------------------
 -- Binary encoding
