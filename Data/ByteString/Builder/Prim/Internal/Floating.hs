@@ -1,5 +1,7 @@
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE Trustworthy #-}
+{-# LANGUAGE CPP #-}
+
+#include "bytestring-cpp-macros.h"
+
 -- |
 -- Copyright   : (c) 2010 Simon Meier
 --
@@ -12,45 +14,43 @@
 -- Conversion of 'Float's and 'Double's to 'Word32's and 'Word64's.
 --
 module Data.ByteString.Builder.Prim.Internal.Floating
-    (
-      -- coerceFloatToWord32
-    -- , coerceDoubleToWord64
-    encodeFloatViaWord32F
+  ( encodeFloatViaWord32F
   , encodeDoubleViaWord64F
   ) where
 
-import Foreign
 import Data.ByteString.Builder.Prim.Internal
+import Data.Word
 
+#if HS_CAST_FLOAT_WORD_OPS_AVAILABLE
+import GHC.Float (castFloatToWord32, castDoubleToWord64)
+#else
+import Foreign.Marshal.Utils
+import Foreign.Storable
 {-
-We work around ticket http://ghc.haskell.org/trac/ghc/ticket/4092 using the
-FFI to store the Float/Double in the buffer and peek it out again from there.
+We work around ticket http://ghc.haskell.org/trac/ghc/ticket/4092 by
+storing the Float/Double in a temp buffer and peeking it out again from there.
 -}
+#endif
 
 
 -- | Encode a 'Float' using a 'Word32' encoding.
---
--- PRE: The 'Word32' encoding must have a size of at least 4 bytes.
 {-# INLINE encodeFloatViaWord32F #-}
 encodeFloatViaWord32F :: FixedPrim Word32 -> FixedPrim Float
-encodeFloatViaWord32F w32fe
-  | size w32fe < sizeOf (undefined :: Float) =
-      error "encodeFloatViaWord32F: encoding not wide enough"
-  | otherwise = fixedPrim (size w32fe) $ \x op -> do
-      poke (castPtr op) x
-      x' <- peek (castPtr op)
-      runF w32fe x' op
+#if HS_CAST_FLOAT_WORD_OPS_AVAILABLE
+encodeFloatViaWord32F = (castFloatToWord32 >$<)
+#else
+encodeFloatViaWord32F w32fe = fixedPrim (size w32fe) $ \x op -> do
+  x' <- with x (peek . castPtr)
+  runF w32fe x' op
+#endif
 
 -- | Encode a 'Double' using a 'Word64' encoding.
---
--- PRE: The 'Word64' encoding must have a size of at least 8 bytes.
 {-# INLINE encodeDoubleViaWord64F #-}
 encodeDoubleViaWord64F :: FixedPrim Word64 -> FixedPrim Double
-encodeDoubleViaWord64F w64fe
-  | size w64fe < sizeOf (undefined :: Float) =
-      error "encodeDoubleViaWord64F: encoding not wide enough"
-  | otherwise = fixedPrim (size w64fe) $ \x op -> do
-      poke (castPtr op) x
-      x' <- peek (castPtr op)
-      runF w64fe x' op
-
+#if HS_CAST_FLOAT_WORD_OPS_AVAILABLE
+encodeDoubleViaWord64F = (castDoubleToWord64 >$<)
+#else
+encodeDoubleViaWord64F = fixedPrim (size w64fe) $ \x op -> do
+  x' <- with x (peek . castPtr)
+  runF w64fe x' op
+#endif

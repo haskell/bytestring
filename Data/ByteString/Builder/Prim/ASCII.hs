@@ -247,6 +247,7 @@ word32HexFixed :: FixedPrim Word32
 word32HexFixed =
     (\x -> (fromIntegral $ x `shiftR` 16, fromIntegral x))
       >$< pairF word16HexFixed word16HexFixed
+
 -- | Encode a 'Word64' using 16 nibbles.
 {-# INLINE word64HexFixed #-}
 word64HexFixed :: FixedPrim Word64
