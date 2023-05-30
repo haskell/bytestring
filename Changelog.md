@@ -5,6 +5,7 @@
 * [Remove `zipWith` rewrite rule](https://github.com/haskell/bytestring/pull/387)
 * [`ShortByteString` is now a wrapper over boxed `Data.Array.Byte.ByteArray` instead of unboxed `ByteArray#` directly](https://github.com/haskell/bytestring/pull/410)
 * [`fromListN` from `instance IsList ShortByteString` throws an exception if the first argument does not match the length of the second instead of silent ignore](https://github.com/haskell/bytestring/pull/410)
+* [Add `toStrictByteString` to `Data.ByteString.Builder`](https://github.com/haskell/bytestring/pull/589)
 
 [0.12.0.0]: https://github.com/haskell/bytestring/compare/0.11.4.0...0.12.0.0
 
