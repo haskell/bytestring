@@ -20,7 +20,7 @@ which are known not to trap (either to the kernel for emulation, or crash).
 
 #define HS_UNALIGNED_ByteArray_OPS_OK \
   MIN_VERSION_base(4,12,0) \
-  && (MIN_VERSION_base(4,16,1) || UNALIGNED_POKES_OK)
+  && (MIN_VERSION_base(4,16,1) || HS_UNALIGNED_POKES_OK)
 /*
 The unaligned ByteArray# primops became available with base-4.12.0,
 but require an unaligned-friendly host architecture to be safe to use
