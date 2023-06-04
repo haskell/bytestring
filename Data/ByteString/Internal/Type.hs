@@ -254,11 +254,13 @@ deferForeignPtrAvailability (ForeignPtr addr0# guts) = IO $ \s0 ->
 unsafeDupablePerformIO :: IO a -> a
 -- Why does this exist? As of base-4.18.0.0, the version of
 -- unsafeDupablePerformIO in base prevents unboxing of its results
--- with an opaque call to lazy, for reasons described in
--- Note [unsafePerformIO and strictness].  Even if we accept the
--- (very questionable) premise that the sort of function described
--- in that note should work, we expect no such calls to be made in
--- the context of bytestring.  (And we really want unboxing!)
+-- with an opaque call to GHC.Exts.lazy, for reasons described in
+-- Note [unsafePerformIO and strictness] in GHC.IO.Unsafe. (See
+-- https://hackage.haskell.org/package/base-4.18.0.0/docs/src/GHC.IO.Unsafe.html#line-30 .)
+-- Even if we accept the (very questionable) premise that the sort of
+-- function described in that note should work, we expect no such
+-- calls to be made in the context of bytestring.  (And we really want
+-- unboxing!)
 unsafeDupablePerformIO (IO act) = case runRW# act of (# _, res #) -> res
 
 
