@@ -1065,44 +1065,52 @@ toLazyByteStringWith strategy k b =
 -- 'Buffer's allocated according to the given 'AllocationStrategy'.
 {-# INLINE buildStepToCIOS #-}
 buildStepToCIOS
-    :: AllocationStrategy          -- ^ Buffer allocation strategy to use
+    :: forall a.
+       AllocationStrategy          -- ^ Buffer allocation strategy to use
     -> BuildStep a                 -- ^ 'BuildStep' to execute
     -> IO (ChunkIOStream a)
 buildStepToCIOS (AllocationStrategy nextBuffer bufSize trim) =
     \step -> nextBuffer Nothing >>= fill step
   where
+    fill :: BuildStep a -> Buffer -> IO (ChunkIOStream a)
     fill !step buf@(Buffer fpbuf br@(BufferRange _ pe)) = do
         res <- fillWithBuildStep step doneH fullH insertChunkH br
         touchForeignPtr fpbuf
         return res
       where
+        pbuf :: Ptr Word8
         pbuf = unsafeForeignPtrToPtr fpbuf
 
+        doneH :: Ptr Word8 -> a -> IO (ChunkIOStream a)
         doneH op' x = return $
             Finished (Buffer fpbuf (BufferRange op' pe)) x
 
+        fullH :: Ptr Word8 -> Int -> BuildStep a -> IO (ChunkIOStream a)
         fullH op' minSize nextStep =
             wrapChunk op' $ const $
                 nextBuffer (Just (buf, max minSize bufSize)) >>= fill nextStep
 
+        insertChunkH :: Ptr Word8 -> S.ByteString -> BuildStep a -> IO (ChunkIOStream a)
         insertChunkH op' bs nextStep =
             wrapChunk op' $ \isEmpty -> yield1 bs $
                 -- Checking for empty case avoids allocating 'n-1' empty
                 -- buffers for 'n' insertChunkH right after each other.
                 if isEmpty
-                  then fill nextStep buf
+                  then fill nextStep (Buffer fpbuf (BufferRange pbuf pe))
                   else do buf' <- nextBuffer (Just (buf, bufSize))
                           fill nextStep buf'
 
         -- Wrap and yield a chunk, trimming it if necesary
         {-# INLINE wrapChunk #-}
+        wrapChunk :: Ptr Word8 -> (Bool -> IO (ChunkIOStream a)) -> IO (ChunkIOStream a)
         wrapChunk !op' mkCIOS
           | chunkSize == 0      = mkCIOS True
           | trim chunkSize size = do
               bs <- S.createFp chunkSize $ \fpbuf' ->
                         S.memcpyFp fpbuf' fpbuf chunkSize
-              -- FIXME: We could reuse the trimmed buffer here.
-              return $ Yield1 bs (mkCIOS False)
+              -- Instead of allocating a new buffer after trimming,
+              -- we re-use the old buffer and consider it empty.
+              return $ Yield1 bs (mkCIOS True)
           | otherwise            =
               return $ Yield1 (S.BS fpbuf chunkSize) (mkCIOS False)
           where
