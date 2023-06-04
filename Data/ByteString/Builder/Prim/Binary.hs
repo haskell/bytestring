@@ -1,6 +1,9 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE Trustworthy #-}
 
+#include "MachDeps.h"
+#include "bytestring-cpp-macros.h"
+
 {-# LANGUAGE TypeApplications #-}
 
 -- | Copyright   : (c) 2010-2011 Simon Meier
@@ -59,9 +62,6 @@ import Data.ByteString.Builder.Prim.Internal
 import Data.ByteString.Builder.Prim.Internal.Floating
 
 import Foreign
-
-#include "MachDeps.h"
-#include "bytestring-cpp-macros.h"
 
 ------------------------------------------------------------------------------
 -- Binary encoding
@@ -167,7 +167,7 @@ word32Host = fixedPrim 4 unaligned_write_u32
 word64Host :: FixedPrim Word64
 word64Host = fixedPrim 8 unaligned_write_u64
 
-#if HS_BYTESTRING_UNALIGNED_POKES_OK
+#if HS_UNALIGNED_POKES_OK
 unaligned_write_u16 :: Word16 -> Ptr Word8 -> IO ()
 unaligned_write_u16 x p = poke (castPtr p) x
 

@@ -1,10 +1,7 @@
-/*
+#if defined(__STDC__) || defined(__GNUC__) || defined(__clang__)
+#error "bytestring-cpp-macros.h does not work in C code yet"
+#endif
 
-Use only C-style block comments in this file; the preprocessor removes them.
-
-Macros using MIN_VERSION_base etc. are not currently usable in C code.
-
-*/
 
 #if defined(i386_HOST_ARCH) || defined(x86_64_HOST_ARCH)       \
     || ((defined(arm_HOST_ARCH) || defined(aarch64_HOST_ARCH)) \
