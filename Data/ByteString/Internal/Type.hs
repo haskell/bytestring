@@ -62,6 +62,7 @@ module Data.ByteString.Internal.Type (
         mallocByteString,
 
         -- * Conversion to and from ForeignPtrs
+        mkDeferredByteString,
         fromForeignPtr,
         toForeignPtr,
         fromForeignPtr0,
@@ -253,6 +254,14 @@ deferForeignPtrAvailability :: ForeignPtr a -> IO (ForeignPtr a)
 deferForeignPtrAvailability (ForeignPtr addr0# guts) = IO $ \s0 ->
   case lazy runRW# (\_ -> (# s0, addr0# #)) of
     (# s1, addr1# #) -> (# s1, ForeignPtr addr1# guts #)
+
+-- | Variant of 'fromForeignPtr0' that calls 'deferForeignPtrAvailability'
+--
+-- @since 0.11.5.0
+mkDeferredByteString :: ForeignPtr Word8 -> Int -> IO ByteString
+mkDeferredByteString fp len = do
+  deferredFp <- deferForeignPtrAvailability fp
+  pure $! BS deferredFp len
 
 unsafeDupablePerformIO :: IO a -> a
 -- Why does this exist? In base-4.15.1.0 until at least base-4.18.0.0,
@@ -607,8 +616,8 @@ fromForeignPtr fp o = BS (plusForeignPtr fp o)
 
 -- | @since 0.11.0.0
 fromForeignPtr0 :: ForeignPtr Word8
-               -> Int -- ^ Length
-               -> ByteString
+                -> Int -- ^ Length
+                -> ByteString
 fromForeignPtr0 = BS
 {-# INLINE fromForeignPtr0 #-}
 
@@ -648,8 +657,7 @@ createFp :: Int -> (ForeignPtr Word8 -> IO ()) -> IO ByteString
 createFp l action = do
     fp <- mallocByteString l
     action fp
-    fp' <- deferForeignPtrAvailability fp
-    return $! BS fp' l
+    mkDeferredByteString fp l
 {-# INLINE createFp #-}
 
 -- | Given a maximum size @l@ and an action @f@ that fills the 'ByteString'
@@ -659,8 +667,7 @@ createFpUptoN :: Int -> (ForeignPtr Word8 -> IO Int) -> IO ByteString
 createFpUptoN l action = do
     fp <- mallocByteString l
     l' <- action fp
-    fp' <- deferForeignPtrAvailability fp
-    assert (l' <= l) $ return $! BS fp' l'
+    assert (l' <= l) $ mkDeferredByteString fp' l'
 {-# INLINE createFpUptoN #-}
 
 -- | Like 'createFpUptoN', but also returns an additional value created by the
@@ -669,8 +676,8 @@ createFpUptoN' :: Int -> (ForeignPtr Word8 -> IO (Int, a)) -> IO (ByteString, a)
 createFpUptoN' l action = do
     fp <- mallocByteString l
     (l', res) <- action fp
-    fp' <- deferForeignPtrAvailability fp
-    assert (l' <= l) $ return (BS fp' l', res)
+    bs <- mkDeferredByteString fp l'
+    assert (l' <= l) $ pure (bs, res)
 {-# INLINE createFpUptoN' #-}
 
 -- | Given the maximum size needed and a function to make the contents
@@ -685,22 +692,20 @@ createFpAndTrim :: Int -> (ForeignPtr Word8 -> IO Int) -> IO ByteString
 createFpAndTrim l action = do
     fp <- mallocByteString l
     l' <- action fp
-    fp' <- deferForeignPtrAvailability fp
     if assert (0 <= l' && l' <= l) $ l' >= l
-        then return $! BS fp' l
-        else createFp l' $ \dest -> memcpyFp dest fp' l'
+        then mkDeferredByteString fp l
+        else createFp l' $ \dest -> memcpyFp dest fp l'
 {-# INLINE createFpAndTrim #-}
 
 createFpAndTrim' :: Int -> (ForeignPtr Word8 -> IO (Int, Int, a)) -> IO (ByteString, a)
 createFpAndTrim' l action = do
     fp <- mallocByteString l
     (off, l', res) <- action fp
-    fp' <- deferForeignPtrAvailability fp
-    if assert (0 <= l' && l' <= l) $ l' >= l
-        then return (BS fp' l, res)
-        else do ps <- createFp l' $ \dest ->
-                        memcpyFp dest (fp' `plusForeignPtr` off) l'
-                return (ps, res)
+    bs <- if assert (0 <= l' && l' <= l) $ l' >= l
+        then mkDeferredByteString fp l -- entire buffer used => offset is zero
+        else createFp l' $ \dest ->
+               memcpyFp dest (fp `plusForeignPtr` off) l'
+    return (bs, res)
 {-# INLINE createFpAndTrim' #-}
 
 

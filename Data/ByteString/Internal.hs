@@ -51,6 +51,7 @@ module Data.ByteString.Internal (
         mallocByteString,
 
         -- * Conversion to and from ForeignPtrs
+        mkDeferredByteString,
         fromForeignPtr,
         toForeignPtr,
         fromForeignPtr0,
