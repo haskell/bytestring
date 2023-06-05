@@ -332,12 +332,10 @@ toStrict = \cs -> goLen0 cs cs
   where
     -- It's still possible that the result is empty
     goLen0 _   Empty                 = S.BS S.nullForeignPtr 0
-    goLen0 cs0 (Chunk (S.BS _ 0) cs) = goLen0 cs0 cs
     goLen0 cs0 (Chunk c cs)          = goLen1 cs0 c cs
 
     -- It's still possible that the result is a single chunk
     goLen1 _   bs Empty = bs
-    goLen1 cs0 bs (Chunk (S.BS _ 0) cs) = goLen1 cs0 bs cs
     goLen1 cs0 (S.BS _ bl) (Chunk (S.BS _ cl) cs) =
         goLen cs0 (S.checkedAdd "Lazy.toStrict" bl cl) cs
 
