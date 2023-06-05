@@ -241,21 +241,22 @@ pokeFpByteOff fp off val = unsafeWithForeignPtr fp $ \p ->
 --
 -- 'deferForeignPtrAvailability' exists to help solve this problem.
 -- At runtime, a call @'deferForeignPtrAvailability' x@ is equivalent
--- to @'pure' x@, but the former is more opaque to the simplifier, so
+-- to @pure $! x@, but the former is more opaque to the simplifier, so
 -- that reads from the pointer in its result cannot be executed until
--- the (no-op) @'deferForeignPtrAvailability' x@ call is complete.
+-- the @'deferForeignPtrAvailability' x@ call is complete.
+--
+-- The opaque bits evaporate during CorePrep, so using
+-- 'deferForeignPtrAvailability' incurs no direct overhead.
 deferForeignPtrAvailability :: ForeignPtr a -> IO (ForeignPtr a)
 deferForeignPtrAvailability (ForeignPtr addr0# guts) = IO $ \s0 ->
-  -- The "lazy runRW#" gunk gets erased during CorePrep,
-  -- leaving just the unboxed tuple, so this should have no direct overhead.
   case lazy runRW# (\_ -> (# s0, addr0# #)) of
     (# s1, addr1# #) -> (# s1, ForeignPtr addr1# guts #)
 
 unsafeDupablePerformIO :: IO a -> a
--- Why does this exist? As of base-4.18.0.0, the version of
--- unsafeDupablePerformIO in base prevents unboxing of its results
--- with an opaque call to GHC.Exts.lazy, for reasons described in
--- Note [unsafePerformIO and strictness] in GHC.IO.Unsafe. (See
+-- Why does this exist? In base-4.15.1.0 until at least base-4.18.0.0,
+-- the version of unsafeDupablePerformIO in base prevents unboxing of
+-- its results with an opaque call to GHC.Exts.lazy, for reasons described
+-- in Note [unsafePerformIO and strictness] in GHC.IO.Unsafe. (See
 -- https://hackage.haskell.org/package/base-4.18.0.0/docs/src/GHC.IO.Unsafe.html#line-30 .)
 -- Even if we accept the (very questionable) premise that the sort of
 -- function described in that note should work, we expect no such
