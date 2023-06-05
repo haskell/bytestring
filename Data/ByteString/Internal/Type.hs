@@ -667,7 +667,7 @@ createFpUptoN :: Int -> (ForeignPtr Word8 -> IO Int) -> IO ByteString
 createFpUptoN l action = do
     fp <- mallocByteString l
     l' <- action fp
-    assert (l' <= l) $ mkDeferredByteString fp' l'
+    assert (l' <= l) $ mkDeferredByteString fp l'
 {-# INLINE createFpUptoN #-}
 
 -- | Like 'createFpUptoN', but also returns an additional value created by the
