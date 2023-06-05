@@ -247,6 +247,8 @@ pokeFpByteOff fp off val = unsafeWithForeignPtr fp $ \p ->
 --
 -- The opaque bits evaporate during CorePrep, so using
 -- 'deferForeignPtrAvailability' incurs no direct overhead.
+--
+-- @since 0.11.5.0
 deferForeignPtrAvailability :: ForeignPtr a -> IO (ForeignPtr a)
 deferForeignPtrAvailability (ForeignPtr addr0# guts) = IO $ \s0 ->
   case lazy runRW# (\_ -> (# s0, addr0# #)) of
