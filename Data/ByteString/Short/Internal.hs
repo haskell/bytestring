@@ -158,8 +158,9 @@ module Data.ByteString.Short.Internal (
     useAsCStringLen,
   ) where
 
-import Data.ByteString.Internal
+import Data.ByteString.Internal.Type
   ( ByteString(..)
+  , unsafeDupablePerformIO
   , accursedUnutterablePerformIO
   , checkedAdd
   )
@@ -240,7 +241,7 @@ import GHC.Exts
   , writeWord8Array#
   , unsafeFreezeByteArray#
   , touch# )
-import GHC.IO
+import GHC.IO hiding ( unsafeDupablePerformIO )
 import GHC.ForeignPtr
   ( ForeignPtr(ForeignPtr)
   , ForeignPtrContents(PlainPtr)
@@ -267,7 +268,7 @@ import Prelude
   , snd
   )
 
-import qualified Data.ByteString.Internal as BS
+import qualified Data.ByteString.Internal.Type as BS
 
 import qualified Data.List as List
 import qualified GHC.Exts
