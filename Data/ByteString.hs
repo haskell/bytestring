@@ -267,7 +267,6 @@ import GHC.IO.Handle.Types
 import GHC.IO.Buffer
 import GHC.IO.BufferedIO as Buffered
 import GHC.IO.Encoding          (getFileSystemEncoding)
-import GHC.IO                   (unsafePerformIO, unsafeDupablePerformIO)
 import GHC.Foreign              (newCStringLen, peekCStringLen)
 import GHC.Stack.Types          (HasCallStack)
 import Data.Char                (ord)
@@ -887,7 +886,7 @@ unfoldr f = concat . unfoldChunk 32 64
 unfoldrN :: Int -> (a -> Maybe (Word8, a)) -> a -> (ByteString, Maybe a)
 unfoldrN i f x0
     | i < 0     = (empty, Just x0)
-    | otherwise = unsafePerformIO $ createFpAndTrim' i $ \p -> go p x0 0
+    | otherwise = unsafeDupablePerformIO $ createFpAndTrim' i $ \p -> go p x0 0
   where
     go !p !x !n = go' x n
       where
