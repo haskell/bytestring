@@ -111,8 +111,6 @@ module Data.ByteString.Internal.Type (
 import Prelude hiding (concat, null)
 import qualified Data.List as List
 
-import Control.Monad            (void)
-
 import Foreign.ForeignPtr       (ForeignPtr, withForeignPtr)
 import Foreign.Ptr              (Ptr, FunPtr, plusPtr)
 import Foreign.Storable         (Storable(..))
@@ -1009,7 +1007,7 @@ foreign import ccall unsafe "string.h memchr" c_memchr
     :: Ptr Word8 -> CInt -> CSize -> IO (Ptr Word8)
 
 memchr :: Ptr Word8 -> Word8 -> CSize -> IO (Ptr Word8)
-memchr p w = c_memchr p (fromIntegral w)
+memchr p w sz = c_memchr p (fromIntegral w) sz
 
 foreign import ccall unsafe "string.h memcmp" c_memcmp
     :: Ptr Word8 -> Ptr Word8 -> CSize -> IO CInt
@@ -1017,13 +1015,10 @@ foreign import ccall unsafe "string.h memcmp" c_memcmp
 memcmp :: Ptr Word8 -> Ptr Word8 -> Int -> IO CInt
 memcmp p q s = c_memcmp p q (fromIntegral s)
 
-foreign import ccall unsafe "string.h memcpy" c_memcpy
-    :: Ptr Word8 -> Ptr Word8 -> CSize -> IO (Ptr Word8)
-
 {-# DEPRECATED memcpy "Use Foreign.Marshal.Utils.copyBytes instead" #-}
 -- | deprecated since @bytestring-0.11.5.0@
 memcpy :: Ptr Word8 -> Ptr Word8 -> Int -> IO ()
-memcpy p q s = void $ c_memcpy p q (fromIntegral s)
+memcpy = copyBytes
 
 memcpyFp :: ForeignPtr Word8 -> ForeignPtr Word8 -> Int -> IO ()
 memcpyFp fp fq s = unsafeWithForeignPtr fp $ \p ->
