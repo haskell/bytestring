@@ -847,13 +847,13 @@ scanr1 f ps = case unsnoc ps of
 -- | /O(n)/ 'replicate' @n x@ is a ByteString of length @n@ with @x@
 -- the value of every element. The following holds:
 --
--- > replicate w c = unfoldr w (\u -> Just (u,u)) c
+-- > replicate w c = fst (unfoldrN w (\u -> Just (u,u)) c)
 replicate :: Int -> Word8 -> ByteString
 replicate w c
     | w <= 0    = empty
     | otherwise = unsafeCreateFp w $ \fptr ->
         unsafeWithForeignPtr fptr $ \ptr ->
-                      fillBytes ptr c (fromIntegral w)
+                      fillBytes ptr c w
 {-# INLINE replicate #-}
 
 -- | /O(n)/, where /n/ is the length of the result.  The 'unfoldr'
@@ -1752,7 +1752,8 @@ sort (BS input l)
 
     let go 256 !_   = return ()
         go i   !ptr = do n <- peekElemOff arr i
-                         when (n /= 0) $ fillBytes ptr (fromIntegral i) n
+                         when (n /= 0) $
+                           fillBytes ptr (fromIntegral @Int @Word8 i) n
                          go (i + 1) (ptr `plusPtr` fromIntegral n)
     unsafeWithForeignPtr p (go 0)
   where

@@ -852,7 +852,7 @@ stimesNonNegativeInt n (BS fp len)
   | len == 1 = unsafeCreateFp n $ \destfptr -> do
       byte <- peekFp fp
       unsafeWithForeignPtr destfptr $ \destptr ->
-        fillBytes destptr byte (fromIntegral n)
+        fillBytes destptr byte n
   | otherwise = unsafeCreateFp size $ \destptr -> do
       memcpyFp destptr fp len
       fillFrom destptr len
