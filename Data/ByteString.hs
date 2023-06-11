@@ -1,9 +1,11 @@
+{-# OPTIONS_HADDOCK prune #-}
+{-# LANGUAGE Trustworthy #-}
+
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TupleSections #-}
-{-# OPTIONS_HADDOCK prune #-}
-{-# LANGUAGE Trustworthy #-}
+{-# LANGUAGE TypeApplications #-}
 
 -- |
 -- Module      : Data.ByteString
@@ -243,7 +245,7 @@ import Data.List.NonEmpty (NonEmpty(..))
 import Data.Word                (Word8)
 
 import Control.Exception        (IOException, catch, finally, assert, throwIO)
-import Control.Monad            (when, void)
+import Control.Monad            (when)
 
 import Foreign.C.String         (CString, CStringLen)
 import Foreign.C.Types          (CSize (CSize), CInt (CInt))
@@ -251,6 +253,7 @@ import Foreign.ForeignPtr       (ForeignPtr, touchForeignPtr)
 import Foreign.ForeignPtr.Unsafe(unsafeForeignPtrToPtr)
 import Foreign.Marshal.Alloc    (allocaBytes)
 import Foreign.Marshal.Array    (allocaArray)
+import Foreign.Marshal.Utils
 import Foreign.Ptr
 import Foreign.Storable         (Storable(..))
 
@@ -843,15 +846,13 @@ scanr1 f ps = case unsnoc ps of
 -- | /O(n)/ 'replicate' @n x@ is a ByteString of length @n@ with @x@
 -- the value of every element. The following holds:
 --
--- > replicate w c = unfoldr w (\u -> Just (u,u)) c
---
--- This implementation uses @memset(3)@
+-- > replicate w c = fst (unfoldrN w (\u -> Just (u,u)) c)
 replicate :: Int -> Word8 -> ByteString
 replicate w c
     | w <= 0    = empty
     | otherwise = unsafeCreateFp w $ \fptr ->
         unsafeWithForeignPtr fptr $ \ptr ->
-                      void $ memset ptr c (fromIntegral w)
+                      fillBytes ptr c w
 {-# INLINE replicate #-}
 
 -- | /O(n)/, where /n/ is the length of the result.  The 'unfoldr'
@@ -1724,12 +1725,15 @@ tailsNE p | null p    = empty :| []
 Note [Avoid NonEmpty combinators]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-As of base-4.17, most of the NonEmpty API is surprisingly lazy.
+As of base-4.18, most of the NonEmpty API is surprisingly lazy.
 Using it without forcing the arguments yourself is just begging GHC
 to make your code waste time allocating useless selector thunks.
 This may change in the future. See also this CLC issue:
   https://github.com/haskell/core-libraries-committee/issues/107
 But until then, "refactor" with care!
+
+(Even for uses of NonEmpty near lazy ByteStrings, we don't want
+the extra laziness of the NonEmpty API.)
 -}
 
 
@@ -1746,18 +1750,18 @@ sort (BS input l)
     unsafeWithForeignPtr destFP $ \dest -> c_sort dest (fromIntegral l)
   | otherwise = unsafeCreateFp l $ \p -> allocaArray 256 $ \arr -> do
 
-    _ <- memset (castPtr arr) 0 (256 * fromIntegral (sizeOf (undefined :: CSize)))
+    fillBytes (castPtr arr) 0 (256 * sizeOf (undefined :: Int))
     unsafeWithForeignPtr input (\x -> countOccurrences arr x l)
 
     let go 256 !_   = return ()
         go i   !ptr = do n <- peekElemOff arr i
-                         when (n /= 0) $ void $ memset ptr (fromIntegral i) n
+                         when (n /= 0) $
+                           fillBytes ptr (fromIntegral @Int @Word8 i) n
                          go (i + 1) (ptr `plusPtr` fromIntegral n)
     unsafeWithForeignPtr p (go 0)
   where
     -- Count the number of occurrences of each byte.
-    -- Used by 'sort'
-    countOccurrences :: Ptr CSize -> Ptr Word8 -> Int -> IO ()
+    countOccurrences :: Ptr Int -> Ptr Word8 -> Int -> IO ()
     countOccurrences !counts !str !len = go 0
      where
         go !i | i == len    = return ()
@@ -1777,7 +1781,7 @@ sort (BS input l)
 useAsCString :: ByteString -> (CString -> IO a) -> IO a
 useAsCString (BS fp l) action =
   allocaBytes (l+1) $ \buf -> do
-    unsafeWithForeignPtr fp $ \p -> memcpy buf p l
+    unsafeWithForeignPtr fp $ \p -> copyBytes buf p l
     pokeByteOff buf l (0::Word8)
     action (castPtr buf)
 
@@ -1804,7 +1808,7 @@ packCString cstr = do
 -- Haskell heap.
 packCStringLen :: CStringLen -> IO ByteString
 packCStringLen (cstr, len) | len >= 0 = createFp len $ \fp ->
-    unsafeWithForeignPtr fp $ \p -> memcpy p (castPtr cstr) len
+    unsafeWithForeignPtr fp $ \p -> copyBytes p (castPtr cstr) len
 packCStringLen (_, len) =
     moduleErrorIO "packCStringLen" ("negative length: " ++ show len)
 

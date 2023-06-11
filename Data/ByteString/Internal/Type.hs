@@ -111,13 +111,12 @@ module Data.ByteString.Internal.Type (
 import Prelude hiding (concat, null)
 import qualified Data.List as List
 
-import Control.Monad            (void)
-
 import Foreign.ForeignPtr       (ForeignPtr, withForeignPtr)
 import Foreign.Ptr              (Ptr, FunPtr, plusPtr)
 import Foreign.Storable         (Storable(..))
 import Foreign.C.Types          (CInt(..), CSize(..))
 import Foreign.C.String         (CString)
+import Foreign.Marshal.Utils
 
 #if MIN_VERSION_base(4,13,0)
 import Data.Semigroup           (Semigroup (sconcat, stimes))
@@ -857,8 +856,8 @@ times n (BS fp len)
   | len == 0 = empty
   | len == 1 = unsafeCreateFp size $ \destfptr -> do
       byte <- peekFp fp
-      void $ unsafeWithForeignPtr destfptr $ \destptr ->
-        memset destptr byte (fromIntegral n)
+      unsafeWithForeignPtr destfptr $ \destptr ->
+        fillBytes destptr byte n
   | otherwise = unsafeCreateFp size $ \destptr -> do
       memcpyFp destptr fp len
       fillFrom destptr len
@@ -965,7 +964,7 @@ foreign import ccall unsafe "string.h memchr" c_memchr
     :: Ptr Word8 -> CInt -> CSize -> IO (Ptr Word8)
 
 memchr :: Ptr Word8 -> Word8 -> CSize -> IO (Ptr Word8)
-memchr p w = c_memchr p (fromIntegral w)
+memchr p w sz = c_memchr p (fromIntegral w) sz
 
 foreign import ccall unsafe "string.h memcmp" c_memcmp
     :: Ptr Word8 -> Ptr Word8 -> CSize -> IO CInt
@@ -973,30 +972,22 @@ foreign import ccall unsafe "string.h memcmp" c_memcmp
 memcmp :: Ptr Word8 -> Ptr Word8 -> Int -> IO CInt
 memcmp p q s = c_memcmp p q (fromIntegral s)
 
-foreign import ccall unsafe "string.h memcpy" c_memcpy
-    :: Ptr Word8 -> Ptr Word8 -> CSize -> IO (Ptr Word8)
-
+{-# DEPRECATED memcpy "Use Foreign.Marshal.Utils.copyBytes instead" #-}
+-- | deprecated since @bytestring-0.11.5.0@
 memcpy :: Ptr Word8 -> Ptr Word8 -> Int -> IO ()
-memcpy p q s = void $ c_memcpy p q (fromIntegral s)
+memcpy = copyBytes
 
 memcpyFp :: ForeignPtr Word8 -> ForeignPtr Word8 -> Int -> IO ()
 memcpyFp fp fq s = unsafeWithForeignPtr fp $ \p ->
-                     unsafeWithForeignPtr fq $ \q -> memcpy p q s
-
-{-
-foreign import ccall unsafe "string.h memmove" c_memmove
-    :: Ptr Word8 -> Ptr Word8 -> CSize -> IO (Ptr Word8)
-
-memmove :: Ptr Word8 -> Ptr Word8 -> CSize -> IO ()
-memmove p q s = do c_memmove p q s
-                   return ()
--}
+                     unsafeWithForeignPtr fq $ \q -> copyBytes p q s
 
 foreign import ccall unsafe "string.h memset" c_memset
     :: Ptr Word8 -> CInt -> CSize -> IO (Ptr Word8)
 
+{-# DEPRECATED memset "Use Foreign.Marshal.Utils.fillBytes instead" #-}
+-- | deprecated since @bytestring-0.11.5.0@
 memset :: Ptr Word8 -> Word8 -> CSize -> IO (Ptr Word8)
-memset p w = c_memset p (fromIntegral w)
+memset p w sz = c_memset p (fromIntegral w) sz
 
 -- ---------------------------------------------------------------------
 --
