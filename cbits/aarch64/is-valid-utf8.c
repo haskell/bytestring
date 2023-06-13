@@ -29,10 +29,10 @@ SUCH DAMAGE.
 */
 #pragma GCC push_options
 #pragma GCC optimize("-O2")
-#include <stdbool.h>
-#include <stdint.h>
-#include <stddef.h>
 #include <arm_neon.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 
 // Fallback (for tails).
 static inline int is_valid_utf8_fallback(uint8_t const *const src,
@@ -102,51 +102,60 @@ static inline int is_valid_utf8_fallback(uint8_t const *const src,
 }
 
 static uint8_t const first_len_lookup[16] = {
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 2, 3,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 2, 3,
 };
 
 static uint8_t const first_range_lookup[16] = {
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 8, 8, 8,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 8, 8, 8,
 };
 
 static uint8_t const range_min_lookup[16] = {
-  0x00, 0x80, 0x80, 0x80, 0xA0, 0x80, 0x90, 0x80,
-  0xC2, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0x00, 0x80, 0x80, 0x80, 0xA0, 0x80, 0x90, 0x80,
+    0xC2, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 };
 
 static uint8_t const range_max_lookup[16] = {
-  0x7F, 0xBF, 0xBF, 0xBF, 0xBF, 0x9F, 0xBF, 0x8F,
-  0xF4, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x7F, 0xBF, 0xBF, 0xBF, 0xBF, 0x9F, 0xBF, 0x8F,
+    0xF4, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
 
 static uint8_t const range_adjust_lookup[32] = {
-  2, 3, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0,
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0,
+    2, 3, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0,
 };
 
-static bool is_ascii (uint8x16_t const * const inputs) {
-  uint8x16_t const all_80 = vdupq_n_u8(0x80);
-  // A non-ASCII byte will have its highest-order bit set. Since this is
-  // preserved by OR, we can OR everything together.
-  uint8x16_t ored = vorrq_u8(vorrq_u8(inputs[0], inputs[1]),
-                             vorrq_u8(inputs[2], inputs[3]));
-  // ANDing with 0x80 retains any set high-order bits. We then check for zeroes.
-  uint64x2_t result = vreinterpretq_u64_u8(vandq_u8(ored, all_80));
+static bool is_ascii(uint8x16_t const *const inputs,
+                     uint8x16_t const prev_first_len) {
+  // Check if we have ASCII, and also that we don't have to treat the prior
+  // block as special.
+  // First, verify that we didn't see any non-ASCII bytes in the first half of
+  // the stride.
+  uint8x16_t const first_half_clean = vorrq_u8(inputs[0], inputs[1]);
+  // Then we do the same for the second half of the stride.
+  uint8x16_t const second_half_clean = vorrq_u8(inputs[2], inputs[3]);
+  // Check cleanliness of the entire stride.
+  uint8x16_t const stride_clean = vorrq_u8(first_half_clean, second_half_clean);
+  // Leave only the high-order set bits.
+  uint8x16_t const masked = vandq_u8(stride_clean, vdupq_n_u8(0x80));
+  // Finally, check that we didn't have any leftover marker bytes in the
+  // previous block: these are indicated by non-zeroes in prev_first_len. In
+  // order to trigger a failure, we have to have non-zeroes set in the high bit
+  // of the lane: we do this by doing a greater-than comparison with a block of
+  // zeroes.
+  uint8x16_t const no_prior_dirt = vcgtq_u8(prev_first_len, vdupq_n_u8(0x00));
+  // Check for all-zero.
+  uint64x2_t const result =
+      vreinterpretq_u64_u8(vorrq_u8(masked, no_prior_dirt));
   return !(vgetq_lane_u64(result, 0) || vgetq_lane_u64(result, 1));
 }
 
-static void check_block_neon(uint8x16_t const prev_input,
-                             uint8x16_t const prev_first_len,
-                             uint8x16_t* errors,
-                             uint8x16_t const first_range_tbl,
-                             uint8x16_t const range_min_tbl,
-                             uint8x16_t const range_max_tbl,
-                             uint8x16x2_t const range_adjust_tbl,
-                             uint8x16_t const all_ones,
-                             uint8x16_t const all_twos,
-                             uint8x16_t const all_e0s,
-                             uint8x16_t const input,
-                             uint8x16_t const first_len) {
+static void
+check_block_neon(uint8x16_t const prev_input, uint8x16_t const prev_first_len,
+                 uint8x16_t *errors, uint8x16_t const first_range_tbl,
+                 uint8x16_t const range_min_tbl, uint8x16_t const range_max_tbl,
+                 uint8x16x2_t const range_adjust_tbl, uint8x16_t const all_ones,
+                 uint8x16_t const all_twos, uint8x16_t const all_e0s,
+                 uint8x16_t const input, uint8x16_t const first_len) {
   // Get the high 4-bits of the input.
   uint8x16_t const high_nibbles = vshrq_n_u8(input, 4);
   // Set range index to 8 for bytes in [C0, FF] by lookup (first byte).
@@ -182,20 +191,20 @@ static void check_block_neon(uint8x16_t const prev_input,
   errors[1] = vorrq_u8(errors[1], vcgtq_u8(input, maxv));
 }
 
-int bytestring_is_valid_utf8(uint8_t const * const src, size_t const len) {
+int bytestring_is_valid_utf8(uint8_t const *const src, size_t const len) {
   if (len == 0) {
     return 1;
   }
   // We step 64 bytes at a time.
   size_t const big_strides = len / 64;
   size_t const remaining = len % 64;
-  uint8_t const * ptr = (uint8_t const *)src;
+  uint8_t const *ptr = (uint8_t const *)src;
   // Tracking state
   uint8x16_t prev_input = vdupq_n_u8(0);
   uint8x16_t prev_first_len = vdupq_n_u8(0);
   uint8x16_t errors[2] = {
-    vdupq_n_u8(0),
-    vdupq_n_u8(0),
+      vdupq_n_u8(0),
+      vdupq_n_u8(0),
   };
   // Load our lookup tables.
   uint8x16_t const first_len_tbl = vld1q_u8(first_len_lookup);
@@ -209,40 +218,33 @@ int bytestring_is_valid_utf8(uint8_t const * const src, size_t const len) {
   uint8x16_t const all_e0s = vdupq_n_u8(0xE0);
   for (size_t i = 0; i < big_strides; i++) {
     // Load 64 bytes
-    uint8x16_t const inputs[4] = {
-      vld1q_u8(ptr),
-      vld1q_u8(ptr + 16),
-      vld1q_u8(ptr + 32),
-      vld1q_u8(ptr + 48)
-    };
+    uint8x16_t const inputs[4] = {vld1q_u8(ptr), vld1q_u8(ptr + 16),
+                                  vld1q_u8(ptr + 32), vld1q_u8(ptr + 48)};
     // Check if we have ASCII
-    if (is_ascii(inputs)) {
+    if (is_ascii(inputs, prev_first_len)) {
       // Prev_first_len cheaply.
       prev_first_len = vqtbl1q_u8(first_len_tbl, vshrq_n_u8(inputs[3], 4));
     } else {
-      uint8x16_t first_len = vqtbl1q_u8(first_len_tbl, vshrq_n_u8(inputs[0], 4));
-      check_block_neon(prev_input, prev_first_len, errors,
-                       first_range_tbl, range_min_tbl, range_max_tbl,
-                       range_adjust_tbl, all_ones, all_twos, all_e0s,
-                       inputs[0], first_len);
+      uint8x16_t first_len =
+          vqtbl1q_u8(first_len_tbl, vshrq_n_u8(inputs[0], 4));
+      check_block_neon(prev_input, prev_first_len, errors, first_range_tbl,
+                       range_min_tbl, range_max_tbl, range_adjust_tbl, all_ones,
+                       all_twos, all_e0s, inputs[0], first_len);
       prev_first_len = first_len;
       first_len = vqtbl1q_u8(first_len_tbl, vshrq_n_u8(inputs[1], 4));
-      check_block_neon(inputs[0], prev_first_len, errors,
-                       first_range_tbl, range_min_tbl, range_max_tbl,
-                       range_adjust_tbl, all_ones, all_twos, all_e0s,
-                       inputs[1], first_len);
+      check_block_neon(inputs[0], prev_first_len, errors, first_range_tbl,
+                       range_min_tbl, range_max_tbl, range_adjust_tbl, all_ones,
+                       all_twos, all_e0s, inputs[1], first_len);
       prev_first_len = first_len;
       first_len = vqtbl1q_u8(first_len_tbl, vshrq_n_u8(inputs[2], 4));
-      check_block_neon(inputs[1], prev_first_len, errors,
-                       first_range_tbl, range_min_tbl, range_max_tbl,
-                       range_adjust_tbl, all_ones, all_twos, all_e0s,
-                       inputs[2], first_len);
+      check_block_neon(inputs[1], prev_first_len, errors, first_range_tbl,
+                       range_min_tbl, range_max_tbl, range_adjust_tbl, all_ones,
+                       all_twos, all_e0s, inputs[2], first_len);
       prev_first_len = first_len;
       first_len = vqtbl1q_u8(first_len_tbl, vshrq_n_u8(inputs[3], 4));
-      check_block_neon(inputs[2], prev_first_len, errors,
-                       first_range_tbl, range_min_tbl, range_max_tbl,
-                       range_adjust_tbl, all_ones, all_twos, all_e0s,
-                       inputs[3], first_len);
+      check_block_neon(inputs[2], prev_first_len, errors, first_range_tbl,
+                       range_min_tbl, range_max_tbl, range_adjust_tbl, all_ones,
+                       all_twos, all_e0s, inputs[3], first_len);
       prev_first_len = first_len;
     }
     // Set prev_input based on last block.
@@ -260,19 +262,17 @@ int bytestring_is_valid_utf8(uint8_t const * const src, size_t const len) {
   vst1q_lane_u32(&token, vreinterpretq_u32_u8(prev_input), 3);
   // We cast this pointer to avoid a redundant check against < 127, as any such
   // value would be negative in signed form.
-  int8_t const * token_ptr = (int8_t const *)&token;
+  int8_t const *token_ptr = (int8_t const *)&token;
   ptrdiff_t lookahead = 0;
   if (token_ptr[3] > (int8_t)0xBF) {
     lookahead = 1;
-  }
-  else if (token_ptr[2] > (int8_t)0xBF) {
+  } else if (token_ptr[2] > (int8_t)0xBF) {
     lookahead = 2;
-  }
-  else if (token_ptr[1] > (int8_t)0xBF) {
+  } else if (token_ptr[1] > (int8_t)0xBF) {
     lookahead = 3;
   }
   // Finish the job.
-  uint8_t const * const small_ptr = ptr - lookahead;
+  uint8_t const *const small_ptr = ptr - lookahead;
   size_t const small_len = remaining + lookahead;
   return is_valid_utf8_fallback(small_ptr, small_len);
 }
