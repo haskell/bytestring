@@ -857,7 +857,7 @@ times n (BS fp len)
   | len == 1 = unsafeCreateFp size $ \destfptr -> do
       byte <- peekFp fp
       unsafeWithForeignPtr destfptr $ \destptr ->
-        fillBytes destptr byte n
+        fillBytes destptr byte (fromIntegral n)
   | otherwise = unsafeCreateFp size $ \destptr -> do
       memcpyFp destptr fp len
       fillFrom destptr len
