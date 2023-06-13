@@ -35,12 +35,14 @@ SUCH DAMAGE.
 #include <string.h>
 
 #ifdef __x86_64__
+#include <cpuid.h>
 #include <emmintrin.h>
 #include <immintrin.h>
-#include <cpuid.h>
-#if (__GNUC__ >= 7 || __GNUC__ == 6 && __GNUC_MINOR__ >= 3 || defined(__clang_major__)) && !defined(__STDC_NO_ATOMICS__)
-#include <tmmintrin.h>
+#if (__GNUC__ >= 7 || __GNUC__ == 6 && __GNUC_MINOR__ >= 3 ||                  \
+     defined(__clang_major__)) &&                                              \
+    !defined(__STDC_NO_ATOMICS__)
 #include <stdatomic.h>
+#include <tmmintrin.h>
 #else
 // This is needed to support CentOS 7, which has a very old GCC.
 #define CRUFTY_GCC
@@ -64,7 +66,8 @@ static inline uint64_t read_uint64(const uint64_t *p) {
   return r;
 }
 
-static inline int is_valid_utf8_fallback(uint8_t const *const src, size_t const len) {
+static inline int is_valid_utf8_fallback(uint8_t const *const src,
+                                         size_t const len) {
   uint8_t const *ptr = (uint8_t const *)src;
   // This is 'one past the end' to make loop termination and bounds checks
   // easier.
@@ -83,10 +86,11 @@ static inline int is_valid_utf8_fallback(uint8_t const *const src, size_t const 
         // Non-ASCII bytes have a set MSB. Thus, if we AND with 0x80 in every
         // 'lane', we will get 0 if everything is ASCII, and something else
         // otherwise.
-        uint64_t results[4] = {to_little_endian(read_uint64(big_ptr)) & high_bits_mask,
-                               to_little_endian(read_uint64((big_ptr + 1))) & high_bits_mask,
-                               to_little_endian(read_uint64((big_ptr + 2))) & high_bits_mask,
-                               to_little_endian(read_uint64((big_ptr + 3))) & high_bits_mask};
+        uint64_t results[4] = {
+            to_little_endian(read_uint64(big_ptr)) & high_bits_mask,
+            to_little_endian(read_uint64((big_ptr + 1))) & high_bits_mask,
+            to_little_endian(read_uint64((big_ptr + 2))) & high_bits_mask,
+            to_little_endian(read_uint64((big_ptr + 3))) & high_bits_mask};
         if (results[0] == 0) {
           ptr += 8;
           if (results[1] == 0) {
@@ -96,16 +100,16 @@ static inline int is_valid_utf8_fallback(uint8_t const *const src, size_t const 
               if (results[3] == 0) {
                 ptr += 8;
               } else {
-                ptr += (__builtin_ctzl(results[3]) / 8);
+                ptr += (__builtin_ctzll(results[3]) / 8);
               }
             } else {
-              ptr += (__builtin_ctzl(results[2]) / 8);
+              ptr += (__builtin_ctzll(results[2]) / 8);
             }
           } else {
-            ptr += (__builtin_ctzl(results[1]) / 8);
+            ptr += (__builtin_ctzll(results[1]) / 8);
           }
         } else {
-          ptr += (__builtin_ctzl(results[0]) / 8);
+          ptr += (__builtin_ctzll(results[0]) / 8);
         }
       }
     }
@@ -203,16 +207,16 @@ static inline int is_valid_utf8_sse2(uint8_t const *const src,
               if (result == 0) {
                 ptr += 16;
               } else {
-                ptr += __builtin_ctz(result);
+                ptr += __builtin_ctzll(result);
               }
             } else {
-              ptr += __builtin_ctz(result);
+              ptr += __builtin_ctzll(result);
             }
           } else {
-            ptr += __builtin_ctz(result);
+            ptr += __builtin_ctzll(result);
           }
         } else {
-          ptr += __builtin_ctz(result);
+          ptr += __builtin_ctzll(result);
         }
       }
     }
@@ -331,10 +335,26 @@ static int8_t const ef_fe_lookup[16] = {
 };
 
 __attribute__((target("ssse3"))) static inline bool
-is_ascii_sse2(__m128i const *src) {
+is_ascii_sse2(__m128i const *src, __m128i const prev_first_len) {
+  // Check if we have ASCII, and also that we don't have to treat the prior
+  // block as special.
+  // First, verify that we didn't see any non-ASCII bytes in the first half of
+  // the stride.
+  __m128i const first_half_clean = _mm_or_si128(src[0], src[1]);
+  // Then do the same for the second half of the stride.
+  __m128i const second_half_clean = _mm_or_si128(src[2], src[3]);
+  // Check cleanliness of the entire stride.
+  __m128i const stride_clean =
+      _mm_or_si128(first_half_clean, second_half_clean);
+  // Finally, check that we didn't have any leftover marker bytes in the
+  // previous block: these are indicated by non-zeroes in prev_first_len. In
+  // order to trigger a failure, we have to have non-zeros set the high bit of
+  // the lane: we do this by doing a greater-than comparison with a block of
+  // zeroes.
+  __m128i const no_prior_dirt =
+      _mm_cmpgt_epi8(prev_first_len, _mm_setzero_si128());
   // OR together everything, then check for a high bit anywhere.
-  __m128i const ored =
-      _mm_or_si128(_mm_or_si128(src[0], src[1]), _mm_or_si128(src[2], src[3]));
+  __m128i const ored = _mm_or_si128(stride_clean, no_prior_dirt);
   return (_mm_movemask_epi8(ored) == 0);
 }
 
@@ -415,7 +435,7 @@ is_valid_utf8_ssse3(uint8_t const *const src, size_t const len) {
         _mm_loadu_si128(big_ptr), _mm_loadu_si128(big_ptr + 1),
         _mm_loadu_si128(big_ptr + 2), _mm_loadu_si128(big_ptr + 3)};
     // Check if we have ASCII.
-    if (is_ascii_sse2(inputs)) {
+    if (is_ascii_sse2(inputs, prev_first_len)) {
       // Prev_first_len cheaply.
       prev_first_len =
           _mm_shuffle_epi8(first_len_tbl, high_nibbles_of(inputs[3]));
@@ -598,10 +618,26 @@ is_valid_utf8_avx2(uint8_t const *const src, size_t const len) {
     __m256i const inputs[4] = {
         _mm256_loadu_si256(big_ptr), _mm256_loadu_si256(big_ptr + 1),
         _mm256_loadu_si256(big_ptr + 2), _mm256_loadu_si256(big_ptr + 3)};
-    // Check if we have ASCII.
-    bool is_ascii = _mm256_movemask_epi8(_mm256_or_si256(
-                        _mm256_or_si256(inputs[0], inputs[1]),
-                        _mm256_or_si256(inputs[2], inputs[3]))) == 0;
+    // Check if we have ASCII, and also that we don't have to treat the prior
+    // block as special.
+    // First, verify that we didn't see any non-ASCII bytes in the first half of
+    // the stride.
+    __m256i const first_half_clean = _mm256_or_si256(inputs[0], inputs[1]);
+    // Then do the same for the second half of the stride.
+    __m256i const second_half_clean = _mm256_or_si256(inputs[2], inputs[3]);
+    // Check cleanliness of the entire stride.
+    __m256i const stride_clean =
+        _mm256_or_si256(first_half_clean, second_half_clean);
+    // Finally, check that we didn't have any leftover marker bytes in the
+    // previous block: these are indicated by non-zeroes in prev_first_len.
+    // In order to trigger a failure, we have to have non-zeros set the high bit
+    // of the lane: we do this by doing a greater-than comparison with a block
+    // of zeroes.
+    __m256i const no_prior_dirt =
+        _mm256_cmpgt_epi8(prev_first_len, _mm256_setzero_si256());
+    // Combine all checks together, and check if any high bits are set.
+    bool is_ascii =
+        _mm256_movemask_epi8(_mm256_or_si256(stride_clean, no_prior_dirt)) == 0;
     if (is_ascii) {
       // Prev_first_len cheaply
       prev_first_len =
@@ -683,7 +719,7 @@ static inline bool has_avx2() {
 }
 #endif
 
-typedef int (*is_valid_utf8_t) (uint8_t const *const, size_t const);
+typedef int (*is_valid_utf8_t)(uint8_t const *const, size_t const);
 
 int bytestring_is_valid_utf8(uint8_t const *const src, size_t const len) {
   if (len == 0) {
@@ -693,7 +729,10 @@ int bytestring_is_valid_utf8(uint8_t const *const src, size_t const len) {
   static _Atomic is_valid_utf8_t s_impl = (is_valid_utf8_t)NULL;
   is_valid_utf8_t impl = atomic_load_explicit(&s_impl, memory_order_relaxed);
   if (!impl) {
-    impl = has_avx2() ? is_valid_utf8_avx2 : (has_ssse3() ? is_valid_utf8_ssse3 : (has_sse2() ? is_valid_utf8_sse2 : is_valid_utf8_fallback));
+    impl = has_avx2() ? is_valid_utf8_avx2
+                      : (has_ssse3() ? is_valid_utf8_ssse3
+                                     : (has_sse2() ? is_valid_utf8_sse2
+                                                   : is_valid_utf8_fallback));
     atomic_store_explicit(&s_impl, impl, memory_order_relaxed);
   }
   return (*impl)(src, len);

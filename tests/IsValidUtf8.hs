@@ -8,16 +8,18 @@ import qualified Data.ByteString.Short as SBS
 import qualified Data.ByteString as B
 import Data.Char (chr, ord)
 import Data.Word (Word8)
-import GHC.Exts (fromList)
-import Test.QuickCheck (Property, forAll, (===))
+import Control.Monad (guard)
+import Numeric (showHex)
+import GHC.Exts (fromList, fromListN, toList)
+import Test.QuickCheck (Property, forAll, (===), forAllShrinkShow)
 import Test.QuickCheck.Arbitrary (Arbitrary (arbitrary, shrink))
 import Test.QuickCheck.Gen (oneof, Gen, choose, vectorOf, listOf1, sized, resize,
-                            elements)
+                            elements, choose)
 import Test.Tasty (testGroup, adjustOption, TestTree)
 import Test.Tasty.QuickCheck (testProperty, QuickCheckTests)
 
 testSuite :: TestTree
-testSuite = testGroup "UTF-8 validation" $ [
+testSuite = testGroup "UTF-8 validation" [
   adjustOption (max testCount) . testProperty "Valid UTF-8 ByteString" $ goValidBS,
   adjustOption (max testCount) . testProperty "Invalid UTF-8 ByteString" $ goInvalidBS,
   adjustOption (max testCount) . testProperty "Valid UTF-8 ShortByteString" $ goValidSBS,
@@ -25,24 +27,30 @@ testSuite = testGroup "UTF-8 validation" $ [
   testGroup "Regressions" checkRegressions
   ]
   where
-    goValidBS :: Property
-    goValidBS = forAll arbitrary $
-      \(ValidUtf8 ss) -> (B.isValidUtf8 . foldMap sequenceToBS $ ss) === True
-    goInvalidBS :: Property
-    goInvalidBS = forAll arbitrary $
-      \inv -> (B.isValidUtf8 . toByteString $ inv) === False
-    goValidSBS :: Property
-    goValidSBS = forAll arbitrary $
-      \(ValidUtf8 ss) -> (SBS.isValidUtf8 . SBS.toShort . foldMap sequenceToBS $ ss) === True
-    goInvalidSBS :: Property
-    goInvalidSBS = forAll arbitrary $
-      \inv -> (SBS.isValidUtf8 . SBS.toShort . toByteString $ inv) === False
+    goValidBS :: ValidUtf8 -> Bool
+    goValidBS = B.isValidUtf8 . foldMap sequenceToBS . unValidUtf8
+    goInvalidBS :: InvalidUtf8 -> Bool
+    goInvalidBS = not . B.isValidUtf8 . toByteString
+    goValidSBS :: ValidUtf8 -> Bool
+    goValidSBS = SBS.isValidUtf8 . SBS.toShort . foldMap sequenceToBS . unValidUtf8
+    goInvalidSBS :: InvalidUtf8 -> Bool
+    goInvalidSBS = not . SBS.isValidUtf8 . SBS.toShort . toByteString
     testCount :: QuickCheckTests
     testCount = 1000
 
 checkRegressions :: [TestTree]
 checkRegressions = [
-  testProperty "Too high code point" $ not $ B.isValidUtf8 tooHigh
+  testProperty "Too high code point" $
+    not $ B.isValidUtf8 tooHigh,
+  testProperty "Invalid byte at end of ASCII block" badBlockEnd,
+  testProperty "Invalid byte between spaces" $
+    not $ B.isValidUtf8 byteBetweenSpaces,
+  testProperty "Two invalid bytes between spaces" $
+    not $ B.isValidUtf8 twoBytesBetweenSpaces,
+  testProperty "Three invalid bytes between spaces" $
+    not $ B.isValidUtf8 threeBytesBetweenSpaces,
+  testProperty "ASCII stride and invalid multibyte sequence" $
+    not $ B.isValidUtf8 asciiAndInvalidMultiByte
   ]
   where
     tooHigh :: ByteString
@@ -50,7 +58,45 @@ checkRegressions = [
                          [244, 176, 181, 139] ++ -- our invalid sequence too high to be valid
                          (take 68 . cycle $ [194, 162]) -- 68 cent symbols
 
+    byteBetweenSpaces :: ByteString
+    byteBetweenSpaces = fromList $ replicate 127 32 ++ [216] ++ replicate 128 32
+
+    twoBytesBetweenSpaces :: ByteString
+    twoBytesBetweenSpaces = fromList $ replicate 126 32 ++ [235, 167] ++ replicate 128 32
+
+    threeBytesBetweenSpaces :: ByteString
+    threeBytesBetweenSpaces = fromList $ replicate 125 32 ++ [242, 134, 159] ++ replicate 128 32
+
+    badBlockEnd :: Property
+    badBlockEnd = 
+      forAllShrinkShow genBadBlock shrinkBadBlock showBadBlock $ \(BadBlock bs) -> 
+        not . B.isValidUtf8 $ bs
+
+    asciiAndInvalidMultiByte :: ByteString
+    asciiAndInvalidMultiByte = fromList $ replicate 32 48 ++ [235, 185]
+
 -- Helpers
+
+-- A 128-byte sequence with a single bad byte at the end, with the rest being
+-- ASCII
+newtype BadBlock = BadBlock ByteString
+
+genBadBlock :: Gen BadBlock
+genBadBlock = do
+  asciiBytes <- vectorOf 127 $ choose (0, 127)
+  pure . BadBlock . fromListN 128 $ asciiBytes  ++ [216]
+
+shrinkBadBlock :: BadBlock -> [BadBlock]
+shrinkBadBlock (BadBlock bs) = BadBlock <$> do
+  let asList = init . toList $ bs
+  init' <- fromList <$> traverse shrink asList
+  guard (B.length init' == 127)
+  pure . B.append init' . B.singleton $ 216
+
+-- Display as hex instead of ASCII-ish
+showBadBlock :: BadBlock -> String
+showBadBlock (BadBlock bs) = let asList = toList bs in
+  foldr showHex "" asList
 
 data Utf8Sequence = 
   One Word8 |
@@ -155,7 +201,7 @@ sequenceToBS = B.pack . \case
   Three w1 w2 w3 -> [w1, w2, w3]
   Four w1 w2 w3 w4 -> [w1, w2, w3, w4]
 
-newtype ValidUtf8 = ValidUtf8 [Utf8Sequence]
+newtype ValidUtf8 = ValidUtf8 { unValidUtf8 :: [Utf8Sequence] }
   deriving (Eq)
 
 instance Show ValidUtf8 where
@@ -188,8 +234,8 @@ instance Arbitrary InvalidUtf8 where
     , InvalidUtf8 <$> genValidUtf8 <*> genInvalidUtf8 <*> genValidUtf8
     ]
   shrink (InvalidUtf8 p i s) = 
-    (InvalidUtf8 p i <$> shrinkBS s) ++
-    ((\p' -> InvalidUtf8 p' i s) <$> shrinkBS p)
+    (InvalidUtf8 p i <$> shrinkValidBS s) ++
+    ((\p' -> InvalidUtf8 p' i s) <$> shrinkValidBS p)
 
 toByteString :: InvalidUtf8 -> ByteString
 toByteString (InvalidUtf8 p i s) = p `B.append` i `B.append` s
@@ -240,7 +286,8 @@ genValidUtf8 = sized $ \size ->
     B.append <$> genAscii <*> resize (size `div` 2) genValidUtf8,
     B.append <$> gen2Byte <*> resize (size `div` 2) genValidUtf8,
     B.append <$> gen3Byte <*> resize (size `div` 2) genValidUtf8,
-    B.append <$> gen4Byte <*> resize (size `div` 2) genValidUtf8
+    B.append <$> gen4Byte <*> resize (size `div` 2) genValidUtf8,
+    B.replicate <$> resize (size * 16) arbitrary <*> elements [0x00 .. 0x7F]
     ]
   where
     genAscii :: Gen ByteString
@@ -270,8 +317,8 @@ genValidUtf8 = sized $ \size ->
       b4 <- elements [0x80 .. 0xBF]
       pure . B.pack $ [b1, b2, b3, b4]
 
-shrinkBS :: ByteString -> [ByteString]
-shrinkBS bs = B.pack <$> (shrink . B.unpack $ bs)
+shrinkValidBS :: ByteString -> [ByteString]
+shrinkValidBS bs = filter B.isValidUtf8 (map B.pack (shrink (B.unpack bs)))
 
 ord2 :: Char -> (Word8, Word8)
 ord2 c = (x, y)
