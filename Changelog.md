@@ -12,9 +12,9 @@
 * Bug fixes:
   * Size-related calculations are more resistant to `Int` overflow in the following places:
     * [`Data.ByteString.intercalate`](https://github.com/haskell/bytestring/pull/468)
-    * [`stimes @StrictByteString`](https://github.com/haskell/bytestring/pull/438)
-    * [`Data.ByteString.Short.concat`](https://github.com/haskell/bytestring/pull/438)
-    * [`Data.ByteString.Short.append`](https://github.com/haskell/bytestring/pull/438)
+    * [`stimes @StrictByteString`](https://github.com/haskell/bytestring/pull/443)
+    * [`Data.ByteString.Short.concat`](https://github.com/haskell/bytestring/pull/443)
+    * [`Data.ByteString.Short.append`](https://github.com/haskell/bytestring/pull/443)
     * TODO: Some other `ShortByteString` functions are probably still
       susceptible to bad behavior on `Int` overflow in edge cases;
       `D.B.Short.Internal.create` does not check for negative size,
