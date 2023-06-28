@@ -189,6 +189,7 @@ module Data.ByteString.Builder
       -- cases. See "Data.ByteString.Builder.Extra", for information
       -- about fine-tuning them.
     , toLazyByteString
+    , toStrictByteString
     , hPutBuilder
     , writeFile
 
@@ -260,6 +261,7 @@ import           Prelude hiding (writeFile)
 
 import           Data.ByteString.Builder.Internal
 import qualified Data.ByteString.Builder.Prim  as P
+import qualified Data.ByteString.Internal as S
 import qualified Data.ByteString.Lazy.Internal as L
 import           Data.ByteString.Builder.ASCII
 import           Data.ByteString.Builder.RealFloat
@@ -277,6 +279,14 @@ import           GHC.Base (unpackCString#, unpackCStringUtf8#,
 toLazyByteString :: Builder -> L.ByteString
 toLazyByteString = toLazyByteStringWith
     (safeStrategy L.smallChunkSize L.defaultChunkSize) L.Empty
+
+-- | Execute a 'Builder' and pack the resulting chunks into a strict 'S.ByteString'.
+--
+-- @'toStrictByteString' = 'L.toStrict' . 'toLazyByteString'@
+--
+{-# INLINABLE toStrictByteString #-}
+toStrictByteString :: Builder -> S.ByteString
+toStrictByteString = L.toStrict . toLazyByteString
 
 {- Not yet stable enough.
    See note on 'hPut' in Data.ByteString.Builder.Internal
