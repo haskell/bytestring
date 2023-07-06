@@ -8,23 +8,24 @@
     * The compatibility package `data-array-byte` is used when `base` does not provide `Data.Array.Byte`.
   * [`fromListN` from `instance IsList ShortByteString` now throws an exception if the first argument does not match the length of the second](https://github.com/haskell/bytestring/pull/410)
     * Previously, it would ignore the first argument entirely.
-    * TODO: Should we make the analogous change for the other ByteString flavors?
 * Bug fixes:
   * Size-related calculations are more resistant to `Int` overflow in the following places:
     * [`Data.ByteString.intercalate`](https://github.com/haskell/bytestring/pull/468)
     * [`stimes @StrictByteString`](https://github.com/haskell/bytestring/pull/443)
     * [`Data.ByteString.Short.concat`](https://github.com/haskell/bytestring/pull/443)
     * [`Data.ByteString.Short.append`](https://github.com/haskell/bytestring/pull/443)
-    * TODO: Some other `ShortByteString` functions are probably still
+<!--  TODO: Some other `ShortByteString` functions are probably still
       susceptible to bad behavior on `Int` overflow in edge cases;
       `D.B.Short.Internal.create` does not check for negative size,
       unlike its `StrictByteString` counterpart.
+-->
 * API additions:
   * [New sized and/or unsigned variants of `readInt` and `readInteger`](https://github.com/haskell/bytestring/pull/438)
   * [`Data.ByteString.Internal` now provides `SizeOverflowException`, `overflowError`, and `checkedMultiply`](https://github.com/haskell/bytestring/pull/443)
-    * TODO: It's not really clear we should be providing these.
-<!--
 * Deprecations:
+  * `Data.ByteString.getLine`: prefer `Data.ByteString.Char8.getLine`
+  * `Data.ByteString.hGetLine`: prefer `Data.ByteString.Char8.hGetLine`
+<!--
 * Performance improvements:
 * Miscellaneous:
 * Internal stuff:
@@ -49,11 +50,13 @@
   * [`Builder.toLazyByteString` re-uses under-filled buffers after copying their contents](https://github.com/haskell/bytestring/pull/581)
 * Miscellaneous:
   * [Minor benchmarking improvements](https://github.com/haskell/bytestring/pull/577)
-* Internal stuff: <!-- comment this section out before merging -->
+<!--
+* Internal stuff:
   * Various CI tweaks ([1](https://github.com/haskell/bytestring/pull/571), [2](https://github.com/haskell/bytestring/pull/565), [3](https://github.com/haskell/bytestring/pull/583), [4](https://github.com/haskell/bytestring/pull/584))
   * [`accursedUnutterablePerformIO`'s trail of destruction extended](https://github.com/haskell/bytestring/pull/579)
   * [Add type signatures for subfunction of `buildStepToCIOS`](https://github.com/haskell/bytestring/pull/586)
   * [`foldl'`-related import list tweaks](https://github.com/haskell/bytestring/pull/585)
+-->
 
 [0.11.5.0]: https://github.com/haskell/bytestring/compare/0.11.4.0...0.11.5.0
 
