@@ -1,3 +1,29 @@
+[0.11.5.0] — July 2023
+
+* Bug fixes:
+  * [Fix multiple bugs with ASCII blocks in the SIMD implementations for `isValidUtf8`](https://github.com/haskell/bytestring/pull/582)
+  * [Prevent unsound optimizations with the `Data.ByteString.create*` family of functions](https://github.com/haskell/bytestring/pull/580)
+* API additions:
+  * [`Data.ByteString.Internal` now provides `mkDeferredByteString` and `deferForeignPtrAvailability`](https://github.com/haskell/bytestring/pull/580)
+* Deprecations:
+  * `Data.ByteString.Internal.memcpy`: prefer `Foreign.Marshal.Utils.copyBytes`
+  * `Data.ByteString.Internal.memset`: prefer `Foreign.Marshal.Utils.fillBytes`
+* Performance improvements:
+  * [Many functions returning `StrictByteString` can now return their results unboxed](https://github.com/haskell/bytestring/pull/580)
+  * [Dead branches removed from `Lazy.toStrict`](https://github.com/haskell/bytestring/pull/590)
+  * [`Builder.toLazyByteString` re-uses under-filled buffers after copying their contents](https://github.com/haskell/bytestring/pull/581)
+* Miscellaneous:
+  * [Minor benchmarking improvements](https://github.com/haskell/bytestring/pull/577)
+<!--
+* Internal stuff:
+  * Various CI tweaks ([1](https://github.com/haskell/bytestring/pull/571), [2](https://github.com/haskell/bytestring/pull/565), [3](https://github.com/haskell/bytestring/pull/583), [4](https://github.com/haskell/bytestring/pull/584))
+  * [`accursedUnutterablePerformIO`'s trail of destruction extended](https://github.com/haskell/bytestring/pull/579)
+  * [Add type signatures for subfunction of `buildStepToCIOS`](https://github.com/haskell/bytestring/pull/586)
+  * [`foldl'`-related import list tweaks](https://github.com/haskell/bytestring/pull/585)
+-->
+
+[0.11.5.0]: https://github.com/haskell/bytestring/compare/0.11.4.0...0.11.5.0
+
 [0.11.4.0] — January 2023
 
 * Bug fixes:
