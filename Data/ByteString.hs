@@ -1826,8 +1826,11 @@ copy (BS x l) = unsafeCreateFp l $ \p -> memcpyFp p x l
 getLine :: IO ByteString
 getLine = hGetLine stdin
 
--- | Read a line from a handle
+{-# DEPRECATED getLine
+     "Deprecated since @bytestring-0.12@. Use 'Data.ByteString.Char8.getLine' instead. (Functions that rely on ASCII encodings belong in \"Data.ByteString.Char8\")"
+  #-}
 
+-- | Read a line from a handle
 hGetLine :: Handle -> IO ByteString
 hGetLine h =
   wantReadableHandle_ "Data.ByteString.hGetLine" h $
@@ -1873,6 +1876,10 @@ hGetLine h =
             if c == fromIntegral (ord '\n')
                 then return r -- NB. not r+1: don't include the '\n'
                 else findEOL (r+1) w raw
+
+{-# DEPRECATED hGetLine
+     "Deprecated since @bytestring-0.12@. Use 'Data.ByteString.Char8.hGetLine' instead. (Functions that rely on ASCII encodings belong in \"Data.ByteString.Char8\")"
+  #-}
 
 mkPS :: RawBuffer Word8 -> Int -> Int -> IO ByteString
 mkPS buf start end =

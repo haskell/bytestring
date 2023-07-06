@@ -2,6 +2,7 @@
 {-# LANGUAGE MagicHash #-}
 {-# OPTIONS_HADDOCK prune #-}
 {-# LANGUAGE Trustworthy #-}
+{-# OPTIONS_GHC -Wno-deprecations #-}
 
 -- |
 -- Module      : Data.ByteString.Char8
@@ -269,10 +270,10 @@ import Data.ByteString (null,length,tail,init,append
                        ,isInfixOf,stripPrefix,stripSuffix
                        ,breakSubstring,copy,group
 
-                       ,getLine, getContents, putStr, interact
+                       ,getContents, putStr, interact
                        ,readFile, writeFile, appendFile
                        ,hGetContents, hGet, hGetSome, hPut, hPutStr
-                       ,hGetLine, hGetNonBlocking, hPutNonBlocking
+                       ,hGetNonBlocking, hPutNonBlocking
                        ,packCString,packCStringLen
                        ,useAsCString,useAsCStringLen
                        )
@@ -996,6 +997,14 @@ unwords = intercalate (singleton ' ')
 
 ------------------------------------------------------------------------
 -- For non-binary text processing:
+
+-- | Read a line from stdin.
+getLine :: IO ByteString
+getLine = B.getLine
+
+-- | Read a line from a handle
+hGetLine :: Handle -> IO ByteString
+hGetLine = B.hGetLine
 
 -- | Write a ByteString to a handle, appending a newline byte.
 --
