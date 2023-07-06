@@ -2,7 +2,7 @@
 
 * Bug fixes:
   * [Fix multiple bugs with ASCII blocks in the SIMD implementations for `isValidUtf8`](https://github.com/haskell/bytestring/pull/582)
-  * [Prevent unsound optimizations with the `Data.ByteString.create*` family of functions](https://github.com/haskell/bytestring/pull/580)
+  * [Prevent unsound optimizations with the `Data.ByteString.Internal.create*` family of functions](https://github.com/haskell/bytestring/pull/580)
 * API additions:
   * [`Data.ByteString.Internal` now provides `mkDeferredByteString` and `deferForeignPtrAvailability`](https://github.com/haskell/bytestring/pull/580)
 * Deprecations:
