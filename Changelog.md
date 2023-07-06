@@ -1,4 +1,4 @@
-[0.12.0.0] — Unreleased
+[0.12.0.0] — July 2023
 
 * __Breaking Changes__:
   * [`readInt` returns `Nothing`, if the sequence of digits cannot be represented by an `Int`, instead of overflowing silently](https://github.com/haskell/bytestring/pull/309)
@@ -14,11 +14,8 @@
     * [`stimes @StrictByteString`](https://github.com/haskell/bytestring/pull/443)
     * [`Data.ByteString.Short.concat`](https://github.com/haskell/bytestring/pull/443)
     * [`Data.ByteString.Short.append`](https://github.com/haskell/bytestring/pull/443)
-<!--  TODO: Some other `ShortByteString` functions are probably still
-      susceptible to bad behavior on `Int` overflow in edge cases;
-      `D.B.Short.Internal.create` does not check for negative size,
-      unlike its `StrictByteString` counterpart.
--->
+    * [`Data.ByteString.Short.snoc`](https://github.com/haskell/bytestring/pull/599)
+    * [`Data.ByteString.Short.cons`](https://github.com/haskell/bytestring/pull/599)
 * API additions:
   * [New sized and/or unsigned variants of `readInt` and `readInteger`](https://github.com/haskell/bytestring/pull/438)
   * [`Data.ByteString.Internal` now provides `SizeOverflowException`, `overflowError`, and `checkedMultiply`](https://github.com/haskell/bytestring/pull/443)
@@ -34,7 +31,7 @@
 
 [0.12.0.0]: https://github.com/haskell/bytestring/compare/0.11.5.0...0.12.0.0
 
-[0.11.5.0] — Unreleased
+[0.11.5.0] — July 2023
 
 * Bug fixes:
   * [Fix multiple bugs with ASCII blocks in the SIMD implementations for `isValidUtf8`](https://github.com/haskell/bytestring/pull/582)

@@ -380,16 +380,16 @@ infixl 5 `snoc`
 -- | /O(n)/ 'cons' is analogous to (:) for lists, but of different
 -- complexity, as it requires making a copy.
 cons :: Word8 -> ByteString -> ByteString
-cons c (BS x l) = unsafeCreateFp (l+1) $ \p -> do
+cons c (BS x len) = unsafeCreateFp (checkedAdd "cons" len 1) $ \p -> do
         pokeFp p c
-        memcpyFp (p `plusForeignPtr` 1) x l
+        memcpyFp (p `plusForeignPtr` 1) x len
 {-# INLINE cons #-}
 
 -- | /O(n)/ Append a byte to the end of a 'ByteString'
 snoc :: ByteString -> Word8 -> ByteString
-snoc (BS x l) c = unsafeCreateFp (l+1) $ \p -> do
-        memcpyFp p x l
-        pokeFp (p `plusForeignPtr` l) c
+snoc (BS x len) c = unsafeCreateFp (checkedAdd "snoc" len 1) $ \p -> do
+        memcpyFp p x len
+        pokeFp (p `plusForeignPtr` len) c
 {-# INLINE snoc #-}
 
 -- | /O(1)/ Extract the first element of a ByteString, which must be non-empty.
@@ -773,7 +773,7 @@ scanl
     -- ^ input of length n
     -> ByteString
     -- ^ output of length n+1
-scanl f v = \(BS a len) -> unsafeCreateFp (len+1) $ \q -> do
+scanl f v = \(BS a len) -> unsafeCreateFp (checkedAdd "scanl" len 1) $ \q -> do
          -- see fold inlining
         pokeFp q v
         let
@@ -817,7 +817,7 @@ scanr
     -- ^ input of length n
     -> ByteString
     -- ^ output of length n+1
-scanr f v = \(BS a len) -> unsafeCreateFp (len+1) $ \b -> do
+scanr f v = \(BS a len) -> unsafeCreateFp (checkedAdd "scanr" len 1) $ \b -> do
          -- see fold inlining
         pokeFpByteOff b len v
         let
