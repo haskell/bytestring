@@ -1,4 +1,4 @@
-[0.12.0.0] — Unreleased
+[0.12.0.0] — July 2023
 
 * __Breaking Changes__:
   * [`readInt` returns `Nothing`, if the sequence of digits cannot be represented by an `Int`, instead of overflowing silently](https://github.com/haskell/bytestring/pull/309)
@@ -31,7 +31,7 @@
 
 [0.12.0.0]: https://github.com/haskell/bytestring/compare/0.11.5.0...0.12.0.0
 
-[0.11.5.0] — Unreleased
+[0.11.5.0] — July 2023
 
 * Bug fixes:
   * [Fix multiple bugs with ASCII blocks in the SIMD implementations for `isValidUtf8`](https://github.com/haskell/bytestring/pull/582)
