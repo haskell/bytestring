@@ -14,11 +14,8 @@
     * [`stimes @StrictByteString`](https://github.com/haskell/bytestring/pull/443)
     * [`Data.ByteString.Short.concat`](https://github.com/haskell/bytestring/pull/443)
     * [`Data.ByteString.Short.append`](https://github.com/haskell/bytestring/pull/443)
-<!--  TODO: Some other `ShortByteString` functions are probably still
-      susceptible to bad behavior on `Int` overflow in edge cases;
-      `D.B.Short.Internal.create` does not check for negative size,
-      unlike its `StrictByteString` counterpart.
--->
+    * [`Data.ByteString.Short.snoc`](https://github.com/haskell/bytestring/pull/599)
+    * [`Data.ByteString.Short.cons`](https://github.com/haskell/bytestring/pull/599)
 * API additions:
   * [New sized and/or unsigned variants of `readInt` and `readInteger`](https://github.com/haskell/bytestring/pull/438)
   * [`Data.ByteString.Internal` now provides `SizeOverflowException`, `overflowError`, and `checkedMultiply`](https://github.com/haskell/bytestring/pull/443)

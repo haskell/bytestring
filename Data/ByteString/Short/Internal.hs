@@ -400,7 +400,7 @@ unSBS (ShortByteString (ByteArray ba#)) = ba#
 
 create :: Int -> (forall s. MBA s -> ST s ()) -> ShortByteString
 create len fill =
-    runST $ do
+    assert (len >= 0) $ runST $ do
       mba <- newByteArray len
       fill mba
       BA# ba# <- unsafeFreezeByteArray mba
@@ -413,59 +413,60 @@ create len fill =
 -- (<= the maximum size) and the result value. The resulting byte array
 -- is realloced to this size.
 createAndTrim :: Int -> (forall s. MBA s -> ST s (Int, a)) -> (ShortByteString, a)
-createAndTrim l fill =
-    runST $ do
-      mba <- newByteArray l
-      (l', res) <- fill mba
-      if assert (l' <= l) $ l' >= l
+createAndTrim maxLen fill =
+    assert (maxLen >= 0) $ runST $ do
+      mba <- newByteArray maxLen
+      (len, res) <- fill mba
+      if assert (0 <= len && len <= maxLen) $ len >= maxLen
           then do
             BA# ba# <- unsafeFreezeByteArray mba
             return (SBS ba#, res)
           else do
-            mba2 <- newByteArray l'
-            copyMutableByteArray mba 0 mba2 0 l'
+            mba2 <- newByteArray len
+            copyMutableByteArray mba 0 mba2 0 len
             BA# ba# <- unsafeFreezeByteArray mba2
             return (SBS ba#, res)
 {-# INLINE createAndTrim #-}
 
 createAndTrim' :: Int -> (forall s. MBA s -> ST s Int) -> ShortByteString
-createAndTrim' l fill =
-    runST $ do
-      mba <- newByteArray l
-      l' <- fill mba
-      if assert (l' <= l) $ l' >= l
+createAndTrim' maxLen fill =
+    assert (maxLen >= 0) $ runST $ do
+      mba <- newByteArray maxLen
+      len <- fill mba
+      if assert (0 <= len && len <= maxLen) $ len >= maxLen
           then do
             BA# ba# <- unsafeFreezeByteArray mba
             return (SBS ba#)
           else do
-            mba2 <- newByteArray l'
-            copyMutableByteArray mba 0 mba2 0 l'
+            mba2 <- newByteArray len
+            copyMutableByteArray mba 0 mba2 0 len
             BA# ba# <- unsafeFreezeByteArray mba2
             return (SBS ba#)
 {-# INLINE createAndTrim' #-}
 
-createAndTrim'' :: Int -> (forall s. MBA s -> MBA s -> ST s (Int, Int)) -> (ShortByteString, ShortByteString)
-createAndTrim'' l fill =
+-- | Like createAndTrim, but with two buffers at once
+createAndTrim2 :: Int -> Int -> (forall s. MBA s -> MBA s -> ST s (Int, Int)) -> (ShortByteString, ShortByteString)
+createAndTrim2 maxLen1 maxLen2 fill =
     runST $ do
-      mba1 <- newByteArray l
-      mba2 <- newByteArray l
-      (l1, l2) <- fill mba1 mba2
-      sbs1 <- freeze' l1 mba1
-      sbs2 <- freeze' l2 mba2
+      mba1 <- newByteArray maxLen1
+      mba2 <- newByteArray maxLen2
+      (len1, len2) <- fill mba1 mba2
+      sbs1 <- freeze' len1 maxLen1 mba1
+      sbs2 <- freeze' len2 maxLen2 mba2
       pure (sbs1, sbs2)
   where
-    freeze' :: Int -> MBA s -> ST s ShortByteString
-    freeze' l' mba =
-      if assert (l' <= l) $ l' >= l
+    freeze' :: Int -> Int -> MBA s -> ST s ShortByteString
+    freeze' len maxLen mba =
+      if assert (0 <= len && len <= maxLen) $ len >= maxLen
           then do
             BA# ba# <- unsafeFreezeByteArray mba
             return (SBS ba#)
           else do
-            mba2 <- newByteArray l'
-            copyMutableByteArray mba 0 mba2 0 l'
+            mba2 <- newByteArray len
+            copyMutableByteArray mba 0 mba2 0 len
             BA# ba# <- unsafeFreezeByteArray mba2
             return (SBS ba#)
-{-# INLINE createAndTrim'' #-}
+{-# INLINE createAndTrim2 #-}
 
 isPinned :: ByteArray# -> Bool
 #if MIN_VERSION_base(4,10,0)
@@ -676,11 +677,11 @@ infixl 5 `snoc`
 --
 -- @since 0.11.3.0
 snoc :: ShortByteString -> Word8 -> ShortByteString
-snoc = \sbs c -> let l  = length sbs
-                     nl = l + 1
-  in create nl $ \mba -> do
-      copyByteArray (asBA sbs) 0 mba 0 l
-      writeWord8Array mba l c
+snoc = \sbs c -> let len    = length sbs
+                     newLen = checkedAdd "Short.snoc" len 1
+  in create newLen $ \mba -> do
+      copyByteArray (asBA sbs) 0 mba 0 len
+      writeWord8Array mba len c
 
 -- | /O(n)/ 'cons' is analogous to (:) for lists.
 --
@@ -688,11 +689,11 @@ snoc = \sbs c -> let l  = length sbs
 --
 -- @since 0.11.3.0
 cons :: Word8 -> ShortByteString -> ShortByteString
-cons c = \sbs -> let l  = length sbs
-                     nl = l + 1
-  in create nl $ \mba -> do
+cons c = \sbs -> let len    = length sbs
+                     newLen = checkedAdd "Short.cons" len 1
+  in create newLen $ \mba -> do
       writeWord8Array mba 0 c
-      copyByteArray (asBA sbs) 0 mba 1 l
+      copyByteArray (asBA sbs) 0 mba 1 len
 
 -- | /O(1)/ Extract the last element of a ShortByteString, which must be finite and non-empty.
 -- An exception will be thrown in the case of an empty ShortByteString.
@@ -1484,9 +1485,9 @@ find f = \sbs -> case findIndex f sbs of
 --
 -- @since 0.11.3.0
 partition :: (Word8 -> Bool) -> ShortByteString -> (ShortByteString, ShortByteString)
-partition k = \sbs -> let l = length sbs
-                   in if | l <= 0    -> (sbs, sbs)
-                         | otherwise -> createAndTrim'' l $ \mba1 mba2 -> go mba1 mba2 (asBA sbs) l
+partition k = \sbs -> let len = length sbs
+                   in if | len <= 0  -> (sbs, sbs)
+                         | otherwise -> createAndTrim2 len len $ \mba1 mba2 -> go mba1 mba2 (asBA sbs) len
   where
     go :: forall s.
           MBA s           -- mutable output bytestring1
@@ -1614,12 +1615,14 @@ indexWord8ArrayAsWord64 (BA# ba#) (I# i#) = W64# (indexWord8ArrayAsWord64# ba# i
 #endif
 
 newByteArray :: Int -> ST s (MBA s)
-newByteArray (I# len#) =
+newByteArray len@(I# len#) =
+  assert (len >= 0) $
     ST $ \s -> case newByteArray# len# s of
                  (# s', mba# #) -> (# s', MBA# mba# #)
 
 newPinnedByteArray :: Int -> ST s (MBA s)
-newPinnedByteArray (I# len#) =
+newPinnedByteArray len@(I# len#) =
+  assert (len >= 0) $
     ST $ \s -> case newPinnedByteArray# len# s of
                  (# s', mba# #) -> (# s', MBA# mba# #)
 

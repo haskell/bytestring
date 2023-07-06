@@ -653,30 +653,30 @@ unsafeCreateFpUptoN' l f = unsafeDupablePerformIO (createFpUptoN' l f)
 
 -- | Create ByteString of size @l@ and use action @f@ to fill its contents.
 createFp :: Int -> (ForeignPtr Word8 -> IO ()) -> IO ByteString
-createFp l action = do
-    fp <- mallocByteString l
+createFp len action = assert (len >= 0) $ do
+    fp <- mallocByteString len
     action fp
-    mkDeferredByteString fp l
+    mkDeferredByteString fp len
 {-# INLINE createFp #-}
 
 -- | Given a maximum size @l@ and an action @f@ that fills the 'ByteString'
 -- starting at the given 'Ptr' and returns the actual utilized length,
 -- @`createFpUptoN'` l f@ returns the filled 'ByteString'.
 createFpUptoN :: Int -> (ForeignPtr Word8 -> IO Int) -> IO ByteString
-createFpUptoN l action = do
-    fp <- mallocByteString l
-    l' <- action fp
-    assert (l' <= l) $ mkDeferredByteString fp l'
+createFpUptoN maxLen action = assert (maxLen >= 0) $ do
+    fp <- mallocByteString maxLen
+    len <- action fp
+    assert (0 <= len && len <= maxLen) $ mkDeferredByteString fp len
 {-# INLINE createFpUptoN #-}
 
 -- | Like 'createFpUptoN', but also returns an additional value created by the
 -- action.
 createFpUptoN' :: Int -> (ForeignPtr Word8 -> IO (Int, a)) -> IO (ByteString, a)
-createFpUptoN' l action = do
-    fp <- mallocByteString l
-    (l', res) <- action fp
-    bs <- mkDeferredByteString fp l'
-    assert (l' <= l) $ pure (bs, res)
+createFpUptoN' maxLen action = assert (maxLen >= 0) $ do
+    fp <- mallocByteString maxLen
+    (len, res) <- action fp
+    bs <- mkDeferredByteString fp len
+    assert (0 <= len && len <= maxLen) $ pure (bs, res)
 {-# INLINE createFpUptoN' #-}
 
 -- | Given the maximum size needed and a function to make the contents
@@ -688,22 +688,26 @@ createFpUptoN' l action = do
 -- ByteString functions, using Haskell or C functions to fill the space.
 --
 createFpAndTrim :: Int -> (ForeignPtr Word8 -> IO Int) -> IO ByteString
-createFpAndTrim l action = do
-    fp <- mallocByteString l
-    l' <- action fp
-    if assert (0 <= l' && l' <= l) $ l' >= l
-        then mkDeferredByteString fp l
-        else createFp l' $ \dest -> memcpyFp dest fp l'
+createFpAndTrim maxLen action = assert (maxLen >= 0) $ do
+    fp <- mallocByteString maxLen
+    len <- action fp
+    if assert (0 <= len && len <= maxLen) $ len >= maxLen
+        then mkDeferredByteString fp maxLen
+        else createFp len $ \dest -> memcpyFp dest fp len
 {-# INLINE createFpAndTrim #-}
 
 createFpAndTrim' :: Int -> (ForeignPtr Word8 -> IO (Int, Int, a)) -> IO (ByteString, a)
-createFpAndTrim' l action = do
-    fp <- mallocByteString l
-    (off, l', res) <- action fp
-    bs <- if assert (0 <= l' && l' <= l) $ l' >= l
-        then mkDeferredByteString fp l -- entire buffer used => offset is zero
-        else createFp l' $ \dest ->
-               memcpyFp dest (fp `plusForeignPtr` off) l'
+createFpAndTrim' maxLen action = assert (maxLen >= 0) $ do
+    fp <- mallocByteString maxLen
+    (off, len, res) <- action fp
+    assert (
+      0 <= len && len <= maxLen && -- length OK
+      (len == 0 || (0 <= off && off <= maxLen - len)) -- offset OK
+      ) $ pure ()
+    bs <- if len >= maxLen
+        then mkDeferredByteString fp maxLen -- entire buffer used => offset is zero
+        else createFp len $ \dest ->
+               memcpyFp dest (fp `plusForeignPtr` off) len
     return (bs, res)
 {-# INLINE createFpAndTrim' #-}
 
@@ -971,8 +975,10 @@ overflowError fun = throw $ SizeOverflowException msg
 checkedAdd :: String -> Int -> Int -> Int
 {-# INLINE checkedAdd #-}
 checkedAdd fun x y
-  | r >= 0    = r
-  | otherwise = overflowError fun
+  -- checking "r < 0" here matches the condition in mallocPlainForeignPtrBytes,
+  -- helping the compiler see the latter is redundant in some places
+  | r < 0     = overflowError fun
+  | otherwise = r
   where r = assert (min x y >= 0) $ x + y
 
 -- | Multiplies two non-negative numbers.
