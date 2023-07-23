@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module IsValidUtf8 (testSuite) where
 
@@ -9,6 +10,7 @@ import qualified Data.ByteString as B
 import Data.Char (chr, ord)
 import Data.Word (Word8)
 import Control.Monad (guard)
+import qualified Language.Haskell.TH.Syntax as TH
 import Numeric (showHex)
 import GHC.Exts (fromList, fromListN, toList)
 import Test.QuickCheck (Property, forAll, (===), forAllShrinkShow)
@@ -24,7 +26,8 @@ testSuite = testGroup "UTF-8 validation" [
   adjustOption (max testCount) . testProperty "Invalid UTF-8 ByteString" $ goInvalidBS,
   adjustOption (max testCount) . testProperty "Valid UTF-8 ShortByteString" $ goValidSBS,
   adjustOption (max testCount) . testProperty "Invalid UTF-8 ShortByteString" $ goInvalidSBS,
-  testGroup "Regressions" checkRegressions
+  testGroup "Regressions" checkRegressions,
+  testProperty "TemplateHaskell" $(TH.lift $ B.isValidUtf8 $ B.pack [65])
   ]
   where
     goValidBS :: ValidUtf8 -> Bool
