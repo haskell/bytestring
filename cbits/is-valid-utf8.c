@@ -50,6 +50,7 @@ SUCH DAMAGE.
 #endif
 
 #include <MachDeps.h>
+#include "Rts.h"
 
 #ifdef WORDS_BIGENDIAN
 #define to_little_endian(x) __builtin_bswap64(x)
@@ -64,6 +65,29 @@ static inline uint64_t read_uint64(const uint64_t *p) {
   uint64_t r;
   memcpy(&r, p, 8);
   return r;
+}
+
+// stand-in for __builtin_ctzll, used because __builtin_ctzll can
+// cause runtime linker issues for GHC in some exotic situations (#601)
+//
+// See also these ghc issues:
+//  * https://gitlab.haskell.org/ghc/ghc/-/issues/21787
+//  * https://gitlab.haskell.org/ghc/ghc/-/issues/22011
+static inline int hs_bytestring_ctz64(const uint64_t x) {
+  // These CPP conditions are taken from ghc-prim:
+  // https://gitlab.haskell.org/ghc/ghc/-/blob/73b5c7ce33929e1f7c9283ed7c2860aa40f6d0ec/libraries/ghc-prim/cbits/ctz.c#L31-57
+  // credit to Herbert Valerio Riedel, Erik de Castro Lopo
+#if defined(__GNUC__) && (defined(i386_HOST_ARCH) || defined(powerpc_HOST_ARCH))
+  uint32_t xhi = (uint32_t)(x >> 32);
+  uint32_t xlo = (uint32_t) x;
+  return xlo ? __builtin_ctz(xlo) : 32 + __builtin_ctz(xhi);
+#elif SIZEOF_UNSIGNED_LONG == 8
+  return __builtin_ctzl(x);
+#elif SIZEOF_UNSIGNED_LONG_LONG == 8
+  return __builtin_ctzll(x);
+#else
+# error no suitable __builtin_ctz() found
+#endif
 }
 
 static inline int is_valid_utf8_fallback(uint8_t const *const src,
@@ -100,16 +124,16 @@ static inline int is_valid_utf8_fallback(uint8_t const *const src,
               if (results[3] == 0) {
                 ptr += 8;
               } else {
-                ptr += (__builtin_ctzll(results[3]) / 8);
+                ptr += (hs_bytestring_ctz64(results[3]) / 8);
               }
             } else {
-              ptr += (__builtin_ctzll(results[2]) / 8);
+              ptr += (hs_bytestring_ctz64(results[2]) / 8);
             }
           } else {
-            ptr += (__builtin_ctzll(results[1]) / 8);
+            ptr += (hs_bytestring_ctz64(results[1]) / 8);
           }
         } else {
-          ptr += (__builtin_ctzll(results[0]) / 8);
+          ptr += (hs_bytestring_ctz64(results[0]) / 8);
         }
       }
     }
@@ -207,16 +231,16 @@ static inline int is_valid_utf8_sse2(uint8_t const *const src,
               if (result == 0) {
                 ptr += 16;
               } else {
-                ptr += __builtin_ctzll(result);
+                ptr += __builtin_ctz(result);
               }
             } else {
-              ptr += __builtin_ctzll(result);
+              ptr += __builtin_ctz(result);
             }
           } else {
-            ptr += __builtin_ctzll(result);
+            ptr += __builtin_ctz(result);
           }
         } else {
-          ptr += __builtin_ctzll(result);
+          ptr += __builtin_ctz(result);
         }
       }
     }
