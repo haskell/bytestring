@@ -1,3 +1,10 @@
+[0.11.5.1] — August 2023
+
+* Bug fixes:
+  * [Work around a GHC runtime linker issue on i386/PowerPC](https://github.com/haskell/bytestring/pull/604)
+
+[0.11.5.1]: https://github.com/haskell/bytestring/compare/0.11.5.0...0.11.5.1
+
 [0.11.5.0] — July 2023
 
 * Bug fixes:
