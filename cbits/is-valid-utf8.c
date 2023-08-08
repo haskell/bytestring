@@ -50,7 +50,7 @@ SUCH DAMAGE.
 #endif
 
 #include <MachDeps.h>
-#include "Rts.h"
+#include "ghcplatform.h"
 
 #ifdef WORDS_BIGENDIAN
 #define to_little_endian(x) __builtin_bswap64(x)
