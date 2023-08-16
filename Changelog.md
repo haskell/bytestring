@@ -1,3 +1,10 @@
+[0.11.5.2] — August 2023
+
+* Bug fixes:
+  * [Fix `clockid_t`-related build failures on some platforms](https://github.com/haskell/bytestring/pull/607)
+
+[0.11.5.2]: https://github.com/haskell/bytestring/compare/0.11.5.1...0.11.5.2
+
 [0.11.5.1] — August 2023
 
 * Bug fixes:
