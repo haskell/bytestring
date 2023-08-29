@@ -250,10 +250,8 @@ tests =
     \x y -> B.unpack (mappend x y) === B.unpack x `mappend` B.unpack y
   , testProperty "<>" $
     \x y -> B.unpack (x <> y) === B.unpack x <> B.unpack y
-#ifndef BYTESTRING_SHORT
   , testProperty "stimes" $
-    \(Sqrt (NonNegative n)) (Sqrt x) -> stimes (n :: Int) (x :: BYTESTRING_TYPE) === mtimesDefault n x
-#endif
+    \(Sqrt (NonNegative n)) (Sqrt x) -> stimes (n :: Int) (x :: BYTESTRING_TYPE) === stimesMonoid n x
 
   , testProperty "break" $
     \f x -> (B.unpack *** B.unpack) (B.break f x) === break f (B.unpack x)

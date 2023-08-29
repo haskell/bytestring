@@ -28,9 +28,7 @@ import           Foreign (minusPtr)
 import           Data.Char (chr)
 import           Data.Bits ((.|.), shiftL)
 import           Data.Foldable
-#if !MIN_VERSION_base(4,11,0)
-import           Data.Semigroup
-#endif
+import           Data.Semigroup (Semigroup(..))
 import           Data.Word
 
 import qualified Data.ByteString          as S
@@ -55,8 +53,11 @@ import           System.Posix.Internals (c_unlink)
 import           Test.Tasty (TestTree, TestName, testGroup)
 import           Test.Tasty.QuickCheck
                    ( Arbitrary(..), oneof, choose, listOf, elements
-                   , counterexample, ioProperty, UnicodeString(..), Property, testProperty
-                   , (===), (.&&.), conjoin )
+                   , counterexample, ioProperty, Property, testProperty
+                   , (===), (.&&.), conjoin
+                   , UnicodeString(..), NonNegative(..)
+                   )
+import           QuickCheckUtils
 
 
 tests :: [TestTree]
@@ -67,6 +68,7 @@ tests =
   , testPut
   , testRunBuilder
   , testWriteFile
+  , testStimes
   ] ++
   testsEncodingToBuilder ++
   testsBinary ++
@@ -199,6 +201,11 @@ testWriteFile =
             unless success (error msg)
             return success
 
+testStimes :: TestTree
+testStimes = testProperty "stimes" $
+  \(Sqrt (NonNegative n)) (Sqrt x) ->
+    stimes (n :: Int) x === toLazyByteString (stimes n (lazyByteString x))
+
 removeFile :: String -> IO ()
 removeFile fn = void $ withCString fn c_unlink
 
@@ -318,22 +325,6 @@ recipeComponents (Recipe how firstSize otherSize cont as) =
 
 -- 'Arbitary' instances
 -----------------------
-
-instance Arbitrary L.ByteString where
-    arbitrary = L.fromChunks <$> listOf arbitrary
-    shrink lbs
-      | L.null lbs = []
-      | otherwise = pure $ L.take (L.length lbs `div` 2) lbs
-
-instance Arbitrary S.ByteString where
-    arbitrary =
-        trim S.drop =<< trim S.take =<< S.pack <$> listOf arbitrary
-      where
-        trim f bs = oneof [pure bs, f <$> choose (0, S.length bs) <*> pure bs]
-
-    shrink bs
-      | S.null bs = []
-      | otherwise = pure $ S.take (S.length bs `div` 2) bs
 
 instance Arbitrary Mode where
     arbitrary = oneof
