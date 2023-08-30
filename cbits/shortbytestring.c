@@ -2,7 +2,9 @@
 #include <stddef.h>
 #include <string.h>
 
+#include "bytestring-cpp-macros.h"
 
+#if !HS_COMPARE_ByteArray_OP_AVAILABLE
 int
 sbs_memcmp_off(const void *s1,
             size_t off1,
@@ -17,6 +19,7 @@ sbs_memcmp_off(const void *s1,
 
     return r;
 }
+#endif
 
 ptrdiff_t
 sbs_elem_index(const void *s,

@@ -43,6 +43,8 @@
 #define USE_SIMD_COUNT
 #endif
 
+#include "bytestring-cpp-macros.h"
+
 /* copy a string in reverse */
 void fps_reverse(unsigned char *q, unsigned char *p, size_t n) {
     p += n-1;
@@ -106,22 +108,22 @@ void fps_sort(unsigned char *p, size_t len) {
     return qsort(p, len, 1, fps_compare);
 }
 
-// We don't actually always use these unaligned write functions on the
-// Haskell side, but the macros we check there aren't visible here...
-void fps_unaligned_write_u16(uint16_t x, uint8_t *p) {
-  memcpy(p, &x, 2);
-  return;
-}
+#if !HS_UNALIGNED_POKES_OK
+  void fps_unaligned_write_u16(uint16_t x, uint8_t *p) {
+    memcpy(p, &x, 2);
+    return;
+  }
 
-void fps_unaligned_write_u32(uint32_t x, uint8_t *p) {
-  memcpy(p, &x, 4);
-  return;
-}
+  void fps_unaligned_write_u32(uint32_t x, uint8_t *p) {
+    memcpy(p, &x, 4);
+    return;
+  }
 
-void fps_unaligned_write_u64(uint64_t x, uint8_t *p) {
-  memcpy(p, &x, 8);
-  return;
-}
+  void fps_unaligned_write_u64(uint64_t x, uint8_t *p) {
+    memcpy(p, &x, 8);
+    return;
+  }
+#endif
 
 /* count the number of occurrences of a char in a string */
 size_t fps_count_naive(unsigned char *str, size_t len, unsigned char w) {

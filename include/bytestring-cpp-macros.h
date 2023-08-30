@@ -1,6 +1,17 @@
-#if defined(__STDC__) || defined(__GNUC__) || defined(__clang__)
-#error "bytestring-cpp-macros.h does not work in C code yet"
-#endif
+/*
+This file gets included in both C and Haskell sources.
+
+// Single-line comments cause trouble because
+-- the syntax differs between the two languages.
+
+But C block-style comments like this one get removed by the preprocessor.
+*/
+
+/* Make the appropriate_HOST_ARCH macro visible in C code */
+#include "ghcplatform.h"
+
+/* Make MIN_VERSION_package macros visible in C code */
+#include "cabal_macros.h"
 
 
 #if defined(i386_HOST_ARCH) || defined(x86_64_HOST_ARCH)       \
@@ -34,3 +45,5 @@ These operations were added in base-4.10.0, but due to
 https://gitlab.haskell.org/ghc/ghc/-/issues/16617 they
 are buggy with negative floats before ghc-8.10.
 */
+
+#define HS_COMPARE_ByteArray_OP_AVAILABLE MIN_VERSION_base(4,11,0)
