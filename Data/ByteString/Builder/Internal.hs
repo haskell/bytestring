@@ -128,7 +128,9 @@ module Data.ByteString.Builder.Internal (
 
 import           Control.Arrow (second)
 
-import           Data.Semigroup (Semigroup(..))
+#if !(MIN_VERSION_base(4,11,0))
+import           Data.Semigroup (Semigroup((<>)))
+#endif
 
 import qualified Data.ByteString               as S
 import qualified Data.ByteString.Internal.Type as S
@@ -380,22 +382,9 @@ empty = Builder ($)
 append :: Builder -> Builder -> Builder
 append (Builder b1) (Builder b2) = Builder $ b1 . b2
 
-stimesBuilder :: Integral t => t -> Builder -> Builder
-{-# INLINABLE stimesBuilder #-}
-stimesBuilder n b
-  | n >= 0 = go n
-  | otherwise = stimesNegativeErr
-  where go 0 = empty
-        go k = b `append` go (k - 1)
-
-stimesNegativeErr :: Builder
-stimesNegativeErr
-  = errorWithoutStackTrace "stimes @Builder: non-negative multiplier expected"
-
 instance Semigroup Builder where
   {-# INLINE (<>) #-}
   (<>) = append
-  stimes = stimesBuilder
 
 instance Monoid Builder where
   {-# INLINE mempty #-}

@@ -28,7 +28,9 @@ import           Foreign (minusPtr)
 import           Data.Char (chr)
 import           Data.Bits ((.|.), shiftL)
 import           Data.Foldable
-import           Data.Semigroup (Semigroup(..))
+#if !MIN_VERSION_base(4,11,0)
+import           Data.Semigroup
+#endif
 import           Data.Word
 
 import qualified Data.ByteString          as S
@@ -545,13 +547,16 @@ testBuilderConstr :: (Arbitrary a, Show a)
 testBuilderConstr name ref mkBuilder =
     testProperty name check
   where
-    check x = forAll (choose (0, 7)) $ \paddingAmount -> let
-      -- we use paddingAmount to make sure we test at unaligned positions
+    check x = forAll (choose (0, maxPaddingAmount)) $ \paddingAmount -> let
+      -- use padding to make sure we test at unaligned positions
       ws = ref x
       b1 = mkBuilder x
-      b2 = stimes paddingAmount (char8 ' ') <> b1 <> b1
+      b2 = byteStringCopy (S.take paddingAmount padBuf) <> b1 <> b1
       in (replicate paddingAmount (S.c2w ' ') ++ ws ++ ws) ===
          (L.unpack $ toLazyByteString b2)
+
+    maxPaddingAmount = 15
+    padBuf = S.replicate maxPaddingAmount (S.c2w ' ')
 
 
 testsBinary :: [TestTree]
