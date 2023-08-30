@@ -35,6 +35,7 @@ data EncodingTable = EncodingTable Addr#
 -- e.g., deadbeef.
 {-# NOINLINE lowerTable #-}
 lowerTable :: EncodingTable
+-- Is this buffer guaranteed to be Word16-aligned?
 lowerTable = EncodingTable
     "000102030405060708090a0b0c0d0e0f\
     \101112131415161718191a1b1c1d1e1f\
