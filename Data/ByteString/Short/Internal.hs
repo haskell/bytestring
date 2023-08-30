@@ -1673,7 +1673,7 @@ compareByteArraysOff :: BA  -- ^ array 1
                      -> Int -- ^ offset for array 2
                      -> Int -- ^ length to compare
                      -> Int -- ^ like memcmp
-#if HS_COMPARE_ByteArray_OP_AVAILABLE
+#if MIN_VERSION_base(4,11,0)
 compareByteArraysOff (BA# ba1#) (I# ba1off#) (BA# ba2#) (I# ba2off#) (I# len#) =
   I# (compareByteArrays#  ba1# ba1off# ba2# ba2off# len#)
 #else
