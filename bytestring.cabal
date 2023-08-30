@@ -124,6 +124,7 @@ library
                      NamedFieldPuns
 
   ghc-options:      -Wall -fwarn-tabs -Wincomplete-uni-patterns
+                    -optP -Wall -optP -Werror=undef
                     -O2
                     -fmax-simplifier-iterations=10
                     -fdicts-cheap
@@ -141,8 +142,7 @@ library
   -- DNDEBUG disables asserts in cbits/
   cc-options:        -std=c11 -DNDEBUG=1
                      -fno-strict-aliasing
-
-  cpp-options:       -Wall -Werror=undef
+                     -Werror=undef
 
   -- No need to link to libgcc on ghc-9.4 and later which uses a clang-based
   -- toolchain.
