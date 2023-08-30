@@ -1,9 +1,11 @@
+{-# OPTIONS_HADDOCK prune #-}
+{-# LANGUAGE Trustworthy #-}
+
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TupleSections #-}
-{-# OPTIONS_HADDOCK prune #-}
-{-# LANGUAGE Trustworthy #-}
+{-# LANGUAGE TypeApplications #-}
 
 -- |
 -- Module      : Data.ByteString
@@ -219,11 +221,11 @@ module Data.ByteString (
   ) where
 
 import qualified Prelude as P
-import Prelude hiding           (reverse,head,tail,last,init,null
-                                ,length,map,lines,foldl,foldr,unlines
+import Prelude hiding           (reverse,head,tail,last,init,Foldable(..)
+                                ,map,lines,unlines
                                 ,concat,any,take,drop,splitAt,takeWhile
-                                ,dropWhile,span,break,elem,filter,maximum
-                                ,minimum,all,concatMap,foldl1,foldr1
+                                ,dropWhile,span,break,filter
+                                ,all,concatMap
                                 ,scanl,scanl1,scanr,scanr1
                                 ,readFile,writeFile,appendFile,replicate
                                 ,getContents,getLine,putStr,putStrLn,interact
@@ -243,7 +245,7 @@ import Data.List.NonEmpty (NonEmpty(..))
 import Data.Word                (Word8)
 
 import Control.Exception        (IOException, catch, finally, assert, throwIO)
-import Control.Monad            (when, void)
+import Control.Monad            (when)
 
 import Foreign.C.String         (CString, CStringLen)
 import Foreign.C.Types          (CSize (CSize), CInt (CInt))
@@ -251,6 +253,7 @@ import Foreign.ForeignPtr       (ForeignPtr, touchForeignPtr)
 import Foreign.ForeignPtr.Unsafe(unsafeForeignPtrToPtr)
 import Foreign.Marshal.Alloc    (allocaBytes)
 import Foreign.Marshal.Array    (allocaArray)
+import Foreign.Marshal.Utils
 import Foreign.Ptr
 import Foreign.Storable         (Storable(..))
 
@@ -267,7 +270,6 @@ import GHC.IO.Handle.Types
 import GHC.IO.Buffer
 import GHC.IO.BufferedIO as Buffered
 import GHC.IO.Encoding          (getFileSystemEncoding)
-import GHC.IO                   (unsafePerformIO, unsafeDupablePerformIO)
 import GHC.Foreign              (newCStringLen, peekCStringLen)
 import GHC.Stack.Types          (HasCallStack)
 import Data.Char                (ord)
@@ -378,16 +380,16 @@ infixl 5 `snoc`
 -- | /O(n)/ 'cons' is analogous to (:) for lists, but of different
 -- complexity, as it requires making a copy.
 cons :: Word8 -> ByteString -> ByteString
-cons c (BS x l) = unsafeCreateFp (l+1) $ \p -> do
+cons c (BS x len) = unsafeCreateFp (checkedAdd "cons" len 1) $ \p -> do
         pokeFp p c
-        memcpyFp (p `plusForeignPtr` 1) x l
+        memcpyFp (p `plusForeignPtr` 1) x len
 {-# INLINE cons #-}
 
 -- | /O(n)/ Append a byte to the end of a 'ByteString'
 snoc :: ByteString -> Word8 -> ByteString
-snoc (BS x l) c = unsafeCreateFp (l+1) $ \p -> do
-        memcpyFp p x l
-        pokeFp (p `plusForeignPtr` l) c
+snoc (BS x len) c = unsafeCreateFp (checkedAdd "snoc" len 1) $ \p -> do
+        memcpyFp p x len
+        pokeFp (p `plusForeignPtr` len) c
 {-# INLINE snoc #-}
 
 -- | /O(1)/ Extract the first element of a ByteString, which must be non-empty.
@@ -771,7 +773,7 @@ scanl
     -- ^ input of length n
     -> ByteString
     -- ^ output of length n+1
-scanl f v = \(BS a len) -> unsafeCreateFp (len+1) $ \q -> do
+scanl f v = \(BS a len) -> unsafeCreateFp (checkedAdd "scanl" len 1) $ \q -> do
          -- see fold inlining
         pokeFp q v
         let
@@ -815,7 +817,7 @@ scanr
     -- ^ input of length n
     -> ByteString
     -- ^ output of length n+1
-scanr f v = \(BS a len) -> unsafeCreateFp (len+1) $ \b -> do
+scanr f v = \(BS a len) -> unsafeCreateFp (checkedAdd "scanr" len 1) $ \b -> do
          -- see fold inlining
         pokeFpByteOff b len v
         let
@@ -844,15 +846,13 @@ scanr1 f ps = case unsnoc ps of
 -- | /O(n)/ 'replicate' @n x@ is a ByteString of length @n@ with @x@
 -- the value of every element. The following holds:
 --
--- > replicate w c = unfoldr w (\u -> Just (u,u)) c
---
--- This implementation uses @memset(3)@
+-- > replicate w c = fst (unfoldrN w (\u -> Just (u,u)) c)
 replicate :: Int -> Word8 -> ByteString
 replicate w c
     | w <= 0    = empty
     | otherwise = unsafeCreateFp w $ \fptr ->
         unsafeWithForeignPtr fptr $ \ptr ->
-                      void $ memset ptr c (fromIntegral w)
+                      fillBytes ptr c w
 {-# INLINE replicate #-}
 
 -- | /O(n)/, where /n/ is the length of the result.  The 'unfoldr'
@@ -887,7 +887,7 @@ unfoldr f = concat . unfoldChunk 32 64
 unfoldrN :: Int -> (a -> Maybe (Word8, a)) -> a -> (ByteString, Maybe a)
 unfoldrN i f x0
     | i < 0     = (empty, Just x0)
-    | otherwise = unsafePerformIO $ createFpAndTrim' i $ \p -> go p x0 0
+    | otherwise = unsafeDupablePerformIO $ createFpAndTrim' i $ \p -> go p x0 0
   where
     go !p !x !n = go' x n
       where
@@ -1721,12 +1721,15 @@ tailsNE p | null p    = empty :| []
 Note [Avoid NonEmpty combinators]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-As of base-4.17, most of the NonEmpty API is surprisingly lazy.
+As of base-4.18, most of the NonEmpty API is surprisingly lazy.
 Using it without forcing the arguments yourself is just begging GHC
 to make your code waste time allocating useless selector thunks.
 This may change in the future. See also this CLC issue:
   https://github.com/haskell/core-libraries-committee/issues/107
 But until then, "refactor" with care!
+
+(Even for uses of NonEmpty near lazy ByteStrings, we don't want
+the extra laziness of the NonEmpty API.)
 -}
 
 
@@ -1743,18 +1746,18 @@ sort (BS input l)
     unsafeWithForeignPtr destFP $ \dest -> c_sort dest (fromIntegral l)
   | otherwise = unsafeCreateFp l $ \p -> allocaArray 256 $ \arr -> do
 
-    _ <- memset (castPtr arr) 0 (256 * fromIntegral (sizeOf (undefined :: CSize)))
+    fillBytes (castPtr arr) 0 (256 * sizeOf (undefined :: Int))
     unsafeWithForeignPtr input (\x -> countOccurrences arr x l)
 
     let go 256 !_   = return ()
         go i   !ptr = do n <- peekElemOff arr i
-                         when (n /= 0) $ void $ memset ptr (fromIntegral i) n
+                         when (n /= 0) $
+                           fillBytes ptr (fromIntegral @Int @Word8 i) n
                          go (i + 1) (ptr `plusPtr` fromIntegral n)
     unsafeWithForeignPtr p (go 0)
   where
     -- Count the number of occurrences of each byte.
-    -- Used by 'sort'
-    countOccurrences :: Ptr CSize -> Ptr Word8 -> Int -> IO ()
+    countOccurrences :: Ptr Int -> Ptr Word8 -> Int -> IO ()
     countOccurrences !counts !str !len = go 0
      where
         go !i | i == len    = return ()
@@ -1774,7 +1777,7 @@ sort (BS input l)
 useAsCString :: ByteString -> (CString -> IO a) -> IO a
 useAsCString (BS fp l) action =
   allocaBytes (l+1) $ \buf -> do
-    unsafeWithForeignPtr fp $ \p -> memcpy buf p l
+    unsafeWithForeignPtr fp $ \p -> copyBytes buf p l
     pokeByteOff buf l (0::Word8)
     action (castPtr buf)
 
@@ -1801,7 +1804,7 @@ packCString cstr = do
 -- Haskell heap.
 packCStringLen :: CStringLen -> IO ByteString
 packCStringLen (cstr, len) | len >= 0 = createFp len $ \fp ->
-    unsafeWithForeignPtr fp $ \p -> memcpy p (castPtr cstr) len
+    unsafeWithForeignPtr fp $ \p -> copyBytes p (castPtr cstr) len
 packCStringLen (_, len) =
     moduleErrorIO "packCStringLen" ("negative length: " ++ show len)
 
@@ -1823,8 +1826,11 @@ copy (BS x l) = unsafeCreateFp l $ \p -> memcpyFp p x l
 getLine :: IO ByteString
 getLine = hGetLine stdin
 
--- | Read a line from a handle
+{-# DEPRECATED getLine
+     "Deprecated since @bytestring-0.12@. Use 'Data.ByteString.Char8.getLine' instead. (Functions that rely on ASCII encodings belong in \"Data.ByteString.Char8\")"
+  #-}
 
+-- | Read a line from a handle
 hGetLine :: Handle -> IO ByteString
 hGetLine h =
   wantReadableHandle_ "Data.ByteString.hGetLine" h $
@@ -1870,6 +1876,10 @@ hGetLine h =
             if c == fromIntegral (ord '\n')
                 then return r -- NB. not r+1: don't include the '\n'
                 else findEOL (r+1) w raw
+
+{-# DEPRECATED hGetLine
+     "Deprecated since @bytestring-0.12@. Use 'Data.ByteString.Char8.hGetLine' instead. (Functions that rely on ASCII encodings belong in \"Data.ByteString.Char8\")"
+  #-}
 
 mkPS :: RawBuffer Word8 -> Int -> Int -> IO ByteString
 mkPS buf start end =

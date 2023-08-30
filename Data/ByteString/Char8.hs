@@ -2,6 +2,7 @@
 {-# LANGUAGE MagicHash #-}
 {-# OPTIONS_HADDOCK prune #-}
 {-# LANGUAGE Trustworthy #-}
+{-# OPTIONS_GHC -Wno-deprecations #-}
 
 -- |
 -- Module      : Data.ByteString.Char8
@@ -246,14 +247,14 @@ module Data.ByteString.Char8 (
   ) where
 
 import qualified Prelude as P
-import Prelude hiding           (reverse,head,tail,last,init,null
-                                ,length,map,lines,foldl,foldr,unlines
+import Prelude hiding           (reverse,head,tail,last,init,Foldable(..)
+                                ,map,lines,unlines
                                 ,concat,any,take,drop,splitAt,takeWhile
-                                ,dropWhile,span,break,elem,filter,unwords
-                                ,words,maximum,minimum,all,concatMap
+                                ,dropWhile,span,break,filter,unwords
+                                ,words,all,concatMap
                                 ,scanl,scanl1,scanr,scanr1
                                 ,appendFile,readFile,writeFile
-                                ,foldl1,foldr1,replicate
+                                ,replicate
                                 ,getContents,getLine,putStr,putStrLn,interact
                                 ,zip,zipWith,unzip,notElem)
 
@@ -269,10 +270,10 @@ import Data.ByteString (null,length,tail,init,append
                        ,isInfixOf,stripPrefix,stripSuffix
                        ,breakSubstring,copy,group
 
-                       ,getLine, getContents, putStr, interact
+                       ,getContents, putStr, interact
                        ,readFile, writeFile, appendFile
                        ,hGetContents, hGet, hGetSome, hPut, hPutStr
-                       ,hGetLine, hGetNonBlocking, hPutNonBlocking
+                       ,hGetNonBlocking, hPutNonBlocking
                        ,packCString,packCStringLen
                        ,useAsCString,useAsCStringLen
                        )
@@ -996,6 +997,14 @@ unwords = intercalate (singleton ' ')
 
 ------------------------------------------------------------------------
 -- For non-binary text processing:
+
+-- | Read a line from stdin.
+getLine :: IO ByteString
+getLine = B.getLine
+
+-- | Read a line from a handle
+hGetLine :: Handle -> IO ByteString
+hGetLine = B.hGetLine
 
 -- | Write a ByteString to a handle, appending a newline byte.
 --

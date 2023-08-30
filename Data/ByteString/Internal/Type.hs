@@ -62,6 +62,7 @@ module Data.ByteString.Internal.Type (
         mallocByteString,
 
         -- * Conversion to and from ForeignPtrs
+        mkDeferredByteString,
         fromForeignPtr,
         toForeignPtr,
         fromForeignPtr0,
@@ -75,6 +76,8 @@ module Data.ByteString.Internal.Type (
         pokeFpByteOff,
         minusForeignPtr,
         memcpyFp,
+        deferForeignPtrAvailability,
+        unsafeDupablePerformIO,
         SizeOverflowException,
         overflowError,
         checkedAdd,
@@ -111,13 +114,12 @@ module Data.ByteString.Internal.Type (
 import Prelude hiding (concat, null)
 import qualified Data.List as List
 
-import Control.Monad            (void)
-
 import Foreign.ForeignPtr       (ForeignPtr, withForeignPtr)
 import Foreign.Ptr              (Ptr, FunPtr, plusPtr)
 import Foreign.Storable         (Storable(..))
 import Foreign.C.Types          (CInt(..), CSize(..))
 import Foreign.C.String         (CString)
+import Foreign.Marshal.Utils
 
 #if !MIN_VERSION_base(4,13,0)
 import Data.Semigroup           (Semigroup ((<>)))
@@ -138,9 +140,9 @@ import Data.Word
 import Data.Data                (Data(..), mkNoRepType)
 
 import GHC.Base                 (nullAddr#,realWorld#,unsafeChr)
-import GHC.Exts                 (IsList(..))
+import GHC.Exts                 (IsList(..), Addr#, minusAddr#)
 import GHC.CString              (unpackCString#)
-import GHC.Exts                 (Addr#, minusAddr#)
+import GHC.Magic                (runRW#, lazy)
 
 #define TIMES_INT_2_AVAILABLE MIN_VERSION_ghc_prim(0,7,0)
 #if TIMES_INT_2_AVAILABLE
@@ -155,7 +157,7 @@ import GHC.Prim                ( timesWord2#
 import Data.Bits               (finiteBitSize)
 #endif
 
-import GHC.IO                   (IO(IO),unsafeDupablePerformIO)
+import GHC.IO                   (IO(IO))
 import GHC.ForeignPtr           (ForeignPtr(ForeignPtr)
 #if __GLASGOW_HASKELL__ < 900
                                 , newForeignPtr_
@@ -228,6 +230,51 @@ peekFpByteOff fp off = unsafeWithForeignPtr fp $ \p ->
 pokeFpByteOff :: Storable a => ForeignPtr b -> Int -> a -> IO ()
 pokeFpByteOff fp off val = unsafeWithForeignPtr fp $ \p ->
   pokeByteOff p off val
+
+-- | Most operations on a 'ByteString' need to read from the buffer
+-- given by its @ForeignPtr Word8@ field.  But since most operations
+-- on @ByteString@ are (nominally) pure, their implementations cannot
+-- see the IO state thread that was used to initialize the contents of
+-- that buffer.  This means that under some circumstances, these
+-- buffer-reads may be executed before the writes used to initialize
+-- the buffer are executed, with unpredictable results.
+--
+-- 'deferForeignPtrAvailability' exists to help solve this problem.
+-- At runtime, a call @'deferForeignPtrAvailability' x@ is equivalent
+-- to @pure $! x@, but the former is more opaque to the simplifier, so
+-- that reads from the pointer in its result cannot be executed until
+-- the @'deferForeignPtrAvailability' x@ call is complete.
+--
+-- The opaque bits evaporate during CorePrep, so using
+-- 'deferForeignPtrAvailability' incurs no direct overhead.
+--
+-- @since 0.11.5.0
+deferForeignPtrAvailability :: ForeignPtr a -> IO (ForeignPtr a)
+deferForeignPtrAvailability (ForeignPtr addr0# guts) = IO $ \s0 ->
+  case lazy runRW# (\_ -> (# s0, addr0# #)) of
+    (# s1, addr1# #) -> (# s1, ForeignPtr addr1# guts #)
+
+-- | Variant of 'fromForeignPtr0' that calls 'deferForeignPtrAvailability'
+--
+-- @since 0.11.5.0
+mkDeferredByteString :: ForeignPtr Word8 -> Int -> IO ByteString
+mkDeferredByteString fp len = do
+  deferredFp <- deferForeignPtrAvailability fp
+  pure $! BS deferredFp len
+
+unsafeDupablePerformIO :: IO a -> a
+-- Why does this exist? In base-4.15.1.0 until at least base-4.18.0.0,
+-- the version of unsafeDupablePerformIO in base prevents unboxing of
+-- its results with an opaque call to GHC.Exts.lazy, for reasons described
+-- in Note [unsafePerformIO and strictness] in GHC.IO.Unsafe. (See
+-- https://hackage.haskell.org/package/base-4.18.0.0/docs/src/GHC.IO.Unsafe.html#line-30 .)
+-- Even if we accept the (very questionable) premise that the sort of
+-- function described in that note should work, we expect no such
+-- calls to be made in the context of bytestring.  (And we really want
+-- unboxing!)
+unsafeDupablePerformIO (IO act) = case runRW# act of (# _, res #) -> res
+
+
 
 -- -----------------------------------------------------------------------------
 
@@ -568,8 +615,8 @@ fromForeignPtr fp o = BS (plusForeignPtr fp o)
 
 -- | @since 0.11.0.0
 fromForeignPtr0 :: ForeignPtr Word8
-               -> Int -- ^ Length
-               -> ByteString
+                -> Int -- ^ Length
+                -> ByteString
 fromForeignPtr0 = BS
 {-# INLINE fromForeignPtr0 #-}
 
@@ -606,29 +653,30 @@ unsafeCreateFpUptoN' l f = unsafeDupablePerformIO (createFpUptoN' l f)
 
 -- | Create ByteString of size @l@ and use action @f@ to fill its contents.
 createFp :: Int -> (ForeignPtr Word8 -> IO ()) -> IO ByteString
-createFp l action = do
-    fp <- mallocByteString l
+createFp len action = assert (len >= 0) $ do
+    fp <- mallocByteString len
     action fp
-    return $! BS fp l
+    mkDeferredByteString fp len
 {-# INLINE createFp #-}
 
 -- | Given a maximum size @l@ and an action @f@ that fills the 'ByteString'
 -- starting at the given 'Ptr' and returns the actual utilized length,
 -- @`createFpUptoN'` l f@ returns the filled 'ByteString'.
 createFpUptoN :: Int -> (ForeignPtr Word8 -> IO Int) -> IO ByteString
-createFpUptoN l action = do
-    fp <- mallocByteString l
-    l' <- action fp
-    assert (l' <= l) $ return $! BS fp l'
+createFpUptoN maxLen action = assert (maxLen >= 0) $ do
+    fp <- mallocByteString maxLen
+    len <- action fp
+    assert (0 <= len && len <= maxLen) $ mkDeferredByteString fp len
 {-# INLINE createFpUptoN #-}
 
 -- | Like 'createFpUptoN', but also returns an additional value created by the
 -- action.
 createFpUptoN' :: Int -> (ForeignPtr Word8 -> IO (Int, a)) -> IO (ByteString, a)
-createFpUptoN' l action = do
-    fp <- mallocByteString l
-    (l', res) <- action fp
-    assert (l' <= l) $ return (BS fp l', res)
+createFpUptoN' maxLen action = assert (maxLen >= 0) $ do
+    fp <- mallocByteString maxLen
+    (len, res) <- action fp
+    bs <- mkDeferredByteString fp len
+    assert (0 <= len && len <= maxLen) $ pure (bs, res)
 {-# INLINE createFpUptoN' #-}
 
 -- | Given the maximum size needed and a function to make the contents
@@ -640,23 +688,27 @@ createFpUptoN' l action = do
 -- ByteString functions, using Haskell or C functions to fill the space.
 --
 createFpAndTrim :: Int -> (ForeignPtr Word8 -> IO Int) -> IO ByteString
-createFpAndTrim l action = do
-    fp <- mallocByteString l
-    l' <- action fp
-    if assert (0 <= l' && l' <= l) $ l' >= l
-        then return $! BS fp l
-        else createFp l' $ \fp' -> memcpyFp fp' fp l'
+createFpAndTrim maxLen action = assert (maxLen >= 0) $ do
+    fp <- mallocByteString maxLen
+    len <- action fp
+    if assert (0 <= len && len <= maxLen) $ len >= maxLen
+        then mkDeferredByteString fp maxLen
+        else createFp len $ \dest -> memcpyFp dest fp len
 {-# INLINE createFpAndTrim #-}
 
 createFpAndTrim' :: Int -> (ForeignPtr Word8 -> IO (Int, Int, a)) -> IO (ByteString, a)
-createFpAndTrim' l action = do
-    fp <- mallocByteString l
-    (off, l', res) <- action fp
-    if assert (0 <= l' && l' <= l) $ l' >= l
-        then return (BS fp l, res)
-        else do ps <- createFp l' $ \fp' ->
-                        memcpyFp fp' (fp `plusForeignPtr` off) l'
-                return (ps, res)
+createFpAndTrim' maxLen action = assert (maxLen >= 0) $ do
+    fp <- mallocByteString maxLen
+    (off, len, res) <- action fp
+    assert (
+      0 <= len && len <= maxLen && -- length OK
+      (len == 0 || (0 <= off && off <= maxLen - len)) -- offset OK
+      ) $ pure ()
+    bs <- if len >= maxLen
+        then mkDeferredByteString fp maxLen -- entire buffer used => offset is zero
+        else createFp len $ \dest ->
+               memcpyFp dest (fp `plusForeignPtr` off) len
+    return (bs, res)
 {-# INLINE createFpAndTrim' #-}
 
 
@@ -850,8 +902,8 @@ stimesNonNegativeInt n (BS fp len)
   | len == 0 = empty
   | len == 1 = unsafeCreateFp n $ \destfptr -> do
       byte <- peekFp fp
-      void $ unsafeWithForeignPtr destfptr $ \destptr ->
-        memset destptr byte (fromIntegral n)
+      unsafeWithForeignPtr destfptr $ \destptr ->
+        fillBytes destptr byte n
   | otherwise = unsafeCreateFp size $ \destptr -> do
       memcpyFp destptr fp len
       fillFrom destptr len
@@ -923,8 +975,10 @@ overflowError fun = throw $ SizeOverflowException msg
 checkedAdd :: String -> Int -> Int -> Int
 {-# INLINE checkedAdd #-}
 checkedAdd fun x y
-  | r >= 0    = r
-  | otherwise = overflowError fun
+  -- checking "r < 0" here matches the condition in mallocPlainForeignPtrBytes,
+  -- helping the compiler see the latter is redundant in some places
+  | r < 0     = overflowError fun
+  | otherwise = r
   where r = assert (min x y >= 0) $ x + y
 
 -- | Multiplies two non-negative numbers.
@@ -1008,7 +1062,7 @@ foreign import ccall unsafe "string.h memchr" c_memchr
     :: Ptr Word8 -> CInt -> CSize -> IO (Ptr Word8)
 
 memchr :: Ptr Word8 -> Word8 -> CSize -> IO (Ptr Word8)
-memchr p w = c_memchr p (fromIntegral w)
+memchr p w sz = c_memchr p (fromIntegral w) sz
 
 foreign import ccall unsafe "string.h memcmp" c_memcmp
     :: Ptr Word8 -> Ptr Word8 -> CSize -> IO CInt
@@ -1016,30 +1070,22 @@ foreign import ccall unsafe "string.h memcmp" c_memcmp
 memcmp :: Ptr Word8 -> Ptr Word8 -> Int -> IO CInt
 memcmp p q s = c_memcmp p q (fromIntegral s)
 
-foreign import ccall unsafe "string.h memcpy" c_memcpy
-    :: Ptr Word8 -> Ptr Word8 -> CSize -> IO (Ptr Word8)
-
+{-# DEPRECATED memcpy "Use Foreign.Marshal.Utils.copyBytes instead" #-}
+-- | deprecated since @bytestring-0.11.5.0@
 memcpy :: Ptr Word8 -> Ptr Word8 -> Int -> IO ()
-memcpy p q s = void $ c_memcpy p q (fromIntegral s)
+memcpy = copyBytes
 
 memcpyFp :: ForeignPtr Word8 -> ForeignPtr Word8 -> Int -> IO ()
 memcpyFp fp fq s = unsafeWithForeignPtr fp $ \p ->
-                     unsafeWithForeignPtr fq $ \q -> memcpy p q s
-
-{-
-foreign import ccall unsafe "string.h memmove" c_memmove
-    :: Ptr Word8 -> Ptr Word8 -> CSize -> IO (Ptr Word8)
-
-memmove :: Ptr Word8 -> Ptr Word8 -> CSize -> IO ()
-memmove p q s = do c_memmove p q s
-                   return ()
--}
+                     unsafeWithForeignPtr fq $ \q -> copyBytes p q s
 
 foreign import ccall unsafe "string.h memset" c_memset
     :: Ptr Word8 -> CInt -> CSize -> IO (Ptr Word8)
 
+{-# DEPRECATED memset "Use Foreign.Marshal.Utils.fillBytes instead" #-}
+-- | deprecated since @bytestring-0.11.5.0@
 memset :: Ptr Word8 -> Word8 -> CSize -> IO (Ptr Word8)
-memset p w = c_memset p (fromIntegral w)
+memset p w sz = c_memset p (fromIntegral w) sz
 
 -- ---------------------------------------------------------------------
 --
