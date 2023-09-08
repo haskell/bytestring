@@ -184,7 +184,7 @@ import Data.Data
 import Data.Monoid
   ( Monoid(..) )
 import Data.Semigroup
-  ( Semigroup((<>)) )
+  ( Semigroup(..), stimesMonoid )
 import Data.String
   ( IsString(..) )
 import Control.Applicative
@@ -313,6 +313,7 @@ instance Ord ShortByteString where
 
 instance Semigroup ShortByteString where
     (<>)    = append
+    stimes  = stimesMonoid
 
 instance Monoid ShortByteString where
     mempty  = empty

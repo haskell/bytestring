@@ -885,13 +885,36 @@ stimesPolymorphic nRaw !bs = case checkedIntegerToInt n of
   -- and the likelihood of potentially dangerous mistakes minimized.
 
 
+{-
+Note [Float error calls out of INLINABLE things]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If a function is marked INLINE or INLINABLE, then when ghc inlines or
+specializes it, it duplicates the function body exactly as written.
+
+This feature is useful for systems of rewrite rules, but sometimes
+comes at a code-size cost.  One situation where this cost generally
+comes with no compensating up-side is when the function in question
+calls `error` or something similar.
+
+Such an `error` call is not meaningfully improved by the extra context
+inlining or specialization provides, and if inlining or specialization
+happens in a different module from where the function was originally
+defined, CSE will not be able to de-duplicate the error call floated
+out of the inlined RHS and the error call floated out of the original
+RHS.  See also https://gitlab.haskell.org/ghc/ghc/-/issues/23823
+
+To mitigate this, we manually float the error calls out of INLINABLE
+functions when it is possible to do so.
+-}
+
 stimesNegativeErr :: ByteString
+-- See Note [Float error calls out of INLINABLE things]
 stimesNegativeErr
-  = error "stimes @ByteString: non-negative multiplier expected"
+  = errorWithoutStackTrace "stimes @ByteString: non-negative multiplier expected"
 
 stimesOverflowErr :: ByteString
--- Although this only appears once, it is extracted here to prevent it
--- from being duplicated in specializations of 'stimesPolymorphic'
+-- See Note [Float error calls out of INLINABLE things]
 stimesOverflowErr = overflowError "stimes"
 
 -- | Repeats the given ByteString n times.
