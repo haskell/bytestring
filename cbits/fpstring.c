@@ -29,6 +29,9 @@
  * SUCH DAMAGE.
  */
 
+#include "HsFFI.h"
+#include "MachDeps.h"
+
 #include "fpstring.h"
 #if defined(__x86_64__)
 #include <x86intrin.h>
@@ -104,6 +107,31 @@ int fps_compare(const void *a, const void *b) {
 
 void fps_sort(unsigned char *p, size_t len) {
     return qsort(p, len, 1, fps_compare);
+}
+
+// We don't actually always use these unaligned write functions on the
+// Haskell side, but the macros we check there aren't visible here...
+void fps_unaligned_write_u16(uint16_t x, uint8_t *p) {
+  memcpy(p, &x, 2);
+  return;
+}
+
+void fps_unaligned_write_u32(uint32_t x, uint8_t *p) {
+  memcpy(p, &x, 4);
+  return;
+}
+
+void fps_unaligned_write_u64(uint64_t x, uint8_t *p) {
+  memcpy(p, &x, 8);
+  return;
+}
+
+void fps_unaligned_write_HsFloat(HsFloat x, uint8_t *p) {
+  memcpy(p, &x, SIZEOF_HSFLOAT);
+}
+
+void fps_unaligned_write_HsDouble(HsDouble x, uint8_t *p) {
+  memcpy(p, &x, SIZEOF_HSDOUBLE);
 }
 
 /* count the number of occurrences of a char in a string */

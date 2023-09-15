@@ -73,6 +73,7 @@ import Foreign
 import Prelude hiding (maxBound)
 
 #include "MachDeps.h"
+#include "bytestring-cpp-macros.h"
 
 ------------------------------------------------------------------------------
 -- Supporting infrastructure
@@ -199,13 +200,7 @@ liftFixedToBounded = toB
 
 {-# INLINE CONLIKE storableToF #-}
 storableToF :: forall a. Storable a => FixedPrim a
--- Not all architectures are forgiving of unaligned accesses; whitelist ones
--- which are known not to trap (either to the kernel for emulation, or crash).
-#if defined(i386_HOST_ARCH) || defined(x86_64_HOST_ARCH) \
-    || ((defined(arm_HOST_ARCH) || defined(aarch64_HOST_ARCH)) \
-        && defined(__ARM_FEATURE_UNALIGNED)) \
-    || defined(powerpc_HOST_ARCH) || defined(powerpc64_HOST_ARCH) \
-    || defined(powerpc64le_HOST_ARCH)
+#if HS_UNALIGNED_POKES_OK
 storableToF = FP (sizeOf (undefined :: a)) (\x op -> poke (castPtr op) x)
 #else
 storableToF = FP (sizeOf (undefined :: a)) $ \x op ->

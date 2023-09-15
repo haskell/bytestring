@@ -52,7 +52,7 @@ import           System.Posix.Internals (c_unlink)
 
 import           Test.Tasty (TestTree, TestName, testGroup)
 import           Test.Tasty.QuickCheck
-                   ( Arbitrary(..), oneof, choose, listOf, elements
+                   ( Arbitrary(..), oneof, choose, listOf, elements, forAll
                    , counterexample, ioProperty, Property, testProperty
                    , (===), (.&&.), conjoin
                    , UnicodeString(..), NonNegative(..)
@@ -538,11 +538,16 @@ testBuilderConstr :: (Arbitrary a, Show a)
 testBuilderConstr name ref mkBuilder =
     testProperty name check
   where
-    check x =
-        (ws ++ ws) ==
-        (L.unpack $ toLazyByteString $ mkBuilder x `BI.append` mkBuilder x)
-      where
-        ws = ref x
+    check x = forAll (choose (0, maxPaddingAmount)) $ \paddingAmount -> let
+      -- use padding to make sure we test at unaligned positions
+      ws = ref x
+      b1 = mkBuilder x
+      b2 = byteStringCopy (S.take paddingAmount padBuf) <> b1 <> b1
+      in (replicate paddingAmount (S.c2w ' ') ++ ws ++ ws) ===
+         (L.unpack $ toLazyByteString b2)
+
+    maxPaddingAmount = 15
+    padBuf = S.replicate maxPaddingAmount (S.c2w ' ')
 
 
 testsBinary :: [TestTree]
