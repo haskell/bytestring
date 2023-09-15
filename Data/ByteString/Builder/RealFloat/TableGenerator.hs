@@ -133,7 +133,8 @@ double_pow5_bitcount = 125
 double_pow5_inv_bitcount :: Int
 double_pow5_inv_bitcount = 125
 
--- NB: these tables are encoded directly into the source code in F2S and D2S
+-- NB: these tables are encoded directly into the
+-- in cbits/aligned-static-hs-data.c
 
 -- | Number of bits in a positive integer
 blen :: Integer -> Int
