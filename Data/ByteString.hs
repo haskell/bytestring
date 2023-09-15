@@ -1801,7 +1801,7 @@ useAsCString (BS fp l) action =
 -- As for 'useAsCString' this function makes a copy of the original @ByteString@.
 -- It must not be stored or used after the subcomputation finishes.
 --
--- Beware that this function does not add a terminating @\NUL@ byte at the end of 'CStringLen'.
+-- Beware that this function is not required to add a terminating @\NUL@ byte at the end of the 'CStringLen' it provides.
 -- If you need to construct a pointer to a null-terminated sequence, use 'useAsCString'
 -- (and measure length independently if desired).
 useAsCStringLen :: ByteString -> (CStringLen -> IO a) -> IO a
