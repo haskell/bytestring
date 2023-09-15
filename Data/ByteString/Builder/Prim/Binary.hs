@@ -1,10 +1,11 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE Trustworthy #-}
 
+{-# LANGUAGE TypeApplications #-}
+
 #include "MachDeps.h"
 #include "bytestring-cpp-macros.h"
 
-{-# LANGUAGE TypeApplications #-}
 
 -- | Copyright   : (c) 2010-2011 Simon Meier
 -- License       : BSD3-style (see LICENSE)
@@ -60,6 +61,7 @@ module Data.ByteString.Builder.Prim.Binary (
 
 import Data.ByteString.Builder.Prim.Internal
 import Data.ByteString.Builder.Prim.Internal.Floating
+import Data.ByteString.Utils.UnalignedWrite
 
 import Foreign
 
@@ -155,35 +157,17 @@ wordHost = case finiteBitSize (0 :: Word) of
 -- | Encoding 'Word16's in native host order and host endianness.
 {-# INLINE word16Host #-}
 word16Host :: FixedPrim Word16
-word16Host = fixedPrim 2 unaligned_write_u16
+word16Host = fixedPrim 2 unalignedWriteU16
 
 -- | Encoding 'Word32's in native host order and host endianness.
 {-# INLINE word32Host #-}
 word32Host :: FixedPrim Word32
-word32Host = fixedPrim 4 unaligned_write_u32
+word32Host = fixedPrim 4 unalignedWriteU32
 
 -- | Encoding 'Word64's in native host order and host endianness.
 {-# INLINE word64Host #-}
 word64Host :: FixedPrim Word64
-word64Host = fixedPrim 8 unaligned_write_u64
-
-#if HS_UNALIGNED_POKES_OK
-unaligned_write_u16 :: Word16 -> Ptr Word8 -> IO ()
-unaligned_write_u16 x p = poke (castPtr p) x
-
-unaligned_write_u32 :: Word32 -> Ptr Word8 -> IO ()
-unaligned_write_u32 x p = poke (castPtr p) x
-
-unaligned_write_u64 :: Word64 -> Ptr Word8 -> IO ()
-unaligned_write_u64 x p = poke (castPtr p) x
-#else
-foreign import ccall unsafe "static fpstring.h fps_unaligned_write_u16"
-  unaligned_write_u16 :: Word16 -> Ptr Word8 -> IO ()
-foreign import ccall unsafe "static fpstring.h fps_unaligned_write_u32"
-  unaligned_write_u32 :: Word32 -> Ptr Word8 -> IO ()
-foreign import ccall unsafe "static fpstring.h fps_unaligned_write_u64"
-  unaligned_write_u64 :: Word64 -> Ptr Word8 -> IO ()
-#endif
+word64Host = fixedPrim 8 unalignedWriteU64
 
 ------------------------------------------------------------------------------
 -- Int encodings
@@ -285,9 +269,9 @@ doubleLE = encodeDoubleViaWord64F word64LE
 --
 {-# INLINE floatHost #-}
 floatHost :: FixedPrim Float
-floatHost = storableToF
+floatHost = fixedPrim (sizeOf @Float 0) unalignedWriteFloat
 
 -- | Encode a 'Double' in native host order and host endianness.
 {-# INLINE doubleHost #-}
 doubleHost :: FixedPrim Double
-doubleHost = storableToF
+doubleHost = fixedPrim (sizeOf @Double 0) unalignedWriteDouble

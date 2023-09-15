@@ -50,8 +50,6 @@ module Data.ByteString.Builder.RealFloat.Internal
     , dquot100
     -- prim-op helpers
     , timesWord2
-    , Addr(..)
-    , ByteArray(..)
     , castDoubleToWord64
     , castFloatToWord32
     , getWord64At
@@ -74,13 +72,15 @@ import Data.Bits (Bits(..), FiniteBits(..))
 import Data.ByteString.Internal (c2w)
 import Data.ByteString.Builder.Prim.Internal (BoundedPrim, boundedPrim)
 import Data.ByteString.Builder.RealFloat.TableGenerator
+import Data.ByteString.Utils.UnalignedWrite
 import Data.Char (ord)
+import Foreign.C.Types
 import GHC.Int (Int(..), Int32(..))
+import GHC.IO (IO(..), unIO)
 import GHC.Prim
-import GHC.Ptr (Ptr(..), plusPtr)
-import GHC.ST (ST(..), runST)
+import GHC.Ptr (Ptr(..), plusPtr, castPtr)
 import GHC.Types (isTrue#)
-import GHC.Word (Word8, Word32(..), Word64(..))
+import GHC.Word (Word8, Word16(..), Word32(..), Word64(..))
 import qualified Foreign.Storable as S (poke)
 
 #include <ghcautoconf.h>
@@ -90,34 +90,8 @@ import qualified Foreign.Storable as S (poke)
 import GHC.IntWord64
 #endif
 
-#if __GLASGOW_HASKELL__ >= 804
-import GHC.Float (castFloatToWord32, castDoubleToWord64)
-#else
-import System.IO.Unsafe (unsafePerformIO)
-import Foreign.Marshal.Utils (with)
-import Foreign.Ptr (castPtr)
-import Foreign.Storable (peek)
-
--- | Interpret a 'Float' as a 'Word32' as if through a bit-for-bit copy.
--- (fallback if not available through GHC.Float)
---
--- e.g
---
--- > showHex (castFloatToWord32 1.0) [] = "3f800000"
-{-# NOINLINE castFloatToWord32 #-}
-castFloatToWord32 :: Float -> Word32
-castFloatToWord32 x = unsafePerformIO (with x (peek . castPtr))
-
--- | Interpret a 'Double' as a 'Word64' as if through a bit-for-bit copy.
--- (fallback if not available through GHC.Float)
---
--- e.g
---
--- > showHex (castDoubleToWord64 1.0) [] = "3ff0000000000000"
-{-# NOINLINE castDoubleToWord64 #-}
-castDoubleToWord64 :: Double -> Word64
-castDoubleToWord64 x = unsafePerformIO (with x (peek . castPtr))
-#endif
+import Data.ByteString.Builder.Prim.Internal.Floating
+  (castFloatToWord32, castDoubleToWord64)
 
 -- | Build a full bit-mask of specified length.
 --
@@ -734,36 +708,22 @@ ascii_e = ord 'e'
 toAscii :: Word# -> Word#
 toAscii a = a `plusWord#` asciiRaw asciiZero
 
-data Addr = Addr Addr#
-
 -- | Index into the 64-bit word lookup table provided
 {-# INLINE getWord64At #-}
-getWord64At :: Addr# -> Int -> Word64
-getWord64At arr (I# i) =
-#if defined(WORDS_BIGENDIAN)
-   W64# (byteSwap64# (indexWord64OffAddr# arr i))
-#else
-   W64# (indexWord64OffAddr# arr i)
-#endif
+getWord64At :: Ptr Word64 -> Int -> Word64
+getWord64At (Ptr arr) (I# i) = W64# (indexWord64OffAddr# arr i)
 
 -- | Index into the 128-bit word lookup table provided
 -- Return (# high-64-bits , low-64-bits #)
--- NB: really just swaps the bytes and doesn't reorder the words
+--
+-- NB: The lookup tables we use store the low 64 bits in
+-- host-byte-order then the high 64 bits in host-byte-order
 {-# INLINE getWord128At #-}
-getWord128At :: Addr# -> Int -> (Word64, Word64)
-getWord128At arr (I# i) =
-#if defined(WORDS_BIGENDIAN)
-   ( W64# (byteSwap64# (indexWord64OffAddr# arr (i *# 2# +# 1#)))
-   , W64# (byteSwap64# (indexWord64OffAddr# arr (i *# 2#)))
-   )
-#else
-   ( W64# (indexWord64OffAddr# arr (i *# 2# +# 1#))
-   , W64# (indexWord64OffAddr# arr (i *# 2#))
-   )
-#endif
-
-
-data ByteArray = ByteArray ByteArray#
+getWord128At :: Ptr Word64 -> Int -> (Word64, Word64)
+getWord128At (Ptr arr) (I# i) = let
+  !hi = W64# (indexWord64OffAddr# arr (i *# 2# +# 1#))
+  !lo = W64# (indexWord64OffAddr# arr (i *# 2#))
+  in (hi, lo)
 
 -- | Packs 2 bytes [lsb, msb] into 16-bit word
 packWord16 :: Word# -> Word# -> Word#
@@ -784,39 +744,32 @@ unpackWord16 w =
 #endif
 
 
--- | ByteArray of 2-digit pairs 00..99 for faster ascii rendering
-digit_table :: ByteArray
-digit_table = runST (ST $ \s1 ->
-  let !(# s2, marr #) = newByteArray# 200# s1
-      go y r = \i s ->
-        let !(h, l) = fquotRem10 y
-            e' = packWord16 (toAscii (unsafeRaw l)) (toAscii (unsafeRaw h))
-#if __GLASGOW_HASKELL__ >= 902
-            s' = writeWord16Array# marr i (wordToWord16# e') s
-#else
-            s' = writeWord16Array# marr i e' s
-#endif
-         in if isTrue# (i ==# 99#) then s' else r (i +# 1#) s'
-      !(# s3, bs #) = unsafeFreezeByteArray# marr (foldr go (\_ s -> s) [0..99] 0# s2)
-   in (# s3, ByteArray bs #))
+foreign import ccall "&hs_bytestring_digit_pairs_table"
+  c_digit_pairs_table :: Ptr CChar
 
--- | Unsafe index a ByteArray for the 16-bit word at the index
-unsafeAt :: ByteArray -> Int# -> Word#
-unsafeAt (ByteArray bs) i =
+-- | Static array of 2-digit pairs 00..99 for faster ascii rendering
+digit_table :: Ptr Word16
+digit_table = castPtr c_digit_pairs_table
+
+-- | Unsafe index a static array for the 16-bit word at the index
+unsafeAt :: Ptr Word16 -> Int# -> Word#
+unsafeAt (Ptr a) i =
 #if __GLASGOW_HASKELL__ >= 902
-    word16ToWord# (indexWord16Array# bs i)
+    word16ToWord# (indexWord16OffAddr# a i)
 #else
-    indexWord16Array# bs i
+    indexWord16OffAddr# a i
 #endif
 
 -- | Write a 16-bit word into the given address
-copyWord16 :: Word# -> Addr# -> State# d -> State# d
-copyWord16 w a s =
+copyWord16 :: Word# -> Addr# -> State# RealWorld -> State# RealWorld
+copyWord16 w a s = let
 #if __GLASGOW_HASKELL__ >= 902
-    writeWord16OffAddr# a 0# (wordToWord16# w) s
+  w16 = wordToWord16# w
 #else
-    writeWord16OffAddr# a 0# w s
+  w16 = w
 #endif
+  in  case unIO (unalignedWriteU16 (W16# w16) (Ptr a)) s of
+  (# s', _ #) -> s'
 
 -- | Write an 8-bit word into the given address
 poke :: Addr# -> Word# -> State# d -> State# d
@@ -830,9 +783,9 @@ poke a w s =
 -- | Write the mantissa into the given address. This function attempts to
 -- optimize this by writing pairs of digits simultaneously when the mantissa is
 -- large enough
-{-# SPECIALIZE writeMantissa :: Addr# -> Int# -> Word32 -> State# d -> (# Addr#, State# d #) #-}
-{-# SPECIALIZE writeMantissa :: Addr# -> Int# -> Word64 -> State# d -> (# Addr#, State# d #) #-}
-writeMantissa :: forall a d. (Mantissa a) => Addr# -> Int# -> a -> State# d -> (# Addr#, State# d #)
+{-# SPECIALIZE writeMantissa :: Addr# -> Int# -> Word32 -> State# RealWorld -> (# Addr#, State# RealWorld #) #-}
+{-# SPECIALIZE writeMantissa :: Addr# -> Int# -> Word64 -> State# RealWorld -> (# Addr#, State# RealWorld #) #-}
+writeMantissa :: forall a. (Mantissa a) => Addr# -> Int# -> a -> State# RealWorld -> (# Addr#, State# RealWorld #)
 writeMantissa ptr olength = go (ptr `plusAddr#` olength)
   where
     go p mantissa s1
@@ -865,7 +818,7 @@ writeMantissa ptr olength = go (ptr `plusAddr#` olength)
            in (# ptr `plusAddr#` 3#, s4 #)
 
 -- | Write the exponent into the given address.
-writeExponent :: Addr# -> Int32 -> State# d -> (# Addr#, State# d #)
+writeExponent :: Addr# -> Int32 -> State# RealWorld -> (# Addr#, State# RealWorld #)
 writeExponent ptr !expo s1
   | expo >= 100 =
       let !(e1, e0) = fquotRem10 (fromIntegral expo) -- TODO
@@ -896,10 +849,10 @@ toCharsScientific :: (Mantissa a) => Bool -> a -> Int32 -> BoundedPrim ()
 toCharsScientific !sign !mantissa !expo = boundedPrim maxEncodedLength $ \_ !(Ptr p0)-> do
   let !olength@(I# ol) = decimalLength mantissa
       !expo' = expo + intToInt32 olength - 1
-  return $ runST (ST $ \s1 ->
+  IO $ \s1 ->
     let !(# p1, s2 #) = writeSign p0 sign s1
         !(# p2, s3 #) = writeMantissa p1 ol mantissa s2
         s4 = poke p2 (asciiRaw ascii_e) s3
         !(# p3, s5 #) = writeSign (p2 `plusAddr#` 1#) (expo' < 0) s4
         !(# p4, s6 #) = writeExponent p3 (abs expo') s5
-     in (# s6, (Ptr p4) #))
+     in (# s6, (Ptr p4) #)

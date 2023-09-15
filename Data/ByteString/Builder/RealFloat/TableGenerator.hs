@@ -25,9 +25,16 @@ module Data.ByteString.Builder.RealFloat.TableGenerator
   , float_max_inv_split
   , double_max_split
   , double_max_inv_split
+
+  , finv
+  , fnorm
+  , splitWord128s
   ) where
 
 import GHC.Float (int2Double)
+
+import Data.Bits
+import Data.Word
 
 
 -- The basic floating point conversion algorithm is as such:
@@ -127,39 +134,31 @@ double_pow5_inv_bitcount :: Int
 double_pow5_inv_bitcount = 125
 
 -- NB: these tables are encoded directly into the source code in F2S and D2S
---
--- -- | Number of bits in a positive integer
--- blen :: Integer -> Int
--- blen 0 = 0
--- blen 1 = 1
--- blen n = 1 + blen (n `quot` 2)
 
--- -- | Used for table generation of 2^k / 5^q + 1
--- finv :: Int -> Int -> Integer
--- finv bitcount i =
---   let p = 5^i
---    in (1 `shiftL` (blen p - 1 + bitcount)) `div` p + 1
+-- | Number of bits in a positive integer
+blen :: Integer -> Int
+blen 0 = 0
+blen 1 = 1
+blen n = 1 + blen (n `quot` 2)
 
--- -- | Used for table generation of 5^-e2-q / 2^k
--- fnorm :: Int -> Int -> Integer
--- fnorm bitcount i =
---   let p = 5^i
---       s = blen p - bitcount
---    in if s < 0 then p `shiftL` (-s) else p `shiftR` s
+-- | Used for table generation of 2^k / 5^q + 1
+finv :: Int -> Int -> Integer
+finv bitcount i =
+  let p = 5^i
+   in (1 `shiftL` (blen p - 1 + bitcount)) `div` p + 1
 
--- -- | Generates a compile-time lookup table for floats as Word64
--- gen_table_f :: Int -> (Int -> Integer) -> Q Exp
--- gen_table_f n f = return $ ListE (fmap (LitE . IntegerL . f) [0..n])
---
--- -- | Generates a compile-time lookup table for doubles as Word128
--- gen_table_d :: Int -> (Int -> Integer) -> Q Exp
--- gen_table_d n f = return $ ListE (fmap ff [0..n])
---   where
---     ff :: Int -> Exp
---     ff c = let r = f c
---                hi = r `shiftR` 64
---                lo = r .&. ((1 `shiftL` 64) - 1)
---             in AppE (AppE (ConE 'Word128) (LitE . IntegerL $ hi)) (LitE . IntegerL $ lo)
+-- | Used for table generation of 5^-e2-q / 2^k
+fnorm :: Int -> Int -> Integer
+fnorm bitcount i =
+  let p = 5^i
+      s = blen p - bitcount
+   in if s < 0 then p `shiftL` (-s) else p `shiftR` s
+
+-- | Breaks each integer into two Word64s (lowBits, highBits)
+splitWord128s :: [Integer] -> [Word64]
+splitWord128s li
+  = [fromInteger w | x <- li, w <- [x .&. maxWord64, x `shiftR` 64]]
+  where  maxWord64 = toInteger (maxBound :: Word64)
 
 -- Given a specific floating-point type, determine the range of q for the < 0
 -- and >= 0 cases

@@ -29,6 +29,9 @@
  * SUCH DAMAGE.
  */
 
+#include "HsFFI.h"
+#include "MachDeps.h"
+
 #include "fpstring.h"
 #if defined(__x86_64__)
 #include <x86intrin.h>
@@ -121,6 +124,14 @@ void fps_unaligned_write_u32(uint32_t x, uint8_t *p) {
 void fps_unaligned_write_u64(uint64_t x, uint8_t *p) {
   memcpy(p, &x, 8);
   return;
+}
+
+void fps_unaligned_write_HsFloat(HsFloat x, uint8_t *p) {
+  memcpy(p, &x, SIZEOF_HSFLOAT);
+}
+
+void fps_unaligned_write_HsDouble(HsDouble x, uint8_t *p) {
+  memcpy(p, &x, SIZEOF_HSDOUBLE);
 }
 
 /* count the number of occurrences of a char in a string */

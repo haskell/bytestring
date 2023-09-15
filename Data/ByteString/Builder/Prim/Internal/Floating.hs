@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 
+#include "MachDeps.h"
 #include "bytestring-cpp-macros.h"
 
 -- |
@@ -14,7 +15,9 @@
 -- Conversion of 'Float's and 'Double's to 'Word32's and 'Word64's.
 --
 module Data.ByteString.Builder.Prim.Internal.Floating
-  ( encodeFloatViaWord32F
+  ( castFloatToWord32
+  , castDoubleToWord64
+  , encodeFloatViaWord32F
   , encodeDoubleViaWord64F
   ) where
 
@@ -27,10 +30,38 @@ import GHC.Float (castFloatToWord32, castDoubleToWord64)
 import Foreign.Marshal.Utils
 import Foreign.Storable
 import Foreign.Ptr
+
+import Data.ByteString.Internal.Type (unsafeDupablePerformIO)
 {-
 We work around ticket http://ghc.haskell.org/trac/ghc/ticket/4092 by
 storing the Float/Double in a temp buffer and peeking it out again from there.
 -}
+
+-- | Interpret a 'Float' as a 'Word32' as if through a bit-for-bit copy.
+-- (fallback if not available through GHC.Float)
+--
+-- e.g
+--
+-- > showHex (castFloatToWord32 1.0) [] = "3f800000"
+{-# NOINLINE castFloatToWord32 #-}
+castFloatToWord32 :: Float -> Word32
+#if (SIZEOF_HSFLOAT != SIZEOF_WORD32) || (ALIGNMENT_HSFLOAT < ALIGNMENT_WORD32)
+  #error "don't know how to cast Float to Word32"
+#endif
+castFloatToWord32 x = unsafeDupablePerformIO (with x (peek . castPtr))
+
+-- | Interpret a 'Double' as a 'Word64' as if through a bit-for-bit copy.
+-- (fallback if not available through GHC.Float)
+--
+-- e.g
+--
+-- > showHex (castDoubleToWord64 1.0) [] = "3ff0000000000000"
+{-# NOINLINE castDoubleToWord64 #-}
+castDoubleToWord64 :: Double -> Word64
+#if (SIZEOF_HSDOUBLE != SIZEOF_WORD64) || (ALIGNMENT_HSDOUBLE < ALIGNMENT_WORD64)
+  #error "don't know how to cast Double to Word64"
+#endif
+castDoubleToWord64 x = unsafeDupablePerformIO (with x (peek . castPtr))
 #endif
 
 

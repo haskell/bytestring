@@ -81,6 +81,7 @@ import Data.ByteString.Builder.Prim.Binary
 import Data.ByteString.Builder.Prim.Internal
 import Data.ByteString.Builder.Prim.Internal.Floating
 import Data.ByteString.Builder.Prim.Internal.Base16
+import Data.ByteString.Utils.UnalignedWrite
 
 import Data.Char (ord)
 
@@ -231,8 +232,9 @@ wordHex = caseWordSize_32_64
 -- | Encode a 'Word8' using 2 nibbles (hexadecimal digits).
 {-# INLINE word8HexFixed #-}
 word8HexFixed :: FixedPrim Word8
-word8HexFixed = fixedPrim 2 $
-    \x op -> poke (castPtr op) =<< encode8_as_16h lowerTable x
+word8HexFixed = fixedPrim 2 $ \x op -> do
+  enc <- encode8_as_16h lowerTable x
+  unalignedWriteU16 enc op
 
 -- | Encode a 'Word16' using 4 nibbles.
 {-# INLINE word16HexFixed #-}
