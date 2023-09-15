@@ -30,7 +30,8 @@ Description:
     .
     There is also a 'ShortByteString' type which has a lower memory overhead
     and can be converted to or from a 'ByteString'. It is suitable for keeping
-    many short strings in memory.
+    many short strings in memory, especially long-term, without incurring any
+    possible heap fragmentation costs.
     .
     'ByteString's are not designed for Unicode. For Unicode strings you should
     use the 'Text' type from the @text@ package.

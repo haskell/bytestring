@@ -47,6 +47,22 @@ module Data.ByteString (
         ByteString,
         StrictByteString,
 
+        -- ** Heap fragmentation
+        -- | With GHC, the 'ByteString' representation uses /pinned memory/,
+        -- meaning it cannot be moved by GC. While this is ideal for use with
+        -- the foreign function interface and is usually efficient, this
+        -- representation may lead to issues with heap fragmentation and wasted
+        -- space if the program selectively retains a fraction of many small
+        -- 'ByteString's, keeping them live in memory over long durations.
+        --
+        -- While 'ByteString' is indispensable when working with large blobs of
+        -- data and especially when interfacing with native C libraries, be sure
+        -- to also check the 'Data.ByteString.Short.ShortByteString' type.
+        -- As a type backed by /unpinned/ memory, @ShortByteString@ behaves
+        -- similarly to @Text@ (from the @text@ package) on the heap, completely
+        -- avoids fragmentation issues, and in many use-cases may better suit
+        -- your bytestring-storage needs.
+
         -- * Introducing and eliminating 'ByteString's
         empty,
         singleton,
