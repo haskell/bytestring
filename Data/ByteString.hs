@@ -1797,9 +1797,13 @@ useAsCString (BS fp l) action =
     pokeByteOff buf l (0::Word8)
     action (castPtr buf)
 
--- | /O(n) construction/ Use a @ByteString@ with a function requiring a @CStringLen@.
--- As for @useAsCString@ this function makes a copy of the original @ByteString@.
+-- | /O(n) construction/ Use a @ByteString@ with a function requiring a 'CStringLen'.
+-- As for 'useAsCString' this function makes a copy of the original @ByteString@.
 -- It must not be stored or used after the subcomputation finishes.
+--
+-- Beware that this function does not add a terminating @\NUL@ byte at the end of 'CStringLen'.
+-- If you need to construct a pointer to a null-terminated sequence, use 'useAsCString'
+-- (and measure length independently if desired).
 useAsCStringLen :: ByteString -> (CStringLen -> IO a) -> IO a
 useAsCStringLen p@(BS _ l) f = useAsCString p $ \cstr -> f (cstr,l)
 
