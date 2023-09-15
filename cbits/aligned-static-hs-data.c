@@ -5,10 +5,6 @@
 #include "MachDeps.h"
 #include <stdint.h>
 
-#if ALIGNMENT_WORD16 == 0
-#error "yikes"
-#endif
-
 extern const char hs_bytestring_lower_hex_table[513];
 const char hs_bytestring_lower_hex_table[513]
   __attribute__(( aligned(ALIGNMENT_WORD16) ))
