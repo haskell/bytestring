@@ -155,6 +155,7 @@ library
   include-dirs:      include
   includes:          fpstring.h
   install-includes:  fpstring.h
+                     bytestring-cpp-macros.h
 
 test-suite bytestring-tests
   type:             exitcode-stdio-1.0
