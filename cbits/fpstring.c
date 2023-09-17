@@ -46,6 +46,10 @@
 #define USE_SIMD_COUNT
 #endif
 
+#if defined(__ARM_FEATURE_UNALIGNED)
+#warning "How about in C code?"
+#endif
+
 /* copy a string in reverse */
 void fps_reverse(unsigned char *q, unsigned char *p, size_t n) {
     p += n-1;
