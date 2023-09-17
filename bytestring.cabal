@@ -154,6 +154,7 @@ library
 
   include-dirs:      include
   includes:          fpstring.h
+                     bytestring-cpp-macros.h
   install-includes:  fpstring.h
                      bytestring-cpp-macros.h
 
