@@ -2,9 +2,6 @@
 #error "bytestring-cpp-macros.h does not work in C code yet"
 #endif
 
-#if defined(__ARM_FEATURE_UNALIGNED)
-#warning "Is this macro ever actually visible to Haskell code?"
-#endif
 
 #if defined(i386_HOST_ARCH) || defined(x86_64_HOST_ARCH)       \
     || ((defined(arm_HOST_ARCH) || defined(aarch64_HOST_ARCH)) \
