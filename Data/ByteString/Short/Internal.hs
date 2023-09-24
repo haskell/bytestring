@@ -174,12 +174,12 @@ import Data.Bits
   )
 import Data.Data
   ( Data(..)
-  , mkNoRepType
   , mkConstr
   , mkDataType
   , Constr
   , DataType
   , Fixity(Prefix)
+  , constrIndex
   )
 import Data.Monoid
   ( Monoid(..) )
@@ -341,8 +341,10 @@ instance IsString ShortByteString where
 instance Data ShortByteString where
   gfoldl f z txt = z packBytes `f` unpackBytes txt
   toConstr _     = packConstr
-  gunfold _ _    = error "Data.ByteString.Short.ShortByteString.gunfold"
-  dataTypeOf _   = mkNoRepType "Data.ByteString.Short.ShortByteString"
+  gunfold k z c = case constrIndex c of
+    1 -> k (z packBytes)
+    _ -> error "gunfold: unexpected constructor of ShortByteString"
+  dataTypeOf _   = byteStringDataType
 
 packConstr :: Constr
 packConstr = mkConstr byteStringDataType "pack" [] Prefix
