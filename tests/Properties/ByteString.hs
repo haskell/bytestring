@@ -67,7 +67,9 @@ import Text.Read
 import Prelude hiding (head, tail)
 import Control.Arrow
 import Data.Char
+import Data.Data (toConstr, showConstr, Data)
 import Data.Foldable
+import Data.Generics.Text (gread, gshow)
 import qualified Data.List as List
 import qualified Data.List.NonEmpty as NE
 import Data.Semigroup
@@ -661,6 +663,15 @@ tests =
   , testProperty "fromString literal" $
     fromString "\0\1\2\3\4" == B.pack [0,1,2,3,4]
 #endif
+
+  , testProperty "toConstr is pack" $
+    \(x :: BYTESTRING_TYPE) -> showConstr (toConstr x) === "pack"
+#ifndef BYTESTRING_CHAR8
+  , testProperty "gshow \"A\"" $
+    \x -> gshow x === "(pack " ++ gshow (B.unpack x) ++ ")"
+#endif
+  , testProperty "gread . gshow = reads . show" $
+    \(x :: BYTESTRING_TYPE) -> gread (gshow x) === (reads (show x) :: [(BYTESTRING_TYPE, String)])
   ]
 
 unsnoc :: [a] -> Maybe ([a], a)
