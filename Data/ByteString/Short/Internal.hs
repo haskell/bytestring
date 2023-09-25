@@ -386,8 +386,8 @@ indexError sbs i =
 ------------------------------------------------------------------------
 -- Internal utils
 
-asBA :: ShortByteString -> BA
-asBA (unSBS -> ba#) = BA# ba#
+asBA :: ShortByteString -> ByteArray
+asBA (ShortByteString ba) = ba
 
 unSBS :: ShortByteString -> ByteArray#
 unSBS (ShortByteString (ByteArray ba#)) = ba#
@@ -397,8 +397,7 @@ create len fill =
     assert (len >= 0) $ runST $ do
       mba <- newByteArray len
       fill mba
-      BA# ba# <- unsafeFreezeByteArray mba
-      return (SBS ba#)
+      ShortByteString <$> unsafeFreezeByteArray mba
 {-# INLINE create #-}
 
 -- | Given the maximum size needed and a function to make the contents
@@ -413,13 +412,13 @@ createAndTrim maxLen fill =
       (len, res) <- fill mba
       if assert (0 <= len && len <= maxLen) $ len >= maxLen
           then do
-            BA# ba# <- unsafeFreezeByteArray mba
-            return (SBS ba#, res)
+            ba <- unsafeFreezeByteArray mba
+            return (ShortByteString ba, res)
           else do
             mba2 <- newByteArray len
             copyMutableByteArray mba 0 mba2 0 len
-            BA# ba# <- unsafeFreezeByteArray mba2
-            return (SBS ba#, res)
+            ba <- unsafeFreezeByteArray mba2
+            return (ShortByteString ba, res)
 {-# INLINE createAndTrim #-}
 
 createAndTrim' :: Int -> (forall s. MBA s -> ST s Int) -> ShortByteString
@@ -429,13 +428,11 @@ createAndTrim' maxLen fill =
       len <- fill mba
       if assert (0 <= len && len <= maxLen) $ len >= maxLen
           then do
-            BA# ba# <- unsafeFreezeByteArray mba
-            return (SBS ba#)
+            ShortByteString <$> unsafeFreezeByteArray mba
           else do
             mba2 <- newByteArray len
             copyMutableByteArray mba 0 mba2 0 len
-            BA# ba# <- unsafeFreezeByteArray mba2
-            return (SBS ba#)
+            ShortByteString <$> unsafeFreezeByteArray mba2
 {-# INLINE createAndTrim' #-}
 
 -- | Like createAndTrim, but with two buffers at once
@@ -453,13 +450,11 @@ createAndTrim2 maxLen1 maxLen2 fill =
     freeze' len maxLen mba =
       if assert (0 <= len && len <= maxLen) $ len >= maxLen
           then do
-            BA# ba# <- unsafeFreezeByteArray mba
-            return (SBS ba#)
+            ShortByteString <$> unsafeFreezeByteArray mba
           else do
             mba2 <- newByteArray len
             copyMutableByteArray mba 0 mba2 0 len
-            BA# ba# <- unsafeFreezeByteArray mba2
-            return (SBS ba#)
+            ShortByteString <$> unsafeFreezeByteArray mba2
 {-# INLINE createAndTrim2 #-}
 
 isPinned :: ByteArray# -> Bool
@@ -485,8 +480,7 @@ toShortIO (BS fptr len) = do
     let ptr = unsafeForeignPtrToPtr fptr
     stToIO (copyAddrToByteArray ptr mba 0 len)
     touchForeignPtr fptr
-    BA# ba# <- stToIO (unsafeFreezeByteArray mba)
-    return (SBS ba#)
+    ShortByteString <$> stToIO (unsafeFreezeByteArray mba)
 
 -- | /O(n)/. Convert a 'ShortByteString' into a 'ByteString'.
 --
@@ -783,7 +777,7 @@ map f = \sbs ->
         ba = asBA sbs
     in create l (\mba -> go ba mba 0 l)
   where
-    go :: BA -> MBA s -> Int -> Int -> ST s ()
+    go :: ByteArray -> MBA s -> Int -> Int -> ST s ()
     go !ba !mba !i !l
       | i >= l = return ()
       | otherwise = do
@@ -802,7 +796,7 @@ reverse = \sbs ->
 #if HS_UNALIGNED_ByteArray_OPS_OK
     in create l (\mba -> go ba mba l)
   where
-    go :: forall s. BA -> MBA s -> Int -> ST s ()
+    go :: forall s. ByteArray -> MBA s -> Int -> ST s ()
     go !ba !mba !l = do
       -- this is equivalent to: (q, r) = l `quotRem` 8
       let q = l `shiftR` 3
@@ -835,7 +829,7 @@ reverse = \sbs ->
 #else
     in create l (\mba -> go ba mba 0 l)
    where
-    go :: BA -> MBA s -> Int -> Int -> ST s ()
+    go :: ByteArray -> MBA s -> Int -> Int -> ST s ()
     go !ba !mba !i !l
       | i >= l = return ()
       | otherwise = do
@@ -1437,7 +1431,7 @@ filter k = \sbs -> let l = length sbs
                          | otherwise -> createAndTrim' l $ \mba -> go mba (asBA sbs) l
   where
     go :: forall s. MBA s -- mutable output bytestring
-       -> BA              -- input bytestring
+       -> ByteArray       -- input bytestring
        -> Int             -- length of input bytestring
        -> ST s Int
     go !mba ba !l = go' 0 0
@@ -1485,7 +1479,7 @@ partition k = \sbs -> let len = length sbs
     go :: forall s.
           MBA s           -- mutable output bytestring1
        -> MBA s           -- mutable output bytestring2
-       -> BA              -- input bytestring
+       -> ByteArray       -- input bytestring
        -> Int             -- length of input bytestring
        -> ST s (Int, Int) -- (length mba1, length mba2)
     go !mba1 !mba2 ba !l = go' 0 0
@@ -1586,25 +1580,23 @@ createFromPtr !ptr len =
     stToIO $ do
       mba <- newByteArray len
       copyAddrToByteArray ptr mba 0 len
-      BA# ba# <- unsafeFreezeByteArray mba
-      return (SBS ba#)
+      ShortByteString <$> unsafeFreezeByteArray mba
 
 
 ------------------------------------------------------------------------
 -- Primop wrappers
 
-data BA    = BA# ByteArray#
 data MBA s = MBA# (MutableByteArray# s)
 
-indexCharArray :: BA -> Int -> Char
-indexCharArray (BA# ba#) (I# i#) = C# (indexCharArray# ba# i#)
+indexCharArray :: ByteArray -> Int -> Char
+indexCharArray (ByteArray ba#) (I# i#) = C# (indexCharArray# ba# i#)
 
-indexWord8Array :: BA -> Int -> Word8
-indexWord8Array (BA# ba#) (I# i#) = W8# (indexWord8Array# ba# i#)
+indexWord8Array :: ByteArray -> Int -> Word8
+indexWord8Array (ByteArray ba#) (I# i#) = W8# (indexWord8Array# ba# i#)
 
 #if HS_UNALIGNED_ByteArray_OPS_OK
-indexWord8ArrayAsWord64 :: BA -> Int -> Word64
-indexWord8ArrayAsWord64 (BA# ba#) (I# i#) = W64# (indexWord8ArrayAsWord64# ba# i#)
+indexWord8ArrayAsWord64 :: ByteArray -> Int -> Word64
+indexWord8ArrayAsWord64 (ByteArray ba#) (I# i#) = W64# (indexWord8ArrayAsWord64# ba# i#)
 #endif
 
 newByteArray :: Int -> ST s (MBA s)
@@ -1619,10 +1611,10 @@ newPinnedByteArray len@(I# len#) =
     ST $ \s -> case newPinnedByteArray# len# s of
                  (# s', mba# #) -> (# s', MBA# mba# #)
 
-unsafeFreezeByteArray :: MBA s -> ST s BA
+unsafeFreezeByteArray :: MBA s -> ST s ByteArray
 unsafeFreezeByteArray (MBA# mba#) =
     ST $ \s -> case unsafeFreezeByteArray# mba# s of
-                 (# s', ba# #) -> (# s', BA# ba# #)
+                 (# s', ba# #) -> (# s', ByteArray ba# #)
 
 writeWord8Array :: MBA s -> Int -> Word8 -> ST s ()
 writeWord8Array (MBA# mba#) (I# i#) (W8# w#) =
@@ -1641,13 +1633,13 @@ copyAddrToByteArray (Ptr src#) (MBA# dst#) (I# dst_off#) (I# len#) =
     ST $ \s -> case copyAddrToByteArray# src# dst# dst_off# len# s of
                  s' -> (# s', () #)
 
-copyByteArrayToAddr :: BA -> Int -> Ptr a -> Int -> ST RealWorld ()
-copyByteArrayToAddr (BA# src#) (I# src_off#) (Ptr dst#) (I# len#) =
+copyByteArrayToAddr :: ByteArray -> Int -> Ptr a -> Int -> ST RealWorld ()
+copyByteArrayToAddr (ByteArray src#) (I# src_off#) (Ptr dst#) (I# len#) =
     ST $ \s -> case copyByteArrayToAddr# src# src_off# dst# len# s of
                  s' -> (# s', () #)
 
-copyByteArray :: BA -> Int -> MBA s -> Int -> Int -> ST s ()
-copyByteArray (BA# src#) (I# src_off#) (MBA# dst#) (I# dst_off#) (I# len#) =
+copyByteArray :: ByteArray -> Int -> MBA s -> Int -> Int -> ST s ()
+copyByteArray (ByteArray src#) (I# src_off#) (MBA# dst#) (I# dst_off#) (I# len#) =
     ST $ \s -> case copyByteArray# src# src_off# dst# dst_off# len# s of
                  s' -> (# s', () #)
 
@@ -1665,20 +1657,20 @@ copyMutableByteArray (MBA# src#) (I# src_off#) (MBA# dst#) (I# dst_off#) (I# len
 ------------------------------------------------------------------------
 -- FFI imports
 --
-compareByteArrays :: BA -> BA -> Int -> Int
+compareByteArrays :: ByteArray -> ByteArray -> Int -> Int
 compareByteArrays ba1 ba2 = compareByteArraysOff ba1 0 ba2 0
 
-compareByteArraysOff :: BA  -- ^ array 1
+compareByteArraysOff :: ByteArray  -- ^ array 1
                      -> Int -- ^ offset for array 1
-                     -> BA  -- ^ array 2
+                     -> ByteArray  -- ^ array 2
                      -> Int -- ^ offset for array 2
                      -> Int -- ^ length to compare
                      -> Int -- ^ like memcmp
 #if MIN_VERSION_base(4,11,0)
-compareByteArraysOff (BA# ba1#) (I# ba1off#) (BA# ba2#) (I# ba2off#) (I# len#) =
+compareByteArraysOff (ByteArray ba1#) (I# ba1off#) (ByteArray ba2#) (I# ba2off#) (I# len#) =
   I# (compareByteArrays#  ba1# ba1off# ba2# ba2off# len#)
 #else
-compareByteArraysOff (BA# ba1#) ba1off (BA# ba2#) ba2off len =
+compareByteArraysOff (ByteArray ba1#) ba1off (ByteArray ba2#) ba2off len =
   assert (ba1off + len <= (I# (sizeofByteArray# ba1#)))
   $ assert (ba2off + len <= (I# (sizeofByteArray# ba2#)))
   $ fromIntegral $ accursedUnutterablePerformIO $
