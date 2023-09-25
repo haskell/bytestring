@@ -423,19 +423,19 @@ head (BS x l)
 --
 -- This is a partial function, consider using 'uncons' instead.
 tail :: HasCallStack => ByteString -> ByteString
-tail (BS p l)
-    | l <= 0    = errorEmptyList "tail"
-    | otherwise = BS (plusForeignPtr p 1) (l-1)
+tail ps
+    | length ps <= 0 = errorEmptyList "tail"
+    | otherwise = unsafeDrop 1 ps
 {-# INLINE tail #-}
 
 -- | /O(1)/ Extract the 'head' and 'tail' of a ByteString, returning 'Nothing'
 -- if it is empty.
 uncons :: ByteString -> Maybe (Word8, ByteString)
-uncons (BS x l)
+uncons ps@(BS x l)
     | l <= 0    = Nothing
     | otherwise = Just (accursedUnutterablePerformIO $ unsafeWithForeignPtr x
                                                      $ \p -> peek p,
-                        BS (plusForeignPtr x 1) (l-1))
+                        unsafeDrop 1 ps)
 {-# INLINE uncons #-}
 
 -- | /O(1)/ Extract the last element of a ByteString, which must be finite and non-empty.
@@ -454,17 +454,17 @@ last ps@(BS x l)
 --
 -- This is a partial function, consider using 'unsnoc' instead.
 init :: HasCallStack => ByteString -> ByteString
-init ps@(BS p l)
+init ps
     | null ps   = errorEmptyList "init"
-    | otherwise = BS p (l-1)
+    | otherwise = unsafeDropEnd 1 ps
 {-# INLINE init #-}
 
 -- | /O(1)/ Extract the 'init' and 'last' of a ByteString, returning 'Nothing'
 -- if it is empty.
 unsnoc :: ByteString -> Maybe (ByteString, Word8)
-unsnoc (BS x l)
+unsnoc ps@(BS x l)
     | l <= 0    = Nothing
-    | otherwise = Just (BS x (l-1),
+    | otherwise = Just (unsafeDropEnd 1 ps,
                         accursedUnutterablePerformIO $
                           unsafeWithForeignPtr x $ \p -> peekByteOff p (l-1))
 {-# INLINE unsnoc #-}
@@ -921,10 +921,10 @@ unfoldrN i f x0
 -- | /O(1)/ 'take' @n@, applied to a ByteString @xs@, returns the prefix
 -- of @xs@ of length @n@, or @xs@ itself if @n > 'length' xs@.
 take :: Int -> ByteString -> ByteString
-take n ps@(BS x l)
+take n ps@(BS _ l)
     | n <= 0    = empty
     | n >= l    = ps
-    | otherwise = BS x n
+    | otherwise = unsafeTake n ps
 {-# INLINE take #-}
 
 -- | /O(1)/ @'takeEnd' n xs@ is equivalent to @'drop' ('length' xs - n) xs@.
@@ -939,19 +939,19 @@ take n ps@(BS x l)
 --
 -- @since 0.11.1.0
 takeEnd :: Int -> ByteString -> ByteString
-takeEnd n ps@(BS x len)
+takeEnd n ps@(BS _ len)
   | n >= len  = ps
   | n <= 0    = empty
-  | otherwise = BS (plusForeignPtr x (len - n)) n
+  | otherwise = unsafeTakeEnd n ps
 {-# INLINE takeEnd #-}
 
 -- | /O(1)/ 'drop' @n xs@ returns the suffix of @xs@ after the first @n@
 -- elements, or 'empty' if @n > 'length' xs@.
 drop  :: Int -> ByteString -> ByteString
-drop n ps@(BS x l)
+drop n ps@(BS _ l)
     | n <= 0    = ps
     | n >= l    = empty
-    | otherwise = BS (plusForeignPtr x n) (l-n)
+    | otherwise = unsafeDrop n ps
 {-# INLINE drop #-}
 
 -- | /O(1)/ @'dropEnd' n xs@ is equivalent to @'take' ('length' xs - n) xs@.
@@ -966,18 +966,18 @@ drop n ps@(BS x l)
 --
 -- @since 0.11.1.0
 dropEnd :: Int -> ByteString -> ByteString
-dropEnd n ps@(BS x len)
+dropEnd n ps@(BS _ len)
     | n <= 0    = ps
     | n >= len  = empty
-    | otherwise = BS x (len - n)
+    | otherwise = unsafeDropEnd n ps
 {-# INLINE dropEnd #-}
 
 -- | /O(1)/ 'splitAt' @n xs@ is equivalent to @('take' n xs, 'drop' n xs)@.
 splitAt :: Int -> ByteString -> (ByteString, ByteString)
-splitAt n ps@(BS x l)
+splitAt n ps@(BS _ l)
     | n <= 0    = (empty, ps)
     | n >= l    = (ps, empty)
-    | otherwise = (BS x n, BS (plusForeignPtr x n) (l-n))
+    | otherwise = (unsafeTake n ps, unsafeDrop n ps)
 {-# INLINE splitAt #-}
 
 -- | Similar to 'Prelude.takeWhile',
@@ -1151,18 +1151,17 @@ splitWith _ (BS _  0) = []
 splitWith predicate (BS fp len) = splitWith0 0 len fp
   where splitWith0 !off' !len' !fp' =
           accursedUnutterablePerformIO $
-              splitLoop fp 0 off' len' fp'
+              splitLoop 0 off' len' fp'
 
-        splitLoop :: ForeignPtr Word8
-                  -> Int -> Int -> Int
+        splitLoop :: Int -> Int -> Int
                   -> ForeignPtr Word8
                   -> IO [ByteString]
-        splitLoop p idx2 off' len' fp' = go idx2
+        splitLoop idx2 off' len' fp' = go idx2
           where
             go idx'
                 | idx' >= len'  = return [BS (plusForeignPtr fp' off') idx']
                 | otherwise = do
-                    w <- peekFpByteOff p (off'+idx')
+                    w <- peekFpByteOff fp (off'+idx')
                     if predicate w
                        then return (BS (plusForeignPtr fp' off') idx' :
                                   splitWith0 (off'+idx'+1) (len'-idx'-1) fp')
@@ -1188,19 +1187,22 @@ splitWith predicate (BS fp len) = splitWith0 0 len fp
 --
 split :: Word8 -> ByteString -> [ByteString]
 split _ (BS _ 0) = []
-split w (BS x l) = loop 0
+split w ps@(BS x l) = loop 0
     where
         loop !n =
             let q = accursedUnutterablePerformIO $ unsafeWithForeignPtr x $ \p ->
                       memchr (p `plusPtr` n)
                              w (fromIntegral (l-n))
             in if q == nullPtr
-                then [BS (plusForeignPtr x n) (l-n)]
+                then [unsafeDrop n ps]
                 else let i = q `minusPtr` unsafeForeignPtrToPtr x
-                      in BS (plusForeignPtr x n) (i-n) : loop (i+1)
+                      in unsafeSlice n i ps : loop (i+1)
 
 {-# INLINE split #-}
 
+unsafeSlice  :: Int -> Int -> ByteString -> ByteString
+unsafeSlice a b (BS x _) = BS (plusForeignPtr x a) (b - a)
+{-# INLINE unsafeSlice #-}
 
 -- | The 'group' function takes a ByteString and returns a list of
 -- ByteStrings such that the concatenation of the result is equal to the
@@ -1716,7 +1718,7 @@ inits bs = NE.toList $! initsNE bs
 -- @since 0.11.4.0
 initsNE :: ByteString -> NonEmpty ByteString
 -- see Note [Avoid NonEmpty combinators]
-initsNE (BS x len) = empty :| [BS x n | n <- [1..len]]
+initsNE ps = empty :| [unsafeTake n ps | n <- [1..length ps]]
 
 -- | /O(n)/ Returns all final segments of the given 'ByteString', longest first.
 tails :: ByteString -> [ByteString]

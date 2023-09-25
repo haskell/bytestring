@@ -1,3 +1,9 @@
+[0.12.1.0]:
+
+* API additions:
+  * New primitives `Data.ByteString.Unsafe.unsafeTakeEnd` and
+    `Data.ByteString.Unsafe.unsafeDropEnd`
+
 [0.12.0.2] — August 2023
 
 * Bug fixes:

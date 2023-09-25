@@ -331,7 +331,7 @@ toStrict = \cs -> goLen0 cs cs
     -- closures which would result in unnecessary closure allocation.
   where
     -- It's still possible that the result is empty
-    goLen0 _   Empty                 = S.BS S.nullForeignPtr 0
+    goLen0 _   Empty                 = S.empty
     goLen0 cs0 (Chunk c cs)          = goLen1 cs0 c cs
 
     -- It's still possible that the result is a single chunk
