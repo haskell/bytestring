@@ -368,11 +368,14 @@ runBuilderWith (Builder b) = b
 -- only exported for use in rewriting rules. Use 'mempty' otherwise.
 {-# INLINE[1] empty #-}
 empty :: Builder
-empty = Builder ($)
+empty = Builder (\k br -> k br)
 -- This eta expansion (hopefully) allows GHC to worker-wrapper the
 -- 'BufferRange' in the 'empty' base case of loops (since
 -- worker-wrapper requires (TODO: verify this) that all paths match
 -- against the wrapped argument.
+--
+-- Do not use ($), which has arity 1 since base-4.19.
+-- See also https://gitlab.haskell.org/ghc/ghc/-/issues/23822
 
 -- | Concatenate two 'Builder's. This function is only exported for use in rewriting
 -- rules. Use 'mappend' otherwise.
