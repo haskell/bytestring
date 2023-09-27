@@ -664,6 +664,7 @@ tests =
     fromString "\0\1\2\3\4" == B.pack [0,1,2,3,4]
 #endif
 
+#ifndef BYTESTRING_SHORT
   , testProperty "toConstr is pack" $
     \(x :: BYTESTRING_TYPE) -> showConstr (toConstr x) === "pack"
 #ifndef BYTESTRING_CHAR8
@@ -672,6 +673,7 @@ tests =
 #endif
   , testProperty "gread . gshow = reads . show" $
     \(x :: BYTESTRING_TYPE) -> gread (gshow x) === (reads (show x) :: [(BYTESTRING_TYPE, String)])
+#endif
   ]
 
 unsnoc :: [a] -> Maybe ([a], a)

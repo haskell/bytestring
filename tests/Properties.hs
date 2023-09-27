@@ -29,13 +29,11 @@ import System.Posix.Internals (c_unlink)
 
 import qualified Data.List as List
 import Data.Char
-import Data.Data (toConstr, showConstr, Data)
 import Data.Word
 import Data.Maybe
 import Data.Either (isLeft)
 import Data.Bits (finiteBitSize, bit)
 import Data.Int (Int8, Int16, Int32, Int64)
-import Data.Generics.Text (gread, gshow)
 import Data.Semigroup
 import GHC.Exts (Int(..), newPinnedByteArray#, unsafeFreezeByteArray#)
 import GHC.ST (ST(..), runST)
@@ -70,7 +68,6 @@ import qualified Properties.ByteString as PropBS
 import qualified Properties.ByteStringChar8 as PropBS8
 import qualified Properties.ByteStringLazy as PropBL
 import qualified Properties.ByteStringLazyChar8 as PropBL8
-import qualified Data.ByteString.Char8 as Char8
 
 prop_unsafeIndexBB xs =
   not (null xs) ==>
