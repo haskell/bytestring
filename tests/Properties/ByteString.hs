@@ -668,7 +668,7 @@ tests =
   , testProperty "toConstr is pack" $
     \(x :: BYTESTRING_TYPE) -> showConstr (toConstr x) === "pack"
 #ifndef BYTESTRING_CHAR8
-  , testProperty "gshow \"A\"" $
+  , testProperty "gshow" $
     \x -> gshow x === "(pack " ++ gshow (B.unpack x) ++ ")"
 #endif
   , testProperty "gread . gshow = reads . show" $

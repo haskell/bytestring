@@ -364,7 +364,7 @@ packConstr :: Constr
 packConstr = mkConstr byteStringDataType "pack" [] Prefix
 
 byteStringDataType :: DataType
-byteStringDataType = mkDataType "Data.ByteString" [packConstr]
+byteStringDataType = mkDataType "Data.ByteString.ByteString" [packConstr]
 
 -- | @since 0.11.2.0
 instance TH.Lift ByteString where
