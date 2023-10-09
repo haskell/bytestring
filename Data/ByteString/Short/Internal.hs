@@ -47,6 +47,8 @@ module Data.ByteString.Short.Internal (
     unpack,
     fromShort,
     toShort,
+    lazyFromShort,
+    lazyToShort,
 
     -- * Basic interface
     snoc,
@@ -214,6 +216,8 @@ import GHC.Exts
   , byteArrayContents#
   , unsafeCoerce#
   , copyMutableByteArray#
+  , resizeMutableByteArray#
+  , shrinkMutableByteArray#
 #if MIN_VERSION_base(4,10,0)
   , isByteArrayPinned#
   , isTrue#
@@ -249,11 +253,11 @@ import GHC.Stack.Types
 import GHC.Word
 import Prelude
   ( Eq(..), Ord(..), Ordering(..), Read(..), Show(..)
-  , ($), ($!), error, (++), (.), (||)
+  , ($), ($!), error, fail, (++), (.), (||)
   , String, userError
   , Bool(..), (&&), otherwise
   , (+), (-), fromIntegral
-  , (*)
+  , (*), quot
   , (^)
   , (<$>)
   , return
@@ -263,6 +267,7 @@ import Prelude
   )
 
 import qualified Data.ByteString.Internal.Type as BS
+import qualified Data.ByteString.Lazy.Internal as LBS
 
 import qualified Data.List as List
 import qualified GHC.Exts
@@ -481,6 +486,56 @@ toShortIO (BS fptr len) = do
     stToIO (copyAddrToByteArray ptr mba 0 len)
     touchForeignPtr fptr
     ShortByteString <$> stToIO (unsafeFreezeByteArray mba)
+
+-- | A simple wrapper around 'fromShort' that wraps the strict 'ByteString' as
+-- a one-chunk lazy 'LBS.ByteString'.
+lazyFromShort :: ShortByteString -> LBS.ByteString
+lazyFromShort = LBS.fromStrict . fromShort
+
+-- | /O(n)/. Convert a lazy 'LBS.ByteString' into a 'ShortByteString'.
+--
+-- This makes a copy, so does not retain the input string.  Naturally, best
+-- used only with sufficiently short lazy ByteStrings.
+--
+lazyToShort :: LBS.ByteString -> ShortByteString
+lazyToShort LBS.Empty = empty
+lazyToShort (LBS.Chunk c@(BS _ len) cs) =
+    unsafeDupablePerformIO $ do
+        mba0 <- stToIO (newByteArray len)
+        mba <- lazyToShortIO mba0 0 len c cs
+        ShortByteString <$> stToIO (unsafeFreezeByteArray mba)
+
+-- | Append first and any subsequent chunks of lazy bytestring to the provided
+-- buffer, resizing it if required.  The return value is the final buffer.
+-- Arithmetic is done with care, to avoid undetected integer addition
+-- wrap-around.  While nobody should be copying multi-gigabyte lazy bytestrings
+-- to "short" bytestrings, we should error out if possible, rather than corrupt
+-- memory..
+lazyToShortIO :: MutableByteArray RealWorld      -- ^ result buffer
+              -> Int                             -- ^ space already used
+              -> Int                             -- ^ total space allocated
+              -> ByteString                      -- ^ initial strict chunk
+              -> LBS.ByteString                  -- ^ remaining chunks
+              -> IO (MutableByteArray RealWorld) -- ^ possibly resized result
+lazyToShortIO mba used size c@(BS fptr len) cs
+    -- Safe against overflow since used <= size.
+    | len <= size - used
+      = do let ptr = unsafeForeignPtrToPtr fptr
+           stToIO (copyAddrToByteArray ptr mba used len)
+           touchForeignPtr fptr
+           case cs of
+               LBS.Empty
+                   -> stToIO (shrinkByteArray mba $ used + len) >> pure mba
+               LBS.Chunk c' cs'
+                   -> lazyToShortIO mba (used + len) size c' cs'
+    -- Care to detect possible 'Int' arithmetic overflow.
+    | used < used + len
+    , let newsize = max (used + len) (size + size `quot` 2)
+    , newsize >= size
+      = do mba' <- stToIO (resizeByteArray mba newsize)
+           lazyToShortIO mba' used newsize c cs
+    | otherwise
+      = fail "Input lazy bytestring is too long"
 
 -- | /O(n)/. Convert a 'ShortByteString' into a 'ByteString'.
 --
@@ -1613,6 +1668,18 @@ unsafeFreezeByteArray :: MutableByteArray s -> ST s ByteArray
 unsafeFreezeByteArray (MutableByteArray mba#) =
     ST $ \s -> case unsafeFreezeByteArray# mba# s of
                  (# s', ba# #) -> (# s', ByteArray ba# #)
+
+resizeByteArray :: MutableByteArray s -> Int -> ST s (MutableByteArray s)
+resizeByteArray (MutableByteArray mba#) new@(I# new#) =
+  assert (new >= 0) $
+    ST $ \s -> case resizeMutableByteArray# mba# new# s of
+                 (# s', mba'# #) -> (# s', MutableByteArray mba'# #)
+
+shrinkByteArray :: MutableByteArray s -> Int -> ST s ()
+shrinkByteArray (MutableByteArray mba#) new@(I# new#) = do
+  assert (new >= 0) $
+    ST $ \s -> case shrinkMutableByteArray# mba# new# s of
+                 s' -> (# s', () #)
 
 writeWord8Array :: MutableByteArray s -> Int -> Word8 -> ST s ()
 writeWord8Array (MutableByteArray mba#) (I# i#) (W8# w#) =

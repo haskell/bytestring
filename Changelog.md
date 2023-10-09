@@ -1,3 +1,8 @@
+[0.12.1.0] - TBD
+
+* API additions:
+  * Data.ByteString.Short now provides `lazyToShort` and `lazyFromShort`.
+
 [0.12.0.2] — August 2023
 
 * Bug fixes:
