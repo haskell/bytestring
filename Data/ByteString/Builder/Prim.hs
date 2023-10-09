@@ -668,9 +668,9 @@ primMapLazyByteStringBounded w =
 -- @0xC0 0x80@) null characters.
 --
 -- @since 0.11.0.0
-{-# DEPRECATED cstring "Use ascLiteralCopy instead" #-}
+{-# DEPRECATED cstring "Use asciiLiteralCopy instead" #-}
 cstring :: Addr# -> Builder
-cstring s = ascLiteralCopy (Ptr s) (S.byteCountLiteral s)
+cstring s = asciiLiteralCopy (Ptr s) (S.byteCountLiteral s)
 {-# INLINE cstring #-}
 
 -- | Builder for raw 'Addr#' pointers to null-terminated primitive UTF-8

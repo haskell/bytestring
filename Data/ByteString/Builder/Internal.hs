@@ -84,7 +84,7 @@ module Data.ByteString.Builder.Internal (
   -- , sizedChunksInsert
 
   , byteStringCopy
-  , ascLiteralCopy
+  , asciiLiteralCopy
   , modUtf8LitCopy
   , byteStringInsert
   , byteStringThreshold
@@ -889,9 +889,9 @@ byteStringInsert =
 -- @0xC0 0x80@) null characters.
 --
 -- @since 0.11.5.0
-{-# INLINABLE ascLiteralCopy #-}
-ascLiteralCopy :: Ptr Word8 -> Int -> Builder
-ascLiteralCopy = \ !ip !len -> builder $ \k br -> do
+{-# INLINABLE asciiLiteralCopy #-}
+asciiLiteralCopy :: Ptr Word8 -> Int -> Builder
+asciiLiteralCopy = \ !ip !len -> builder $ \k br -> do
     let !ipe = ip `plusPtr` len
     wrappedBytesCopyStep (BufferRange ip ipe) k br
 

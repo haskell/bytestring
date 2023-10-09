@@ -251,17 +251,17 @@ largeTraversalInput = S.concat (replicate 10 byteStringData)
 smallTraversalInput :: S.ByteString
 smallTraversalInput = S8.pack "The quick brown fox"
 
-ascBuf, utfBuf :: Ptr Word8
-ascBuf = Ptr "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"#
-utfBuf = Ptr "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\xc0\x80xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"#
+asciiBuf, utf8Buf :: Ptr Word8
+asciiBuf = Ptr "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"#
+utf8Buf  = Ptr "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\xc0\x80xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"#
 
-asclit, utflit :: Ptr Word8 -> Builder
-asclit str@(Ptr addr) = BI.ascLiteralCopy str (byteCountLiteral addr)
-utflit str@(Ptr addr) = BI.modUtf8LitCopy str (byteCountLiteral addr)
+asciiLit, utf8Lit :: Ptr Word8 -> Builder
+asciiLit str@(Ptr addr) = BI.asciiLiteralCopy str (byteCountLiteral addr)
+utf8Lit str@(Ptr addr)  = BI.modUtf8LitCopy str (byteCountLiteral addr)
 
-ascStr, utfStr :: String
-ascStr = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-utfStr = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\0xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+asciiStr, utf8Str :: String
+asciiStr = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+utf8Str  = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\0xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
 main :: IO ()
 main = do
@@ -272,15 +272,15 @@ main = do
         , benchB' "ensureFree 8"  ()  (const (ensureFree 8))
         , benchB' "intHost 1"     1   intHost
         , benchB' "UTF-8 String (naive)" "hello world\0" fromString
-        , benchB' "UTF-8 String"  () $ \() -> utflit (Ptr "hello world\xc0\x80"#)
+        , benchB' "UTF-8 String"  () $ \() -> utf8Lit (Ptr "hello world\xc0\x80"#)
         , benchB' "String (naive)" "hello world!" fromString
-        , benchB' "String"        () $ \() -> asclit (Ptr "hello world!"#)
-        , benchB' "AsciiLit"      () $ \() -> asclit ascBuf
-        , benchB' "Utf8Lit"       () $ \() -> utflit utfBuf
-        , benchB' "strLit"        () $ \() -> string8 ascStr
-        , benchB' "utfLit"        () $ \() -> stringUtf8 utfStr
+        , benchB' "String"        () $ \() -> asciiLit (Ptr "hello world!"#)
+        , benchB' "AsciiLit"      () $ \() -> asciiLit asciiBuf
+        , benchB' "Utf8Lit"       () $ \() -> utf8Lit utf8Buf
+        , benchB' "strLit"        () $ \() -> string8 asciiStr
+        , benchB' "stringUtf8"    () $ \() -> stringUtf8 utf8Str
         , benchB' "strLitInline"  () $ \() -> string8 "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-        , benchB' "utfLitInline"  () $ \() -> stringUtf8 "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\0XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+        , benchB' "utf8LitInline" () $ \() -> stringUtf8 "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\0XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
         ]
 
       , bgroup "Encoding wrappers"

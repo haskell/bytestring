@@ -451,11 +451,11 @@ string8 = P.primMapListFixed P.char8
 {-# RULES
 "string8/unpackCString#" forall s.
   string8 (unpackCString# s) =
-    ascLiteralCopy (Ptr s) (byteCountLiteral s)
+    asciiLiteralCopy (Ptr s) (byteCountLiteral s)
 
 "string8/unpackFoldrCString#" forall s.
   string8 (build (unpackFoldrCString# s)) =
-    ascLiteralCopy (Ptr s) (byteCountLiteral s)
+    asciiLiteralCopy (Ptr s) (byteCountLiteral s)
  #-}
 
 ------------------------------------------------------------------------------
@@ -482,11 +482,11 @@ stringUtf8 = P.primMapListBounded P.charUtf8
 
 "stringUtf8/unpackCString#" forall s.
   stringUtf8 (unpackCString# s) =
-    ascLiteralCopy (Ptr s) (byteCountLiteral s)
+    asciiLiteralCopy (Ptr s) (byteCountLiteral s)
 
 "stringUtf8/unpackFoldrCString#" forall s.
   stringUtf8 (build (unpackFoldrCString# s)) =
-    ascLiteralCopy (Ptr s) (byteCountLiteral s)
+    asciiLiteralCopy (Ptr s) (byteCountLiteral s)
  #-}
 
 instance IsString Builder where

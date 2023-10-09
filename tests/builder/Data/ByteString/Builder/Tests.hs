@@ -991,11 +991,11 @@ testsUtf8 =
 testCString :: [TestTree]
 testCString =
     [ testProperty "cstring" $
-        toLazyByteString (asclit (Ptr "hello world!"#)) ==
+        toLazyByteString (asciiLit (Ptr "hello world!"#)) ==
         LC.pack "hello" `L.append` L.singleton 0x20
                         `L.append` LC.pack "world!"
     , testProperty "cstringUtf8" $
-        toLazyByteString (utflit (Ptr "hello\xc0\x80\xc0\x80world\xc0\x80!"#)) ==
+        toLazyByteString (utf8Lit (Ptr "hello\xc0\x80\xc0\x80world\xc0\x80!"#)) ==
         LC.pack "hello" `L.append` L.singleton 0x00
                         `L.append` L.singleton 0x00
                         `L.append` LC.pack "world"
@@ -1003,6 +1003,6 @@ testCString =
                         `L.append` LC.singleton '!'
     ]
 
-asclit, utflit :: Ptr Word8 -> Builder
-asclit str@(Ptr addr) = BI.ascLiteralCopy str (S.byteCountLiteral addr)
-utflit str@(Ptr addr) = BI.modUtf8LitCopy str (S.byteCountLiteral addr)
+asciiLit, utf8Lit :: Ptr Word8 -> Builder
+asciiLit str@(Ptr addr) = BI.asciiLiteralCopy str (S.byteCountLiteral addr)
+utf8Lit str@(Ptr addr) = BI.modUtf8LitCopy str (S.byteCountLiteral addr)
