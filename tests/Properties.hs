@@ -530,6 +530,8 @@ prop_short_pack_unpack xs =
     (Short.unpack . Short.pack) xs == xs
 prop_short_toShort_fromShort bs =
     (Short.fromShort . Short.toShort) bs == bs
+prop_short_lazyToShort_fromShort lbs =
+    (Short.lazyFromShort . Short.lazyToShort) lbs == lbs
 
 prop_short_toShort_unpack bs =
     (Short.unpack . Short.toShort) bs == P.unpack bs
@@ -596,6 +598,7 @@ prop_short_pinned (NonNegative (I# len#)) = runST $ ST $ \s ->
 short_tests =
     [ testProperty "pack/unpack"              prop_short_pack_unpack
     , testProperty "toShort/fromShort"        prop_short_toShort_fromShort
+    , testProperty "lazyToShort/fromShort"    prop_short_lazyToShort_fromShort
     , testProperty "toShort/unpack"           prop_short_toShort_unpack
     , testProperty "pack/fromShort"           prop_short_pack_fromShort
     , testProperty "empty"                    prop_short_empty
