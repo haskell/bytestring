@@ -1,3 +1,10 @@
+[0.11.5.3] — October 2023
+
+* Bug fixes:
+  * [Fix a bug in `isValidUtf8`](https://github.com/haskell/bytestring/pull/621)
+
+[0.11.5.3]: https://github.com/haskell/bytestring/compare/0.11.5.2...0.11.5.3
+
 [0.11.5.2] — August 2023
 
 * Bug fixes:
