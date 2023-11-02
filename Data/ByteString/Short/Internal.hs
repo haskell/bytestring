@@ -55,6 +55,7 @@ module Data.ByteString.Short.Internal (
     last,
     tail,
     uncons,
+    unconsN,
     head,
     init,
     unsnoc,
@@ -721,6 +722,33 @@ uncons = \sbs ->
   in if | l <= 0 -> Nothing
         | otherwise -> let h = indexWord8Array (asBA sbs) 0
                            t = create nl $ \mba -> copyByteArray (asBA sbs) 1 mba 0 nl
+                       in Just (h, t)
+
+-- | /O(n)/ Extract the given number of elements from a ShortByteString and the remainder.
+-- Returns 'Nothing' if the ShortByteString is smaller than the requested number of elements.
+--
+-- >>> unconsN 3 "abcdefg"
+-- Just ([97,98,99],"defg")
+-- >>> unconsN 11 "abcdefg"
+-- Nothing
+-- >>> unconsN 0 "abcdefg"
+-- Nothing
+--
+-- Satisfies the following properties:
+--
+-- > \x i -> unconsN i x == (if length x < i || i < 1 then Nothing else let u = unpack in Just (take i u, pack (drop i u)))
+-- > \x -> unconsN 1 x == fmap (\(x, y) -> ([x], y)) (uncons x)
+-- > \x i -> maybe i (\(xs, _) -> length xs) (unconsN i x) === i
+--
+-- @since 0.11.3.2
+unconsN :: Int -> ShortByteString -> Maybe ([Word8], ShortByteString)
+unconsN n = \sbs ->
+  let l  = length sbs
+      nl = l - n
+      ix = n - 1
+  in if | n < 1 || l <= ix -> Nothing
+        | otherwise -> let h = List.map (indexWord8Array (asBA sbs)) [0..ix]
+                           t = create nl $ \mba -> copyByteArray (asBA sbs) n mba 0 nl
                        in Just (h, t)
 
 -- | /O(1)/ Extract the first element of a ShortByteString, which must be non-empty.
