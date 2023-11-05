@@ -51,18 +51,12 @@ As a simple example of an encoding implementation,
 >type Row   = [Cell]
 >type Table = [Row]
 
-We use the following imports and abbreviate 'mappend' to simplify reading.
+We use the following imports.
 
 @
 import qualified "Data.ByteString.Lazy"               as L
 import           "Data.ByteString.Builder"
-import           Data.Monoid
-import           Data.Foldable                        ('Data.Foldable.foldMap')
 import           Data.List                            ('Data.List.intersperse')
-
-infixr 4 \<\>
-(\<\>) :: 'Monoid' m => m -> m -> m
-(\<\>) = 'mappend'
 @
 
 CSV is a character-based representation of tables. For maximal modularity,
@@ -79,7 +73,7 @@ encodeUtf8CSV :: Table -> L.ByteString
 encodeUtf8CSV = 'toLazyByteString' . renderTable
 
 renderTable :: Table -> Builder
-renderTable rs = 'mconcat' [renderRow r \<\> 'charUtf8' \'\\n\' | r <- rs]
+renderTable rs = 'mconcat' [renderRow r '<>' 'charUtf8' \'\\n\' | r <- rs]
 
 renderRow :: Row -> Builder
 renderRow []     = 'mempty'
@@ -91,7 +85,7 @@ renderCell (StringC cs) = renderString cs
 renderCell (IntC i)     = 'intDec' i
 
 renderString :: String -> Builder
-renderString cs = charUtf8 \'\"\' \<\> foldMap escape cs \<\> charUtf8 \'\"\'
+renderString cs = charUtf8 \'\"\' \<\> 'foldMap' escape cs \<\> charUtf8 \'\"\'
   where
     escape \'\\\\\' = charUtf8 \'\\\\\' \<\> charUtf8 \'\\\\\'
     escape \'\\\"\' = charUtf8 \'\\\\\' \<\> charUtf8 \'\\\"\'
