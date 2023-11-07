@@ -36,7 +36,6 @@ foreign import ccall "&hs_bytestring_lower_hex_table"
 
 -- | The encoding table for hexadecimal values with lower-case characters;
 -- e.g., deadbeef.
-{-# NOINLINE lowerTable #-}
 lowerTable :: EncodingTable
 lowerTable = case c_lower_hex_table of
   Ptr p# -> EncodingTable p#
