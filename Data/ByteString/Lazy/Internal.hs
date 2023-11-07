@@ -69,7 +69,7 @@ import Control.DeepSeq  (NFData, rnf)
 
 import Data.String      (IsString(..))
 
-import Data.Data                (Data(..), mkNoRepType)
+import Data.Data                (Data(..), mkConstr ,mkDataType, Constr, DataType, Fixity(Prefix), constrIndex)
 
 import GHC.Exts                 (IsList(..))
 
@@ -153,9 +153,17 @@ instance IsString ByteString where
 
 instance Data ByteString where
   gfoldl f z txt = z packBytes `f` unpackBytes txt
-  toConstr _     = error "Data.ByteString.Lazy.ByteString.toConstr"
-  gunfold _ _    = error "Data.ByteString.Lazy.ByteString.gunfold"
-  dataTypeOf _   = mkNoRepType "Data.ByteString.Lazy.ByteString"
+  toConstr _     = packConstr
+  gunfold k z c = case constrIndex c of
+    1 -> k (z packBytes)
+    _ -> error "gunfold: unexpected constructor of lazy ByteString"
+  dataTypeOf _   = byteStringDataType
+
+packConstr :: Constr
+packConstr = mkConstr byteStringDataType "pack" [] Prefix
+
+byteStringDataType :: DataType
+byteStringDataType = mkDataType "Data.ByteString.Lazy.ByteString" [packConstr]
 
 ------------------------------------------------------------------------
 -- Packing and unpacking from lists

@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns             #-}
 {-# LANGUAGE CPP                      #-}
 {-# LANGUAGE DeriveDataTypeable       #-}
+{-# LANGUAGE DeriveGeneric            #-}
 {-# LANGUAGE DeriveLift               #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -235,6 +236,8 @@ import GHC.Exts
   , writeWord8Array#
   , unsafeFreezeByteArray#
   , touch# )
+import GHC.Generics
+  ( Generic )
 import GHC.IO hiding ( unsafeDupablePerformIO )
 import GHC.ForeignPtr
   ( ForeignPtr(ForeignPtr)
@@ -281,7 +284,7 @@ newtype ShortByteString =
   { unShortByteString :: ByteArray
   -- ^ @since 0.12.0.0
   }
-  deriving (Eq, TH.Lift, Data, NFData)
+  deriving (Eq, TH.Lift, Data, Generic, NFData)
 
 -- | Prior to @bytestring-0.12@ 'SBS' was a genuine constructor of 'ShortByteString',
 -- but now it is a bundled pattern synonym, provided as a compatibility shim.
