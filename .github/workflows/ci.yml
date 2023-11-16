@@ -4,6 +4,7 @@ on:
     branches:
       - master
       - bytestring-0.11
+      - bytestring-0.12
   pull_request: {} # Validate all PRs
 
 defaults:
@@ -17,7 +18,7 @@ jobs:
       fail-fast: true
       matrix:
         os: [ubuntu-latest]
-        ghc: ['8.0', '8.2', '8.4', '8.6', '8.8', '8.10', '9.0', '9.2', '9.4', '9.6']
+        ghc: ['8.0', '8.2', '8.4', '8.6', '8.8', '8.10', '9.0', '9.2', '9.4', '9.6', '9.8']
         include:
         - os: macOS-latest
           ghc: 'latest'
@@ -33,7 +34,7 @@ jobs:
         ghc-version: ${{ matrix.ghc }}
     - name: Update cabal package database
       run: cabal update
-    - uses: actions/cache@v2
+    - uses: actions/cache@v3
       name: Cache cabal stuff
       with:
         path: |
@@ -75,7 +76,7 @@ jobs:
         ghc-version: ${{ matrix.ghc }}
     - name: Update cabal package database
       run: cabal update
-    - uses: actions/cache@v2
+    - uses: actions/cache@v3
       name: Cache cabal stuff
       with:
         path: |
@@ -97,6 +98,7 @@ jobs:
     - name: Run Test
       # test broken linking on windows: https://github.com/haskell/bytestring/issues/497
       run: |
+        cd bytestring-*/
         $bin = cabal list-bin bytestring-tests
         $env:PATH = ''
         & "$bin"
@@ -155,7 +157,7 @@ jobs:
         ghc-version: 'latest'
     - name: Update cabal package database
       run: cabal update
-    - uses: actions/cache@v2
+    - uses: actions/cache@v3
       name: Cache cabal stuff
       with:
         path: |
@@ -174,7 +176,7 @@ jobs:
     - name: install deps
       run: |
           yum install -y gcc gmp gmp-devel make ncurses ncurses-compat-libs xz perl
-          curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | BOOTSTRAP_HASKELL_NONINTERACTIVE=1 sh
+          curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | BOOTSTRAP_HASKELL_NONINTERACTIVE=1 BOOTSTRAP_HASKELL_GHC_VERSION=9.2.8 sh
     - uses: actions/checkout@v3
     - name: test
       run: |
