@@ -173,17 +173,17 @@ newBuffer size = do
     let pbuf = unsafeForeignPtrToPtr fpbuf
     return $! Buffer fpbuf (BufferRange pbuf (pbuf `plusPtr` size))
 
--- | Convert the filled part of a 'Buffer' to a strict 'S.ByteString'.
+-- | Convert the filled part of a 'Buffer' to a 'S.StrictByteString'.
 {-# INLINE byteStringFromBuffer #-}
-byteStringFromBuffer :: Buffer -> S.ByteString
+byteStringFromBuffer :: Buffer -> S.StrictByteString
 byteStringFromBuffer (Buffer fpbuf (BufferRange op _)) =
     S.BS fpbuf (op `minusPtr` unsafeForeignPtrToPtr fpbuf)
 
--- | Prepend the filled part of a 'Buffer' to a lazy 'L.ByteString'
+-- | Prepend the filled part of a 'Buffer' to a 'L.LazyByteString'
 -- trimming it if necessary.
 {-# INLINE trimmedChunkFromBuffer #-}
 trimmedChunkFromBuffer :: AllocationStrategy -> Buffer
-                       -> L.ByteString -> L.ByteString
+                       -> L.LazyByteString -> L.LazyByteString
 trimmedChunkFromBuffer (AllocationStrategy _ _ trim) buf k
   | S.null bs                           = k
   | trim (S.length bs) (bufferSize buf) = L.Chunk (S.copy bs) k
@@ -204,33 +204,33 @@ trimmedChunkFromBuffer (AllocationStrategy _ _ trim) buf k
 data ChunkIOStream a =
        Finished Buffer a
        -- ^ The partially filled last buffer together with the result.
-     | Yield1 S.ByteString (IO (ChunkIOStream a))
-       -- ^ Yield a /non-empty/ strict 'S.ByteString'.
+     | Yield1 S.StrictByteString (IO (ChunkIOStream a))
+       -- ^ Yield a /non-empty/ 'S.StrictByteString'.
 
 -- | A smart constructor for yielding one chunk that ignores the chunk if
 -- it is empty.
 {-# INLINE yield1 #-}
-yield1 :: S.ByteString -> IO (ChunkIOStream a) -> IO (ChunkIOStream a)
+yield1 :: S.StrictByteString -> IO (ChunkIOStream a) -> IO (ChunkIOStream a)
 yield1 bs cios | S.null bs = cios
                | otherwise = return $ Yield1 bs cios
 
--- | Convert a @'ChunkIOStream' ()@ to a lazy 'L.ByteString' using
+-- | Convert a @'ChunkIOStream' ()@ to a 'L.LazyByteString' using
 -- 'unsafeDupablePerformIO'.
 {-# INLINE ciosUnitToLazyByteString #-}
 ciosUnitToLazyByteString :: AllocationStrategy
-                         -> L.ByteString -> ChunkIOStream () -> L.ByteString
+                         -> L.LazyByteString -> ChunkIOStream () -> L.LazyByteString
 ciosUnitToLazyByteString strategy k = go
   where
     go (Finished buf _) = trimmedChunkFromBuffer strategy buf k
     go (Yield1 bs io)   = L.Chunk bs $ unsafeDupablePerformIO (go <$> io)
 
 -- | Convert a 'ChunkIOStream' to a lazy tuple of the result and the written
--- 'L.ByteString' using 'unsafeDupablePerformIO'.
+-- 'L.LazyByteString' using 'unsafeDupablePerformIO'.
 {-# INLINE ciosToLazyByteString #-}
 ciosToLazyByteString :: AllocationStrategy
-                     -> (a -> (b, L.ByteString))
+                     -> (a -> (b, L.LazyByteString))
                      -> ChunkIOStream a
-                     -> (b, L.ByteString)
+                     -> (b, L.LazyByteString)
 ciosToLazyByteString strategy k =
     go
   where
@@ -256,7 +256,7 @@ data BuildSignal a =
                      (BuildStep a)
   | InsertChunk
       {-# UNPACK #-} !(Ptr Word8)
-                     S.ByteString
+                     S.StrictByteString
                      (BuildStep a)
 
 -- | Signal that the current 'BuildStep' is done and has computed a value.
@@ -281,11 +281,11 @@ bufferFull :: Int
 bufferFull = BufferFull
 
 
--- | Signal that a 'S.ByteString' chunk should be inserted directly.
+-- | Signal that a 'S.StrictByteString' chunk should be inserted directly.
 {-# INLINE insertChunk #-}
 insertChunk :: Ptr Word8
             -- ^ Next free byte in current 'BufferRange'
-            -> S.ByteString
+            -> S.StrictByteString
             -- ^ Chunk to insert.
             -> BuildStep a
             -- ^ 'BuildStep' to run on next 'BufferRange'
@@ -302,7 +302,7 @@ fillWithBuildStep
     -- ^ Handling the 'done' signal
     -> (Ptr Word8 -> Int -> BuildStep a -> IO b)
     -- ^ Handling the 'bufferFull' signal
-    -> (Ptr Word8 -> S.ByteString -> BuildStep a -> IO b)
+    -> (Ptr Word8 -> S.StrictByteString -> BuildStep a -> IO b)
     -- ^ Handling the 'insertChunk' signal
     -> BufferRange
     -- ^ Buffer range to fill.
@@ -697,7 +697,7 @@ hPut h p = do
                         fillHandle 1 nextStep
 
 -- | Execute a 'Put' and return the computed result and the bytes
--- written during the computation as a lazy 'L.ByteString'.
+-- written during the computation as a 'L.LazyByteString'.
 --
 -- This function is strict in the computed result and lazy in the writing of
 -- the bytes. For example, given
@@ -726,15 +726,15 @@ hPut h p = do
 -- @
 --type DecodingState = ...
 --
---decodeBase64 :: 'S.ByteString' -> DecodingState -> 'Put' (Maybe DecodingState)
+--decodeBase64 :: 'S.StrictByteString' -> DecodingState -> 'Put' (Maybe DecodingState)
 --decodeBase64 = ...
 -- @
 --
--- The above function takes a strict 'S.ByteString' supposed to represent
+-- The above function takes a 'S.StrictByteString' supposed to represent
 -- Base64 encoded data and the current decoding state.
 -- It writes the decoded bytes as the side-effect of the 'Put' and returns the
--- new decoding state, if the decoding of all data in the 'S.ByteString' was
--- successful. The checking if the strict 'S.ByteString' represents Base64
+-- new decoding state, if the decoding of all data in the 'S.StrictByteString' was
+-- successful. The checking if the 'S.StrictByteString' represents Base64
 -- encoded data and the actual decoding are fused. This makes the common case,
 -- where all data represents Base64 encoded data, more efficient. It also
 -- implies that all data must be decoded before the final decoding
@@ -744,7 +744,7 @@ hPut h p = do
 {-# NOINLINE putToLazyByteString #-}
 putToLazyByteString
     :: Put a              -- ^ 'Put' to execute
-    -> (a, L.ByteString)  -- ^ Result and lazy 'L.ByteString'
+    -> (a, L.LazyByteString)  -- ^ Result and 'L.LazyByteString'
                           -- written as its side-effect
 putToLazyByteString = putToLazyByteStringWith
     (safeStrategy L.smallChunkSize L.defaultChunkSize) (, L.Empty)
@@ -762,13 +762,13 @@ putToLazyByteString = putToLazyByteStringWith
 putToLazyByteStringWith
     :: AllocationStrategy
        -- ^ Buffer allocation strategy to use
-    -> (a -> (b, L.ByteString))
+    -> (a -> (b, L.LazyByteString))
        -- ^ Continuation to use for computing the final result and the tail of
        -- its side-effect (the written bytes).
     -> Put a
        -- ^ 'Put' to execute
-    -> (b, L.ByteString)
-       -- ^ Resulting lazy 'L.ByteString'
+    -> (b, L.LazyByteString)
+       -- ^ Resulting 'L.LazyByteString'
 putToLazyByteStringWith strategy k p =
     ciosToLazyByteString strategy k $ unsafeDupablePerformIO $
         buildStepToCIOS strategy (runPut p)
@@ -817,17 +817,17 @@ wrappedBytesCopyStep (BufferRange ip0 ipe) k =
 ------------------------------------------------------------------------------
 
 
--- | Construct a 'Builder' that copies the strict 'S.ByteString's, if it is
+-- | Construct a 'Builder' that copies the 'S.StrictByteString's, if it is
 -- smaller than the treshold, and inserts it directly otherwise.
 --
--- For example, @byteStringThreshold 1024@ copies strict 'S.ByteString's whose size
+-- For example, @byteStringThreshold 1024@ copies 'S.StrictByteString's whose size
 -- is less or equal to 1kb, and inserts them directly otherwise. This implies
--- that the average chunk-size of the generated lazy 'L.ByteString' may be as
+-- that the average chunk-size of the generated 'L.LazyByteString' may be as
 -- low as 513 bytes, as there could always be just a single byte between the
--- directly inserted 1025 byte, strict 'S.ByteString's.
+-- directly inserted 1025 byte, 'S.StrictByteString's.
 --
 {-# INLINE byteStringThreshold #-}
-byteStringThreshold :: Int -> S.ByteString -> Builder
+byteStringThreshold :: Int -> S.StrictByteString -> Builder
 byteStringThreshold maxCopySize =
     \bs -> builder $ step bs
   where
@@ -835,18 +835,18 @@ byteStringThreshold maxCopySize =
       | len <= maxCopySize = byteStringCopyStep bs k br
       | otherwise          = return $ insertChunk op bs k
 
--- | Construct a 'Builder' that copies the strict 'S.ByteString'.
+-- | Construct a 'Builder' that copies the 'S.StrictByteString'.
 --
 -- Use this function to create 'Builder's from smallish (@<= 4kb@)
--- 'S.ByteString's or if you need to guarantee that the 'S.ByteString' is not
+-- 'S.StrictByteString's or if you need to guarantee that the 'S.StrictByteString' is not
 -- shared with the chunks generated by the 'Builder'.
 --
 {-# INLINE byteStringCopy #-}
-byteStringCopy :: S.ByteString -> Builder
+byteStringCopy :: S.StrictByteString -> Builder
 byteStringCopy = \bs -> builder $ byteStringCopyStep bs
 
 {-# INLINE byteStringCopyStep #-}
-byteStringCopyStep :: S.ByteString -> BuildStep a -> BuildStep a
+byteStringCopyStep :: S.StrictByteString -> BuildStep a -> BuildStep a
 byteStringCopyStep (S.BS ifp isize) !k0 br0@(BufferRange op ope)
     -- Ensure that the common case is not recursive and therefore yields
     -- better code.
@@ -861,16 +861,16 @@ byteStringCopyStep (S.BS ifp isize) !k0 br0@(BufferRange op ope)
     k br = do touchForeignPtr ifp  -- input consumed: OK to release here
               k0 br
 
--- | Construct a 'Builder' that always inserts the strict 'S.ByteString'
+-- | Construct a 'Builder' that always inserts the 'S.StrictByteString'
 -- directly as a chunk.
 --
 -- This implies flushing the output buffer, even if it contains just
 -- a single byte. You should therefore use 'byteStringInsert' only for large
--- (@> 8kb@) 'S.ByteString's. Otherwise, the generated chunks are too
+-- (@> 8kb@) 'S.StrictByteString's. Otherwise, the generated chunks are too
 -- fragmented to be processed efficiently afterwards.
 --
 {-# INLINE byteStringInsert #-}
-byteStringInsert :: S.ByteString -> Builder
+byteStringInsert :: S.StrictByteString -> Builder
 byteStringInsert =
     \bs -> builder $ \k (BufferRange op _) -> return $ insertChunk op bs k
 
@@ -908,47 +908,47 @@ shortByteStringCopyStep !sbs k =
 ------------------------------------------------------------------------------
 
 -- | Construct a 'Builder' that uses the thresholding strategy of 'byteStringThreshold'
--- for each chunk of the lazy 'L.ByteString'.
+-- for each chunk of the 'L.LazyByteString'.
 --
 {-# INLINE lazyByteStringThreshold #-}
-lazyByteStringThreshold :: Int -> L.ByteString -> Builder
+lazyByteStringThreshold :: Int -> L.LazyByteString -> Builder
 lazyByteStringThreshold maxCopySize =
     L.foldrChunks (\bs b -> byteStringThreshold maxCopySize bs `mappend` b) mempty
     -- TODO: We could do better here. Currently, Large, Small, Large, leads to
     -- an unnecessary copy of the 'Small' chunk.
 
--- | Construct a 'Builder' that copies the lazy 'L.ByteString'.
+-- | Construct a 'Builder' that copies the 'L.LazyByteString'.
 --
 {-# INLINE lazyByteStringCopy #-}
-lazyByteStringCopy :: L.ByteString -> Builder
+lazyByteStringCopy :: L.LazyByteString -> Builder
 lazyByteStringCopy =
     L.foldrChunks (\bs b -> byteStringCopy bs `mappend` b) mempty
 
--- | Construct a 'Builder' that inserts all chunks of the lazy 'L.ByteString'
+-- | Construct a 'Builder' that inserts all chunks of the 'L.LazyByteString'
 -- directly.
 --
 {-# INLINE lazyByteStringInsert #-}
-lazyByteStringInsert :: L.ByteString -> Builder
+lazyByteStringInsert :: L.LazyByteString -> Builder
 lazyByteStringInsert =
     L.foldrChunks (\bs b -> byteStringInsert bs `mappend` b) mempty
 
--- | Create a 'Builder' denoting the same sequence of bytes as a strict
--- 'S.ByteString'.
--- The 'Builder' inserts large 'S.ByteString's directly, but copies small ones
+-- | Create a 'Builder' denoting the same sequence of bytes as a
+-- 'S.StrictByteString'.
+-- The 'Builder' inserts large 'S.StrictByteString's directly, but copies small ones
 -- to ensure that the generated chunks are large on average.
 --
 {-# INLINE byteString #-}
-byteString :: S.ByteString -> Builder
+byteString :: S.StrictByteString -> Builder
 byteString = byteStringThreshold maximalCopySize
 
 -- | Create a 'Builder' denoting the same sequence of bytes as a lazy
--- 'L.ByteString'.
--- The 'Builder' inserts large chunks of the lazy 'L.ByteString' directly,
+-- 'L.LazyByteString'.
+-- The 'Builder' inserts large chunks of the 'L.LazyByteString' directly,
 -- but copies small ones to ensure that the generated chunks are large on
 -- average.
 --
 {-# INLINE lazyByteString #-}
-lazyByteString :: L.ByteString -> Builder
+lazyByteString :: L.LazyByteString -> Builder
 lazyByteString = lazyByteStringThreshold maximalCopySize
 -- FIXME: also insert the small chunk for [large,small,large] directly.
 -- Perhaps it makes even sense to concatenate the small chunks in
@@ -956,7 +956,7 @@ lazyByteString = lazyByteStringThreshold maximalCopySize
 -- unnecessary buffer spilling. Hmm, but that uncontrollably increases latency
 -- => no good!
 
--- | The maximal size of a 'S.ByteString' that is copied.
+-- | The maximal size of a 'S.StrictByteString' that is copied.
 -- @2 * 'L.smallChunkSize'@ to guarantee that on average a chunk is of
 -- 'L.smallChunkSize'.
 maximalCopySize :: Int
@@ -1003,7 +1003,7 @@ customStrategy = AllocationStrategy
 sanitize :: Int -> Int
 sanitize = max (sizeOf (undefined :: Int))
 
--- | Use this strategy for generating lazy 'L.ByteString's whose chunks are
+-- | Use this strategy for generating 'L.LazyByteString's whose chunks are
 -- discarded right after they are generated. For example, if you just generate
 -- them to write them to a network socket.
 {-# INLINE untrimmedStrategy #-}
@@ -1020,7 +1020,7 @@ untrimmedStrategy firstSize bufSize =
     nextBuffer (Just (_, minSize)) = newBuffer minSize
 
 
--- | Use this strategy for generating lazy 'L.ByteString's whose chunks are
+-- | Use this strategy for generating 'L.LazyByteString's whose chunks are
 -- likely to survive one garbage collection. This strategy trims buffers
 -- that are filled less than half in order to avoid spilling too much memory.
 {-# INLINE safeStrategy #-}
@@ -1049,7 +1049,7 @@ safeStrategy firstSize bufSize =
 --   toLazyByteStringWith ('safeStrategy' 'L.smallChunkSize' 'L.defaultChunkSize') L.empty
 -- @
 --
--- where @L.empty@ is the zero-length lazy 'L.ByteString'.
+-- where @L.empty@ is the zero-length 'L.LazyByteString'.
 --
 -- In most cases, the parameters used by 'Data.ByteString.Builder.toLazyByteString' give good
 -- performance. A sub-performing case of 'Data.ByteString.Builder.toLazyByteString' is executing short
@@ -1060,20 +1060,20 @@ safeStrategy firstSize bufSize =
 -- >toLazyByteStringWith (safeStrategy 128 smallChunkSize) L.empty
 --
 -- This reduces the allocation and trimming overhead, as all generated
--- 'L.ByteString's fit into the first buffer and there is no trimming
+-- 'L.LazyByteString's fit into the first buffer and there is no trimming
 -- required, if more than 64 bytes and less than 128 bytes are written.
 --
 {-# INLINE toLazyByteStringWith #-}
 toLazyByteStringWith
     :: AllocationStrategy
        -- ^ Buffer allocation strategy to use
-    -> L.ByteString
-       -- ^ Lazy 'L.ByteString' to use as the tail of the generated lazy
-       -- 'L.ByteString'
+    -> L.LazyByteString
+       -- ^ 'L.LazyByteString' to use as the tail of the generated lazy
+       -- 'L.LazyByteString'
     -> Builder
        -- ^ 'Builder' to execute
-    -> L.ByteString
-       -- ^ Resulting lazy 'L.ByteString'
+    -> L.LazyByteString
+       -- ^ Resulting 'L.LazyByteString'
 toLazyByteStringWith strategy k b =
     ciosUnitToLazyByteString strategy k $ unsafeDupablePerformIO $
         buildStepToCIOS strategy (runBuilder b)
@@ -1107,7 +1107,7 @@ buildStepToCIOS (AllocationStrategy nextBuffer bufSize trim) =
             wrapChunk op' $ const $
                 nextBuffer (Just (buf, max minSize bufSize)) >>= fill nextStep
 
-        insertChunkH :: Ptr Word8 -> S.ByteString -> BuildStep a -> IO (ChunkIOStream a)
+        insertChunkH :: Ptr Word8 -> S.StrictByteString -> BuildStep a -> IO (ChunkIOStream a)
         insertChunkH op' bs nextStep =
             wrapChunk op' $ \isEmpty -> yield1 bs $
                 -- Checking for empty case avoids allocating 'n-1' empty

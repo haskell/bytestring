@@ -269,9 +269,9 @@ corresponding functions in future releases of this library.
 -- > map :: (Word8 -> Word8) -> ByteString -> ByteString
 -- > map f = toLazyByteString . encodeLazyByteStringWithB (E.word8 E.#. f)
 --
--- Compared to earlier versions of @filter@ and @map@ on lazy 'L.ByteString's,
+-- Compared to earlier versions of @filter@ and @map@ on 'L.LazyByteString's,
 -- these versions use a more efficient inner loop and have the additional
--- advantage that they always result in well-chunked 'L.ByteString's; i.e, they
+-- advantage that they always result in well-chunked 'L.LazyByteString's; i.e, they
 -- also perform automatic defragmentation.
 --
 -- We can also use 'E.Encoding's to improve the efficiency of the following
@@ -398,7 +398,7 @@ module Data.ByteString.Builder.Prim (
   -- which is implemented as follows.
   --
   -- @
-  -- byteStringHex :: S.ByteString -> Builder
+  -- byteStringHex :: S.StrictByteString -> Builder
   -- byteStringHex = 'primMapByteStringFixed' 'word8HexFixed'
   -- @
   --
@@ -492,24 +492,24 @@ primMapListFixed = primMapListBounded . toB
 primUnfoldrFixed :: FixedPrim b -> (a -> Maybe (b, a)) -> a -> Builder
 primUnfoldrFixed = primUnfoldrBounded . toB
 
--- | /Heavy inlining./ Encode all bytes of a strict 'S.ByteString' from
+-- | /Heavy inlining./ Encode all bytes of a 'S.StrictByteString' from
 -- left-to-right with a 'FixedPrim'. This function is quite versatile. For
 -- example, we can use it to construct a 'Builder' that maps every byte before
 -- copying it to the buffer to be filled.
 --
--- > mapToBuilder :: (Word8 -> Word8) -> S.ByteString -> Builder
+-- > mapToBuilder :: (Word8 -> Word8) -> S.StrictByteString -> Builder
 -- > mapToBuilder f = primMapByteStringFixed (contramapF f word8)
 --
--- We can also use it to hex-encode a strict 'S.ByteString' as shown by the
+-- We can also use it to hex-encode a 'S.StrictByteString' as shown by the
 -- 'Data.ByteString.Builder.ASCII.byteStringHex' example above.
 {-# INLINE primMapByteStringFixed #-}
-primMapByteStringFixed :: FixedPrim Word8 -> (S.ByteString -> Builder)
+primMapByteStringFixed :: FixedPrim Word8 -> (S.StrictByteString -> Builder)
 primMapByteStringFixed = primMapByteStringBounded . toB
 
--- | /Heavy inlining./ Encode all bytes of a lazy 'L.ByteString' from
+-- | /Heavy inlining./ Encode all bytes of a 'L.LazyByteString' from
 -- left-to-right with a 'FixedPrim'.
 {-# INLINE primMapLazyByteStringFixed #-}
-primMapLazyByteStringFixed :: FixedPrim Word8 -> (L.ByteString -> Builder)
+primMapLazyByteStringFixed :: FixedPrim Word8 -> (L.LazyByteString -> Builder)
 primMapLazyByteStringFixed = primMapLazyByteStringBounded . toB
 
 -- IMPLEMENTATION NOTE: Sadly, 'encodeListWith' cannot be used for foldr/build
@@ -530,8 +530,8 @@ primMapLazyByteStringFixed = primMapLazyByteStringBounded . toB
 -- at 8 free bytes, instead of checking twice, if there are 4 free bytes. This
 -- optimization is not observationally equivalent in a strict sense, as it
 -- influences the boundaries of the generated chunks. However, for a user of
--- this library it is observationally equivalent, as chunk boundaries of a lazy
--- 'L.ByteString' can only be observed through the internal interface.
+-- this library it is observationally equivalent, as chunk boundaries of a
+-- 'L.LazyByteString' can only be observed through the internal interface.
 -- Moreover, we expect that all primitives write much fewer than 4kb (the
 -- default short buffer size). Hence, it is safe to ignore the additional
 -- memory spilled due to the more aggressive buffer wrapping introduced by this
@@ -615,16 +615,16 @@ primUnfoldrBounded w f x0 =
                   fillWith x' k (BufferRange opNew' opeNew)
     bound = I.sizeBound w
 
--- | Create a 'Builder' that encodes each 'Word8' of a strict 'S.ByteString'
+-- | Create a 'Builder' that encodes each 'Word8' of a 'S.StrictByteString'
 -- using a 'BoundedPrim'. For example, we can write a 'Builder' that filters
--- a strict 'S.ByteString' as follows.
+-- a 'S.StrictByteString' as follows.
 --
 -- > import qualified Data.ByteString.Builder.Prim as P
 --
 -- > filterBS p = P.condB p (P.liftFixedToBounded P.word8) P.emptyB
 --
 {-# INLINE primMapByteStringBounded #-}
-primMapByteStringBounded :: BoundedPrim Word8 -> S.ByteString -> Builder
+primMapByteStringBounded :: BoundedPrim Word8 -> S.StrictByteString -> Builder
 primMapByteStringBounded w =
     \bs -> builder $ step bs
   where
@@ -658,7 +658,7 @@ primMapByteStringBounded w =
 
 -- | Chunk-wise application of 'primMapByteStringBounded'.
 {-# INLINE primMapLazyByteStringBounded #-}
-primMapLazyByteStringBounded :: BoundedPrim Word8 -> L.ByteString -> Builder
+primMapLazyByteStringBounded :: BoundedPrim Word8 -> L.LazyByteString -> Builder
 primMapLazyByteStringBounded w =
     L.foldrChunks (\x b -> primMapByteStringBounded w x `mappend` b) mempty
 

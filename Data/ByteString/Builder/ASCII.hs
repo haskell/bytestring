@@ -240,14 +240,14 @@ floatHexFixed = P.primFixed P.floatHexFixed
 doubleHexFixed :: Double -> Builder
 doubleHexFixed = P.primFixed P.doubleHexFixed
 
--- | Encode each byte of a 'S.ByteString' using its fixed-width hex encoding.
+-- | Encode each byte of a 'S.StrictByteString' using its fixed-width hex encoding.
 {-# NOINLINE byteStringHex #-} -- share code
-byteStringHex :: S.ByteString -> Builder
+byteStringHex :: S.StrictByteString -> Builder
 byteStringHex = P.primMapByteStringFixed P.word8HexFixed
 
--- | Encode each byte of a lazy 'L.ByteString' using its fixed-width hex encoding.
+-- | Encode each byte of a 'L.LazyByteString' using its fixed-width hex encoding.
 {-# NOINLINE lazyByteStringHex #-} -- share code
-lazyByteStringHex :: L.ByteString -> Builder
+lazyByteStringHex :: L.LazyByteString -> Builder
 lazyByteStringHex = P.primMapLazyByteStringFixed P.word8HexFixed
 
 

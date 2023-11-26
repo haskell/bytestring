@@ -274,12 +274,12 @@ pack = packBytes
 unpack :: ByteString -> [Word8]
 unpack = unpackBytes
 
--- | /O(c)/ Convert a list of strict 'ByteString' into a lazy 'ByteString'
-fromChunks :: [P.ByteString] -> ByteString
+-- | /O(c)/ Convert a list of 'S.StrictByteString' into a 'LazyByteString'
+fromChunks :: [S.StrictByteString] -> LazyByteString
 fromChunks = List.foldr chunk Empty
 
--- | /O(c)/ Convert a lazy 'ByteString' into a list of strict 'ByteString'
-toChunks :: ByteString -> [P.ByteString]
+-- | /O(c)/ Convert a 'LazyByteString' into a list of 'S.StrictByteString'
+toChunks :: LazyByteString -> [S.StrictByteString]
 toChunks = foldrChunks (:) []
 
 ------------------------------------------------------------------------
@@ -845,7 +845,7 @@ dropEnd i p          = go D.empty p
                             getOutput (Chunk x out) deque'
             _ -> (reverseChunks out, deque)
 
-        -- reverse a `ByteString`s chunks, keeping all internal `S.ByteString`s
+        -- reverse a `ByteString`s chunks, keeping all internal `S.StrictByteString`s
         -- unchanged
         reverseChunks = foldlChunks (flip Chunk) empty
 
@@ -1714,7 +1714,7 @@ revChunks = List.foldl' (flip chunk) Empty
 -- reading the whole file via 'readFile' executes all three actions
 -- (open the file handle, read its content, close the file handle) before
 -- control moves to the following 'writeFile' action. This expectation holds
--- for the strict "Data.ByteString" API. However, the above lazy 'ByteString' variant
+-- for the strict "Data.ByteString" API. However, the above 'LazyByteString' variant
 -- of the program fails with @openBinaryFile: resource busy (file is locked)@.
 --
 -- The reason for this is that "Data.ByteString.Lazy" is specifically designed
