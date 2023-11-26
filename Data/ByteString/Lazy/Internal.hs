@@ -83,13 +83,13 @@ import Control.Exception (assert)
 -- | A space-efficient representation of a 'Word8' vector, supporting many
 -- efficient operations.
 --
--- A lazy 'ByteString' contains 8-bit bytes, or by using the operations
+-- A 'LazyByteString' contains 8-bit bytes, or by using the operations
 -- from "Data.ByteString.Lazy.Char8" it can be interpreted as containing
 -- 8-bit characters.
 --
 #ifndef HS_BYTESTRING_ASSERTIONS
-data ByteString = Empty | Chunk  {-# UNPACK #-} !S.ByteString ByteString
-  -- INVARIANT: The S.ByteString field of any Chunk is not empty.
+data ByteString = Empty | Chunk  {-# UNPACK #-} !S.StrictByteString ByteString
+  -- INVARIANT: The S.StrictByteString field of any Chunk is not empty.
   -- (See also the 'invariant' and 'checkInvariant' functions.)
 
   -- To make testing of this invariant convenient, we add an
@@ -97,9 +97,9 @@ data ByteString = Empty | Chunk  {-# UNPACK #-} !S.ByteString ByteString
   -- preprocessor macro is defined, by renaming the actual constructor
   -- and providing a pattern synonym that does the checking:
 #else
-data ByteString = Empty | Chunk_ {-# UNPACK #-} !S.ByteString ByteString
+data ByteString = Empty | Chunk_ {-# UNPACK #-} !S.StrictByteString ByteString
 
-pattern Chunk :: S.ByteString -> ByteString -> ByteString
+pattern Chunk :: S.StrictByteString -> ByteString -> ByteString
 pattern Chunk c cs <- Chunk_ c cs where
   Chunk c@(S.BS _ len) cs = assert (len > 0) Chunk_ c cs
 
@@ -210,13 +210,13 @@ checkInvariant (Chunk c@(S.BS _ len) cs)
 ------------------------------------------------------------------------
 
 -- | Smart constructor for 'Chunk'. Guarantees the data type invariant.
-chunk :: S.ByteString -> ByteString -> ByteString
+chunk :: S.StrictByteString -> ByteString -> ByteString
 chunk c@(S.BS _ len) cs | len == 0  = cs
                         | otherwise = Chunk c cs
 {-# INLINE chunk #-}
 
 -- | Consume the chunks of a lazy ByteString with a natural right fold.
-foldrChunks :: (S.ByteString -> a -> a) -> a -> ByteString -> a
+foldrChunks :: (S.StrictByteString -> a -> a) -> a -> ByteString -> a
 foldrChunks f z = go
   where go Empty        = z
         go (Chunk c cs) = f c (go cs)
@@ -224,7 +224,7 @@ foldrChunks f z = go
 
 -- | Consume the chunks of a lazy ByteString with a strict, tail-recursive,
 -- accumulating left fold.
-foldlChunks :: (a -> S.ByteString -> a) -> a -> ByteString -> a
+foldlChunks :: (a -> S.StrictByteString -> a) -> a -> ByteString -> a
 foldlChunks f = go
   where go !a Empty        = a
         go !a (Chunk c cs) = go (f a c) cs
@@ -312,18 +312,18 @@ times n lbs0
 ------------------------------------------------------------------------
 -- Conversions
 
--- |/O(1)/ Convert a strict 'ByteString' into a lazy 'ByteString'.
-fromStrict :: S.ByteString -> ByteString
+-- |/O(1)/ Convert a 'S.StrictByteString' into a 'LazyByteString'.
+fromStrict :: S.StrictByteString -> LazyByteString
 fromStrict (S.BS _ 0) = Empty
 fromStrict bs = Chunk bs Empty
 
--- |/O(n)/ Convert a lazy 'ByteString' into a strict 'ByteString'.
+-- |/O(n)/ Convert a 'LazyByteString' into a 'S.StrictByteString'.
 --
--- Note that this is an /expensive/ operation that forces the whole lazy
--- ByteString into memory and then copies all the data. If possible, try to
+-- Note that this is an /expensive/ operation that forces the whole
+-- 'LazyByteString' into memory and then copies all the data. If possible, try to
 -- avoid converting back and forth between strict and lazy bytestrings.
 --
-toStrict :: ByteString -> S.ByteString
+toStrict :: LazyByteString -> S.StrictByteString
 toStrict = \cs -> goLen0 cs cs
     -- We pass the original [ByteString] (bss0) through as an argument through
     -- goLen0, goLen1, and goLen since we will need it again in goCopy. Passing
