@@ -830,10 +830,10 @@ splitAtEndFold step end len bs0 = assert (len > 0) $ case bs0 of
         -> end (Chunk nextOutput bsL)
       | undershootW <- fromIntegral @Int64 @Int undershoot
         -- conversion Int64->Int is OK because 0 < undershoot < noLen
-      , amountOutput <- noLen - undershootW
-      , output <- S.BS noFp amountOutput
-      , finalSuffix <- S.BS (noFp `S.plusForeignPtr` amountOutput) undershootW
-        -> step output $ end (Chunk finalSuffix Empty)
+      , splitIndex <- noLen - undershootW
+      , beforeSplit <- S.BS noFp splitIndex
+      , afterSplit <- S.BS (noFp `S.plusForeignPtr` splitIndex) undershootW
+        -> step beforeSplit $ end (Chunk afterSplit bsL)
 
     Chunk (S.BS _ cLen) newBsR
       | cLen64 <- intToInt64 cLen

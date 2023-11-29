@@ -112,3 +112,14 @@ instance Arbitrary SB.ShortByteString where
 
 instance CoArbitrary SB.ShortByteString where
   coarbitrary s = coarbitrary (SB.unpack s)
+
+instance {-# OVERLAPPING #-} Testable (Int64 -> prop) where
+  property = error $ unlines [
+    "Found a test taking a raw Int64 argument.",
+    "'instance Arbitrary Int64' by default is likely to",
+    "produce very large numbers after the first few tests,",
+    "which doesn't make great indices into a LazyByteString.",
+    "For indices, try 'intToIndexTy' in Properties/ByteString.hs.",
+    "",
+    "If very few small-numbers tests is OK,",
+    "use 'forAllShrink' to bypass this poison instance."]
