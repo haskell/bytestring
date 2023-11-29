@@ -118,13 +118,12 @@ instance Arbitrary Natural where
 
 testRdInt :: forall a. (Arbitrary a, RdInt a) => String -> TestTree
 testRdInt s = testGroup s $
-    [ testProperty "from string" $ \ prefix suffix ->
-        forAllShrink arbitrary shrink $ \value ->
+    [ testProperty "from string" $ int64OK $ \value prefix suffix ->
         let si = show @a value
             b  = prefix <> B.pack si <> suffix
          in fmap (second B.unpack) (bread @a b)
             === sread @a (B.unpack prefix ++ si ++ B.unpack suffix)
-    , testProperty "from number" $ forAllShrink arbitrary shrink $ \n ->
+    , testProperty "from number" $ int64OK $ \n ->
         bread @a (B.pack (show n)) === Just (n, B.empty)
     ]
 #endif
@@ -609,13 +608,13 @@ tests =
 #endif
 
   , testProperty "index" $
-    \(NonNegative n) x -> fromIntegral n < B.length x ==> B.index x (fromIntegral n) === B.unpack x !! n
+    \(NonNegative n) x -> intToIndexTy n < B.length x ==> B.index x (intToIndexTy n) === B.unpack x !! n
   , testProperty "indexMaybe" $
-    \(NonNegative n) x -> fromIntegral n < B.length x ==> B.indexMaybe x (fromIntegral n) === Just (B.unpack x !! n)
+    \(NonNegative n) x -> intToIndexTy n < B.length x ==> B.indexMaybe x (intToIndexTy n) === Just (B.unpack x !! n)
   , testProperty "indexMaybe Nothing" $
-    \n x -> (n :: Int) < 0 || fromIntegral n >= B.length x ==> B.indexMaybe x (fromIntegral n) === Nothing
+    \n x -> n < 0 || intToIndexTy n >= B.length x ==> B.indexMaybe x (intToIndexTy n) === Nothing
   , testProperty "!?" $
-    \n x -> B.indexMaybe x (fromIntegral (n :: Int)) === x B.!? (fromIntegral n)
+    \(intToIndexTy -> n) x -> B.indexMaybe x n === x B.!? n
 
 #ifdef BYTESTRING_CHAR8
   , testProperty "isString" $

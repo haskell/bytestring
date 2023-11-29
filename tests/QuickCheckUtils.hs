@@ -7,6 +7,7 @@ module QuickCheckUtils
   , String8(..)
   , CByteString(..)
   , Sqrt(..)
+  , int64OK
   ) where
 
 import Test.Tasty.QuickCheck
@@ -113,6 +114,8 @@ instance Arbitrary SB.ShortByteString where
 instance CoArbitrary SB.ShortByteString where
   coarbitrary s = coarbitrary (SB.unpack s)
 
+-- | This /poison instance/ exists to make accidental mis-use
+-- of the @Arbitrary Int64@ instance a bit less likely.
 instance {-# OVERLAPPING #-} Testable (Int64 -> prop) where
   property = error $ unlines [
     "Found a test taking a raw Int64 argument.",
@@ -121,5 +124,10 @@ instance {-# OVERLAPPING #-} Testable (Int64 -> prop) where
     "which doesn't make great indices into a LazyByteString.",
     "For indices, try 'intToIndexTy' in Properties/ByteString.hs.",
     "",
-    "If very few small-numbers tests is OK,",
-    "use 'forAllShrink' to bypass this poison instance."]
+    "If very few small-numbers tests is OK, use",
+    "'int64OK' to bypass this poison-instance."]
+
+-- | Use this to bypass the poison instance for @Testable (Int64 -> prop)@
+-- defined in "QuickCheckUtils".
+int64OK :: (Arbitrary a, Show a, Testable b) => (a -> b) -> Property
+int64OK f = propertyForAllShrinkShow arbitrary shrink (\v -> [show v]) f
