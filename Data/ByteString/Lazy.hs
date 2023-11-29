@@ -1,7 +1,10 @@
-{-# LANGUAGE BangPatterns #-}
 {-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
 {-# OPTIONS_HADDOCK prune #-}
 {-# LANGUAGE Trustworthy #-}
+
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 -- |
 -- Module      : Data.ByteString.Lazy
@@ -237,9 +240,9 @@ import qualified Data.ByteString        as P  (ByteString) -- type name only
 import qualified Data.ByteString        as S  -- S for strict (hmm...)
 import qualified Data.ByteString.Internal.Type as S
 import qualified Data.ByteString.Unsafe as S
-import qualified Data.ByteString.Lazy.Internal.Deque as D
 import Data.ByteString.Lazy.Internal
 
+import Control.Exception        (assert)
 import Control.Monad            (mplus)
 import Data.Word                (Word8)
 import Data.Int                 (Int64)
@@ -790,15 +793,73 @@ take i cs0         = take' i cs0
 --
 -- @since 0.11.2.0
 takeEnd :: Int64 -> ByteString -> ByteString
-takeEnd i _ | i <= 0 = Empty
-takeEnd i cs0        = takeEnd' i cs0
-  where takeEnd' 0 _         = Empty
-        takeEnd' n cs        =
-            snd $ foldrChunks takeTuple (n,Empty) cs
-        takeTuple _ (0, cs)  = (0, cs)
-        takeTuple c (n, cs)
-            | n > fromIntegral (S.length c) = (n - fromIntegral (S.length c), Chunk c cs)
-            | otherwise      = (0, Chunk (S.takeEnd (fromIntegral n) c) cs)
+takeEnd i bs
+  | i <= 0 = Empty
+  | otherwise = splitAtEndFold (\_ res -> res) id i bs
+
+-- | Helper function for implementing 'takeEnd' and 'dropEnd'
+splitAtEndFold
+  :: forall result
+  .  (S.StrictByteString -> result -> result)
+  -- ^ What to do when one chunk of output is ready
+  -- (The StrictByteString will not be empty.)
+  -> (ByteString -> result)
+  -- ^ What to do when the split-point is reached
+  -> Int64
+  -- ^ Number of bytes to leave at the end (must be strictly positive)
+  -> ByteString -- ^ Input ByteString
+  -> result
+{-# INLINE splitAtEndFold #-}
+splitAtEndFold step end len bs0 = assert (len > 0) $ case bs0 of
+  Empty -> end Empty
+  Chunk c t -> goR len c t t
+ where
+  -- Idea: Keep two references into the input ByteString:
+  --   "bsL" tracks the current split point,
+  --   "bsR" tracks the yet-unprocessed tail.
+  -- When they are closer than "len" bytes apart, process more input.  ("goR")
+  -- When they are  at  least  "len" bytes apart, produce more output. ("goL")
+  goR :: Int64 -> S.StrictByteString -> ByteString -> ByteString -> result
+  goR !undershoot nextOutput@(S.BS noFp noLen) bsL bsR =
+      assert (undershoot > 0) $
+      -- INVARIANT: length bsL == length bsR + len - undershoot
+      -- (not 'assert'ed because that would break our laziness properties)
+      case bsR of
+    Empty
+      | undershoot >= intToInt64 noLen
+        -> end (Chunk nextOutput bsL)
+      | undershootW <- fromIntegral @Int64 @Int undershoot
+        -- conversion Int64->Int is OK because 0 < undershoot < noLen
+      , amountOutput <- noLen - undershootW
+      , output <- S.BS noFp amountOutput
+      , finalSuffix <- S.BS (noFp `S.plusForeignPtr` amountOutput) undershootW
+        -> step output $ end (Chunk finalSuffix Empty)
+
+    Chunk (S.BS _ cLen) newBsR
+      | cLen64 <- intToInt64 cLen
+      , undershoot > cLen64
+        -> goR (undershoot - cLen64) nextOutput bsL newBsR
+      | undershootW <- fromIntegral @Int64 @Int undershoot
+        -> step nextOutput $ goL (cLen - undershootW) bsL newBsR
+
+  goL :: Int -> ByteString -> ByteString -> result
+  goL !overshoot bsL bsR =
+      assert (overshoot >= 0) $
+      -- INVARIANT: length bsL == length bsR + len + intToInt64 overshoot
+      -- (not 'assert'ed because that would break our laziness properties)
+      case bsL of
+    Empty -> splitAtEndFoldInvariantFailed
+    Chunk c@(S.BS _ cLen) newBsL
+      | overshoot >= cLen
+        -> step c $ goL (overshoot - cLen) newBsL bsR
+      | otherwise
+        -> goR (intToInt64 $ cLen - overshoot) c newBsL bsR
+
+splitAtEndFoldInvariantFailed :: a
+-- See Note [Float error calls out of INLINABLE things] in D.B.Internal.Type
+splitAtEndFoldInvariantFailed =
+  moduleError "splitAtEndFold"
+              "internal error: bsL not longer than bsR"
 
 -- | /O(n\/c)/ 'drop' @n xs@ returns the suffix of @xs@ after the first @n@
 -- elements, or 'empty' if @n > 'length' xs@.
@@ -824,44 +885,9 @@ drop i cs0 = drop' i cs0
 --
 -- @since 0.11.2.0
 dropEnd :: Int64 -> ByteString -> ByteString
-dropEnd i p | i <= 0 = p
-dropEnd i p          = go D.empty p
-  where go :: D.Deque -> ByteString -> ByteString
-        go deque (Chunk c cs)
-            | D.byteLength deque < i = go (D.snoc c deque) cs
-            | otherwise              =
-                  let (output, deque') = getOutput empty (D.snoc c deque)
-                    in foldrChunks Chunk (go deque' cs) output
-        go deque Empty               = fromDeque $ dropEndBytes deque i
-
-        len c = fromIntegral (S.length c)
-
-        -- get a `ByteString` from all the front chunks of the accumulating deque
-        -- for which we know they won't be dropped
-        getOutput :: ByteString -> D.Deque -> (ByteString, D.Deque)
-        getOutput out deque = case D.popFront deque of
-            Nothing                       -> (reverseChunks out, deque)
-            Just (x, deque') | D.byteLength deque' >= i ->
-                            getOutput (Chunk x out) deque'
-            _ -> (reverseChunks out, deque)
-
-        -- reverse a `ByteString`s chunks, keeping all internal `S.StrictByteString`s
-        -- unchanged
-        reverseChunks = foldlChunks (flip Chunk) empty
-
-        -- drop n elements from the rear of the accumulating `deque`
-        dropEndBytes :: D.Deque -> Int64 -> D.Deque
-        dropEndBytes deque n = case D.popRear deque of
-            Nothing                       -> deque
-            Just (deque', x) | len x <= n -> dropEndBytes deque' (n - len x)
-                             | otherwise  ->
-                                D.snoc (S.dropEnd (fromIntegral n) x) deque'
-
-        -- build a lazy ByteString from an accumulating `deque`
-        fromDeque :: D.Deque -> ByteString
-        fromDeque deque =
-            List.foldr chunk Empty (D.front deque) `append`
-            List.foldl' (flip chunk) Empty (D.rear deque)
+dropEnd i p
+  | i <= 0 = p
+  | otherwise = splitAtEndFold Chunk (const Empty) i p
 
 -- | /O(n\/c)/ 'splitAt' @n xs@ is equivalent to @('take' n xs, 'drop' n xs)@.
 splitAt :: Int64 -> ByteString -> (ByteString, ByteString)
@@ -1687,6 +1713,9 @@ revNonEmptyChunks = List.foldl' (flip Chunk) Empty
 -- reverse a list of possibly-empty chunks into a lazy ByteString
 revChunks :: [P.ByteString] -> ByteString
 revChunks = List.foldl' (flip chunk) Empty
+
+intToInt64 :: Int -> Int64
+intToInt64 = fromIntegral @Int @Int64
 
 -- $IOChunk
 --
