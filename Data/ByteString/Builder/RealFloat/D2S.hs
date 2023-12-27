@@ -222,8 +222,8 @@ d2s' formatter specialFormatter d =
                in formatter sign m e
 
 -- | Render a Double in scientific notation
-d2s :: Double -> Builder
-d2s d = primBounded (d2s' toCharsScientific toCharsNonNumbersAndZero d) ()
+d2s :: Char -> Double -> Builder
+d2s eE d = primBounded (d2s' (toCharsScientific eE) toCharsNonNumbersAndZero d) ()
 
 -- | Returns the decimal representation of a Double. NaN and Infinity will
 -- return `FloatingDecimal 0 0`

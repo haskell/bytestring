@@ -67,6 +67,7 @@ module Data.ByteString.Builder.RealFloat
   , standard
   , standardDefaultPrecision
   , scientific
+  , scientificCustom
   , generic
   ) where
 
@@ -120,19 +121,32 @@ standardDefaultPrecision = MkFloatFormat FStandard Nothing
 --
 -- @since 0.11.2.0
 scientific :: FloatFormat
-scientific = MkFloatFormat FScientific Nothing
+scientific = MkFloatFormat (FScientific 'e') Nothing
+
+-- | Scientific notation with \'default precision\' and a custom exponent separator character.
+--
+-- @since 0.11.2.0
+scientificCustom :: Char -> FloatFormat
+scientificCustom eE = MkFloatFormat (FScientific eE) Nothing
 
 -- | Standard or scientific notation depending on the exponent. Matches `show`
 --
 -- @since 0.11.2.0
 generic :: FloatFormat
-generic = MkFloatFormat FGeneric Nothing
+generic = MkFloatFormat (FGeneric 'e') Nothing
+
+-- | Standard or scientific notation with a custom exponent separator.
+-- @Char@ defines the exponent separator char, which is usually @e@ or @E@.
+--
+-- @since ???????@
+genericCustom :: Char -> FloatFormat
+genericCustom eE = MkFloatFormat (FGeneric eE) Nothing
 
 -- | ByteString float-to-string format
 data FormatMode
-  = FScientific     -- ^ scientific notation
+  = FScientific Char   -- ^ scientific notation
   | FStandard       -- ^ standard notation with `Maybe Int` digits after the decimal
-  | FGeneric        -- ^ dispatches to scientific or standard notation based on the exponent
+  | FGeneric Char -- ^ dispatches to scientific or standard notation based on the exponent. @Char@ defines the exponent separator char, which is usually @e@ or @E@.
   deriving Show
 
 -- TODO: support precision argument for FGeneric and FScientific
@@ -165,14 +179,14 @@ formatFloat (MkFloatFormat fmt prec) = \f ->
   let (RF.FloatingDecimal m e) = RF.f2Intermediate f
       e' = R.int32ToInt e + R.decimalLength9 m in
   case fmt of
-    FGeneric ->
+    FGeneric eE ->
       case specialStr f of
         Just b -> b
         Nothing ->
           if e' >= 0 && e' <= 7
              then sign f `mappend` showStandard (R.word32ToWord64 m) e' prec
-             else BP.primBounded (R.toCharsScientific (f < 0) m e) ()
-    FScientific -> RF.f2s f
+             else BP.primBounded (R.toCharsScientific eE (f < 0) m e) ()
+    FScientific eE -> RF.f2s eE f
     FStandard ->
       case specialStr f of
         Just b -> b
@@ -208,14 +222,14 @@ formatDouble (MkFloatFormat fmt prec) = \f ->
   let (RD.FloatingDecimal m e) = RD.d2Intermediate f
       e' = R.int32ToInt e + R.decimalLength17 m in
   case fmt of
-    FGeneric ->
+    FGeneric eE ->
       case specialStr f of
         Just b -> b
         Nothing ->
           if e' >= 0 && e' <= 7
              then sign f `mappend` showStandard m e' prec
-             else BP.primBounded (R.toCharsScientific (f < 0) m e) ()
-    FScientific -> RD.d2s f
+             else BP.primBounded (R.toCharsScientific eE (f < 0) m e) ()
+    FScientific eE -> RD.d2s eE f
     FStandard ->
       case specialStr f of
         Just b -> b

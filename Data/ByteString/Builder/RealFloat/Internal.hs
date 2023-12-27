@@ -701,9 +701,6 @@ asciiDot = ord '.'
 asciiMinus :: Int
 asciiMinus = ord '-'
 
-ascii_e :: Int
-ascii_e = ord 'e'
-
 -- | Convert a single-digit number to the ascii ordinal e.g '1' -> 0x31
 toAscii :: Word# -> Word#
 toAscii a = a `plusWord#` asciiRaw asciiZero
@@ -843,16 +840,16 @@ writeSign ptr False s = (# ptr, s #)
 -- | Returns the decimal representation of a floating point number in
 -- scientific (exponential) notation
 {-# INLINABLE toCharsScientific #-}
-{-# SPECIALIZE toCharsScientific :: Bool -> Word32 -> Int32 -> BoundedPrim () #-}
-{-# SPECIALIZE toCharsScientific :: Bool -> Word64 -> Int32 -> BoundedPrim () #-}
-toCharsScientific :: (Mantissa a) => Bool -> a -> Int32 -> BoundedPrim ()
-toCharsScientific !sign !mantissa !expo = boundedPrim maxEncodedLength $ \_ !(Ptr p0)-> do
+{-# SPECIALIZE toCharsScientific :: Char -> Bool -> Word32 -> Int32 -> BoundedPrim () #-}
+{-# SPECIALIZE toCharsScientific :: Char -> Bool -> Word64 -> Int32 -> BoundedPrim () #-}
+toCharsScientific :: (Mantissa a) => Char -> Bool -> a -> Int32 -> BoundedPrim ()
+toCharsScientific !eE !sign !mantissa !expo = boundedPrim maxEncodedLength $ \_ !(Ptr p0)-> do
   let !olength@(I# ol) = decimalLength mantissa
       !expo' = expo + intToInt32 olength - 1
   IO $ \s1 ->
     let !(# p1, s2 #) = writeSign p0 sign s1
         !(# p2, s3 #) = writeMantissa p1 ol mantissa s2
-        s4 = poke p2 (asciiRaw ascii_e) s3
+        s4 = poke p2 (asciiRaw $ ord eE) s3
         !(# p3, s5 #) = writeSign (p2 `plusAddr#` 1#) (expo' < 0) s4
         !(# p4, s6 #) = writeExponent p3 (abs expo') s5
      in (# s6, (Ptr p4) #)
