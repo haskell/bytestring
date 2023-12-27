@@ -69,6 +69,7 @@ module Data.ByteString.Builder.RealFloat
   , scientific
   , scientificCustom
   , generic
+  , genericCustom
   ) where
 
 import Data.ByteString.Builder.Internal (Builder)
