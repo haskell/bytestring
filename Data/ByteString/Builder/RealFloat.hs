@@ -62,7 +62,11 @@ module Data.ByteString.Builder.RealFloat
 
   -- * Custom formatting
   , formatFloat
+  , formatFloatSpecials
   , formatDouble
+  , formatDoubleSpecials
+  , R.SpecialStrings(..)
+  , defaultSpecialStrings
   , FloatFormat
   , standard
   , standardDefaultPrecision
@@ -161,7 +165,15 @@ data FormatMode
 -- @since 0.11.2.0
 {-# INLINABLE formatFloat #-}
 formatFloat :: FloatFormat -> Float -> Builder
-formatFloat (MkFloatFormat fmt prec) = \f ->
+formatFloat = formatFloatSpecials defaultSpecialStrings
+
+-- TODO: support precision argument for FGeneric and FScientific
+-- | Like formatFloat but allows custom strings for the special values.
+--
+-- @since ??????
+{-# INLINABLE formatFloatSpecials #-}
+formatFloatSpecials :: R.SpecialStrings -> FloatFormat -> Float -> Builder
+formatFloatSpecials ss (MkFloatFormat fmt prec) = \f ->
   let (RF.FloatingDecimal m e) = RF.f2Intermediate f
       e' = R.int32ToInt e + R.decimalLength9 m in
   case fmt of
@@ -172,13 +184,12 @@ formatFloat (MkFloatFormat fmt prec) = \f ->
           if e' >= 0 && e' <= 7
              then sign f `mappend` showStandard (R.word32ToWord64 m) e' prec
              else BP.primBounded (R.toCharsScientific (f < 0) m e) ()
-    FScientific -> RF.f2s f
+    FScientific -> RF.f2s ss f
     FStandard ->
       case specialStr f of
         Just b -> b
         Nothing -> sign f `mappend` showStandard (R.word32ToWord64 m) e' prec
 
--- TODO: support precision argument for FGeneric and FScientific
 -- | Returns a rendered Double. Returns the \'shortest\' representation in
 -- scientific notation and takes an optional precision argument in standard
 -- notation. Also see `doubleDec`.
@@ -204,7 +215,15 @@ formatFloat (MkFloatFormat fmt prec) = \f ->
 -- @since 0.11.2.0
 {-# INLINABLE formatDouble #-}
 formatDouble :: FloatFormat -> Double -> Builder
-formatDouble (MkFloatFormat fmt prec) = \f ->
+formatDouble = formatDoubleSpecials defaultSpecialStrings
+
+-- TODO: support precision argument for FGeneric and FScientific
+-- | Like formatDouble but allows custom strings for the special values.
+--
+-- @since ??????
+{-# INLINABLE formatDoubleSpecials #-}
+formatDoubleSpecials :: R.SpecialStrings -> FloatFormat -> Double -> Builder
+formatDoubleSpecials ss (MkFloatFormat fmt prec) = \f ->
   let (RD.FloatingDecimal m e) = RD.d2Intermediate f
       e' = R.int32ToInt e + R.decimalLength17 m in
   case fmt of
@@ -215,11 +234,23 @@ formatDouble (MkFloatFormat fmt prec) = \f ->
           if e' >= 0 && e' <= 7
              then sign f `mappend` showStandard m e' prec
              else BP.primBounded (R.toCharsScientific (f < 0) m e) ()
-    FScientific -> RD.d2s f
+    FScientific -> RD.d2s ss f
     FStandard ->
       case specialStr f of
         Just b -> b
         Nothing -> sign f `mappend` showStandard m e' prec
+
+-- | Standard strings for special values of IEEE754 floating point values.
+--
+-- @since ?????
+defaultSpecialStrings :: R.SpecialStrings
+defaultSpecialStrings = R.SpecialStrings
+  { R.nan = "NaN"
+  , R.positiveInfinity = "Infinity"
+  , R.negativeInfinity = "-Infinity"
+  , R.positiveZero = "0.0e0"
+  , R.negativeZero = "-0.0e0"
+  }
 
 -- | Char7 encode a 'Char'.
 {-# INLINE char7 #-}

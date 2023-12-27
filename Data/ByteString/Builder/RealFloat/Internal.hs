@@ -22,6 +22,7 @@
 module Data.ByteString.Builder.RealFloat.Internal
     ( mask
     , NonNumbersAndZero(..)
+    , SpecialStrings(..)
     , toCharsNonNumbersAndZero
     , decimalLength9
     , decimalLength17
@@ -69,6 +70,7 @@ module Data.ByteString.Builder.RealFloat.Internal
 
 import Control.Monad (foldM)
 import Data.Bits (Bits(..), FiniteBits(..))
+import Data.Bool (bool)
 import Data.ByteString.Internal (c2w)
 import Data.ByteString.Builder.Prim.Internal (BoundedPrim, boundedPrim)
 import Data.ByteString.Builder.RealFloat.TableGenerator
@@ -246,13 +248,23 @@ data NonNumbersAndZero = NonNumbersAndZero
   , mantissa_non_zero :: Bool
   }
 
+-- | Strings for special values of IEEE754 floating point values.
+--
+-- @since ?????
+data SpecialStrings = SpecialStrings
+  { nan :: String
+  , positiveInfinity :: String
+  , negativeInfinity :: String
+  , positiveZero :: String
+  , negativeZero :: String
+  } deriving Show
+
 -- | Renders NonNumbersAndZero into bounded primitive
-toCharsNonNumbersAndZero :: NonNumbersAndZero -> BoundedPrim ()
-toCharsNonNumbersAndZero NonNumbersAndZero{..}
-  | mantissa_non_zero = boundString "NaN"
-  | exponent_all_one = boundString $ signStr ++ "Infinity"
-  | otherwise = boundString $ signStr ++ "0.0e0"
-  where signStr = if negative then "-" else ""
+toCharsNonNumbersAndZero :: SpecialStrings -> NonNumbersAndZero -> BoundedPrim ()
+toCharsNonNumbersAndZero SpecialStrings{..} NonNumbersAndZero{..}
+  | mantissa_non_zero = boundString nan
+  | exponent_all_one = bool (boundString positiveInfinity) (boundString negativeInfinity) negative
+  | otherwise = bool (boundString positiveZero) (boundString negativeZero) negative
 
 -- | Part of the calculation on whether to round up the decimal representation.
 -- This is currently a constant function to match behavior in Base `show` and

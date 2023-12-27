@@ -202,8 +202,8 @@ f2s' formatter specialFormatter f =
                in formatter sign m e
 
 -- | Render a Float in scientific notation
-f2s :: Float -> Builder
-f2s f = primBounded (f2s' toCharsScientific toCharsNonNumbersAndZero f) ()
+f2s :: SpecialStrings -> Float -> Builder
+f2s ss f = primBounded (f2s' toCharsScientific (toCharsNonNumbersAndZero ss) f) ()
 
 -- | Returns the decimal representation of a Float. NaN and Infinity will
 -- return `FloatingDecimal 0 0`
