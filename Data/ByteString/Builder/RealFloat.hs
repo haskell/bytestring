@@ -68,6 +68,7 @@ module Data.ByteString.Builder.RealFloat
   , standardDefaultPrecision
   , scientific
   , generic
+  , genericCustom
   ) where
 
 import Data.ByteString.Builder.Internal (Builder)
@@ -126,13 +127,21 @@ scientific = MkFloatFormat FScientific Nothing
 --
 -- @since 0.11.2.0
 generic :: FloatFormat
-generic = MkFloatFormat FGeneric Nothing
+generic = MkFloatFormat (FGeneric 0 7) Nothing
+
+-- | Standard or scientific notation depending on the given exponent range.
+-- First @Int@ is the lower inclusive exponent bound.
+-- Second @Int@ is the upper inclusive exponent bound.
+--
+-- @since ???????@
+genericCustom :: Int -> Int -> FloatFormat
+genericCustom lower upper = MkFloatFormat (FGeneric lower upper) Nothing
 
 -- | ByteString float-to-string format
 data FormatMode
   = FScientific     -- ^ scientific notation
   | FStandard       -- ^ standard notation with `Maybe Int` digits after the decimal
-  | FGeneric        -- ^ dispatches to scientific or standard notation based on the exponent
+  | FGeneric Int Int -- ^ dispatches to scientific or standard notation based on the exponent. First @Int@ is the lower inclusive exponent bound. Second @Int@ is the upper inclusive exponent bound.
   deriving Show
 
 -- TODO: support precision argument for FGeneric and FScientific
@@ -165,11 +174,11 @@ formatFloat (MkFloatFormat fmt prec) = \f ->
   let (RF.FloatingDecimal m e) = RF.f2Intermediate f
       e' = R.int32ToInt e + R.decimalLength9 m in
   case fmt of
-    FGeneric ->
+    FGeneric emin emax ->
       case specialStr f of
         Just b -> b
         Nothing ->
-          if e' >= 0 && e' <= 7
+          if e' >= emin && e' <= emax
              then sign f `mappend` showStandard (R.word32ToWord64 m) e' prec
              else BP.primBounded (R.toCharsScientific (f < 0) m e) ()
     FScientific -> RF.f2s f
@@ -208,11 +217,11 @@ formatDouble (MkFloatFormat fmt prec) = \f ->
   let (RD.FloatingDecimal m e) = RD.d2Intermediate f
       e' = R.int32ToInt e + R.decimalLength17 m in
   case fmt of
-    FGeneric ->
+    FGeneric emin emax ->
       case specialStr f of
         Just b -> b
         Nothing ->
-          if e' >= 0 && e' <= 7
+          if e' >= emin && e' <= emax
              then sign f `mappend` showStandard m e' prec
              else BP.primBounded (R.toCharsScientific (f < 0) m e) ()
     FScientific -> RD.d2s f
