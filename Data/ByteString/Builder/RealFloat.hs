@@ -125,7 +125,7 @@ scientific = MkFloatFormat (FScientific 'e') Nothing
 
 -- | Scientific notation with \'default precision\' and a custom exponent separator character.
 --
--- @since 0.11.2.0
+-- @since ??????
 scientificCustom :: Char -> FloatFormat
 scientificCustom eE = MkFloatFormat (FScientific eE) Nothing
 
@@ -138,7 +138,7 @@ generic = MkFloatFormat (FGeneric 'e') Nothing
 -- | Standard or scientific notation with a custom exponent separator.
 -- @Char@ defines the exponent separator char, which is usually @e@ or @E@.
 --
--- @since ???????@
+-- @since ???????
 genericCustom :: Char -> FloatFormat
 genericCustom eE = MkFloatFormat (FGeneric eE) Nothing
 
