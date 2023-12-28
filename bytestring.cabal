@@ -181,6 +181,7 @@ test-suite bytestring-tests
                     deepseq,
                     ghc-prim,
                     QuickCheck,
+                    quickcheck-assertions,
                     tasty,
                     tasty-hunit,
                     tasty-quickcheck >= 0.8.1,

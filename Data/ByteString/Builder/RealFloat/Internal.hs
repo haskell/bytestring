@@ -89,6 +89,7 @@ module Data.ByteString.Builder.RealFloat.Internal
     , FloatFormat(..)
     , fScientific
     , fGeneric
+    , fShortest
 
     , module Data.ByteString.Builder.RealFloat.TableGenerator
     ) where
@@ -1001,6 +1002,10 @@ data FloatFormat
     , stdExpoRange :: (Int, Int)
     , specials :: SpecialStrings
     }
+  | FShortest
+    { eE :: Word8#
+    , specials :: SpecialStrings
+    }
   deriving Show
 fScientific :: Char -> SpecialStrings -> FloatFormat
 fScientific eE specials = FScientific
@@ -1009,6 +1014,11 @@ fScientific eE specials = FScientific
   }
 fGeneric :: Char -> Maybe Int -> (Int, Int) -> SpecialStrings -> FloatFormat
 fGeneric eE precision stdExpoRange specials = FGeneric
+  { eE = asciiRaw $ ord eE
+  , ..
+  }
+fShortest :: Char -> SpecialStrings -> FloatFormat
+fShortest eE specials = FShortest
   { eE = asciiRaw $ ord eE
   , ..
   }

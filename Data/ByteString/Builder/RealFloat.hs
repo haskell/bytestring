@@ -78,11 +78,12 @@ module Data.ByteString.Builder.RealFloat
   , standardDefaultPrecision
   , scientific
   , generic
+  , shortest
   ) where
 
 import Data.ByteString.Builder.Internal (Builder)
 import qualified Data.ByteString.Builder.RealFloat.Internal as R
-import Data.ByteString.Builder.RealFloat.Internal (FloatFormat(..), fScientific, fGeneric)
+import Data.ByteString.Builder.RealFloat.Internal (FloatFormat(..), fScientific, fGeneric, fShortest, SpecialStrings(SpecialStrings))
 import Data.ByteString.Builder.RealFloat.Internal (positiveZero, negativeZero)
 import qualified Data.ByteString.Builder.RealFloat.F2S as RF
 import qualified Data.ByteString.Builder.RealFloat.D2S as RD
@@ -162,6 +163,18 @@ standardSpecialStrings = scientificSpecialStrings
 generic :: FloatFormat
 generic = fGeneric 'e' Nothing (0,7) standardSpecialStrings
 
+-- | Standard or scientific notation depending on which uses the least number of charabers.
+--
+-- @since ????
+shortest :: FloatFormat
+shortest = fShortest 'e' SpecialStrings
+  { nan = "NaN"
+  , positiveInfinity = "Inf"
+  , negativeInfinity = "-Inf"
+  , positiveZero = "0"
+  , negativeZero = "-0"
+  }
+
 -- TODO: support precision argument for FGeneric and FScientific
 -- | Returns a rendered Float. Returns the \'shortest\' representation in
 -- scientific notation and takes an optional precision argument in standard
@@ -235,6 +248,7 @@ formatFloating :: forall a mw ew ei.
   , R.Mantissa mw
   , ToWord64 mw
   , R.DecimalLength mw
+  , BuildDigits mw
   -- exponent
   , ew ~ R.ExponentWord a
   , Integral ew
@@ -251,6 +265,16 @@ formatFloating fmt f = case fmt of
        else sci eE
   FScientific {..} -> specialsOr specials $ sci eE
   FStandard {..} -> specialsOr specials $ std precision
+  FShortest {..} -> specialsOr specials
+    if    e'' >= 0 && (olength + 2   >= e''  || olength == 1 && e'' <= 2)
+       || e'' <  0 && (olength + e'' >= (-3) || olength == 1 && e'' >= (-2))
+    then if e'' >= 0
+      then printSign f <> buildDigits (truncate $ abs f :: mw)
+      else std Nothing
+    else sci eE
+    where
+    e'' = R.toInt e
+    olength = R.decimalLength m
   where
   sci eE = BP.primBounded (R.toCharsScientific @a Proxy eE sign m e) ()
   std precision = printSign f <> showStandard (toWord64 m) e' precision
@@ -315,4 +339,8 @@ showStandard m e prec =
     mkDot rs = if null rs then mempty else char7 '.' `mappend` mconcat rs
     ds = digits m
     digitsToBuilder = fmap (char7 . intToDigit)
+
+class BuildDigits a where buildDigits :: a -> Builder
+instance BuildDigits Word32 where buildDigits = BP.primBounded BP.word32Dec
+instance BuildDigits Word64 where buildDigits = BP.primBounded BP.word64Dec
 

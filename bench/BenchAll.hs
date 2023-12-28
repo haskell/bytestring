@@ -409,6 +409,22 @@ main = do
               , benchB "Double Average" doubleSpecials $ foldMap (formatDouble standardDefaultPrecision)
               ]
             ]
+          , bgroup "FShortest"
+            [ bgroup "Positive"
+              [ benchB "Float"       floatPosData       $ foldMap (formatFloat  shortest)
+              , benchB "Double"      doublePosData      $ foldMap (formatDouble shortest)
+              , benchB "DoubleSmall" doublePosSmallData $ foldMap (formatDouble shortest)
+              ]
+            , bgroup "Negative"
+              [ benchB "Float"       floatNegData       $ foldMap (formatFloat  shortest)
+              , benchB "Double"      doubleNegData      $ foldMap (formatDouble shortest)
+              , benchB "DoubleSmall" doubleNegSmallData $ foldMap (formatDouble shortest)
+              ]
+            , bgroup "Special"
+              [ benchB "Float  Average" floatSpecials  $ foldMap (formatFloat  shortest)
+              , benchB "Double Average" doubleSpecials $ foldMap (formatDouble shortest)
+              ]
+            ]
           ]
         ]
       ]
