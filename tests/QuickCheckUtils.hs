@@ -1,6 +1,9 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module QuickCheckUtils
   ( Char8(..)
@@ -19,6 +22,7 @@ import Data.Word
 import Data.Int
 import System.IO
 import Foreign.C (CChar)
+import GHC.TypeLits (TypeError, ErrorMessage(..))
 
 import qualified Data.ByteString.Short as SB
 import qualified Data.ByteString      as P
@@ -116,16 +120,17 @@ instance CoArbitrary SB.ShortByteString where
 
 -- | This /poison instance/ exists to make accidental mis-use
 -- of the @Arbitrary Int64@ instance a bit less likely.
-instance {-# OVERLAPPING #-} Testable (Int64 -> prop) where
-  property = error $ unlines [
-    "Found a test taking a raw Int64 argument.",
-    "'instance Arbitrary Int64' by default is likely to",
-    "produce very large numbers after the first few tests,",
-    "which doesn't make great indices into a LazyByteString.",
-    "For indices, try 'intToIndexTy' in Properties/ByteString.hs.",
-    "",
-    "If very few small-numbers tests is OK, use",
-    "'int64OK' to bypass this poison-instance."]
+instance {-# OVERLAPPING #-}
+  TypeError (Text "Found a test taking a raw Int64 argument."
+    :$$: Text "'instance Arbitrary Int64' by default is likely to"
+    :$$: Text "produce very large numbers after the first few tests,"
+    :$$: Text "which doesn't make great indices into a LazyByteString."
+    :$$: Text "For indices, try 'intToIndexTy' in Properties/ByteString.hs."
+    :$$: Text ""
+    :$$: Text "If very few small-numbers tests is OK, use"
+    :$$: Text "'int64OK' to bypass this poison-instance."
+  ) => Testable (Int64 -> prop) where
+  property = error "poison instance Testable (Int64 -> prop)"
 
 -- | Use this to bypass the poison instance for @Testable (Int64 -> prop)@
 -- defined in "QuickCheckUtils".
