@@ -219,8 +219,8 @@ d2s' formatter specialFormatter d =
                in formatter sign m e
 
 -- | Render a Double in scientific notation
-d2s :: Word8# -> Double -> Builder
-d2s eE d = primBounded (d2s' (toCharsScientific eE) toCharsNonNumbersAndZero d) ()
+d2s :: Word8# -> SpecialStrings -> Double -> Builder
+d2s eE ss d = primBounded (d2s' (toCharsScientific eE) (toCharsNonNumbersAndZero ss) d) ()
 
 -- | Returns the decimal representation of a Double. NaN and Infinity will
 -- return `FloatingDecimal 0 0`

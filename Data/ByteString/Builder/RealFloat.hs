@@ -108,7 +108,7 @@ doubleDec = formatDouble generic
 --
 -- @since 0.11.2.0
 data FloatFormat
-  = FScientific Word8#     -- ^ scientific notation
+  = FScientific Word8# R.SpecialStrings -- ^ scientific notation
   | FStandard (Maybe Int)       -- ^ standard notation with `Maybe Int` digits after the decimal
   | FGeneric Word8# (Maybe Int) (Int,Int)       -- ^ dispatches to scientific or standard notation based on the exponent
   deriving Show
@@ -131,7 +131,16 @@ standardDefaultPrecision = FStandard Nothing
 --
 -- @since 0.11.2.0
 scientific :: FloatFormat
-scientific = fScientific 'e'
+scientific = fScientific 'e' scientificSpecialStrings
+
+scientificSpecialStrings :: R.SpecialStrings
+scientificSpecialStrings = R.SpecialStrings
+  { R.nan = "NaN"
+  , R.positiveInfinity = "Infinity"
+  , R.negativeInfinity = "-Infinity"
+  , R.positiveZero = "0.0e0"
+  , R.negativeZero = "-0.0e0"
+  }
 
 -- | Standard or scientific notation depending on the exponent. Matches `show`
 --
@@ -219,7 +228,7 @@ formatFloating fmt f =
           if e' >= minExpo && e' <= maxExpo
              then sign f `mappend` showStandard (toWord64 m) e' prec
              else BP.primBounded (R.toCharsScientific eE (f < 0) m e) ()
-    FScientific eE -> toS eE f
+    FScientific eE ss -> toS eE ss f
     FStandard prec ->
       case specialStr f of
         Just b -> b
@@ -236,7 +245,7 @@ class ToWord64 a where toWord64 :: a -> Word64
 instance ToWord64 Word32 where toWord64 = R.word32ToWord64
 instance ToWord64 Word64 where toWord64 = id
 
-class ToS a where toS :: Word8# -> a -> Builder
+class ToS a where toS :: Word8# -> R.SpecialStrings -> a -> Builder
 instance ToS Float where toS = RF.f2s
 instance ToS Double where toS = RD.d2s
 

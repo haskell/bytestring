@@ -199,8 +199,8 @@ f2s' formatter specialFormatter f =
                in formatter sign m e
 
 -- | Render a Float in scientific notation
-f2s :: Word8# -> Float -> Builder
-f2s eE f = primBounded (f2s' (toCharsScientific eE) toCharsNonNumbersAndZero f) ()
+f2s :: Word8# -> SpecialStrings -> Float -> Builder
+f2s eE ss f = primBounded (f2s' (toCharsScientific eE) (toCharsNonNumbersAndZero ss) f) ()
 
 -- | Returns the decimal representation of a Float. NaN and Infinity will
 -- return `FloatingDecimal 0 0`
