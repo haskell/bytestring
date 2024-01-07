@@ -165,7 +165,7 @@ generic = fGeneric 'e' Nothing (0,7)
 formatFloat :: FloatFormat -> Float -> Builder
 formatFloat fmt = \f ->
   let (R.FloatingDecimal m e) = intermediate f
-      e' = R.int32ToInt e + R.decimalLength9 m in
+      e' = R.int32ToInt e + R.decimalLength m in
   case fmt of
     FGeneric eE prec (minExpo,maxExpo) ->
       case specialStr f of
@@ -208,7 +208,7 @@ formatFloat fmt = \f ->
 formatDouble :: FloatFormat -> Double -> Builder
 formatDouble fmt = \f ->
   let (R.FloatingDecimal m e) = intermediate f
-      e' = R.int32ToInt e + R.decimalLength17 m in
+      e' = R.int32ToInt e + R.decimalLength m in
   case fmt of
     FGeneric eE prec (minExpo,maxExpo) ->
       case specialStr f of

@@ -27,8 +27,7 @@ module Data.ByteString.Builder.RealFloat.Internal
     ( mask
     , NonNumbersAndZero(..)
     , toCharsNonNumbersAndZero
-    , decimalLength9
-    , decimalLength17
+    , DecimalLength(..)
     , Mantissa
     , pow5bits
     , log10pow2
@@ -183,6 +182,10 @@ decimalLength17 v
   | v >= 100 = 3
   | v >= 10 = 2
   | otherwise = 1
+
+class DecimalLength a where decimalLength :: a -> Int
+instance DecimalLength Word32 where decimalLength = decimalLength9
+instance DecimalLength Word64 where decimalLength = decimalLength17
 
 -- From 'In-and-Out Conversions' https://dl.acm.org/citation.cfm?id=362887, we
 -- have that a conversion from a base-b n-digit number to a base-v m-digit
@@ -527,7 +530,6 @@ class (FiniteBits a, Integral a) => Mantissa a where
   unsafeRaw :: a -> Word#
   raw :: a -> WORD64
 
-  decimalLength :: a -> Int
   boolToWord :: Bool -> a
   quotRem10 :: a -> (a, a)
   quot10  :: a -> a
@@ -547,7 +549,6 @@ instance Mantissa Word32 where
   raw w = wordToWord64# (unsafeRaw w)
 #endif
 
-  decimalLength = decimalLength9
   boolToWord = boolToWord32
 
   {-# INLINE quotRem10 #-}
@@ -573,7 +574,6 @@ instance Mantissa Word64 where
 #endif
   raw (W64# w) = w
 
-  decimalLength = decimalLength17
   boolToWord = boolToWord64
 
   {-# INLINE quotRem10 #-}
@@ -849,7 +849,7 @@ writeSign ptr False s = (# ptr, s #)
 {-# INLINABLE toCharsScientific #-}
 {-# SPECIALIZE toCharsScientific :: Word8# -> Bool -> Word32 -> Int32 -> BoundedPrim () #-}
 {-# SPECIALIZE toCharsScientific :: Word8# -> Bool -> Word64 -> Int32 -> BoundedPrim () #-}
-toCharsScientific :: (Mantissa a) => Word8# -> Bool -> a -> Int32 -> BoundedPrim ()
+toCharsScientific :: (Mantissa a, DecimalLength a) => Word8# -> Bool -> a -> Int32 -> BoundedPrim ()
 toCharsScientific !eE !sign !mantissa !expo = boundedPrim maxEncodedLength $ \_ !(Ptr p0)-> do
   let !olength@(I# ol) = decimalLength mantissa
       !expo' = expo + intToInt32 olength - 1
