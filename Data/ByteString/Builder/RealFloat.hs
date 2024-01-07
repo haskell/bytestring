@@ -102,38 +102,35 @@ doubleDec = formatDouble generic
 -- | Format type for use with `formatFloat` and `formatDouble`.
 --
 -- @since 0.11.2.0
-data FloatFormat = MkFloatFormat FormatMode (Maybe Int)
+data FloatFormat
+  = FScientific     -- ^ scientific notation
+  | FStandard (Maybe Int)       -- ^ standard notation with `Maybe Int` digits after the decimal
+  | FGeneric (Maybe Int)       -- ^ dispatches to scientific or standard notation based on the exponent
+  deriving Show
 
 -- | Standard notation with `n` decimal places
 --
 -- @since 0.11.2.0
 standard :: Int -> FloatFormat
-standard n = MkFloatFormat FStandard (Just n)
+standard n = FStandard (Just n)
 
 -- | Standard notation with the \'default precision\' (decimal places matching `show`)
 --
 -- @since 0.11.2.0
 standardDefaultPrecision :: FloatFormat
-standardDefaultPrecision = MkFloatFormat FStandard Nothing
+standardDefaultPrecision = FStandard Nothing
 
 -- | Scientific notation with \'default precision\' (decimal places matching `show`)
 --
 -- @since 0.11.2.0
 scientific :: FloatFormat
-scientific = MkFloatFormat FScientific Nothing
+scientific = FScientific
 
 -- | Standard or scientific notation depending on the exponent. Matches `show`
 --
 -- @since 0.11.2.0
 generic :: FloatFormat
-generic = MkFloatFormat FGeneric Nothing
-
--- | ByteString float-to-string format
-data FormatMode
-  = FScientific     -- ^ scientific notation
-  | FStandard       -- ^ standard notation with `Maybe Int` digits after the decimal
-  | FGeneric        -- ^ dispatches to scientific or standard notation based on the exponent
-  deriving Show
+generic = FGeneric Nothing
 
 -- TODO: support precision argument for FGeneric and FScientific
 -- | Returns a rendered Float. Returns the \'shortest\' representation in
@@ -161,11 +158,11 @@ data FormatMode
 -- @since 0.11.2.0
 {-# INLINABLE formatFloat #-}
 formatFloat :: FloatFormat -> Float -> Builder
-formatFloat (MkFloatFormat fmt prec) = \f ->
+formatFloat fmt = \f ->
   let (RF.FloatingDecimal m e) = RF.f2Intermediate f
       e' = R.int32ToInt e + R.decimalLength9 m in
   case fmt of
-    FGeneric ->
+    FGeneric prec ->
       case specialStr f of
         Just b -> b
         Nothing ->
@@ -173,7 +170,7 @@ formatFloat (MkFloatFormat fmt prec) = \f ->
              then sign f `mappend` showStandard (R.word32ToWord64 m) e' prec
              else BP.primBounded (R.toCharsScientific (f < 0) m e) ()
     FScientific -> RF.f2s f
-    FStandard ->
+    FStandard prec ->
       case specialStr f of
         Just b -> b
         Nothing -> sign f `mappend` showStandard (R.word32ToWord64 m) e' prec
@@ -204,11 +201,11 @@ formatFloat (MkFloatFormat fmt prec) = \f ->
 -- @since 0.11.2.0
 {-# INLINABLE formatDouble #-}
 formatDouble :: FloatFormat -> Double -> Builder
-formatDouble (MkFloatFormat fmt prec) = \f ->
+formatDouble fmt = \f ->
   let (RD.FloatingDecimal m e) = RD.d2Intermediate f
       e' = R.int32ToInt e + R.decimalLength17 m in
   case fmt of
-    FGeneric ->
+    FGeneric prec ->
       case specialStr f of
         Just b -> b
         Nothing ->
@@ -216,7 +213,7 @@ formatDouble (MkFloatFormat fmt prec) = \f ->
              then sign f `mappend` showStandard m e' prec
              else BP.primBounded (R.toCharsScientific (f < 0) m e) ()
     FScientific -> RD.d2s f
-    FStandard ->
+    FStandard prec ->
       case specialStr f of
         Just b -> b
         Nothing -> sign f `mappend` showStandard m e' prec
