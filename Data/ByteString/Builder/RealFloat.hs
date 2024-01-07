@@ -174,7 +174,7 @@ formatFloat fmt = \f ->
           if e' >= minExpo && e' <= maxExpo
              then sign f `mappend` showStandard (toWord64 m) e' prec
              else BP.primBounded (R.toCharsScientific eE (f < 0) m e) ()
-    FScientific eE -> RF.f2s eE f
+    FScientific eE -> toS eE f
     FStandard prec ->
       case specialStr f of
         Just b -> b
@@ -217,7 +217,7 @@ formatDouble fmt = \f ->
           if e' >= minExpo && e' <= maxExpo
              then sign f `mappend` showStandard (toWord64 m) e' prec
              else BP.primBounded (R.toCharsScientific eE (f < 0) m e) ()
-    FScientific eE -> RD.d2s eE f
+    FScientific eE -> toS eE f
     FStandard prec ->
       case specialStr f of
         Just b -> b
@@ -230,6 +230,10 @@ instance Intermediate Double where intermediate = RD.d2Intermediate
 class ToWord64 a where toWord64 :: a -> Word64
 instance ToWord64 Word32 where toWord64 = R.word32ToWord64
 instance ToWord64 Word64 where toWord64 = id
+
+class ToS a where toS :: Word8# -> a -> Builder
+instance ToS Float where toS = RF.f2s
+instance ToS Double where toS = RD.d2s
 
 -- | Char7 encode a 'Char'.
 {-# INLINE char7 #-}
