@@ -164,7 +164,7 @@ generic = fGeneric 'e' Nothing (0,7)
 {-# INLINABLE formatFloat #-}
 formatFloat :: FloatFormat -> Float -> Builder
 formatFloat fmt = \f ->
-  let (RF.FloatingDecimal m e) = RF.f2Intermediate f
+  let (R.FloatingDecimal m e) = intermediate f
       e' = R.int32ToInt e + R.decimalLength9 m in
   case fmt of
     FGeneric eE prec (minExpo,maxExpo) ->
@@ -207,7 +207,7 @@ formatFloat fmt = \f ->
 {-# INLINABLE formatDouble #-}
 formatDouble :: FloatFormat -> Double -> Builder
 formatDouble fmt = \f ->
-  let (RD.FloatingDecimal m e) = RD.d2Intermediate f
+  let (R.FloatingDecimal m e) = intermediate f
       e' = R.int32ToInt e + R.decimalLength17 m in
   case fmt of
     FGeneric eE prec (minExpo,maxExpo) ->
@@ -222,6 +222,10 @@ formatDouble fmt = \f ->
       case specialStr f of
         Just b -> b
         Nothing -> sign f `mappend` showStandard m e' prec
+
+class Intermediate a where intermediate :: a -> R.FloatingDecimal a
+instance Intermediate Float where intermediate = RF.f2Intermediate
+instance Intermediate Double where intermediate = RD.d2Intermediate
 
 -- | Char7 encode a 'Char'.
 {-# INLINE char7 #-}

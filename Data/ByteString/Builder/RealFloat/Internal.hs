@@ -2,6 +2,10 @@
 {-# LANGUAGE BangPatterns, MagicHash, UnboxedTuples #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE UndecidableInstances #-}
 -- |
 -- Module      : Data.ByteString.Builder.RealFloat.Internal
 -- Copyright   : (c) Lawrence Wu 2021
@@ -64,6 +68,8 @@ module Data.ByteString.Builder.RealFloat.Internal
     , word64ToInt
     , word32ToWord64
     , word64ToWord32
+    -- joining Float and Double logic
+    , FloatingDecimal(..)
 
     , module Data.ByteString.Builder.RealFloat.TableGenerator
     ) where
@@ -854,3 +860,19 @@ toCharsScientific !eE !sign !mantissa !expo = boundedPrim maxEncodedLength $ \_ 
         !(# p3, s5 #) = writeSign (p2 `plusAddr#` 1#) (expo' < 0) s4
         !(# p4, s6 #) = writeExponent p3 (abs expo') s5
      in (# s6, (Ptr p4) #)
+
+data FloatingDecimal a = FloatingDecimal
+  { fmantissa :: !(MantissaWord a)
+  , fexponent :: !(ExponentInt a)
+  }
+deriving instance (Show (MantissaWord a), Show (ExponentInt a)) => Show (FloatingDecimal a)
+deriving instance (Eq (MantissaWord a), Eq (ExponentInt a)) => Eq (FloatingDecimal a)
+
+type family MantissaWord a
+type instance MantissaWord Float = Word32
+type instance MantissaWord Double = Word64
+
+type family ExponentInt a
+type instance ExponentInt Float = Int32
+type instance ExponentInt Double = Int32
+

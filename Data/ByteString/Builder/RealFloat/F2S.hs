@@ -9,8 +9,7 @@
 -- Implementation of float-to-string conversion
 
 module Data.ByteString.Builder.RealFloat.F2S
-    ( FloatingDecimal(..)
-    , f2s
+    ( f2s
     , f2Intermediate
     ) where
 
@@ -53,10 +52,7 @@ float_exponent_bits = 8
 float_bias :: Int
 float_bias = 127
 
-data FloatingDecimal = FloatingDecimal
-  { fmantissa :: !Word32
-  , fexponent :: !Int32
-  } deriving (Show, Eq)
+type FD = FloatingDecimal Float
 
 -- | Multiply a 32-bit number with a 64-bit number while keeping the upper 64
 -- bits. Then shift by specified amount minus 32
@@ -152,7 +148,7 @@ f2dLT e2' u v w =
 
 -- | Returns the decimal representation of the given mantissa and exponent of a
 -- 32-bit Float using the ryu algorithm.
-f2d :: Word32 -> Word32 -> FloatingDecimal
+f2d :: Word32 -> Word32 -> FD
 f2d m e =
   let !mf = if e == 0
               then m
@@ -208,5 +204,5 @@ f2s eE f = primBounded (f2s' (toCharsScientific eE) toCharsNonNumbersAndZero f) 
 
 -- | Returns the decimal representation of a Float. NaN and Infinity will
 -- return `FloatingDecimal 0 0`
-f2Intermediate :: Float -> FloatingDecimal
+f2Intermediate :: Float -> FD
 f2Intermediate = f2s' (const FloatingDecimal) (const $ FloatingDecimal 0 0)

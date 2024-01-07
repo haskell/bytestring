@@ -10,8 +10,7 @@
 -- Implementation of double-to-string conversion
 
 module Data.ByteString.Builder.RealFloat.D2S
-    ( FloatingDecimal(..)
-    , d2s
+    ( d2s
     , d2Intermediate
     ) where
 
@@ -55,13 +54,10 @@ double_exponent_bits = 11
 double_bias :: Int
 double_bias = 1023
 
-data FloatingDecimal = FloatingDecimal
-  { dmantissa :: !Word64
-  , dexponent :: !Int32
-  } deriving (Show, Eq)
+type FD = FloatingDecimal Double
 
 -- | Quick check for small integers
-d2dSmallInt :: Word64 -> Word64 -> Maybe FloatingDecimal
+d2dSmallInt :: Word64 -> Word64 -> Maybe FD
 d2dSmallInt m e =
   let m2 = (1 `unsafeShiftL` double_mantissa_bits) .|. m
       e2 = word64ToInt e - (double_bias + double_mantissa_bits)
@@ -84,7 +80,7 @@ d2dSmallInt m e =
 
 
 -- | Removes trailing (decimal) zeros for small integers in the range [1, 2^53)
-unifySmallTrailing :: FloatingDecimal -> FloatingDecimal
+unifySmallTrailing :: FD -> FD
 unifySmallTrailing fd@(FloatingDecimal m e) =
   let !(q, r) = dquotRem10 m
    in if r == 0
@@ -171,7 +167,7 @@ d2dLT e2' u v w =
 
 -- | Returns the decimal representation of the given mantissa and exponent of a
 -- 64-bit Double using the ryu algorithm.
-d2d :: Word64 -> Word64 -> FloatingDecimal
+d2d :: Word64 -> Word64 -> FD
 d2d m e =
   let !mf = if e == 0
               then m
@@ -228,5 +224,5 @@ d2s eE d = primBounded (d2s' (toCharsScientific eE) toCharsNonNumbersAndZero d) 
 
 -- | Returns the decimal representation of a Double. NaN and Infinity will
 -- return `FloatingDecimal 0 0`
-d2Intermediate :: Double -> FloatingDecimal
+d2Intermediate :: Double -> FD
 d2Intermediate = d2s' (const FloatingDecimal) (const $ FloatingDecimal 0 0)
