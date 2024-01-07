@@ -38,6 +38,7 @@ module Data.ByteString.Builder.RealFloat.Internal
     , trimNoTrailing
     , closestCorrectlyRounded
     , toCharsScientific
+    , asciiRaw
     -- hand-rolled division and remainder for f2s and d2s
     , fquot10
     , frem10
@@ -689,8 +690,8 @@ closestCorrectlyRounded acceptBound s = vv s + boolToWord roundUp
     roundUp = (vv s == vu s && outsideBounds) || lastRemovedDigit s >= 5
 
 -- Wrappe around int2Word#
-asciiRaw :: Int -> Word#
-asciiRaw (I# i) = int2Word# i
+asciiRaw :: Int -> Word8#
+asciiRaw (I# i) = wordToWord8# (int2Word# i)
 
 asciiZero :: Int
 asciiZero = ord '0'
@@ -701,12 +702,9 @@ asciiDot = ord '.'
 asciiMinus :: Int
 asciiMinus = ord '-'
 
-ascii_e :: Int
-ascii_e = ord 'e'
-
 -- | Convert a single-digit number to the ascii ordinal e.g '1' -> 0x31
 toAscii :: Word# -> Word#
-toAscii a = a `plusWord#` asciiRaw asciiZero
+toAscii a = a `plusWord#` word8ToWord# (asciiRaw asciiZero)
 
 -- | Index into the 64-bit word lookup table provided
 {-# INLINE getWord64At #-}
@@ -735,12 +733,12 @@ packWord16 l h =
 #endif
 
 -- | Unpacks a 16-bit word into 2 bytes [lsb, msb]
-unpackWord16 :: Word# -> (# Word#, Word# #)
+unpackWord16 :: Word# -> (# Word8#, Word8# #)
 unpackWord16 w =
 #if defined(WORDS_BIGENDIAN)
-    (# w `and#` 0xff##, w `uncheckedShiftRL#` 8# #)
+    (# wordToWord8# (w `and#` 0xff##), wordToWord8# (w `uncheckedShiftRL#` 8#) #)
 #else
-    (# w `uncheckedShiftRL#` 8#, w `and#` 0xff## #)
+    (# wordToWord8# (w `uncheckedShiftRL#` 8#), wordToWord8# (w `and#` 0xff##) #)
 #endif
 
 
@@ -772,12 +770,12 @@ copyWord16 w a s = let
   (# s', _ #) -> s'
 
 -- | Write an 8-bit word into the given address
-poke :: Addr# -> Word# -> State# d -> State# d
+poke :: Addr# -> Word8# -> State# d -> State# d
 poke a w s =
 #if __GLASGOW_HASKELL__ >= 902
-    writeWord8OffAddr# a 0# (wordToWord8# w) s
-#else
     writeWord8OffAddr# a 0# w s
+#else
+    writeWord8OffAddr# a 0# (word8ToWord# w) s
 #endif
 
 -- | Write the mantissa into the given address. This function attempts to
@@ -809,12 +807,12 @@ writeMantissa ptr olength = go (ptr `plusAddr#` olength)
             s4 = poke ptr msb s3
            in (# ptr `plusAddr#` (olength +# 1#), s4 #)
       | (I# olength) > 1 =
-          let s2 = copyWord16 (packWord16 (asciiRaw asciiDot) (toAscii (unsafeRaw mantissa))) ptr s1
+          let s2 = copyWord16 (packWord16 (word8ToWord# (asciiRaw asciiDot)) (toAscii (unsafeRaw mantissa))) ptr s1
            in (# ptr `plusAddr#` (olength +# 1#), s2 #)
       | otherwise =
           let s2 = poke (ptr `plusAddr#` 2#) (asciiRaw asciiZero) s1
               s3 = poke (ptr `plusAddr#` 1#) (asciiRaw asciiDot) s2
-              s4 = poke ptr (toAscii (unsafeRaw mantissa)) s3
+              s4 = poke ptr (wordToWord8# (toAscii (unsafeRaw mantissa))) s3
            in (# ptr `plusAddr#` 3#, s4 #)
 
 -- | Write the exponent into the given address.
@@ -823,13 +821,13 @@ writeExponent ptr !expo s1
   | expo >= 100 =
       let !(e1, e0) = fquotRem10 (fromIntegral expo) -- TODO
           s2 = copyWord16 (digit_table `unsafeAt` word2Int# (unsafeRaw e1)) ptr s1
-          s3 = poke (ptr `plusAddr#` 2#) (toAscii (unsafeRaw e0)) s2
+          s3 = poke (ptr `plusAddr#` 2#) (wordToWord8# (toAscii (unsafeRaw e0))) s2
        in (# ptr `plusAddr#` 3#, s3 #)
   | expo >= 10 =
       let s2 = copyWord16 (digit_table `unsafeAt` e) ptr s1
        in (# ptr `plusAddr#` 2#, s2 #)
   | otherwise =
-      let s2 = poke ptr (toAscii (int2Word# e)) s1
+      let s2 = poke ptr (wordToWord8# (toAscii (int2Word# e))) s1
        in (# ptr `plusAddr#` 1#, s2 #)
   where !(I# e) = int32ToInt expo
 
@@ -843,16 +841,16 @@ writeSign ptr False s = (# ptr, s #)
 -- | Returns the decimal representation of a floating point number in
 -- scientific (exponential) notation
 {-# INLINABLE toCharsScientific #-}
-{-# SPECIALIZE toCharsScientific :: Bool -> Word32 -> Int32 -> BoundedPrim () #-}
-{-# SPECIALIZE toCharsScientific :: Bool -> Word64 -> Int32 -> BoundedPrim () #-}
-toCharsScientific :: (Mantissa a) => Bool -> a -> Int32 -> BoundedPrim ()
-toCharsScientific !sign !mantissa !expo = boundedPrim maxEncodedLength $ \_ !(Ptr p0)-> do
+{-# SPECIALIZE toCharsScientific :: Word8# -> Bool -> Word32 -> Int32 -> BoundedPrim () #-}
+{-# SPECIALIZE toCharsScientific :: Word8# -> Bool -> Word64 -> Int32 -> BoundedPrim () #-}
+toCharsScientific :: (Mantissa a) => Word8# -> Bool -> a -> Int32 -> BoundedPrim ()
+toCharsScientific !eE !sign !mantissa !expo = boundedPrim maxEncodedLength $ \_ !(Ptr p0)-> do
   let !olength@(I# ol) = decimalLength mantissa
       !expo' = expo + intToInt32 olength - 1
   IO $ \s1 ->
     let !(# p1, s2 #) = writeSign p0 sign s1
         !(# p2, s3 #) = writeMantissa p1 ol mantissa s2
-        s4 = poke p2 (asciiRaw ascii_e) s3
+        s4 = poke p2 eE s3
         !(# p3, s5 #) = writeSign (p2 `plusAddr#` 1#) (expo' < 0) s4
         !(# p4, s6 #) = writeExponent p3 (abs expo') s5
      in (# s6, (Ptr p4) #)

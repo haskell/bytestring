@@ -1,3 +1,4 @@
+{-# LANGUAGE MagicHash #-}
 -- |
 -- Module      : Data.ByteString.Builder.RealFloat
 -- Copyright   : (c) Lawrence Wu 2021
@@ -78,6 +79,8 @@ import qualified Data.ByteString.Builder.Prim as BP
 import GHC.Float (roundTo)
 import GHC.Word (Word64)
 import GHC.Show (intToDigit)
+import Data.Char (ord)
+import GHC.Prim (Word8#)
 
 -- | Returns a rendered Float. Matches `show` in displaying in standard or
 -- scientific notation
@@ -103,10 +106,12 @@ doubleDec = formatDouble generic
 --
 -- @since 0.11.2.0
 data FloatFormat
-  = FScientific     -- ^ scientific notation
+  = FScientific Word8#     -- ^ scientific notation
   | FStandard (Maybe Int)       -- ^ standard notation with `Maybe Int` digits after the decimal
-  | FGeneric (Maybe Int) (Int,Int)       -- ^ dispatches to scientific or standard notation based on the exponent
+  | FGeneric Word8# (Maybe Int) (Int,Int)       -- ^ dispatches to scientific or standard notation based on the exponent
   deriving Show
+fScientific eE = FScientific (R.asciiRaw $ ord eE)
+fGeneric eE = FGeneric (R.asciiRaw $ ord eE)
 
 -- | Standard notation with `n` decimal places
 --
@@ -124,13 +129,13 @@ standardDefaultPrecision = FStandard Nothing
 --
 -- @since 0.11.2.0
 scientific :: FloatFormat
-scientific = FScientific
+scientific = fScientific 'e'
 
 -- | Standard or scientific notation depending on the exponent. Matches `show`
 --
 -- @since 0.11.2.0
 generic :: FloatFormat
-generic = FGeneric Nothing (0,7)
+generic = fGeneric 'e' Nothing (0,7)
 
 -- TODO: support precision argument for FGeneric and FScientific
 -- | Returns a rendered Float. Returns the \'shortest\' representation in
@@ -162,14 +167,14 @@ formatFloat fmt = \f ->
   let (RF.FloatingDecimal m e) = RF.f2Intermediate f
       e' = R.int32ToInt e + R.decimalLength9 m in
   case fmt of
-    FGeneric prec (minExpo,maxExpo) ->
+    FGeneric eE prec (minExpo,maxExpo) ->
       case specialStr f of
         Just b -> b
         Nothing ->
           if e' >= minExpo && e' <= maxExpo
              then sign f `mappend` showStandard (R.word32ToWord64 m) e' prec
-             else BP.primBounded (R.toCharsScientific (f < 0) m e) ()
-    FScientific -> RF.f2s f
+             else BP.primBounded (R.toCharsScientific eE (f < 0) m e) ()
+    FScientific eE -> RF.f2s eE f
     FStandard prec ->
       case specialStr f of
         Just b -> b
@@ -205,14 +210,14 @@ formatDouble fmt = \f ->
   let (RD.FloatingDecimal m e) = RD.d2Intermediate f
       e' = R.int32ToInt e + R.decimalLength17 m in
   case fmt of
-    FGeneric prec (minExpo,maxExpo) ->
+    FGeneric eE prec (minExpo,maxExpo) ->
       case specialStr f of
         Just b -> b
         Nothing ->
           if e' >= minExpo && e' <= maxExpo
              then sign f `mappend` showStandard m e' prec
-             else BP.primBounded (R.toCharsScientific (f < 0) m e) ()
-    FScientific -> RD.d2s f
+             else BP.primBounded (R.toCharsScientific eE (f < 0) m e) ()
+    FScientific eE -> RD.d2s eE f
     FStandard prec ->
       case specialStr f of
         Just b -> b

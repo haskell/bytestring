@@ -22,6 +22,7 @@ import Data.ByteString.Builder.RealFloat.Internal
 import GHC.Int (Int32(..))
 import GHC.Ptr (Ptr(..))
 import GHC.Word (Word32(..), Word64(..))
+import GHC.Prim (Word8#)
 
 -- See Data.ByteString.Builder.RealFloat.TableGenerator for a high-level
 -- explanation of the ryu algorithm
@@ -202,8 +203,8 @@ f2s' formatter specialFormatter f =
                in formatter sign m e
 
 -- | Render a Float in scientific notation
-f2s :: Float -> Builder
-f2s f = primBounded (f2s' toCharsScientific toCharsNonNumbersAndZero f) ()
+f2s :: Word8# -> Float -> Builder
+f2s eE f = primBounded (f2s' (toCharsScientific eE) toCharsNonNumbersAndZero f) ()
 
 -- | Returns the decimal representation of a Float. NaN and Infinity will
 -- return `FloatingDecimal 0 0`

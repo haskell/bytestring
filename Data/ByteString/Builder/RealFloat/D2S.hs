@@ -24,6 +24,7 @@ import Data.Maybe (fromMaybe)
 import GHC.Int (Int32(..))
 import GHC.Ptr (Ptr(..))
 import GHC.Word (Word64(..))
+import GHC.Prim (Word8#)
 
 -- See Data.ByteString.Builder.RealFloat.TableGenerator for a high-level
 -- explanation of the ryu algorithm
@@ -222,8 +223,8 @@ d2s' formatter specialFormatter d =
                in formatter sign m e
 
 -- | Render a Double in scientific notation
-d2s :: Double -> Builder
-d2s d = primBounded (d2s' toCharsScientific toCharsNonNumbersAndZero d) ()
+d2s :: Word8# -> Double -> Builder
+d2s eE d = primBounded (d2s' (toCharsScientific eE) toCharsNonNumbersAndZero d) ()
 
 -- | Returns the decimal representation of a Double. NaN and Infinity will
 -- return `FloatingDecimal 0 0`
