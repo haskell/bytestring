@@ -1,5 +1,6 @@
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE RecordWildCards #-}
 -- |
 -- Module      : Data.ByteString.Builder.RealFloat
 -- Copyright   : (c) Lawrence Wu 2021
@@ -109,8 +110,8 @@ doubleDec = formatDouble generic
 -- @since 0.11.2.0
 data FloatFormat
   = FScientific Word8# R.SpecialStrings -- ^ scientific notation
-  | FStandard (Maybe Int)       -- ^ standard notation with `Maybe Int` digits after the decimal
-  | FGeneric Word8# (Maybe Int) (Int,Int)       -- ^ dispatches to scientific or standard notation based on the exponent
+  | FStandard (Maybe Int) R.SpecialStrings -- ^ standard notation with `Maybe Int` digits after the decimal
+  | FGeneric Word8# (Maybe Int) (Int,Int) R.SpecialStrings      -- ^ dispatches to scientific or standard notation based on the exponent
   deriving Show
 fScientific eE = FScientific (R.asciiRaw $ ord eE)
 fGeneric eE = FGeneric (R.asciiRaw $ ord eE)
@@ -119,13 +120,13 @@ fGeneric eE = FGeneric (R.asciiRaw $ ord eE)
 --
 -- @since 0.11.2.0
 standard :: Int -> FloatFormat
-standard n = FStandard (Just n)
+standard n = FStandard (Just n) standardSpecialStrings
 
 -- | Standard notation with the \'default precision\' (decimal places matching `show`)
 --
 -- @since 0.11.2.0
 standardDefaultPrecision :: FloatFormat
-standardDefaultPrecision = FStandard Nothing
+standardDefaultPrecision = FStandard Nothing standardSpecialStrings
 
 -- | Scientific notation with \'default precision\' (decimal places matching `show`)
 --
@@ -133,7 +134,7 @@ standardDefaultPrecision = FStandard Nothing
 scientific :: FloatFormat
 scientific = fScientific 'e' scientificSpecialStrings
 
-scientificSpecialStrings :: R.SpecialStrings
+scientificSpecialStrings, standardSpecialStrings :: R.SpecialStrings
 scientificSpecialStrings = R.SpecialStrings
   { R.nan = "NaN"
   , R.positiveInfinity = "Infinity"
@@ -141,12 +142,16 @@ scientificSpecialStrings = R.SpecialStrings
   , R.positiveZero = "0.0e0"
   , R.negativeZero = "-0.0e0"
   }
+standardSpecialStrings = scientificSpecialStrings
+  { R.positiveZero = "0.0"
+  , R.negativeZero = "-0.0"
+  }
 
 -- | Standard or scientific notation depending on the exponent. Matches `show`
 --
 -- @since 0.11.2.0
 generic :: FloatFormat
-generic = fGeneric 'e' Nothing (0,7)
+generic = fGeneric 'e' Nothing (0,7) standardSpecialStrings
 
 -- TODO: support precision argument for FGeneric and FScientific
 -- | Returns a rendered Float. Returns the \'shortest\' representation in
@@ -221,16 +226,16 @@ formatFloating fmt f =
   let (R.FloatingDecimal m e) = intermediate f
       e' = toInt e + R.decimalLength m in
   case fmt of
-    FGeneric eE prec (minExpo,maxExpo) ->
-      case specialStr f of
+    FGeneric eE prec (minExpo,maxExpo) ss ->
+      case specialStr ss f of
         Just b -> b
         Nothing ->
           if e' >= minExpo && e' <= maxExpo
              then sign f `mappend` showStandard (toWord64 m) e' prec
              else BP.primBounded (R.toCharsScientific eE (f < 0) m e) ()
     FScientific eE ss -> toS eE ss f
-    FStandard prec ->
-      case specialStr f of
+    FStandard prec ss ->
+      case specialStr ss f of
         Just b -> b
         Nothing -> sign f `mappend` showStandard (toWord64 m) e' prec
 
@@ -265,12 +270,12 @@ sign f = if f < 0 then char7 '-' else mempty
 
 -- | Special rendering for Nan, Infinity, and 0. See
 -- RealFloat.Internal.NonNumbersAndZero
-specialStr :: RealFloat a => a -> Maybe Builder
-specialStr f
-  | isNaN f          = Just $ string7 "NaN"
-  | isInfinite f     = Just $ sign f `mappend` string7 "Infinity"
-  | isNegativeZero f = Just $ string7 "-0.0"
-  | f == 0           = Just $ string7 "0.0"
+specialStr :: RealFloat a => R.SpecialStrings -> a -> Maybe Builder
+specialStr R.SpecialStrings{..} f
+  | isNaN f          = Just $ string7 nan
+  | isInfinite f     = Just $ if f < 0 then string7 negativeInfinity else string7 positiveInfinity
+  | isNegativeZero f = Just $ string7 negativeZero
+  | f == 0           = Just $ string7 positiveZero
   | otherwise        = Nothing
 
 -- | Returns a list of decimal digits in a Word64
