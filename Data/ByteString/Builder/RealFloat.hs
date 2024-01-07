@@ -77,7 +77,7 @@ import qualified Data.ByteString.Builder.RealFloat.F2S as RF
 import qualified Data.ByteString.Builder.RealFloat.D2S as RD
 import qualified Data.ByteString.Builder.Prim as BP
 import GHC.Float (roundTo)
-import GHC.Word (Word64)
+import GHC.Word (Word32, Word64)
 import GHC.Show (intToDigit)
 import Data.Char (ord)
 import GHC.Prim (Word8#)
@@ -172,7 +172,7 @@ formatFloat fmt = \f ->
         Just b -> b
         Nothing ->
           if e' >= minExpo && e' <= maxExpo
-             then sign f `mappend` showStandard (R.word32ToWord64 m) e' prec
+             then sign f `mappend` showStandard (toWord64 m) e' prec
              else BP.primBounded (R.toCharsScientific eE (f < 0) m e) ()
     FScientific eE -> RF.f2s eE f
     FStandard prec ->
@@ -215,7 +215,7 @@ formatDouble fmt = \f ->
         Just b -> b
         Nothing ->
           if e' >= minExpo && e' <= maxExpo
-             then sign f `mappend` showStandard m e' prec
+             then sign f `mappend` showStandard (toWord64 m) e' prec
              else BP.primBounded (R.toCharsScientific eE (f < 0) m e) ()
     FScientific eE -> RD.d2s eE f
     FStandard prec ->
@@ -226,6 +226,10 @@ formatDouble fmt = \f ->
 class Intermediate a where intermediate :: a -> R.FloatingDecimal a
 instance Intermediate Float where intermediate = RF.f2Intermediate
 instance Intermediate Double where intermediate = RD.d2Intermediate
+
+class ToWord64 a where toWord64 :: a -> Word64
+instance ToWord64 Word32 where toWord64 = R.word32ToWord64
+instance ToWord64 Word64 where toWord64 = id
 
 -- | Char7 encode a 'Char'.
 {-# INLINE char7 #-}
