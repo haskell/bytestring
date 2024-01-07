@@ -1,4 +1,5 @@
 {-# LANGUAGE MagicHash #-}
+{-# LANGUAGE TypeFamilies #-}
 -- |
 -- Module      : Data.ByteString.Builder.RealFloat
 -- Copyright   : (c) Lawrence Wu 2021
@@ -78,6 +79,7 @@ import qualified Data.ByteString.Builder.RealFloat.D2S as RD
 import qualified Data.ByteString.Builder.Prim as BP
 import GHC.Float (roundTo)
 import GHC.Word (Word32, Word64)
+import GHC.Int (Int32)
 import GHC.Show (intToDigit)
 import Data.Char (ord)
 import GHC.Prim (Word8#)
@@ -163,22 +165,7 @@ generic = fGeneric 'e' Nothing (0,7)
 -- @since 0.11.2.0
 {-# INLINABLE formatFloat #-}
 formatFloat :: FloatFormat -> Float -> Builder
-formatFloat fmt = \f ->
-  let (R.FloatingDecimal m e) = intermediate f
-      e' = R.int32ToInt e + R.decimalLength m in
-  case fmt of
-    FGeneric eE prec (minExpo,maxExpo) ->
-      case specialStr f of
-        Just b -> b
-        Nothing ->
-          if e' >= minExpo && e' <= maxExpo
-             then sign f `mappend` showStandard (toWord64 m) e' prec
-             else BP.primBounded (R.toCharsScientific eE (f < 0) m e) ()
-    FScientific eE -> toS eE f
-    FStandard prec ->
-      case specialStr f of
-        Just b -> b
-        Nothing -> sign f `mappend` showStandard (R.word32ToWord64 m) e' prec
+formatFloat = formatFloating
 
 -- TODO: support precision argument for FGeneric and FScientific
 -- | Returns a rendered Double. Returns the \'shortest\' representation in
@@ -206,9 +193,24 @@ formatFloat fmt = \f ->
 -- @since 0.11.2.0
 {-# INLINABLE formatDouble #-}
 formatDouble :: FloatFormat -> Double -> Builder
-formatDouble fmt = \f ->
+formatDouble = formatFloating
+
+formatFloating ::
+  -- a
+  ( ToS a
+  , Num a
+  , Ord a
+  , RealFloat a
+  , Intermediate a
+  -- mantissa
+  , mw ~ R.MantissaWord a
+  , R.Mantissa mw
+  , ToWord64 mw
+  , R.DecimalLength mw
+  ) => FloatFormat -> a -> Builder
+formatFloating fmt f =
   let (R.FloatingDecimal m e) = intermediate f
-      e' = R.int32ToInt e + R.decimalLength m in
+      e' = toInt e + R.decimalLength m in
   case fmt of
     FGeneric eE prec (minExpo,maxExpo) ->
       case specialStr f of
@@ -221,11 +223,14 @@ formatDouble fmt = \f ->
     FStandard prec ->
       case specialStr f of
         Just b -> b
-        Nothing -> sign f `mappend` showStandard m e' prec
+        Nothing -> sign f `mappend` showStandard (toWord64 m) e' prec
 
 class Intermediate a where intermediate :: a -> R.FloatingDecimal a
 instance Intermediate Float where intermediate = RF.f2Intermediate
 instance Intermediate Double where intermediate = RD.d2Intermediate
+
+class ToInt a where toInt :: a -> Int
+instance ToInt Int32 where toInt = R.int32ToInt
 
 class ToWord64 a where toWord64 :: a -> Word64
 instance ToWord64 Word32 where toWord64 = R.word32ToWord64

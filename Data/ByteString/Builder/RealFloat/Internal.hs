@@ -69,6 +69,7 @@ module Data.ByteString.Builder.RealFloat.Internal
     , word64ToWord32
     -- joining Float and Double logic
     , FloatingDecimal(..)
+    , MantissaWord
 
     , module Data.ByteString.Builder.RealFloat.TableGenerator
     ) where
@@ -863,16 +864,12 @@ toCharsScientific !eE !sign !mantissa !expo = boundedPrim maxEncodedLength $ \_ 
 
 data FloatingDecimal a = FloatingDecimal
   { fmantissa :: !(MantissaWord a)
-  , fexponent :: !(ExponentInt a)
+  , fexponent :: !Int32
   }
-deriving instance (Show (MantissaWord a), Show (ExponentInt a)) => Show (FloatingDecimal a)
-deriving instance (Eq (MantissaWord a), Eq (ExponentInt a)) => Eq (FloatingDecimal a)
+deriving instance Show (MantissaWord a) => Show (FloatingDecimal a)
+deriving instance Eq (MantissaWord a) => Eq (FloatingDecimal a)
 
 type family MantissaWord a
 type instance MantissaWord Float = Word32
 type instance MantissaWord Double = Word64
-
-type family ExponentInt a
-type instance ExponentInt Float = Int32
-type instance ExponentInt Double = Int32
 
