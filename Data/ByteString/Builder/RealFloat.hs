@@ -105,7 +105,7 @@ doubleDec = formatDouble generic
 data FloatFormat
   = FScientific     -- ^ scientific notation
   | FStandard (Maybe Int)       -- ^ standard notation with `Maybe Int` digits after the decimal
-  | FGeneric (Maybe Int)       -- ^ dispatches to scientific or standard notation based on the exponent
+  | FGeneric (Maybe Int) (Int,Int)       -- ^ dispatches to scientific or standard notation based on the exponent
   deriving Show
 
 -- | Standard notation with `n` decimal places
@@ -130,7 +130,7 @@ scientific = FScientific
 --
 -- @since 0.11.2.0
 generic :: FloatFormat
-generic = FGeneric Nothing
+generic = FGeneric Nothing (0,7)
 
 -- TODO: support precision argument for FGeneric and FScientific
 -- | Returns a rendered Float. Returns the \'shortest\' representation in
@@ -162,11 +162,11 @@ formatFloat fmt = \f ->
   let (RF.FloatingDecimal m e) = RF.f2Intermediate f
       e' = R.int32ToInt e + R.decimalLength9 m in
   case fmt of
-    FGeneric prec ->
+    FGeneric prec (minExpo,maxExpo) ->
       case specialStr f of
         Just b -> b
         Nothing ->
-          if e' >= 0 && e' <= 7
+          if e' >= minExpo && e' <= maxExpo
              then sign f `mappend` showStandard (R.word32ToWord64 m) e' prec
              else BP.primBounded (R.toCharsScientific (f < 0) m e) ()
     FScientific -> RF.f2s f
@@ -205,11 +205,11 @@ formatDouble fmt = \f ->
   let (RD.FloatingDecimal m e) = RD.d2Intermediate f
       e' = R.int32ToInt e + R.decimalLength17 m in
   case fmt of
-    FGeneric prec ->
+    FGeneric prec (minExpo,maxExpo) ->
       case specialStr f of
         Just b -> b
         Nothing ->
-          if e' >= 0 && e' <= 7
+          if e' >= minExpo && e' <= maxExpo
              then sign f `mappend` showStandard m e' prec
              else BP.primBounded (R.toCharsScientific (f < 0) m e) ()
     FScientific -> RD.d2s f
