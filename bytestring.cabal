@@ -208,4 +208,5 @@ benchmark bytestring-bench
                     bytestring,
                     deepseq,
                     tasty-bench,
-                    random
+                    random,
+                    ieee754
