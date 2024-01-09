@@ -533,10 +533,12 @@ pow5_factor w count =
         _  -> pow5_factor q (count +# 1#)
 
 -- | Returns @True@ if value is divisible by @5^p@
+{-# INLINABLE multipleOfPowerOf5 #-}
 multipleOfPowerOf5 :: Mantissa a => a -> Int -> Bool
 multipleOfPowerOf5 value (I# p) = isTrue# (pow5_factor (raw value) 0# >=# p)
 
 -- | Returns @True@ if value is divisible by @2^p@
+{-# INLINABLE multipleOfPowerOf2 #-}
 multipleOfPowerOf2 :: Mantissa a => a -> Int -> Bool
 multipleOfPowerOf2 value p = (value .&. mask p) == 0
 
@@ -630,7 +632,8 @@ data BoundsState a = BoundsState
 --   places where vuTrailing can possible be True, we must have acceptBounds be
 --   True (accept_smaller)
 -- - The final result doesn't change the lastRemovedDigit for rounding anyway
-trimTrailing :: (Show a, Mantissa a) => BoundsState a -> (BoundsState a, Int32)
+{-# INLINABLE trimTrailing #-}
+trimTrailing :: Mantissa a => BoundsState a -> (BoundsState a, Int32)
 trimTrailing !initial = (res, r + r')
   where
     !(d', r) = trimTrailing' initial
@@ -674,6 +677,7 @@ trimTrailing !initial = (res, r + r')
 
 -- | Trim digits and update bookkeeping state when the table-computed
 -- step results has no trailing zeros (common case)
+{-# INLINABLE trimNoTrailing #-}
 trimNoTrailing :: Mantissa a => BoundsState a -> (BoundsState a, Int32)
 trimNoTrailing !(BoundsState u v w ld _ _) =
   (BoundsState ru' rv' 0 ld' False False, c)
@@ -867,7 +871,7 @@ writeSign ptr False s = (# ptr, s #)
 {-# SPECIALIZE toCharsScientific :: Word8# -> Bool -> Word32 -> Int32 -> BoundedPrim () #-}
 {-# SPECIALIZE toCharsScientific :: Word8# -> Bool -> Word64 -> Int32 -> BoundedPrim () #-}
 toCharsScientific :: (Mantissa a, DecimalLength a) => Word8# -> Bool -> a -> Int32 -> BoundedPrim ()
-toCharsScientific !eE !sign !mantissa !expo = boundedPrim maxEncodedLength $ \_ !(Ptr p0)-> do
+toCharsScientific eE !sign !mantissa !expo = boundedPrim maxEncodedLength $ \_ !(Ptr p0)-> do
   let !olength@(I# ol) = decimalLength mantissa
       !expo' = expo + intToInt32 olength - 1
   IO $ \s1 ->
