@@ -1,5 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE BangPatterns, MagicHash #-}
+{-# LANGUAGE TypeApplications #-}
 -- |
 -- Module      : Data.ByteString.Builder.RealFloat.F2S
 -- Copyright   : (c) Lawrence Wu 2021
@@ -37,16 +38,6 @@ foreign import ccall "&hs_bytestring_float_pow5_inv_split"
 -- > fmap (fnorm float_pow5_bitcount) [0..float_max_split]
 foreign import ccall "&hs_bytestring_float_pow5_split"
   float_pow5_split :: Ptr Word64
-
--- | Number of mantissa bits of a 32-bit float. The number of significant bits
--- (floatDigits (undefined :: Float)) is 24 since we have a leading 1 for
--- normal floats and 0 for subnormal floats
-float_mantissa_bits :: Int
-float_mantissa_bits = 23
-
--- | Number of exponent bits of a 32-bit float
-float_exponent_bits :: Int
-float_exponent_bits = 8
 
 -- | Bias in encoded 32-bit float representation (2^7 - 1)
 float_bias :: Int
@@ -150,7 +141,8 @@ f2dLT e2' u v w =
 -- 32-bit Float using the ryu algorithm.
 f2d :: Word32 -> Word32 -> FD
 f2d m e =
-  let !mf = if e == 0
+  let float_mantissa_bits = mantissaBits @Float
+      !mf = if e == 0
               then m
               else (1 `unsafeShiftL` float_mantissa_bits) .|. m
       !ef = intToInt32 $ if e == 0
@@ -176,21 +168,12 @@ f2d m e =
       !e' = e10 + removed
    in FloatingDecimal output e'
 
--- | Split a Float into (sign, mantissa, exponent)
-breakdown :: Float -> (Bool, Word32, Word32)
-breakdown f =
-  let bits = castFloatToWord32 f
-      sign = ((bits `unsafeShiftR` (float_mantissa_bits + float_exponent_bits)) .&. 1) /= 0
-      mantissa = bits .&. mask float_mantissa_bits
-      expo = (bits `unsafeShiftR` float_mantissa_bits) .&. mask float_exponent_bits
-   in (sign, mantissa, expo)
-
 -- | Dispatches to `f2d` and applies the given formatters
 {-# INLINE f2s' #-}
 f2s' :: (Bool -> Word32 -> Int32 -> a) -> (NonNumbersAndZero -> a) -> Float -> a
 f2s' formatter specialFormatter f =
   let (sign, mantissa, expo) = breakdown f
-   in if (expo == mask float_exponent_bits) || (expo == 0 && mantissa == 0)
+   in if (expo == mask (exponentBits @Float)) || (expo == 0 && mantissa == 0)
          then specialFormatter NonNumbersAndZero
                   { negative=sign
                   , exponent_all_one=expo > 0

@@ -7,6 +7,8 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE MultiWayIf #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 -- |
 -- Module      : Data.ByteString.Builder.RealFloat.Internal
 -- Copyright   : (c) Lawrence Wu 2021
@@ -72,6 +74,9 @@ module Data.ByteString.Builder.RealFloat.Internal
     -- joining Float and Double logic
     , FloatingDecimal(..)
     , MantissaWord
+    , breakdown
+    , MantissaBits(..)
+    , ExponentBits(..)
 
     , module Data.ByteString.Builder.RealFloat.TableGenerator
     ) where
@@ -884,3 +889,44 @@ type family MantissaWord a
 type instance MantissaWord Float = Word32
 type instance MantissaWord Double = Word64
 
+-- | Split a Double into (sign, mantissa, exponent)
+{-# INLINABLE breakdown #-}
+{-# SPECIALIZE breakdown :: Float -> (Bool, MantissaWord Float, ExponentWord Float) #-}
+{-# SPECIALIZE breakdown :: Double -> (Bool, MantissaWord Double, ExponentWord Double) #-}
+breakdown :: forall a mw ew.
+  ( ExponentBits a
+  , MantissaBits a
+  , CastToWord a
+  , mw ~ MantissaWord a
+  , Bits mw
+  , Eq mw
+  , Integral mw
+  , ew ~ ExponentWord a
+  , Num ew
+  ) => a -> (Bool, mw, ew)
+breakdown f = (sign, mantissa, expo)
+  where
+  bits = castToWord f
+  sign = (bits .&. 1 `rotateR` 1) /= 0
+  mantissa = bits .&. mask (mantissaBits @a)
+  expo = fromIntegral $ (bits `unsafeShiftR` mantissaBits @a) .&. mask (exponentBits @a)
+
+type family ExponentWord a
+type instance ExponentWord Float = Word32
+type instance ExponentWord Double = Word64
+
+class CastToWord a where castToWord :: a -> MantissaWord a
+instance CastToWord Float where castToWord = castFloatToWord32
+instance CastToWord Double where castToWord = castDoubleToWord64
+
+-- | Number of mantissa bits. The number of significant bits
+-- is one more than defined since we have a leading 1 for
+-- normal and 0 for subnormal.
+class MantissaBits a where mantissaBits :: Int
+instance MantissaBits Float where mantissaBits = 23
+instance MantissaBits Double where mantissaBits = 52
+
+-- | Number of exponent bits.
+class ExponentBits a where exponentBits :: Int
+instance ExponentBits Float where exponentBits = 8
+instance ExponentBits Double where exponentBits = 11

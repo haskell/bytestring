@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 -- |
 -- Module      : Data.ByteString.Builder.RealFloat.D2S
 -- Copyright   : (c) Lawrence Wu 2021
@@ -40,15 +41,7 @@ foreign import ccall "&hs_bytestring_double_pow5_inv_split"
 foreign import ccall "&hs_bytestring_double_pow5_split"
   double_pow5_split :: Ptr Word64
 
--- | Number of mantissa bits of a 64-bit float. The number of significant bits
--- (floatDigits (undefined :: Double)) is 53 since we have a leading 1 for
--- normal floats and 0 for subnormal floats
-double_mantissa_bits :: Int
-double_mantissa_bits = 52
-
--- | Number of exponent bits of a 64-bit float
-double_exponent_bits :: Int
-double_exponent_bits = 11
+double_mantissa_bits = mantissaBits @Double
 
 -- | Bias in encoded 64-bit float representation (2^10 - 1)
 double_bias :: Int
@@ -195,21 +188,12 @@ d2d m e =
       !e' = e10 + removed
    in FloatingDecimal output e'
 
--- | Split a Double into (sign, mantissa, exponent)
-breakdown :: Double -> (Bool, Word64, Word64)
-breakdown f =
-  let bits = castDoubleToWord64 f
-      sign = ((bits `unsafeShiftR` (double_mantissa_bits + double_exponent_bits)) .&. 1) /= 0
-      mantissa = bits .&. mask double_mantissa_bits
-      expo = (bits `unsafeShiftR` double_mantissa_bits) .&. mask double_exponent_bits
-   in (sign, mantissa, expo)
-
 -- | Dispatches to `d2d` or `d2dSmallInt` and applies the given formatters
 {-# INLINE d2s' #-}
 d2s' :: (Bool -> Word64 -> Int32 -> a) -> (NonNumbersAndZero -> a) -> Double -> a
 d2s' formatter specialFormatter d =
   let (sign, mantissa, expo) = breakdown d
-   in if (expo == mask double_exponent_bits) || (expo == 0 && mantissa == 0)
+   in if (expo == mask (exponentBits @Double)) || (expo == 0 && mantissa == 0)
          then specialFormatter NonNumbersAndZero
                   { negative=sign
                   , exponent_all_one=expo > 0
