@@ -28,7 +28,6 @@
 
 module Data.ByteString.Builder.RealFloat.Internal
     ( mask
-    , NonNumbersAndZero(..)
     , toCharsNonNumbersAndZero
     , SpecialStrings(..)
     , DecimalLength(..)
@@ -74,6 +73,7 @@ module Data.ByteString.Builder.RealFloat.Internal
     -- joining Float and Double logic
     , FloatingDecimal(..)
     , MantissaWord
+    , ExponentWord
     , breakdown
     , MantissaBits(..)
     , ExponentBits(..)
@@ -88,6 +88,7 @@ import Data.ByteString.Builder.Prim.Internal (BoundedPrim, boundedPrim)
 import Data.ByteString.Builder.RealFloat.TableGenerator
 import Data.ByteString.Utils.UnalignedWrite
 import Data.Char (ord)
+import Data.Proxy (Proxy)
 import Foreign.C.Types
 import GHC.Int (Int(..), Int32(..))
 import GHC.IO (IO(..), unIO)
@@ -258,20 +259,26 @@ boundString s = boundedPrim maxEncodedLength $ const (pokeAll s)
 --   * sign = either 0 or 1.
 --   * biased exponent = all 0 bits.
 --   * fraction = all 0 bits.
-data NonNumbersAndZero = NonNumbersAndZero
-  { negative :: Bool
-  , exponent_all_one :: Bool
-  , mantissa_non_zero :: Bool
-  }
-
--- | Renders NonNumbersAndZero into bounded primitive
-{-# INLINE toCharsNonNumbersAndZero #-}
-toCharsNonNumbersAndZero :: SpecialStrings -> NonNumbersAndZero -> BoundedPrim ()
-toCharsNonNumbersAndZero SpecialStrings{..} = boundString . \(NonNumbersAndZero{..}) -> if
-  | mantissa_non_zero -> nan
-  | exponent_all_one -> if negative then negativeInfinity else positiveInfinity
-  | negative -> negativeZero
-  | otherwise -> positiveZero
+{-# INLINABLE toCharsNonNumbersAndZero #-}
+{-# SPECIALIZE toCharsNonNumbersAndZero :: Proxy Float -> SpecialStrings -> Bool -> MantissaWord Float -> ExponentWord Float -> Maybe (BoundedPrim ()) #-}
+{-# SPECIALIZE toCharsNonNumbersAndZero :: Proxy Double -> SpecialStrings -> Bool -> MantissaWord Double -> ExponentWord Double -> Maybe (BoundedPrim ()) #-}
+toCharsNonNumbersAndZero :: forall a mw ew.
+  ( ExponentBits a
+  , Ord mw
+  , Num mw
+  , Ord ew
+  , Num ew
+  , Bits ew
+  , Integral ew
+  ) => Proxy a -> SpecialStrings -> Bool -> mw -> ew -> Maybe (BoundedPrim ())
+toCharsNonNumbersAndZero _ SpecialStrings{..} sign mantissa expo =
+  if (expo == mask (exponentBits @a)) || (expo == 0 && mantissa == 0)
+  then Just $ boundString $ if
+    | mantissa > 0 -> nan
+    | expo > 0 -> if sign then negativeInfinity else positiveInfinity
+    | sign -> negativeZero
+    | otherwise -> positiveZero
+  else Nothing
 
 data SpecialStrings = SpecialStrings
   { nan :: String
@@ -905,7 +912,6 @@ breakdown :: forall a mw ew.
   , Bits mw
   , Eq mw
   , Integral mw
-  , ew ~ ExponentWord a
   , Num ew
   ) => a -> (Bool, mw, ew)
 breakdown f = (sign, mantissa, expo)

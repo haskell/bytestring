@@ -21,6 +21,7 @@ import Data.ByteString.Builder.Internal (Builder)
 import Data.ByteString.Builder.Prim (primBounded)
 import Data.ByteString.Builder.RealFloat.Internal
 import Data.Maybe (fromMaybe)
+import Data.Proxy (Proxy(Proxy))
 import GHC.Int (Int32(..))
 import GHC.Ptr (Ptr(..))
 import GHC.Word (Word64(..))
@@ -190,24 +191,19 @@ d2d m e =
 
 -- | Dispatches to `d2d` or `d2dSmallInt` and applies the given formatters
 {-# INLINE d2s' #-}
-d2s' :: (Bool -> Word64 -> Int32 -> a) -> (NonNumbersAndZero -> a) -> Double -> a
+d2s' :: (Bool -> Word64 -> Int32 -> a) -> (Bool -> MantissaWord Double -> ExponentWord Double -> Maybe a) -> Double -> a
 d2s' formatter specialFormatter d =
   let (sign, mantissa, expo) = breakdown d
-   in if (expo == mask (exponentBits @Double)) || (expo == 0 && mantissa == 0)
-         then specialFormatter NonNumbersAndZero
-                  { negative=sign
-                  , exponent_all_one=expo > 0
-                  , mantissa_non_zero=mantissa > 0 }
-         else let v = unifySmallTrailing <$> d2dSmallInt mantissa expo
-                  FloatingDecimal m e = fromMaybe (d2d mantissa expo) v
+  in flip fromMaybe (specialFormatter sign mantissa expo) $
+         let FloatingDecimal m e = d2d mantissa expo
                in formatter sign m e
 
 -- | Render a Double in scientific notation
 d2s :: Word8# -> SpecialStrings -> Double -> Builder
-d2s eE ss d = primBounded (d2s' (toCharsScientific eE) (toCharsNonNumbersAndZero ss) d) ()
+d2s eE ss d = primBounded (d2s' (toCharsScientific eE) (toCharsNonNumbersAndZero @Double Proxy ss) d) ()
 
 -- | Returns the decimal representation of a Double. NaN and Infinity will
 -- return `FloatingDecimal 0 0`
 {-# INLINE d2Intermediate #-}
 d2Intermediate :: Double -> FD
-d2Intermediate = d2s' (const FloatingDecimal) (const $ FloatingDecimal 0 0)
+d2Intermediate = d2s' (const FloatingDecimal) (\_ _ _ -> Nothing)
