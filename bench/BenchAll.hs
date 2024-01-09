@@ -7,6 +7,8 @@
 -- Portability : tested on GHC only
 --
 
+{-# LANGUAGE ViewPatterns        #-}
+
 module Main (main) where
 
 import           Data.Foldable                         (foldMap)
@@ -19,6 +21,12 @@ import           Prelude                               hiding (words)
 import qualified Data.List                             as List
 import           Control.DeepSeq
 import           Control.Exception
+import           Numeric.IEEE
+import           GHC.Float                             (powerFloat,
+                                                        castWord32ToFloat,
+                                                        castWord64ToDouble,
+                                                        castFloatToWord32,
+                                                        castDoubleToWord64)
 
 import qualified Data.ByteString                       as S
 import qualified Data.ByteString.Char8                 as S8
@@ -65,7 +73,7 @@ countToZero n = Just (n, n - 1)
 
 -- | Few-enough repetitions to avoid making GC too expensive.
 nRepl :: Int
-nRepl = 10000
+nRepl = 1000000
 
 {-# NOINLINE intData #-}
 intData :: [Int]
@@ -79,14 +87,69 @@ smallIntegerData = map fromIntegral intData
 largeIntegerData :: [Integer]
 largeIntegerData = map (* (10 ^ (100 :: Integer))) smallIntegerData
 
+{-# NOINLINE floatPosData #-}
+floatPosData :: [Float]
+floatPosData = map evenlyDistribute intData
+  where
+  evenlyDistribute :: Int -> Float
+  evenlyDistribute x = castWord32ToFloat $ increment * fromIntegral x
+  increment = castFloatToWord32 maxFinite `div` fromIntegral nRepl
 
-{-# NOINLINE floatData #-}
-floatData :: [Float]
-floatData = map (\x -> (3.14159 * fromIntegral x) ^ (3 :: Int)) intData
+{-# NOINLINE floatNegData #-}
+floatNegData :: [Float]
+floatNegData = map negate floatPosData
 
-{-# NOINLINE doubleData #-}
-doubleData :: [Double]
-doubleData = map (\x -> (3.14159 * fromIntegral x) ^ (3 :: Int)) intData
+{-# NOINLINE floatNaN #-}
+floatNaN :: [Float]
+floatNaN = map (const nan) intData
+
+{-# NOINLINE floatPosInf #-}
+floatPosInf :: [Float]
+floatPosInf = map (const infinity) intData
+
+{-# NOINLINE floatNegInf #-}
+floatNegInf :: [Float]
+floatNegInf = map (const (negate infinity)) intData
+
+{-# NOINLINE floatPosZero #-}
+floatPosZero :: [Float]
+floatPosZero = map (const 0) intData
+
+{-# NOINLINE floatNegZero #-}
+floatNegZero :: [Float]
+floatNegZero = map (const (-0)) intData
+
+{-# NOINLINE doublePosData #-}
+doublePosData :: [Double]
+doublePosData = map evenlyDistribute intData
+  where
+  evenlyDistribute :: Int -> Double
+  evenlyDistribute x = castWord64ToDouble $ increment * fromIntegral x
+  increment = castDoubleToWord64 maxFinite `div` fromIntegral nRepl
+
+{-# NOINLINE doubleNegData #-}
+doubleNegData :: [Double]
+doubleNegData = map negate doublePosData
+
+{-# NOINLINE doubleNaN #-}
+doubleNaN :: [Double]
+doubleNaN = map (const nan) intData
+
+{-# NOINLINE doublePosInf #-}
+doublePosInf :: [Double]
+doublePosInf = map (const infinity) intData
+
+{-# NOINLINE doubleNegInf #-}
+doubleNegInf :: [Double]
+doubleNegInf = map (const (negate infinity)) intData
+
+{-# NOINLINE doublePosZero #-}
+doublePosZero :: [Double]
+doublePosZero = map (const 0) intData
+
+{-# NOINLINE doubleNegZero #-}
+doubleNegZero :: [Double]
+doubleNegZero = map (const (-0)) intData
 
 {-# NOINLINE byteStringData #-}
 byteStringData :: S.ByteString
@@ -353,12 +416,94 @@ main = do
       , bgroup "Non-bounded encodings"
         [ benchB "byteStringHex"           byteStringData     $ byteStringHex
         , benchB "lazyByteStringHex"       lazyByteStringData $ lazyByteStringHex
-        , benchB "foldMap floatDec"        floatData          $ foldMap floatDec
-        , benchB "foldMap doubleDec"       doubleData         $ foldMap doubleDec
           -- Note that the small data corresponds to the intData pre-converted
           -- to Integer.
         , benchB "foldMap integerDec (small)"                     smallIntegerData        $ foldMap integerDec
         , benchB "foldMap integerDec (large)"                     largeIntegerData        $ foldMap integerDec
+        , bgroup "RealFloat"
+          [ bgroup "FGeneric"
+            [ bgroup "Positive"
+              [ benchB "foldMap (formatFloat  generic)" floatPosData  $ foldMap (formatFloat  generic)
+              , benchB "foldMap (formatDouble generic)" doublePosData $ foldMap (formatDouble generic)
+              ]
+            , bgroup "Negative"
+              [ benchB "foldMap (formatFloat  generic)" floatNegData  $ foldMap (formatFloat  generic)
+              , benchB "foldMap (formatDouble generic)" doubleNegData $ foldMap (formatDouble generic)
+              ]
+            , bgroup "Special"
+              [ benchB "foldMap (formatFloat  generic)" floatNaN      $ foldMap (formatFloat  generic)
+              , benchB "foldMap (formatDouble generic)" doubleNaN     $ foldMap (formatDouble generic)
+              , benchB "foldMap (formatFloat  generic)" floatPosInf   $ foldMap (formatFloat  generic)
+              , benchB "foldMap (formatDouble generic)" doublePosInf  $ foldMap (formatDouble generic)
+              , benchB "foldMap (formatFloat  generic)" floatNegInf   $ foldMap (formatFloat  generic)
+              , benchB "foldMap (formatDouble generic)" doubleNegInf  $ foldMap (formatDouble generic)
+              , benchB "foldMap (formatFloat  generic)" floatPosZero  $ foldMap (formatFloat  generic)
+              , benchB "foldMap (formatDouble generic)" doublePosZero $ foldMap (formatDouble generic)
+              , benchB "foldMap (formatFloat  generic)" floatNegZero  $ foldMap (formatFloat  generic)
+              , benchB "foldMap (formatDouble generic)" doubleNegZero $ foldMap (formatDouble generic)
+              ]
+            ]
+          , bgroup "FScientific"
+            [ bgroup "Positive"
+              [ benchB "foldMap (formatFloat  scientific)" floatPosData  $ foldMap (formatFloat  scientific)
+              , benchB "foldMap (formatDouble scientific)" doublePosData $ foldMap (formatDouble scientific)
+              ]
+            , bgroup "Negative"
+              [ benchB "foldMap (formatFloat  scientific)" floatNegData  $ foldMap (formatFloat  scientific)
+              , benchB "foldMap (formatDouble scientific)" doubleNegData $ foldMap (formatDouble scientific)
+              ]
+            , bgroup "Special"
+              [ benchB "foldMap (formatFloat  scientific)" floatNaN      $ foldMap (formatFloat  scientific)
+              , benchB "foldMap (formatDouble scientific)" doubleNaN     $ foldMap (formatDouble scientific)
+              , benchB "foldMap (formatFloat  scientific)" floatPosInf   $ foldMap (formatFloat  scientific)
+              , benchB "foldMap (formatDouble scientific)" doublePosInf  $ foldMap (formatDouble scientific)
+              , benchB "foldMap (formatFloat  scientific)" floatNegInf   $ foldMap (formatFloat  scientific)
+              , benchB "foldMap (formatDouble scientific)" doubleNegInf  $ foldMap (formatDouble scientific)
+              , benchB "foldMap (formatFloat  scientific)" floatPosZero  $ foldMap (formatFloat  scientific)
+              , benchB "foldMap (formatDouble scientific)" doublePosZero $ foldMap (formatDouble scientific)
+              , benchB "foldMap (formatFloat  scientific)" floatNegZero  $ foldMap (formatFloat  scientific)
+              , benchB "foldMap (formatDouble scientific)" doubleNegZero $ foldMap (formatDouble scientific)
+              ]
+            ]
+          , bgroup "FStandard"
+            [ bgroup "Positive"
+              [ bgroup "without"
+                [ benchB "foldMap (formatFloat  standardDefaultPrecision)" floatPosData  $ foldMap (formatFloat  standardDefaultPrecision)
+                , benchB "foldMap (formatDouble standardDefaultPrecision)" doublePosData $ foldMap (formatDouble standardDefaultPrecision)
+                ]
+              , bgroup "precision"
+                [ benchB "foldMap (formatFloat  (standard 1))" floatPosData  $ foldMap (formatFloat  (standard 1))
+                , benchB "foldMap (formatDouble (standard 1))" doublePosData $ foldMap (formatDouble (standard 1))
+                , benchB "foldMap (formatFloat  (standard 6))" floatPosData  $ foldMap (formatFloat  (standard 6))
+                , benchB "foldMap (formatDouble (standard 6))" doublePosData $ foldMap (formatDouble (standard 6))
+                ]
+              ]
+            , bgroup "Negative"
+              [ bgroup "without"
+                [ benchB "foldMap (formatFloat  standardDefaultPrecision)" floatNegData  $ foldMap (formatFloat  standardDefaultPrecision)
+                , benchB "foldMap (formatDouble standardDefaultPrecision)" doubleNegData $ foldMap (formatDouble standardDefaultPrecision)
+                ]
+              , bgroup "precision"
+                [ benchB "foldMap (formatFloat  (standard 1))" floatNegData  $ foldMap (formatFloat  (standard 1))
+                , benchB "foldMap (formatDouble (standard 1))" doubleNegData $ foldMap (formatDouble (standard 1))
+                , benchB "foldMap (formatFloat  (standard 6))" floatNegData  $ foldMap (formatFloat  (standard 6))
+                , benchB "foldMap (formatDouble (standard 6))" doubleNegData $ foldMap (formatDouble (standard 6))
+                ]
+              ]
+            , bgroup "Special"
+              [ benchB "foldMap (formatFloat  standard)" floatNaN      $ foldMap (formatFloat  standardDefaultPrecision)
+              , benchB "foldMap (formatDouble standard)" doubleNaN     $ foldMap (formatDouble standardDefaultPrecision)
+              , benchB "foldMap (formatFloat  standard)" floatPosInf   $ foldMap (formatFloat  standardDefaultPrecision)
+              , benchB "foldMap (formatDouble standard)" doublePosInf  $ foldMap (formatDouble standardDefaultPrecision)
+              , benchB "foldMap (formatFloat  standard)" floatNegInf   $ foldMap (formatFloat  standardDefaultPrecision)
+              , benchB "foldMap (formatDouble standard)" doubleNegInf  $ foldMap (formatDouble standardDefaultPrecision)
+              , benchB "foldMap (formatFloat  standard)" floatPosZero  $ foldMap (formatFloat  standardDefaultPrecision)
+              , benchB "foldMap (formatDouble standard)" doublePosZero $ foldMap (formatDouble standardDefaultPrecision)
+              , benchB "foldMap (formatFloat  standard)" floatNegZero  $ foldMap (formatFloat  standardDefaultPrecision)
+              , benchB "foldMap (formatDouble standard)" doubleNegZero $ foldMap (formatDouble standardDefaultPrecision)
+              ]
+            ]
+          ]
         ]
       ]
 
