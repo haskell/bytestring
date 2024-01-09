@@ -6,6 +6,7 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE MultiWayIf #-}
 -- |
 -- Module      : Data.ByteString.Builder.RealFloat.Internal
 -- Copyright   : (c) Lawrence Wu 2021
@@ -259,12 +260,13 @@ data NonNumbersAndZero = NonNumbersAndZero
   }
 
 -- | Renders NonNumbersAndZero into bounded primitive
+{-# INLINE toCharsNonNumbersAndZero #-}
 toCharsNonNumbersAndZero :: SpecialStrings -> NonNumbersAndZero -> BoundedPrim ()
-toCharsNonNumbersAndZero SpecialStrings{..} NonNumbersAndZero{..}
-  | mantissa_non_zero = boundString nan
-  | exponent_all_one = if negative then boundString negativeInfinity else boundString positiveInfinity
-  | negative = boundString negativeZero
-  | otherwise = boundString positiveZero
+toCharsNonNumbersAndZero SpecialStrings{..} = boundString . \(NonNumbersAndZero{..}) -> if
+  | mantissa_non_zero -> nan
+  | exponent_all_one -> if negative then negativeInfinity else positiveInfinity
+  | negative -> negativeZero
+  | otherwise -> positiveZero
 
 data SpecialStrings = SpecialStrings
   { nan :: String

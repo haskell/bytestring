@@ -204,5 +204,6 @@ f2s eE ss f = primBounded (f2s' (toCharsScientific eE) (toCharsNonNumbersAndZero
 
 -- | Returns the decimal representation of a Float. NaN and Infinity will
 -- return `FloatingDecimal 0 0`
+{-# INLINE f2Intermediate #-}
 f2Intermediate :: Float -> FD
 f2Intermediate = f2s' (const FloatingDecimal) (const $ FloatingDecimal 0 0)

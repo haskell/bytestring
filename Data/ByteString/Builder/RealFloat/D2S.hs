@@ -224,5 +224,6 @@ d2s eE ss d = primBounded (d2s' (toCharsScientific eE) (toCharsNonNumbersAndZero
 
 -- | Returns the decimal representation of a Double. NaN and Infinity will
 -- return `FloatingDecimal 0 0`
+{-# INLINE d2Intermediate #-}
 d2Intermediate :: Double -> FD
 d2Intermediate = d2s' (const FloatingDecimal) (const $ FloatingDecimal 0 0)

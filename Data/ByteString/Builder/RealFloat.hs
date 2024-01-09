@@ -1,6 +1,7 @@
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE LambdaCase #-}
 -- |
 -- Module      : Data.ByteString.Builder.RealFloat
 -- Copyright   : (c) Lawrence Wu 2021
@@ -93,7 +94,7 @@ import GHC.Prim (Word8#)
 -- @
 {-# INLINABLE floatDec #-}
 floatDec :: Float -> Builder
-floatDec = formatFloat generic
+floatDec = formatFloating generic
 
 -- | Returns a rendered Double. Matches `show` in displaying in standard or
 -- scientific notation
@@ -103,7 +104,7 @@ floatDec = formatFloat generic
 -- @
 {-# INLINABLE doubleDec #-}
 doubleDec :: Double -> Builder
-doubleDec = formatDouble generic
+doubleDec = formatFloating generic
 
 -- | Format type for use with `formatFloat` and `formatDouble`.
 --
@@ -209,6 +210,9 @@ formatFloat = formatFloating
 formatDouble :: FloatFormat -> Double -> Builder
 formatDouble = formatFloating
 
+{-# INLINABLE formatFloating #-}
+{-# SPECIALIZE formatFloating :: FloatFormat -> Float -> Builder #-}
+{-# SPECIALIZE formatFloating :: FloatFormat -> Double -> Builder #-}
 formatFloating ::
   -- a
   ( ToS a
@@ -222,19 +226,16 @@ formatFloating ::
   , ToWord64 mw
   , R.DecimalLength mw
   ) => FloatFormat -> a -> Builder
-formatFloating fmt f =
-  let (R.FloatingDecimal m e) = intermediate f
-      e' = toInt e + R.decimalLength m in
-  case fmt of
-    FGeneric eE prec (minExpo,maxExpo) ss ->
+formatFloating = \case
+    FGeneric eE prec (minExpo,maxExpo) ss -> \f -> let (R.FloatingDecimal m e) = intermediate f; e' = toInt e + R.decimalLength m in
       case specialStr ss f of
         Just b -> b
         Nothing ->
           if e' >= minExpo && e' <= maxExpo
              then sign f `mappend` showStandard (toWord64 m) e' prec
              else BP.primBounded (R.toCharsScientific eE (f < 0) m e) ()
-    FScientific eE ss -> toS eE ss f
-    FStandard prec ss ->
+    FScientific eE ss -> toS eE ss
+    FStandard prec ss -> \f -> let (R.FloatingDecimal m e) = intermediate f; e' = toInt e + R.decimalLength m in
       case specialStr ss f of
         Just b -> b
         Nothing -> sign f `mappend` showStandard (toWord64 m) e' prec
