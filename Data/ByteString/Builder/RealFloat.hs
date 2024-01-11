@@ -225,12 +225,14 @@ formatDouble = formatFloating
 {-# SPECIALIZE formatFloating :: FloatFormat -> Double -> Builder #-}
 formatFloating :: forall a mw ew ei.
   -- a
+  --( ToS a
   ( ToD a
+  , Num a
+  , Ord a
   , RealFloat a
-  , R.CastToWord a
-  , R.MantissaBits a
   , R.ExponentBits a
-  , Bits (R.ExponentWord a)
+  , R.MantissaBits a
+  , R.CastToWord a
   -- mantissa
   , mw ~ R.MantissaWord a
   , R.Mantissa mw
@@ -238,28 +240,23 @@ formatFloating :: forall a mw ew ei.
   , R.DecimalLength mw
   -- exponent
   , ew ~ R.ExponentWord a
-  , Integral (R.ExponentWord a)
+  , Integral ew
+  , Bits ew
   , ei ~ R.ExponentInt a
   , R.ToInt ei
   , Integral ei
   , R.FromInt ei
   ) => FloatFormat -> a -> Builder
 formatFloating fmt f = case fmt of
-  FGeneric eE prec (minExpo,maxExpo) ss ->
-    case R.toCharsNonNumbersAndZero ss f of
-      Just b -> BP.primBounded b ()
-      Nothing ->
-        if e' >= minExpo && e' <= maxExpo
-           then printSign f `mappend` showStandard (toWord64 m) e' prec
-           else BP.primBounded (sci eE) ()
-  FScientific eE ss -> flip BP.primBounded ()
-    $ fromMaybe (sci eE) (R.toCharsNonNumbersAndZero ss f)
-  FStandard prec ss ->
-    case R.toCharsNonNumbersAndZero ss f of
-      Just b -> BP.primBounded b ()
-      Nothing -> printSign f `mappend` showStandard (toWord64 m) e' prec
+  FGeneric eE prec (minExpo,maxExpo) ss -> flip fromMaybe (R.toCharsNonNumbersAndZero ss f) $
+    if e' >= minExpo && e' <= maxExpo
+       then printSign f `mappend` showStandard (toWord64 m) e' prec
+       else sci eE
+  FScientific eE ss -> fromMaybe (sci eE) (R.toCharsNonNumbersAndZero ss f)
+  FStandard prec ss -> flip fromMaybe (R.toCharsNonNumbersAndZero ss f) $
+    printSign f `mappend` showStandard (toWord64 m) e' prec
   where
-  sci eE = R.toCharsScientific @a Proxy eE sign m e
+  sci eE = BP.primBounded (R.toCharsScientific @a Proxy eE sign m e) ()
   e' = R.toInt e + R.decimalLength m
   R.FloatingDecimal m e = toD @a mantissa expo
   (sign, mantissa, expo) = R.breakdown f

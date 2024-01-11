@@ -6,7 +6,6 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE BlockArguments #-}
@@ -89,9 +88,11 @@ module Data.ByteString.Builder.RealFloat.Internal
 import Control.Monad (foldM)
 import Data.Bits (Bits(..), FiniteBits(..))
 import Data.ByteString.Internal (c2w)
+import Data.ByteString.Builder.Internal (Builder)
 import Data.ByteString.Builder.Prim.Internal (BoundedPrim, boundedPrim)
 import Data.ByteString.Builder.RealFloat.TableGenerator
 import Data.ByteString.Utils.UnalignedWrite
+import qualified Data.ByteString.Builder.Prim as BP
 import Data.Char (ord)
 import Data.Proxy (Proxy)
 import Foreign.C.Types
@@ -265,19 +266,31 @@ boundString s = boundedPrim maxEncodedLength $ const (pokeAll s)
 --   * biased exponent = all 0 bits.
 --   * fraction = all 0 bits.
 {-# INLINABLE toCharsNonNumbersAndZero #-}
-{-# SPECIALIZE toCharsNonNumbersAndZero :: SpecialStrings -> Float -> Maybe (BoundedPrim ()) #-}
-{-# SPECIALIZE toCharsNonNumbersAndZero :: SpecialStrings -> Double -> Maybe (BoundedPrim ()) #-}
-toCharsNonNumbersAndZero :: forall a mw.
-  ( CastToWord a
-  , MantissaBits a
+{-# SPECIALIZE toCharsNonNumbersAndZero :: SpecialStrings -> Float -> Maybe Builder #-}
+{-# SPECIALIZE toCharsNonNumbersAndZero :: SpecialStrings -> Double -> Maybe Builder #-}
+toCharsNonNumbersAndZero :: forall a mw ew.
+  ( ExponentBits a
   , mw ~ MantissaWord a
   , Ord mw
   , Num mw
-  , Bits mw
-  , Integral mw
+  , ew ~ ExponentWord a
+  , Ord ew
+  , Num ew
+  , Bits ew
+  , Integral ew
+
   , ExponentBits a
-  ) => SpecialStrings -> a -> Maybe (BoundedPrim ())
-toCharsNonNumbersAndZero SpecialStrings{..} f = boundString <$>
+  , MantissaBits a
+  , CastToWord a
+  , mw ~ MantissaWord a
+  , Bits mw
+  , Eq mw
+  , Integral mw
+  , ew ~ ExponentWord a
+  , Num ew
+
+  ) => SpecialStrings -> a -> Maybe Builder
+toCharsNonNumbersAndZero SpecialStrings{..} f = flip BP.primBounded () . boundString <$>
   if w .&. expoMantissaBits == 0
   then Just if w == signBit then negativeZero else positiveZero
   else if w .&. expoMask == expoMask
@@ -943,6 +956,7 @@ breakdown :: forall a mw ew.
   , mw ~ MantissaWord a
   , Bits mw
   , Integral mw
+  , ew ~ ExponentWord a
   , Num ew
   ) => a -> (Bool, mw, ew)
 breakdown f = (sign, mantissa, expo)
