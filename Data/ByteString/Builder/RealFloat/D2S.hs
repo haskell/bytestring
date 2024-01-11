@@ -191,19 +191,18 @@ d2d m e =
 
 -- | Dispatches to `d2d` or `d2dSmallInt` and applies the given formatters
 {-# INLINE d2s' #-}
-d2s' :: (Bool -> Word64 -> Int32 -> a) -> (Bool -> MantissaWord Double -> ExponentWord Double -> Maybe a) -> Double -> a
-d2s' formatter specialFormatter d =
-  let (sign, mantissa, expo) = breakdown d
-  in flip fromMaybe (specialFormatter sign mantissa expo) $
-         let FloatingDecimal m e = d2d mantissa expo
-               in formatter sign m e
+d2s' :: (Bool -> Word64 -> Int32 -> a) -> (Double -> Maybe a) -> Double -> a
+d2s' formatter specialFormatter d = flip fromMaybe (specialFormatter d) $
+  let FloatingDecimal m e = d2d mantissa expo
+      (sign, mantissa, expo) = breakdown d
+  in formatter sign m e
 
 -- | Render a Double in scientific notation
 d2s :: Word8# -> SpecialStrings -> Double -> Builder
-d2s eE ss d = primBounded (d2s' (toCharsScientific eE) (toCharsNonNumbersAndZero @Double Proxy ss) d) ()
+d2s eE ss d = primBounded (d2s' (toCharsScientific eE) (toCharsNonNumbersAndZero ss) d) ()
 
 -- | Returns the decimal representation of a Double. NaN and Infinity will
 -- return `FloatingDecimal 0 0`
 {-# INLINE d2Intermediate #-}
 d2Intermediate :: Double -> FD
-d2Intermediate = d2s' (const FloatingDecimal) (\_ _ _ -> Nothing)
+d2Intermediate = d2s' (const FloatingDecimal) (const Nothing)

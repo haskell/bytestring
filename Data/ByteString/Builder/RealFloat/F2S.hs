@@ -20,7 +20,6 @@ import Data.ByteString.Builder.Internal (Builder)
 import Data.ByteString.Builder.Prim (primBounded)
 import Data.ByteString.Builder.RealFloat.Internal
 import Data.Maybe (fromMaybe)
-import Data.Proxy (Proxy(Proxy))
 import GHC.Int (Int32(..))
 import GHC.Ptr (Ptr(..))
 import GHC.Word (Word32(..), Word64(..))
@@ -172,19 +171,18 @@ f2d m e =
 
 -- | Dispatches to `f2d` and applies the given formatters
 {-# INLINE f2s' #-}
-f2s' :: (Bool -> Word32 -> Int32 -> a) -> (Bool -> MantissaWord Float -> ExponentWord Float -> Maybe a) -> Float -> a
-f2s' formatter specialFormatter f =
-  let (sign, mantissa, expo) = breakdown f
-  in flip fromMaybe (specialFormatter sign mantissa expo) $
-         let FloatingDecimal m e = f2d mantissa expo
-               in formatter sign m e
+f2s' :: (Bool -> Word32 -> Int32 -> a) -> (Float -> Maybe a) -> Float -> a
+f2s' formatter specialFormatter f = flip fromMaybe (specialFormatter f) $
+  let FloatingDecimal m e = f2d mantissa expo
+      (sign, mantissa, expo) = breakdown f
+  in formatter sign m e
 
 -- | Render a Float in scientific notation
 f2s :: Word8# -> SpecialStrings -> Float -> Builder
-f2s eE ss f = primBounded (f2s' (toCharsScientific eE) (toCharsNonNumbersAndZero @Float Proxy ss) f) ()
+f2s eE ss f = primBounded (f2s' (toCharsScientific eE) (toCharsNonNumbersAndZero ss) f) ()
 
 -- | Returns the decimal representation of a Float. NaN and Infinity will
 -- return `FloatingDecimal 0 0`
 {-# INLINE f2Intermediate #-}
 f2Intermediate :: Float -> FD
-f2Intermediate = f2s' (const FloatingDecimal) (\_ _ _ -> Nothing)
+f2Intermediate = f2s' (const FloatingDecimal) (const Nothing)

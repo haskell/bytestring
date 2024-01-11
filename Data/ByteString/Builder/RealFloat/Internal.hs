@@ -9,6 +9,7 @@
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE BlockArguments #-}
 -- |
 -- Module      : Data.ByteString.Builder.RealFloat.Internal
 -- Copyright   : (c) Lawrence Wu 2021
@@ -88,7 +89,6 @@ import Data.ByteString.Builder.Prim.Internal (BoundedPrim, boundedPrim)
 import Data.ByteString.Builder.RealFloat.TableGenerator
 import Data.ByteString.Utils.UnalignedWrite
 import Data.Char (ord)
-import Data.Proxy (Proxy)
 import Foreign.C.Types
 import GHC.Int (Int(..), Int32(..))
 import GHC.IO (IO(..), unIO)
@@ -260,25 +260,37 @@ boundString s = boundedPrim maxEncodedLength $ const (pokeAll s)
 --   * biased exponent = all 0 bits.
 --   * fraction = all 0 bits.
 {-# INLINABLE toCharsNonNumbersAndZero #-}
-{-# SPECIALIZE toCharsNonNumbersAndZero :: Proxy Float -> SpecialStrings -> Bool -> MantissaWord Float -> ExponentWord Float -> Maybe (BoundedPrim ()) #-}
-{-# SPECIALIZE toCharsNonNumbersAndZero :: Proxy Double -> SpecialStrings -> Bool -> MantissaWord Double -> ExponentWord Double -> Maybe (BoundedPrim ()) #-}
+{-# SPECIALIZE toCharsNonNumbersAndZero :: SpecialStrings -> Float -> Maybe (BoundedPrim ()) #-}
+{-# SPECIALIZE toCharsNonNumbersAndZero :: SpecialStrings -> Double -> Maybe (BoundedPrim ()) #-}
 toCharsNonNumbersAndZero :: forall a mw ew.
-  ( ExponentBits a
+  ( CastToWord a
+  , MantissaBits a
+  , mw ~ MantissaWord a
   , Ord mw
   , Num mw
+  , Bits mw
+  , Integral mw
+  , ExponentBits a
+  , ew ~ ExponentWord a
   , Ord ew
   , Num ew
   , Bits ew
   , Integral ew
-  ) => Proxy a -> SpecialStrings -> Bool -> mw -> ew -> Maybe (BoundedPrim ())
-toCharsNonNumbersAndZero _ SpecialStrings{..} sign mantissa expo =
-  if (expo == mask (exponentBits @a)) || (expo == 0 && mantissa == 0)
-  then Just $ boundString $ if
-    | mantissa > 0 -> nan
-    | expo > 0 -> if sign then negativeInfinity else positiveInfinity
-    | sign -> negativeZero
-    | otherwise -> positiveZero
+  ) => SpecialStrings -> a -> Maybe (BoundedPrim ())
+toCharsNonNumbersAndZero SpecialStrings{..} f = boundString <$>
+  if w .&. expoMantissaBits == 0
+  then Just if w == signBit then negativeZero else positiveZero
+  else if w .&. expoMask == expoMask
+  then Just if w .&. mantissaMask == 0
+    then if w .&. signBit /= 0 then negativeInfinity else positiveInfinity
+    else nan
   else Nothing
+  where
+  w = castToWord f
+  expoMask = mask (exponentBits @a) `shiftL` mantissaBits @a
+  mantissaMask = mask (mantissaBits @a)
+  expoMantissaBits = complement signBit
+  signBit = 1 `rotateR` 1
 
 data SpecialStrings = SpecialStrings
   { nan :: String
