@@ -182,6 +182,7 @@ test-suite bytestring-tests
                     ghc-prim,
                     QuickCheck,
                     tasty,
+                    tasty-hunit,
                     tasty-quickcheck >= 0.8.1,
                     template-haskell,
                     transformers >= 0.3,
