@@ -214,6 +214,7 @@ test-suite bytestring-tests
                     deepseq,
                     QuickCheck,
                     tasty,
+                    tasty-hunit,
                     tasty-quickcheck >= 0.8.1,
                     template-haskell,
                     transformers >= 0.3,
