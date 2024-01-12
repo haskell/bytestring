@@ -1,3 +1,6 @@
+{-# LANGUAGE BlockArguments   #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+
 -- |
 -- Copyright   : (c) 2011 Simon Meier
 -- License     : BSD3-style (see LICENSE)
@@ -29,6 +32,7 @@ import           Data.Word
 import qualified Data.ByteString          as S
 import qualified Data.ByteString.Internal as S
 import qualified Data.ByteString.Lazy     as L
+import qualified Data.ByteString.Lazy.Char8 as LC
 import qualified Data.ByteString.Short    as Sh
 
 import           Data.ByteString.Builder
@@ -45,6 +49,7 @@ import           Numeric (showFFloat)
 import           System.Posix.Internals (c_unlink)
 
 import           Test.Tasty (TestTree, TestName, testGroup)
+import           Test.Tasty.HUnit (testCase, (@?=))
 import           Test.Tasty.QuickCheck
                    ( Arbitrary(..), oneof, choose, listOf, elements
                    , counterexample, ioProperty, Property, testProperty
@@ -954,8 +959,7 @@ testsFloating =
   ]
   where
     testExpected :: TestName -> (a -> Builder) -> [(a, String)] -> TestTree
-    testExpected name dec lst = testProperty name . conjoin $
-      fmap (\(x, ref) -> L.unpack (toLazyByteString (dec x)) === encodeASCII ref) lst
+    testExpected name dec = testCase name . traverse_ \(x, ref) -> LC.unpack (toLazyByteString (dec x)) @?= ref
 
     singleMatches :: (a -> Builder) -> (a -> String) -> (a, String) -> Property
     singleMatches dec refdec (x, ref) = L.unpack (toLazyByteString (dec x)) === encodeASCII (refdec x) .&&. refdec x === ref
