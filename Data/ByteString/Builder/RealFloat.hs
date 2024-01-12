@@ -6,6 +6,7 @@
 {-# LANGUAGE ExplicitForAll #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE BlockArguments #-}
 -- |
 -- Module      : Data.ByteString.Builder.RealFloat
 -- Copyright   : (c) Lawrence Wu 2021
@@ -246,18 +247,19 @@ formatFloating :: forall a mw ew ei.
   , R.FromInt ei
   ) => FloatFormat -> a -> Builder
 formatFloating fmt f = case fmt of
-  FGeneric eE prec (minExpo,maxExpo) ss -> flip fromMaybe (R.toCharsNonNumbersAndZero ss f) $
+  FGeneric eE prec (minExpo,maxExpo) ss -> specialsOr ss
     if e' >= minExpo && e' <= maxExpo
-       then printSign f `mappend` showStandard (toWord64 m) e' prec
+       then std prec
        else sci eE
-  FScientific eE ss -> fromMaybe (sci eE) (R.toCharsNonNumbersAndZero ss f)
-  FStandard prec ss -> flip fromMaybe (R.toCharsNonNumbersAndZero ss f) $
-    printSign f `mappend` showStandard (toWord64 m) e' prec
+  FScientific eE ss -> specialsOr ss $ sci eE
+  FStandard prec ss -> specialsOr ss $ std prec
   where
   sci eE = BP.primBounded (R.toCharsScientific @a Proxy eE sign m e) ()
+  std prec = printSign f `mappend` showStandard (toWord64 m) e' prec
   e' = R.toInt e + R.decimalLength m
   R.FloatingDecimal m e = toD @a mantissa expo
   (sign, mantissa, expo) = R.breakdown f
+  specialsOr ss = flip fromMaybe $ R.toCharsNonNumbersAndZero ss f
 
 class ToWord64 a where toWord64 :: a -> Word64
 instance ToWord64 Word32 where toWord64 = R.word32ToWord64
