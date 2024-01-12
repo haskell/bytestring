@@ -10,8 +10,8 @@
 -- Implementation of float-to-string conversion
 
 module Data.ByteString.Builder.RealFloat.F2S
-    ( f2s
-    , f2Intermediate
+    ( f2Intermediate
+    , f2s'
     ) where
 
 import Control.Arrow (first)
@@ -24,6 +24,7 @@ import GHC.Int (Int32(..))
 import GHC.Ptr (Ptr(..))
 import GHC.Word (Word32(..), Word64(..))
 import GHC.Prim (Word8#)
+import Data.Proxy (Proxy(Proxy))
 
 -- See Data.ByteString.Builder.RealFloat.TableGenerator for a high-level
 -- explanation of the ryu algorithm
@@ -176,10 +177,6 @@ f2s' formatter specialFormatter f = flip fromMaybe (specialFormatter f) $
   let FloatingDecimal m e = f2d mantissa expo
       (sign, mantissa, expo) = breakdown f
   in formatter sign m e
-
--- | Render a Float in scientific notation
-f2s :: Word8# -> SpecialStrings -> Float -> Builder
-f2s eE ss f = primBounded (f2s' (toCharsScientific eE) (toCharsNonNumbersAndZero ss) f) ()
 
 -- | Returns the decimal representation of a Float. NaN and Infinity will
 -- return `FloatingDecimal 0 0`

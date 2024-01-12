@@ -2,6 +2,10 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ExplicitForAll #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 -- |
 -- Module      : Data.ByteString.Builder.RealFloat
 -- Copyright   : (c) Lawrence Wu 2021
@@ -85,6 +89,8 @@ import GHC.Int (Int32)
 import GHC.Show (intToDigit)
 import Data.Char (ord)
 import GHC.Prim (Word8#)
+import Data.Bits (Bits)
+import Data.Proxy (Proxy(Proxy))
 
 -- | Returns a rendered Float. Matches `show` in displaying in standard or
 -- scientific notation
@@ -213,47 +219,55 @@ formatDouble = formatFloating
 {-# INLINABLE formatFloating #-}
 {-# SPECIALIZE formatFloating :: FloatFormat -> Float -> Builder #-}
 {-# SPECIALIZE formatFloating :: FloatFormat -> Double -> Builder #-}
-formatFloating ::
+formatFloating :: forall a mw ew ei.
   -- a
-  ( ToS a
+  ( ToS' a
   , Num a
   , Ord a
   , RealFloat a
   , Intermediate a
+  , R.CastToWord a
+  , R.MantissaBits a
+  , R.ExponentBits a
+  , Bits (R.ExponentWord a)
   -- mantissa
   , mw ~ R.MantissaWord a
   , R.Mantissa mw
   , ToWord64 mw
   , R.DecimalLength mw
+  -- exponent
+  , ew ~ R.ExponentWord a
+  , Integral (R.ExponentWord a)
+  , ei ~ R.ExponentInt a
+  , R.ToInt ei
+  , Integral ei
+  , R.FromInt ei
   ) => FloatFormat -> a -> Builder
-formatFloating = \case
-    FGeneric eE prec (minExpo,maxExpo) ss -> \f -> let (R.FloatingDecimal m e) = intermediate f; e' = toInt e + R.decimalLength m in
-      case specialStr ss f of
-        Just b -> b
+formatFloating fmt f = case fmt of
+    FGeneric eE prec (minExpo,maxExpo) ss -> let (R.FloatingDecimal m e) = intermediate f; e' = R.toInt e + R.decimalLength m in
+      case R.toCharsNonNumbersAndZero ss f of
+        Just b -> BP.primBounded b ()
         Nothing ->
           if e' >= minExpo && e' <= maxExpo
              then sign f `mappend` showStandard (toWord64 m) e' prec
-             else BP.primBounded (R.toCharsScientific eE (f < 0) m e) ()
-    FScientific eE ss -> toS eE ss
-    FStandard prec ss -> \f -> let (R.FloatingDecimal m e) = intermediate f; e' = toInt e + R.decimalLength m in
-      case specialStr ss f of
-        Just b -> b
+             else BP.primBounded (R.toCharsScientific @a Proxy eE (f < 0) m e) ()
+    FScientific eE ss -> BP.primBounded (toS' (R.toCharsScientific @a Proxy eE) (R.toCharsNonNumbersAndZero ss) f) ()
+    FStandard prec ss -> let (R.FloatingDecimal m e) = intermediate f; e' = R.toInt e + R.decimalLength m in
+      case R.toCharsNonNumbersAndZero ss f of
+        Just b -> BP.primBounded b ()
         Nothing -> sign f `mappend` showStandard (toWord64 m) e' prec
 
 class Intermediate a where intermediate :: a -> R.FloatingDecimal a
 instance Intermediate Float where intermediate = RF.f2Intermediate
 instance Intermediate Double where intermediate = RD.d2Intermediate
 
-class ToInt a where toInt :: a -> Int
-instance ToInt Int32 where toInt = R.int32ToInt
-
 class ToWord64 a where toWord64 :: a -> Word64
 instance ToWord64 Word32 where toWord64 = R.word32ToWord64
 instance ToWord64 Word64 where toWord64 = id
 
-class ToS a where toS :: Word8# -> R.SpecialStrings -> a -> Builder
-instance ToS Float where toS = RF.f2s
-instance ToS Double where toS = RD.d2s
+class ToS' a where toS' :: (Bool -> R.MantissaWord a -> R.ExponentInt a -> b) -> (a -> Maybe b) -> a -> b
+instance ToS' Float where toS' = RF.f2s'
+instance ToS' Double where toS' = RD.d2s'
 
 -- | Char7 encode a 'Char'.
 {-# INLINE char7 #-}
@@ -268,16 +282,6 @@ string7 = BP.primMapListFixed BP.char7
 -- | Encodes a `-` if input is negative
 sign :: RealFloat a => a -> Builder
 sign f = if f < 0 then char7 '-' else mempty
-
--- | Special rendering for Nan, Infinity, and 0. See
--- RealFloat.Internal.NonNumbersAndZero
-specialStr :: RealFloat a => R.SpecialStrings -> a -> Maybe Builder
-specialStr R.SpecialStrings{..} f
-  | isNaN f          = Just $ string7 nan
-  | isInfinite f     = Just $ if f < 0 then string7 negativeInfinity else string7 positiveInfinity
-  | isNegativeZero f = Just $ string7 negativeZero
-  | f == 0           = Just $ string7 positiveZero
-  | otherwise        = Nothing
 
 -- | Returns a list of decimal digits in a Word64
 digits :: Word64 -> [Int]

@@ -75,9 +75,13 @@ module Data.ByteString.Builder.RealFloat.Internal
     , FloatingDecimal(..)
     , MantissaWord
     , ExponentWord
+    , ExponentInt
     , breakdown
     , MantissaBits(..)
     , ExponentBits(..)
+    , CastToWord(..)
+    , ToInt(..)
+    , FromInt(..)
 
     , module Data.ByteString.Builder.RealFloat.TableGenerator
     ) where
@@ -89,6 +93,7 @@ import Data.ByteString.Builder.Prim.Internal (BoundedPrim, boundedPrim)
 import Data.ByteString.Builder.RealFloat.TableGenerator
 import Data.ByteString.Utils.UnalignedWrite
 import Data.Char (ord)
+import Data.Proxy (Proxy)
 import Foreign.C.Types
 import GHC.Int (Int(..), Int32(..))
 import GHC.IO (IO(..), unIO)
@@ -862,7 +867,13 @@ writeMantissa ptr olength = go (ptr `plusAddr#` olength)
            in (# ptr `plusAddr#` 3#, s4 #)
 
 -- | Write the exponent into the given address.
-writeExponent :: Addr# -> Int32 -> State# RealWorld -> (# Addr#, State# RealWorld #)
+writeExponent :: forall a ei.
+  ( ei ~ ExponentInt a
+  , Ord ei
+  , Num ei
+  , Integral ei
+  , ToInt ei
+  ) => Addr# -> ei -> State# RealWorld -> (# Addr#, State# RealWorld #)
 writeExponent ptr !expo s1
   | expo >= 100 =
       let !(e1, e0) = fquotRem10 (fromIntegral expo) -- TODO
@@ -875,7 +886,7 @@ writeExponent ptr !expo s1
   | otherwise =
       let s2 = poke ptr (wordToWord8# (toAscii (int2Word# e))) s1
        in (# ptr `plusAddr#` 1#, s2 #)
-  where !(I# e) = int32ToInt expo
+  where !(I# e) = toInt expo
 
 -- | Write the sign into the given address.
 writeSign :: Addr# -> Bool -> State# d -> (# Addr#, State# d #)
@@ -887,30 +898,46 @@ writeSign ptr False s = (# ptr, s #)
 -- | Returns the decimal representation of a floating point number in
 -- scientific (exponential) notation
 {-# INLINABLE toCharsScientific #-}
-{-# SPECIALIZE toCharsScientific :: Word8# -> Bool -> Word32 -> Int32 -> BoundedPrim () #-}
-{-# SPECIALIZE toCharsScientific :: Word8# -> Bool -> Word64 -> Int32 -> BoundedPrim () #-}
-toCharsScientific :: (Mantissa a, DecimalLength a) => Word8# -> Bool -> a -> Int32 -> BoundedPrim ()
-toCharsScientific eE !sign !mantissa !expo = boundedPrim maxEncodedLength $ \_ !(Ptr p0)-> do
+{-# SPECIALIZE toCharsScientific :: Proxy Float -> Word8# -> Bool -> Word32 -> Int32 -> BoundedPrim () #-}
+{-# SPECIALIZE toCharsScientific :: Proxy Double -> Word8# -> Bool -> Word64 -> Int32 -> BoundedPrim () #-}
+toCharsScientific :: forall a mw ei.
+  ( Mantissa mw
+  , DecimalLength mw
+  , mw ~ MantissaWord a
+  , ei ~ ExponentInt a
+  , Ord ei
+  , Num ei
+  , Integral ei
+  , ToInt ei
+  , FromInt ei
+  ) => Proxy a -> Word8# -> Bool -> mw -> ei -> BoundedPrim ()
+toCharsScientific _ eE !sign !mantissa !expo = boundedPrim maxEncodedLength $ \_ !(Ptr p0)-> do
   let !olength@(I# ol) = decimalLength mantissa
-      !expo' = expo + intToInt32 olength - 1
+      !expo' = expo + fromInt olength - 1
   IO $ \s1 ->
     let !(# p1, s2 #) = writeSign p0 sign s1
         !(# p2, s3 #) = writeMantissa p1 ol mantissa s2
         s4 = poke p2 eE s3
         !(# p3, s5 #) = writeSign (p2 `plusAddr#` 1#) (expo' < 0) s4
-        !(# p4, s6 #) = writeExponent p3 (abs expo') s5
+        !(# p4, s6 #) = writeExponent @a p3 (abs expo') s5
      in (# s6, (Ptr p4) #)
 
 data FloatingDecimal a = FloatingDecimal
   { fmantissa :: !(MantissaWord a)
-  , fexponent :: !Int32
+  , fexponent :: !(ExponentInt a)
   }
-deriving instance Show (MantissaWord a) => Show (FloatingDecimal a)
-deriving instance Eq (MantissaWord a) => Eq (FloatingDecimal a)
+deriving instance (Show (MantissaWord a), Show (ExponentInt a)) => Show (FloatingDecimal a)
+deriving instance (Eq (MantissaWord a), Eq (ExponentInt a)) => Eq (FloatingDecimal a)
 
 type family MantissaWord a
 type instance MantissaWord Float = Word32
 type instance MantissaWord Double = Word64
+
+class ToInt a where toInt :: a -> Int
+instance ToInt Int32 where toInt = int32ToInt
+
+class FromInt a where fromInt :: Int -> a
+instance FromInt Int32 where fromInt = intToInt32
 
 -- | Split a Double into (sign, mantissa, exponent)
 {-# INLINABLE breakdown #-}
@@ -936,6 +963,10 @@ breakdown f = (sign, mantissa, expo)
 type family ExponentWord a
 type instance ExponentWord Float = Word32
 type instance ExponentWord Double = Word64
+
+type family ExponentInt a
+type instance ExponentInt Float = Int32
+type instance ExponentInt Double = Int32
 
 class CastToWord a where castToWord :: a -> MantissaWord a
 instance CastToWord Float where castToWord = castFloatToWord32

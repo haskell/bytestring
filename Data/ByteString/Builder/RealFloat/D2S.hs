@@ -11,8 +11,8 @@
 -- Implementation of double-to-string conversion
 
 module Data.ByteString.Builder.RealFloat.D2S
-    ( d2s
-    , d2Intermediate
+    ( d2Intermediate
+    , d2s'
     ) where
 
 import Control.Arrow (first)
@@ -26,6 +26,7 @@ import GHC.Int (Int32(..))
 import GHC.Ptr (Ptr(..))
 import GHC.Word (Word64(..))
 import GHC.Prim (Word8#)
+import Data.Proxy (Proxy(Proxy))
 
 -- See Data.ByteString.Builder.RealFloat.TableGenerator for a high-level
 -- explanation of the ryu algorithm
@@ -196,10 +197,6 @@ d2s' formatter specialFormatter d = flip fromMaybe (specialFormatter d) $
   let FloatingDecimal m e = d2d mantissa expo
       (sign, mantissa, expo) = breakdown d
   in formatter sign m e
-
--- | Render a Double in scientific notation
-d2s :: Word8# -> SpecialStrings -> Double -> Builder
-d2s eE ss d = primBounded (d2s' (toCharsScientific eE) (toCharsNonNumbersAndZero ss) d) ()
 
 -- | Returns the decimal representation of a Double. NaN and Infinity will
 -- return `FloatingDecimal 0 0`
