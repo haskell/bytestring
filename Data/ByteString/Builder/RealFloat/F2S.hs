@@ -10,21 +10,15 @@
 -- Implementation of float-to-string conversion
 
 module Data.ByteString.Builder.RealFloat.F2S
-    ( f2Intermediate
-    , f2s'
+    ( f2d
     ) where
 
 import Control.Arrow (first)
 import Data.Bits ((.|.), (.&.), unsafeShiftL, unsafeShiftR)
-import Data.ByteString.Builder.Internal (Builder)
-import Data.ByteString.Builder.Prim (primBounded)
 import Data.ByteString.Builder.RealFloat.Internal
-import Data.Maybe (fromMaybe)
 import GHC.Int (Int32(..))
 import GHC.Ptr (Ptr(..))
 import GHC.Word (Word32(..), Word64(..))
-import GHC.Prim (Word8#)
-import Data.Proxy (Proxy(Proxy))
 
 -- See Data.ByteString.Builder.RealFloat.TableGenerator for a high-level
 -- explanation of the ryu algorithm
@@ -169,17 +163,3 @@ f2d m e =
            else trimNoTrailing state
       !e' = e10 + removed
    in FloatingDecimal output e'
-
--- | Dispatches to `f2d` and applies the given formatters
-{-# INLINE f2s' #-}
-f2s' :: (Bool -> Word32 -> Int32 -> a) -> (Float -> Maybe a) -> Float -> a
-f2s' formatter specialFormatter f = flip fromMaybe (specialFormatter f) $
-  let FloatingDecimal m e = f2d mantissa expo
-      (sign, mantissa, expo) = breakdown f
-  in formatter sign m e
-
--- | Returns the decimal representation of a Float. NaN and Infinity will
--- return `FloatingDecimal 0 0`
-{-# INLINE f2Intermediate #-}
-f2Intermediate :: Float -> FD
-f2Intermediate = f2s' (const FloatingDecimal) (const Nothing)

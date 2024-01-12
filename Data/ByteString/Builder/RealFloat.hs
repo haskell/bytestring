@@ -85,12 +85,12 @@ import qualified Data.ByteString.Builder.RealFloat.D2S as RD
 import qualified Data.ByteString.Builder.Prim as BP
 import GHC.Float (roundTo)
 import GHC.Word (Word32, Word64)
-import GHC.Int (Int32)
 import GHC.Show (intToDigit)
 import Data.Char (ord)
 import GHC.Prim (Word8#)
 import Data.Bits (Bits)
 import Data.Proxy (Proxy(Proxy))
+import Data.Maybe (fromMaybe)
 
 -- | Returns a rendered Float. Matches `show` in displaying in standard or
 -- scientific notation
@@ -120,7 +120,11 @@ data FloatFormat
   | FStandard (Maybe Int) R.SpecialStrings -- ^ standard notation with `Maybe Int` digits after the decimal
   | FGeneric Word8# (Maybe Int) (Int,Int) R.SpecialStrings      -- ^ dispatches to scientific or standard notation based on the exponent
   deriving Show
+
+fScientific :: Char -> R.SpecialStrings -> FloatFormat
 fScientific eE = FScientific (R.asciiRaw $ ord eE)
+
+fGeneric :: Char -> Maybe Int -> (Int, Int) -> R.SpecialStrings -> FloatFormat
 fGeneric eE = FGeneric (R.asciiRaw $ ord eE)
 
 -- | Standard notation with `n` decimal places
@@ -221,11 +225,8 @@ formatDouble = formatFloating
 {-# SPECIALIZE formatFloating :: FloatFormat -> Double -> Builder #-}
 formatFloating :: forall a mw ew ei.
   -- a
-  ( ToS' a
-  , Num a
-  , Ord a
+  ( ToD a
   , RealFloat a
-  , Intermediate a
   , R.CastToWord a
   , R.MantissaBits a
   , R.ExponentBits a
@@ -244,30 +245,32 @@ formatFloating :: forall a mw ew ei.
   , R.FromInt ei
   ) => FloatFormat -> a -> Builder
 formatFloating fmt f = case fmt of
-    FGeneric eE prec (minExpo,maxExpo) ss -> let (R.FloatingDecimal m e) = intermediate f; e' = R.toInt e + R.decimalLength m in
-      case R.toCharsNonNumbersAndZero ss f of
-        Just b -> BP.primBounded b ()
-        Nothing ->
-          if e' >= minExpo && e' <= maxExpo
-             then sign f `mappend` showStandard (toWord64 m) e' prec
-             else BP.primBounded (R.toCharsScientific @a Proxy eE (f < 0) m e) ()
-    FScientific eE ss -> BP.primBounded (toS' (R.toCharsScientific @a Proxy eE) (R.toCharsNonNumbersAndZero ss) f) ()
-    FStandard prec ss -> let (R.FloatingDecimal m e) = intermediate f; e' = R.toInt e + R.decimalLength m in
-      case R.toCharsNonNumbersAndZero ss f of
-        Just b -> BP.primBounded b ()
-        Nothing -> sign f `mappend` showStandard (toWord64 m) e' prec
-
-class Intermediate a where intermediate :: a -> R.FloatingDecimal a
-instance Intermediate Float where intermediate = RF.f2Intermediate
-instance Intermediate Double where intermediate = RD.d2Intermediate
+  FGeneric eE prec (minExpo,maxExpo) ss ->
+    case R.toCharsNonNumbersAndZero ss f of
+      Just b -> BP.primBounded b ()
+      Nothing ->
+        if e' >= minExpo && e' <= maxExpo
+           then printSign f `mappend` showStandard (toWord64 m) e' prec
+           else BP.primBounded (sci eE) ()
+  FScientific eE ss -> flip BP.primBounded ()
+    $ fromMaybe (sci eE) (R.toCharsNonNumbersAndZero ss f)
+  FStandard prec ss ->
+    case R.toCharsNonNumbersAndZero ss f of
+      Just b -> BP.primBounded b ()
+      Nothing -> printSign f `mappend` showStandard (toWord64 m) e' prec
+  where
+  sci eE = R.toCharsScientific @a Proxy eE sign m e
+  e' = R.toInt e + R.decimalLength m
+  R.FloatingDecimal m e = toD @a mantissa expo
+  (sign, mantissa, expo) = R.breakdown f
 
 class ToWord64 a where toWord64 :: a -> Word64
 instance ToWord64 Word32 where toWord64 = R.word32ToWord64
 instance ToWord64 Word64 where toWord64 = id
 
-class ToS' a where toS' :: (Bool -> R.MantissaWord a -> R.ExponentInt a -> b) -> (a -> Maybe b) -> a -> b
-instance ToS' Float where toS' = RF.f2s'
-instance ToS' Double where toS' = RD.d2s'
+class ToD a where toD :: R.MantissaWord a -> R.ExponentWord a -> R.FloatingDecimal a
+instance ToD Float where toD = RF.f2d
+instance ToD Double where toD = RD.d2d
 
 -- | Char7 encode a 'Char'.
 {-# INLINE char7 #-}
@@ -280,8 +283,8 @@ string7 :: String -> Builder
 string7 = BP.primMapListFixed BP.char7
 
 -- | Encodes a `-` if input is negative
-sign :: RealFloat a => a -> Builder
-sign f = if f < 0 then char7 '-' else mempty
+printSign :: RealFloat a => a -> Builder
+printSign f = if f < 0 then char7 '-' else mempty
 
 -- | Returns a list of decimal digits in a Word64
 digits :: Word64 -> [Int]

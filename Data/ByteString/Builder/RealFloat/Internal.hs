@@ -267,7 +267,7 @@ boundString s = boundedPrim maxEncodedLength $ const (pokeAll s)
 {-# INLINABLE toCharsNonNumbersAndZero #-}
 {-# SPECIALIZE toCharsNonNumbersAndZero :: SpecialStrings -> Float -> Maybe (BoundedPrim ()) #-}
 {-# SPECIALIZE toCharsNonNumbersAndZero :: SpecialStrings -> Double -> Maybe (BoundedPrim ()) #-}
-toCharsNonNumbersAndZero :: forall a mw ew.
+toCharsNonNumbersAndZero :: forall a mw.
   ( CastToWord a
   , MantissaBits a
   , mw ~ MantissaWord a
@@ -276,11 +276,6 @@ toCharsNonNumbersAndZero :: forall a mw ew.
   , Bits mw
   , Integral mw
   , ExponentBits a
-  , ew ~ ExponentWord a
-  , Ord ew
-  , Num ew
-  , Bits ew
-  , Integral ew
   ) => SpecialStrings -> a -> Maybe (BoundedPrim ())
 toCharsNonNumbersAndZero SpecialStrings{..} f = boundString <$>
   if w .&. expoMantissaBits == 0
@@ -318,7 +313,7 @@ data SpecialStrings = SpecialStrings
 -- @
 -- acceptBounds v = ((v \`quot\` 4) .&. 1) == 0
 -- @
-acceptBounds :: Mantissa a => a -> Bool
+acceptBounds :: a -> Bool
 acceptBounds _ = False
 
 -------------------------------------------------------------------------------
@@ -867,9 +862,8 @@ writeMantissa ptr olength = go (ptr `plusAddr#` olength)
            in (# ptr `plusAddr#` 3#, s4 #)
 
 -- | Write the exponent into the given address.
-writeExponent :: forall a ei.
-  ( ei ~ ExponentInt a
-  , Ord ei
+writeExponent :: forall ei.
+  ( Ord ei
   , Num ei
   , Integral ei
   , ToInt ei
@@ -903,7 +897,6 @@ writeSign ptr False s = (# ptr, s #)
 toCharsScientific :: forall a mw ei.
   ( Mantissa mw
   , DecimalLength mw
-  , mw ~ MantissaWord a
   , ei ~ ExponentInt a
   , Ord ei
   , Num ei
@@ -919,7 +912,7 @@ toCharsScientific _ eE !sign !mantissa !expo = boundedPrim maxEncodedLength $ \_
         !(# p2, s3 #) = writeMantissa p1 ol mantissa s2
         s4 = poke p2 eE s3
         !(# p3, s5 #) = writeSign (p2 `plusAddr#` 1#) (expo' < 0) s4
-        !(# p4, s6 #) = writeExponent @a p3 (abs expo') s5
+        !(# p4, s6 #) = writeExponent p3 (abs expo') s5
      in (# s6, (Ptr p4) #)
 
 data FloatingDecimal a = FloatingDecimal
@@ -949,7 +942,6 @@ breakdown :: forall a mw ew.
   , CastToWord a
   , mw ~ MantissaWord a
   , Bits mw
-  , Eq mw
   , Integral mw
   , Num ew
   ) => a -> (Bool, mw, ew)

@@ -11,22 +11,16 @@
 -- Implementation of double-to-string conversion
 
 module Data.ByteString.Builder.RealFloat.D2S
-    ( d2Intermediate
-    , d2s'
+    ( d2d
     ) where
 
 import Control.Arrow (first)
 import Data.Bits ((.|.), (.&.), unsafeShiftL, unsafeShiftR)
-import Data.ByteString.Builder.Internal (Builder)
-import Data.ByteString.Builder.Prim (primBounded)
 import Data.ByteString.Builder.RealFloat.Internal
 import Data.Maybe (fromMaybe)
-import Data.Proxy (Proxy(Proxy))
 import GHC.Int (Int32(..))
 import GHC.Ptr (Ptr(..))
 import GHC.Word (Word64(..))
-import GHC.Prim (Word8#)
-import Data.Proxy (Proxy(Proxy))
 
 -- See Data.ByteString.Builder.RealFloat.TableGenerator for a high-level
 -- explanation of the ryu algorithm
@@ -43,6 +37,7 @@ foreign import ccall "&hs_bytestring_double_pow5_inv_split"
 foreign import ccall "&hs_bytestring_double_pow5_split"
   double_pow5_split :: Ptr Word64
 
+double_mantissa_bits :: Int
 double_mantissa_bits = mantissaBits @Double
 
 -- | Bias in encoded 64-bit float representation (2^10 - 1)
@@ -162,8 +157,8 @@ d2dLT e2' u v w =
 
 -- | Returns the decimal representation of the given mantissa and exponent of a
 -- 64-bit Double using the ryu algorithm.
-d2d :: Word64 -> Word64 -> FD
-d2d m e =
+d2dGeneral :: Word64 -> Word64 -> FD
+d2dGeneral m e =
   let !mf = if e == 0
               then m
               else (1 `unsafeShiftL` double_mantissa_bits) .|. m
@@ -190,16 +185,6 @@ d2d m e =
       !e' = e10 + removed
    in FloatingDecimal output e'
 
--- | Dispatches to `d2d` or `d2dSmallInt` and applies the given formatters
-{-# INLINE d2s' #-}
-d2s' :: (Bool -> Word64 -> Int32 -> a) -> (Double -> Maybe a) -> Double -> a
-d2s' formatter specialFormatter d = flip fromMaybe (specialFormatter d) $
-  let FloatingDecimal m e = d2d mantissa expo
-      (sign, mantissa, expo) = breakdown d
-  in formatter sign m e
-
--- | Returns the decimal representation of a Double. NaN and Infinity will
--- return `FloatingDecimal 0 0`
-{-# INLINE d2Intermediate #-}
-d2Intermediate :: Double -> FD
-d2Intermediate = d2s' (const FloatingDecimal) (const Nothing)
+-- TODO: Determine if this actually speeds things up. The benchmarks may not run many numbers in this range.
+d2d :: Word64 -> Word64 -> FD
+d2d mantissa expo = fromMaybe (d2dGeneral mantissa expo) $ unifySmallTrailing <$> d2dSmallInt mantissa expo
