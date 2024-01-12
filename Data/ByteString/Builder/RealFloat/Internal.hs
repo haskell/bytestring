@@ -269,26 +269,20 @@ boundString s = boundedPrim maxEncodedLength $ const (pokeAll s)
 {-# SPECIALIZE toCharsNonNumbersAndZero :: SpecialStrings -> Float -> Maybe Builder #-}
 {-# SPECIALIZE toCharsNonNumbersAndZero :: SpecialStrings -> Double -> Maybe Builder #-}
 toCharsNonNumbersAndZero :: forall a mw ew.
-  ( ExponentBits a
-  , mw ~ MantissaWord a
-  , Ord mw
-  , Num mw
-  , ew ~ ExponentWord a
-  , Ord ew
-  , Num ew
-  , Bits ew
-  , Integral ew
-
-  , ExponentBits a
-  , MantissaBits a
-  , CastToWord a
-  , mw ~ MantissaWord a
+  ( Bits ew
   , Bits mw
+  , CastToWord a
   , Eq mw
+  , ExponentBits a
+  , Integral ew
   , Integral mw
-  , ew ~ ExponentWord a
+  , MantissaBits a
   , Num ew
-
+  , Num mw
+  , Ord ew
+  , Ord mw
+  , ew ~ ExponentWord a
+  , mw ~ MantissaWord a
   ) => SpecialStrings -> a -> Maybe Builder
 toCharsNonNumbersAndZero SpecialStrings{..} f = flip BP.primBounded () . boundString <$>
   if w .&. expoMantissaBits == 0
@@ -876,9 +870,7 @@ writeMantissa ptr olength = go (ptr `plusAddr#` olength)
 
 -- | Write the exponent into the given address.
 writeExponent :: forall ei.
-  ( Ord ei
-  , Num ei
-  , Integral ei
+  ( Integral ei
   , ToInt ei
   ) => Addr# -> ei -> State# RealWorld -> (# Addr#, State# RealWorld #)
 writeExponent ptr !expo s1
@@ -910,9 +902,6 @@ writeSign ptr False s = (# ptr, s #)
 toCharsScientific :: forall a mw ei.
   ( Mantissa mw
   , DecimalLength mw
-  , ei ~ ExponentInt a
-  , Ord ei
-  , Num ei
   , Integral ei
   , ToInt ei
   , FromInt ei
@@ -956,7 +945,6 @@ breakdown :: forall a mw ew.
   , mw ~ MantissaWord a
   , Bits mw
   , Integral mw
-  , ew ~ ExponentWord a
   , Num ew
   ) => a -> (Bool, mw, ew)
 breakdown f = (sign, mantissa, expo)

@@ -227,8 +227,6 @@ formatFloating :: forall a mw ew ei.
   -- a
   --( ToS a
   ( ToD a
-  , Num a
-  , Ord a
   , RealFloat a
   , R.ExponentBits a
   , R.MantissaBits a
