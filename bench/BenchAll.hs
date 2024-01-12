@@ -72,7 +72,7 @@ countToZero n = Just (n, n - 1)
 
 -- | Few-enough repetitions to avoid making GC too expensive.
 nRepl :: Int
-nRepl = 1000000
+nRepl = 100000
 
 {-# NOINLINE intData #-}
 intData :: [Int]
@@ -98,25 +98,11 @@ floatPosData = map evenlyDistribute intData
 floatNegData :: [Float]
 floatNegData = map negate floatPosData
 
-{-# NOINLINE floatNaN #-}
-floatNaN :: [Float]
-floatNaN = map (const nan) intData
-
-{-# NOINLINE floatPosInf #-}
-floatPosInf :: [Float]
-floatPosInf = map (const infinity) intData
-
-{-# NOINLINE floatNegInf #-}
-floatNegInf :: [Float]
-floatNegInf = map (const (negate infinity)) intData
-
-{-# NOINLINE floatPosZero #-}
-floatPosZero :: [Float]
-floatPosZero = map (const 0) intData
-
-{-# NOINLINE floatNegZero #-}
-floatNegZero :: [Float]
-floatNegZero = map (const (-0)) intData
+{-# NOINLINE floatSpecials #-}
+floatSpecials :: [Float]
+floatSpecials = foldMap (const specials) [1..nRepl `div` length specials]
+  where
+  specials = [nan, infinity, negate infinity, 0 -0]
 
 {-# NOINLINE doublePosData #-}
 doublePosData :: [Double]
@@ -130,25 +116,11 @@ doublePosData = map evenlyDistribute intData
 doubleNegData :: [Double]
 doubleNegData = map negate doublePosData
 
-{-# NOINLINE doubleNaN #-}
-doubleNaN :: [Double]
-doubleNaN = map (const nan) intData
-
-{-# NOINLINE doublePosInf #-}
-doublePosInf :: [Double]
-doublePosInf = map (const infinity) intData
-
-{-# NOINLINE doubleNegInf #-}
-doubleNegInf :: [Double]
-doubleNegInf = map (const (negate infinity)) intData
-
-{-# NOINLINE doublePosZero #-}
-doublePosZero :: [Double]
-doublePosZero = map (const 0) intData
-
-{-# NOINLINE doubleNegZero #-}
-doubleNegZero :: [Double]
-doubleNegZero = map (const (-0)) intData
+{-# NOINLINE doubleSpecials #-}
+doubleSpecials :: [Double]
+doubleSpecials = foldMap (const specials) [1..nRepl `div` length specials]
+  where
+  specials = [nan, infinity, negate infinity, 0 -0]
 
 {-# NOINLINE byteStringData #-}
 byteStringData :: S.ByteString
@@ -362,16 +334,8 @@ main = do
               , benchB "Double" doubleNegData $ foldMap (formatDouble generic)
               ]
             , bgroup "Special"
-              [ benchB "Float  NaN"     floatNaN      $ foldMap (formatFloat  generic)
-              , benchB "Double NaN"     doubleNaN     $ foldMap (formatDouble generic)
-              , benchB "Float  PosInf"  floatPosInf   $ foldMap (formatFloat  generic)
-              , benchB "Double PosInf"  doublePosInf  $ foldMap (formatDouble generic)
-              , benchB "Float  NegInf"  floatNegInf   $ foldMap (formatFloat  generic)
-              , benchB "Double NegInf"  doubleNegInf  $ foldMap (formatDouble generic)
-              , benchB "Float  PosZero" floatPosZero  $ foldMap (formatFloat  generic)
-              , benchB "Double PosZero" doublePosZero $ foldMap (formatDouble generic)
-              , benchB "Float  NegZero" floatNegZero  $ foldMap (formatFloat  generic)
-              , benchB "Double NegZero" doubleNegZero $ foldMap (formatDouble generic)
+              [ benchB "Float  Average" floatSpecials  $ foldMap (formatFloat  generic)
+              , benchB "Double Average" doubleSpecials $ foldMap (formatDouble generic)
               ]
             ]
           , bgroup "FScientific"
@@ -384,16 +348,8 @@ main = do
               , benchB "Double" doubleNegData $ foldMap (formatDouble scientific)
               ]
             , bgroup "Special"
-              [ benchB "Float  NaN"     floatNaN      $ foldMap (formatFloat  scientific)
-              , benchB "Double NaN"     doubleNaN     $ foldMap (formatDouble scientific)
-              , benchB "Float  PosInf"  floatPosInf   $ foldMap (formatFloat  scientific)
-              , benchB "Double PosInf"  doublePosInf  $ foldMap (formatDouble scientific)
-              , benchB "Float  NegInf"  floatNegInf   $ foldMap (formatFloat  scientific)
-              , benchB "Double NegInf"  doubleNegInf  $ foldMap (formatDouble scientific)
-              , benchB "Float  PosZero" floatPosZero  $ foldMap (formatFloat  scientific)
-              , benchB "Double PosZero" doublePosZero $ foldMap (formatDouble scientific)
-              , benchB "Float  NegZero" floatNegZero  $ foldMap (formatFloat  scientific)
-              , benchB "Double NegZero" doubleNegZero $ foldMap (formatDouble scientific)
+              [ benchB "Float  Average" floatSpecials  $ foldMap (formatFloat  scientific)
+              , benchB "Double Average" doubleSpecials $ foldMap (formatDouble scientific)
               ]
             ]
           , bgroup "FStandard"
@@ -422,16 +378,8 @@ main = do
                 ]
               ]
             , bgroup "Special"
-              [ benchB "Float  NaN"     floatNaN      $ foldMap (formatFloat  standardDefaultPrecision)
-              , benchB "Double NaN"     doubleNaN     $ foldMap (formatDouble standardDefaultPrecision)
-              , benchB "Float  PosInf"  floatPosInf   $ foldMap (formatFloat  standardDefaultPrecision)
-              , benchB "Double PosInf"  doublePosInf  $ foldMap (formatDouble standardDefaultPrecision)
-              , benchB "Float  NegInf"  floatNegInf   $ foldMap (formatFloat  standardDefaultPrecision)
-              , benchB "Double NegInf"  doubleNegInf  $ foldMap (formatDouble standardDefaultPrecision)
-              , benchB "Float  PosZero" floatPosZero  $ foldMap (formatFloat  standardDefaultPrecision)
-              , benchB "Double PosZero" doublePosZero $ foldMap (formatDouble standardDefaultPrecision)
-              , benchB "Float  NegZero" floatNegZero  $ foldMap (formatFloat  standardDefaultPrecision)
-              , benchB "Double NegZero" doubleNegZero $ foldMap (formatDouble standardDefaultPrecision)
+              [ benchB "Float  Average" floatSpecials  $ foldMap (formatFloat  standardDefaultPrecision)
+              , benchB "Double Average" doubleSpecials $ foldMap (formatDouble standardDefaultPrecision)
               ]
             ]
           ]
