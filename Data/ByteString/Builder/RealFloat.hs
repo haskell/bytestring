@@ -7,6 +7,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE NamedFieldPuns #-}
 -- |
 -- Module      : Data.ByteString.Builder.RealFloat
 -- Copyright   : (c) Lawrence Wu 2021
@@ -81,6 +82,7 @@ module Data.ByteString.Builder.RealFloat
 
 import Data.ByteString.Builder.Internal (Builder)
 import qualified Data.ByteString.Builder.RealFloat.Internal as R
+import Data.ByteString.Builder.RealFloat.Internal (positiveZero, negativeZero)
 import qualified Data.ByteString.Builder.RealFloat.F2S as RF
 import qualified Data.ByteString.Builder.RealFloat.D2S as RD
 import qualified Data.ByteString.Builder.Prim as BP
@@ -132,7 +134,12 @@ fGeneric eE = FGeneric (R.asciiRaw $ ord eE)
 --
 -- @since 0.11.2.0
 standard :: Int -> FloatFormat
-standard n = FStandard (Just n) standardSpecialStrings
+standard n = FStandard (Just n) standardSpecialStrings {positiveZero, negativeZero}
+  where
+  positiveZero = if n == 0
+    then "0"
+    else "0." <> replicate n '0'
+  negativeZero = "-" <> positiveZero
 
 -- | Standard notation with the \'default precision\' (decimal places matching `show`)
 --
