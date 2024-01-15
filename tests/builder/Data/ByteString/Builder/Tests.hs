@@ -641,17 +641,19 @@ testsASCII =
   where
     enlarge (n, e) = n ^ (abs (e `mod` (50 :: Integer)))
 
-testsFloating :: [TestTree]
+testsFloating :: TestTree
 testsFloating = testGroup "RealFloat"
   [ testGroup "Float"
-    [ testMatches "f2sBasic" floatDec show
+    [ testMatches "f2sNonNumbersAndZero" floatDec show
           [ ( 0.0    , "0.0" )
           , ( (-0.0) , "-0.0" )
-          , ( 1.0    , "1.0" )
-          , ( (-1.0) , "-1.0" )
           , ( (0/0)  , "NaN" )
           , ( (1/0)  , "Infinity" )
           , ( (-1/0) , "-Infinity" )
+          ]
+    , testMatches "f2sBasic" floatDec show
+          [ ( 1.0    , "1.0" )
+          , ( (-1.0) , "-1.0" )
           ]
     , testMatches "f2sSubnormal" floatDec show
           [ ( 1.1754944e-38 , "1.1754944e-38" )
@@ -742,12 +744,14 @@ testsFloating = testGroup "RealFloat"
           , ( 1.23456735e-36 , "1.23456735e-36" )
           ]
     ]
-  testGroup "Double"
+  , testGroup "Double"
     [ testMatches "d2sBasic" doubleDec show
+          [ ( 1.0    , "1.0" )
+          , ( (-1.0) , "-1.0" )
+          ]
+    , testMatches "f2sNonNumbersAndZero" doubleDec show
           [ ( 0.0    , "0.0" )
           , ( (-0.0) , "-0.0" )
-          , ( 1.0    , "1.0" )
-          , ( (-1.0) , "-1.0" )
           , ( (0/0)  , "NaN" )
           , ( (1/0)  , "Infinity" )
           , ( (-1/0) , "-Infinity" )
@@ -781,22 +785,23 @@ testsFloating = testGroup "RealFloat"
           , ( 4.294967294 , "4.294967294e0" )
           , ( 4.294967295 , "4.294967295e0" )
           ]
-      , testGroup "d2sStandard"
-        [ testCase "specific" do
-            singleMatches (formatDouble (standard 2)) (flip (showFFloat (Just 2)) []) ( 12.3    , "12.30"    )
-            singleMatches (formatDouble (standard 2)) (flip (showFFloat (Just 2)) []) ( 12.345  , "12.34"    )
-            singleMatches (formatDouble (standard 2)) (flip (showFFloat (Just 2)) []) ( 12.3451 , "12.35"    )
-            singleMatches (formatDouble (standard 2)) (flip (showFFloat (Just 2)) []) ( 0.0050  , "0.00"     )
-            singleMatches (formatDouble (standard 2)) (flip (showFFloat (Just 2)) []) ( 999.999 , "1000.00"  )
-            singleMatches (formatDouble (standard 2)) (flip (showFFloat (Just 2)) []) ( 999.199 , "999.20"   )
-            singleMatches (formatDouble (standard 2)) (flip (showFFloat (Just 2)) []) ( 0.999   , "1.00"     )
-            singleMatches (formatDouble (standard 2)) (flip (showFFloat (Just 2)) []) ( 0.0051  , "0.01"     )
-            singleMatches (formatDouble (standard 3)) (flip (showFFloat (Just 3)) []) ( 0.0056  , "0.006"    )
-            singleMatches (formatDouble (standard 3)) (flip (showFFloat (Just 3)) []) ( 0.0096  , "0.010"    )
-            singleMatches (formatDouble (standard 5)) (flip (showFFloat (Just 5)) []) ( 12.345  , "12.34500" )
-            singleMatches (formatDouble (standard 3)) (flip (showFFloat (Just 3)) []) ( 0.0     , "0.000"    )
-        , testProperty "standard N" \(NonNegative p, d :: Double) -> (LC.unpack . toLazyByteString) (formatDouble (standard p) d) === showFFloat (Just p) d ""
-        ]
+    , testGroup "d2sStandard"
+      [ testCase "specific" do
+          singleMatches (formatDouble (standard 2)) (flip (showFFloat (Just 2)) []) ( 12.3    , "12.30"    )
+          singleMatches (formatDouble (standard 2)) (flip (showFFloat (Just 2)) []) ( 12.345  , "12.34"    )
+          singleMatches (formatDouble (standard 2)) (flip (showFFloat (Just 2)) []) ( 12.3451 , "12.35"    )
+          singleMatches (formatDouble (standard 2)) (flip (showFFloat (Just 2)) []) ( 0.0050  , "0.00"     )
+          singleMatches (formatDouble (standard 2)) (flip (showFFloat (Just 2)) []) ( 999.999 , "1000.00"  )
+          singleMatches (formatDouble (standard 2)) (flip (showFFloat (Just 2)) []) ( 999.199 , "999.20"   )
+          singleMatches (formatDouble (standard 2)) (flip (showFFloat (Just 2)) []) ( 0.999   , "1.00"     )
+          singleMatches (formatDouble (standard 2)) (flip (showFFloat (Just 2)) []) ( 0.0051  , "0.01"     )
+          singleMatches (formatDouble (standard 3)) (flip (showFFloat (Just 3)) []) ( 0.0056  , "0.006"    )
+          singleMatches (formatDouble (standard 3)) (flip (showFFloat (Just 3)) []) ( 0.0096  , "0.010"    )
+          singleMatches (formatDouble (standard 5)) (flip (showFFloat (Just 5)) []) ( 12.345  , "12.34500" )
+          singleMatches (formatDouble (standard 3)) (flip (showFFloat (Just 3)) []) ( 0.0     , "0.000"    )
+      , testProperty "standard N" \(NonNegative p, d :: Double) -> (LC.unpack . toLazyByteString)
+        (formatDouble (standard p) d) === showFFloat (Just p) d ""
+      ]
     , testMatches "d2sLooksLikePowerOf5" doubleDec show
           [ ( (coerceWord64ToDouble 0x4830F0CF064DD592) , "5.764607523034235e39" )
           , ( (coerceWord64ToDouble 0x4840F0CF064DD592) , "1.152921504606847e40" )
@@ -966,11 +971,11 @@ testsFloating = testGroup "RealFloat"
           , ( 549755813888.0e+3  , "5.49755813888e14" )
           , ( 8796093022208.0e+3 , "8.796093022208e15" )
           ]
+    , testMatches "f2sPowersOf10" floatDec show $
+          fmap asShowRef [read ("1.0e" ++ show x) :: Float | x <- [-46..39 :: Int]]
+    , testMatches "d2sPowersOf10" doubleDec show $
+          fmap asShowRef [read ("1.0e" ++ show x) :: Double | x <- [-324..309 :: Int]]
     ]
-  , testMatches "f2sPowersOf10" floatDec show $
-        fmap asShowRef [read ("1.0e" ++ show x) :: Float | x <- [-46..39 :: Int]]
-  , testMatches "d2sPowersOf10" doubleDec show $
-        fmap asShowRef [read ("1.0e" ++ show x) :: Double | x <- [-324..309 :: Int]]
   ]
   where
     testExpected :: TestName -> (a -> Builder) -> [(a, String)] -> TestTree
