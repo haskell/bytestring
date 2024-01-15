@@ -1,4 +1,5 @@
 {-# LANGUAGE BlockArguments   #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
@@ -49,7 +50,7 @@ import           Numeric (showFFloat)
 import           System.Posix.Internals (c_unlink)
 
 import           Test.Tasty (TestTree, TestName, testGroup)
-import           Test.Tasty.HUnit (testCase, (@?=))
+import           Test.Tasty.HUnit (testCase, (@?=), Assertion)
 import           Test.Tasty.QuickCheck
                    ( Arbitrary(..), oneof, choose, listOf, elements
                    , counterexample, ioProperty, Property, testProperty
@@ -777,12 +778,22 @@ testsFloating =
         , ( 4.294967294 , "4.294967294e0" )
         , ( 4.294967295 , "4.294967295e0" )
         ]
-  , testProperty "d2sStandard" $ conjoin
-        [ singleMatches (formatDouble (standard 2)) (flip (showFFloat (Just 2)) []) ( 12.345 , "12.34"    )
-        , singleMatches (formatDouble (standard 2)) (flip (showFFloat (Just 2)) []) ( 0.0050 , "0.00"     )
-        , singleMatches (formatDouble (standard 2)) (flip (showFFloat (Just 2)) []) ( 0.0051 , "0.01"     )
-        , singleMatches (formatDouble (standard 5)) (flip (showFFloat (Just 5)) []) ( 12.345 , "12.34500" )
-        ]
+    , testGroup "d2sStandard"
+      [ testCase "specific" do
+          singleMatches (formatDouble (standard 2)) (flip (showFFloat (Just 2)) []) ( 12.3    , "12.30"    )
+          singleMatches (formatDouble (standard 2)) (flip (showFFloat (Just 2)) []) ( 12.345  , "12.34"    )
+          singleMatches (formatDouble (standard 2)) (flip (showFFloat (Just 2)) []) ( 12.3451 , "12.35"    )
+          singleMatches (formatDouble (standard 2)) (flip (showFFloat (Just 2)) []) ( 0.0050  , "0.00"     )
+          singleMatches (formatDouble (standard 2)) (flip (showFFloat (Just 2)) []) ( 999.999 , "1000.00"  )
+          singleMatches (formatDouble (standard 2)) (flip (showFFloat (Just 2)) []) ( 999.199 , "999.20"   )
+          singleMatches (formatDouble (standard 2)) (flip (showFFloat (Just 2)) []) ( 0.999   , "1.00"     )
+          singleMatches (formatDouble (standard 2)) (flip (showFFloat (Just 2)) []) ( 0.0051  , "0.01"     )
+          singleMatches (formatDouble (standard 3)) (flip (showFFloat (Just 3)) []) ( 0.0056  , "0.006"    )
+          singleMatches (formatDouble (standard 3)) (flip (showFFloat (Just 3)) []) ( 0.0096  , "0.010"    )
+          singleMatches (formatDouble (standard 5)) (flip (showFFloat (Just 5)) []) ( 12.345  , "12.34500" )
+          singleMatches (formatDouble (standard 3)) (flip (showFFloat (Just 3)) []) ( 0.0     , "0.000"    )
+      , testProperty "standard N" \(NonNegative p, d :: Double) -> (LC.unpack . toLazyByteString) (formatDouble (standard p) d) === showFFloat (Just p) d ""
+      ]
   , testMatches "d2sLooksLikePowerOf5" doubleDec show
         [ ( (coerceWord64ToDouble 0x4830F0CF064DD592) , "5.764607523034235e39" )
         , ( (coerceWord64ToDouble 0x4840F0CF064DD592) , "1.152921504606847e40" )
@@ -961,11 +972,13 @@ testsFloating =
     testExpected :: TestName -> (a -> Builder) -> [(a, String)] -> TestTree
     testExpected name dec = testCase name . traverse_ \(x, ref) -> LC.unpack (toLazyByteString (dec x)) @?= ref
 
-    singleMatches :: (a -> Builder) -> (a -> String) -> (a, String) -> Property
-    singleMatches dec refdec (x, ref) = L.unpack (toLazyByteString (dec x)) === encodeASCII (refdec x) .&&. refdec x === ref
+    singleMatches :: (a -> Builder) -> (a -> String) -> (a, String) -> Assertion
+    singleMatches dec refdec (x, ref) = do
+      LC.unpack (toLazyByteString (dec x)) @?= refdec x
+      refdec x @?= ref
 
     testMatches :: TestName -> (a -> Builder) -> (a -> String) -> [(a, String)] -> TestTree
-    testMatches name dec refdec lst = testProperty name . conjoin $ fmap (singleMatches dec refdec) lst
+    testMatches name dec refdec = testCase name . traverse_ (singleMatches dec refdec)
 
     maxMantissa = (1 `shiftL` 53) - 1 :: Word64
 
