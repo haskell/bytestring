@@ -70,8 +70,9 @@ module Data.ByteString.Builder.RealFloat
   , generic
   ) where
 
-import Data.ByteString.Builder.Internal (Builder)
+import Data.ByteString.Builder.Internal (Builder, byteString)
 import qualified Data.ByteString.Builder.RealFloat.Internal as R
+import qualified Data.ByteString.Char8 as BC
 import qualified Data.ByteString.Builder.RealFloat.F2S as RF
 import qualified Data.ByteString.Builder.RealFloat.D2S as RD
 import qualified Data.ByteString.Builder.Prim as BP
@@ -259,7 +260,7 @@ showStandard m e prec =
     Nothing
       | e <= 0 -> char7 '0'
                `mappend` char7 '.'
-               `mappend` string7 (replicate (-e) '0')
+               `mappend` zeros (-e)
                `mappend` mconcat (digitsToBuilder ds)
       | otherwise ->
           let f 0 s     rs = mk0 (reverse s) `mappend` char7 '.' `mappend` mk0 rs
@@ -284,4 +285,4 @@ showStandard m e prec =
     mkDot rs = if null rs then mempty else char7 '.' `mappend` mconcat rs
     ds = digits m
     digitsToBuilder = fmap (char7 . intToDigit)
-
+    zeros n = byteString $ BC.take n $ BC.replicate 308 '0'
