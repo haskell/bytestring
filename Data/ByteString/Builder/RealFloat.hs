@@ -70,12 +70,12 @@ module Data.ByteString.Builder.RealFloat
   , generic
   ) where
 
-import Data.ByteString.Builder.Internal (Builder, byteString)
+import Data.ByteString.Builder.Internal (Builder, shortByteString)
 import qualified Data.ByteString.Builder.RealFloat.Internal as R
-import qualified Data.ByteString.Char8 as BC
 import qualified Data.ByteString.Builder.RealFloat.F2S as RF
 import qualified Data.ByteString.Builder.RealFloat.D2S as RD
 import qualified Data.ByteString.Builder.Prim as BP
+import qualified Data.ByteString.Short as BS
 import GHC.Float (roundTo)
 import GHC.Word (Word64)
 import GHC.Show (intToDigit)
@@ -265,18 +265,18 @@ showStandard m e prec =
       | e <= 0
         -> string7 "0."
         <> zeros (-e)
-        <> BP.primBounded BP.word64Dec m
+        <> buildDigits m
       | e >= olength
-        -> BP.primBounded BP.word64Dec m
+        -> buildDigits m
         <> zeros (e - olength)
         <> string7 ".0"
       | otherwise -> let
         wholeDigits = m `div` (10 ^ (olength - e))
         fractDigits = m `mod` (10 ^ (olength - e))
-        in BP.primBounded BP.word64Dec wholeDigits
+        in buildDigits wholeDigits
         <> char7 '.'
         <> zeros (olength - e - R.decimalLength17 fractDigits)
-        <> BP.primBounded BP.word64Dec fractDigits
+        <> buildDigits fractDigits
     Just p
       | e >= 0 ->
           let (ei, is') = roundTo 10 (p' + e) ds
@@ -296,5 +296,6 @@ showStandard m e prec =
     ds = digits m
     digitsToBuilder = fmap (char7 . intToDigit)
 
-    zeros n = byteString $ BC.take n $ BC.replicate 308 '0'
+    zeros n = shortByteString $ BS.take n $ BS.replicate 308 48
     olength = R.decimalLength17 m
+    buildDigits = BP.primBounded BP.word64Dec
