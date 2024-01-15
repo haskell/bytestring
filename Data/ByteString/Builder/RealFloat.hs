@@ -254,6 +254,8 @@ digits w = go [] w
                    in go ((R.word64ToInt r) : ds) q
 
 -- | Show a floating point value in standard notation. Based on GHC.Float.showFloat
+-- TODO: Remove the use of String and lists because it makes this very slow compared
+--       to the actual implementation of the Ryu algorithm.
 showStandard :: Word64 -> Int -> Maybe Int -> Builder
 showStandard m e prec =
   case prec of
