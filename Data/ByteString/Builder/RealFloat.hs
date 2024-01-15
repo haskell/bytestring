@@ -256,19 +256,27 @@ digits w = go [] w
 -- | Show a floating point value in standard notation. Based on GHC.Float.showFloat
 -- TODO: Remove the use of String and lists because it makes this very slow compared
 --       to the actual implementation of the Ryu algorithm.
+-- TODO: The digits should be found with the look up method described in the Ryu
+--       reference algorithm.
 showStandard :: Word64 -> Int -> Maybe Int -> Builder
 showStandard m e prec =
   case prec of
     Nothing
-      | e <= 0 -> char7 '0'
-               `mappend` char7 '.'
-               `mappend` zeros (-e)
-               `mappend` mconcat (digitsToBuilder ds)
-      | otherwise ->
-          let f 0 s     rs = mk0 (reverse s) `mappend` char7 '.' `mappend` mk0 rs
-              f n s     [] = f (n-1) (char7 '0':s) []
-              f n s (r:rs) = f (n-1) (r:s) rs
-           in f e [] (digitsToBuilder ds)
+      | e <= 0
+        -> string7 "0."
+        <> zeros (-e)
+        <> BP.primBounded BP.word64Dec m
+      | e >= olength
+        -> BP.primBounded BP.word64Dec m
+        <> zeros (e - olength)
+        <> string7 ".0"
+      | otherwise -> let
+        wholeDigits = m `div` (10 ^ (olength - e))
+        fractDigits = m `mod` (10 ^ (olength - e))
+        in BP.primBounded BP.word64Dec wholeDigits
+        <> char7 '.'
+        <> zeros (olength - e - R.decimalLength17 fractDigits)
+        <> BP.primBounded BP.word64Dec fractDigits
     Just p
       | e >= 0 ->
           let (ei, is') = roundTo 10 (p' + e) ds
@@ -287,4 +295,6 @@ showStandard m e prec =
     mkDot rs = if null rs then mempty else char7 '.' `mappend` mconcat rs
     ds = digits m
     digitsToBuilder = fmap (char7 . intToDigit)
+
     zeros n = byteString $ BC.take n $ BC.replicate 308 '0'
+    olength = R.decimalLength17 m
