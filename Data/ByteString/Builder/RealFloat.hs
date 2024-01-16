@@ -309,11 +309,6 @@ instance ToD Double where toD = RD.d2d
 char7 :: Char -> Builder
 char7 = BP.primFixed BP.char7
 
--- | Char7 encode a 'String'.
-{-# INLINE string7 #-}
-string7 :: String -> Builder
-string7 = BP.primMapListFixed BP.char7
-
 -- | Encodes a `-` if input is negative
 printSign :: RealFloat a => a -> Builder
 printSign f = if f < 0 then char7 '-' else mempty
@@ -332,7 +327,7 @@ showStandard m e prec =
     Nothing
       | e <= 0 -> char7 '0'
                `mappend` char7 '.'
-               `mappend` string7 (replicate (-e) '0')
+               `mappend` R.string7 (replicate (-e) '0')
                `mappend` mconcat (digitsToBuilder ds)
       | otherwise ->
           let f 0 s     rs = mk0 (reverse s) `mappend` char7 '.' `mappend` mk0 rs

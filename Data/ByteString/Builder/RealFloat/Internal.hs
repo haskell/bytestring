@@ -28,6 +28,7 @@
 
 module Data.ByteString.Builder.RealFloat.Internal
     ( mask
+    , string7
     , toCharsNonNumbersAndZero
     , SpecialStrings(..)
     , DecimalLength(..)
@@ -85,9 +86,7 @@ module Data.ByteString.Builder.RealFloat.Internal
     , module Data.ByteString.Builder.RealFloat.TableGenerator
     ) where
 
-import Control.Monad (foldM)
 import Data.Bits (Bits(..), FiniteBits(..))
-import Data.ByteString.Internal (c2w)
 import Data.ByteString.Builder.Internal (Builder)
 import Data.ByteString.Builder.Prim.Internal (BoundedPrim, boundedPrim)
 import Data.ByteString.Builder.RealFloat.TableGenerator
@@ -99,10 +98,9 @@ import Foreign.C.Types
 import GHC.Int (Int(..), Int32(..))
 import GHC.IO (IO(..), unIO)
 import GHC.Prim
-import GHC.Ptr (Ptr(..), plusPtr, castPtr)
+import GHC.Ptr (Ptr(..), castPtr)
 import GHC.Types (isTrue#)
-import GHC.Word (Word8, Word16(..), Word32(..), Word64(..))
-import qualified Foreign.Storable as S (poke)
+import GHC.Word (Word16(..), Word32(..), Word64(..))
 
 #include <ghcautoconf.h>
 #include "MachDeps.h"
@@ -234,15 +232,10 @@ instance DecimalLength Word64 where decimalLength = decimalLength17
 maxEncodedLength :: Int
 maxEncodedLength = 32
 
--- | Storable.poke a String into a Ptr Word8, converting through c2w
-pokeAll :: String -> Ptr Word8 -> IO (Ptr Word8)
-pokeAll s ptr = foldM pokeOne ptr s
-  where pokeOne p c = S.poke p (c2w c) >> return (p `plusPtr` 1)
-
--- | Unsafe creation of a bounded primitive of String at most length
--- `maxEncodedLength`
-boundString :: String -> BoundedPrim ()
-boundString s = boundedPrim maxEncodedLength $ const (pokeAll s)
+-- | Char7 encode a 'String'.
+{-# INLINE string7 #-}
+string7 :: String -> Builder
+string7 = BP.primMapListFixed BP.char7
 
 -- | Special rendering for NaN, positive\/negative 0, and positive\/negative
 -- infinity. These are based on the IEEE representation of non-numbers.
@@ -284,7 +277,7 @@ toCharsNonNumbersAndZero :: forall a mw ew.
   , ew ~ ExponentWord a
   , mw ~ MantissaWord a
   ) => SpecialStrings -> a -> Maybe Builder
-toCharsNonNumbersAndZero SpecialStrings{..} f = flip BP.primBounded () . boundString <$>
+toCharsNonNumbersAndZero SpecialStrings{..} f = string7 <$>
   if w .&. expoMantissaBits == 0
   then Just if w == signBit then negativeZero else positiveZero
   else if w .&. expoMask == expoMask
