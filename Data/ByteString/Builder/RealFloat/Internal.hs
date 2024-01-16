@@ -44,6 +44,7 @@ module Data.ByteString.Builder.RealFloat.Internal
     , trimTrailing
     , trimNoTrailing
     , closestCorrectlyRounded
+    , MaxEncodedLength(..)
     , toCharsScientific
     , asciiRaw
     -- hand-rolled division and remainder for f2s and d2s
@@ -228,9 +229,9 @@ instance DecimalLength Word64 where decimalLength = decimalLength17
 --
 --    floats: 1 (sign) + 9 (mantissa) + 1 (.) + 1 (e) + 3 (exponent) = 15
 --    doubles: 1 (sign) + 17 (mantissa) + 1 (.) + 1 (e) + 4 (exponent) = 24
---
-maxEncodedLength :: Int
-maxEncodedLength = 32
+class MaxEncodedLength a where maxEncodedLength :: Int
+instance MaxEncodedLength Float where maxEncodedLength = 15
+instance MaxEncodedLength Double where maxEncodedLength = 24
 
 -- | Char7 encode a 'String'.
 {-# INLINE string7 #-}
@@ -893,13 +894,14 @@ writeSign ptr False s = (# ptr, s #)
 {-# SPECIALIZE toCharsScientific :: Proxy Float -> Word8# -> Bool -> Word32 -> Int32 -> BoundedPrim () #-}
 {-# SPECIALIZE toCharsScientific :: Proxy Double -> Word8# -> Bool -> Word64 -> Int32 -> BoundedPrim () #-}
 toCharsScientific :: forall a mw ei.
-  ( Mantissa mw
+  ( MaxEncodedLength a
+  , Mantissa mw
   , DecimalLength mw
   , Integral ei
   , ToInt ei
   , FromInt ei
   ) => Proxy a -> Word8# -> Bool -> mw -> ei -> BoundedPrim ()
-toCharsScientific _ eE !sign !mantissa !expo = boundedPrim maxEncodedLength $ \_ !(Ptr p0)-> do
+toCharsScientific _ eE !sign !mantissa !expo = boundedPrim (maxEncodedLength @a) $ \_ !(Ptr p0)-> do
   let !olength@(I# ol) = decimalLength mantissa
       !expo' = expo + fromInt olength - 1
   IO $ \s1 ->

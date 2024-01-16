@@ -267,6 +267,7 @@ formatFloating :: forall a mw ew ei.
   , R.ExponentBits a
   , R.MantissaBits a
   , R.CastToWord a
+  , R.MaxEncodedLength a
   -- mantissa
   , mw ~ R.MantissaWord a
   , R.Mantissa mw
