@@ -8,6 +8,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 -- |
 -- Module      : Data.ByteString.Builder.RealFloat
 -- Copyright   : (c) Lawrence Wu 2021
@@ -77,6 +78,7 @@ module Data.ByteString.Builder.RealFloat
   , standard
   , standardDefaultPrecision
   , scientific
+  , scientificZeroPaddedExponent
   , generic
   ) where
 
@@ -117,7 +119,7 @@ doubleDec = formatFloating generic
 -- | Standard notation with `n` decimal places
 --
 -- @since 0.11.2.0
-standard :: Int -> FloatFormat
+standard :: Int -> FloatFormat a
 standard n = FStandard
   { precision = Just n
   , specials = standardSpecialStrings {positiveZero, negativeZero}
@@ -131,7 +133,7 @@ standard n = FStandard
 -- | Standard notation with the \'default precision\' (decimal places matching `show`)
 --
 -- @since 0.11.2.0
-standardDefaultPrecision :: FloatFormat
+standardDefaultPrecision :: FloatFormat a
 standardDefaultPrecision = FStandard
   { precision = Nothing
   , specials = standardSpecialStrings
@@ -140,8 +142,24 @@ standardDefaultPrecision = FStandard
 -- | Scientific notation with \'default precision\' (decimal places matching `show`)
 --
 -- @since 0.11.2.0
-scientific :: FloatFormat
-scientific = fScientific 'e' scientificSpecialStrings
+scientific :: FloatFormat a
+scientific = fScientific 'e' scientificSpecialStrings False
+
+-- | Like @scientific@ but has a zero padded exponent.
+scientificZeroPaddedExponent :: forall a. ZeroPadCount a => FloatFormat a
+scientificZeroPaddedExponent = scientific
+  { expoZeroPad = True
+  , specials = scientificSpecialStrings
+    { positiveZero
+    , negativeZero = '-' : positiveZero
+    }
+  }
+  where
+  positiveZero = "0.0e" <> replicate (zeroPadCount @a) '0'
+
+class ZeroPadCount a where zeroPadCount :: Int
+instance ZeroPadCount Float where zeroPadCount = 2
+instance ZeroPadCount Double where zeroPadCount = 3
 
 scientificSpecialStrings, standardSpecialStrings :: R.SpecialStrings
 scientificSpecialStrings = R.SpecialStrings
@@ -159,8 +177,8 @@ standardSpecialStrings = scientificSpecialStrings
 -- | Standard or scientific notation depending on the exponent. Matches `show`
 --
 -- @since 0.11.2.0
-generic :: FloatFormat
-generic = fGeneric 'e' Nothing (0,7) standardSpecialStrings
+generic :: FloatFormat a
+generic = fGeneric 'e' Nothing (0,7) standardSpecialStrings False
 
 -- TODO: support precision argument for FGeneric and FScientific
 -- | Returns a rendered Float. Returns the \'shortest\' representation in
@@ -187,7 +205,7 @@ generic = fGeneric 'e' Nothing (0,7) standardSpecialStrings
 --
 -- @since 0.11.2.0
 {-# INLINABLE formatFloat #-}
-formatFloat :: FloatFormat -> Float -> Builder
+formatFloat :: FloatFormat Float -> Float -> Builder
 formatFloat = formatFloating
 
 -- TODO: support precision argument for FGeneric and FScientific
@@ -215,12 +233,12 @@ formatFloat = formatFloating
 --
 -- @since 0.11.2.0
 {-# INLINABLE formatDouble #-}
-formatDouble :: FloatFormat -> Double -> Builder
+formatDouble :: FloatFormat Double -> Double -> Builder
 formatDouble = formatFloating
 
 {-# INLINABLE formatFloating #-}
-{-# SPECIALIZE formatFloating :: FloatFormat -> Float -> Builder #-}
-{-# SPECIALIZE formatFloating :: FloatFormat -> Double -> Builder #-}
+{-# SPECIALIZE formatFloating :: FloatFormat Float  -> Float  -> Builder #-}
+{-# SPECIALIZE formatFloating :: FloatFormat Double -> Double -> Builder #-}
 formatFloating :: forall a mw ew ei.
   -- a
   --( ToS a
@@ -230,6 +248,7 @@ formatFloating :: forall a mw ew ei.
   , R.MantissaBits a
   , R.CastToWord a
   , R.MaxEncodedLength a
+  , R.WriteZeroPaddedExponent a
   -- mantissa
   , mw ~ R.MantissaWord a
   , R.Mantissa mw
@@ -243,16 +262,16 @@ formatFloating :: forall a mw ew ei.
   , R.ToInt ei
   , Integral ei
   , R.FromInt ei
-  ) => FloatFormat -> a -> Builder
+  ) => FloatFormat a -> a -> Builder
 formatFloating fmt f = case fmt of
   FGeneric {stdExpoRange = (minExpo,maxExpo), ..} -> specialsOr specials
     if e' >= minExpo && e' <= maxExpo
        then std precision
-       else sci eE
-  FScientific {..} -> specialsOr specials $ sci eE
+       else sci expoZeroPad eE
+  FScientific {..} -> specialsOr specials $ sci expoZeroPad eE
   FStandard {..} -> specialsOr specials $ std precision
   where
-  sci eE = BP.primBounded (R.toCharsScientific @a Proxy eE sign m e) ()
+  sci expoZeroPad eE = BP.primBounded (R.toCharsScientific @a Proxy expoZeroPad eE sign m e) ()
   std precision = printSign f `mappend` showStandard (toWord64 m) e' precision
   e' = R.toInt e + R.decimalLength m
   R.FloatingDecimal m e = toD @a mantissa expo

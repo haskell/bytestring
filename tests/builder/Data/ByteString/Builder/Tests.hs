@@ -3,6 +3,8 @@
 {-# LANGUAGE CPP              #-}
 {-# LANGUAGE BlockArguments   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
@@ -27,7 +29,7 @@ import           Control.Monad.Trans.Writer (WriterT, execWriterT, tell)
 
 import           Foreign (minusPtr)
 
-import           Data.Char (chr)
+import           Data.Char (chr, isDigit)
 import           Data.Bits ((.|.), shiftL)
 import           Data.Foldable
 import           Data.Semigroup (Semigroup(..))
@@ -45,6 +47,7 @@ import           Data.ByteString.Builder.Internal (Put, putBuilder, fromPut)
 import qualified Data.ByteString.Builder.Internal   as BI
 import qualified Data.ByteString.Builder.Prim       as BP
 import           Data.ByteString.Builder.Prim.TestUtils
+import           Data.ByteString.Builder.RealFloat.Internal (FloatFormat(FScientific), expoZeroPad, positiveZero, negativeZero, specials)
 
 import           Control.Exception (evaluate)
 import           System.IO (openTempFile, hPutStr, hClose, hSetBinaryMode, hSetEncoding, utf8, hSetNewlineMode, noNewlineTranslation)
@@ -58,10 +61,11 @@ import           Test.Tasty.HUnit (testCase, (@?=), Assertion)
 import           Test.Tasty.QuickCheck
                    ( Arbitrary(..), oneof, choose, listOf, elements, forAll
                    , counterexample, ioProperty, Property, testProperty
-                   , (===), (.&&.), conjoin
+                   , (===), (.&&.), (.||.), conjoin
                    , UnicodeString(..), NonNegative(..)
                    )
 import           QuickCheckUtils
+import           Test.QuickCheck.Assertions (binAsrt)
 
 
 tests :: [TestTree]
@@ -743,6 +747,20 @@ testsFloating = testGroup "RealFloat"
           , ( 1.2345678      , "1.2345678" )
           , ( 1.23456735e-36 , "1.23456735e-36" )
           ]
+    , testProperty "zero padded exponent" \d -> let
+      padLen = 2
+      bs = toLazyByteString $ formatFloat (scientificZeroPaddedExponent @Float) $ d
+      s = LC.unpack bs
+      indexEnd i = bs `LC.index` (LC.length bs - i)
+      in conjoin
+        [ binAsrt (s <> " does not read to the value " <> show d) $
+            read (LC.unpack bs) == d
+        , binAsrt (s <> " does not have " <> show padLen <> " exponent digits") $
+            LC.all isDigit (LC.takeEnd padLen bs)
+        , binAsrt (s <> " does not have a proper prefix to exponent digits")
+          $  indexEnd (padLen + 1) == 'e'
+          || indexEnd (padLen + 1) == '-' && indexEnd (padLen + 2) == 'e'
+        ]
     , testMatches "f2sPowersOf10" floatDec show $
           fmap asShowRef [read ("1.0e" ++ show x) :: Float | x <- [-46..39 :: Int]]
     ]
@@ -973,6 +991,20 @@ testsFloating = testGroup "RealFloat"
           , ( 549755813888.0e+3  , "5.49755813888e14" )
           , ( 8796093022208.0e+3 , "8.796093022208e15" )
           ]
+    , testProperty "zero padded exponent" \d -> let
+      padLen = 3
+      bs = toLazyByteString $ formatDouble (scientificZeroPaddedExponent @Double) $ d
+      s = LC.unpack bs
+      indexEnd i = bs `LC.index` (LC.length bs - i)
+      in conjoin
+        [ binAsrt (s <> " does not read to the value " <> show d) $
+            read (LC.unpack bs) == d
+        , binAsrt (s <> " does not have " <> show padLen <> " exponent digits") $
+            LC.all isDigit (LC.takeEnd padLen bs)
+        , binAsrt (s <> " does not have a proper prefix to exponent digits")
+          $  indexEnd (padLen + 1) == 'e'
+          || indexEnd (padLen + 1) == '-' && indexEnd (padLen + 2) == 'e'
+        ]
     , testMatches "d2sPowersOf10" doubleDec show $
           fmap asShowRef [read ("1.0e" ++ show x) :: Double | x <- [-324..309 :: Int]]
     ]

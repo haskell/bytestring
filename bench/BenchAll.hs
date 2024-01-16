@@ -372,6 +372,18 @@ main = do
               [ benchB "Float  Average" floatSpecials  $ foldMap (formatFloat  scientific)
               , benchB "Double Average" doubleSpecials $ foldMap (formatDouble scientific)
               ]
+            , bgroup "Zero Padded"
+              [ bgroup "Positive"
+                [ benchB "Float"       floatPosData       $ foldMap (formatFloat  $ scientificZeroPaddedExponent)
+                , benchB "Double"      doublePosData      $ foldMap (formatDouble $ scientificZeroPaddedExponent)
+                , benchB "DoubleSmall" doublePosSmallData $ foldMap (formatDouble $ scientificZeroPaddedExponent)
+                ]
+              , bgroup "Negative"
+                [ benchB "Float"       floatNegData       $ foldMap (formatFloat  $ scientificZeroPaddedExponent)
+                , benchB "Double"      doubleNegData      $ foldMap (formatDouble $ scientificZeroPaddedExponent)
+                , benchB "DoubleSmall" doubleNegSmallData $ foldMap (formatDouble $ scientificZeroPaddedExponent)
+                ]
+              ]
             ]
           , bgroup "FStandard"
             [ bgroup "Positive"

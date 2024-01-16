@@ -92,6 +92,7 @@ library
                      Data.ByteString.Builder.Extra
                      Data.ByteString.Builder.Prim
                      Data.ByteString.Builder.RealFloat
+                     Data.ByteString.Builder.RealFloat.Internal
 
                      -- perhaps only exposed temporarily
                      Data.ByteString.Builder.Internal
@@ -103,7 +104,6 @@ library
                      Data.ByteString.Builder.Prim.Internal.Floating
                      Data.ByteString.Builder.RealFloat.F2S
                      Data.ByteString.Builder.RealFloat.D2S
-                     Data.ByteString.Builder.RealFloat.Internal
                      Data.ByteString.Builder.RealFloat.TableGenerator
                      Data.ByteString.Internal.Type
                      Data.ByteString.Lazy.Internal.Deque
@@ -181,6 +181,7 @@ test-suite bytestring-tests
                     deepseq,
                     ghc-prim,
                     QuickCheck,
+                    quickcheck-assertions,
                     tasty,
                     tasty-hunit,
                     tasty-quickcheck >= 0.8.1,
