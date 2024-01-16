@@ -8,8 +8,6 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE NoFieldSelectors #-}
-{-# LANGUAGE DuplicateRecordFields #-}
 -- |
 -- Module      : Data.ByteString.Builder.RealFloat
 -- Copyright   : (c) Lawrence Wu 2021
@@ -84,6 +82,7 @@ module Data.ByteString.Builder.RealFloat
 
 import Data.ByteString.Builder.Internal (Builder)
 import qualified Data.ByteString.Builder.RealFloat.Internal as R
+import Data.ByteString.Builder.RealFloat.Internal (FloatFormat(..), fScientific, fGeneric)
 import Data.ByteString.Builder.RealFloat.Internal (positiveZero, negativeZero)
 import qualified Data.ByteString.Builder.RealFloat.F2S as RF
 import qualified Data.ByteString.Builder.RealFloat.D2S as RD
@@ -91,8 +90,6 @@ import qualified Data.ByteString.Builder.Prim as BP
 import GHC.Float (roundTo)
 import GHC.Word (Word32, Word64)
 import GHC.Show (intToDigit)
-import Data.Char (ord)
-import GHC.Prim (Word8#)
 import Data.Bits (Bits)
 import Data.Proxy (Proxy(Proxy))
 import Data.Maybe (fromMaybe)
@@ -116,41 +113,6 @@ floatDec = formatFloating generic
 {-# INLINABLE doubleDec #-}
 doubleDec :: Double -> Builder
 doubleDec = formatFloating generic
-
--- | Format type for use with `formatFloat` and `formatDouble`.
---
--- @since 0.11.2.0
-data FloatFormat
-  -- | scientific notation
-  = FScientific
-    { eE :: Word8#
-    , specials :: R.SpecialStrings
-    }
-  -- | standard notation with `Maybe Int` digits after the decimal
-  | FStandard
-    { precision :: Maybe Int
-    , specials :: R.SpecialStrings
-    }
-  -- | dispatches to scientific or standard notation based on the exponent
-  | FGeneric
-    { eE :: Word8#
-    , precision :: Maybe Int
-    , stdExpoRange :: (Int, Int)
-    , specials :: R.SpecialStrings
-    }
-  deriving Show
-
-fScientific :: Char -> R.SpecialStrings -> FloatFormat
-fScientific eE specials = FScientific
-  { eE = R.asciiRaw $ ord eE
-  , specials
-  }
-
-fGeneric :: Char -> Maybe Int -> (Int, Int) -> R.SpecialStrings -> FloatFormat
-fGeneric eE precision stdExpoRange specials = FGeneric
-  { eE = R.asciiRaw $ ord eE
-  , ..
-  }
 
 -- | Standard notation with `n` decimal places
 --

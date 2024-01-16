@@ -2,6 +2,7 @@
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE NamedFieldPuns #-}
 -- |
 -- Module      : Data.ByteString.Builder.RealFloat.D2S
 -- Copyright   : (c) Lawrence Wu 2021
@@ -171,7 +172,7 @@ d2dGeneral m e =
       !v = 4 * mf
       !w = 4 * mf + 2
       -- Step 3. convert to decimal power base
-      !(state, e10) =
+      !(state@BoundsState{vvIsTrailingZeros, vuIsTrailingZeros}, e10) =
         if e2 >= 0
            then d2dGT e2 u v w
            else d2dLT e2 u v w
@@ -179,7 +180,7 @@ d2dGeneral m e =
       -- valid representations.
       !(output, removed) =
         let rounded = closestCorrectlyRounded (acceptBounds v)
-         in first rounded $ if vvIsTrailingZeros state || vuIsTrailingZeros state
+         in first rounded $ if vvIsTrailingZeros || vuIsTrailingZeros
            then trimTrailing state
            else trimNoTrailing state
       !e' = e10 + removed

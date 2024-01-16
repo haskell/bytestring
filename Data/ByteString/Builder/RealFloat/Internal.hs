@@ -9,6 +9,9 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE NoFieldSelectors #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 -- |
 -- Module      : Data.ByteString.Builder.RealFloat.Internal
 -- Copyright   : (c) Lawrence Wu 2021
@@ -83,6 +86,9 @@ module Data.ByteString.Builder.RealFloat.Internal
     , CastToWord(..)
     , ToInt(..)
     , FromInt(..)
+    , FloatFormat(..)
+    , fScientific
+    , fGeneric
 
     , module Data.ByteString.Builder.RealFloat.TableGenerator
     ) where
@@ -656,43 +662,44 @@ data BoundsState a = BoundsState
 trimTrailing :: Mantissa a => BoundsState a -> (BoundsState a, Int32)
 trimTrailing !initial = (res, r + r')
   where
-    !(d', r) = trimTrailing' initial
-    !(d'', r') = if vuIsTrailingZeros d' then trimTrailing'' d' else (d', 0)
-    res = if vvIsTrailingZeros d'' && lastRemovedDigit d'' == 5 && vv d'' `rem` 2 == 0
+    !(d'@BoundsState{vuIsTrailingZeros = vuIsTrailingZeros'}, r) = trimTrailing' initial
+    !(d''@BoundsState{vvIsTrailingZeros = vvIsTrailingZeros'', lastRemovedDigit = lastRemovedDigit'', vv = vv''}, r') =
+      if vuIsTrailingZeros' then trimTrailing'' d' else (d', 0)
+    res = if vvIsTrailingZeros'' && lastRemovedDigit'' == 5 && vv'' `rem` 2 == 0
              -- set `{ lastRemovedDigit = 4 }` to round-even
              then d''
              else d''
 
-    trimTrailing' !d
+    trimTrailing' !d@BoundsState{..}
       | vw' > vu' =
          fmap ((+) 1) . trimTrailing' $
           d { vu = vu'
             , vv = vv'
             , vw = vw'
             , lastRemovedDigit = vvRem
-            , vuIsTrailingZeros = vuIsTrailingZeros d && vuRem == 0
-            , vvIsTrailingZeros = vvIsTrailingZeros d && lastRemovedDigit d == 0
+            , vuIsTrailingZeros = vuIsTrailingZeros && vuRem == 0
+            , vvIsTrailingZeros = vvIsTrailingZeros && lastRemovedDigit == 0
             }
       | otherwise = (d, 0)
       where
-        !(vv', vvRem) = quotRem10 $ vv d
-        !(vu', vuRem) = quotRem10 $ vu d
-        !(vw', _    ) = quotRem10 $ vw d
+        !(vv', vvRem) = quotRem10 vv
+        !(vu', vuRem) = quotRem10 vu
+        !(vw', _    ) = quotRem10 vw
 
-    trimTrailing'' !d
+    trimTrailing'' !d@BoundsState{..}
       | vuRem == 0 =
          fmap ((+) 1) . trimTrailing'' $
           d { vu = vu'
             , vv = vv'
             , vw = vw'
             , lastRemovedDigit = vvRem
-            , vvIsTrailingZeros = vvIsTrailingZeros d && lastRemovedDigit d == 0
+            , vvIsTrailingZeros = vvIsTrailingZeros && lastRemovedDigit == 0
             }
       | otherwise = (d, 0)
       where
-        !(vu', vuRem) = quotRem10 $ vu d
-        !(vv', vvRem) = quotRem10 $ vv d
-        !(vw', _    ) = quotRem10 $ vw d
+        !(vu', vuRem) = quotRem10 vu
+        !(vv', vvRem) = quotRem10 vv
+        !(vw', _    ) = quotRem10 vw
 
 
 -- | Trim digits and update bookkeeping state when the table-computed
@@ -731,10 +738,10 @@ trimNoTrailing !(BoundsState u v w ld _ _) =
 -- bounds
 {-# INLINE closestCorrectlyRounded #-}
 closestCorrectlyRounded :: Mantissa a => Bool -> BoundsState a -> a
-closestCorrectlyRounded acceptBound s = vv s + boolToWord roundUp
+closestCorrectlyRounded acceptBound BoundsState{..} = vv + boolToWord roundUp
   where
-    outsideBounds = not (vuIsTrailingZeros s) || not acceptBound
-    roundUp = (vv s == vu s && outsideBounds) || lastRemovedDigit s >= 5
+    outsideBounds = not vuIsTrailingZeros || not acceptBound
+    roundUp = (vv == vu && outsideBounds) || lastRemovedDigit >= 5
 
 -- Wrappe around int2Word#
 asciiRaw :: Int -> Word8#
@@ -972,3 +979,36 @@ instance MantissaBits Double where mantissaBits = 52
 class ExponentBits a where exponentBits :: Int
 instance ExponentBits Float where exponentBits = 8
 instance ExponentBits Double where exponentBits = 11
+
+-- | Format type for use with `formatFloat` and `formatDouble`.
+--
+-- @since 0.11.2.0
+data FloatFormat
+  -- | scientific notation
+  = FScientific
+    { eE :: Word8#
+    , specials :: SpecialStrings
+    }
+  -- | standard notation with `Maybe Int` digits after the decimal
+  | FStandard
+    { precision :: Maybe Int
+    , specials :: SpecialStrings
+    }
+  -- | dispatches to scientific or standard notation based on the exponent
+  | FGeneric
+    { eE :: Word8#
+    , precision :: Maybe Int
+    , stdExpoRange :: (Int, Int)
+    , specials :: SpecialStrings
+    }
+  deriving Show
+fScientific :: Char -> SpecialStrings -> FloatFormat
+fScientific eE specials = FScientific
+  { eE = asciiRaw $ ord eE
+  , specials
+  }
+fGeneric :: Char -> Maybe Int -> (Int, Int) -> SpecialStrings -> FloatFormat
+fGeneric eE precision stdExpoRange specials = FGeneric
+  { eE = asciiRaw $ ord eE
+  , ..
+  }
