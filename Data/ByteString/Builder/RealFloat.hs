@@ -8,6 +8,8 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE NoFieldSelectors #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 -- |
 -- Module      : Data.ByteString.Builder.RealFloat
 -- Copyright   : (c) Lawrence Wu 2021
@@ -119,22 +121,45 @@ doubleDec = formatFloating generic
 --
 -- @since 0.11.2.0
 data FloatFormat
-  = FScientific Word8# R.SpecialStrings -- ^ scientific notation
-  | FStandard (Maybe Int) R.SpecialStrings -- ^ standard notation with `Maybe Int` digits after the decimal
-  | FGeneric Word8# (Maybe Int) (Int,Int) R.SpecialStrings      -- ^ dispatches to scientific or standard notation based on the exponent
+  -- | scientific notation
+  = FScientific
+    { eE :: Word8#
+    , specials :: R.SpecialStrings
+    }
+  -- | standard notation with `Maybe Int` digits after the decimal
+  | FStandard
+    { precision :: Maybe Int
+    , specials :: R.SpecialStrings
+    }
+  -- | dispatches to scientific or standard notation based on the exponent
+  | FGeneric
+    { eE :: Word8#
+    , precision :: Maybe Int
+    , stdExpoRange :: (Int, Int)
+    , specials :: R.SpecialStrings
+    }
   deriving Show
 
 fScientific :: Char -> R.SpecialStrings -> FloatFormat
-fScientific eE = FScientific (R.asciiRaw $ ord eE)
+fScientific eE specials = FScientific
+  { eE = R.asciiRaw $ ord eE
+  , specials
+  }
 
 fGeneric :: Char -> Maybe Int -> (Int, Int) -> R.SpecialStrings -> FloatFormat
-fGeneric eE = FGeneric (R.asciiRaw $ ord eE)
+fGeneric eE precision stdExpoRange specials = FGeneric
+  { eE = R.asciiRaw $ ord eE
+  , ..
+  }
 
 -- | Standard notation with `n` decimal places
 --
 -- @since 0.11.2.0
 standard :: Int -> FloatFormat
-standard n = FStandard (Just n) standardSpecialStrings {positiveZero, negativeZero}
+standard n = FStandard
+  { precision = Just n
+  , specials = standardSpecialStrings {positiveZero, negativeZero}
+  }
   where
   positiveZero = if n == 0
     then "0"
@@ -145,7 +170,10 @@ standard n = FStandard (Just n) standardSpecialStrings {positiveZero, negativeZe
 --
 -- @since 0.11.2.0
 standardDefaultPrecision :: FloatFormat
-standardDefaultPrecision = FStandard Nothing standardSpecialStrings
+standardDefaultPrecision = FStandard
+  { precision = Nothing
+  , specials = standardSpecialStrings
+  }
 
 -- | Scientific notation with \'default precision\' (decimal places matching `show`)
 --
@@ -254,19 +282,19 @@ formatFloating :: forall a mw ew ei.
   , R.FromInt ei
   ) => FloatFormat -> a -> Builder
 formatFloating fmt f = case fmt of
-  FGeneric eE prec (minExpo,maxExpo) ss -> specialsOr ss
+  FGeneric {stdExpoRange = (minExpo,maxExpo), ..} -> specialsOr specials
     if e' >= minExpo && e' <= maxExpo
-       then std prec
+       then std precision
        else sci eE
-  FScientific eE ss -> specialsOr ss $ sci eE
-  FStandard prec ss -> specialsOr ss $ std prec
+  FScientific {..} -> specialsOr specials $ sci eE
+  FStandard {..} -> specialsOr specials $ std precision
   where
   sci eE = BP.primBounded (R.toCharsScientific @a Proxy eE sign m e) ()
-  std prec = printSign f `mappend` showStandard (toWord64 m) e' prec
+  std precision = printSign f `mappend` showStandard (toWord64 m) e' precision
   e' = R.toInt e + R.decimalLength m
   R.FloatingDecimal m e = toD @a mantissa expo
   (sign, mantissa, expo) = R.breakdown f
-  specialsOr ss = flip fromMaybe $ R.toCharsNonNumbersAndZero ss f
+  specialsOr specials = flip fromMaybe $ R.toCharsNonNumbersAndZero specials f
 
 class ToWord64 a where toWord64 :: a -> Word64
 instance ToWord64 Word32 where toWord64 = R.word32ToWord64
