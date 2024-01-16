@@ -743,6 +743,8 @@ testsFloating = testGroup "RealFloat"
           , ( 1.2345678      , "1.2345678" )
           , ( 1.23456735e-36 , "1.23456735e-36" )
           ]
+    , testMatches "f2sPowersOf10" floatDec show $
+          fmap asShowRef [read ("1.0e" ++ show x) :: Float | x <- [-46..39 :: Int]]
     ]
   , testGroup "Double"
     [ testMatches "d2sBasic" doubleDec show
@@ -971,8 +973,6 @@ testsFloating = testGroup "RealFloat"
           , ( 549755813888.0e+3  , "5.49755813888e14" )
           , ( 8796093022208.0e+3 , "8.796093022208e15" )
           ]
-    , testMatches "f2sPowersOf10" floatDec show $
-          fmap asShowRef [read ("1.0e" ++ show x) :: Float | x <- [-46..39 :: Int]]
     , testMatches "d2sPowersOf10" doubleDec show $
           fmap asShowRef [read ("1.0e" ++ show x) :: Double | x <- [-324..309 :: Int]]
     ]
