@@ -253,7 +253,7 @@ formatFloating fmt f = case fmt of
   FStandard {..} -> specialsOr specials $ std precision
   where
   sci eE = BP.primBounded (R.toCharsScientific @a Proxy eE sign m e) ()
-  std precision = printSign f `mappend` showStandard (toWord64 m) e' precision
+  std precision = printSign f <> showStandard (toWord64 m) e' precision
   e' = R.toInt e + R.decimalLength m
   R.FloatingDecimal m e = toD @a mantissa expo
   (sign, mantissa, expo) = R.breakdown f
