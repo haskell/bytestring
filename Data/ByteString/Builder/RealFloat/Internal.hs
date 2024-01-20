@@ -757,6 +757,9 @@ asciiDot = ord '.'
 asciiMinus :: Int
 asciiMinus = ord '-'
 
+asciiPlus :: Int
+asciiPlus = ord '+'
+
 -- | Convert a single-digit number to the ascii ordinal e.g '1' -> 0x31
 toAscii :: Word# -> Word#
 toAscii a = a `plusWord#` word8ToWord# (asciiRaw asciiZero)
@@ -918,11 +921,17 @@ writeSign ptr True s1 =
    in (# ptr `plusAddr#` 1#, s2 #)
 writeSign ptr False s = (# ptr, s #)
 
+writeExpoSign :: Bool -> Addr# -> Bool -> State# d -> (# Addr#, State# d #)
+writeExpoSign False = writeSign
+writeExpoSign True = \ptr sign s1 ->
+  let s2 = poke ptr (asciiRaw if sign then asciiMinus else asciiPlus) s1
+  in (# ptr `plusAddr#` 1#, s2 #)
+
 -- | Returns the decimal representation of a floating point number in
 -- scientific (exponential) notation
 {-# INLINABLE toCharsScientific #-}
-{-# SPECIALIZE toCharsScientific :: Proxy Float  -> Bool -> Word8# -> Bool -> Word32 -> Int32 -> BoundedPrim () #-}
-{-# SPECIALIZE toCharsScientific :: Proxy Double -> Bool -> Word8# -> Bool -> Word64 -> Int32 -> BoundedPrim () #-}
+{-# SPECIALIZE toCharsScientific :: Proxy Float  -> Word8# -> Bool -> Bool -> Bool -> Word32 -> Int32 -> BoundedPrim () #-}
+{-# SPECIALIZE toCharsScientific :: Proxy Double -> Word8# -> Bool -> Bool -> Bool -> Word64 -> Int32 -> BoundedPrim () #-}
 toCharsScientific :: forall a mw ei.
   ( MaxEncodedLength a
   , WriteZeroPaddedExponent a
@@ -932,15 +941,16 @@ toCharsScientific :: forall a mw ei.
   , Integral ei
   , ToInt ei
   , FromInt ei
-  ) => Proxy a -> Bool -> Word8# -> Bool -> mw -> ei -> BoundedPrim ()
-toCharsScientific _ expoZeroPad eE !sign !mantissa !expo = boundedPrim (maxEncodedLength @a) $ \_ !(Ptr p0)-> do
+  ) => Proxy a -> Word8# -> Bool -> Bool -> Bool -> mw -> ei -> BoundedPrim ()
+toCharsScientific _ eE !expoZeroPad !expoExplicitSign !sign !mantissa !expo =
+  boundedPrim (maxEncodedLength @a) $ \_ !(Ptr p0)-> do
   let !olength@(I# ol) = decimalLength mantissa
       !expo' = expo + fromInt olength - 1
   IO $ \s1 ->
     let !(# p1, s2 #) = writeSign p0 sign s1
         !(# p2, s3 #) = writeMantissa p1 ol mantissa s2
         s4 = poke p2 eE s3
-        !(# p3, s5 #) = writeSign (p2 `plusAddr#` 1#) (expo' < 0) s4
+        !(# p3, s5 #) = writeExpoSign expoExplicitSign (p2 `plusAddr#` 1#) (expo' < 0) s4
         !(# p4, s6 #) = writeExponent p3 (abs expo') s5
      in (# s6, (Ptr p4) #)
   where
@@ -1018,6 +1028,7 @@ data FloatFormat a
     { eE :: Word8#
     , specials :: SpecialStrings
     , expoZeroPad :: Bool -- ^ pad the exponent with zeros
+    , expoExplicitSign :: Bool -- ^ Always prepend a + or - to the exponent
     }
   -- | standard notation with `Maybe Int` digits after the decimal
   | FStandard
@@ -1031,15 +1042,17 @@ data FloatFormat a
     , stdExpoRange :: (Int, Int)
     , specials :: SpecialStrings
     , expoZeroPad :: Bool -- ^ pad the exponent with zeros
+    , expoExplicitSign :: Bool -- ^ Always prepend a + or - to the exponent
     }
   deriving Show
-fScientific :: Char -> SpecialStrings -> Bool -> FloatFormat a
-fScientific eE specials expoZeroPad = FScientific
+fScientific :: Char -> SpecialStrings -> Bool -> Bool -> FloatFormat a
+fScientific eE specials expoZeroPad expoExplicitSign = FScientific
   { eE = asciiRaw $ ord eE
   , ..
   }
-fGeneric :: Char -> Maybe Int -> (Int, Int) -> SpecialStrings -> Bool -> FloatFormat a
-fGeneric eE precision stdExpoRange specials expoZeroPad = FGeneric
+fGeneric :: Char -> Maybe Int -> (Int, Int) -> SpecialStrings -> Bool -> Bool -> FloatFormat a
+fGeneric eE precision stdExpoRange specials expoZeroPad expoExplicitSign = FGeneric
   { eE = asciiRaw $ ord eE
   , ..
   }
+

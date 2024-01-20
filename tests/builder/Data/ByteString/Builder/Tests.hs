@@ -30,6 +30,7 @@ import           Control.Monad.Trans.Writer (WriterT, execWriterT, tell)
 import           Foreign (minusPtr)
 
 import           Data.Char (chr, isDigit)
+import           Data.Bifunctor (second)
 import           Data.Bits ((.|.), shiftL)
 import           Data.Foldable
 import           Data.Semigroup (Semigroup(..))
@@ -53,7 +54,7 @@ import           Control.Exception (evaluate)
 import           System.IO (openTempFile, hPutStr, hClose, hSetBinaryMode, hSetEncoding, utf8, hSetNewlineMode, noNewlineTranslation)
 import           Foreign (ForeignPtr, withForeignPtr, castPtr)
 import           Foreign.C.String (withCString)
-import           Numeric (showFFloat)
+import           Numeric (showFFloat, showEFloat)
 import           System.Posix.Internals (c_unlink)
 
 import           Test.Tasty (TestTree, TestName, testGroup)
@@ -761,6 +762,18 @@ testsFloating = testGroup "RealFloat"
           $  indexEnd (padLen + 1) == 'e'
           || indexEnd (padLen + 1) == '-' && indexEnd (padLen + 2) == 'e'
         ]
+    , testMatches "explict exponent sign"
+      (formatFloat (scientificExplicitExponentSign))
+      (\f -> (if abs f >= 1 || abs f == 0
+              then uncurry (<>) . second (("e+" <>) . tail) . break (== 'e')
+              else id)
+             $ showEFloat Nothing f "")
+      [ ( 0    , "0.0e+0"  )
+      , ( -0   , "-0.0e+0" )
+      , ( 1.0  , "1.0e+0"  )
+      , ( 20.0 , "2.0e+1"  )
+      , ( 0.3  , "3.0e-1"  )
+      ]
     , testMatches "f2sPowersOf10" floatDec show $
           fmap asShowRef [read ("1.0e" ++ show x) :: Float | x <- [-46..39 :: Int]]
     ]

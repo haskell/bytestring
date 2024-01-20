@@ -79,6 +79,7 @@ module Data.ByteString.Builder.RealFloat
   , standardDefaultPrecision
   , scientific
   , scientificZeroPaddedExponent
+  , scientificExplicitExponentSign
   , generic
   ) where
 
@@ -143,7 +144,7 @@ standardDefaultPrecision = FStandard
 --
 -- @since 0.11.2.0
 scientific :: FloatFormat a
-scientific = fScientific 'e' scientificSpecialStrings False
+scientific = fScientific 'e' scientificSpecialStrings False False
 
 -- | Like @scientific@ but has a zero padded exponent.
 scientificZeroPaddedExponent :: forall a. ZeroPadCount a => FloatFormat a
@@ -156,6 +157,17 @@ scientificZeroPaddedExponent = scientific
   }
   where
   positiveZero = "0.0e" <> replicate (zeroPadCount @a) '0'
+
+scientificExplicitExponentSign :: FloatFormat a
+scientificExplicitExponentSign = scientific
+  { expoExplicitSign = True
+  , specials = scientificSpecialStrings
+    { positiveZero
+    , negativeZero = '-' : positiveZero
+    }
+  }
+  where
+  positiveZero = "0.0e+0"
 
 class ZeroPadCount a where zeroPadCount :: Int
 instance ZeroPadCount Float where zeroPadCount = 2
@@ -178,7 +190,7 @@ standardSpecialStrings = scientificSpecialStrings
 --
 -- @since 0.11.2.0
 generic :: FloatFormat a
-generic = fGeneric 'e' Nothing (0,7) standardSpecialStrings False
+generic = fGeneric 'e' Nothing (0,7) standardSpecialStrings False False
 
 -- TODO: support precision argument for FGeneric and FScientific
 -- | Returns a rendered Float. Returns the \'shortest\' representation in
@@ -266,13 +278,13 @@ formatFloating :: forall a mw ew ei.
 formatFloating fmt f = case fmt of
   FGeneric {stdExpoRange = (minExpo,maxExpo), ..} -> specialsOr specials
     if e' >= minExpo && e' <= maxExpo
-       then std precision
-       else sci expoZeroPad eE
-  FScientific {..} -> specialsOr specials $ sci expoZeroPad eE
+      then std precision
+      else sci eE expoZeroPad expoExplicitSign
+  FScientific {..} -> specialsOr specials $ sci eE expoZeroPad expoExplicitSign
   FStandard {..} -> specialsOr specials $ std precision
   where
-  sci expoZeroPad eE = BP.primBounded (R.toCharsScientific @a Proxy expoZeroPad eE sign m e) ()
-  std precision = printSign f `mappend` showStandard (toWord64 m) e' precision
+  sci expoZeroPad expoExplicitSign eE = BP.primBounded (R.toCharsScientific @a Proxy expoZeroPad expoExplicitSign eE sign m e) ()
+  std precision = printSign f <> showStandard (toWord64 m) e' precision
   e' = R.toInt e + R.decimalLength m
   R.FloatingDecimal m e = toD @a mantissa expo
   (sign, mantissa, expo) = R.breakdown f
