@@ -93,6 +93,7 @@ import GHC.Show (intToDigit)
 import Data.Bits (Bits)
 import Data.Proxy (Proxy(Proxy))
 import Data.Maybe (fromMaybe)
+import Data.Monoid ((<>))
 
 -- | Returns a rendered Float. Matches `show` in displaying in standard or
 -- scientific notation
