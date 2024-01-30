@@ -35,7 +35,4 @@ https://gitlab.haskell.org/ghc/ghc/-/issues/16617 they
 are buggy with negative floats before ghc-8.10.
 */
 
-#define HS_UNALIGNED_ADDR_PRIMOPS_AVAILABLE __GLASGOW_HASKELL__ >= 909
-/*
-This should really be MIN_VERSION_base(4,20,0).
-*/
+#define HS_UNALIGNED_ADDR_PRIMOPS_AVAILABLE MIN_VERSION_base(4,20,0)
