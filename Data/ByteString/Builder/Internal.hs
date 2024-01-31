@@ -129,6 +129,7 @@ module Data.ByteString.Builder.Internal (
 import           Control.Arrow (second)
 
 import           Data.Semigroup (Semigroup(..))
+import           Data.List.NonEmpty (NonEmpty(..))
 
 import qualified Data.ByteString               as S
 import qualified Data.ByteString.Internal.Type as S
@@ -400,6 +401,7 @@ stimesNegativeErr
 instance Semigroup Builder where
   {-# INLINE (<>) #-}
   (<>) = append
+  sconcat (b:|bs) = b <> foldr mappend mempty bs
   {-# INLINE stimes #-}
   stimes = stimesBuilder
 
