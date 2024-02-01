@@ -815,51 +815,53 @@ splitAtEndFold step end len bs0 = assert (len > 0) $ case bs0 of
   Chunk c t -> goR len c t t
  where
   -- Idea: Keep two references into the input ByteString:
-  --   "bsL" tracks the current split point,
-  --   "bsR" tracks the yet-unprocessed tail.
+  --   "toSplit" tracks the current split point,
+  --   "toScan"  tracks the yet-unprocessed tail.
   -- When they are closer than "len" bytes apart, process more input.  ("goR")
   -- When they are  at  least  "len" bytes apart, produce more output. ("goL")
+  -- We always have that "toScan" is a suffix of "toSplit",
+  -- and "toSplit" is a suffix of the original input (bs0).
   goR :: Int64 -> S.StrictByteString -> ByteString -> ByteString -> result
-  goR !undershoot nextOutput@(S.BS noFp noLen) bsL bsR =
+  goR !undershoot nextOutput@(S.BS noFp noLen) toSplit toScan =
       assert (undershoot > 0) $
-      -- INVARIANT: length bsL == length bsR + len - undershoot
+      -- INVARIANT: length toSplit == length toScan + len - undershoot
       -- (not 'assert'ed because that would break our laziness properties)
-      case bsR of
+      case toScan of
     Empty
       | undershoot >= intToInt64 noLen
-        -> end (Chunk nextOutput bsL)
+        -> end (Chunk nextOutput toSplit)
       | undershootW <- fromIntegral @Int64 @Int undershoot
         -- conversion Int64->Int is OK because 0 < undershoot < noLen
       , splitIndex <- noLen - undershootW
       , beforeSplit <- S.BS noFp splitIndex
       , afterSplit <- S.BS (noFp `S.plusForeignPtr` splitIndex) undershootW
-        -> step beforeSplit $ end (Chunk afterSplit bsL)
+        -> step beforeSplit $ end (Chunk afterSplit toSplit)
 
     Chunk (S.BS _ cLen) newBsR
       | cLen64 <- intToInt64 cLen
       , undershoot > cLen64
-        -> goR (undershoot - cLen64) nextOutput bsL newBsR
+        -> goR (undershoot - cLen64) nextOutput toSplit newBsR
       | undershootW <- fromIntegral @Int64 @Int undershoot
-        -> step nextOutput $ goL (cLen - undershootW) bsL newBsR
+        -> step nextOutput $ goL (cLen - undershootW) toSplit newBsR
 
   goL :: Int -> ByteString -> ByteString -> result
-  goL !overshoot bsL bsR =
+  goL !overshoot toSplit toScan =
       assert (overshoot >= 0) $
-      -- INVARIANT: length bsL == length bsR + len + intToInt64 overshoot
+      -- INVARIANT: length toSplit == length toScan + len + intToInt64 overshoot
       -- (not 'assert'ed because that would break our laziness properties)
-      case bsL of
+      case toSplit of
     Empty -> splitAtEndFoldInvariantFailed
     Chunk c@(S.BS _ cLen) newBsL
       | overshoot >= cLen
-        -> step c $ goL (overshoot - cLen) newBsL bsR
+        -> step c $ goL (overshoot - cLen) newBsL toScan
       | otherwise
-        -> goR (intToInt64 $ cLen - overshoot) c newBsL bsR
+        -> goR (intToInt64 $ cLen - overshoot) c newBsL toScan
 
 splitAtEndFoldInvariantFailed :: a
 -- See Note [Float error calls out of INLINABLE things] in D.B.Internal.Type
 splitAtEndFoldInvariantFailed =
   moduleError "splitAtEndFold"
-              "internal error: bsL not longer than bsR"
+              "internal error: toSplit not longer than toScan"
 
 -- | /O(n\/c)/ 'drop' @n xs@ returns the suffix of @xs@ after the first @n@
 -- elements, or 'empty' if @n > 'length' xs@.
