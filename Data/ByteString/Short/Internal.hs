@@ -1309,6 +1309,7 @@ isInfixOf :: ShortByteString -> ShortByteString -> Bool
 isInfixOf sbs = \s -> null sbs || not (null $ snd $ (GHC.Exts.inline breakSubstring) sbs s)
 
 -- |/O(n)/ The 'isPrefixOf' function takes two ShortByteStrings and returns 'True'
+-- iff the first is a prefix of the second.
 --
 -- @since 0.11.3.0
 isPrefixOf :: ShortByteString -> ShortByteString -> Bool
