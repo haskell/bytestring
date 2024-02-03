@@ -85,6 +85,7 @@ import           Data.ByteString.Builder.RealFloat (floatDec, doubleDec)
 
 import           Foreign
 import           Foreign.C.Types
+import           Data.List.NonEmpty (NonEmpty(..))
 
 ------------------------------------------------------------------------------
 -- Decimal Encoding
@@ -276,37 +277,31 @@ integerDec i
     | i < 0     = P.primFixed P.char8 '-' `mappend` go (-i)
     | otherwise =                                   go i
   where
-    errImpossible fun =
-        error $ "integerDec: " ++ fun ++ ": the impossible happened."
-
     go :: Integer -> Builder
     go n | n < maxPow10 = intDec (fromInteger n)
          | otherwise    =
              case putH (splitf (maxPow10 * maxPow10) n) of
-               (x:xs) -> intDec x `mappend` P.primMapListBounded intDecPadded xs
-               []     -> errImpossible "integerDec: go"
+               x:|xs -> intDec x `mappend` P.primMapListBounded intDecPadded xs
 
-    splitf :: Integer -> Integer -> [Integer]
+    splitf :: Integer -> Integer -> NonEmpty Integer
     splitf pow10 n0
-      | pow10 > n0  = [n0]
+      | pow10 > n0  = n0 :| []
       | otherwise   = splith (splitf (pow10 * pow10) n0)
       where
-        splith []     = errImpossible "splith"
-        splith (n:ns) =
+        splith (n:|ns) =
             case n `quotRem` pow10 of
-                (q,r) | q > 0     -> q : r : splitb ns
-                      | otherwise ->     r : splitb ns
+                (q,r) | q > 0     -> q :| r :  splitb ns
+                      | otherwise ->      r :| splitb ns
 
         splitb []     = []
         splitb (n:ns) = case n `quotRem` pow10 of
                             (q,r) -> q : r : splitb ns
 
-    putH :: [Integer] -> [Int]
-    putH []     = errImpossible "putH"
-    putH (n:ns) = case n `quotRem` maxPow10 of
+    putH :: NonEmpty Integer -> NonEmpty Int
+    putH (n:|ns) = case n `quotRem` maxPow10 of
                     (x,y)
-                        | q > 0     -> q : r : putB ns
-                        | otherwise ->     r : putB ns
+                        | q > 0     -> q :| r :  putB ns
+                        | otherwise ->      r :| putB ns
                         where q = fromInteger x
                               r = fromInteger y
 
