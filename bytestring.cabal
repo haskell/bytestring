@@ -181,7 +181,9 @@ test-suite bytestring-tests
                     deepseq,
                     ghc-prim,
                     QuickCheck,
+                    quickcheck-assertions,
                     tasty,
+                    tasty-hunit,
                     tasty-quickcheck >= 0.8.1,
                     template-haskell,
                     transformers >= 0.3,
@@ -208,4 +210,5 @@ benchmark bytestring-bench
                     bytestring,
                     deepseq,
                     tasty-bench,
-                    random
+                    random,
+                    ieee754
