@@ -1,5 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE BangPatterns, MagicHash #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE NamedFieldPuns #-}
 -- |
 -- Module      : Data.ByteString.Builder.RealFloat.F2S
 -- Copyright   : (c) Lawrence Wu 2021
@@ -9,15 +11,11 @@
 -- Implementation of float-to-string conversion
 
 module Data.ByteString.Builder.RealFloat.F2S
-    ( FloatingDecimal(..)
-    , f2s
-    , f2Intermediate
+    ( f2d
     ) where
 
 import Control.Arrow (first)
 import Data.Bits ((.|.), (.&.), unsafeShiftL, unsafeShiftR)
-import Data.ByteString.Builder.Internal (Builder)
-import Data.ByteString.Builder.Prim (primBounded)
 import Data.ByteString.Builder.RealFloat.Internal
 import GHC.Int (Int32(..))
 import GHC.Ptr (Ptr(..))
@@ -38,24 +36,11 @@ foreign import ccall "&hs_bytestring_float_pow5_inv_split"
 foreign import ccall "&hs_bytestring_float_pow5_split"
   float_pow5_split :: Ptr Word64
 
--- | Number of mantissa bits of a 32-bit float. The number of significant bits
--- (floatDigits (undefined :: Float)) is 24 since we have a leading 1 for
--- normal floats and 0 for subnormal floats
-float_mantissa_bits :: Int
-float_mantissa_bits = 23
-
--- | Number of exponent bits of a 32-bit float
-float_exponent_bits :: Int
-float_exponent_bits = 8
-
 -- | Bias in encoded 32-bit float representation (2^7 - 1)
 float_bias :: Int
 float_bias = 127
 
-data FloatingDecimal = FloatingDecimal
-  { fmantissa :: !Word32
-  , fexponent :: !Int32
-  } deriving (Show, Eq)
+type FD = FloatingDecimal Float
 
 -- | Multiply a 32-bit number with a 64-bit number while keeping the upper 64
 -- bits. Then shift by specified amount minus 32
@@ -151,9 +136,10 @@ f2dLT e2' u v w =
 
 -- | Returns the decimal representation of the given mantissa and exponent of a
 -- 32-bit Float using the ryu algorithm.
-f2d :: Word32 -> Word32 -> FloatingDecimal
+f2d :: Word32 -> Word32 -> FD
 f2d m e =
-  let !mf = if e == 0
+  let float_mantissa_bits = mantissaBits @Float
+      !mf = if e == 0
               then m
               else (1 `unsafeShiftL` float_mantissa_bits) .|. m
       !ef = intToInt32 $ if e == 0
@@ -165,7 +151,7 @@ f2d m e =
       !v = 4 * mf
       !w = 4 * mf + 2
       -- Step 3. convert to decimal power base
-      !(state, e10) =
+      !(state@BoundsState{vvIsTrailingZeros, vuIsTrailingZeros}, e10) =
         if e2 >= 0
            then f2dGT e2 u v w
            else f2dLT e2 u v w
@@ -173,39 +159,8 @@ f2d m e =
       -- valid representations.
       !(output, removed) =
         let rounded = closestCorrectlyRounded (acceptBounds v)
-         in first rounded $ if vvIsTrailingZeros state || vuIsTrailingZeros state
+         in first rounded $ if vvIsTrailingZeros || vuIsTrailingZeros
            then trimTrailing state
            else trimNoTrailing state
       !e' = e10 + removed
    in FloatingDecimal output e'
-
--- | Split a Float into (sign, mantissa, exponent)
-breakdown :: Float -> (Bool, Word32, Word32)
-breakdown f =
-  let bits = castFloatToWord32 f
-      sign = ((bits `unsafeShiftR` (float_mantissa_bits + float_exponent_bits)) .&. 1) /= 0
-      mantissa = bits .&. mask float_mantissa_bits
-      expo = (bits `unsafeShiftR` float_mantissa_bits) .&. mask float_exponent_bits
-   in (sign, mantissa, expo)
-
--- | Dispatches to `f2d` and applies the given formatters
-{-# INLINE f2s' #-}
-f2s' :: (Bool -> Word32 -> Int32 -> a) -> (NonNumbersAndZero -> a) -> Float -> a
-f2s' formatter specialFormatter f =
-  let (sign, mantissa, expo) = breakdown f
-   in if (expo == mask float_exponent_bits) || (expo == 0 && mantissa == 0)
-         then specialFormatter NonNumbersAndZero
-                  { negative=sign
-                  , exponent_all_one=expo > 0
-                  , mantissa_non_zero=mantissa > 0 }
-         else let FloatingDecimal m e = f2d mantissa expo
-               in formatter sign m e
-
--- | Render a Float in scientific notation
-f2s :: Float -> Builder
-f2s f = primBounded (f2s' toCharsScientific toCharsNonNumbersAndZero f) ()
-
--- | Returns the decimal representation of a Float. NaN and Infinity will
--- return `FloatingDecimal 0 0`
-f2Intermediate :: Float -> FloatingDecimal
-f2Intermediate = f2s' (const FloatingDecimal) (const $ FloatingDecimal 0 0)

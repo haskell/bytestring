@@ -2,6 +2,16 @@
 {-# LANGUAGE BangPatterns, MagicHash, UnboxedTuples #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE NoFieldSelectors #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 -- |
 -- Module      : Data.ByteString.Builder.RealFloat.Internal
 -- Copyright   : (c) Lawrence Wu 2021
@@ -21,10 +31,10 @@
 
 module Data.ByteString.Builder.RealFloat.Internal
     ( mask
-    , NonNumbersAndZero(..)
+    , string7
     , toCharsNonNumbersAndZero
-    , decimalLength9
-    , decimalLength17
+    , SpecialStrings(..)
+    , DecimalLength(..)
     , Mantissa
     , pow5bits
     , log10pow2
@@ -37,7 +47,9 @@ module Data.ByteString.Builder.RealFloat.Internal
     , trimTrailing
     , trimNoTrailing
     , closestCorrectlyRounded
+    , MaxEncodedLength(..)
     , toCharsScientific
+    , asciiRaw
     -- hand-rolled division and remainder for f2s and d2s
     , fquot10
     , frem10
@@ -63,25 +75,39 @@ module Data.ByteString.Builder.RealFloat.Internal
     , word64ToInt
     , word32ToWord64
     , word64ToWord32
+    -- joining Float and Double logic
+    , FloatingDecimal(..)
+    , MantissaWord
+    , ExponentWord
+    , ExponentInt
+    , breakdown
+    , MantissaBits(..)
+    , ExponentBits(..)
+    , CastToWord(..)
+    , ToInt(..)
+    , FromInt(..)
+    , FloatFormat(..)
+    , fScientific
+    , fGeneric
 
     , module Data.ByteString.Builder.RealFloat.TableGenerator
     ) where
 
-import Control.Monad (foldM)
 import Data.Bits (Bits(..), FiniteBits(..))
-import Data.ByteString.Internal (c2w)
+import Data.ByteString.Builder.Internal (Builder)
 import Data.ByteString.Builder.Prim.Internal (BoundedPrim, boundedPrim)
 import Data.ByteString.Builder.RealFloat.TableGenerator
 import Data.ByteString.Utils.UnalignedWrite
+import qualified Data.ByteString.Builder.Prim as BP
 import Data.Char (ord)
+import Data.Proxy (Proxy)
 import Foreign.C.Types
 import GHC.Int (Int(..), Int32(..))
 import GHC.IO (IO(..), unIO)
 import GHC.Prim
-import GHC.Ptr (Ptr(..), plusPtr, castPtr)
+import GHC.Ptr (Ptr(..), castPtr)
 import GHC.Types (isTrue#)
-import GHC.Word (Word8, Word16(..), Word32(..), Word64(..))
-import qualified Foreign.Storable as S (poke)
+import GHC.Word (Word16(..), Word32(..), Word64(..))
 
 #include <ghcautoconf.h>
 #include "MachDeps.h"
@@ -177,6 +203,10 @@ decimalLength17 v
   | v >= 10 = 2
   | otherwise = 1
 
+class DecimalLength a where decimalLength :: a -> Int
+instance DecimalLength Word32 where decimalLength = decimalLength9
+instance DecimalLength Word64 where decimalLength = decimalLength17
+
 -- From 'In-and-Out Conversions' https://dl.acm.org/citation.cfm?id=362887, we
 -- have that a conversion from a base-b n-digit number to a base-v m-digit
 -- number such that the round-trip conversion is identity requires
@@ -205,19 +235,14 @@ decimalLength17 v
 --
 --    floats: 1 (sign) + 9 (mantissa) + 1 (.) + 1 (e) + 3 (exponent) = 15
 --    doubles: 1 (sign) + 17 (mantissa) + 1 (.) + 1 (e) + 4 (exponent) = 24
---
-maxEncodedLength :: Int
-maxEncodedLength = 32
+class MaxEncodedLength a where maxEncodedLength :: Int
+instance MaxEncodedLength Float where maxEncodedLength = 15
+instance MaxEncodedLength Double where maxEncodedLength = 24
 
--- | Storable.poke a String into a Ptr Word8, converting through c2w
-pokeAll :: String -> Ptr Word8 -> IO (Ptr Word8)
-pokeAll s ptr = foldM pokeOne ptr s
-  where pokeOne p c = S.poke p (c2w c) >> return (p `plusPtr` 1)
-
--- | Unsafe creation of a bounded primitive of String at most length
--- `maxEncodedLength`
-boundString :: String -> BoundedPrim ()
-boundString s = boundedPrim maxEncodedLength $ const (pokeAll s)
+-- | Char7 encode a 'String'.
+{-# INLINE string7 #-}
+string7 :: String -> Builder
+string7 = BP.primMapListFixed BP.char7
 
 -- | Special rendering for NaN, positive\/negative 0, and positive\/negative
 -- infinity. These are based on the IEEE representation of non-numbers.
@@ -240,19 +265,47 @@ boundString s = boundedPrim maxEncodedLength $ const (pokeAll s)
 --   * sign = either 0 or 1.
 --   * biased exponent = all 0 bits.
 --   * fraction = all 0 bits.
-data NonNumbersAndZero = NonNumbersAndZero
-  { negative :: Bool
-  , exponent_all_one :: Bool
-  , mantissa_non_zero :: Bool
-  }
+{-# INLINABLE toCharsNonNumbersAndZero #-}
+{-# SPECIALIZE toCharsNonNumbersAndZero :: SpecialStrings -> Float -> Maybe Builder #-}
+{-# SPECIALIZE toCharsNonNumbersAndZero :: SpecialStrings -> Double -> Maybe Builder #-}
+toCharsNonNumbersAndZero :: forall a mw ew.
+  ( Bits ew
+  , Bits mw
+  , CastToWord a
+  , Eq mw
+  , ExponentBits a
+  , Integral ew
+  , Integral mw
+  , MantissaBits a
+  , Num ew
+  , Num mw
+  , Ord ew
+  , Ord mw
+  , ew ~ ExponentWord a
+  , mw ~ MantissaWord a
+  ) => SpecialStrings -> a -> Maybe Builder
+toCharsNonNumbersAndZero SpecialStrings{..} f = string7 <$>
+  if w .&. expoMantissaBits == 0
+  then Just if w == signBit then negativeZero else positiveZero
+  else if w .&. expoMask == expoMask
+  then Just if w .&. mantissaMask == 0
+    then if w .&. signBit /= 0 then negativeInfinity else positiveInfinity
+    else nan
+  else Nothing
+  where
+  w = castToWord f
+  expoMask = mask (exponentBits @a) `shiftL` mantissaBits @a
+  mantissaMask = mask (mantissaBits @a)
+  expoMantissaBits = complement signBit
+  signBit = 1 `rotateR` 1
 
--- | Renders NonNumbersAndZero into bounded primitive
-toCharsNonNumbersAndZero :: NonNumbersAndZero -> BoundedPrim ()
-toCharsNonNumbersAndZero NonNumbersAndZero{..}
-  | mantissa_non_zero = boundString "NaN"
-  | exponent_all_one = boundString $ signStr ++ "Infinity"
-  | otherwise = boundString $ signStr ++ "0.0e0"
-  where signStr = if negative then "-" else ""
+data SpecialStrings = SpecialStrings
+  { nan :: String
+  , positiveInfinity :: String
+  , negativeInfinity :: String
+  , positiveZero :: String
+  , negativeZero :: String
+  } deriving Show
 
 -- | Part of the calculation on whether to round up the decimal representation.
 -- This is currently a constant function to match behavior in Base `show` and
@@ -267,7 +320,7 @@ toCharsNonNumbersAndZero NonNumbersAndZero{..}
 -- @
 -- acceptBounds v = ((v \`quot\` 4) .&. 1) == 0
 -- @
-acceptBounds :: Mantissa a => a -> Bool
+acceptBounds :: a -> Bool
 acceptBounds _ = False
 
 -------------------------------------------------------------------------------
@@ -506,10 +559,12 @@ pow5_factor w count =
         _  -> pow5_factor q (count +# 1#)
 
 -- | Returns @True@ if value is divisible by @5^p@
+{-# INLINABLE multipleOfPowerOf5 #-}
 multipleOfPowerOf5 :: Mantissa a => a -> Int -> Bool
 multipleOfPowerOf5 value (I# p) = isTrue# (pow5_factor (raw value) 0# >=# p)
 
 -- | Returns @True@ if value is divisible by @2^p@
+{-# INLINABLE multipleOfPowerOf2 #-}
 multipleOfPowerOf2 :: Mantissa a => a -> Int -> Bool
 multipleOfPowerOf2 value p = (value .&. mask p) == 0
 
@@ -520,7 +575,6 @@ class (FiniteBits a, Integral a) => Mantissa a where
   unsafeRaw :: a -> Word#
   raw :: a -> WORD64
 
-  decimalLength :: a -> Int
   boolToWord :: Bool -> a
   quotRem10 :: a -> (a, a)
   quot10  :: a -> a
@@ -540,7 +594,6 @@ instance Mantissa Word32 where
   raw w = wordToWord64# (unsafeRaw w)
 #endif
 
-  decimalLength = decimalLength9
   boolToWord = boolToWord32
 
   {-# INLINE quotRem10 #-}
@@ -566,7 +619,6 @@ instance Mantissa Word64 where
 #endif
   raw (W64# w) = w
 
-  decimalLength = decimalLength17
   boolToWord = boolToWord64
 
   {-# INLINE quotRem10 #-}
@@ -606,50 +658,53 @@ data BoundsState a = BoundsState
 --   places where vuTrailing can possible be True, we must have acceptBounds be
 --   True (accept_smaller)
 -- - The final result doesn't change the lastRemovedDigit for rounding anyway
-trimTrailing :: (Show a, Mantissa a) => BoundsState a -> (BoundsState a, Int32)
+{-# INLINABLE trimTrailing #-}
+trimTrailing :: Mantissa a => BoundsState a -> (BoundsState a, Int32)
 trimTrailing !initial = (res, r + r')
   where
-    !(d', r) = trimTrailing' initial
-    !(d'', r') = if vuIsTrailingZeros d' then trimTrailing'' d' else (d', 0)
-    res = if vvIsTrailingZeros d'' && lastRemovedDigit d'' == 5 && vv d'' `rem` 2 == 0
+    !(d'@BoundsState{vuIsTrailingZeros = vuIsTrailingZeros'}, r) = trimTrailing' initial
+    !(d''@BoundsState{vvIsTrailingZeros = vvIsTrailingZeros'', lastRemovedDigit = lastRemovedDigit'', vv = vv''}, r') =
+      if vuIsTrailingZeros' then trimTrailing'' d' else (d', 0)
+    res = if vvIsTrailingZeros'' && lastRemovedDigit'' == 5 && vv'' `rem` 2 == 0
              -- set `{ lastRemovedDigit = 4 }` to round-even
              then d''
              else d''
 
-    trimTrailing' !d
+    trimTrailing' !d@BoundsState{..}
       | vw' > vu' =
          fmap ((+) 1) . trimTrailing' $
           d { vu = vu'
             , vv = vv'
             , vw = vw'
             , lastRemovedDigit = vvRem
-            , vuIsTrailingZeros = vuIsTrailingZeros d && vuRem == 0
-            , vvIsTrailingZeros = vvIsTrailingZeros d && lastRemovedDigit d == 0
+            , vuIsTrailingZeros = vuIsTrailingZeros && vuRem == 0
+            , vvIsTrailingZeros = vvIsTrailingZeros && lastRemovedDigit == 0
             }
       | otherwise = (d, 0)
       where
-        !(vv', vvRem) = quotRem10 $ vv d
-        !(vu', vuRem) = quotRem10 $ vu d
-        !(vw', _    ) = quotRem10 $ vw d
+        !(vv', vvRem) = quotRem10 vv
+        !(vu', vuRem) = quotRem10 vu
+        !(vw', _    ) = quotRem10 vw
 
-    trimTrailing'' !d
+    trimTrailing'' !d@BoundsState{..}
       | vuRem == 0 =
          fmap ((+) 1) . trimTrailing'' $
           d { vu = vu'
             , vv = vv'
             , vw = vw'
             , lastRemovedDigit = vvRem
-            , vvIsTrailingZeros = vvIsTrailingZeros d && lastRemovedDigit d == 0
+            , vvIsTrailingZeros = vvIsTrailingZeros && lastRemovedDigit == 0
             }
       | otherwise = (d, 0)
       where
-        !(vu', vuRem) = quotRem10 $ vu d
-        !(vv', vvRem) = quotRem10 $ vv d
-        !(vw', _    ) = quotRem10 $ vw d
+        !(vu', vuRem) = quotRem10 vu
+        !(vv', vvRem) = quotRem10 vv
+        !(vw', _    ) = quotRem10 vw
 
 
 -- | Trim digits and update bookkeeping state when the table-computed
 -- step results has no trailing zeros (common case)
+{-# INLINABLE trimNoTrailing #-}
 trimNoTrailing :: Mantissa a => BoundsState a -> (BoundsState a, Int32)
 trimNoTrailing !(BoundsState u v w ld _ _) =
   (BoundsState ru' rv' 0 ld' False False, c)
@@ -683,14 +738,14 @@ trimNoTrailing !(BoundsState u v w ld _ _) =
 -- bounds
 {-# INLINE closestCorrectlyRounded #-}
 closestCorrectlyRounded :: Mantissa a => Bool -> BoundsState a -> a
-closestCorrectlyRounded acceptBound s = vv s + boolToWord roundUp
+closestCorrectlyRounded acceptBound BoundsState{..} = vv + boolToWord roundUp
   where
-    outsideBounds = not (vuIsTrailingZeros s) || not acceptBound
-    roundUp = (vv s == vu s && outsideBounds) || lastRemovedDigit s >= 5
+    outsideBounds = not vuIsTrailingZeros || not acceptBound
+    roundUp = (vv == vu && outsideBounds) || lastRemovedDigit >= 5
 
 -- Wrappe around int2Word#
-asciiRaw :: Int -> Word#
-asciiRaw (I# i) = int2Word# i
+asciiRaw :: Int -> Word8#
+asciiRaw (I# i) = wordToWord8# (int2Word# i)
 
 asciiZero :: Int
 asciiZero = ord '0'
@@ -701,12 +756,9 @@ asciiDot = ord '.'
 asciiMinus :: Int
 asciiMinus = ord '-'
 
-ascii_e :: Int
-ascii_e = ord 'e'
-
 -- | Convert a single-digit number to the ascii ordinal e.g '1' -> 0x31
 toAscii :: Word# -> Word#
-toAscii a = a `plusWord#` asciiRaw asciiZero
+toAscii a = a `plusWord#` word8ToWord# (asciiRaw asciiZero)
 
 -- | Index into the 64-bit word lookup table provided
 {-# INLINE getWord64At #-}
@@ -735,12 +787,12 @@ packWord16 l h =
 #endif
 
 -- | Unpacks a 16-bit word into 2 bytes [lsb, msb]
-unpackWord16 :: Word# -> (# Word#, Word# #)
+unpackWord16 :: Word# -> (# Word8#, Word8# #)
 unpackWord16 w =
 #if defined(WORDS_BIGENDIAN)
-    (# w `and#` 0xff##, w `uncheckedShiftRL#` 8# #)
+    (# wordToWord8# (w `and#` 0xff##), wordToWord8# (w `uncheckedShiftRL#` 8#) #)
 #else
-    (# w `uncheckedShiftRL#` 8#, w `and#` 0xff## #)
+    (# wordToWord8# (w `uncheckedShiftRL#` 8#), wordToWord8# (w `and#` 0xff##) #)
 #endif
 
 
@@ -772,12 +824,12 @@ copyWord16 w a s = let
   (# s', _ #) -> s'
 
 -- | Write an 8-bit word into the given address
-poke :: Addr# -> Word# -> State# d -> State# d
+poke :: Addr# -> Word8# -> State# d -> State# d
 poke a w s =
 #if __GLASGOW_HASKELL__ >= 902
-    writeWord8OffAddr# a 0# (wordToWord8# w) s
-#else
     writeWord8OffAddr# a 0# w s
+#else
+    writeWord8OffAddr# a 0# (word8ToWord# w) s
 #endif
 
 -- | Write the mantissa into the given address. This function attempts to
@@ -809,29 +861,32 @@ writeMantissa ptr olength = go (ptr `plusAddr#` olength)
             s4 = poke ptr msb s3
            in (# ptr `plusAddr#` (olength +# 1#), s4 #)
       | (I# olength) > 1 =
-          let s2 = copyWord16 (packWord16 (asciiRaw asciiDot) (toAscii (unsafeRaw mantissa))) ptr s1
+          let s2 = copyWord16 (packWord16 (word8ToWord# (asciiRaw asciiDot)) (toAscii (unsafeRaw mantissa))) ptr s1
            in (# ptr `plusAddr#` (olength +# 1#), s2 #)
       | otherwise =
           let s2 = poke (ptr `plusAddr#` 2#) (asciiRaw asciiZero) s1
               s3 = poke (ptr `plusAddr#` 1#) (asciiRaw asciiDot) s2
-              s4 = poke ptr (toAscii (unsafeRaw mantissa)) s3
+              s4 = poke ptr (wordToWord8# (toAscii (unsafeRaw mantissa))) s3
            in (# ptr `plusAddr#` 3#, s4 #)
 
 -- | Write the exponent into the given address.
-writeExponent :: Addr# -> Int32 -> State# RealWorld -> (# Addr#, State# RealWorld #)
+writeExponent :: forall ei.
+  ( Integral ei
+  , ToInt ei
+  ) => Addr# -> ei -> State# RealWorld -> (# Addr#, State# RealWorld #)
 writeExponent ptr !expo s1
   | expo >= 100 =
       let !(e1, e0) = fquotRem10 (fromIntegral expo) -- TODO
           s2 = copyWord16 (digit_table `unsafeAt` word2Int# (unsafeRaw e1)) ptr s1
-          s3 = poke (ptr `plusAddr#` 2#) (toAscii (unsafeRaw e0)) s2
+          s3 = poke (ptr `plusAddr#` 2#) (wordToWord8# (toAscii (unsafeRaw e0))) s2
        in (# ptr `plusAddr#` 3#, s3 #)
   | expo >= 10 =
       let s2 = copyWord16 (digit_table `unsafeAt` e) ptr s1
        in (# ptr `plusAddr#` 2#, s2 #)
   | otherwise =
-      let s2 = poke ptr (toAscii (int2Word# e)) s1
+      let s2 = poke ptr (wordToWord8# (toAscii (int2Word# e))) s1
        in (# ptr `plusAddr#` 1#, s2 #)
-  where !(I# e) = int32ToInt expo
+  where !(I# e) = toInt expo
 
 -- | Write the sign into the given address.
 writeSign :: Addr# -> Bool -> State# d -> (# Addr#, State# d #)
@@ -843,16 +898,117 @@ writeSign ptr False s = (# ptr, s #)
 -- | Returns the decimal representation of a floating point number in
 -- scientific (exponential) notation
 {-# INLINABLE toCharsScientific #-}
-{-# SPECIALIZE toCharsScientific :: Bool -> Word32 -> Int32 -> BoundedPrim () #-}
-{-# SPECIALIZE toCharsScientific :: Bool -> Word64 -> Int32 -> BoundedPrim () #-}
-toCharsScientific :: (Mantissa a) => Bool -> a -> Int32 -> BoundedPrim ()
-toCharsScientific !sign !mantissa !expo = boundedPrim maxEncodedLength $ \_ !(Ptr p0)-> do
+{-# SPECIALIZE toCharsScientific :: Proxy Float -> Word8# -> Bool -> Word32 -> Int32 -> BoundedPrim () #-}
+{-# SPECIALIZE toCharsScientific :: Proxy Double -> Word8# -> Bool -> Word64 -> Int32 -> BoundedPrim () #-}
+toCharsScientific :: forall a mw ei.
+  ( MaxEncodedLength a
+  , Mantissa mw
+  , DecimalLength mw
+  , Integral ei
+  , ToInt ei
+  , FromInt ei
+  ) => Proxy a -> Word8# -> Bool -> mw -> ei -> BoundedPrim ()
+toCharsScientific _ eE !sign !mantissa !expo = boundedPrim (maxEncodedLength @a) $ \_ !(Ptr p0)-> do
   let !olength@(I# ol) = decimalLength mantissa
-      !expo' = expo + intToInt32 olength - 1
+      !expo' = expo + fromInt olength - 1
   IO $ \s1 ->
     let !(# p1, s2 #) = writeSign p0 sign s1
         !(# p2, s3 #) = writeMantissa p1 ol mantissa s2
-        s4 = poke p2 (asciiRaw ascii_e) s3
+        s4 = poke p2 eE s3
         !(# p3, s5 #) = writeSign (p2 `plusAddr#` 1#) (expo' < 0) s4
         !(# p4, s6 #) = writeExponent p3 (abs expo') s5
      in (# s6, (Ptr p4) #)
+
+data FloatingDecimal a = FloatingDecimal
+  { fmantissa :: !(MantissaWord a)
+  , fexponent :: !(ExponentInt a)
+  }
+deriving instance (Show (MantissaWord a), Show (ExponentInt a)) => Show (FloatingDecimal a)
+deriving instance (Eq (MantissaWord a), Eq (ExponentInt a)) => Eq (FloatingDecimal a)
+
+type family MantissaWord a
+type instance MantissaWord Float = Word32
+type instance MantissaWord Double = Word64
+
+class ToInt a where toInt :: a -> Int
+instance ToInt Int32 where toInt = int32ToInt
+
+class FromInt a where fromInt :: Int -> a
+instance FromInt Int32 where fromInt = intToInt32
+
+-- | Split a Double into (sign, mantissa, exponent)
+{-# INLINABLE breakdown #-}
+{-# SPECIALIZE breakdown :: Float -> (Bool, MantissaWord Float, ExponentWord Float) #-}
+{-# SPECIALIZE breakdown :: Double -> (Bool, MantissaWord Double, ExponentWord Double) #-}
+breakdown :: forall a mw ew.
+  ( ExponentBits a
+  , MantissaBits a
+  , CastToWord a
+  , mw ~ MantissaWord a
+  , Bits mw
+  , Integral mw
+  , Num ew
+  ) => a -> (Bool, mw, ew)
+breakdown f = (sign, mantissa, expo)
+  where
+  bits = castToWord f
+  sign = (bits .&. 1 `rotateR` 1) /= 0
+  mantissa = bits .&. mask (mantissaBits @a)
+  expo = fromIntegral $ (bits `unsafeShiftR` mantissaBits @a) .&. mask (exponentBits @a)
+
+type family ExponentWord a
+type instance ExponentWord Float = Word32
+type instance ExponentWord Double = Word64
+
+type family ExponentInt a
+type instance ExponentInt Float = Int32
+type instance ExponentInt Double = Int32
+
+class CastToWord a where castToWord :: a -> MantissaWord a
+instance CastToWord Float where castToWord = castFloatToWord32
+instance CastToWord Double where castToWord = castDoubleToWord64
+
+-- | Number of mantissa bits. The number of significant bits
+-- is one more than defined since we have a leading 1 for
+-- normal and 0 for subnormal.
+class MantissaBits a where mantissaBits :: Int
+instance MantissaBits Float where mantissaBits = 23
+instance MantissaBits Double where mantissaBits = 52
+
+-- | Number of exponent bits.
+class ExponentBits a where exponentBits :: Int
+instance ExponentBits Float where exponentBits = 8
+instance ExponentBits Double where exponentBits = 11
+
+-- | Format type for use with `formatFloat` and `formatDouble`.
+--
+-- @since 0.11.2.0
+data FloatFormat
+  -- | scientific notation
+  = FScientific
+    { eE :: Word8#
+    , specials :: SpecialStrings
+    }
+  -- | standard notation with `Maybe Int` digits after the decimal
+  | FStandard
+    { precision :: Maybe Int
+    , specials :: SpecialStrings
+    }
+  -- | dispatches to scientific or standard notation based on the exponent
+  | FGeneric
+    { eE :: Word8#
+    , precision :: Maybe Int
+    , stdExpoRange :: (Int, Int)
+    , specials :: SpecialStrings
+    }
+  deriving Show
+fScientific :: Char -> SpecialStrings -> FloatFormat
+fScientific eE specials = FScientific
+  { eE = asciiRaw $ ord eE
+  , specials
+  }
+fGeneric :: Char -> Maybe Int -> (Int, Int) -> SpecialStrings -> FloatFormat
+fGeneric eE precision stdExpoRange specials = FGeneric
+  { eE = asciiRaw $ ord eE
+  , ..
+  }

@@ -1,3 +1,13 @@
+{-# LANGUAGE MagicHash #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ExplicitForAll #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE NamedFieldPuns #-}
 -- |
 -- Module      : Data.ByteString.Builder.RealFloat
 -- Copyright   : (c) Lawrence Wu 2021
@@ -72,12 +82,18 @@ module Data.ByteString.Builder.RealFloat
 
 import Data.ByteString.Builder.Internal (Builder)
 import qualified Data.ByteString.Builder.RealFloat.Internal as R
+import Data.ByteString.Builder.RealFloat.Internal (FloatFormat(..), fScientific, fGeneric)
+import Data.ByteString.Builder.RealFloat.Internal (positiveZero, negativeZero)
 import qualified Data.ByteString.Builder.RealFloat.F2S as RF
 import qualified Data.ByteString.Builder.RealFloat.D2S as RD
 import qualified Data.ByteString.Builder.Prim as BP
 import GHC.Float (roundTo)
-import GHC.Word (Word64)
+import GHC.Word (Word32, Word64)
 import GHC.Show (intToDigit)
+import Data.Bits (Bits)
+import Data.Proxy (Proxy(Proxy))
+import Data.Maybe (fromMaybe)
+import Data.Monoid ((<>))
 
 -- | Returns a rendered Float. Matches `show` in displaying in standard or
 -- scientific notation
@@ -87,7 +103,7 @@ import GHC.Show (intToDigit)
 -- @
 {-# INLINABLE floatDec #-}
 floatDec :: Float -> Builder
-floatDec = formatFloat generic
+floatDec = formatFloating generic
 
 -- | Returns a rendered Double. Matches `show` in displaying in standard or
 -- scientific notation
@@ -97,43 +113,55 @@ floatDec = formatFloat generic
 -- @
 {-# INLINABLE doubleDec #-}
 doubleDec :: Double -> Builder
-doubleDec = formatDouble generic
-
--- | Format type for use with `formatFloat` and `formatDouble`.
---
--- @since 0.11.2.0
-data FloatFormat = MkFloatFormat FormatMode (Maybe Int)
+doubleDec = formatFloating generic
 
 -- | Standard notation with `n` decimal places
 --
 -- @since 0.11.2.0
 standard :: Int -> FloatFormat
-standard n = MkFloatFormat FStandard (Just n)
+standard n = FStandard
+  { precision = Just n
+  , specials = standardSpecialStrings {positiveZero, negativeZero}
+  }
+  where
+  positiveZero = if n == 0
+    then "0"
+    else "0." <> replicate n '0'
+  negativeZero = "-" <> positiveZero
 
 -- | Standard notation with the \'default precision\' (decimal places matching `show`)
 --
 -- @since 0.11.2.0
 standardDefaultPrecision :: FloatFormat
-standardDefaultPrecision = MkFloatFormat FStandard Nothing
+standardDefaultPrecision = FStandard
+  { precision = Nothing
+  , specials = standardSpecialStrings
+  }
 
 -- | Scientific notation with \'default precision\' (decimal places matching `show`)
 --
 -- @since 0.11.2.0
 scientific :: FloatFormat
-scientific = MkFloatFormat FScientific Nothing
+scientific = fScientific 'e' scientificSpecialStrings
+
+scientificSpecialStrings, standardSpecialStrings :: R.SpecialStrings
+scientificSpecialStrings = R.SpecialStrings
+  { R.nan = "NaN"
+  , R.positiveInfinity = "Infinity"
+  , R.negativeInfinity = "-Infinity"
+  , R.positiveZero = "0.0e0"
+  , R.negativeZero = "-0.0e0"
+  }
+standardSpecialStrings = scientificSpecialStrings
+  { R.positiveZero = "0.0"
+  , R.negativeZero = "-0.0"
+  }
 
 -- | Standard or scientific notation depending on the exponent. Matches `show`
 --
 -- @since 0.11.2.0
 generic :: FloatFormat
-generic = MkFloatFormat FGeneric Nothing
-
--- | ByteString float-to-string format
-data FormatMode
-  = FScientific     -- ^ scientific notation
-  | FStandard       -- ^ standard notation with `Maybe Int` digits after the decimal
-  | FGeneric        -- ^ dispatches to scientific or standard notation based on the exponent
-  deriving Show
+generic = fGeneric 'e' Nothing (0,7) standardSpecialStrings
 
 -- TODO: support precision argument for FGeneric and FScientific
 -- | Returns a rendered Float. Returns the \'shortest\' representation in
@@ -161,22 +189,7 @@ data FormatMode
 -- @since 0.11.2.0
 {-# INLINABLE formatFloat #-}
 formatFloat :: FloatFormat -> Float -> Builder
-formatFloat (MkFloatFormat fmt prec) = \f ->
-  let (RF.FloatingDecimal m e) = RF.f2Intermediate f
-      e' = R.int32ToInt e + R.decimalLength9 m in
-  case fmt of
-    FGeneric ->
-      case specialStr f of
-        Just b -> b
-        Nothing ->
-          if e' >= 0 && e' <= 7
-             then sign f `mappend` showStandard (R.word32ToWord64 m) e' prec
-             else BP.primBounded (R.toCharsScientific (f < 0) m e) ()
-    FScientific -> RF.f2s f
-    FStandard ->
-      case specialStr f of
-        Just b -> b
-        Nothing -> sign f `mappend` showStandard (R.word32ToWord64 m) e' prec
+formatFloat = formatFloating
 
 -- TODO: support precision argument for FGeneric and FScientific
 -- | Returns a rendered Double. Returns the \'shortest\' representation in
@@ -204,46 +217,65 @@ formatFloat (MkFloatFormat fmt prec) = \f ->
 -- @since 0.11.2.0
 {-# INLINABLE formatDouble #-}
 formatDouble :: FloatFormat -> Double -> Builder
-formatDouble (MkFloatFormat fmt prec) = \f ->
-  let (RD.FloatingDecimal m e) = RD.d2Intermediate f
-      e' = R.int32ToInt e + R.decimalLength17 m in
-  case fmt of
-    FGeneric ->
-      case specialStr f of
-        Just b -> b
-        Nothing ->
-          if e' >= 0 && e' <= 7
-             then sign f `mappend` showStandard m e' prec
-             else BP.primBounded (R.toCharsScientific (f < 0) m e) ()
-    FScientific -> RD.d2s f
-    FStandard ->
-      case specialStr f of
-        Just b -> b
-        Nothing -> sign f `mappend` showStandard m e' prec
+formatDouble = formatFloating
+
+{-# INLINABLE formatFloating #-}
+{-# SPECIALIZE formatFloating :: FloatFormat -> Float -> Builder #-}
+{-# SPECIALIZE formatFloating :: FloatFormat -> Double -> Builder #-}
+formatFloating :: forall a mw ew ei.
+  -- a
+  --( ToS a
+  ( ToD a
+  , RealFloat a
+  , R.ExponentBits a
+  , R.MantissaBits a
+  , R.CastToWord a
+  , R.MaxEncodedLength a
+  -- mantissa
+  , mw ~ R.MantissaWord a
+  , R.Mantissa mw
+  , ToWord64 mw
+  , R.DecimalLength mw
+  -- exponent
+  , ew ~ R.ExponentWord a
+  , Integral ew
+  , Bits ew
+  , ei ~ R.ExponentInt a
+  , R.ToInt ei
+  , Integral ei
+  , R.FromInt ei
+  ) => FloatFormat -> a -> Builder
+formatFloating fmt f = case fmt of
+  FGeneric {stdExpoRange = (minExpo,maxExpo), ..} -> specialsOr specials
+    if e' >= minExpo && e' <= maxExpo
+       then std precision
+       else sci eE
+  FScientific {..} -> specialsOr specials $ sci eE
+  FStandard {..} -> specialsOr specials $ std precision
+  where
+  sci eE = BP.primBounded (R.toCharsScientific @a Proxy eE sign m e) ()
+  std precision = printSign f <> showStandard (toWord64 m) e' precision
+  e' = R.toInt e + R.decimalLength m
+  R.FloatingDecimal m e = toD @a mantissa expo
+  (sign, mantissa, expo) = R.breakdown f
+  specialsOr specials = flip fromMaybe $ R.toCharsNonNumbersAndZero specials f
+
+class ToWord64 a where toWord64 :: a -> Word64
+instance ToWord64 Word32 where toWord64 = R.word32ToWord64
+instance ToWord64 Word64 where toWord64 = id
+
+class ToD a where toD :: R.MantissaWord a -> R.ExponentWord a -> R.FloatingDecimal a
+instance ToD Float where toD = RF.f2d
+instance ToD Double where toD = RD.d2d
 
 -- | Char7 encode a 'Char'.
 {-# INLINE char7 #-}
 char7 :: Char -> Builder
 char7 = BP.primFixed BP.char7
 
--- | Char7 encode a 'String'.
-{-# INLINE string7 #-}
-string7 :: String -> Builder
-string7 = BP.primMapListFixed BP.char7
-
 -- | Encodes a `-` if input is negative
-sign :: RealFloat a => a -> Builder
-sign f = if f < 0 then char7 '-' else mempty
-
--- | Special rendering for Nan, Infinity, and 0. See
--- RealFloat.Internal.NonNumbersAndZero
-specialStr :: RealFloat a => a -> Maybe Builder
-specialStr f
-  | isNaN f          = Just $ string7 "NaN"
-  | isInfinite f     = Just $ sign f `mappend` string7 "Infinity"
-  | isNegativeZero f = Just $ string7 "-0.0"
-  | f == 0           = Just $ string7 "0.0"
-  | otherwise        = Nothing
+printSign :: RealFloat a => a -> Builder
+printSign f = if f < 0 then char7 '-' else mempty
 
 -- | Returns a list of decimal digits in a Word64
 digits :: Word64 -> [Int]
@@ -259,7 +291,7 @@ showStandard m e prec =
     Nothing
       | e <= 0 -> char7 '0'
                `mappend` char7 '.'
-               `mappend` string7 (replicate (-e) '0')
+               `mappend` R.string7 (replicate (-e) '0')
                `mappend` mconcat (digitsToBuilder ds)
       | otherwise ->
           let f 0 s     rs = mk0 (reverse s) `mappend` char7 '.' `mappend` mk0 rs

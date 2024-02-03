@@ -1,6 +1,8 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE NamedFieldPuns #-}
 -- |
 -- Module      : Data.ByteString.Builder.RealFloat.D2S
 -- Copyright   : (c) Lawrence Wu 2021
@@ -10,15 +12,11 @@
 -- Implementation of double-to-string conversion
 
 module Data.ByteString.Builder.RealFloat.D2S
-    ( FloatingDecimal(..)
-    , d2s
-    , d2Intermediate
+    ( d2d
     ) where
 
 import Control.Arrow (first)
 import Data.Bits ((.|.), (.&.), unsafeShiftL, unsafeShiftR)
-import Data.ByteString.Builder.Internal (Builder)
-import Data.ByteString.Builder.Prim (primBounded)
 import Data.ByteString.Builder.RealFloat.Internal
 import Data.Maybe (fromMaybe)
 import GHC.Int (Int32(..))
@@ -40,27 +38,17 @@ foreign import ccall "&hs_bytestring_double_pow5_inv_split"
 foreign import ccall "&hs_bytestring_double_pow5_split"
   double_pow5_split :: Ptr Word64
 
--- | Number of mantissa bits of a 64-bit float. The number of significant bits
--- (floatDigits (undefined :: Double)) is 53 since we have a leading 1 for
--- normal floats and 0 for subnormal floats
 double_mantissa_bits :: Int
-double_mantissa_bits = 52
-
--- | Number of exponent bits of a 64-bit float
-double_exponent_bits :: Int
-double_exponent_bits = 11
+double_mantissa_bits = mantissaBits @Double
 
 -- | Bias in encoded 64-bit float representation (2^10 - 1)
 double_bias :: Int
 double_bias = 1023
 
-data FloatingDecimal = FloatingDecimal
-  { dmantissa :: !Word64
-  , dexponent :: !Int32
-  } deriving (Show, Eq)
+type FD = FloatingDecimal Double
 
 -- | Quick check for small integers
-d2dSmallInt :: Word64 -> Word64 -> Maybe FloatingDecimal
+d2dSmallInt :: Word64 -> Word64 -> Maybe FD
 d2dSmallInt m e =
   let m2 = (1 `unsafeShiftL` double_mantissa_bits) .|. m
       e2 = word64ToInt e - (double_bias + double_mantissa_bits)
@@ -83,7 +71,7 @@ d2dSmallInt m e =
 
 
 -- | Removes trailing (decimal) zeros for small integers in the range [1, 2^53)
-unifySmallTrailing :: FloatingDecimal -> FloatingDecimal
+unifySmallTrailing :: FD -> FD
 unifySmallTrailing fd@(FloatingDecimal m e) =
   let !(q, r) = dquotRem10 m
    in if r == 0
@@ -170,8 +158,8 @@ d2dLT e2' u v w =
 
 -- | Returns the decimal representation of the given mantissa and exponent of a
 -- 64-bit Double using the ryu algorithm.
-d2d :: Word64 -> Word64 -> FloatingDecimal
-d2d m e =
+d2dGeneral :: Word64 -> Word64 -> FD
+d2dGeneral m e =
   let !mf = if e == 0
               then m
               else (1 `unsafeShiftL` double_mantissa_bits) .|. m
@@ -184,7 +172,7 @@ d2d m e =
       !v = 4 * mf
       !w = 4 * mf + 2
       -- Step 3. convert to decimal power base
-      !(state, e10) =
+      !(state@BoundsState{vvIsTrailingZeros, vuIsTrailingZeros}, e10) =
         if e2 >= 0
            then d2dGT e2 u v w
            else d2dLT e2 u v w
@@ -192,40 +180,12 @@ d2d m e =
       -- valid representations.
       !(output, removed) =
         let rounded = closestCorrectlyRounded (acceptBounds v)
-         in first rounded $ if vvIsTrailingZeros state || vuIsTrailingZeros state
+         in first rounded $ if vvIsTrailingZeros || vuIsTrailingZeros
            then trimTrailing state
            else trimNoTrailing state
       !e' = e10 + removed
    in FloatingDecimal output e'
 
--- | Split a Double into (sign, mantissa, exponent)
-breakdown :: Double -> (Bool, Word64, Word64)
-breakdown f =
-  let bits = castDoubleToWord64 f
-      sign = ((bits `unsafeShiftR` (double_mantissa_bits + double_exponent_bits)) .&. 1) /= 0
-      mantissa = bits .&. mask double_mantissa_bits
-      expo = (bits `unsafeShiftR` double_mantissa_bits) .&. mask double_exponent_bits
-   in (sign, mantissa, expo)
-
--- | Dispatches to `d2d` or `d2dSmallInt` and applies the given formatters
-{-# INLINE d2s' #-}
-d2s' :: (Bool -> Word64 -> Int32 -> a) -> (NonNumbersAndZero -> a) -> Double -> a
-d2s' formatter specialFormatter d =
-  let (sign, mantissa, expo) = breakdown d
-   in if (expo == mask double_exponent_bits) || (expo == 0 && mantissa == 0)
-         then specialFormatter NonNumbersAndZero
-                  { negative=sign
-                  , exponent_all_one=expo > 0
-                  , mantissa_non_zero=mantissa > 0 }
-         else let v = unifySmallTrailing <$> d2dSmallInt mantissa expo
-                  FloatingDecimal m e = fromMaybe (d2d mantissa expo) v
-               in formatter sign m e
-
--- | Render a Double in scientific notation
-d2s :: Double -> Builder
-d2s d = primBounded (d2s' toCharsScientific toCharsNonNumbersAndZero d) ()
-
--- | Returns the decimal representation of a Double. NaN and Infinity will
--- return `FloatingDecimal 0 0`
-d2Intermediate :: Double -> FloatingDecimal
-d2Intermediate = d2s' (const FloatingDecimal) (const $ FloatingDecimal 0 0)
+-- TODO: Determine if this actually speeds things up. The benchmarks may not run many numbers in this range.
+d2d :: Word64 -> Word64 -> FD
+d2d mantissa expo = fromMaybe (d2dGeneral mantissa expo) $ unifySmallTrailing <$> d2dSmallInt mantissa expo
