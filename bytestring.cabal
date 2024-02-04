@@ -106,7 +106,6 @@ library
                      Data.ByteString.Builder.RealFloat.Internal
                      Data.ByteString.Builder.RealFloat.TableGenerator
                      Data.ByteString.Internal.Type
-                     Data.ByteString.Lazy.Internal.Deque
                      Data.ByteString.Lazy.ReadInt
                      Data.ByteString.Lazy.ReadNat
                      Data.ByteString.ReadInt
