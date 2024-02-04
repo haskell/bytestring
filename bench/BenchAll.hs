@@ -20,6 +20,8 @@ import           Data.Semigroup
 import           Data.String
 import           Test.Tasty.Bench
 import           Prelude                               hiding (words)
+import qualified Data.List                             as List
+import           Control.DeepSeq
 
 import qualified Data.ByteString                       as S
 import qualified Data.ByteString.Char8                 as S8
@@ -99,9 +101,12 @@ lazyByteStringData = case S.splitAt (nRepl `div` 2) byteStringData of
 
 {-# NOINLINE smallChunksData #-}
 smallChunksData :: L.ByteString
-smallChunksData
-  = L.fromChunks [S.take sz (S.drop n byteStringData)
-                 | let sz = 48, n <- [0, sz .. S.length byteStringData]]
+smallChunksData = L.fromChunks $ List.unfoldr step (byteStringData, 1)
+  where
+    step (!s, !i)
+      | S.null s = Nothing
+      | otherwise = case S.splitAt i s of
+          (!s1, !s2) -> Just (s1, (s2, i * 71 `mod` 97))
 
 {-# NOINLINE byteStringChunksData #-}
 byteStringChunksData :: [S.ByteString]
@@ -418,6 +423,19 @@ main = do
     , bgroup "tails"
       [ bench "strict" $ nf S.tails byteStringData
       , bench "lazy"   $ nf L.tails lazyByteStringData
+      ]
+    , bgroup "splitAtEnd (lazy)" $ let
+        testSAE op = \bs -> [op i bs | i <- [0,5..L.length bs]] `deepseq` ()
+        {-# INLINE testSAE #-}
+      in
+      [ bench "takeEnd" $
+          nf (testSAE L.takeEnd) lazyByteStringData
+      , bench "takeEnd (small chunks)" $
+          nf (testSAE L.takeEnd) smallChunksData
+      , bench "dropEnd" $
+          nf (testSAE L.dropEnd) lazyByteStringData
+      , bench "dropEnd (small chunks)" $
+          nf (testSAE L.dropEnd) smallChunksData
       ]
     , bgroup "sort" $ map (\s -> bench (S8.unpack s) $ nf S.sort s) sortInputs
     , bgroup "stimes" $ let  st = stimes :: Int -> S.ByteString -> S.ByteString
