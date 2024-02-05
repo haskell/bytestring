@@ -67,7 +67,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        ghc: ['9.2', '9.4', '9.6']
+        ghc: ['9.2', '9.4', '9.6', '9.8']
     steps:
     - uses: actions/checkout@v3
     - uses: haskell-actions/setup@v2
