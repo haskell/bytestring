@@ -20,8 +20,16 @@ jobs:
         os: [ubuntu-latest]
         ghc: ['8.0', '8.2', '8.4', '8.6', '8.8', '8.10', '9.0', '9.2', '9.4', '9.6', '9.8']
         include:
-        - os: macOS-latest
+        - os: macOS-12 # this one is x86_64
           ghc: 'latest'
+        - os: macOS-14 # this one is aarch64
+          ghc: '9.4'
+        - os: macOS-14
+          ghc: '9.6'
+        - os: macOS-14
+          ghc: '9.6'
+        - os: macOS-14
+          ghc: '9.8'
     steps:
     - uses: actions/checkout@v3
     - name: Install libncurses5 and libtinfo
