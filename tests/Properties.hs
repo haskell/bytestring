@@ -450,7 +450,7 @@ prop_read_write_file_P x = ioProperty $ do
     P.writeFile fn x
     y <- P.readFile fn
     removeFile fn
-    return (x == y)
+    return (x === y)
 
 prop_read_write_file_C x = ioProperty $ do
     (fn, h) <- openTempFile "." "prop-compiled.tmp"
@@ -458,7 +458,7 @@ prop_read_write_file_C x = ioProperty $ do
     C.writeFile fn x
     y <- C.readFile fn
     removeFile fn
-    return (x == y)
+    return (x === y)
 
 prop_read_write_file_L x = ioProperty $ do
     (fn, h) <- openTempFile "." "prop-compiled.tmp"
@@ -466,7 +466,7 @@ prop_read_write_file_L x = ioProperty $ do
     L.writeFile fn x
     y <- L.readFile fn
     L.length y `seq` removeFile fn
-    return (x == y)
+    return (x === y)
 
 prop_read_write_file_D x = ioProperty $ do
     (fn, h) <- openTempFile "." "prop-compiled.tmp"
@@ -474,7 +474,7 @@ prop_read_write_file_D x = ioProperty $ do
     D.writeFile fn x
     y <- D.readFile fn
     D.length y `seq` removeFile fn
-    return (x == y)
+    return (x === y)
 
 ------------------------------------------------------------------------
 
@@ -485,7 +485,7 @@ prop_append_file_P x y = ioProperty $ do
     P.appendFile fn y
     z <- P.readFile fn
     removeFile fn
-    return (z == x `P.append` y)
+    return (z === x `P.append` y)
 
 prop_append_file_C x y = ioProperty $ do
     (fn, h) <- openTempFile "." "prop-compiled.tmp"
@@ -494,7 +494,7 @@ prop_append_file_C x y = ioProperty $ do
     C.appendFile fn y
     z <- C.readFile fn
     removeFile fn
-    return (z == x `C.append` y)
+    return (z === x `C.append` y)
 
 prop_append_file_L x y = ioProperty $ do
     (fn, h) <- openTempFile "." "prop-compiled.tmp"
@@ -503,7 +503,7 @@ prop_append_file_L x y = ioProperty $ do
     L.appendFile fn y
     z <- L.readFile fn
     L.length y `seq` removeFile fn
-    return (z == x `L.append` y)
+    return (z === x `L.append` y)
 
 prop_append_file_D x y = ioProperty $ do
     (fn, h) <- openTempFile "." "prop-compiled.tmp"
@@ -512,7 +512,7 @@ prop_append_file_D x y = ioProperty $ do
     D.appendFile fn y
     z <- D.readFile fn
     D.length y `seq` removeFile fn
-    return (z == x `D.append` y)
+    return (z === x `D.append` y)
 
 prop_packAddress = C.pack "this is a test"
             ==
