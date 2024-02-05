@@ -28,7 +28,7 @@ jobs:
       if: runner.os == 'Linux' && (matrix.ghc == '8.0' || matrix.ghc == '8.2')
       run: |
         sudo apt-get install libncurses5 libtinfo5
-    - uses: haskell/actions/setup@v2
+    - uses: haskell-actions/setup@v2
       id: setup-haskell-cabal
       with:
         ghc-version: ${{ matrix.ghc }}
@@ -70,7 +70,7 @@ jobs:
         ghc: ['9.2', '9.4', '9.6']
     steps:
     - uses: actions/checkout@v3
-    - uses: haskell/actions/setup@v2
+    - uses: haskell-actions/setup@v2
       id: setup-haskell-cabal
       with:
         ghc-version: ${{ matrix.ghc }}
@@ -151,7 +151,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - uses: haskell/actions/setup@v2
+    - uses: haskell-actions/setup@v2
       id: setup-haskell-cabal
       with:
         ghc-version: 'latest'
