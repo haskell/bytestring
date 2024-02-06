@@ -1,3 +1,51 @@
+[0.13.0.0] — circa 2026-2027
+
+* __Breaking Changes__:
+  * [`dataTypeOf` for `StrictByteString` and `LazyByteString`...](https://github.com/haskell/bytestring/pull/614)
+<!--
+* Bug fixes:
+* API additions and behavior changes:
+* Deprecations:
+* Performance improvements:
+* Miscellaneous:
+* Internal stuff:
+-->
+
+[0.12.1.0] — February 2024
+
+* to describe:
+  * #614
+  * #655
+* Bug fixes:
+  * [`stimes 0 sbs :: ShortByteString` now returns the empty `ShortByteString` instead of throwing an exception](https://github.com/haskell/bytestring/pull/611)
+  * [`stimes 0 b :: Builder` now returns the empty `Builder` instead of throwing an exception](https://github.com/haskell/bytestring/pull/611)
+  * [Several alignment-related bug fixes](https://github.com/haskell/bytestring/pull/587)
+  * [Fix a bug in `isValidUtf8`](https://github.com/haskell/bytestring/pull/621)
+  * [`sconcat @ShortByteString` is no longer terribly inefficient](https://github.com/haskell/bytestring/pull/650)
+* Behavior changes:
+  * [`sconcat @Builder` is now lazy in the tail of its input](https://github.com/haskell/bytestring/pull/650)
+* Deprecations:
+  * [`Data.ByteString.Builder.Prim.Internal.storableToF`](https://github.com/haskell/bytestring/pull/649)
+* Performance improvements:
+  * Various raw-binary `Builder` primitives like `intHost` or `word32BE` are much less inefficient on architectures not known to support unaligned writes. ([1](https://github.com/haskell/bytestring/pull/587), [2](https://github.com/haskell/bytestring/pull/645))
+  * [Hexadecimal encoding suffers one indirection fewer](https://github.com/haskell/bytestring/pull/624)
+  * [`Data.ByteString.Lazy.takeEnd` is somewhat faster](https://github.com/haskell/bytestring/pull/629)
+  * [`Data.ByteString.Lazy.dropEnd` is much faster](https://github.com/haskell/bytestring/pull/629)
+* Miscellaneous:
+  * Various documentation improvements ([1](https://github.com/haskell/bytestring/pull/628), [2](https://github.com/haskell/bytestring/pull/609), [3](https://github.com/haskell/bytestring/pull/612), [4](https://github.com/haskell/bytestring/pull/623), [5](https://github.com/haskell/bytestring/pull/654))
+  * [Eta-expand `Data.ByteString.Builder.Internal.empty`](https://github.com/haskell/bytestring/pull/616)
+    * This can variously help or hurt performance; it undoes the performance changes caused by [CLC proposal 132](https://github.com/haskell/core-libraries-committee/issues/132) with ghc-9.8 and restores the baseline performance seen with older GHCs.
+<!--
+* Internal stuff:
+  * [Delete cabal.project](https://github.com/haskell/bytestring/pull/613)
+  * Remove some non-exposed data declarations from internal modules:
+    * [`Data.ByteString.Short.Internal.BA`](https://github.com/haskell/bytestring/pull/615)
+    * [`Data.ByteString.Short.Internal.MBA`](https://github.com/haskell/bytestring/pull/617)
+  * Various CI tweaks ([1](https://github.com/haskell/bytestring/pull/626), [2](https://github.com/haskell/bytestring/pull/651))
+-->
+
+[0.12.1.0]: https://github.com/haskell/bytestring/compare/0.12.0.2...0.12.1.0
+
 [0.12.0.2] — August 2023
 
 * Bug fixes:
@@ -36,11 +84,6 @@
 * Deprecations:
   * `Data.ByteString.getLine`: prefer `Data.ByteString.Char8.getLine`
   * `Data.ByteString.hGetLine`: prefer `Data.ByteString.Char8.hGetLine`
-<!--
-* Performance improvements:
-* Miscellaneous:
-* Internal stuff:
--->
 
 
 [0.12.0.0]: https://github.com/haskell/bytestring/compare/0.11.5.0...0.12.0.0
