@@ -68,6 +68,16 @@ Build-Type:          Simple
 Cabal-Version:       >= 1.10
 extra-source-files:  README.md Changelog.md include/bytestring-cpp-macros.h
 
+Flag pure-haskell
+  description: Don't use bytestring's standard C routines
+
+    When this flag is true, bytestring will use pure Haskell variants (no C FFI)
+    of the internal functions. This is not recommended except in use cases that
+    cannot (or do not) depend on C, such as with GHC's JavaScript backend.
+
+  default: False
+  manual: True
+
 source-repository head
   type:     git
   location: https://github.com/haskell/bytestring
@@ -130,26 +140,35 @@ library
                     -fmax-simplifier-iterations=10
                     -fdicts-cheap
                     -fspec-constr-count=6
-
-  c-sources:        cbits/fpstring.c
-                    cbits/itoa.c
-                    cbits/shortbytestring.c
-                    cbits/aligned-static-hs-data.c
-
-  if (arch(aarch64))
-    c-sources:        cbits/aarch64/is-valid-utf8.c
+  
+  if arch(javascript) || flag(pure-haskell)
+    cpp-options: -DPURE_HASKELL=1
+    other-modules: Data.ByteString.Internal.Pure
+    default-extensions: NoForeignFunctionInterface
+    -- Pure Haskell implementation only implemented for recent GHCs/base
+    build-depends: base >= 4.18 && < 5
   else
-    c-sources:        cbits/is-valid-utf8.c
+    cpp-options: -DPURE_HASKELL=0
 
-  -- DNDEBUG disables asserts in cbits/
-  cc-options:        -std=c11 -DNDEBUG=1
-                     -fno-strict-aliasing
-                     -Werror=undef
+    c-sources:        cbits/fpstring.c
+                      cbits/itoa.c
+                      cbits/shortbytestring.c
+                      cbits/aligned-static-hs-data.c
 
-  -- No need to link to libgcc on ghc-9.4 and later which uses a clang-based
-  -- toolchain.
-  if os(windows) && impl(ghc < 9.3)
-    extra-libraries:  gcc
+    if (arch(aarch64))
+      c-sources:        cbits/aarch64/is-valid-utf8.c
+    else
+      c-sources:        cbits/is-valid-utf8.c
+
+    -- DNDEBUG disables asserts in cbits/
+    cc-options:        -std=c11 -DNDEBUG=1
+                       -fno-strict-aliasing
+                       -Werror=undef
+
+    -- No need to link to libgcc on ghc-9.4 and later which uses a clang-based
+    -- toolchain.
+    if os(windows) && impl(ghc < 9.3)
+      extra-libraries:  gcc
 
   include-dirs:      include
   includes:          fpstring.h
