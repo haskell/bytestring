@@ -167,6 +167,27 @@ jobs:
     - name: Test
       run: cabal test --ghc-options='-fcheck-prim-bounds -fno-ignore-asserts -DHS_BYTESTRING_ASSERTIONS'
 
+  pure-haskell:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: haskell/actions/setup@v2
+      id: setup-haskell-cabal
+      with:
+        ghc-version: 'latest'
+    - name: Update cabal package database
+      run: cabal update
+    - uses: actions/cache@v3
+      name: Cache cabal stuff
+      with:
+        path: |
+          ${{ steps.setup-haskell-cabal.outputs.cabal-store }}
+          dist-newstyle
+        key: ${{ runner.os }}-latest-pure-haskell
+    - name: Test
+      run: cabal test -fpure-haskell --ghc-options=-fno-ignore-asserts --enable-tests --test-show-details=direct all
+
   old-gcc:
     needs: build
     runs-on: ubuntu-latest

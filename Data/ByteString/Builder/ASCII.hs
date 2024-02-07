@@ -82,9 +82,9 @@ import           Data.ByteString.Builder.Internal (Builder)
 import qualified Data.ByteString.Builder.Prim                   as P
 import qualified Data.ByteString.Builder.Prim.Internal          as P
 import           Data.ByteString.Builder.RealFloat (floatDec, doubleDec)
+import           Data.ByteString.Internal.Type (c_int_dec_padded9, c_long_long_int_dec_padded18)
 
 import           Foreign
-import           Foreign.C.Types
 import           Data.List.NonEmpty (NonEmpty(..))
 
 ------------------------------------------------------------------------------
@@ -310,12 +310,6 @@ integerDec i
     putB (n:ns) = case n `quotRem` maxPow10 of
                     (q,r) -> fromInteger q : fromInteger r : putB ns
 
-
-foreign import ccall unsafe "static _hs_bytestring_int_dec_padded9"
-    c_int_dec_padded9 :: CInt -> Ptr Word8 -> IO ()
-
-foreign import ccall unsafe "static _hs_bytestring_long_long_int_dec_padded18"
-    c_long_long_int_dec_padded18 :: CLLong -> Ptr Word8 -> IO ()
 
 {-# INLINE intDecPadded #-}
 intDecPadded :: P.BoundedPrim Int

@@ -7,13 +7,17 @@
     || ((defined(arm_HOST_ARCH) || defined(aarch64_HOST_ARCH)) \
         && defined(__ARM_FEATURE_UNALIGNED)) \
     || defined(powerpc_HOST_ARCH) || defined(powerpc64_HOST_ARCH) \
-    || defined(powerpc64le_HOST_ARCH)
+    || defined(powerpc64le_HOST_ARCH) \
+    || defined(javascript_HOST_ARCH)
 /*
 Not all architectures are forgiving of unaligned accesses; whitelist ones
 which are known not to trap (either to the kernel for emulation, or crash).
 */
 #define HS_UNALIGNED_POKES_OK 1
 #else
+#if PURE_HASKELL
+#error "-fpure-haskell isn't supported yet on architectures only supporting aligned accesses."
+#endif
 #define HS_UNALIGNED_POKES_OK 0
 #endif
 
@@ -36,3 +40,6 @@ are buggy with negative floats before ghc-8.10.
 */
 
 #define HS_UNALIGNED_ADDR_PRIMOPS_AVAILABLE MIN_VERSION_base(4,20,0)
+
+#define HS_isByteArrayPinned_PRIMOP_AVAILABLE MIN_VERSION_base(4,10,0)
+#define HS_compareByteArrays_PRIMOP_AVAILABLE MIN_VERSION_base(4,11,0)

@@ -160,6 +160,9 @@ import Data.ByteString.Internal.Type
   , unsafeDupablePerformIO
   , accursedUnutterablePerformIO
   , checkedAdd
+  , c_elem_index
+  , cIsValidUtf8BASafe
+  , cIsValidUtf8BA
   )
 
 import Data.Array.Byte
@@ -195,11 +198,12 @@ import Foreign.C.String
   ( CString
   , CStringLen
   )
+#if !HS_compareByteArrays_PRIMOP_AVAILABLE && !PURE_HASKELL
 import Foreign.C.Types
   ( CSize(..)
   , CInt(..)
-  , CPtrdiff(..)
   )
+#endif
 import Foreign.ForeignPtr
   ( touchForeignPtr )
 import Foreign.ForeignPtr.Unsafe
@@ -217,11 +221,11 @@ import GHC.Exts
   , byteArrayContents#
   , unsafeCoerce#
   , copyMutableByteArray#
-#if MIN_VERSION_base(4,10,0)
+#if HS_isByteArrayPinned_PRIMOP_AVAILABLE
   , isByteArrayPinned#
   , isTrue#
 #endif
-#if MIN_VERSION_base(4,11,0)
+#if HS_compareByteArrays_PRIMOP_AVAILABLE
   , compareByteArrays#
 #endif
   , sizeofByteArray#
@@ -464,7 +468,7 @@ createAndTrim2 maxLen1 maxLen2 fill =
 {-# INLINE createAndTrim2 #-}
 
 isPinned :: ByteArray# -> Bool
-#if MIN_VERSION_base(4,10,0)
+#if HS_isByteArrayPinned_PRIMOP_AVAILABLE
 isPinned ba# = isTrue# (isByteArrayPinned# ba#)
 #else
 isPinned _ = False
@@ -1535,7 +1539,7 @@ elemIndices k = findIndices (==k)
 -- @since 0.11.3.0
 count :: Word8 -> ShortByteString -> Int
 count w = \sbs@(unSBS -> ba#) -> accursedUnutterablePerformIO $
-    fromIntegral <$> c_count ba# (fromIntegral $ length sbs) w
+    fromIntegral <$> BS.c_count_ba ba# (fromIntegral $ length sbs) w
 
 -- | /O(n)/ The 'findIndex' function takes a predicate and a 'ShortByteString' and
 -- returns the index of the first element in the ShortByteString
@@ -1671,7 +1675,7 @@ compareByteArraysOff :: ByteArray  -- ^ array 1
                      -> Int -- ^ offset for array 2
                      -> Int -- ^ length to compare
                      -> Int -- ^ like memcmp
-#if MIN_VERSION_base(4,11,0)
+#if HS_compareByteArrays_PRIMOP_AVAILABLE
 compareByteArraysOff (ByteArray ba1#) (I# ba1off#) (ByteArray ba2#) (I# ba2off#) (I# len#) =
   I# (compareByteArrays#  ba1# ba1off# ba2# ba2off# len#)
 #else
@@ -1689,13 +1693,6 @@ compareByteArraysOff (ByteArray ba1#) ba1off (ByteArray ba2#) ba2off len =
 foreign import ccall unsafe "static sbs_memcmp_off"
   c_memcmp_ByteArray :: ByteArray# -> Int -> ByteArray# -> Int -> CSize -> IO CInt
 #endif
-
-foreign import ccall unsafe "static sbs_elem_index"
-    c_elem_index :: ByteArray# -> Word8 -> CSize -> IO CPtrdiff
-
-foreign import ccall unsafe "static fpstring.h fps_count" c_count
-    :: ByteArray# -> CSize -> Word8 -> IO CSize
-
 
 ------------------------------------------------------------------------
 -- Primop replacements
@@ -1784,21 +1781,10 @@ isValidUtf8 sbs@(unSBS -> ba#) = accursedUnutterablePerformIO $ do
   -- When changing this function, also consider changing the related function:
   -- Data.ByteString.isValidUtf8
   i <- if n < 1000000 || not (isPinned ba#)
-     then cIsValidUtf8 ba# (fromIntegral n)
-     else cIsValidUtf8Safe ba# (fromIntegral n)
+     then cIsValidUtf8BA ba# (fromIntegral n)
+     else cIsValidUtf8BASafe ba# (fromIntegral n)
   IO (\s -> (# touch# ba# s, () #))
   return $ i /= 0
-
--- We import bytestring_is_valid_utf8 both unsafe and safe. For small inputs
--- we can use the unsafe version to get a bit more performance, but for large
--- inputs the safe version should be used to avoid GC synchronization pauses
--- in multithreaded contexts.
-
-foreign import ccall unsafe "bytestring_is_valid_utf8" cIsValidUtf8
-  :: ByteArray# -> CSize -> IO CInt
-
-foreign import ccall safe "bytestring_is_valid_utf8" cIsValidUtf8Safe
-  :: ByteArray# -> CSize -> IO CInt
 
 -- ---------------------------------------------------------------------
 -- Internal utilities

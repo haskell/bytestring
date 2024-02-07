@@ -1,4 +1,5 @@
 {-# LANGUAGE MagicHash #-}
+{-# LANGUAGE CPP #-}
 -- |
 -- Copyright   : (c) 2011 Simon Meier
 -- License     : BSD3-style (see LICENSE)
@@ -22,8 +23,12 @@ module Data.ByteString.Builder.Prim.Internal.Base16 (
   ) where
 
 import Foreign
-import Foreign.C.Types
 import GHC.Exts (Addr#, Ptr(..))
+#if PURE_HASKELL
+import qualified Data.ByteString.Internal.Pure as Pure
+#else
+import Foreign.C.Types
+#endif
 
 -- Creating the encoding table
 ------------------------------
@@ -31,14 +36,20 @@ import GHC.Exts (Addr#, Ptr(..))
 -- | An encoding table for Base16 encoding.
 data EncodingTable = EncodingTable Addr#
 
-foreign import ccall "&hs_bytestring_lower_hex_table"
-  c_lower_hex_table :: Ptr CChar
-
 -- | The encoding table for hexadecimal values with lower-case characters;
 -- e.g., deadbeef.
 lowerTable :: EncodingTable
-lowerTable = case c_lower_hex_table of
-  Ptr p# -> EncodingTable p#
+lowerTable =
+#if PURE_HASKELL
+  case Pure.lower_hex_table of
+    Ptr p# -> EncodingTable p#
+#else
+  case c_lower_hex_table of
+    Ptr p# -> EncodingTable p#
+
+foreign import ccall "&hs_bytestring_lower_hex_table"
+  c_lower_hex_table :: Ptr CChar
+#endif
 
 -- | Encode an octet as 16bit word comprising both encoded nibbles ordered
 -- according to the host endianness. Writing these 16bit to memory will write

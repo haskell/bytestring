@@ -77,6 +77,7 @@ module Data.ByteString.Builder.Prim.ASCII
 
     ) where
 
+import Data.ByteString.Internal.Type
 import Data.ByteString.Builder.Prim.Binary
 import Data.ByteString.Builder.Prim.Internal
 import Data.ByteString.Builder.Prim.Internal.Floating
@@ -86,7 +87,6 @@ import Data.ByteString.Utils.UnalignedWrite
 import Data.Char (ord)
 
 import Foreign
-import Foreign.C.Types
 
 -- | Encode the least 7-bits of a 'Char' using the ASCII encoding.
 {-# INLINE char7 #-}
@@ -100,12 +100,6 @@ char7 = (\c -> fromIntegral $ ord c .&. 0x7f) >$< word8
 
 -- Signed integers
 ------------------
-
-foreign import ccall unsafe "static _hs_bytestring_int_dec" c_int_dec
-    :: CInt -> Ptr Word8 -> IO (Ptr Word8)
-
-foreign import ccall unsafe "static _hs_bytestring_long_long_int_dec" c_long_long_int_dec
-    :: CLLong -> Ptr Word8 -> IO (Ptr Word8)
 
 {-# INLINE encodeIntDecimal #-}
 encodeIntDecimal :: Integral a => Int -> BoundedPrim a
@@ -142,12 +136,6 @@ intDec = caseWordSize_32_64
 
 -- Unsigned integers
 --------------------
-
-foreign import ccall unsafe "static _hs_bytestring_uint_dec" c_uint_dec
-    :: CUInt -> Ptr Word8 -> IO (Ptr Word8)
-
-foreign import ccall unsafe "static _hs_bytestring_long_long_uint_dec" c_long_long_uint_dec
-    :: CULLong -> Ptr Word8 -> IO (Ptr Word8)
 
 {-# INLINE encodeWordDecimal #-}
 encodeWordDecimal :: Integral a => Int -> BoundedPrim a
@@ -186,12 +174,6 @@ wordDec = caseWordSize_32_64
 
 -- without lead
 ---------------
-
-foreign import ccall unsafe "static _hs_bytestring_uint_hex" c_uint_hex
-    :: CUInt -> Ptr Word8 -> IO (Ptr Word8)
-
-foreign import ccall unsafe "static _hs_bytestring_long_long_uint_hex" c_long_long_uint_hex
-    :: CULLong -> Ptr Word8 -> IO (Ptr Word8)
 
 {-# INLINE encodeWordHex #-}
 encodeWordHex :: forall a. (Storable a, Integral a) => BoundedPrim a

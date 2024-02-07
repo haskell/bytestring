@@ -73,8 +73,12 @@ import Data.ByteString.Internal (c2w)
 import Data.ByteString.Builder.Prim.Internal (BoundedPrim, boundedPrim)
 import Data.ByteString.Builder.RealFloat.TableGenerator
 import Data.ByteString.Utils.UnalignedWrite
-import Data.Char (ord)
+#if PURE_HASKELL
+import qualified Data.ByteString.Internal.Pure as Pure
+#else
 import Foreign.C.Types
+#endif
+import Data.Char (ord)
 import GHC.Int (Int(..), Int32(..))
 import GHC.IO (IO(..), unIO)
 import GHC.Prim
@@ -744,12 +748,17 @@ unpackWord16 w =
 #endif
 
 
-foreign import ccall "&hs_bytestring_digit_pairs_table"
-  c_digit_pairs_table :: Ptr CChar
-
 -- | Static array of 2-digit pairs 00..99 for faster ascii rendering
 digit_table :: Ptr Word16
-digit_table = castPtr c_digit_pairs_table
+digit_table =
+#if PURE_HASKELL
+  castPtr Pure.digit_pairs_table
+#else
+  castPtr c_digit_pairs_table
+
+foreign import ccall "&hs_bytestring_digit_pairs_table"
+  c_digit_pairs_table :: Ptr CChar
+#endif
 
 -- | Unsafe index a static array for the 16-bit word at the index
 unsafeAt :: Ptr Word16 -> Int# -> Word#
