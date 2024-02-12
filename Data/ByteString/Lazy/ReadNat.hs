@@ -21,6 +21,7 @@ module Data.ByteString.Lazy.ReadNat
     ) where
 
 import qualified Data.ByteString.Internal as BI
+import Data.ByteString.Unsafe
 #ifdef BYTESTRING_STRICT
 import Data.ByteString
 #else
@@ -28,7 +29,7 @@ import Data.ByteString.Lazy
 import Data.ByteString.Lazy.Internal
 #endif
 import Data.Bits (finiteBitSize)
-import Data.ByteString.Internal (pattern BS, plusForeignPtr)
+import Data.ByteString.Internal (pattern BS)
 import Data.Word
 import Foreign.ForeignPtr (ForeignPtr)
 import Foreign.Ptr (Ptr, minusPtr, plusPtr)
@@ -127,7 +128,7 @@ _readDecimal =
     consume :: [Natural] -> Int -> Word -> ByteString
             -> (Natural, ByteString)
 #ifdef BYTESTRING_STRICT
-    consume ns cnt acc (BS fp len) =
+    consume ns cnt acc ps@(BS fp len) =
         -- Having read one digit, we're about to read the 2nd
         -- So the digit count up to 'safeLog' starts at 2.
         case natdigits fp len acc cnt ns of
@@ -136,18 +137,18 @@ _readDecimal =
                   -> convert acc' cnt' ns' $ empty
                 | otherwise
                   -> convert acc' cnt' ns' $
-                     BS (fp `plusForeignPtr` used) (len - used)
+                     unsafeDrop used ps
 #else
     -- All done
     consume ns cnt acc Empty = convert acc cnt ns Empty
     -- Process next chunk
-    consume ns cnt acc (Chunk (BS fp len) cs)
+    consume ns cnt acc (Chunk ps@(BS fp len) cs)
         = case natdigits fp len acc cnt ns of
             Result used acc' cnt' ns'
                 | used == len -- process more chunks
                   -> consume ns' cnt' acc' cs
                 | otherwise   -- ran into a non-digit
-                  -> let c = Chunk (BS (fp `plusForeignPtr` used) (len - used)) cs
+                  -> let c = Chunk (unsafeDrop used ps) cs
                       in convert acc' cnt' ns' c
 #endif
     convert !acc !cnt !ns rest =

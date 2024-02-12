@@ -25,7 +25,9 @@ module Data.ByteString.Unsafe (
         unsafeLast,
         unsafeIndex,
         unsafeTake,
+        unsafeTakeEnd,
         unsafeDrop,
+        unsafeDropEnd,
 
         -- * Low level interaction with CStrings
         -- ** Using ByteStrings with functions for CStrings
@@ -113,12 +115,27 @@ unsafeTake :: Int -> ByteString -> ByteString
 unsafeTake n (BS x l) = assert (0 <= n && n <= l) $ BS x n
 {-# INLINE unsafeTake #-}
 
+-- | A variety of 'takeEnd' which omits the checks on @n@ so there is an
+-- obligation on the programmer to provide a proof that @0 <= n <= 'length' xs@.
+--
+-- @since 0.12.1.0
+unsafeTakeEnd :: Int -> ByteString -> ByteString
+unsafeTakeEnd n (BS x l) = assert (0 <= n && n <= l) $ BS (plusForeignPtr x (l-n)) n
+{-# INLINE unsafeTakeEnd #-}
+
 -- | A variety of 'drop' which omits the checks on @n@ so there is an
 -- obligation on the programmer to provide a proof that @0 <= n <= 'length' xs@.
 unsafeDrop  :: Int -> ByteString -> ByteString
 unsafeDrop n (BS x l) = assert (0 <= n && n <= l) $ BS (plusForeignPtr x n) (l-n)
 {-# INLINE unsafeDrop #-}
 
+-- | A variety of 'dropEnd' which omits the checks on @n@ so there is an
+-- obligation on the programmer to provide a proof that @0 <= n <= 'length' xs@.
+--
+-- @since 0.12.1.0
+unsafeDropEnd  :: Int -> ByteString -> ByteString
+unsafeDropEnd n (BS x l) = assert (0 <= n && n <= l) $ BS x (l-n)
+{-# INLINE unsafeDropEnd #-}
 
 -- | /O(1)/ 'unsafePackAddressLen' provides constant-time construction of
 -- 'ByteString's, which is ideal for string literals. It packs a sequence

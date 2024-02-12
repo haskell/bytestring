@@ -27,6 +27,7 @@ module Data.ByteString.Lazy.ReadInt
     ) where
 
 import qualified Data.ByteString.Internal as BI
+import Data.ByteString.Unsafe
 #ifdef BYTESTRING_STRICT
 import Data.ByteString
 #else
@@ -34,7 +35,7 @@ import Data.ByteString.Lazy
 import Data.ByteString.Lazy.Internal
 #endif
 import Data.Bits (FiniteBits, isSigned)
-import Data.ByteString.Internal (pattern BS, plusForeignPtr)
+import Data.ByteString.Internal (pattern BS)
 import Data.Int
 import Data.Word
 import Foreign.ForeignPtr (ForeignPtr)
@@ -177,18 +178,18 @@ _readDecimal !r = consume
   where
     consume :: ByteString -> Word64 -> Maybe (a, ByteString)
 #ifdef BYTESTRING_STRICT
-    consume (BS fp len) a = case _digits q r fp len a of
+    consume ps@(BS fp len) a = case _digits q r fp len a of
         Result used acc
             | used == len
               -> convert acc empty
             | otherwise
-              -> convert acc $ BS (fp `plusForeignPtr` used) (len - used)
+              -> convert acc $ unsafeDrop used ps
         _   -> Nothing
 #else
     -- All done
     consume Empty acc = convert acc Empty
     -- Process next chunk
-    consume (Chunk (BS fp len) cs) acc
+    consume (Chunk ps@(BS fp len) cs) acc
         = case _digits q r fp len acc of
             Result used acc'
                 | used == len
@@ -197,7 +198,7 @@ _readDecimal !r = consume
                 | otherwise
                   -- ran into a non-digit
                   -> convert acc' $
-                     Chunk (BS (fp `plusForeignPtr` used) (len - used)) cs
+                     Chunk (unsafeDrop used ps) cs
             _     -> Nothing
 #endif
     convert :: Word64 -> ByteString -> Maybe (a, ByteString)

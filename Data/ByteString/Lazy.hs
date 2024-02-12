@@ -1490,8 +1490,8 @@ initsNE = (Empty :|) . inits' id
     inits' :: (ByteString -> ByteString) -> ByteString -> [ByteString]
     -- inits' f bs === map f (tail (inits bs))
     inits' _ Empty = []
-    inits' f (Chunk c@(S.BS x len) cs)
-      = [f (S.BS x n `Chunk` Empty) | n <- [1..len]]
+    inits' f (Chunk c cs)
+      = [f (S.unsafeTake n c `Chunk` Empty) | n <- [1..S.length c]]
       ++ inits' (f . Chunk c) cs
 
 -- | /O(n)/ Returns all final segments of the given 'ByteString', longest first.

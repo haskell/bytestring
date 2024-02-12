@@ -874,12 +874,12 @@ unzip ls = (pack (P.map fst ls), pack (P.map snd ls))
 -- > break isSpace == breakSpace
 --
 breakSpace :: ByteString -> (ByteString,ByteString)
-breakSpace (BS x l) = accursedUnutterablePerformIO $ unsafeWithForeignPtr x $ \p -> do
+breakSpace ps@(BS x l) = accursedUnutterablePerformIO $ unsafeWithForeignPtr x $ \p -> do
     i <- firstspace p 0 l
     return $! case () of {_
-        | i == 0    -> (empty, BS x l)
-        | i == l    -> (BS x l, empty)
-        | otherwise -> (BS x i, BS (plusForeignPtr x i) (l-i))
+        | i == 0    -> (empty, ps)
+        | i == l    -> (ps, empty)
+        | otherwise -> B.splitAt i ps
     }
 {-# INLINE breakSpace #-}
 
@@ -897,9 +897,9 @@ firstspace !ptr !n !m
 --
 -- @since 0.10.12.0
 dropSpace :: ByteString -> ByteString
-dropSpace (BS x l) = accursedUnutterablePerformIO $ unsafeWithForeignPtr x $ \p -> do
+dropSpace ps@(BS x l) = accursedUnutterablePerformIO $ unsafeWithForeignPtr x $ \p -> do
     i <- firstnonspace p 0 l
-    return $! if i == l then empty else BS (plusForeignPtr x i) (l-i)
+    return $! if i == l then empty else B.unsafeDrop i ps
 {-# INLINE dropSpace #-}
 
 firstnonspace :: Ptr Word8 -> Int -> Int -> IO Int
