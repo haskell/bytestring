@@ -127,6 +127,7 @@ module Data.ByteString.Builder.Internal (
 ) where
 
 import           Control.Arrow (second)
+import           Control.DeepSeq (NFData(..))
 
 import           Data.Semigroup (Semigroup(..))
 import           Data.List.NonEmpty (NonEmpty(..))
@@ -154,11 +155,22 @@ import           System.IO.Unsafe (unsafeDupablePerformIO)
 data BufferRange = BufferRange {-# UNPACK #-} !(Ptr Word8)  -- First byte of range
                                {-# UNPACK #-} !(Ptr Word8)  -- First byte /after/ range
 
+-- | @since 0.12.1.0
+instance NFData BufferRange where
+  rnf !_ = ()
+
 -- | A 'Buffer' together with the 'BufferRange' of free bytes. The filled
 -- space starts at offset 0 and ends at the first free byte.
 data Buffer = Buffer {-# UNPACK #-} !(ForeignPtr Word8)
                      {-# UNPACK #-} !BufferRange
 
+-- | Like the @NFData@ instance for @StrictByteString@,
+-- this does not force the @ForeignPtrContents@ field
+-- of the underlying @ForeignPtr@.
+--
+-- @since 0.12.1.0
+instance NFData Buffer where
+  rnf !_ = ()
 
 -- | Combined size of the filled and free space in the buffer.
 {-# INLINE bufferSize #-}
