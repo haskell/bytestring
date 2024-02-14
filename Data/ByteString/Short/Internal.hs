@@ -3,7 +3,6 @@
 {-# LANGUAGE DeriveDataTypeable       #-}
 {-# LANGUAGE DeriveGeneric            #-}
 {-# LANGUAGE DeriveLift               #-}
-{-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase               #-}
 {-# LANGUAGE MagicHash                #-}

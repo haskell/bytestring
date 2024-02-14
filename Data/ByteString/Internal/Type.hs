@@ -1,11 +1,16 @@
-{-# LANGUAGE CPP, ForeignFunctionInterface, BangPatterns #-}
-{-# LANGUAGE UnliftedFFITypes, MagicHash,
-            UnboxedTuples #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE Unsafe #-}
+
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE MagicHash #-}
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE TemplateHaskellQuotes #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE PatternSynonyms, ViewPatterns #-}
-{-# LANGUAGE Unsafe #-}
-{-# LANGUAGE TemplateHaskellQuotes #-}
+{-# LANGUAGE UnboxedTuples #-}
+{-# LANGUAGE UnliftedFFITypes #-}
+{-# LANGUAGE ViewPatterns #-}
+
 {-# OPTIONS_HADDOCK not-home #-}
 
 -- |
@@ -129,11 +134,12 @@ import Prelude hiding (concat, null)
 import qualified Data.List as List
 
 import Foreign.ForeignPtr       (ForeignPtr, withForeignPtr)
-import Foreign.Ptr              (Ptr, FunPtr, plusPtr)
+import Foreign.Ptr              (Ptr, FunPtr, plusPtr, castPtr)
 import Foreign.Storable         (Storable(..))
 import Foreign.C.Types
 import Foreign.C.String         (CString)
 import Foreign.Marshal.Utils
+import Foreign.Marshal.Alloc    (finalizerFree)
 
 #if PURE_HASKELL
 import qualified Data.ByteString.Internal.Pure as Pure
@@ -1104,23 +1110,41 @@ accursedUnutterablePerformIO (IO m) = case m realWorld# of (# _, r #) -> r
 -- Standard C functions
 --
 
+memchr :: Ptr Word8 -> Word8 -> CSize -> IO (Ptr Word8)
+memcmp :: Ptr Word8 -> Ptr Word8 -> Int -> IO CInt
+{-# DEPRECATED memset "Use Foreign.Marshal.Utils.fillBytes instead" #-}
+-- | deprecated since @bytestring-0.11.5.0@
+memset :: Ptr Word8 -> Word8 -> CSize -> IO (Ptr Word8)
+
+#if !PURE_HASKELL
+
 foreign import ccall unsafe "string.h strlen" c_strlen
     :: CString -> IO CSize
 
-foreign import ccall unsafe "static stdlib.h &free" c_free_finalizer
-    :: FunPtr (Ptr Word8 -> IO ())
-
 foreign import ccall unsafe "string.h memchr" c_memchr
     :: Ptr Word8 -> CInt -> CSize -> IO (Ptr Word8)
-
-memchr :: Ptr Word8 -> Word8 -> CSize -> IO (Ptr Word8)
 memchr p w sz = c_memchr p (fromIntegral w) sz
 
 foreign import ccall unsafe "string.h memcmp" c_memcmp
     :: Ptr Word8 -> Ptr Word8 -> CSize -> IO CInt
-
-memcmp :: Ptr Word8 -> Ptr Word8 -> Int -> IO CInt
 memcmp p q s = c_memcmp p q (fromIntegral s)
+
+foreign import ccall unsafe "string.h memset" c_memset
+    :: Ptr Word8 -> CInt -> CSize -> IO (Ptr Word8)
+memset p w sz = c_memset p (fromIntegral w) sz
+
+#else
+
+c_strlen :: CString -> IO CSize
+c_strlen p = checkedCast <$!> Pure.strlen (castPtr p)
+
+memchr p w len = Pure.memchr p w (checkedCast len)
+
+memcmp p q s = checkedCast <$!> Pure.memcmp p q s
+
+memset p w len = p <$ fillBytes p w (checkedCast len)
+
+#endif
 
 {-# DEPRECATED memcpy "Use Foreign.Marshal.Utils.copyBytes instead" #-}
 -- | deprecated since @bytestring-0.11.5.0@
@@ -1131,13 +1155,10 @@ memcpyFp :: ForeignPtr Word8 -> ForeignPtr Word8 -> Int -> IO ()
 memcpyFp fp fq s = unsafeWithForeignPtr fp $ \p ->
                      unsafeWithForeignPtr fq $ \q -> copyBytes p q s
 
-foreign import ccall unsafe "string.h memset" c_memset
-    :: Ptr Word8 -> CInt -> CSize -> IO (Ptr Word8)
+c_free_finalizer :: FunPtr (Ptr Word8 -> IO ())
+c_free_finalizer = finalizerFree
 
-{-# DEPRECATED memset "Use Foreign.Marshal.Utils.fillBytes instead" #-}
--- | deprecated since @bytestring-0.11.5.0@
-memset :: Ptr Word8 -> Word8 -> CSize -> IO (Ptr Word8)
-memset p w sz = c_memset p (fromIntegral w) sz
+
 
 -- ---------------------------------------------------------------------
 --

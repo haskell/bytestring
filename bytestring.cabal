@@ -121,7 +121,7 @@ library
                      Data.ByteString.ReadInt
                      Data.ByteString.ReadNat
                      Data.ByteString.Utils.ByteOrder
-                     Data.ByteString.Utils.UnalignedWrite
+                     Data.ByteString.Utils.UnalignedAccess
 
   default-language:  Haskell2010
   other-extensions:  CPP,

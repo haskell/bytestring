@@ -134,6 +134,12 @@ void fps_unaligned_write_HsDouble(HsDouble x, uint8_t *p) {
   memcpy(p, &x, SIZEOF_HSDOUBLE);
 }
 
+uint64_t fps_unaligned_read_u64(uint8_t *p) {
+  uint64_t ans;
+  memcpy(&ans, p, 8);
+  return ans;
+}
+
 /* count the number of occurrences of a char in a string */
 size_t fps_count_naive(unsigned char *str, size_t len, unsigned char w) {
     size_t c;
