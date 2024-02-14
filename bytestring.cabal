@@ -120,6 +120,7 @@ library
                      Data.ByteString.Lazy.ReadNat
                      Data.ByteString.ReadInt
                      Data.ByteString.ReadNat
+                     Data.ByteString.Utils.ByteOrder
                      Data.ByteString.Utils.UnalignedWrite
 
   default-language:  Haskell2010
@@ -140,7 +141,7 @@ library
                     -fmax-simplifier-iterations=10
                     -fdicts-cheap
                     -fspec-constr-count=6
-  
+
   if arch(javascript) || flag(pure-haskell)
     cpp-options: -DPURE_HASKELL=1
     other-modules: Data.ByteString.Internal.Pure
