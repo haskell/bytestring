@@ -667,6 +667,8 @@ primMapLazyByteStringBounded w =
 -- strings that are free of embedded (overlong-encoded as the two-byte sequence
 -- @0xC0 0x80@) null characters.
 --
+-- Deprecated since @bytestring-0.12.1.0@.
+--
 -- @since 0.11.0.0
 {-# DEPRECATED cstring "Use asciiLiteralCopy instead" #-}
 cstring :: Addr# -> Builder
@@ -676,6 +678,8 @@ cstring s = asciiLiteralCopy (Ptr s) (S.byteCountLiteral s)
 -- | Builder for raw 'Addr#' pointers to null-terminated primitive UTF-8
 -- encoded strings that may contain embedded overlong-encodings (as the
 -- two-byte sequence @0xC0 0x80@) of null characters.
+--
+-- Deprecated since @bytestring-0.12.1.0@.
 --
 -- @since 0.11.0.0
 {-# DEPRECATED cstringUtf8 "Use modUtf8LitCopy instead" #-}
