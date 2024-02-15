@@ -204,10 +204,6 @@ import Foreign.C.Types
   , CInt(..)
   )
 #endif
-import Foreign.ForeignPtr
-  ( touchForeignPtr )
-import Foreign.ForeignPtr.Unsafe
-  ( unsafeForeignPtrToPtr )
 import Foreign.Marshal.Alloc
   ( allocaBytes )
 import Foreign.Storable
@@ -217,7 +213,6 @@ import GHC.Exts
   , State#, RealWorld
   , ByteArray#, MutableByteArray#
   , newByteArray#
-  , newPinnedByteArray#
   , byteArrayContents#
   , unsafeCoerce#
   , copyMutableByteArray#
@@ -487,30 +482,21 @@ toShort !bs = unsafeDupablePerformIO (toShortIO bs)
 toShortIO :: ByteString -> IO ShortByteString
 toShortIO (BS fptr len) = do
     mba <- stToIO (newByteArray len)
-    let ptr = unsafeForeignPtrToPtr fptr
-    stToIO (copyAddrToByteArray ptr mba 0 len)
-    touchForeignPtr fptr
+    BS.unsafeWithForeignPtr fptr $ \ptr ->
+      stToIO (copyAddrToByteArray ptr mba 0 len)
     ShortByteString <$> stToIO (unsafeFreezeByteArray mba)
 
 -- | /O(n)/. Convert a 'ShortByteString' into a 'ByteString'.
 --
 fromShort :: ShortByteString -> ByteString
-fromShort (unSBS -> b#)
-  | isPinned b# = BS fp len
-  where
-    addr# = byteArrayContents# b#
-    fp = ForeignPtr addr# (PlainPtr (unsafeCoerce# b#))
-    len = I# (sizeofByteArray# b#)
-fromShort !sbs = unsafeDupablePerformIO (fromShortIO sbs)
-
-fromShortIO :: ShortByteString -> IO ByteString
-fromShortIO sbs = do
-    let len = length sbs
-    mba@(MutableByteArray mba#) <- stToIO (newPinnedByteArray len)
-    stToIO (copyByteArray (asBA sbs) 0 mba 0 len)
-    let fp = ForeignPtr (byteArrayContents# (unsafeCoerce# mba#))
-                        (PlainPtr mba#)
-    return (BS fp len)
+fromShort sbs@(unSBS -> b#)
+  | isPinned b# = BS inPlaceFp len
+  | otherwise = BS.unsafeCreateFp len $ \fp ->
+      BS.unsafeWithForeignPtr fp $ \p -> copyToPtr sbs 0 p len
+    where
+      inPlaceFp = ForeignPtr (byteArrayContents# b#)
+                             (PlainPtr (unsafeCoerce# b#))
+      len = I# (sizeofByteArray# b#)
 
 -- | /O(1)/ Convert a 'Word8' into a 'ShortByteString'
 --
@@ -1612,12 +1598,6 @@ newByteArray :: Int -> ST s (MutableByteArray s)
 newByteArray len@(I# len#) =
   assert (len >= 0) $
     ST $ \s -> case newByteArray# len# s of
-                 (# s', mba# #) -> (# s', MutableByteArray mba# #)
-
-newPinnedByteArray :: Int -> ST s (MutableByteArray s)
-newPinnedByteArray len@(I# len#) =
-  assert (len >= 0) $
-    ST $ \s -> case newPinnedByteArray# len# s of
                  (# s', mba# #) -> (# s', MutableByteArray mba# #)
 
 unsafeFreezeByteArray :: MutableByteArray s -> ST s ByteArray
