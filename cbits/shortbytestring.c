@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <string.h>
 
 
@@ -20,7 +21,7 @@ sbs_memcmp_off(const void *s1,
 
 ptrdiff_t
 sbs_elem_index(const void *s,
-            int c,
+            uint8_t c,
             size_t n)
 {
     const void *so = memchr(s, c, n);

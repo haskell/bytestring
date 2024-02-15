@@ -29,12 +29,15 @@ module Data.ByteString.Builder.RealFloat.TableGenerator
   , finv
   , fnorm
   , splitWord128s
+  , case64
+  , case128
   ) where
 
 import GHC.Float (int2Double)
 
 import Data.Bits
 import Data.Word
+import Numeric
 
 
 -- The basic floating point conversion algorithm is as such:
@@ -160,6 +163,25 @@ splitWord128s :: [Integer] -> [Word64]
 splitWord128s li
   = [fromInteger w | x <- li, w <- [x .&. maxWord64, x `shiftR` 64]]
   where  maxWord64 = toInteger (maxBound :: Word64)
+
+splitWord128 :: Integer -> (Word64,Word64)
+splitWord128 x = (fromInteger (x `shiftR` 64), fromInteger (x .&. maxWord64))
+  where  maxWord64 = toInteger (maxBound :: Word64)
+
+
+-- Helpers to generate case alternatives returning either one Word64 (case64) or
+-- two Word64s (case128) for the PURE_HASKELL variant of the tables.
+case64 :: (Int -> Integer) -> [Int] -> String
+case64 f range = concat
+  [ show i ++ " -> 0x" ++ showHex (f i) "\n"
+  | i <- range]
+
+case128 :: (Int -> Integer) -> [Int] -> String
+case128 f range = concat
+  [ show i ++ " -> (0x" ++ showHex hi "" ++ ", 0x" ++ showHex lo ")\n"
+  | i <- range
+  , let (hi,lo) = splitWord128 (f i)
+  ]
 
 -- Given a specific floating-point type, determine the range of q for the < 0
 -- and >= 0 cases

@@ -260,20 +260,24 @@ int bytestring_is_valid_utf8(uint8_t const *const src, size_t const len) {
   //'Roll back' our pointer a little to prepare for a slow search of the rest.
   uint32_t token;
   vst1q_lane_u32(&token, vreinterpretq_u32_u8(prev_input), 3);
-  // We cast this pointer to avoid a redundant check against < 127, as any such
-  // value would be negative in signed form.
-  int8_t const *token_ptr = (int8_t const *)&token;
-  ptrdiff_t lookahead = 0;
-  if (token_ptr[3] > (int8_t)0xBF) {
-    lookahead = 1;
-  } else if (token_ptr[2] > (int8_t)0xBF) {
-    lookahead = 2;
-  } else if (token_ptr[1] > (int8_t)0xBF) {
-    lookahead = 3;
+  uint8_t const *token_ptr = (uint8_t const *)&token;
+  ptrdiff_t rollback = 0;
+  // We must not roll back if no big blocks were processed, as then
+  // the fallback function would examine out-of-bounds data (#620).
+  // In that case, prev_input contains only nulls and we skip the if body.
+  if (token_ptr[3] >= 0x80u) {
+    // Look for an incomplete multi-byte code point
+    if (token_ptr[3] >= 0xC0u) {
+      rollback = 1;
+    } else if (token_ptr[2] >= 0xE0u) {
+      rollback = 2;
+    } else if (token_ptr[1] >= 0xF0u) {
+      rollback = 3;
+    }
   }
   // Finish the job.
-  uint8_t const *const small_ptr = ptr - lookahead;
-  size_t const small_len = remaining + lookahead;
+  uint8_t const *const small_ptr = ptr - rollback;
+  size_t const small_len = remaining + rollback;
   return is_valid_utf8_fallback(small_ptr, small_len);
 }
 

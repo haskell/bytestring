@@ -54,9 +54,9 @@ import           System.Posix.Internals (c_unlink)
 
 import           Test.Tasty (TestTree, TestName, testGroup)
 import           Test.Tasty.QuickCheck
-                   ( Arbitrary(..), oneof, choose, listOf, elements, forAll
+                   ( Arbitrary(..), oneof, choose, listOf, elements
                    , counterexample, ioProperty, Property, testProperty
-                   , (===), (.&&.), conjoin
+                   , (===), (.&&.), conjoin, forAll, forAllShrink
                    , UnicodeString(..), NonNegative(..)
                    )
 import           QuickCheckUtils
@@ -541,7 +541,8 @@ testBuilderConstr :: (Arbitrary a, Show a)
 testBuilderConstr name ref mkBuilder =
     testProperty name check
   where
-    check x = forAll (choose (0, maxPaddingAmount)) $ \paddingAmount -> let
+    check = int64OK $ \x ->
+            forAllShrink genPaddingAmount shrink $ \paddingAmount -> let
       -- use padding to make sure we test at unaligned positions
       ws = ref x
       b1 = mkBuilder x
@@ -551,6 +552,7 @@ testBuilderConstr name ref mkBuilder =
 
     maxPaddingAmount = 15
     padBuf = S.replicate maxPaddingAmount (S.c2w ' ')
+    genPaddingAmount = choose (0, maxPaddingAmount)
 
 
 testsBinary :: [TestTree]

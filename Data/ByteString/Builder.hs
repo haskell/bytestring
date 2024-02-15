@@ -26,10 +26,10 @@ For an /efficient implementation of an encoding/,
 'Builder's support (a) by providing an /O(1)/ concatentation operation
   and efficient implementations of basic encodings for 'Char's, 'Int's,
   and other standard Haskell values.
-They support (b) by providing their result as a lazy 'L.ByteString',
+They support (b) by providing their result as a 'L.LazyByteString',
   which is internally just a linked list of pointers to /chunks/
   of consecutive raw memory.
-Lazy 'L.ByteString's can be efficiently consumed by functions that
+'L.LazyByteString's can be efficiently consumed by functions that
   write them to a file or send them over a network socket.
 Note that each chunk boundary incurs expensive extra work (e.g., a system call)
   that must be amortized over the work spent on consuming the chunk body.
@@ -51,18 +51,12 @@ As a simple example of an encoding implementation,
 >type Row   = [Cell]
 >type Table = [Row]
 
-We use the following imports and abbreviate 'mappend' to simplify reading.
+We use the following imports.
 
 @
 import qualified "Data.ByteString.Lazy"               as L
 import           "Data.ByteString.Builder"
-import           Data.Monoid
-import           Data.Foldable                        ('Data.Foldable.foldMap')
 import           Data.List                            ('Data.List.intersperse')
-
-infixr 4 \<\>
-(\<\>) :: 'Monoid' m => m -> m -> m
-(\<\>) = 'mappend'
 @
 
 CSV is a character-based representation of tables. For maximal modularity,
@@ -71,15 +65,15 @@ using some Unicode character encoding. However, this sacrifices performance
 due to the intermediate 'String' representation being built and thrown away
 right afterwards. We get rid of this intermediate 'String' representation by
 fixing the character encoding to UTF-8 and using 'Builder's to convert
-@Table@s directly to UTF-8 encoded CSV tables represented as lazy
-'L.ByteString's.
+@Table@s directly to UTF-8 encoded CSV tables represented as
+'L.LazyByteString's.
 
 @
-encodeUtf8CSV :: Table -> L.ByteString
+encodeUtf8CSV :: Table -> L.LazyByteString
 encodeUtf8CSV = 'toLazyByteString' . renderTable
 
 renderTable :: Table -> Builder
-renderTable rs = 'mconcat' [renderRow r \<\> 'charUtf8' \'\\n\' | r <- rs]
+renderTable rs = 'mconcat' [renderRow r '<>' 'charUtf8' \'\\n\' | r <- rs]
 
 renderRow :: Row -> Builder
 renderRow []     = 'mempty'
@@ -91,7 +85,7 @@ renderCell (StringC cs) = renderString cs
 renderCell (IntC i)     = 'intDec' i
 
 renderString :: String -> Builder
-renderString cs = charUtf8 \'\"\' \<\> foldMap escape cs \<\> charUtf8 \'\"\'
+renderString cs = charUtf8 \'\"\' \<\> 'foldMap' escape cs \<\> charUtf8 \'\"\'
   where
     escape \'\\\\\' = charUtf8 \'\\\\\' \<\> charUtf8 \'\\\\\'
     escape \'\\\"\' = charUtf8 \'\\\\\' \<\> charUtf8 \'\\\"\'
@@ -120,7 +114,7 @@ table = [map StringC strings, map IntC [-3..3]]
 @
 
 The expression @encodeUtf8CSV table@ results in the following lazy
-'L.ByteString'.
+'L.LazyByteString'.
 
 >Chunk "\"hello\",\"\\\"1\\\"\",\"\206\187-w\195\182rld\"\n-3,-2,-1,0,1,2,3\n" Empty
 
@@ -143,7 +137,7 @@ We use the @criterion@ library (<http://hackage.haskell.org/package/criterion>)
 >  ]
 
 On a Core2 Duo 2.20GHz on a 32-bit Linux,
-  the above code takes 1ms to generate the 22'500 bytes long lazy 'L.ByteString'.
+  the above code takes 1ms to generate the 22'500 bytes long 'L.LazyByteString'.
 Looking again at the definitions above,
   we see that we took care to avoid intermediate data structures,
   as otherwise we would sacrifice performance.
@@ -154,7 +148,7 @@ For example,
 >renderRow  = mconcat . intersperse (charUtf8 ',') . map renderCell
 
 Similarly, using /O(n)/ concatentations like '++' or the equivalent 'Data.ByteString.concat'
-  operations on strict and lazy 'L.ByteString's should be avoided.
+  operations on strict and 'L.LazyByteString's should be avoided.
 The following definition of @renderString@ is also about 20% slower.
 
 >renderString :: String -> Builder
@@ -272,11 +266,11 @@ import           GHC.Base (unpackCString#, unpackCStringUtf8#,
                            unpackFoldrCString#, build)
 import           GHC.Ptr (Ptr(..))
 
--- | Execute a 'Builder' and return the generated chunks as a lazy 'L.ByteString'.
--- The work is performed lazy, i.e., only when a chunk of the lazy 'L.ByteString'
+-- | Execute a 'Builder' and return the generated chunks as a 'L.LazyByteString'.
+-- The work is performed lazy, i.e., only when a chunk of the 'L.LazyByteString'
 -- is forced.
 {-# NOINLINE toLazyByteString #-} -- ensure code is shared
-toLazyByteString :: Builder -> L.ByteString
+toLazyByteString :: Builder -> L.LazyByteString
 toLazyByteString = toLazyByteStringWith
     (safeStrategy L.smallChunkSize L.defaultChunkSize) L.Empty
 

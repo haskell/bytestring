@@ -199,6 +199,9 @@ liftFixedToBounded :: FixedPrim a -> BoundedPrim a
 liftFixedToBounded = toB
 
 {-# INLINE CONLIKE storableToF #-}
+{-# DEPRECATED storableToF
+     "Deprecated since @bytestring-0.12.1.0@.\n\nThis function is dangerous in the presence of internal padding\nand makes naive assumptions about alignment.\n\n * For a primitive Haskell type like 'Int64', use the\n   corresponding primitive like 'Data.ByteString.Builder.Prim.int64Host'.\n * For other types, it is recommended to manually write a small\n   function that performs the necessary unaligned write\n   and zeroes or removes any internal padding bits."
+  #-}
 storableToF :: forall a. Storable a => FixedPrim a
 #if HS_UNALIGNED_POKES_OK
 storableToF = FP (sizeOf (undefined :: a)) (\x op -> poke (castPtr op) x)

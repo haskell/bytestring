@@ -67,7 +67,9 @@ import Text.Read
 import Prelude hiding (head, tail)
 import Control.Arrow
 import Data.Char
+import Data.Data (toConstr, showConstr, Data)
 import Data.Foldable
+import Data.Generics.Text (gread, gshow)
 import qualified Data.List as List
 import qualified Data.List.NonEmpty as NE
 import Data.Semigroup
@@ -77,6 +79,10 @@ import Data.Word
 import Test.Tasty
 import Test.Tasty.QuickCheck
 import QuickCheckUtils
+
+#ifdef BYTESTRING_LAZY
+import Data.Int
+#endif
 
 #ifndef BYTESTRING_CHAR8
 toElem :: Word8 -> Word8
@@ -112,14 +118,23 @@ instance Arbitrary Natural where
 
 testRdInt :: forall a. (Arbitrary a, RdInt a) => String -> TestTree
 testRdInt s = testGroup s $
-    [ testProperty "from string" $ \ prefix value suffix ->
+    [ testProperty "from string" $ int64OK $ \value prefix suffix ->
         let si = show @a value
             b  = prefix <> B.pack si <> suffix
          in fmap (second B.unpack) (bread @a b)
             === sread @a (B.unpack prefix ++ si ++ B.unpack suffix)
-    , testProperty "from number" $ \n ->
+    , testProperty "from number" $ int64OK $ \n ->
         bread @a (B.pack (show n)) === Just (n, B.empty)
     ]
+#endif
+
+intToIndexTy :: Int -> IndexTy
+#ifdef BYTESTRING_LAZY
+type IndexTy = Int64
+intToIndexTy = fromIntegral @Int @Int64
+#else
+type IndexTy = Int
+intToIndexTy = id
 #endif
 
 tests :: [TestTree]
@@ -306,7 +321,7 @@ tests =
 #endif
 
   , testProperty "drop" $
-    \n x -> B.unpack (B.drop n x) === List.genericDrop n (B.unpack x)
+    \(intToIndexTy -> n) x -> B.unpack (B.drop n x) === List.genericDrop n (B.unpack x)
   , testProperty "drop 10" $
     \x -> let n = 10 in B.unpack (B.drop n x) === List.genericDrop n (B.unpack x)
   , testProperty "drop 2^31" $
@@ -323,7 +338,7 @@ tests =
 #endif
 
   , testProperty "take" $
-    \n x -> B.unpack (B.take n x) === List.genericTake n (B.unpack x)
+    \(intToIndexTy -> n) x -> B.unpack (B.take n x) === List.genericTake n (B.unpack x)
   , testProperty "take 10" $
     \x -> let n = 10 in B.unpack (B.take n x) === List.genericTake n (B.unpack x)
   , testProperty "take 2^31" $
@@ -340,11 +355,11 @@ tests =
 #endif
 
   , testProperty "dropEnd" $
-    \n x -> B.dropEnd n x === B.take (B.length x - n) x
+    \(intToIndexTy -> n) x -> B.dropEnd n x === B.take (B.length x - n) x
   , testProperty "dropWhileEnd" $
     \f x -> B.dropWhileEnd f x === B.reverse (B.dropWhile f (B.reverse x))
   , testProperty "takeEnd" $
-    \n x -> B.takeEnd n x === B.drop (B.length x - n) x
+    \(intToIndexTy -> n) x -> B.takeEnd n x === B.drop (B.length x - n) x
   , testProperty "takeWhileEnd" $
     \f x -> B.takeWhileEnd f x === B.reverse (B.takeWhile f (B.reverse x))
 
@@ -364,7 +379,7 @@ tests =
   , testProperty "compareLength 4" $
     \x (toElem -> c) -> B.compareLength (B.snoc x c <> undefined) (B.length x) === GT
   , testProperty "compareLength 5" $
-    \x n -> B.compareLength x n === compare (B.length x) n
+    \x (intToIndexTy -> n) -> B.compareLength x n === compare (B.length x) n
   , testProperty "dropEnd lazy" $
     \(toElem -> c) -> B.take 1 (B.dropEnd 1 (B.singleton c <> B.singleton c <> B.singleton c <> undefined)) === B.singleton c
   , testProperty "dropWhileEnd lazy" $
@@ -468,7 +483,8 @@ tests =
       (l1 == l2 || l1 == l2 + 1) && sum (map B.length splits) + l2 == B.length x
 
   , testProperty "splitAt" $
-    \n x -> (B.unpack *** B.unpack) (B.splitAt n x) === List.genericSplitAt n (B.unpack x)
+    \(intToIndexTy -> n) x -> (B.unpack *** B.unpack) (B.splitAt n x)
+                          === List.genericSplitAt n (B.unpack x)
   , testProperty "splitAt 10" $
     \x -> let n = 10 in (B.unpack *** B.unpack) (B.splitAt n x) === List.genericSplitAt n (B.unpack x)
   , testProperty "splitAt (2^31)" $
@@ -592,13 +608,13 @@ tests =
 #endif
 
   , testProperty "index" $
-    \(NonNegative n) x -> fromIntegral n < B.length x ==> B.index x (fromIntegral n) === B.unpack x !! n
+    \(NonNegative n) x -> intToIndexTy n < B.length x ==> B.index x (intToIndexTy n) === B.unpack x !! n
   , testProperty "indexMaybe" $
-    \(NonNegative n) x -> fromIntegral n < B.length x ==> B.indexMaybe x (fromIntegral n) === Just (B.unpack x !! n)
+    \(NonNegative n) x -> intToIndexTy n < B.length x ==> B.indexMaybe x (intToIndexTy n) === Just (B.unpack x !! n)
   , testProperty "indexMaybe Nothing" $
-    \n x -> (n :: Int) < 0 || fromIntegral n >= B.length x ==> B.indexMaybe x (fromIntegral n) === Nothing
+    \n x -> n < 0 || intToIndexTy n >= B.length x ==> B.indexMaybe x (intToIndexTy n) === Nothing
   , testProperty "!?" $
-    \n x -> B.indexMaybe x (fromIntegral (n :: Int)) === x B.!? (fromIntegral n)
+    \(intToIndexTy -> n) x -> B.indexMaybe x n === x B.!? n
 
 #ifdef BYTESTRING_CHAR8
   , testProperty "isString" $
@@ -660,6 +676,17 @@ tests =
     \s -> fromString s == B.pack (map (fromIntegral . ord :: Char -> Word8) s)
   , testProperty "fromString literal" $
     fromString "\0\1\2\3\4" == B.pack [0,1,2,3,4]
+#endif
+
+#ifndef BYTESTRING_SHORT
+  , testProperty "toConstr is pack" $
+    \(x :: BYTESTRING_TYPE) -> showConstr (toConstr x) === "pack"
+#ifndef BYTESTRING_CHAR8
+  , testProperty "gshow" $
+    \x -> gshow x === "(pack " ++ gshow (B.unpack x) ++ ")"
+#endif
+  , testProperty "gread . gshow = reads . show" $
+    \(x :: BYTESTRING_TYPE) -> gread (gshow x) === (reads (show x) :: [(BYTESTRING_TYPE, String)])
 #endif
   ]
 

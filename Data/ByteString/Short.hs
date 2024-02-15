@@ -33,20 +33,20 @@ module Data.ByteString.Short (
     -- | With GHC, the memory overheads are as follows, expressed in words and
     -- in bytes (words are 4 and 8 bytes on 32 or 64bit machines respectively).
     --
-    -- * 'B.ByteString' unshared: 8 words; 32 or 64 bytes.
+    -- * t'Data.ByteString.ByteString' unshared: 8 words; 32 or 64 bytes.
     --
-    -- * 'B.ByteString' shared substring: 4 words; 16 or 32 bytes.
+    -- * t'Data.ByteString.ByteString' shared substring: 4 words; 16 or 32 bytes.
     --
     -- * 'ShortByteString': 4 words; 16 or 32 bytes.
     --
-    -- For the string data itself, both 'ShortByteString' and 'B.ByteString' use
+    -- For the string data itself, both 'ShortByteString' and t'Data.ByteString.ByteString' use
     -- one byte per element, rounded up to the nearest word. For example,
     -- including the overheads, a length 10 'ShortByteString' would take
     -- @16 + 12 = 28@ bytes on a 32bit platform and @32 + 16 = 48@ bytes on a
     -- 64bit platform.
     --
     -- These overheads can all be reduced by 1 word (4 or 8 bytes) when the
-    -- 'ShortByteString' or 'B.ByteString' is unpacked into another constructor.
+    -- 'ShortByteString' or t'Data.ByteString.ByteString' is unpacked into another constructor.
     --
     -- For example:
     --
@@ -58,7 +58,7 @@ module Data.ByteString.Short (
     -- string data.
 
     -- ** Heap fragmentation
-    -- | With GHC, the 'B.ByteString' representation uses /pinned/ memory,
+    -- | With GHC, the t'Data.ByteString.ByteString' representation uses /pinned/ memory,
     -- meaning it cannot be moved by the GC. This is usually the right thing to
     -- do for larger strings, but for small strings using pinned memory can
     -- lead to heap fragmentation which wastes space. The 'ShortByteString'

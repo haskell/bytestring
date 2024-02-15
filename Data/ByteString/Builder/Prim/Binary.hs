@@ -1,11 +1,6 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE Trustworthy #-}
 
 {-# LANGUAGE TypeApplications #-}
-
-#include "MachDeps.h"
-#include "bytestring-cpp-macros.h"
-
 
 -- | Copyright   : (c) 2010-2011 Simon Meier
 -- License       : BSD3-style (see LICENSE)
@@ -61,6 +56,7 @@ module Data.ByteString.Builder.Prim.Binary (
 
 import Data.ByteString.Builder.Prim.Internal
 import Data.ByteString.Builder.Prim.Internal.Floating
+import Data.ByteString.Utils.ByteOrder
 import Data.ByteString.Utils.UnalignedWrite
 
 import Foreign
@@ -86,38 +82,22 @@ word8 = fixedPrim 1 (flip poke) -- Word8 is always aligned
 -- | Encoding 'Word16's in big endian format.
 {-# INLINE word16BE #-}
 word16BE :: FixedPrim Word16
-#ifdef WORDS_BIGENDIAN
-word16BE = word16Host
-#else
-word16BE = byteSwap16 >$< word16Host
-#endif
+word16BE = whenLittleEndian byteSwap16 >$< word16Host
 
 -- | Encoding 'Word16's in little endian format.
 {-# INLINE word16LE #-}
 word16LE :: FixedPrim Word16
-#ifdef WORDS_BIGENDIAN
-word16LE = byteSwap16 >$< word16Host
-#else
-word16LE = word16Host
-#endif
+word16LE = whenBigEndian byteSwap16 >$< word16Host
 
 -- | Encoding 'Word32's in big endian format.
 {-# INLINE word32BE #-}
 word32BE :: FixedPrim Word32
-#ifdef WORDS_BIGENDIAN
-word32BE = word32Host
-#else
-word32BE = byteSwap32 >$< word32Host
-#endif
+word32BE = whenLittleEndian byteSwap32 >$< word32Host
 
 -- | Encoding 'Word32's in little endian format.
 {-# INLINE word32LE #-}
 word32LE :: FixedPrim Word32
-#ifdef WORDS_BIGENDIAN
-word32LE = byteSwap32 >$< word32Host
-#else
-word32LE = word32Host
-#endif
+word32LE = whenBigEndian byteSwap32 >$< word32Host
 
 -- on a little endian machine:
 -- word32LE w32 = fixedPrim 4 (\w p -> poke (castPtr p) w32)
@@ -125,20 +105,12 @@ word32LE = word32Host
 -- | Encoding 'Word64's in big endian format.
 {-# INLINE word64BE #-}
 word64BE :: FixedPrim Word64
-#ifdef WORDS_BIGENDIAN
-word64BE = word64Host
-#else
-word64BE = byteSwap64 >$< word64Host
-#endif
+word64BE = whenLittleEndian byteSwap64 >$< word64Host
 
 -- | Encoding 'Word64's in little endian format.
 {-# INLINE word64LE #-}
 word64LE :: FixedPrim Word64
-#ifdef WORDS_BIGENDIAN
-word64LE = byteSwap64 >$< word64Host
-#else
-word64LE = word64Host
-#endif
+word64LE = whenBigEndian byteSwap64 >$< word64Host
 
 
 -- | Encode a single native machine 'Word'. The 'Word's is encoded in host order,

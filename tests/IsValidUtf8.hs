@@ -50,7 +50,8 @@ checkRegressions = [
   testProperty "Three invalid bytes between spaces" $
     not $ B.isValidUtf8 threeBytesBetweenSpaces,
   testProperty "ASCII stride and invalid multibyte sequence" $
-    not $ B.isValidUtf8 asciiAndInvalidMultiByte
+    not $ B.isValidUtf8 asciiAndInvalidMultiByte,
+  testProperty "Splitting valid in two" splitValid
   ]
   where
     tooHigh :: ByteString
@@ -68,12 +69,20 @@ checkRegressions = [
     threeBytesBetweenSpaces = fromList $ replicate 125 32 ++ [242, 134, 159] ++ replicate 128 32
 
     badBlockEnd :: Property
-    badBlockEnd = 
-      forAllShrinkShow genBadBlock shrinkBadBlock showBadBlock $ \(BadBlock bs) -> 
+    badBlockEnd =
+      forAllShrinkShow genBadBlock shrinkBadBlock showBadBlock $ \(BadBlock bs) ->
         not . B.isValidUtf8 $ bs
 
     asciiAndInvalidMultiByte :: ByteString
     asciiAndInvalidMultiByte = fromList $ replicate 32 48 ++ [235, 185]
+
+    splitValid :: Property
+    splitValid = forAll genValidUtf8 $ \bs ->
+      forAll (choose (0, B.length bs)) $ \k ->
+        case B.splitAt k bs of
+          -- q may have non-zero offset, which
+          -- allows this property test to tickle #620
+          (p, q) -> B.isValidUtf8 p == B.isValidUtf8 q
 
 -- Helpers
 
@@ -98,7 +107,7 @@ showBadBlock :: BadBlock -> String
 showBadBlock (BadBlock bs) = let asList = toList bs in
   foldr showHex "" asList
 
-data Utf8Sequence = 
+data Utf8Sequence =
   One Word8 |
   Two Word8 Word8 |
   Three Word8 Word8 Word8 |
@@ -116,7 +125,7 @@ instance Arbitrary Utf8Sequence where
       genThree :: Gen Utf8Sequence
       genThree = do
         w1 <- elements [0xE0 .. 0xED]
-        w2 <- elements $ case w1 of 
+        w2 <- elements $ case w1 of
           0xE0 -> [0xA0 .. 0xBF]
           0xED -> [0x80 .. 0x9F]
           _ -> [0x80 .. 0xBF]
@@ -125,7 +134,7 @@ instance Arbitrary Utf8Sequence where
       genFour :: Gen Utf8Sequence
       genFour = do
         w1 <- elements [0xF0 .. 0xF4]
-        w2 <- elements $ case w1 of 
+        w2 <- elements $ case w1 of
           0xF0 -> [0x90 .. 0xBF]
           0xF4 -> [0x80 .. 0x8F]
           _ -> [0x80 .. 0xBF]
@@ -133,46 +142,46 @@ instance Arbitrary Utf8Sequence where
         w4 <- elements [0x80 .. 0xBF]
         pure . Four w1 w2 w3 $ w4
   shrink = \case
-    One w1 -> One <$> case w1 of 
+    One w1 -> One <$> case w1 of
       0x00 -> []
       _ -> [0x00 .. (w1 - 1)]
-    Two w1 w2 -> case (w1, w2) of 
+    Two w1 w2 -> case (w1, w2) of
       (0xC2, 0x80) -> allOnes
       _ -> (Two <$> [0xC2 .. (w1 - 1)] <*> [0x80 .. (w2 - 1)]) ++ allOnes
-    Three w1 w2 w3 -> case (w1, w2, w3) of 
+    Three w1 w2 w3 -> case (w1, w2, w3) of
       (0xE0, 0xA0, 0x80) -> allTwos ++ allOnes
       (0xE0, 0xA0, _) -> (Three 0xE0 0xA0 <$> [0x80 .. (w3 - 1)]) ++ allTwos ++ allOnes
-      (0xE0, _, _) -> 
+      (0xE0, _, _) ->
         (Three 0xE0 <$> [0xA0 .. (w2 - 1)] <*> [0x80 .. (w3 - 1)]) ++ allTwos ++ allOnes
       _ -> do
         w1' <- [0xE0 .. (w1 - 1)]
-        case w1' of 
-          0xE0 -> (Three 0xE0 <$> [0xA0 .. 0xBF] <*> [0x80 .. 0xBF]) ++ 
-                  allTwos ++ 
+        case w1' of
+          0xE0 -> (Three 0xE0 <$> [0xA0 .. 0xBF] <*> [0x80 .. 0xBF]) ++
+                  allTwos ++
                   allOnes
-          _ -> (Three w1' <$> [0x80 .. 0xBF] <*> [0x80 .. 0xBF]) ++ 
-               allTwos ++ 
+          _ -> (Three w1' <$> [0x80 .. 0xBF] <*> [0x80 .. 0xBF]) ++
+               allTwos ++
                allOnes
-    Four w1 w2 w3 w4 -> case (w1, w2, w3, w4) of 
+    Four w1 w2 w3 w4 -> case (w1, w2, w3, w4) of
       (0xF0, 0x90, 0x80, 0x80) -> allThrees ++ allTwos ++ allOnes
-      (0xF0, 0x90, 0x80, _) -> 
-        (Four 0xF0 0x90 0x80 <$> [0x80 .. (w4 - 1)]) ++ 
+      (0xF0, 0x90, 0x80, _) ->
+        (Four 0xF0 0x90 0x80 <$> [0x80 .. (w4 - 1)]) ++
         allThrees ++
         allTwos ++
         allOnes
-      (0xF0, 0x90, _, _) -> 
+      (0xF0, 0x90, _, _) ->
         (Four 0xF0 0x90 <$> [0x80 .. (w3 - 1)] <*> [0x80 .. (w4 - 1)]) ++
         allThrees ++
         allTwos ++
         allOnes
-      (0xF0, _, _, _) -> 
+      (0xF0, _, _, _) ->
         (Four 0xF0 <$> [0x90 .. (w2 - 1)] <*> [0x80 .. (w3 - 1)] <*> [0x80 .. (w4 - 1)]) ++
         allThrees ++
         allTwos ++
         allOnes
       _ -> do
         w1' <- [0xF0 .. (w1 - 1)]
-        case w1' of 
+        case w1' of
           0xF0 -> (Four 0xF0 <$> [0x90 .. 0xBF] <*> [0x80 .. 0xBF] <*> [0x80 .. 0xBF]) ++
                   allThrees ++
                   allTwos ++
@@ -189,7 +198,7 @@ allTwos :: [Utf8Sequence]
 allTwos = Two <$> [0xC2 .. 0xDF] <*> [0x80 .. 0xBF]
 
 allThrees :: [Utf8Sequence]
-allThrees = (Three 0xE0 <$> [0xA0 .. 0xBF] <*> [0x80 .. 0xBF]) ++ 
+allThrees = (Three 0xE0 <$> [0xA0 .. 0xBF] <*> [0x80 .. 0xBF]) ++
             (Three 0xED <$> [0x80 .. 0x9F] <*> [0x80 .. 0xBF]) ++
             (Three <$> [0xE1 .. 0xEC] <*> [0x80 .. 0xBF] <*> [0x80 .. 0xBF]) ++
             (Three <$> [0xEE .. 0xEF] <*> [0x80 .. 0xBF] <*> [0x80 .. 0xBF])
@@ -233,7 +242,7 @@ instance Arbitrary InvalidUtf8 where
     , InvalidUtf8 <$> genValidUtf8 <*> genInvalidUtf8 <*> pure mempty
     , InvalidUtf8 <$> genValidUtf8 <*> genInvalidUtf8 <*> genValidUtf8
     ]
-  shrink (InvalidUtf8 p i s) = 
+  shrink (InvalidUtf8 p i s) =
     (InvalidUtf8 p i <$> shrinkValidBS s) ++
     ((\p' -> InvalidUtf8 p' i s) <$> shrinkValidBS p)
 
@@ -262,7 +271,7 @@ genInvalidUtf8 = B.pack <$> oneof [
     -- overlong encoding
   , do k <- choose (0, 0xFFFF)
        let c = chr k
-       case k of 
+       case k of
         _ | k < 0x80    -> oneof [ let (w, x)       = ord2 c in pure [w, x]
                                  , let (w, x, y)    = ord3 c in pure [w, x, y]
                                  , let (w, x, y, z) = ord4 c in pure [w, x, y, z] ]
@@ -279,7 +288,7 @@ genInvalidUtf8 = B.pack <$> oneof [
       vectorOf k gen
 
 genValidUtf8 :: Gen ByteString
-genValidUtf8 = sized $ \size -> 
+genValidUtf8 = sized $ \size ->
   if size <= 0
   then pure mempty
   else oneof [
@@ -300,7 +309,7 @@ genValidUtf8 = sized $ \size ->
     gen3Byte :: Gen ByteString
     gen3Byte = do
       b1 <- elements [0xE0 .. 0xED]
-      b2 <- elements $ case b1 of 
+      b2 <- elements $ case b1 of
         0xE0 -> [0xA0 .. 0xBF]
         0xED -> [0x80 .. 0x9F]
         _ -> [0x80 .. 0xBF]
@@ -309,7 +318,7 @@ genValidUtf8 = sized $ \size ->
     gen4Byte :: Gen ByteString
     gen4Byte = do
       b1 <- elements [0xF0 .. 0xF4]
-      b2 <- elements $ case b1 of 
+      b2 <- elements $ case b1 of
         0xF0 -> [0x90 .. 0xBF]
         0xF4 -> [0x80 .. 0x8F]
         _ -> [0x80 .. 0xBF]

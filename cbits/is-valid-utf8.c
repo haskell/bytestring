@@ -346,7 +346,7 @@ static int8_t const range_max_lookup[16] = {
 // +------------+---------------+------------------+----------------+
 // | F0         | 3             | 3                | 6              |
 // +------------+---------------+------------------+----------------+
-// | F4         | 4             | 4                | 8              |
+// | F4         | 3             | 4                | 7              |
 // +------------+---------------+------------------+----------------+
 // index1 -> E0, index14 -> ED
 static int8_t const df_ee_lookup[16] = {
@@ -498,20 +498,27 @@ is_valid_utf8_ssse3(uint8_t const *const src, size_t const len) {
     return 0;
   }
   // 'Roll back' our pointer a little to prepare for a slow search of the rest.
-  int16_t tokens[2];
+  uint16_t tokens[2];
   tokens[0] = _mm_extract_epi16(prev_input, 6);
   tokens[1] = _mm_extract_epi16(prev_input, 7);
-  int8_t const *token_ptr = (int8_t const *)tokens;
-  ptrdiff_t lookahead = 0;
-  if (token_ptr[3] > (int8_t)0xBF) {
-    lookahead = 1;
-  } else if (token_ptr[2] > (int8_t)0xBF) {
-    lookahead = 2;
-  } else if (token_ptr[1] > (int8_t)0xBF) {
-    lookahead = 3;
+  uint8_t const *token_ptr = (uint8_t const *)tokens;
+  ptrdiff_t rollback = 0;
+  // We must not roll back if no big blocks were processed, as then
+  // the fallback function would examine out-of-bounds data (#620).
+  // In that case, prev_input contains only nulls and we skip the if body.
+  if (token_ptr[3] >= 0x80u) {
+    // Look for an incomplete multi-byte code point
+    if (token_ptr[3] >= 0xC0u) {
+      rollback = 1;
+    } else if (token_ptr[2] >= 0xE0u) {
+      rollback = 2;
+    } else if (token_ptr[1] >= 0xF0u) {
+      rollback = 3;
+    }
   }
-  uint8_t const *const small_ptr = ptr - lookahead;
-  size_t const small_len = remaining + lookahead;
+  // Finish the job.
+  uint8_t const *const small_ptr = ptr - rollback;
+  size_t const small_len = remaining + rollback;
   return is_valid_utf8_fallback(small_ptr, small_len);
 }
 
@@ -704,17 +711,24 @@ is_valid_utf8_avx2(uint8_t const *const src, size_t const len) {
   }
   // 'Roll back' our pointer a little to prepare for a slow search of the rest.
   uint32_t tokens_blob = _mm256_extract_epi32(prev_input, 7);
-  int8_t const *tokens = (int8_t const *)&tokens_blob;
-  ptrdiff_t lookahead = 0;
-  if (tokens[3] > (int8_t)0xBF) {
-    lookahead = 1;
-  } else if (tokens[2] > (int8_t)0xBF) {
-    lookahead = 2;
-  } else if (tokens[1] > (int8_t)0xBF) {
-    lookahead = 3;
+  uint8_t const *token_ptr = (uint8_t const *)&tokens_blob;
+  ptrdiff_t rollback = 0;
+  // We must not roll back if no big blocks were processed, as then
+  // the fallback function would examine out-of-bounds data (#620).
+  // In that case, prev_input contains only nulls and we skip the if body.
+  if (token_ptr[3] >= 0x80u) {
+    // Look for an incomplete multi-byte code point
+    if (token_ptr[3] >= 0xC0u) {
+      rollback = 1;
+    } else if (token_ptr[2] >= 0xE0u) {
+      rollback = 2;
+    } else if (token_ptr[1] >= 0xF0u) {
+      rollback = 3;
+    }
   }
-  uint8_t const *const small_ptr = ptr - lookahead;
-  size_t const small_len = remaining + lookahead;
+  // Finish the job.
+  uint8_t const *const small_ptr = ptr - rollback;
+  size_t const small_len = remaining + rollback;
   return is_valid_utf8_fallback(small_ptr, small_len);
 }
 

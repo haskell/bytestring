@@ -1,7 +1,7 @@
 task:
   name: FreeBSD
   freebsd_instance:
-    image_family: freebsd-13-1
+    image_family: freebsd-13-2
   install_script: pkg install -y ghc hs-cabal-install git
   script:
     - cabal update
@@ -13,7 +13,7 @@ task:
     image_project: pg-ci-images
     # OpenBSD version should match
     # https://github.com/anarazel/pg-vm-images/blob/main/packer/openbsd.pkrvars.hcl
-    image: family/pg-ci-openbsd-vanilla-7-2
+    image: family/pg-ci-openbsd-vanilla-7-3
     platform: openbsd
   install_script: pkg_add ghc cabal-install git
   script:

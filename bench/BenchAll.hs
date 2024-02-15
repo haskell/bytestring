@@ -19,7 +19,11 @@ import           Data.Monoid
 import           Data.Semigroup
 import           Data.String
 import           Test.Tasty.Bench
+
 import           Prelude                               hiding (words)
+import qualified Data.List                             as List
+import           Control.DeepSeq
+import           Control.Exception
 
 import qualified Data.ByteString                       as S
 import qualified Data.ByteString.Char8                 as S8
@@ -28,18 +32,15 @@ import qualified Data.ByteString.Lazy.Char8            as L8
 import           Data.ByteString.Internal              (byteCountLiteral)
 
 import           Data.ByteString.Builder
-import           Data.ByteString.Builder.Extra         (byteStringCopy,
-                                                        byteStringInsert,
-                                                        intHost)
-import           Data.ByteString.Builder.Internal      (ensureFree)
+import qualified Data.ByteString.Builder.Extra         as Extra
+import qualified Data.ByteString.Builder.Internal      as BI
 import           Data.ByteString.Builder.Prim          (BoundedPrim, FixedPrim,
                                                         (>$<))
-import qualified Data.ByteString.Builder.Internal      as BI
 import qualified Data.ByteString.Builder.Prim          as P
 import qualified Data.ByteString.Builder.Prim.Internal as PI
 
 import           Foreign
-import           GHC.Exts (Addr#)
+import qualified GHC.Exts as Exts
 import           GHC.Ptr (Ptr(..))
 
 import System.Random
@@ -103,9 +104,12 @@ lazyByteStringData = case S.splitAt (nRepl `div` 2) byteStringData of
 
 {-# NOINLINE smallChunksData #-}
 smallChunksData :: L.ByteString
-smallChunksData
-  = L.fromChunks [S.take sz (S.drop n byteStringData)
-                 | let sz = 48, n <- [0, sz .. S.length byteStringData]]
+smallChunksData = L.fromChunks $ List.unfoldr step (byteStringData, 1)
+  where
+    step (!s, !i)
+      | S.null s = Nothing
+      | otherwise = case S.splitAt i s of
+          (!s1, !s2) -> Just (s1, (s2, i * 71 `mod` 97))
 
 {-# NOINLINE byteStringChunksData #-}
 byteStringChunksData :: [S.ByteString]
@@ -125,15 +129,45 @@ loremIpsum = S8.unlines $ map S8.pack
 -- benchmark wrappers
 ---------------------
 
-{-# INLINE benchB #-}
 benchB :: String -> a -> (a -> Builder) -> Benchmark
-benchB name x b =
-    bench (name ++" (" ++ show nRepl ++ ")") $
-        whnf (L.length . toLazyByteString . b) x
+{-# INLINE benchB #-}
+benchB name x b = benchB' (name ++" (" ++ show nRepl ++ ")") x b
 
-{-# INLINE benchB' #-}
 benchB' :: String -> a -> (a -> Builder) -> Benchmark
-benchB' name x b = bench name $ whnf (L.length . toLazyByteString . b) x
+{-# INLINE benchB' #-}
+benchB' name x mkB =
+  env (BI.newBuffer BI.defaultChunkSize) $ \buf ->
+    bench name $ whnfAppIO (runBuildStepOn buf . BI.runBuilder . mkB) x
+
+benchB'_ :: String -> Builder -> Benchmark
+{-# INLINE benchB'_ #-}
+benchB'_ name b =
+  env (BI.newBuffer BI.defaultChunkSize) $ \buf ->
+    bench name $ whnfIO (runBuildStepOn buf (BI.runBuilder b))
+
+-- | @runBuilderOn@ runs a @BuildStep@'s actions all on the same @Buffer@.
+-- It is used to avoid measuring driver allocation overhead.
+runBuildStepOn :: BI.Buffer -> BI.BuildStep () -> IO ()
+{-# NOINLINE runBuildStepOn #-}
+runBuildStepOn (BI.Buffer fp br@(BI.BufferRange op ope)) b = go b
+  where
+    !len = ope `minusPtr` op
+
+    go :: BI.BuildStep () -> IO ()
+    go bs = BI.fillWithBuildStep bs doneH fullH insertChunkH br
+
+    doneH :: Ptr Word8 -> () -> IO ()
+    doneH _ _ = touchForeignPtr fp
+    -- 'touchForeignPtr' is adequate because the given BuildStep
+    -- will always terminate. (We won't measure an infinite loop!)
+
+    fullH :: Ptr Word8 -> Int -> BI.BuildStep () -> IO ()
+    fullH _ minLen nextStep
+      | len < minLen = throwIO (ErrorCall "runBuilderOn: action expects too long of a BufferRange")
+      | otherwise    = go nextStep
+
+    insertChunkH :: Ptr Word8 -> S.ByteString -> BI.BuildStep () -> IO ()
+    insertChunkH _ _ nextStep = go nextStep
 
 {-# INLINE benchBInts #-}
 benchBInts :: String -> ([Int] -> Builder) -> Benchmark
@@ -251,9 +285,11 @@ largeTraversalInput = S.concat (replicate 10 byteStringData)
 smallTraversalInput :: S.ByteString
 smallTraversalInput = S8.pack "The quick brown fox"
 
-asciiBuf, utf8Buf :: Ptr Word8
+asciiBuf, utf8Buf, halfNullBuf, allNullBuf :: Ptr Word8
 asciiBuf = Ptr "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"#
-utf8Buf  = Ptr "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\xc0\x80xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"#
+utf8Buf  = Ptr "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\xc0\x80xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"#
+halfNullBuf = Ptr "\xc0\x80xx\xc0\x80x\xc0\x80\xc0\x80x\xc0\x80\xc0\x80xx\xc0\x80\xc0\x80xxx\xc0\x80x\xc0\x80x\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80xxx\xc0\x80x\xc0\x80xx\xc0\x80\xc0\x80xxxxxxxxxx\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80x\xc0\x80\xc0\x80x\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80xxx"#
+allNullBuf  = Ptr "\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80"#
 
 asciiLit, utf8Lit :: Ptr Word8 -> Builder
 asciiLit str@(Ptr addr) = BI.asciiLiteralCopy str (byteCountLiteral addr)
@@ -261,26 +297,29 @@ utf8Lit str@(Ptr addr)  = BI.modUtf8LitCopy str (byteCountLiteral addr)
 
 asciiStr, utf8Str :: String
 asciiStr = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-utf8Str  = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\0xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+utf8Str  = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\0xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
 main :: IO ()
 main = do
   defaultMain
     [ bgroup "Data.ByteString.Builder"
       [ bgroup "Small payload"
-        [ benchB' "mempty"        ()  (const mempty)
-        , benchB' "ensureFree 8"  ()  (const (ensureFree 8))
-        , benchB' "intHost 1"     1   intHost
-        , benchB' "UTF-8 String (naive)" "hello world\0" fromString
-        , benchB' "UTF-8 String"  () $ \() -> utf8Lit (Ptr "hello world\xc0\x80"#)
-        , benchB' "String (naive)" "hello world!" fromString
-        , benchB' "String"        () $ \() -> asciiLit (Ptr "hello world!"#)
-        , benchB' "AsciiLit"      () $ \() -> asciiLit asciiBuf
-        , benchB' "Utf8Lit"       () $ \() -> utf8Lit utf8Buf
-        , benchB' "strLit"        () $ \() -> string8 asciiStr
-        , benchB' "stringUtf8"    () $ \() -> stringUtf8 utf8Str
-        , benchB' "strLitInline"  () $ \() -> string8 "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-        , benchB' "utf8LitInline" () $ \() -> stringUtf8 "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\0XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+        [ benchB'_ "mempty" mempty
+        , bench "toLazyByteString mempty" $ nf toLazyByteString mempty
+        , benchB'_ "empty (10000 times)" $
+            stimes (10000 :: Int) (Exts.noinline BI.empty)
+        , benchB'_ "ensureFree 8" (BI.ensureFree 8)
+        , benchB'  "intHost 1" 1 Extra.intHost
+        , benchB'  "UTF-8 String (12B, naive)" "hello world\0" fromString
+        , benchB'_ "UTF-8 String (12B)" $ utf8Lit (Ptr "hello world\xc0\x80"#)
+        , benchB'  "UTF-8 String (64B, naive)" utf8Str fromString
+        , benchB'_ "UTF-8 String (64B)" $ utf8Lit utf8Buf
+        , benchB'_ "UTF-8 String (64B, half nulls)" $ utf8Lit halfNullBuf
+        , benchB'_ "UTF-8 String (64B, all nulls)"  $ utf8Lit allNullBuf
+        , benchB'  "String (12B, naive)" "hello world!" fromString
+        , benchB'_ "String (12B)" $ asciiLit (Ptr "hello world!"#)
+        , benchB'  "String (64B, naive)" asciiStr fromString
+        , benchB'_ "String (64B)" $ asciiLit asciiBuf
         ]
 
       , bgroup "Encoding wrappers"
@@ -297,11 +336,11 @@ main = do
         ]
       , bgroup "ByteString insertion" $
             [ benchB "foldMap byteStringInsert" byteStringChunksData
-                (foldMap byteStringInsert)
+                (foldMap Extra.byteStringInsert)
             , benchB "foldMap byteString" byteStringChunksData
                 (foldMap byteString)
             , benchB "foldMap byteStringCopy" byteStringChunksData
-                (foldMap byteStringCopy)
+                (foldMap Extra.byteStringCopy)
             ]
 
       , bgroup "Non-bounded encodings"
@@ -440,6 +479,19 @@ main = do
     , bgroup "tails"
       [ bench "strict" $ nf S.tails byteStringData
       , bench "lazy"   $ nf L.tails lazyByteStringData
+      ]
+    , bgroup "splitAtEnd (lazy)" $ let
+        testSAE op = \bs -> [op i bs | i <- [0,5..L.length bs]] `deepseq` ()
+        {-# INLINE testSAE #-}
+      in
+      [ bench "takeEnd" $
+          nf (testSAE L.takeEnd) lazyByteStringData
+      , bench "takeEnd (small chunks)" $
+          nf (testSAE L.takeEnd) smallChunksData
+      , bench "dropEnd" $
+          nf (testSAE L.dropEnd) lazyByteStringData
+      , bench "dropEnd (small chunks)" $
+          nf (testSAE L.dropEnd) smallChunksData
       ]
     , bgroup "sort" $ map (\s -> bench (S8.unpack s) $ nf S.sort s) sortInputs
     , bgroup "stimes" $ let  st = stimes :: Int -> S.ByteString -> S.ByteString

@@ -82,9 +82,10 @@ import           Data.ByteString.Builder.Internal (Builder)
 import qualified Data.ByteString.Builder.Prim                   as P
 import qualified Data.ByteString.Builder.Prim.Internal          as P
 import           Data.ByteString.Builder.RealFloat (floatDec, doubleDec)
+import           Data.ByteString.Internal.Type (c_int_dec_padded9, c_long_long_int_dec_padded18)
 
 import           Foreign
-import           Foreign.C.Types
+import           Data.List.NonEmpty (NonEmpty(..))
 
 ------------------------------------------------------------------------------
 -- Decimal Encoding
@@ -240,14 +241,14 @@ floatHexFixed = P.primFixed P.floatHexFixed
 doubleHexFixed :: Double -> Builder
 doubleHexFixed = P.primFixed P.doubleHexFixed
 
--- | Encode each byte of a 'S.ByteString' using its fixed-width hex encoding.
+-- | Encode each byte of a 'S.StrictByteString' using its fixed-width hex encoding.
 {-# NOINLINE byteStringHex #-} -- share code
-byteStringHex :: S.ByteString -> Builder
+byteStringHex :: S.StrictByteString -> Builder
 byteStringHex = P.primMapByteStringFixed P.word8HexFixed
 
--- | Encode each byte of a lazy 'L.ByteString' using its fixed-width hex encoding.
+-- | Encode each byte of a 'L.LazyByteString' using its fixed-width hex encoding.
 {-# NOINLINE lazyByteStringHex #-} -- share code
-lazyByteStringHex :: L.ByteString -> Builder
+lazyByteStringHex :: L.LazyByteString -> Builder
 lazyByteStringHex = P.primMapLazyByteStringFixed P.word8HexFixed
 
 
@@ -276,37 +277,31 @@ integerDec i
     | i < 0     = P.primFixed P.char8 '-' `mappend` go (-i)
     | otherwise =                                   go i
   where
-    errImpossible fun =
-        error $ "integerDec: " ++ fun ++ ": the impossible happened."
-
     go :: Integer -> Builder
     go n | n < maxPow10 = intDec (fromInteger n)
          | otherwise    =
              case putH (splitf (maxPow10 * maxPow10) n) of
-               (x:xs) -> intDec x `mappend` P.primMapListBounded intDecPadded xs
-               []     -> errImpossible "integerDec: go"
+               x:|xs -> intDec x `mappend` P.primMapListBounded intDecPadded xs
 
-    splitf :: Integer -> Integer -> [Integer]
+    splitf :: Integer -> Integer -> NonEmpty Integer
     splitf pow10 n0
-      | pow10 > n0  = [n0]
+      | pow10 > n0  = n0 :| []
       | otherwise   = splith (splitf (pow10 * pow10) n0)
       where
-        splith []     = errImpossible "splith"
-        splith (n:ns) =
+        splith (n:|ns) =
             case n `quotRem` pow10 of
-                (q,r) | q > 0     -> q : r : splitb ns
-                      | otherwise ->     r : splitb ns
+                (q,r) | q > 0     -> q :| r :  splitb ns
+                      | otherwise ->      r :| splitb ns
 
         splitb []     = []
         splitb (n:ns) = case n `quotRem` pow10 of
                             (q,r) -> q : r : splitb ns
 
-    putH :: [Integer] -> [Int]
-    putH []     = errImpossible "putH"
-    putH (n:ns) = case n `quotRem` maxPow10 of
+    putH :: NonEmpty Integer -> NonEmpty Int
+    putH (n:|ns) = case n `quotRem` maxPow10 of
                     (x,y)
-                        | q > 0     -> q : r : putB ns
-                        | otherwise ->     r : putB ns
+                        | q > 0     -> q :| r :  putB ns
+                        | otherwise ->      r :| putB ns
                         where q = fromInteger x
                               r = fromInteger y
 
@@ -315,12 +310,6 @@ integerDec i
     putB (n:ns) = case n `quotRem` maxPow10 of
                     (q,r) -> fromInteger q : fromInteger r : putB ns
 
-
-foreign import ccall unsafe "static _hs_bytestring_int_dec_padded9"
-    c_int_dec_padded9 :: CInt -> Ptr Word8 -> IO ()
-
-foreign import ccall unsafe "static _hs_bytestring_long_long_int_dec_padded18"
-    c_long_long_int_dec_padded18 :: CLLong -> Ptr Word8 -> IO ()
 
 {-# INLINE intDecPadded #-}
 intDecPadded :: P.BoundedPrim Int
