@@ -160,6 +160,9 @@ import Data.ByteString.Internal.Type
   , unsafeDupablePerformIO
   , accursedUnutterablePerformIO
   , checkedAdd
+  , c_elem_index
+  , cIsValidUtf8BASafe
+  , cIsValidUtf8BA
   )
 
 import Data.Array.Byte
@@ -195,15 +198,12 @@ import Foreign.C.String
   ( CString
   , CStringLen
   )
+#if !HS_compareByteArrays_PRIMOP_AVAILABLE && !PURE_HASKELL
 import Foreign.C.Types
   ( CSize(..)
   , CInt(..)
-  , CPtrdiff(..)
   )
-import Foreign.ForeignPtr
-  ( touchForeignPtr )
-import Foreign.ForeignPtr.Unsafe
-  ( unsafeForeignPtrToPtr )
+#endif
 import Foreign.Marshal.Alloc
   ( allocaBytes )
 import Foreign.Storable
@@ -213,15 +213,14 @@ import GHC.Exts
   , State#, RealWorld
   , ByteArray#, MutableByteArray#
   , newByteArray#
-  , newPinnedByteArray#
   , byteArrayContents#
   , unsafeCoerce#
   , copyMutableByteArray#
-#if MIN_VERSION_base(4,10,0)
+#if HS_isByteArrayPinned_PRIMOP_AVAILABLE
   , isByteArrayPinned#
   , isTrue#
 #endif
-#if MIN_VERSION_base(4,11,0)
+#if HS_compareByteArrays_PRIMOP_AVAILABLE
   , compareByteArrays#
 #endif
   , sizeofByteArray#
@@ -464,7 +463,7 @@ createAndTrim2 maxLen1 maxLen2 fill =
 {-# INLINE createAndTrim2 #-}
 
 isPinned :: ByteArray# -> Bool
-#if MIN_VERSION_base(4,10,0)
+#if HS_isByteArrayPinned_PRIMOP_AVAILABLE
 isPinned ba# = isTrue# (isByteArrayPinned# ba#)
 #else
 isPinned _ = False
@@ -483,30 +482,21 @@ toShort !bs = unsafeDupablePerformIO (toShortIO bs)
 toShortIO :: ByteString -> IO ShortByteString
 toShortIO (BS fptr len) = do
     mba <- stToIO (newByteArray len)
-    let ptr = unsafeForeignPtrToPtr fptr
-    stToIO (copyAddrToByteArray ptr mba 0 len)
-    touchForeignPtr fptr
+    BS.unsafeWithForeignPtr fptr $ \ptr ->
+      stToIO (copyAddrToByteArray ptr mba 0 len)
     ShortByteString <$> stToIO (unsafeFreezeByteArray mba)
 
 -- | /O(n)/. Convert a 'ShortByteString' into a 'ByteString'.
 --
 fromShort :: ShortByteString -> ByteString
-fromShort (unSBS -> b#)
-  | isPinned b# = BS fp len
-  where
-    addr# = byteArrayContents# b#
-    fp = ForeignPtr addr# (PlainPtr (unsafeCoerce# b#))
-    len = I# (sizeofByteArray# b#)
-fromShort !sbs = unsafeDupablePerformIO (fromShortIO sbs)
-
-fromShortIO :: ShortByteString -> IO ByteString
-fromShortIO sbs = do
-    let len = length sbs
-    mba@(MutableByteArray mba#) <- stToIO (newPinnedByteArray len)
-    stToIO (copyByteArray (asBA sbs) 0 mba 0 len)
-    let fp = ForeignPtr (byteArrayContents# (unsafeCoerce# mba#))
-                        (PlainPtr mba#)
-    return (BS fp len)
+fromShort sbs@(unSBS -> b#)
+  | isPinned b# = BS inPlaceFp len
+  | otherwise = BS.unsafeCreateFp len $ \fp ->
+      BS.unsafeWithForeignPtr fp $ \p -> copyToPtr sbs 0 p len
+    where
+      inPlaceFp = ForeignPtr (byteArrayContents# b#)
+                             (PlainPtr (unsafeCoerce# b#))
+      len = I# (sizeofByteArray# b#)
 
 -- | /O(1)/ Convert a 'Word8' into a 'ShortByteString'
 --
@@ -1535,7 +1525,7 @@ elemIndices k = findIndices (==k)
 -- @since 0.11.3.0
 count :: Word8 -> ShortByteString -> Int
 count w = \sbs@(unSBS -> ba#) -> accursedUnutterablePerformIO $
-    fromIntegral <$> c_count ba# (fromIntegral $ length sbs) w
+    fromIntegral <$> BS.c_count_ba ba# (fromIntegral $ length sbs) w
 
 -- | /O(n)/ The 'findIndex' function takes a predicate and a 'ShortByteString' and
 -- returns the index of the first element in the ShortByteString
@@ -1610,12 +1600,6 @@ newByteArray len@(I# len#) =
     ST $ \s -> case newByteArray# len# s of
                  (# s', mba# #) -> (# s', MutableByteArray mba# #)
 
-newPinnedByteArray :: Int -> ST s (MutableByteArray s)
-newPinnedByteArray len@(I# len#) =
-  assert (len >= 0) $
-    ST $ \s -> case newPinnedByteArray# len# s of
-                 (# s', mba# #) -> (# s', MutableByteArray mba# #)
-
 unsafeFreezeByteArray :: MutableByteArray s -> ST s ByteArray
 unsafeFreezeByteArray (MutableByteArray mba#) =
     ST $ \s -> case unsafeFreezeByteArray# mba# s of
@@ -1671,7 +1655,7 @@ compareByteArraysOff :: ByteArray  -- ^ array 1
                      -> Int -- ^ offset for array 2
                      -> Int -- ^ length to compare
                      -> Int -- ^ like memcmp
-#if MIN_VERSION_base(4,11,0)
+#if HS_compareByteArrays_PRIMOP_AVAILABLE
 compareByteArraysOff (ByteArray ba1#) (I# ba1off#) (ByteArray ba2#) (I# ba2off#) (I# len#) =
   I# (compareByteArrays#  ba1# ba1off# ba2# ba2off# len#)
 #else
@@ -1689,13 +1673,6 @@ compareByteArraysOff (ByteArray ba1#) ba1off (ByteArray ba2#) ba2off len =
 foreign import ccall unsafe "static sbs_memcmp_off"
   c_memcmp_ByteArray :: ByteArray# -> Int -> ByteArray# -> Int -> CSize -> IO CInt
 #endif
-
-foreign import ccall unsafe "static sbs_elem_index"
-    c_elem_index :: ByteArray# -> Word8 -> CSize -> IO CPtrdiff
-
-foreign import ccall unsafe "static fpstring.h fps_count" c_count
-    :: ByteArray# -> CSize -> Word8 -> IO CSize
-
 
 ------------------------------------------------------------------------
 -- Primop replacements
@@ -1784,21 +1761,10 @@ isValidUtf8 sbs@(unSBS -> ba#) = accursedUnutterablePerformIO $ do
   -- When changing this function, also consider changing the related function:
   -- Data.ByteString.isValidUtf8
   i <- if n < 1000000 || not (isPinned ba#)
-     then cIsValidUtf8 ba# (fromIntegral n)
-     else cIsValidUtf8Safe ba# (fromIntegral n)
+     then cIsValidUtf8BA ba# (fromIntegral n)
+     else cIsValidUtf8BASafe ba# (fromIntegral n)
   IO (\s -> (# touch# ba# s, () #))
   return $ i /= 0
-
--- We import bytestring_is_valid_utf8 both unsafe and safe. For small inputs
--- we can use the unsafe version to get a bit more performance, but for large
--- inputs the safe version should be used to avoid GC synchronization pauses
--- in multithreaded contexts.
-
-foreign import ccall unsafe "bytestring_is_valid_utf8" cIsValidUtf8
-  :: ByteArray# -> CSize -> IO CInt
-
-foreign import ccall safe "bytestring_is_valid_utf8" cIsValidUtf8Safe
-  :: ByteArray# -> CSize -> IO CInt
 
 -- ---------------------------------------------------------------------
 -- Internal utilities
