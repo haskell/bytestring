@@ -143,14 +143,17 @@ import qualified Data.ByteString.Short.Internal as Sh
 import qualified GHC.IO.Buffer as IO (Buffer(..), newByteBuffer)
 import           GHC.IO.Handle.Internals (wantWritableHandle, flushWriteBuffer)
 import           GHC.IO.Handle.Types (Handle__, haByteBuffer, haBufferMode)
-import           GHC.Ptr (Ptr(..))
 import           System.IO (hFlush, BufferMode(..), Handle)
 import           Data.IORef
 
 import           Foreign
-import           Foreign.C.String (CString)
 import           Foreign.ForeignPtr.Unsafe (unsafeForeignPtrToPtr)
 import           System.IO.Unsafe (unsafeDupablePerformIO)
+
+#if !(PURE_HASKELL || defined(USE_MEMCHR))
+import           Foreign.C.String (CString)
+import           GHC.Ptr (Ptr(..))
+#endif
 
 ------------------------------------------------------------------------------
 -- Buffers
@@ -909,10 +912,31 @@ asciiLiteralCopy = \ !ip !len -> builder $ \k br -> do
     let !ipe = ip `plusPtr` len
     wrappedBytesCopyStep (BufferRange ip ipe) k br
 
+getNextEmbeddedNull :: Ptr Word8 -> Int -> IO (Ptr Word8)
+#if PURE_HASKELL || defined(USE_MEMCHR)
+getNextEmbeddedNull p len = do
+  c0loc <- S.memchr p 0xC0 (S.checkedCast len)
+  if c0loc == nullPtr
+    then pure c0loc
+    else do
+    let nextLoc = c0loc `plusPtr` 1 :: Ptr Word8
+    nextByte <- peek nextLoc
+    if nextByte == 0x80
+      then pure c0loc
+      else getNextEmbeddedNull nextLoc (p `minusPtr` nextLoc + len)
+
+#else
+getNextEmbeddedNull p _len = c_strstr (castPtr p) modifiedUtf8NUL
+
 -- | GHC represents @NUL@ in string literals via an overlong 2-byte encoding,
 -- which is part of "modified UTF-8" (GHC does not also implement CESU-8).
 modifiedUtf8NUL :: CString
 modifiedUtf8NUL = Ptr "\xc0\x80"#
+
+foreign import ccall unsafe "string.h strstr" c_strstr
+    :: CString -> CString -> IO (Ptr Word8)
+#endif
+
 
 -- | Builder for raw 'Addr#' pointers to null-terminated primitive UTF-8
 -- encoded strings that may contain embedded overlong-encodings (as the
@@ -922,7 +946,7 @@ modifiedUtf8NUL = Ptr "\xc0\x80"#
 {-# INLINABLE modUtf8LitCopy #-}
 modUtf8LitCopy :: Ptr Word8 -> Int -> Builder
 modUtf8LitCopy = \ !ip !len -> builder $ \k br -> do
-    nullAt <- c_strstr (castPtr ip) modifiedUtf8NUL
+    nullAt <- getNextEmbeddedNull ip len
     modUtf8_step ip len nullAt k br
 
 modUtf8_step :: Ptr Word8 -> Int -> Ptr Word8 -> BuildStep r -> BuildStep r
@@ -943,7 +967,7 @@ modUtf8_step !ip !len !nullAt k (BufferRange op0 ope)
             len' = len - used
             !ip' = ip `plusPtr` used
             !op' = op0 `plusPtr` (nullFree + 1)
-        nullAt' <- c_strstr ip' modifiedUtf8NUL
+        nullAt' <- getNextEmbeddedNull ip' len'
         modUtf8_step ip' len' nullAt' k (BufferRange op' ope)
     | avail > 0 = do
         -- avail <= nullFree
@@ -957,9 +981,6 @@ modUtf8_step !ip !len !nullAt k (BufferRange op0 ope)
   where
     !avail = ope `minusPtr` op0
     !nullFree = nullAt `minusPtr` ip
-
-foreign import ccall unsafe "string.h strstr" c_strstr
-    :: CString -> CString -> IO (Ptr Word8)
 
 
 -- Short bytestrings

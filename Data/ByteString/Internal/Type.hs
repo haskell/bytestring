@@ -82,6 +82,7 @@ module Data.ByteString.Internal.Type (
         overflowError,
         checkedAdd,
         checkedMultiply,
+        checkedCast,
 
         -- * Standard C Functions
         c_strlen,
@@ -137,8 +138,6 @@ import Foreign.Marshal.Utils
 
 #if PURE_HASKELL
 import qualified Data.ByteString.Internal.Pure as Pure
-import Data.Bits                (toIntegralSized, Bits)
-import Data.Maybe               (fromMaybe)
 import Control.Monad            ((<$!>))
 #endif
 
@@ -154,8 +153,9 @@ import Data.String              (IsString(..))
 
 import Control.Exception        (assert, throw, Exception)
 
-import Data.Bits                ((.&.))
+import Data.Bits                ((.&.), toIntegralSized, Bits)
 import Data.Char                (ord)
+import Data.Maybe               (fromMaybe)
 import Data.Word
 
 import Data.Data                (Data(..), mkConstr ,mkDataType, Constr, DataType, Fixity(Prefix), constrIndex)
@@ -164,6 +164,7 @@ import GHC.Base                 (nullAddr#,realWorld#,unsafeChr)
 import GHC.Exts                 (IsList(..), Addr#, minusAddr#, ByteArray#)
 import GHC.CString              (unpackCString#)
 import GHC.Magic                (runRW#, lazy)
+import GHC.Stack.Types          (HasCallStack)
 
 #define TIMES_INT_2_AVAILABLE MIN_VERSION_ghc_prim(0,7,0)
 #if TIMES_INT_2_AVAILABLE
@@ -1073,6 +1074,12 @@ checkedIntegerToInt x
   | otherwise = Nothing
   where  res = fromInteger x :: Int
 
+checkedCast :: (HasCallStack, Bits a, Bits b, Integral a, Integral b) => a -> b
+checkedCast x =
+  fromMaybe (error "checkedCast: overflow")
+            (toIntegralSized x)
+
+
 
 ------------------------------------------------------------------------
 
@@ -1280,11 +1287,6 @@ cIsValidUtf8Safe = cIsValidUtf8
 bool_to_cint :: Bool -> CInt
 bool_to_cint True = 1
 bool_to_cint False = 0
-
-checkedCast :: (Bits a, Bits b, Integral a, Integral b) => a -> b
-checkedCast x =
-  fromMaybe (errorWithoutStackTrace "checkedCast: overflow")
-            (toIntegralSized x)
 
 ----------------------------------------------------------------
 -- Haskell version of functions in itoa.c
