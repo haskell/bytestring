@@ -207,7 +207,7 @@ jobs:
   # back to emulation jobs above.
   arm:
     needs: build
-    runs-on: [self-hosted, Linux, ARM64, maerwald]
+    runs-on: [self-hosted, Linux, ARM64]
     strategy:
       fail-fast: true
       matrix:
