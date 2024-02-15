@@ -579,7 +579,10 @@ primBounded w x =
 -- because it moves several variables out of the inner loop.
 {-# INLINE primMapListBounded #-}
 primMapListBounded :: BoundedPrim a -> [a] -> Builder
-primMapListBounded w xs0 =
+primMapListBounded w = \xs0 ->
+  -- We want this to inline when there is one arg, so that we can
+  -- specialise on the BoundedPrim "w".  So we move the \xs0 after the
+  -- "=" sign so that the INLINE pragma doesn't interfere with this.
     builder $ step xs0
   where
     step xs1 k (BufferRange op0 ope0) =
