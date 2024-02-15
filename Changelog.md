@@ -1,7 +1,8 @@
 [0.13.0.0] — circa 2026-2027
 
 * __Breaking Changes__:
-  * [`dataTypeOf` for `StrictByteString` and `LazyByteString`...](https://github.com/haskell/bytestring/pull/614)
+  * [`Data.Data.dataTypeOf` for `StrictByteString` and `LazyByteString` now returns a `DataType` that uses `AlgRep` instead of `NoRep`.](https://github.com/haskell/bytestring/pull/614)
+    * This allows utilities like `syb:Data.Generics.Text.gread` to be meaningfully used at these types containing `ByteString`s.
 <!--
 * Bug fixes:
 * API additions and behavior changes:
@@ -13,16 +14,22 @@
 
 [0.12.1.0] — February 2024
 
-* to describe:
-  * #614
-  * #655
+* [Provisional support has been added for using `bytestring` with GHC's JavaScript back-end.](https://github.com/haskell/bytestring/pull/631)
+  * This support is relatively un-tested and un-optimised. There may be bugs! Please report any you discover to [`bytestring`'s issue tracker](https://github.com/haskell/bytestring/issues).
 * Bug fixes:
   * [`stimes 0 sbs :: ShortByteString` now returns the empty `ShortByteString` instead of throwing an exception](https://github.com/haskell/bytestring/pull/611)
   * [`stimes 0 b :: Builder` now returns the empty `Builder` instead of throwing an exception](https://github.com/haskell/bytestring/pull/611)
   * [Several alignment-related bug fixes](https://github.com/haskell/bytestring/pull/587)
   * [Fix a bug in `isValidUtf8`](https://github.com/haskell/bytestring/pull/621)
   * [`sconcat @ShortByteString` is no longer terribly inefficient](https://github.com/haskell/bytestring/pull/650)
+  * [Fix the type on the foreign import used for `Data.ByteString.Short.elemIndex`](https://github.com/haskell/bytestring/pull/661)
+  * [Ensure that the result of `fromShort` is protected by `mkDeferredByteString`](https://github.com/haskell/bytestring/pull/662)
 * Behavior changes:
+  * [The `Data.Data.Data` instances for `StrictByteString` and `LazyByteString` have been changed:](https://github.com/haskell/bytestring/pull/614)
+    * `toConstr` now returns the a `pack` pseudo-constructor instead of throwing an exception.
+    * Due to this pseudo-constructor, `gunfold` can now be meaningfully used at these types. (Previously, it would always raise an exception.)
+    * These changes allow `syb:Data.Generics.Text.gshow` to be meaningfully used at types containing `ByteString`s.
+  * [A derived `instance Generic ShortByteString` has been added.](https://github.com/haskell/bytestring/pull/662)
   * [`sconcat @Builder` is now lazy in the tail of its input](https://github.com/haskell/bytestring/pull/650)
 * Deprecations:
   * [`Data.ByteString.Builder.Prim.Internal.storableToF`](https://github.com/haskell/bytestring/pull/649)
@@ -42,6 +49,9 @@
     * [`Data.ByteString.Short.Internal.BA`](https://github.com/haskell/bytestring/pull/615)
     * [`Data.ByteString.Short.Internal.MBA`](https://github.com/haskell/bytestring/pull/617)
   * Various CI tweaks ([1](https://github.com/haskell/bytestring/pull/626), [2](https://github.com/haskell/bytestring/pull/651))
+  * [Use `NonEmpty` to prune dead code in `integerDec`](https://github.com/haskell/bytestring/pull/655)
+    * This might have a performance impact due to result unboxing (CPR).
+  * [Consolidate internal CPP for byte-order/endianness](https://github.com/haskell/bytestring/pull/659)
 -->
 
 [0.12.1.0]: https://github.com/haskell/bytestring/compare/0.12.0.2...0.12.1.0
