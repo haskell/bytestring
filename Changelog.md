@@ -1,17 +1,3 @@
-[0.13.0.0] — circa 2026-2027
-
-* __Breaking Changes__:
-  * [`Data.Data.dataTypeOf` for `StrictByteString` and `LazyByteString` now returns a `DataType` that uses `AlgRep` instead of `NoRep`.](https://github.com/haskell/bytestring/pull/614)
-    * This allows utilities like `syb:Data.Generics.Text.gread` to be meaningfully used at these types containing `ByteString`s.
-<!--
-* Bug fixes:
-* API additions and behavior changes:
-* Deprecations:
-* Performance improvements:
-* Miscellaneous:
-* Internal stuff:
--->
-
 [0.12.1.0] — February 2024
 
 * [Provisional support has been added for using `bytestring` with GHC's JavaScript back-end.](https://github.com/haskell/bytestring/pull/631)
