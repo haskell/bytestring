@@ -307,7 +307,7 @@ main = do
         [ benchB'_ "mempty" mempty
         , bench "toLazyByteString mempty" $ nf toLazyByteString mempty
         , benchB'_ "empty (10000 times)" $
-            stimes (10000 :: Int) (Exts.noinline BI.empty)
+            stimes (10000 :: Int) (Exts.lazy BI.empty)
         , benchB'_ "ensureFree 8" (BI.ensureFree 8)
         , benchB'  "intHost 1" 1 Extra.intHost
         , benchB'  "UTF-8 String (12B, naive)" "hello world\0" fromString
