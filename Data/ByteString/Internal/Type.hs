@@ -134,7 +134,7 @@ import Prelude hiding (concat, null)
 import qualified Data.List as List
 
 import Foreign.ForeignPtr       (ForeignPtr, withForeignPtr)
-import Foreign.Ptr              (Ptr, FunPtr, plusPtr, castPtr)
+import Foreign.Ptr
 import Foreign.Storable         (Storable(..))
 import Foreign.C.Types
 import Foreign.C.String         (CString)
