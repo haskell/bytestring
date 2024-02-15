@@ -16,6 +16,8 @@
 
 * [Provisional support has been added for using `bytestring` with GHC's JavaScript back-end.](https://github.com/haskell/bytestring/pull/631)
   * This support is relatively un-tested and un-optimised. There may be bugs! Please report any you discover to [`bytestring`'s issue tracker](https://github.com/haskell/bytestring/issues).
+  * The JavaScript back-end's limited support for the Haskell-C foreign function interface would previously result in many operations failing with errors like `ReferenceError: h$fps_count is not defined`.
+  * The new `pure-haskell` package flag allows the new fallback Haskell implementations (used to support the JavaScript backend) to be used on most other platforms as well.
 * Bug fixes:
   * [`stimes 0 sbs :: ShortByteString` now returns the empty `ShortByteString` instead of throwing an exception](https://github.com/haskell/bytestring/pull/611)
   * [`stimes 0 b :: Builder` now returns the empty `Builder` instead of throwing an exception](https://github.com/haskell/bytestring/pull/611)
