@@ -54,6 +54,8 @@
   * [Use `NonEmpty` to prune dead code in `integerDec`](https://github.com/haskell/bytestring/pull/655)
     * This might have a performance impact due to result unboxing (CPR).
   * [Consolidate internal CPP for byte-order/endianness](https://github.com/haskell/bytestring/pull/659)
+  * [Remove remaining uses of FFI under -fpure-haskell](https://github.com/haskell/bytestring/pull/660)
+    * Doesn't warrant a separate visible changelog entry from #631.
 -->
 
 [0.12.1.0]: https://github.com/haskell/bytestring/compare/0.12.0.2...0.12.1.0
