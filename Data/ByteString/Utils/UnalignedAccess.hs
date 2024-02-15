@@ -1,3 +1,13 @@
+-- |
+-- Module      : Data.ByteString.Utils.UnalignedAccess
+-- Copyright   : (c) Matthew Craven 2023-2024
+-- License     : BSD-style
+-- Maintainer  : clyring@gmail.com
+-- Stability   : internal
+-- Portability : non-portable
+--
+-- Primitives for reading and writing at potentially-unaligned memory locations
+
 {-# LANGUAGE CPP #-}
 
 {-# LANGUAGE MagicHash #-}
@@ -5,12 +15,13 @@
 
 #include "bytestring-cpp-macros.h"
 
-module Data.ByteString.Utils.UnalignedWrite
+module Data.ByteString.Utils.UnalignedAccess
   ( unalignedWriteU16
   , unalignedWriteU32
   , unalignedWriteU64
   , unalignedWriteFloat
   , unalignedWriteDouble
+  , unalignedReadU64
   ) where
 
 import Foreign.Ptr
@@ -42,6 +53,10 @@ unalignedWriteDouble :: Double -> Ptr Word8 -> IO ()
 unalignedWriteDouble = coerce $ \(D# x#) (Ptr p#) s
   -> (# writeWord8OffAddrAsDouble# p# 0# x# s, () #)
 
+unalignedReadU64 :: Ptr Word8 -> IO Word64
+unalignedReadU64 = coerce $ \(Ptr p#) s
+  -> case readWord8OffAddrAsWord64# p# 0# s of
+       (# s', w64# #) -> (# s', W64# w64# #)
 
 #elif HS_UNALIGNED_POKES_OK
 import Foreign.Storable
@@ -61,6 +76,8 @@ unalignedWriteFloat x p = poke (castPtr p) x
 unalignedWriteDouble :: Double -> Ptr Word8 -> IO ()
 unalignedWriteDouble x p = poke (castPtr p) x
 
+unalignedReadU64 :: Ptr Word8 -> IO Word64
+unalignedReadU64 p = peek (castPtr p)
 
 #else
 foreign import ccall unsafe "static fpstring.h fps_unaligned_write_u16"
@@ -73,5 +90,7 @@ foreign import ccall unsafe "static fpstring.h fps_unaligned_write_HsFloat"
   unalignedWriteFloat :: Float -> Ptr Word8 -> IO ()
 foreign import ccall unsafe "static fpstring.h fps_unaligned_write_HsDouble"
   unalignedWriteDouble :: Double -> Ptr Word8 -> IO ()
+foreign import ccall unsafe "static fpstring.h fps_unaligned_read_u64"
+  unalignedReadU64 :: Ptr Word8 -> IO Word64
 #endif
 

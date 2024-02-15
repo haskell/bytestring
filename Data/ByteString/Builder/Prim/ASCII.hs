@@ -1,5 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables, ForeignFunctionInterface #-}
-{-# LANGUAGE Trustworthy #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 -- | Copyright   : (c) 2010 Jasper Van der Jeugt
 --                 (c) 2010 - 2011 Simon Meier
 -- License       : BSD3-style (see LICENSE)
@@ -82,7 +81,7 @@ import Data.ByteString.Builder.Prim.Binary
 import Data.ByteString.Builder.Prim.Internal
 import Data.ByteString.Builder.Prim.Internal.Floating
 import Data.ByteString.Builder.Prim.Internal.Base16
-import Data.ByteString.Utils.UnalignedWrite
+import Data.ByteString.Utils.UnalignedAccess
 
 import Data.Char (ord)
 
