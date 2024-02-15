@@ -579,7 +579,10 @@ primBounded w x =
 -- because it moves several variables out of the inner loop.
 {-# INLINE primMapListBounded #-}
 primMapListBounded :: BoundedPrim a -> [a] -> Builder
-primMapListBounded w xs0 =
+primMapListBounded w = \xs0 ->
+  -- We want this to inline when there is one arg, so that we can
+  -- specialise on the BoundedPrim "w".  So we move the \xs0 after the
+  -- "=" sign so that the INLINE pragma doesn't interfere with this.
     builder $ step xs0
   where
     step xs1 k (BufferRange op0 ope0) =
@@ -663,59 +666,29 @@ primMapLazyByteStringBounded w =
     L.foldrChunks (\x b -> primMapByteStringBounded w x `mappend` b) mempty
 
 
-------------------------------------------------------------------------------
--- Raw CString encoding
-------------------------------------------------------------------------------
-
--- | A null-terminated ASCII encoded 'Foreign.C.String.CString'.
--- Null characters are not representable.
+-- | Builder for raw 'Addr#' pointers to null-terminated primitive ASCII
+-- strings that are free of embedded (overlong-encoded as the two-byte sequence
+-- @0xC0 0x80@) null characters.
+--
+-- Deprecated since @bytestring-0.12.1.0@.
 --
 -- @since 0.11.0.0
+{-# DEPRECATED cstring "Use asciiLiteralCopy instead" #-}
 cstring :: Addr# -> Builder
-cstring =
-    \addr0 -> builder $ step addr0
-  where
-    step :: Addr# -> BuildStep r -> BuildStep r
-    step !addr !k br@(BufferRange op0@(Ptr op0#) ope)
-      | W8# ch == 0 = k br
-      | op0 == ope =
-          return $ bufferFull 1 op0 (step addr k)
-      | otherwise = do
-          IO $ \s -> case writeWord8OffAddr# op0# 0# ch s of
-                       s' -> (# s', () #)
-          let br' = BufferRange (op0 `plusPtr` 1) ope
-          step (addr `plusAddr#` 1#) k br'
-      where
-        !ch = indexWord8OffAddr# addr 0#
+cstring s = asciiLiteralCopy (Ptr s) (S.byteCountLiteral s)
+{-# INLINE cstring #-}
 
--- | A null-terminated UTF-8 encoded 'Foreign.C.String.CString'.
--- Null characters can be encoded as @0xc0 0x80@.
+-- | Builder for raw 'Addr#' pointers to null-terminated primitive UTF-8
+-- encoded strings that may contain embedded overlong-encodings (as the
+-- two-byte sequence @0xC0 0x80@) of null characters.
+--
+-- Deprecated since @bytestring-0.12.1.0@.
 --
 -- @since 0.11.0.0
+{-# DEPRECATED cstringUtf8 "Use modUtf8LitCopy instead" #-}
 cstringUtf8 :: Addr# -> Builder
-cstringUtf8 =
-    \addr0 -> builder $ step addr0
-  where
-    step :: Addr# -> BuildStep r -> BuildStep r
-    step !addr !k br@(BufferRange op0@(Ptr op0#) ope)
-      | W8# ch == 0 = k br
-      | op0 == ope =
-          return $ bufferFull 1 op0 (step addr k)
-        -- NULL is encoded as 0xc0 0x80
-      | W8# ch == 0xc0
-      , W8# (indexWord8OffAddr# addr 1#) == 0x80 = do
-          let !(W8# nullByte#) = 0
-          IO $ \s -> case writeWord8OffAddr# op0# 0# nullByte# s of
-                       s' -> (# s', () #)
-          let br' = BufferRange (op0 `plusPtr` 1) ope
-          step (addr `plusAddr#` 2#) k br'
-      | otherwise = do
-          IO $ \s -> case writeWord8OffAddr# op0# 0# ch s of
-                       s' -> (# s', () #)
-          let br' = BufferRange (op0 `plusPtr` 1) ope
-          step (addr `plusAddr#` 1#) k br'
-      where
-        !ch = indexWord8OffAddr# addr 0#
+cstringUtf8 s = modUtf8LitCopy (Ptr s) (S.byteCountLiteral s)
+{-# INLINE cstringUtf8 #-}
 
 ------------------------------------------------------------------------------
 -- Char8 encoding

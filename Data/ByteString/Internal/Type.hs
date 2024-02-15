@@ -44,7 +44,7 @@ module Data.ByteString.Internal.Type (
         unpackBytes, unpackAppendBytesLazy, unpackAppendBytesStrict,
         unpackChars, unpackAppendCharsLazy, unpackAppendCharsStrict,
         unsafePackAddress, unsafePackLenAddress,
-        unsafePackLiteral, unsafePackLenLiteral,
+        unsafePackLiteral, unsafePackLenLiteral, byteCountLiteral,
 
         -- * Low level imperative construction
         empty,
@@ -87,6 +87,7 @@ module Data.ByteString.Internal.Type (
         overflowError,
         checkedAdd,
         checkedMultiply,
+        checkedCast,
 
         -- * Standard C Functions
         c_strlen,
@@ -143,8 +144,6 @@ import Foreign.Marshal.Alloc    (finalizerFree)
 
 #if PURE_HASKELL
 import qualified Data.ByteString.Internal.Pure as Pure
-import Data.Bits                (toIntegralSized, Bits)
-import Data.Maybe               (fromMaybe)
 import Control.Monad            ((<$!>))
 #endif
 
@@ -160,8 +159,9 @@ import Data.String              (IsString(..))
 
 import Control.Exception        (assert, throw, Exception)
 
-import Data.Bits                ((.&.))
+import Data.Bits                ((.&.), toIntegralSized, Bits)
 import Data.Char                (ord)
+import Data.Maybe               (fromMaybe)
 import Data.Word
 
 import Data.Data                (Data(..), mkConstr ,mkDataType, Constr, DataType, Fixity(Prefix), constrIndex)
@@ -170,6 +170,7 @@ import GHC.Base                 (nullAddr#,realWorld#,unsafeChr)
 import GHC.Exts                 (IsList(..), Addr#, minusAddr#, ByteArray#)
 import GHC.CString              (unpackCString#)
 import GHC.Magic                (runRW#, lazy)
+import GHC.Stack.Types          (HasCallStack)
 
 #define TIMES_INT_2_AVAILABLE MIN_VERSION_ghc_prim(0,7,0)
 #if TIMES_INT_2_AVAILABLE
@@ -516,13 +517,22 @@ unsafePackLenAddress len addr# = do
 -- @since 0.11.1.0
 unsafePackLiteral :: Addr# -> ByteString
 unsafePackLiteral addr# =
-#if __GLASGOW_HASKELL__ >= 811
-  unsafePackLenLiteral (I# (cstringLength# addr#)) addr#
-#else
-  let len = accursedUnutterablePerformIO (c_strlen (Ptr addr#))
-   in unsafePackLenLiteral (fromIntegral len) addr#
-#endif
+  unsafePackLenLiteral (byteCountLiteral addr#) addr#
 {-# INLINE unsafePackLiteral #-}
+
+-- | Byte count of null-terminated primitive literal string excluding the
+-- terminating null byte.
+byteCountLiteral :: Addr# -> Int
+byteCountLiteral addr# =
+#if __GLASGOW_HASKELL__ >= 811
+  I# (cstringLength# addr#)
+#else
+  fromIntegral (pure_strlen (Ptr addr#))
+
+foreign import ccall unsafe "string.h strlen" pure_strlen
+    :: CString -> CSize
+#endif
+{-# INLINE byteCountLiteral #-}
 
 
 -- | See 'unsafePackLiteral'. This function is similar,
@@ -1070,6 +1080,12 @@ checkedIntegerToInt x
   | otherwise = Nothing
   where  res = fromInteger x :: Int
 
+checkedCast :: (HasCallStack, Bits a, Bits b, Integral a, Integral b) => a -> b
+checkedCast x =
+  fromMaybe (error "checkedCast: overflow")
+            (toIntegralSized x)
+
+
 
 ------------------------------------------------------------------------
 
@@ -1292,11 +1308,6 @@ cIsValidUtf8Safe = cIsValidUtf8
 bool_to_cint :: Bool -> CInt
 bool_to_cint True = 1
 bool_to_cint False = 0
-
-checkedCast :: (Bits a, Bits b, Integral a, Integral b) => a -> b
-checkedCast x =
-  fromMaybe (errorWithoutStackTrace "checkedCast: overflow")
-            (toIntegralSized x)
 
 ----------------------------------------------------------------
 -- Haskell version of functions in itoa.c
