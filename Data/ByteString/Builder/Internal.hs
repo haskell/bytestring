@@ -905,7 +905,7 @@ byteStringInsert =
 -- strings that are free of embedded (overlong-encoded as the two-byte sequence
 -- @0xC0 0x80@) null characters.
 --
--- @since 0.11.5.0
+-- @since 0.12.1.0
 {-# INLINABLE asciiLiteralCopy #-}
 asciiLiteralCopy :: Ptr Word8 -> Int -> Builder
 asciiLiteralCopy = \ !ip !len -> builder $ \k br -> do
@@ -942,7 +942,7 @@ foreign import ccall unsafe "string.h strstr" c_strstr
 -- encoded strings that may contain embedded overlong-encodings (as the
 -- two-byte sequence @0xC0 0x80@) of null characters.
 --
--- @since 0.11.5.0
+-- @since 0.12.1.0
 {-# INLINABLE modUtf8LitCopy #-}
 modUtf8LitCopy :: Ptr Word8 -> Int -> Builder
 modUtf8LitCopy = \ !ip !len -> builder $ \k br -> do
