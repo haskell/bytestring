@@ -355,7 +355,6 @@ toStrict = \cs -> goLen0 cs cs
 
     -- Copy the data
     goCopy Empty                    !_   = return ()
-    goCopy (Chunk (S.BS _  0  ) cs) !ptr = goCopy cs ptr
     goCopy (Chunk (S.BS fp len) cs) !ptr = do
       S.memcpyFp ptr fp len
       goCopy cs (ptr `S.plusForeignPtr` len)
