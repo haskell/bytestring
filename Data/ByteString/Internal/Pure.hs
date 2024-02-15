@@ -7,8 +7,12 @@
 
 -- | Haskell implementation of C bits
 module Data.ByteString.Internal.Pure
-  ( -- * fpstring.c
-    intersperse
+  ( -- * standard string.h functions
+    strlen
+  , memchr
+  , memcmp
+    -- * fpstring.c
+  , intersperse
   , countOcc
   , countOccBA
   , reverseBytes
@@ -38,13 +42,65 @@ import GHC.Int                  (Int8(..))
 
 import Data.Bits                (Bits(..), shiftR, (.&.))
 import Data.Word
-import Foreign.Ptr              (plusPtr)
+import Foreign.Ptr              (plusPtr, nullPtr)
 import Foreign.Storable         (Storable(..))
 import Control.Monad            (when)
 import Control.Exception        (assert)
 
+import Data.ByteString.Utils.ByteOrder
+import Data.ByteString.Utils.UnalignedAccess
+
 ----------------------------------------------------------------
--- Haskell version of functions in fpstring.c
+-- Haskell versions of standard functions in string.h
+----------------------------------------------------------------
+
+strlen :: Ptr Word8 -> IO Int
+strlen = go 0 where
+  go :: Int -> Ptr Word8 -> IO Int
+  go !acc !p = do
+    c <- peek p
+    if | c == 0 -> pure acc
+       | nextAcc <- acc + 1
+       , nextAcc >= 0 -> go nextAcc (p `plusPtr` 1)
+       | otherwise -> errorWithoutStackTrace
+           "bytestring: strlen: String length does not fit in a Haskell Int"
+
+memchr :: Ptr Word8 -> Word8 -> Int -> IO (Ptr Word8)
+memchr !p !target !len
+  | len == 0 = pure nullPtr
+  | otherwise = assert (len > 0) $ do
+      c <- peek p
+      if c == target
+        then pure p
+        else memchr (p `plusPtr` 1) target (len - 1)
+
+memcmp :: Ptr Word8 -> Ptr Word8 -> Int -> IO Int
+memcmp !p1 !p2 !len
+  | len >= 8 = do
+      w1 <- unalignedReadU64 p1
+      w2 <- unalignedReadU64 p2
+      let toBigEndian = whenLittleEndian byteSwap64
+      if | w1 == w2
+           -> memcmp (p1 `plusPtr` 8) (p2 `plusPtr` 8) (len - 8)
+         | toBigEndian w1 < toBigEndian w2
+           -> pure (0-1)
+         | otherwise -> pure 1
+  | otherwise = memcmp1 p1 p2 len
+
+-- | Like 'memcmp', but definitely scans one byte at a time
+memcmp1 :: Ptr Word8 -> Ptr Word8 -> Int -> IO Int
+memcmp1 !p1 !p2 !len
+  | len == 0 = pure 0
+  | otherwise = assert (len > 0) $ do
+      c1 <- peek p1
+      c2 <- peek p2
+      if | c1 == c2 -> memcmp1 (p1 `plusPtr` 1) (p2 `plusPtr` 1) (len - 1)
+         | c1 < c2   -> pure (0-1)
+         | otherwise -> pure 1
+
+
+----------------------------------------------------------------
+-- Haskell versions of functions in fpstring.c
 ----------------------------------------------------------------
 
 -- | duplicate a string, interspersing the character through the elements of the
@@ -232,7 +288,7 @@ isValidUtf8' idx !len = go 0
 
 
 ----------------------------------------------------------------
--- Haskell version of functions in itoa.c
+-- Haskell versions of functions in itoa.c
 ----------------------------------------------------------------
 
 

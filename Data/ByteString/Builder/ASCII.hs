@@ -1,6 +1,3 @@
-{-# LANGUAGE ForeignFunctionInterface #-}
-{-# LANGUAGE Trustworthy #-}
-
 {-# OPTIONS_HADDOCK not-home #-}
 
 -- | Copyright : (c) 2010 - 2011 Simon Meier

@@ -73,7 +73,7 @@ import Data.ByteString.Internal (c2w)
 import Data.ByteString.Builder.Prim.Internal (BoundedPrim, boundedPrim)
 import Data.ByteString.Builder.RealFloat.TableGenerator
 import Data.ByteString.Utils.ByteOrder
-import Data.ByteString.Utils.UnalignedWrite
+import Data.ByteString.Utils.UnalignedAccess
 #if PURE_HASKELL
 import qualified Data.ByteString.Internal.Pure as Pure
 #else
