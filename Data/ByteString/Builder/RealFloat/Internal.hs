@@ -72,6 +72,7 @@ import Data.Bits (Bits(..), FiniteBits(..))
 import Data.ByteString.Internal (c2w)
 import Data.ByteString.Builder.Prim.Internal (BoundedPrim, boundedPrim)
 import Data.ByteString.Builder.RealFloat.TableGenerator
+import Data.ByteString.Utils.ByteOrder
 import Data.ByteString.Utils.UnalignedWrite
 #if PURE_HASKELL
 import qualified Data.ByteString.Internal.Pure as Pure
@@ -408,25 +409,23 @@ wrapped f (I# w) = I# (f w)
 #if WORD_SIZE_IN_BITS == 32
 -- | Packs 2 32-bit system words (hi, lo) into a Word64
 packWord64 :: Word# -> Word# -> Word64#
-packWord64 hi lo =
-#if defined(WORDS_BIGENDIAN)
+packWord64 hi lo = case hostByteOrder of
+  BigEndian ->
     ((wordToWord64# lo) `uncheckedShiftL64#` 32#) `or64#` (wordToWord64# hi)
-#else
+  LittleEndian ->
     ((wordToWord64# hi) `uncheckedShiftL64#` 32#) `or64#` (wordToWord64# lo)
-#endif
 
 -- | Unpacks a Word64 into 2 32-bit words (hi, lo)
 unpackWord64 :: Word64# -> (# Word#, Word# #)
-unpackWord64 w =
-#if defined(WORDS_BIGENDIAN)
+unpackWord64 w = case hostByteOrder of
+  BigEndian ->
     (# word64ToWord# w
      , word64ToWord# (w `uncheckedShiftRL64#` 32#)
      #)
-#else
+  LittleEndian ->
     (# word64ToWord# (w `uncheckedShiftRL64#` 32#)
      , word64ToWord# w
      #)
-#endif
 
 -- | Adds 2 Word64's with 32-bit addition and manual carrying
 plusWord64 :: Word64# -> Word64# -> Word64#
@@ -731,21 +730,19 @@ getWord128At (Ptr arr) (I# i) = let
 
 -- | Packs 2 bytes [lsb, msb] into 16-bit word
 packWord16 :: Word# -> Word# -> Word#
-packWord16 l h =
-#if defined(WORDS_BIGENDIAN)
+packWord16 l h = case hostByteOrder of
+  BigEndian ->
     (h `uncheckedShiftL#` 8#) `or#` l
-#else
+  LittleEndian ->
     (l `uncheckedShiftL#` 8#) `or#` h
-#endif
 
 -- | Unpacks a 16-bit word into 2 bytes [lsb, msb]
 unpackWord16 :: Word# -> (# Word#, Word# #)
-unpackWord16 w =
-#if defined(WORDS_BIGENDIAN)
+unpackWord16 w = case hostByteOrder of
+  BigEndian ->
     (# w `and#` 0xff##, w `uncheckedShiftRL#` 8# #)
-#else
+  LittleEndian ->
     (# w `uncheckedShiftRL#` 8#, w `and#` 0xff## #)
-#endif
 
 
 -- | Static array of 2-digit pairs 00..99 for faster ascii rendering
