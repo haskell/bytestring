@@ -206,7 +206,9 @@ test-suite bytestring-tests
                     transformers >= 0.3,
                     syb
   ghc-options:      -fwarn-unused-binds
-                    -threaded -rtsopts
+                    -rtsopts
+  if !arch(wasm32)
+    ghc-options:    -threaded
   default-language: Haskell2010
 
 benchmark bytestring-bench
