@@ -1,4 +1,5 @@
-{-# LANGUAGE ScopedTypeVariables, CPP, BangPatterns, RankNTypes, TupleSections #-}
+{-# LANGUAGE ScopedTypeVariables, CPP, BangPatterns, RankNTypes, TupleSections,
+             PatternSynonyms #-}
 {-# LANGUAGE Unsafe #-}
 {-# OPTIONS_HADDOCK not-home #-}
 -- | Copyright : (c) 2010 - 2011 Simon Meier
@@ -136,6 +137,7 @@ import qualified Data.ByteString.Internal.Type as S
 import qualified Data.ByteString.Lazy.Internal as L
 import qualified Data.ByteString.Short.Internal as Sh
 
+import qualified GHC.Exts
 import qualified GHC.IO.Buffer as IO (Buffer(..), newByteBuffer)
 import           GHC.IO.Handle.Internals (wantWritableHandle, flushWriteBuffer)
 import           GHC.IO.Handle.Types (Handle__, haByteBuffer, haBufferMode)
@@ -325,7 +327,31 @@ fillWithBuildStep step fDone fFull fChunk !br = do
 -- They are 'Monoid's where
 --   'mempty' is the zero-length sequence and
 --   'mappend' is concatenation, which runs in /O(1)/.
+#if (MIN_VERSION_base(4,10,0))
+newtype Builder = Builder' (forall r. BuildStep r -> BuildStep r)
+pattern Builder :: (forall r. BuildStep r -> BuildStep r) -> Builder
+pattern Builder f <- Builder' f
+  where
+    -- We want to tell the compiler to eta-expand over the BufferRange of a
+    -- BuildStep the same as it eta-expands over State# tokens.
+    -- This is important for loops such as `foldMap (B.word8 . fromIntegral) xs`
+    -- (see https://gitlab.haskell.org/ghc/ghc/-/issues/23822#note_520437)
+    -- where otherwise the compiler thinks `empty bs` is worth sharing.
+    -- The usual way to do that is via GHC.Exts.oneShot on `\br`.
+    --
+    -- By contrast, we refrain from marking the BuildStep argument as one-shot,
+    -- because that could lead to undesirable duplication of work in an
+    -- expression like
+    --
+    -- > let t = expensive 42 in stimes 1000 (Builder $ \bs br -> ... t ...)
+    --
+    -- Marking `\bs` one-shot as well tells the compiler that it's fine to float
+    -- the definition of `t` inside the builder -- thus executing `expensive`
+    -- 1000 times instead of just once.
+    Builder f = Builder' (\bs -> GHC.Exts.oneShot $ \br -> f bs br)
+#else
 newtype Builder = Builder (forall r. BuildStep r -> BuildStep r)
+#endif
 
 -- | Construct a 'Builder'. In contrast to 'BuildStep's, 'Builder's are
 -- referentially transparent.
