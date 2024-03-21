@@ -291,12 +291,13 @@ utf8Buf  = Ptr "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\xc0\x80xxxxxxxxxxxxxxxxxxxxxxxx
 halfNullBuf = Ptr "\xc0\x80xx\xc0\x80x\xc0\x80\xc0\x80x\xc0\x80\xc0\x80xx\xc0\x80\xc0\x80xxx\xc0\x80x\xc0\x80x\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80xxx\xc0\x80x\xc0\x80xx\xc0\x80\xc0\x80xxxxxxxxxx\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80x\xc0\x80\xc0\x80x\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80xxx"#
 allNullBuf  = Ptr "\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80\xc0\x80"#
 
+asciiLit, utf8Lit :: Ptr Word8 -> Builder
+asciiLit (Ptr p#) = P.cstring p#
+utf8Lit (Ptr p#) = P.cstringUtf8 p#
+
 asciiStr, utf8Str :: String
 asciiStr = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 utf8Str  = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\0xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-
-unPtr :: Ptr a -> Exts.Addr#
-unPtr (Ptr p#) = p#
 
 main :: IO ()
 main = do
@@ -306,21 +307,31 @@ main = do
         [ benchB'_ "mempty" mempty
         , bench "toLazyByteString mempty" $ nf toLazyByteString mempty
         , benchB'_ "empty (10000 times)" $
-            stimes (10000 :: Int) (Exts.noinline BI.empty)
+            stimes (10000 :: Int) (Exts.lazy BI.empty)
         , benchB'_ "ensureFree 8" (BI.ensureFree 8)
         , benchB'  "intHost 1" 1 Extra.intHost
         , benchB'  "UTF-8 String (12B, naive)" "hello world\0" fromString
-        , benchB'_ "UTF-8 String (12B)" $ P.cstringUtf8 "hullo world\xc0\x80"#
+        , benchB'_ "UTF-8 String (12B)" $ utf8Lit (Ptr "hello world\xc0\x80"#)
         , benchB'  "UTF-8 String (64B, naive)" utf8Str fromString
-        , benchB'_ "UTF-8 String (64B)" $ P.cstringUtf8 (unPtr utf8Buf)
-        , benchB'_ "UTF-8 String (64B, half nulls)" $
-            P.cstringUtf8 (unPtr halfNullBuf)
-        , benchB'_ "UTF-8 String (64B, all nulls)" $
-            P.cstringUtf8 (unPtr allNullBuf)
-        , benchB'  "String (12B, naive)" "hello world!" fromString
-        , benchB'_ "String (12B)" $ P.cstring "hello wurld!"#
-        , benchB'  "String (64B, naive)" asciiStr fromString
-        , benchB'_ "String (64B)" $ P.cstring (unPtr asciiBuf)
+        , benchB'_ "UTF-8 String (64B, one null)" $ utf8Lit utf8Buf
+        , benchB'
+            "UTF-8 String (64B, one null, no shared work)"
+            utf8Buf
+            utf8Lit
+        , benchB'_ "UTF-8 String (64B, half nulls)" $ utf8Lit halfNullBuf
+        , benchB'_ "UTF-8 String (64B, all nulls)"  $ utf8Lit allNullBuf
+        , benchB'
+            "UTF-8 String (64B, all nulls, no shared work)"
+            allNullBuf
+            utf8Lit
+        , benchB'
+            "UTF-8 String (1 byte, no shared work)"
+            (Ptr "\xc0\x80"#)
+            utf8Lit
+        , benchB'  "ASCII String (12B, naive)" "hello world!" fromString
+        , benchB'_ "ASCII String (12B)" $ asciiLit (Ptr "hello wurld!"#)
+        , benchB'  "ASCII String (64B, naive)" asciiStr fromString
+        , benchB'_ "ASCII String (64B)" $ asciiLit asciiBuf
         ]
 
       , bgroup "Encoding wrappers"
