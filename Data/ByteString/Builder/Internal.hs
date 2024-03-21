@@ -155,7 +155,7 @@ import           System.IO.Unsafe (unsafeDupablePerformIO)
 data BufferRange = BufferRange {-# UNPACK #-} !(Ptr Word8)  -- First byte of range
                                {-# UNPACK #-} !(Ptr Word8)  -- First byte /after/ range
 
--- | @since 0.12.1.0
+-- | @since 0.12.2.0
 instance NFData BufferRange where
   rnf !_ = ()
 
@@ -168,7 +168,7 @@ data Buffer = Buffer {-# UNPACK #-} !(ForeignPtr Word8)
 -- this does not force the @ForeignPtrContents@ field
 -- of the underlying @ForeignPtr@.
 --
--- @since 0.12.1.0
+-- @since 0.12.2.0
 instance NFData Buffer where
   rnf !_ = ()
 
