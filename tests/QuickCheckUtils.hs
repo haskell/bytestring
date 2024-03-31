@@ -56,6 +56,8 @@ instance Arbitrary L.ByteString where
                                                      (sizedByteString
                                                           (n `div` numChunks))
 
+  shrink = map L.fromChunks . shrink . L.toChunks
+
 instance CoArbitrary L.ByteString where
   coarbitrary s = coarbitrary (L.unpack s)
 
