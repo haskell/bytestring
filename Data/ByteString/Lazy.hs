@@ -1445,9 +1445,13 @@ zipWith f (Chunk a as) (Chunk b bs) = go a as b bs
     -- This loop is written in a slightly awkward way but ensures we
     -- don't have to allocate any 'Chunk' objects to pass to a recursive
     -- call.  We have in some sense performed SpecConstr manually.
-    go !x xs !y ys
-      = f (S.unsafeHead x) (S.unsafeHead y)
-      : to (S.unsafeTail x) xs (S.unsafeTail y) ys
+    go !x xs !y ys = let
+      -- Creating a thunk for reading one byte would
+      -- be wasteful, so we evaluate these eagerly.
+      -- See also #558 for a similar issue with uncons.
+      !xHead = S.unsafeHead x
+      !yHead = S.unsafeHead y
+      in f xHead yHead : to (S.unsafeTail x) xs (S.unsafeTail y) ys
 
     to !x xs !y ys
       | Chunk x' xs' <- chunk x xs
