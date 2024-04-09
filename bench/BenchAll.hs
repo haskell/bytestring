@@ -7,11 +7,6 @@
 -- Portability : tested on GHC only
 --
 
-{-# LANGUAGE BangPatterns        #-}
-{-# LANGUAGE PackageImports      #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE MagicHash           #-}
-
 module Main (main) where
 
 import           Data.Foldable                         (foldMap)

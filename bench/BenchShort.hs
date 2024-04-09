@@ -1,7 +1,3 @@
-{-# LANGUAGE BangPatterns        #-}
-{-# LANGUAGE PackageImports      #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE MagicHash           #-}
 {-# LANGUAGE OverloadedStrings   #-}
 
 module BenchShort (benchShort) where

@@ -1,6 +1,8 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE TemplateHaskell #-}
+
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
+
 module Lift (testSuite) where
 
 import           Test.Tasty (TestTree, testGroup)

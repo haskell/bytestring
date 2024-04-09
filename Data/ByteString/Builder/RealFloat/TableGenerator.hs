@@ -1,7 +1,3 @@
-{-# LANGUAGE ExplicitForAll #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE BangPatterns, MagicHash, UnboxedTuples #-}
 -- |
 -- Module      : Data.ByteString.Builder.RealFloat.TableGenerator
 -- Copyright   : (c) Lawrence Wu 2021

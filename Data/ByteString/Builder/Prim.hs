@@ -1,7 +1,5 @@
-{-# LANGUAGE BangPatterns, ScopedTypeVariables #-}
-{-# LANGUAGE MagicHash, UnboxedTuples, PatternGuards #-}
-{-# OPTIONS_GHC -fno-warn-unused-imports #-}
 {-# LANGUAGE Trustworthy #-}
+
 {- | Copyright : (c) 2010-2011 Simon Meier
                  (c) 2010      Jasper van der Jeugt
 License        : BSD3-style (see LICENSE)
@@ -457,17 +455,14 @@ import qualified Data.ByteString               as S
 import qualified Data.ByteString.Internal      as S
 import qualified Data.ByteString.Lazy.Internal as L
 
-import           Data.Monoid
-import           Data.Char (chr, ord)
-import           Control.Monad ((<=<), unless)
+import           Data.Char (ord)
 
 import           Data.ByteString.Builder.Prim.Internal hiding (size, sizeBound)
-import qualified Data.ByteString.Builder.Prim.Internal as I (size, sizeBound)
+import qualified Data.ByteString.Builder.Prim.Internal as I
 import           Data.ByteString.Builder.Prim.Binary
 import           Data.ByteString.Builder.Prim.ASCII
 
 import           Foreign
-import           Foreign.C.Types
 import           Foreign.ForeignPtr.Unsafe (unsafeForeignPtrToPtr)
 import           GHC.Word (Word8 (..))
 import           GHC.Exts

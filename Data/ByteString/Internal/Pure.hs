@@ -1,7 +1,3 @@
-{-# LANGUAGE MagicHash #-}
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE MultiWayIf #-}
-
 -- Enable yields to make `isValidUtf8` safe to use on large inputs.
 {-# OPTIONS_GHC -fno-omit-yields #-}
 

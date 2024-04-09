@@ -1,7 +1,5 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE MagicHash #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+
 -- |
 -- Module      : Data.ByteString.Builder.RealFloat.D2S
 -- Copyright   : (c) Lawrence Wu 2021

@@ -1,5 +1,3 @@
-{-# LANGUAGE MagicHash #-}
-
 -- |
 -- Copyright   : (c) 2011 Simon Meier
 -- License     : BSD3-style (see LICENSE)

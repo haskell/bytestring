@@ -1,8 +1,9 @@
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE MagicHash #-}
-{-# OPTIONS_HADDOCK prune #-}
 {-# LANGUAGE Trustworthy #-}
+
+{-# OPTIONS_HADDOCK prune #-}
 {-# OPTIONS_GHC -Wno-deprecations #-}
+  -- We use the deprecated Data.ByteString.{hGetLine,getLine} to
+  -- define the not-deprecated Char8 versions of the same functions.
 
 -- |
 -- Module      : Data.ByteString.Char8

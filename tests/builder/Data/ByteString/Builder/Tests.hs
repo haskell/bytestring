@@ -1,8 +1,3 @@
-{-# LANGUAGE BangPatterns     #-}
-{-# LANGUAGE MagicHash        #-}
-{-# LANGUAGE CPP              #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
-
 -- |
 -- Copyright   : (c) 2011 Simon Meier
 -- License     : BSD3-style (see LICENSE)

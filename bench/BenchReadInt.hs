@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 -- |
 -- Copyright   : (c) 2021 Viktor Dukhovni
 -- License     : BSD3-style (see LICENSE)
@@ -6,14 +8,6 @@
 --
 -- Benchmark readInt and variants, readWord and variants,
 -- readInteger and readNatural
-
-{-# LANGUAGE
-    CPP
-  , BangPatterns
-  , OverloadedStrings
-  , TypeApplications
-  , ScopedTypeVariables
-  #-}
 
 module BenchReadInt (benchReadInt) where
 

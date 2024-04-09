@@ -1,26 +1,13 @@
-{-# LANGUAGE BangPatterns             #-}
 {-# LANGUAGE CPP                      #-}
-{-# LANGUAGE DeriveDataTypeable       #-}
-{-# LANGUAGE DeriveGeneric            #-}
-{-# LANGUAGE DeriveLift               #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE LambdaCase               #-}
-{-# LANGUAGE MagicHash                #-}
-{-# LANGUAGE MultiWayIf               #-}
-{-# LANGUAGE PatternSynonyms          #-}
-{-# LANGUAGE RankNTypes               #-}
-{-# LANGUAGE ScopedTypeVariables      #-}
-{-# LANGUAGE TemplateHaskellQuotes    #-}
-{-# LANGUAGE TupleSections            #-}
-{-# LANGUAGE TypeFamilies             #-}
-{-# LANGUAGE UnboxedTuples            #-}
-{-# LANGUAGE UnliftedFFITypes         #-}
 {-# LANGUAGE Unsafe                   #-}
-{-# LANGUAGE ViewPatterns             #-}
 
 {-# OPTIONS_HADDOCK not-home #-}
-
 {-# OPTIONS_GHC -fexpose-all-unfoldings #-}
+
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TypeFamilies             #-}
+{-# LANGUAGE UnliftedFFITypes         #-}
+{-# LANGUAGE ViewPatterns             #-}
 
 #include "bytestring-cpp-macros.h"
 

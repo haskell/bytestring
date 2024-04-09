@@ -1,9 +1,4 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE MultiWayIf #-}
-{-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
 
 -- This file is included by "Data.ByteString.ReadInt", after defining
 -- "BYTESTRING_STRICT".  The two modules are largely identical, except for the

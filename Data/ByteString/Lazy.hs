@@ -2,10 +2,6 @@
 {-# OPTIONS_HADDOCK prune #-}
 {-# LANGUAGE Trustworthy #-}
 
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-
 -- |
 -- Module      : Data.ByteString.Lazy
 -- Copyright   : (c) Don Stewart 2006
