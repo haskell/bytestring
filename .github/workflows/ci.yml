@@ -143,7 +143,7 @@ jobs:
         run: |
           curl -s https://hackage.haskell.org/package/data-array-byte-0.1/data-array-byte-0.1.tar.gz | tar xz
           ghc --version
-          ghc --make -Iinclude -itests:tests/builder:data-array-byte-0.1 -o Main cbits/*.c tests/Main.hs +RTS -s
+          ghc --make -XBangPatterns -XDeriveDataTypeable -XDeriveGeneric -XDeriveLift -XFlexibleContexts -XFlexibleInstances -XLambdaCase -XMagicHash -XMultiWayIf -XNamedFieldPuns -XPatternSynonyms -XRankNTypes -XScopedTypeVariables -XStandaloneDeriving -XTupleSections -XTypeApplications -XTypeOperators -XUnboxedTuples -optP-Wall -optP-Werror=undef -DPURE_HASKELL=0 -Iinclude -itests:tests/builder:data-array-byte-0.1 -o Main cbits/*.c tests/Main.hs +RTS -s
           ./Main +RTS -s
 
   bounds-checking:

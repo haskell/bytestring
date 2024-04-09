@@ -149,7 +149,7 @@ library
                    Data.ByteString.Utils.UnalignedAccess
 
   ghc-options:     -Wall -fwarn-tabs -Wincomplete-uni-patterns
-                   -optP -Wall -optP -Werror=undef
+                   -optP-Wall -optP-Werror=undef
                    -O2
                    -fmax-simplifier-iterations=10
                    -fdicts-cheap
