@@ -23,7 +23,7 @@ jobs:
         - os: macOS-latest
           ghc: 'latest'
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Install libncurses5 and libtinfo
       if: runner.os == 'Linux' && (matrix.ghc == '8.0' || matrix.ghc == '8.2')
       run: |
@@ -69,7 +69,7 @@ jobs:
       matrix:
         ghc: ['9.2', '9.4', '9.6']
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: haskell/actions/setup@v2
       id: setup-haskell-cabal
       with:
@@ -130,7 +130,7 @@ jobs:
       matrix:
         arch: ['s390x', 'ppc64le']
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: uraimo/run-on-arch-action@v2.5.0
       timeout-minutes: 60
       with:
@@ -150,7 +150,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: haskell/actions/setup@v2
       id: setup-haskell-cabal
       with:
@@ -171,7 +171,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: haskell/actions/setup@v2
       id: setup-haskell-cabal
       with:
@@ -198,7 +198,7 @@ jobs:
       run: |
           yum install -y gcc gmp gmp-devel make ncurses ncurses-compat-libs xz perl
           curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | BOOTSTRAP_HASKELL_NONINTERACTIVE=1 BOOTSTRAP_HASKELL_GHC_VERSION=9.2.8 sh
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v3 #This version must stay old enough to remain compatible with the container image
     - name: test
       run: |
           source ~/.ghcup/env
@@ -216,7 +216,7 @@ jobs:
         apt-get update -y
         apt-get install -y autoconf build-essential zlib1g-dev libgmp-dev curl libncurses5 libtinfo5 libncurses5-dev libtinfo-dev
         curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org | BOOTSTRAP_HASKELL_NONINTERACTIVE=1 BOOTSTRAP_HASKELL_INSTALL_NO_STACK=1 sh
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v1 #This version must stay old enough to remain compatible with the container image
     - name: Test
       run: |
         source ~/.ghcup/env
@@ -240,7 +240,7 @@ jobs:
           args: "find . -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +"
 
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - if: matrix.arch == 'arm32v7'
         uses: docker://hasufell/arm32v7-ubuntu-haskell:focal
