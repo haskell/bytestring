@@ -1,7 +1,8 @@
-{-# LANGUAGE MagicHash #-}
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE Trustworthy #-}
-{-# OPTIONS_GHC -fno-warn-unused-imports -fno-warn-orphans #-}
+
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+  --instance Show Builder, instance IsString Builder
+
 {- | Copyright   : (c) 2010 Jasper Van der Jeugt
                    (c) 2010 - 2011 Simon Meier
 License     : BSD3-style (see LICENSE)

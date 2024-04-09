@@ -8,8 +8,6 @@
 --
 -- Benchmark that the bounds checks fuse.
 
-{-# LANGUAGE PackageImports, ScopedTypeVariables, BangPatterns #-}
-
 module BenchBoundsCheckFusion (benchBoundsCheckFusion) where
 
 import Prelude hiding (words)

@@ -6,8 +6,6 @@
 --
 -- Benchmark elemIndex, findIndex, elemIndices, and findIndices
 
-{-# LANGUAGE BangPatterns        #-}
-
 module BenchIndices (benchIndices) where
 
 import           Data.Foldable                         (foldMap)

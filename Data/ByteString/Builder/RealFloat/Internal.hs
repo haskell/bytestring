@@ -1,7 +1,7 @@
-{-# LANGUAGE ScopedTypeVariables, ExplicitForAll #-}
-{-# LANGUAGE BangPatterns, MagicHash, UnboxedTuples #-}
 {-# LANGUAGE CPP #-}
+
 {-# LANGUAGE RecordWildCards #-}
+
 -- |
 -- Module      : Data.ByteString.Builder.RealFloat.Internal
 -- Copyright   : (c) Lawrence Wu 2021

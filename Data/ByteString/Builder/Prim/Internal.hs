@@ -1,6 +1,8 @@
-{-# LANGUAGE ScopedTypeVariables, CPP #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE Unsafe #-}
+
 {-# OPTIONS_HADDOCK not-home #-}
+
 -- |
 -- Copyright   : 2010-2011 Simon Meier, 2010 Jasper van der Jeugt
 -- License     : BSD3-style (see LICENSE)
