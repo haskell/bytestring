@@ -4,6 +4,7 @@
 -- License     : BSD-style
 
 {-# LANGUAGE CPP #-}
+
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -603,6 +604,16 @@ tests =
     \f x y -> (B.zipWith f x y :: [Int]) === zipWith f (B.unpack x) (B.unpack y)
   , testProperty "packZipWith" $
     \f x y -> B.unpack (B.packZipWith ((toElem .) . f) x y) === zipWith ((toElem .) . f) (B.unpack x) (B.unpack y)
+# ifdef BYTESTRING_LAZY
+    -- Don't use (===) in these laziness tests:
+    -- We don't want printing the test case to fail!
+  , testProperty "zip is lazy" $ lazyZipTest $
+    \x y -> B.zip x y == zip (B.unpack x) (B.unpack y)
+  , testProperty "zipWith is lazy" $ \f -> lazyZipTest $
+    \x y -> (B.zipWith f x y :: [Int]) == zipWith f (B.unpack x) (B.unpack y)
+  , testProperty "packZipWith is lazy" $ \f -> lazyZipTest $
+    \x y -> B.unpack (B.packZipWith ((toElem .) . f) x y) == zipWith ((toElem .) . f) (B.unpack x) (B.unpack y)
+# endif
   , testProperty "unzip" $
     \(fmap (toElem *** toElem) -> xs) -> (B.unpack *** B.unpack) (B.unzip xs) === unzip xs
 #endif
@@ -796,4 +807,18 @@ readIntegerUnsigned xs = case readMaybe ys of
   otherwise -> Nothing
   where
     (ys, zs) = span isDigit xs
+#endif
+
+#ifdef BYTESTRING_LAZY
+lazyZipTest
+  :: Testable prop
+  => (BYTESTRING_TYPE -> BYTESTRING_TYPE -> prop)
+  ->  BYTESTRING_TYPE -> BYTESTRING_TYPE -> Property
+lazyZipTest fun = \x0 y0 -> let
+  msg = "Input chunks are: " ++ show (B.toChunks x0, B.toChunks y0)
+  (x, y) | B.length x0 <= B.length y0
+         = (x0, y0 <> error "too strict")
+         | otherwise
+         = (x0 <> error "too strict", y0)
+  in counterexample msg (fun x y)
 #endif
