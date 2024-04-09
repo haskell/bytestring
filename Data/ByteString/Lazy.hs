@@ -1,4 +1,3 @@
-{-# OPTIONS_GHC -fno-warn-incomplete-patterns #-}
 {-# OPTIONS_HADDOCK prune #-}
 {-# LANGUAGE Trustworthy #-}
 
@@ -1095,6 +1094,7 @@ splitWith p (Chunk c0 cs0) = comb [] (S.splitWith p c0) cs0
         comb acc [s] Empty        = [revChunks (s:acc)]
         comb acc [s] (Chunk c cs) = comb (s:acc) (S.splitWith p c) cs
         comb acc (s:ss) cs        = revChunks (s:acc) : comb [] ss cs
+        comb _ [] _ = error "Strict splitWith returned [] for nonempty input"
 {-# INLINE splitWith #-}
 
 -- | /O(n)/ Break a 'ByteString' into pieces separated by the byte
@@ -1122,6 +1122,7 @@ split w (Chunk c0 cs0) = comb [] (S.split w c0) cs0
         comb acc [s] Empty        = [revChunks (s:acc)]
         comb acc [s] (Chunk c cs) = comb (s:acc) (S.split w c) cs
         comb acc (s:ss) cs        = revChunks (s:acc) : comb [] ss cs
+        comb _ [] _ = error "Strict split returned [] for nonempty input"
 {-# INLINE split #-}
 
 -- | The 'group' function takes a ByteString and returns a list of
@@ -1441,16 +1442,22 @@ zipWith _ Empty     _  = []
 zipWith _ _      Empty = []
 zipWith f (Chunk a as) (Chunk b bs) = go a as b bs
   where
-    go x xs y ys = f (S.unsafeHead x) (S.unsafeHead y)
-                 : to (S.unsafeTail x) xs (S.unsafeTail y) ys
+    -- This loop is written in a slightly awkward way but ensures we
+    -- don't have to allocate any 'Chunk' objects to pass to a recursive
+    -- call.  We have in some sense performed SpecConstr manually.
+    go !x xs !y ys = let
+      -- Creating a thunk for reading one byte would
+      -- be wasteful, so we evaluate these eagerly.
+      -- See also #558 for a similar issue with uncons.
+      !xHead = S.unsafeHead x
+      !yHead = S.unsafeHead y
+      in f xHead yHead : to (S.unsafeTail x) xs (S.unsafeTail y) ys
 
-    to x Empty         _ _             | S.null x       = []
-    to _ _             y Empty         | S.null y       = []
-    to x xs            y ys            | not (S.null x)
-                                      && not (S.null y) = go x  xs y  ys
-    to x xs            _ (Chunk y' ys) | not (S.null x) = go x  xs y' ys
-    to _ (Chunk x' xs) y ys            | not (S.null y) = go x' xs y  ys
-    to _ (Chunk x' xs) _ (Chunk y' ys)                  = go x' xs y' ys
+    to !x xs !y ys
+      | Chunk x' xs' <- chunk x xs
+      , Chunk y' ys' <- chunk y ys
+      = go x' xs' y' ys'
+      | otherwise = []
 
 -- | A specialised version of `zipWith` for the common case of a
 -- simultaneous map over two ByteStrings, to build a 3rd.
