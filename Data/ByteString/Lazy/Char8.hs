@@ -1,6 +1,5 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE Trustworthy #-}
-{-# LANGUAGE TypeApplications #-}
+
 {-# OPTIONS_HADDOCK prune #-}
 
 -- |

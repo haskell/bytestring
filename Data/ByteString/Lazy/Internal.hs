@@ -1,15 +1,9 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE DeriveLift #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE Unsafe #-}
 
-#ifdef HS_BYTESTRING_ASSERTIONS
-{-# LANGUAGE PatternSynonyms #-}
-#endif
-
 {-# OPTIONS_HADDOCK not-home #-}
+
+{-# LANGUAGE TypeFamilies #-}
 
 -- |
 -- Module      : Data.ByteString.Lazy.Internal

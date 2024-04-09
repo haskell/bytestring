@@ -1,7 +1,5 @@
 {-# LANGUAGE Trustworthy #-}
 
-{-# LANGUAGE TypeApplications #-}
-
 -- | Copyright   : (c) 2010-2011 Simon Meier
 -- License       : BSD3-style (see LICENSE)
 --

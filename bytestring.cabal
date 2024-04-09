@@ -1,3 +1,5 @@
+Cabal-Version:       2.2
+
 Name:                bytestring
 Version:             0.13.0.0
 Synopsis:            Fast, compact, strict and lazy byte strings with a list interface
@@ -41,7 +43,7 @@ Description:
     .
     > import qualified Data.ByteString as BS
 
-License:             BSD3
+License:             BSD-3-Clause
 License-file:        LICENSE
 Category:            Data
 Copyright:           Copyright (c) Don Stewart          2005-2009,
@@ -65,7 +67,6 @@ Tested-With:         GHC==9.4.1,
                      GHC==8.2.2,
                      GHC==8.0.2
 Build-Type:          Simple
-Cabal-Version:       >= 1.10
 extra-source-files:  README.md Changelog.md include/bytestring-cpp-macros.h
 
 Flag pure-haskell
@@ -82,65 +83,77 @@ source-repository head
   type:     git
   location: https://github.com/haskell/bytestring
 
+
+common language
+  default-language: Haskell2010
+  default-extensions:
+    BangPatterns
+    DeriveDataTypeable
+    DeriveGeneric
+    DeriveLift
+    FlexibleContexts
+    FlexibleInstances
+    LambdaCase
+    MagicHash
+    MultiWayIf
+    NamedFieldPuns
+    PatternSynonyms
+    RankNTypes
+    ScopedTypeVariables
+    StandaloneDeriving
+    TupleSections
+    TypeApplications
+    TypeOperators
+    UnboxedTuples
+
 library
-  build-depends:     base >= 4.9 && < 5, ghc-prim, deepseq, template-haskell
+  import:          language
+  build-depends:   base >= 4.9 && < 5, ghc-prim, deepseq, template-haskell
 
   if impl(ghc < 9.4)
     build-depends: data-array-byte >= 0.1 && < 0.2
 
-  exposed-modules:   Data.ByteString
-                     Data.ByteString.Char8
-                     Data.ByteString.Unsafe
-                     Data.ByteString.Internal
-                     Data.ByteString.Lazy
-                     Data.ByteString.Lazy.Char8
-                     Data.ByteString.Lazy.Internal
-                     Data.ByteString.Short
-                     Data.ByteString.Short.Internal
+  exposed-modules: Data.ByteString
+                   Data.ByteString.Char8
+                   Data.ByteString.Unsafe
+                   Data.ByteString.Internal
+                   Data.ByteString.Lazy
+                   Data.ByteString.Lazy.Char8
+                   Data.ByteString.Lazy.Internal
+                   Data.ByteString.Short
+                   Data.ByteString.Short.Internal
 
-                     Data.ByteString.Builder
-                     Data.ByteString.Builder.Extra
-                     Data.ByteString.Builder.Prim
-                     Data.ByteString.Builder.RealFloat
+                   Data.ByteString.Builder
+                   Data.ByteString.Builder.Extra
+                   Data.ByteString.Builder.Prim
+                   Data.ByteString.Builder.RealFloat
 
-                     -- perhaps only exposed temporarily
-                     Data.ByteString.Builder.Internal
-                     Data.ByteString.Builder.Prim.Internal
-  other-modules:     Data.ByteString.Builder.ASCII
-                     Data.ByteString.Builder.Prim.ASCII
-                     Data.ByteString.Builder.Prim.Binary
-                     Data.ByteString.Builder.Prim.Internal.Base16
-                     Data.ByteString.Builder.Prim.Internal.Floating
-                     Data.ByteString.Builder.RealFloat.F2S
-                     Data.ByteString.Builder.RealFloat.D2S
-                     Data.ByteString.Builder.RealFloat.Internal
-                     Data.ByteString.Builder.RealFloat.TableGenerator
-                     Data.ByteString.Internal.Type
-                     Data.ByteString.Lazy.ReadInt
-                     Data.ByteString.Lazy.ReadNat
-                     Data.ByteString.ReadInt
-                     Data.ByteString.ReadNat
-                     Data.ByteString.Utils.ByteOrder
-                     Data.ByteString.Utils.UnalignedAccess
+                   -- perhaps only exposed temporarily
+                   Data.ByteString.Builder.Internal
+                   Data.ByteString.Builder.Prim.Internal
+  other-modules:   Data.ByteString.Builder.ASCII
+                   Data.ByteString.Builder.Prim.ASCII
+                   Data.ByteString.Builder.Prim.Binary
+                   Data.ByteString.Builder.Prim.Internal.Base16
+                   Data.ByteString.Builder.Prim.Internal.Floating
+                   Data.ByteString.Builder.RealFloat.F2S
+                   Data.ByteString.Builder.RealFloat.D2S
+                   Data.ByteString.Builder.RealFloat.Internal
+                   Data.ByteString.Builder.RealFloat.TableGenerator
+                   Data.ByteString.Internal.Type
+                   Data.ByteString.Lazy.ReadInt
+                   Data.ByteString.Lazy.ReadNat
+                   Data.ByteString.ReadInt
+                   Data.ByteString.ReadNat
+                   Data.ByteString.Utils.ByteOrder
+                   Data.ByteString.Utils.UnalignedAccess
 
-  default-language:  Haskell2010
-  other-extensions:  CPP,
-                     ForeignFunctionInterface,
-                     BangPatterns
-                     UnliftedFFITypes,
-                     MagicHash,
-                     UnboxedTuples,
-                     DeriveDataTypeable
-                     ScopedTypeVariables
-                     RankNTypes
-                     NamedFieldPuns
-
-  ghc-options:      -Wall -fwarn-tabs -Wincomplete-uni-patterns
-                    -optP -Wall -optP -Werror=undef
-                    -O2
-                    -fmax-simplifier-iterations=10
-                    -fdicts-cheap
-                    -fspec-constr-count=6
+  ghc-options:     -Wall -fwarn-tabs -Wincomplete-uni-patterns
+                   -optP-Wall -optP-Werror=undef
+                   -O2
+                   -fmax-simplifier-iterations=10
+                   -fdicts-cheap
+                   -fspec-constr-count=6
 
   if arch(javascript) || flag(pure-haskell)
     cpp-options: -DPURE_HASKELL=1
@@ -177,6 +190,7 @@ library
                      bytestring-cpp-macros.h
 
 test-suite bytestring-tests
+  import:           language
   type:             exitcode-stdio-1.0
   main-is:          Main.hs
   other-modules:    Builder
@@ -205,11 +219,12 @@ test-suite bytestring-tests
                     template-haskell,
                     transformers >= 0.3,
                     syb
+
   ghc-options:      -fwarn-unused-binds
                     -threaded -rtsopts
-  default-language: Haskell2010
 
 benchmark bytestring-bench
+  import:           language
   main-is:          BenchAll.hs
   other-modules:    BenchBoundsCheckFusion
                     BenchCount
@@ -219,7 +234,7 @@ benchmark bytestring-bench
                     BenchShort
   type:             exitcode-stdio-1.0
   hs-source-dirs:   bench
-  default-language: Haskell2010
+
   ghc-options:      -O2 "-with-rtsopts=-A32m"
   if impl(ghc >= 8.6)
     ghc-options:    -fproc-alignment=64

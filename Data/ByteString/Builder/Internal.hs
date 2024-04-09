@@ -1,6 +1,7 @@
-{-# LANGUAGE ScopedTypeVariables, CPP, BangPatterns, RankNTypes, TupleSections #-}
 {-# LANGUAGE Unsafe #-}
+
 {-# OPTIONS_HADDOCK not-home #-}
+
 -- | Copyright : (c) 2010 - 2011 Simon Meier
 -- License     : BSD3-style (see LICENSE)
 --
