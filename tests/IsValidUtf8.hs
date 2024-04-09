@@ -1,5 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
-
 module IsValidUtf8 (testSuite) where
 
 import Data.Bits (shiftR, (.&.), shiftL)

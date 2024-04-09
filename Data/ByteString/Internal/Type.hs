@@ -1,17 +1,12 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE Unsafe #-}
 
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE MagicHash #-}
-{-# LANGUAGE PatternSynonyms #-}
+{-# OPTIONS_HADDOCK not-home #-}
+
 {-# LANGUAGE TemplateHaskellQuotes #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE UnboxedTuples #-}
 {-# LANGUAGE UnliftedFFITypes #-}
 {-# LANGUAGE ViewPatterns #-}
-
-{-# OPTIONS_HADDOCK not-home #-}
 
 -- |
 -- Module      : Data.ByteString.Internal.Type

@@ -1,3 +1,7 @@
+{-# LANGUAGE CPP #-}
+
+#include "bytestring-cpp-macros.h"
+
 -- |
 -- Module      : Data.ByteString.Utils.UnalignedAccess
 -- Copyright   : (c) Matthew Craven 2023-2024
@@ -7,13 +11,6 @@
 -- Portability : non-portable
 --
 -- Primitives for reading and writing at potentially-unaligned memory locations
-
-{-# LANGUAGE CPP #-}
-
-{-# LANGUAGE MagicHash #-}
-{-# LANGUAGE UnboxedTuples #-}
-
-#include "bytestring-cpp-macros.h"
 
 module Data.ByteString.Utils.UnalignedAccess
   ( unalignedWriteU16
