@@ -133,6 +133,7 @@ import           Data.Semigroup (Semigroup(..))
 import           Data.List.NonEmpty (NonEmpty(..))
 
 import qualified Data.ByteString               as S
+import qualified Data.ByteString.Unsafe        as S
 import qualified Data.ByteString.Internal.Type as S
 import qualified Data.ByteString.Lazy.Internal as L
 import qualified Data.ByteString.Short.Internal as Sh
@@ -796,24 +797,23 @@ ensureFree minFree =
       | ope `minusPtr` op < minFree = return $ bufferFull minFree op k
       | otherwise                   = k br
 
--- | Copy the bytes from a 'BufferRange' into the output stream.
-wrappedBytesCopyStep :: BufferRange  -- ^ Input 'BufferRange'.
+-- | Copy the bytes from a 'S.StrictByteString' into the output stream.
+wrappedBytesCopyStep :: S.StrictByteString  -- ^ Input 'S.StrictByteString'.
                      -> BuildStep a -> BuildStep a
-wrappedBytesCopyStep (BufferRange ip0 ipe) k =
-    go ip0
+wrappedBytesCopyStep bs0 k =
+    go bs0
   where
-    go !ip (BufferRange op ope)
+    go !bs@(S.BS ifp inpRemaining) (BufferRange op ope)
       | inpRemaining <= outRemaining = do
-          copyBytes op ip inpRemaining
+          S.unsafeWithForeignPtr ifp $ \ip -> copyBytes op ip inpRemaining
           let !br' = BufferRange (op `plusPtr` inpRemaining) ope
           k br'
       | otherwise = do
-          copyBytes op ip outRemaining
-          let !ip' = ip `plusPtr` outRemaining
-          return $ bufferFull 1 ope (go ip')
+          S.unsafeWithForeignPtr ifp $ \ip -> copyBytes op ip outRemaining
+          let !bs' = S.unsafeDrop outRemaining bs
+          return $ bufferFull 1 ope (go bs')
       where
         outRemaining = ope `minusPtr` op
-        inpRemaining = ipe `minusPtr` ip
 
 
 -- Strict ByteStrings
@@ -834,7 +834,7 @@ byteStringThreshold :: Int -> S.StrictByteString -> Builder
 byteStringThreshold maxCopySize =
     \bs -> builder $ step bs
   where
-    step bs@(S.BS _ len) !k br@(BufferRange !op _)
+    step bs@(S.BS _ len) k br@(BufferRange !op _)
       | len <= maxCopySize = byteStringCopyStep bs k br
       | otherwise          = return $ insertChunk op bs k
 
@@ -850,19 +850,17 @@ byteStringCopy = \bs -> builder $ byteStringCopyStep bs
 
 {-# INLINE byteStringCopyStep #-}
 byteStringCopyStep :: S.StrictByteString -> BuildStep a -> BuildStep a
-byteStringCopyStep (S.BS ifp isize) !k0 br0@(BufferRange op ope)
+byteStringCopyStep bs@(S.BS ifp isize) k br@(BufferRange op ope)
     -- Ensure that the common case is not recursive and therefore yields
     -- better code.
-    | op' <= ope = do copyBytes op ip isize
-                      touchForeignPtr ifp
-                      k0 (BufferRange op' ope)
-    | otherwise  = wrappedBytesCopyStep (BufferRange ip ipe) k br0
+       -- What's the reasoning here, more concretely?
+    | isize <= osize = do
+        S.unsafeWithForeignPtr ifp $ \ip -> copyBytes op ip isize
+        k (BufferRange op' ope)
+    | otherwise  = wrappedBytesCopyStep bs k br
   where
+    osize = ope `minusPtr` op
     op'  = op `plusPtr` isize
-    ip   = unsafeForeignPtrToPtr ifp
-    ipe  = ip `plusPtr` isize
-    k br = do touchForeignPtr ifp  -- input consumed: OK to release here
-              k0 br
 
 -- | Construct a 'Builder' that always inserts the 'S.StrictByteString'
 -- directly as a chunk.
