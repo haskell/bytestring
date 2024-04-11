@@ -337,6 +337,7 @@ instance Read ByteString where
 instance IsList ByteString where
   type Item ByteString = Word8
   fromList = packBytes
+  fromListN n = fst . packUptoLenBytes n
   toList   = unpackBytes
 
 -- | Beware: 'fromString' truncates multi-byte characters to octets.

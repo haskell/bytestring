@@ -1,4 +1,6 @@
 {-# LANGUAGE Unsafe #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE NoMonoLocalBinds #-}
 
 {-# OPTIONS_HADDOCK not-home #-}
 
@@ -99,6 +101,7 @@ module Data.ByteString.Builder.Internal (
   , lazyByteString
 
   -- ** Execution
+  , toLazyByteString
   , toLazyByteStringWith
   , AllocationStrategy
   , safeStrategy
@@ -129,6 +132,7 @@ module Data.ByteString.Builder.Internal (
 
 import           Control.Arrow (second)
 import           Control.DeepSeq (NFData(..))
+import           GHC.Exts (IsList(..))
 
 import           Data.Semigroup (Semigroup(..))
 import           Data.List.NonEmpty (NonEmpty(..))
@@ -425,6 +429,13 @@ instance Monoid Builder where
   mappend = (<>)
   {-# INLINE mconcat #-}
   mconcat = foldr mappend mempty
+
+-- | For long or infinite lists use 'fromList' because it uses 'LazyByteString' otherwise use 'fromListN' which uses 'StrictByteString'.
+instance IsList Builder where
+  type Item Builder = Word8
+  fromList = lazyByteString . fromList
+  fromListN n = byteString . fromListN n
+  toList = toList . toLazyByteString
 
 -- | Flush the current buffer. This introduces a chunk boundary.
 {-# INLINE flush #-}
@@ -1052,19 +1063,27 @@ safeStrategy firstSize bufSize =
     nextBuffer Nothing             = newBuffer $ sanitize firstSize
     nextBuffer (Just (_, minSize)) = newBuffer minSize
 
+-- | Execute a 'Builder' and return the generated chunks as a 'L.LazyByteString'.
+-- The work is performed lazy, i.e., only when a chunk of the 'L.LazyByteString'
+-- is forced.
+{-# NOINLINE toLazyByteString #-} -- ensure code is shared
+toLazyByteString :: Builder -> L.LazyByteString
+toLazyByteString = toLazyByteStringWith
+    (safeStrategy L.smallChunkSize L.defaultChunkSize) L.Empty
+
 -- | /Heavy inlining./ Execute a 'Builder' with custom execution parameters.
 --
 -- This function is inlined despite its heavy code-size to allow fusing with
 -- the allocation strategy. For example, the default 'Builder' execution
--- function 'Data.ByteString.Builder.toLazyByteString' is defined as follows.
+-- function 'Data.ByteString.Builder.Internal.toLazyByteString' is defined as follows.
 --
 -- @
 -- {-\# NOINLINE toLazyByteString \#-}
 -- toLazyByteString =
---   toLazyByteStringWith ('safeStrategy' 'L.smallChunkSize' 'L.defaultChunkSize') L.empty
+--   toLazyByteStringWith ('safeStrategy' 'L.smallChunkSize' 'L.defaultChunkSize') L.Empty
 -- @
 --
--- where @L.empty@ is the zero-length 'L.LazyByteString'.
+-- where @L.Empty@ is the zero-length 'L.LazyByteString'.
 --
 -- In most cases, the parameters used by 'Data.ByteString.Builder.toLazyByteString' give good
 -- performance. A sub-performing case of 'Data.ByteString.Builder.toLazyByteString' is executing short
@@ -1072,7 +1091,7 @@ safeStrategy firstSize bufSize =
 -- 4kb buffer and the trimming cost dominate the cost of executing the
 -- 'Builder'. You can avoid this problem using
 --
--- >toLazyByteStringWith (safeStrategy 128 smallChunkSize) L.empty
+-- >toLazyByteStringWith (safeStrategy 128 smallChunkSize) L.Empty
 --
 -- This reduces the allocation and trimming overhead, as all generated
 -- 'L.LazyByteString's fit into the first buffer and there is no trimming
