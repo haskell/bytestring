@@ -23,11 +23,7 @@ import qualified Data.List                             as List
 import           Control.DeepSeq
 import           Control.Exception
 import           Numeric.IEEE
-import           GHC.Float                             (powerFloat,
-                                                        castWord32ToFloat,
-                                                        castWord64ToDouble,
-                                                        castFloatToWord32,
-                                                        castDoubleToWord64)
+import           System.IO.Unsafe                      (unsafePerformIO)
 
 import qualified Data.ByteString                       as S
 import qualified Data.ByteString.Char8                 as S8
@@ -64,6 +60,17 @@ countToZero :: Int -> Maybe (Int, Int)
 countToZero 0 = Nothing
 countToZero n = Just (n, n - 1)
 
+castWord32ToFloat :: Word32 -> Float
+castWord32ToFloat x = unsafePerformIO (with x (peek . castPtr))
+
+castWord64ToDouble :: Word64 -> Double
+castWord64ToDouble x = unsafePerformIO (with x (peek . castPtr))
+
+castFloatToWord32 :: Float -> Word32
+castFloatToWord32 x = unsafePerformIO (with x (peek . castPtr))
+
+castDoubleToWord64 :: Double -> Word64
+castDoubleToWord64 x = unsafePerformIO (with x (peek . castPtr))
 
 ------------------------------------------------------------------------------
 -- Benchmark
@@ -90,7 +97,7 @@ largeIntegerData = map (* (10 ^ (100 :: Integer))) smallIntegerData
 
 {-# NOINLINE floatPosData #-}
 floatPosData :: [Float]
-floatPosData = map evenlyDistribute intData
+floatPosData = map evenlyDistribute [1..nRepl]
   where
   evenlyDistribute :: Int -> Float
   evenlyDistribute x = castWord32ToFloat $ increment * fromIntegral x
@@ -102,13 +109,13 @@ floatNegData = map negate floatPosData
 
 {-# NOINLINE floatSpecials #-}
 floatSpecials :: [Float]
-floatSpecials = foldMap (const specials) [1..nRepl `div` length specials]
+floatSpecials = take nRepl $ cycle specials
   where
   specials = [nan, infinity, negate infinity, 0 -0]
 
 {-# NOINLINE doublePosData #-}
 doublePosData :: [Double]
-doublePosData = map evenlyDistribute intData
+doublePosData = map evenlyDistribute [1..nRepl]
   where
   evenlyDistribute :: Int -> Double
   evenlyDistribute x = castWord64ToDouble $ increment * fromIntegral x
@@ -120,10 +127,9 @@ doublePosData = map evenlyDistribute intData
 doubleNegData :: [Double]
 doubleNegData = map negate doublePosData
 
--- f is an integer in the range [1, 2^53).
 {-# NOINLINE doublePosSmallData #-}
 doublePosSmallData :: [Double]
-doublePosSmallData = map evenlyDistribute intData
+doublePosSmallData = map evenlyDistribute [1..nRepl]
   where
   evenlyDistribute = assert (increment > 0) $ \x -> castWord64ToDouble $ increment * fromIntegral x + minimum
   increment = (maximum - minimum) `div` fromIntegral nRepl
@@ -136,7 +142,7 @@ doubleNegSmallData = map negate doublePosSmallData
 
 {-# NOINLINE doubleSpecials #-}
 doubleSpecials :: [Double]
-doubleSpecials = foldMap (const specials) [1..nRepl `div` length specials]
+doubleSpecials = take nRepl $ cycle specials
   where
   specials = [nan, infinity, negate infinity, 0 -0]
 
@@ -417,9 +423,9 @@ main = do
               , benchB "DoubleSmall" doublePosSmallData $ foldMap (formatDouble generic)
               ]
             , bgroup "Negative"
-              [ benchB "Float"       floatNegData  $ foldMap (formatFloat  generic)
-              , benchB "Double"      doubleNegData $ foldMap (formatDouble generic)
-              , benchB "DoubleSmall" doubleNegData $ foldMap (formatDouble generic)
+              [ benchB "Float"       floatNegData       $ foldMap (formatFloat  generic)
+              , benchB "Double"      doubleNegData      $ foldMap (formatDouble generic)
+              , benchB "DoubleSmall" doubleNegSmallData $ foldMap (formatDouble generic)
               ]
             , bgroup "Special"
               [ benchB "Float  Average" floatSpecials  $ foldMap (formatFloat  generic)
