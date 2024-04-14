@@ -450,7 +450,7 @@ main = do
                 , benchB "DoubleSmall" doublePosSmallData $ foldMap (formatDouble standardDefaultPrecision)
                 ]
               , bgroup "precision"
-                [ benchB "Float-Preciaion-1"       floatPosData       $ foldMap (formatFloat  (standard 1))
+                [ benchB "Float-Precision-1"       floatPosData       $ foldMap (formatFloat  (standard 1))
                 , benchB "Double-Preciaion-1"      doublePosData      $ foldMap (formatDouble (standard 1))
                 , benchB "DoubleSmall-Preciaion-1" doublePosSmallData $ foldMap (formatDouble (standard 1))
                 , benchB "Float-Preciaion-6"       floatPosData       $ foldMap (formatFloat  (standard 6))
