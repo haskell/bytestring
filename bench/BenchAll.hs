@@ -444,7 +444,7 @@ main = do
             ]
           , bgroup "FStandard"
             [ bgroup "Positive"
-              [ bgroup "without"
+              [ bgroup "default precision"
                 [ benchB "Float"       floatPosData       $ foldMap (formatFloat  standardDefaultPrecision)
                 , benchB "Double"      doublePosData      $ foldMap (formatDouble standardDefaultPrecision)
                 , benchB "DoubleSmall" doublePosSmallData $ foldMap (formatDouble standardDefaultPrecision)
