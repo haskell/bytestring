@@ -459,7 +459,7 @@ main = do
                 ]
               ]
             , bgroup "Negative"
-              [ bgroup "without"
+              [ bgroup "default precision"
                 [ benchB "Float"       floatNegData       $ foldMap (formatFloat  standardDefaultPrecision)
                 , benchB "Double"      doubleNegData      $ foldMap (formatDouble standardDefaultPrecision)
                 , benchB "DoubleSmall" doubleNegSmallData $ foldMap (formatDouble standardDefaultPrecision)
