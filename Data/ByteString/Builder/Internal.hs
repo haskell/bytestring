@@ -99,6 +99,7 @@ module Data.ByteString.Builder.Internal (
   , lazyByteString
 
   -- ** Execution
+  , toLazyByteString
   , toLazyByteStringWith
   , AllocationStrategy
   , safeStrategy
@@ -413,6 +414,12 @@ instance Monoid Builder where
   mappend = (<>)
   {-# INLINE mconcat #-}
   mconcat = foldr mappend mempty
+
+instance Eq Builder where
+  x == y = toLazyByteString x == toLazyByteString y
+
+instance Ord Builder where
+  compare x y = compare (toLazyByteString x) (toLazyByteString y)
 
 -- | Flush the current buffer. This introduces a chunk boundary.
 {-# INLINE flush #-}
@@ -1039,6 +1046,14 @@ safeStrategy firstSize bufSize =
     {-# INLINE nextBuffer #-}
     nextBuffer Nothing             = newBuffer $ sanitize firstSize
     nextBuffer (Just (_, minSize)) = newBuffer minSize
+
+-- | Execute a 'Builder' and return the generated chunks as a 'L.LazyByteString'.
+-- The work is performed lazy, i.e., only when a chunk of the 'L.LazyByteString'
+-- is forced.
+{-# NOINLINE toLazyByteString #-} -- ensure code is shared
+toLazyByteString :: Builder -> L.LazyByteString
+toLazyByteString = toLazyByteStringWith
+    (safeStrategy L.smallChunkSize L.defaultChunkSize) L.Empty
 
 -- | /Heavy inlining./ Execute a 'Builder' with custom execution parameters.
 --
