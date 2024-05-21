@@ -95,17 +95,22 @@ smallIntegerData = map fromIntegral intData
 largeIntegerData :: [Integer]
 largeIntegerData = map (* (10 ^ (100 :: Integer))) smallIntegerData
 
-{-# NOINLINE floatPosData #-}
-floatPosData :: [Float]
-floatPosData = map evenlyDistribute [1..nRepl]
+{-# NOINLINE floatSubnormalData #-}
+floatSubnormalData :: [Float]
+floatSubnormalData = assert (increment > 0) $ map evenlyDistribute [1..nRepl]
   where
-  evenlyDistribute :: Int -> Float
   evenlyDistribute x = castWord32ToFloat $ increment * fromIntegral x
-  increment = castFloatToWord32 maxFinite `div` fromIntegral nRepl
+  increment = castFloatToWord32 maxSubnormal `div` fromIntegral nRepl
+  maxSubnormal = predIEEE minNormal
 
-{-# NOINLINE floatNegData #-}
-floatNegData :: [Float]
-floatNegData = map negate floatPosData
+{-# NOINLINE floatNormalData #-}
+floatNormalData :: [Float]
+floatNormalData = assert (increment > 0) $ map evenlyDistribute [0..nRepl]
+  where
+  evenlyDistribute x = castWord32ToFloat $ increment * fromIntegral x + minimum
+  increment = (maximum - minimum) `div` fromIntegral nRepl
+  minimum = castFloatToWord32 minNormal
+  maximum = castFloatToWord32 maxFinite
 
 {-# NOINLINE floatSpecials #-}
 floatSpecials :: [Float]
@@ -113,32 +118,31 @@ floatSpecials = take nRepl $ cycle specials
   where
   specials = [nan, infinity, negate infinity, 0 -0]
 
-{-# NOINLINE doublePosData #-}
-doublePosData :: [Double]
-doublePosData = map evenlyDistribute [1..nRepl]
+{-# NOINLINE doubleSubnormalData #-}
+doubleSubnormalData :: [Double]
+doubleSubnormalData = assert (increment > 0) $ map evenlyDistribute [1..nRepl]
   where
-  evenlyDistribute :: Int -> Double
   evenlyDistribute x = castWord64ToDouble $ increment * fromIntegral x
-  increment = (maximum - minimum) `div` fromIntegral nRepl
-  minimum = castDoubleToWord64 $ succIEEE $ 2 ^ 53
-  maximum = castDoubleToWord64 maxFinite 
+  increment = castDoubleToWord64 maxSubnormal `div` fromIntegral nRepl
+  maxSubnormal = predIEEE minNormal
 
-{-# NOINLINE doubleNegData #-}
-doubleNegData :: [Double]
-doubleNegData = map negate doublePosData
-
-{-# NOINLINE doublePosSmallData #-}
-doublePosSmallData :: [Double]
-doublePosSmallData = map evenlyDistribute [1..nRepl]
+{-# NOINLINE doubleSmallData #-}
+doubleSmallData :: [Double]
+doubleSmallData = assert (increment > 0) $ map evenlyDistribute [1..nRepl]
   where
-  evenlyDistribute = assert (increment > 0) $ \x -> castWord64ToDouble $ increment * fromIntegral x + minimum
+  evenlyDistribute x = castWord64ToDouble $ increment * fromIntegral x + minimum
   increment = (maximum - minimum) `div` fromIntegral nRepl
   minimum = castDoubleToWord64 1.0
   maximum = castDoubleToWord64 $ 2 ^ 53
 
-{-# NOINLINE doubleNegSmallData #-}
-doubleNegSmallData :: [Double]
-doubleNegSmallData = map negate doublePosSmallData
+{-# NOINLINE doubleBigData #-}
+doubleBigData :: [Double]
+doubleBigData = assert (increment > 0) $ map evenlyDistribute [1..nRepl]
+  where
+  evenlyDistribute x = castWord64ToDouble $ increment * fromIntegral x + minimum
+  increment = (maximum - minimum) `div` fromIntegral nRepl
+  minimum = castDoubleToWord64 $ 2 ^ 53
+  maximum = castDoubleToWord64 maxFinite
 
 {-# NOINLINE doubleSpecials #-}
 doubleSpecials :: [Double]
@@ -416,69 +420,11 @@ main = do
         , benchB "foldMap integerDec (small)"                     smallIntegerData        $ foldMap integerDec
         , benchB "foldMap integerDec (large)"                     largeIntegerData        $ foldMap integerDec
         , bgroup "RealFloat"
-          [ bgroup "FGeneric"
-            [ bgroup "Positive"
-              [ benchB "Float"       floatPosData       $ foldMap (formatFloat  generic)
-              , benchB "Double"      doublePosData      $ foldMap (formatDouble generic)
-              , benchB "DoubleSmall" doublePosSmallData $ foldMap (formatDouble generic)
-              ]
-            , bgroup "Negative"
-              [ benchB "Float"       floatNegData       $ foldMap (formatFloat  generic)
-              , benchB "Double"      doubleNegData      $ foldMap (formatDouble generic)
-              , benchB "DoubleSmall" doubleNegSmallData $ foldMap (formatDouble generic)
-              ]
-            , bgroup "Special"
-              [ benchB "Float  Average" floatSpecials  $ foldMap (formatFloat  generic)
-              , benchB "Double Average" doubleSpecials $ foldMap (formatDouble generic)
-              ]
-            ]
-          , bgroup "FScientific"
-            [ bgroup "Positive"
-              [ benchB "Float"       floatPosData       $ foldMap (formatFloat  scientific)
-              , benchB "Double"      doublePosData      $ foldMap (formatDouble scientific)
-              , benchB "DoubleSmall" doublePosSmallData $ foldMap (formatDouble scientific)
-              ]
-            , bgroup "Negative"
-              [ benchB "Float"       floatNegData       $ foldMap (formatFloat  scientific)
-              , benchB "Double"      doubleNegData      $ foldMap (formatDouble scientific)
-              , benchB "DoubleSmall" doubleNegSmallData $ foldMap (formatDouble scientific)
-              ]
-            , bgroup "Special"
-              [ benchB "Float  Average" floatSpecials  $ foldMap (formatFloat  scientific)
-              , benchB "Double Average" doubleSpecials $ foldMap (formatDouble scientific)
-              ]
-            ]
+          [ bgroup "FGeneric" $ subAndNormalBench generic
+          , bgroup "FScientific"$ subAndNormalBench scientific
           , bgroup "FStandard"
-            [ bgroup "Positive"
-              [ bgroup "default precision"
-                [ benchB "Float"       floatPosData       $ foldMap (formatFloat  standardDefaultPrecision)
-                , benchB "Double"      doublePosData      $ foldMap (formatDouble standardDefaultPrecision)
-                , benchB "DoubleSmall" doublePosSmallData $ foldMap (formatDouble standardDefaultPrecision)
-                ]
-              , bgroup "precision"
-                [ benchB "Float-Precision-1"       floatPosData       $ foldMap (formatFloat  (standard 1))
-                , benchB "Double-Precision-1"      doublePosData      $ foldMap (formatDouble (standard 1))
-                , benchB "DoubleSmall-Precision-1" doublePosSmallData $ foldMap (formatDouble (standard 1))
-                , benchB "Float-Precision-6"       floatPosData       $ foldMap (formatFloat  (standard 6))
-                , benchB "Double-Precision-6"      doublePosData      $ foldMap (formatDouble (standard 6))
-                , benchB "DoubleSmall-Precision-6" doublePosSmallData $ foldMap (formatDouble (standard 6))
-                ]
-              ]
-            , bgroup "Negative"
-              [ bgroup "default precision"
-                [ benchB "Float"       floatNegData       $ foldMap (formatFloat  standardDefaultPrecision)
-                , benchB "Double"      doubleNegData      $ foldMap (formatDouble standardDefaultPrecision)
-                , benchB "DoubleSmall" doubleNegSmallData $ foldMap (formatDouble standardDefaultPrecision)
-                ]
-              , bgroup "precision"
-                [ benchB "Float-Precision-1"       floatNegData       $ foldMap (formatFloat  (standard 1))
-                , benchB "Double-Precision-1"      doubleNegData      $ foldMap (formatDouble (standard 1))
-                , benchB "DoubleSmall-Precision-1" doubleNegSmallData $ foldMap (formatDouble (standard 1))
-                , benchB "Float-Precision-6"       floatNegData       $ foldMap (formatFloat  (standard 6))
-                , benchB "Double-Precision-6"      doubleNegData      $ foldMap (formatDouble (standard 6))
-                , benchB "DoubleSmall-Precision-6" doubleNegSmallData $ foldMap (formatDouble (standard 6))
-                ]
-              ]
+            [ bgroup "Positive" $ fixedPrecision id id
+            , bgroup "Negative" $ fixedPrecision negate negate
             , bgroup "Special"
               [ benchB "Float  Average" floatSpecials  $ foldMap (formatFloat  standardDefaultPrecision)
               , benchB "Double Average" doubleSpecials $ foldMap (formatDouble standardDefaultPrecision)
@@ -707,3 +653,44 @@ main = do
     , benchReadInt
     , benchShort
     ]
+
+subAndNormalBench format =
+  [ bgroup "Positive" $ benchs id id
+  , bgroup "Negative" $ benchs negate negate
+  , bgroup "Special"
+    [ benchB "Float  Average" floatSpecials  $ foldMap (formatFloat  format)
+    , benchB "Double Average" doubleSpecials $ foldMap (formatDouble format)
+    ]
+  ]
+  where
+  benchs f d = 
+    [ bgroup "Float"
+      [ benchB "Subnormal" (map f floatSubnormalData)  $ foldMap $ formatFloat  format
+      , benchB "Normal"    (map f floatNormalData)     $ foldMap $ formatFloat  format
+      ]
+    , bgroup "Double"
+      [ benchB "Subnormal" (map d doubleSubnormalData) $ foldMap $ formatDouble format
+      , benchB "Small"     (map d doubleSmallData)     $ foldMap $ formatDouble format
+      , benchB "Big"       (map d doubleBigData)       $ foldMap $ formatDouble format
+      ]
+    ]
+
+fixedPrecision f d =
+  [ bgroup "default precision"
+    [ bgroup "Float"
+      [ benchB "Subnormal" (map f floatSubnormalData) $ foldMap $ formatFloat standardDefaultPrecision
+      , benchB "Normal"    (map f floatNormalData)    $ foldMap $ formatFloat standardDefaultPrecision
+      ]
+    , bgroup "Double"
+      [ benchB "Subnormal" (map d doubleSubnormalData) $ foldMap $ formatDouble standardDefaultPrecision
+      , benchB "Small"     (map d doubleSmallData)     $ foldMap $ formatDouble standardDefaultPrecision
+      , benchB "Big"       (map d doubleBigData)       $ foldMap $ formatDouble standardDefaultPrecision
+      ]
+    ]
+  , bgroup "precision"
+    [ benchB "Float-Precision-1"  (map f floatNormalData) $ foldMap $ formatFloat  $ standard 1
+    , benchB "Double-Precision-1" (map d doubleSmallData) $ foldMap $ formatDouble $ standard 1
+    , benchB "Float-Precision-6"  (map f floatNormalData) $ foldMap $ formatFloat  $ standard 6
+    , benchB "Double-Precision-6" (map d doubleSmallData) $ foldMap $ formatDouble $ standard 6
+    ]
+  ]
