@@ -750,7 +750,7 @@ testsFloating = testGroup "RealFloat"
           [ ( 1.0    , "1.0" )
           , ( (-1.0) , "-1.0" )
           ]
-    , testMatches "f2sNonNumbersAndZero" doubleDec show
+    , testMatches "d2sNonNumbersAndZero" doubleDec show
           [ ( 0.0    , "0.0" )
           , ( (-0.0) , "-0.0" )
           , ( (0/0)  , "NaN" )
