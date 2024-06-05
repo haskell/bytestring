@@ -81,7 +81,7 @@ castDoubleToWord64 x = unsafePerformIO (with x (peek . castPtr))
 
 -- | Few-enough repetitions to avoid making GC too expensive.
 nRepl :: Int
-nRepl = 100000
+nRepl = 10000
 
 {-# NOINLINE intData #-}
 intData :: [Int]
