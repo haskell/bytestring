@@ -7,7 +7,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TypeFamilies             #-}
 {-# LANGUAGE UnliftedFFITypes         #-}
-{-# LANGUAGE ViewPatterns             #-}
 
 #include "bytestring-cpp-macros.h"
 
@@ -184,12 +183,6 @@ import Foreign.C.String
   ( CString
   , CStringLen
   )
-#if !HS_compareByteArrays_PRIMOP_AVAILABLE && !PURE_HASKELL
-import Foreign.C.Types
-  ( CSize(..)
-  , CInt(..)
-  )
-#endif
 import Foreign.Marshal.Alloc
   ( allocaBytes )
 import Foreign.Storable
@@ -202,13 +195,9 @@ import GHC.Exts
   , byteArrayContents#
   , unsafeCoerce#
   , copyMutableByteArray#
-#if HS_isByteArrayPinned_PRIMOP_AVAILABLE
   , isByteArrayPinned#
   , isTrue#
-#endif
-#if HS_compareByteArrays_PRIMOP_AVAILABLE
   , compareByteArrays#
-#endif
   , sizeofByteArray#
   , indexWord8Array#, indexCharArray#
   , writeWord8Array#
@@ -277,11 +266,7 @@ newtype ShortByteString =
 -- but now it is a bundled pattern synonym, provided as a compatibility shim.
 pattern SBS :: ByteArray# -> ShortByteString
 pattern SBS x = ShortByteString (ByteArray x)
-#if __GLASGOW_HASKELL__ >= 802
 {-# COMPLETE SBS #-}
--- To avoid spurious warnings from CI with ghc-8.0, we internally
--- use view patterns like (unSBS -> ba#) instead of using (SBS ba#)
-#endif
 
 -- | Lexicographic order.
 instance Ord ShortByteString where
@@ -331,7 +316,7 @@ empty = create 0 (\_ -> return ())
 
 -- | /O(1)/ The length of a 'ShortByteString'.
 length :: ShortByteString -> Int
-length (unSBS -> barr#) = I# (sizeofByteArray# barr#)
+length (SBS barr#) = I# (sizeofByteArray# barr#)
 
 -- | /O(1)/ Test whether a 'ShortByteString' is empty.
 null :: ShortByteString -> Bool
@@ -379,9 +364,6 @@ indexError sbs i =
 
 asBA :: ShortByteString -> ByteArray
 asBA (ShortByteString ba) = ba
-
-unSBS :: ShortByteString -> ByteArray#
-unSBS (ShortByteString (ByteArray ba#)) = ba#
 
 create :: Int -> (forall s. MutableByteArray s -> ST s ()) -> ShortByteString
 create len fill =
@@ -449,11 +431,7 @@ createAndTrim2 maxLen1 maxLen2 fill =
 {-# INLINE createAndTrim2 #-}
 
 isPinned :: ByteArray# -> Bool
-#if HS_isByteArrayPinned_PRIMOP_AVAILABLE
 isPinned ba# = isTrue# (isByteArrayPinned# ba#)
-#else
-isPinned _ = False
-#endif
 
 ------------------------------------------------------------------------
 -- Conversion to and from ByteString
@@ -475,7 +453,7 @@ toShortIO (BS fptr len) = do
 -- | /O(n)/. Convert a 'ShortByteString' into a 'ByteString'.
 --
 fromShort :: ShortByteString -> ByteString
-fromShort sbs@(unSBS -> b#)
+fromShort sbs@(SBS b#)
   | isPinned b# = BS inPlaceFp len
   | otherwise = BS.unsafeCreateFp len $ \fp ->
       BS.unsafeWithForeignPtr fp $ \p -> copyToPtr sbs 0 p len
@@ -1492,7 +1470,7 @@ partition k = \sbs -> let len = length sbs
 --
 -- @since 0.11.3.0
 elemIndex :: Word8 -> ShortByteString -> Maybe Int
-elemIndex c = \sbs@(unSBS -> ba#) -> do
+elemIndex c = \sbs@(SBS ba#) -> do
     let l = length sbs
     accursedUnutterablePerformIO $ do
       !s <- c_elem_index ba# c (fromIntegral l)
@@ -1510,7 +1488,7 @@ elemIndices k = findIndices (==k)
 --
 -- @since 0.11.3.0
 count :: Word8 -> ShortByteString -> Int
-count w = \sbs@(unSBS -> ba#) -> accursedUnutterablePerformIO $
+count w = \sbs@(SBS ba#) -> accursedUnutterablePerformIO $
     fromIntegral <$> BS.c_count_ba ba# (fromIntegral $ length sbs) w
 
 -- | /O(n)/ The 'findIndex' function takes a predicate and a 'ShortByteString' and
@@ -1641,24 +1619,8 @@ compareByteArraysOff :: ByteArray  -- ^ array 1
                      -> Int -- ^ offset for array 2
                      -> Int -- ^ length to compare
                      -> Int -- ^ like memcmp
-#if HS_compareByteArrays_PRIMOP_AVAILABLE
 compareByteArraysOff (ByteArray ba1#) (I# ba1off#) (ByteArray ba2#) (I# ba2off#) (I# len#) =
   I# (compareByteArrays#  ba1# ba1off# ba2# ba2off# len#)
-#else
-compareByteArraysOff (ByteArray ba1#) ba1off (ByteArray ba2#) ba2off len =
-  assert (ba1off + len <= (I# (sizeofByteArray# ba1#)))
-  $ assert (ba2off + len <= (I# (sizeofByteArray# ba2#)))
-  $ fromIntegral $ accursedUnutterablePerformIO $
-    c_memcmp_ByteArray ba1#
-                       ba1off
-                       ba2#
-                       ba2off
-                       (fromIntegral len)
-
-
-foreign import ccall unsafe "static sbs_memcmp_off"
-  c_memcmp_ByteArray :: ByteArray# -> Int -> ByteArray# -> Int -> CSize -> IO CInt
-#endif
 
 ------------------------------------------------------------------------
 -- Primop replacements
@@ -1738,7 +1700,7 @@ useAsCStringLen sbs action =
 --
 -- @since 0.11.3.0
 isValidUtf8 :: ShortByteString -> Bool
-isValidUtf8 sbs@(unSBS -> ba#) = accursedUnutterablePerformIO $ do
+isValidUtf8 sbs@(SBS ba#) = accursedUnutterablePerformIO $ do
   let n = length sbs
   -- Use a safe FFI call for large inputs to avoid GC synchronization pauses
   -- in multithreaded contexts.

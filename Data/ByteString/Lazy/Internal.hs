@@ -53,11 +53,7 @@ import qualified Data.ByteString.Internal.Type as S
 import Data.Word (Word8)
 import Foreign.Storable (Storable(sizeOf))
 
-#if MIN_VERSION_base(4,13,0)
-import Data.Semigroup   (Semigroup (sconcat, stimes))
-#else
-import Data.Semigroup   (Semigroup ((<>), sconcat, stimes))
-#endif
+import Data.Semigroup   (Semigroup (..))
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Control.DeepSeq  (NFData, rnf)
 

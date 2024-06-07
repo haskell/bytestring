@@ -47,7 +47,6 @@ module Data.ByteString.Unsafe (
 import Data.ByteString.Internal
 
 import Foreign.ForeignPtr       (newForeignPtr_, newForeignPtr, withForeignPtr)
-import Foreign.Ptr              (Ptr, castPtr)
 
 import Foreign.Storable         (Storable(..))
 import Foreign.C.String         (CString, CStringLen)
@@ -59,8 +58,8 @@ import Data.Word                (Word8)
 import qualified Foreign.ForeignPtr as FC (finalizeForeignPtr)
 import qualified Foreign.Concurrent as FC (newForeignPtr)
 
-import GHC.Prim                 (Addr#)
-import GHC.Ptr                  (Ptr(..))
+import GHC.Exts                 (Addr#)
+import GHC.Ptr                  (Ptr(..), castPtr)
 
 -- ---------------------------------------------------------------------
 --
