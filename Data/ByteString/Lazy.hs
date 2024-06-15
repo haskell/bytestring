@@ -989,7 +989,7 @@ break f = break'
 -- | Returns the longest (possibly empty) suffix of elements which __do not__
 -- satisfy the predicate and the remainder of the string.
 --
--- 'breakEnd' @p@ is equivalent to @'spanEnd' (not . p)@ and to @('takeWhileEnd' (not . p) &&& 'dropWhileEnd' (not . p))@.
+-- 'breakEnd' @p@ is equivalent to @'spanEnd' (not . p)@ and to @('dropWhileEnd' (not . p) &&& 'takeWhileEnd' (not . p))@.
 --
 -- @since 0.11.2.0
 breakEnd :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
@@ -1059,7 +1059,7 @@ span p = break (not . p)
 -- | Returns the longest (possibly empty) suffix of elements
 -- satisfying the predicate and the remainder of the string.
 --
--- 'spanEnd' @p@ is equivalent to @'breakEnd' (not . p)@ and to @('takeWhileEnd' p &&& 'dropWhileEnd' p)@.
+-- 'spanEnd' @p@ is equivalent to @'breakEnd' (not . p)@ and to @('dropWhileEnd' p &&& 'takeWhileEnd' p)@.
 --
 -- We have
 --
