@@ -15,8 +15,8 @@ of `ByteString` values from smaller pieces during binary serialization.
 
 Requirements:
 
-  * Cabal 1.10 or greater
-  * GHC 8.0 or greater
+  * Cabal 2.2 or greater
+  * GHC 8.4 or greater
 
 ### Authors
 

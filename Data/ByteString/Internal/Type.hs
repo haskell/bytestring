@@ -8,6 +8,8 @@
 {-# LANGUAGE UnliftedFFITypes #-}
 {-# LANGUAGE ViewPatterns #-}
 
+#include "bytestring-cpp-macros.h"
+
 -- |
 -- Module      : Data.ByteString.Internal.Type
 -- Copyright   : (c) Don Stewart 2006-2008
@@ -143,10 +145,7 @@ import Data.Maybe               (fromMaybe)
 import Control.Monad            ((<$!>))
 #endif
 
-#if !MIN_VERSION_base(4,13,0)
-import Data.Semigroup           (Semigroup ((<>)))
-#endif
-import Data.Semigroup           (Semigroup (sconcat, stimes))
+import Data.Semigroup           (Semigroup (..))
 import Data.List.NonEmpty       (NonEmpty ((:|)))
 
 import Control.DeepSeq          (NFData(rnf))
@@ -161,16 +160,13 @@ import Data.Word
 
 import Data.Data                (Data(..), mkConstr, mkNoRepType, Constr, DataType, Fixity(Prefix), constrIndex)
 
-import GHC.Base                 (nullAddr#,realWorld#,unsafeChr)
-import GHC.Exts                 (IsList(..), Addr#, minusAddr#, ByteArray#)
-import GHC.CString              (unpackCString#)
-import GHC.Magic                (runRW#, lazy)
+import GHC.Base                 (nullAddr#,realWorld#,unsafeChr,unpackCString#)
+import GHC.Exts                 (IsList(..), Addr#, minusAddr#, ByteArray#, runRW#, lazy)
 
-#define TIMES_INT_2_AVAILABLE MIN_VERSION_ghc_prim(0,7,0)
-#if TIMES_INT_2_AVAILABLE
-import GHC.Prim                (timesInt2#)
+#if HS_timesInt2_PRIMOP_AVAILABLE
+import GHC.Exts                (timesInt2#)
 #else
-import GHC.Prim                ( timesWord2#
+import GHC.Exts                ( timesWord2#
                                , or#
                                , uncheckedShiftRL#
                                , int2Word#
@@ -181,59 +177,36 @@ import Data.Bits               (finiteBitSize)
 
 import GHC.IO                   (IO(IO))
 import GHC.ForeignPtr           (ForeignPtr(ForeignPtr)
-#if __GLASGOW_HASKELL__ < 900
+#if !HS_cstringLength_AND_FinalPtr_AVAILABLE
                                 , newForeignPtr_
 #endif
                                 , mallocPlainForeignPtrBytes)
 
-#if MIN_VERSION_base(4,10,0)
 import GHC.ForeignPtr           (plusForeignPtr)
-#else
-import GHC.Prim                 (plusAddr#)
-#endif
 
-#if __GLASGOW_HASKELL__ >= 811
-import GHC.CString              (cstringLength#)
+#if HS_cstringLength_AND_FinalPtr_AVAILABLE
+import GHC.Exts                 (cstringLength#)
 import GHC.ForeignPtr           (ForeignPtrContents(FinalPtr))
 #else
 import GHC.Ptr                  (Ptr(..))
 #endif
 
-import GHC.Types                (Int (..))
+import GHC.Int                  (Int (..))
 
-#if MIN_VERSION_base(4,15,0)
+#if HS_unsafeWithForeignPtr_AVAILABLE
 import GHC.ForeignPtr           (unsafeWithForeignPtr)
 #endif
 
 import qualified Language.Haskell.TH.Lib as TH
 import qualified Language.Haskell.TH.Syntax as TH
 
-#if !MIN_VERSION_base(4,15,0)
+#if !HS_unsafeWithForeignPtr_AVAILABLE
 unsafeWithForeignPtr :: ForeignPtr a -> (Ptr a -> IO b) -> IO b
 unsafeWithForeignPtr = withForeignPtr
 #endif
 
 -- CFILES stuff is Hugs only
 {-# CFILES cbits/fpstring.c #-}
-
-#if !MIN_VERSION_base(4,10,0)
--- |Advances the given address by the given offset in bytes.
---
--- The new 'ForeignPtr' shares the finalizer of the original,
--- equivalent from a finalization standpoint to just creating another
--- reference to the original. That is, the finalizer will not be
--- called before the new 'ForeignPtr' is unreachable, nor will it be
--- called an additional time due to this call, and the finalizer will
--- be called with the same address that it would have had this call
--- not happened, *not* the new address.
-plusForeignPtr :: ForeignPtr a -> Int -> ForeignPtr b
-plusForeignPtr (ForeignPtr addr guts) (I# offset) = ForeignPtr (plusAddr# addr offset) guts
-{-# INLINE [0] plusForeignPtr #-}
-{-# RULES
-"ByteString plusForeignPtr/0" forall fp .
-   plusForeignPtr fp 0 = fp
- #-}
-#endif
 
 minusForeignPtr :: ForeignPtr a -> ForeignPtr b -> Int
 minusForeignPtr (ForeignPtr addr1 _) (ForeignPtr addr2 _)
@@ -332,9 +305,7 @@ type StrictByteString = ByteString
 pattern PS :: ForeignPtr Word8 -> Int -> Int -> ByteString
 pattern PS fp zero len <- BS fp ((0,) -> (zero, len)) where
   PS fp o len = BS (plusForeignPtr fp o) len
-#if __GLASGOW_HASKELL__ >= 802
 {-# COMPLETE PS #-}
-#endif
 
 instance Eq  ByteString where
     (==)    = eq
@@ -391,6 +362,7 @@ byteStringDataType = mkNoRepType "Data.ByteString.ByteString"
 -- | @since 0.11.2.0
 instance TH.Lift ByteString where
 #if MIN_VERSION_template_haskell(2,16,0)
+-- template-haskell-2.16 first ships with ghc-8.10
   lift (BS ptr len) = [| unsafePackLenLiteral |]
     `TH.appE` TH.litE (TH.integerL (fromIntegral len))
     `TH.appE` TH.litE (TH.BytesPrimL $ TH.Bytes ptr 0 (fromIntegral len))
@@ -401,8 +373,10 @@ instance TH.Lift ByteString where
 #endif
 
 #if MIN_VERSION_template_haskell(2,17,0)
+-- template-haskell-2.17 first ships with ghc-9.0
   liftTyped = TH.unsafeCodeCoerce . TH.lift
 #elif MIN_VERSION_template_haskell(2,16,0)
+-- template-haskell-2.16 first ships with ghc-8.10
   liftTyped = TH.unsafeTExpCoerce . TH.lift
 #endif
 
@@ -478,7 +452,7 @@ unsafePackLenChars len cs0 =
 --
 unsafePackAddress :: Addr# -> IO ByteString
 unsafePackAddress addr# = do
-#if __GLASGOW_HASKELL__ >= 811
+#if HS_cstringLength_AND_FinalPtr_AVAILABLE
     unsafePackLenAddress (I# (cstringLength# addr#)) addr#
 #else
     l <- c_strlen (Ptr addr#)
@@ -494,7 +468,7 @@ unsafePackAddress addr# = do
 -- @since 0.11.2.0
 unsafePackLenAddress :: Int -> Addr# -> IO ByteString
 unsafePackLenAddress len addr# = do
-#if __GLASGOW_HASKELL__ >= 811
+#if HS_cstringLength_AND_FinalPtr_AVAILABLE
     return (BS (ForeignPtr addr# FinalPtr) len)
 #else
     p <- newForeignPtr_ (Ptr addr#)
@@ -511,7 +485,7 @@ unsafePackLenAddress len addr# = do
 -- @since 0.11.1.0
 unsafePackLiteral :: Addr# -> ByteString
 unsafePackLiteral addr# =
-#if __GLASGOW_HASKELL__ >= 811
+#if HS_cstringLength_AND_FinalPtr_AVAILABLE
   unsafePackLenLiteral (I# (cstringLength# addr#)) addr#
 #else
   let len = accursedUnutterablePerformIO (c_strlen (Ptr addr#))
@@ -528,7 +502,7 @@ unsafePackLiteral addr# =
 -- @since 0.11.2.0
 unsafePackLenLiteral :: Int -> Addr# -> ByteString
 unsafePackLenLiteral len addr# =
-#if __GLASGOW_HASKELL__ >= 811
+#if HS_cstringLength_AND_FinalPtr_AVAILABLE
   BS (ForeignPtr addr# FinalPtr) len
 #else
   -- newForeignPtr_ allocates a MutVar# internally. If that MutVar#
@@ -621,7 +595,7 @@ unpackAppendCharsStrict (BS fp len) xs =
 
 -- | The 0 pointer. Used to indicate the empty Bytestring.
 nullForeignPtr :: ForeignPtr Word8
-#if __GLASGOW_HASKELL__ >= 811
+#if HS_cstringLength_AND_FinalPtr_AVAILABLE
 nullForeignPtr = ForeignPtr nullAddr# FinalPtr
 #else
 nullForeignPtr = ForeignPtr nullAddr# (error "nullForeignPtr")
@@ -1039,7 +1013,7 @@ checkedAdd fun x y
 checkedMultiply :: String -> Int -> Int -> Int
 {-# INLINE checkedMultiply #-}
 checkedMultiply fun !x@(I# x#) !y@(I# y#) = assert (min x y >= 0) $
-#if TIMES_INT_2_AVAILABLE
+#if HS_timesInt2_PRIMOP_AVAILABLE
   case timesInt2# x# y# of
     (# 0#, _, result #) -> I# result
     _ -> overflowError fun

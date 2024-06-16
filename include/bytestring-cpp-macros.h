@@ -26,7 +26,7 @@ which are known not to trap (either to the kernel for emulation, or crash).
   MIN_VERSION_base(4,12,0) \
   && (MIN_VERSION_base(4,16,1) || HS_UNALIGNED_POKES_OK)
 /*
-The unaligned ByteArray# primops became available with base-4.12.0,
+The unaligned ByteArray# primops became available with base-4.12.0/ghc-8.6,
 but require an unaligned-friendly host architecture to be safe to use
 until ghc-9.2.2; see https://gitlab.haskell.org/ghc/ghc/-/issues/21015
 */
@@ -41,5 +41,10 @@ are buggy with negative floats before ghc-8.10.
 
 #define HS_UNALIGNED_ADDR_PRIMOPS_AVAILABLE MIN_VERSION_base(4,20,0)
 
-#define HS_isByteArrayPinned_PRIMOP_AVAILABLE MIN_VERSION_base(4,10,0)
-#define HS_compareByteArrays_PRIMOP_AVAILABLE MIN_VERSION_base(4,11,0)
+#define HS_timesInt2_PRIMOP_AVAILABLE MIN_VERSION_base(4,15,0)
+
+#define HS_cstringLength_AND_FinalPtr_AVAILABLE MIN_VERSION_base(4,15,0)
+  /* These two were added in the same ghc commit and
+     both primarily affect how we handle literals */
+
+#define HS_unsafeWithForeignPtr_AVAILABLE MIN_VERSION_base(4,15,0)
