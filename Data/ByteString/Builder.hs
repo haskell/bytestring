@@ -171,6 +171,7 @@ module Data.ByteString.Builder
     (
       -- * The Builder type
       Builder
+    , ByteStringBuilder
 
       -- * Executing Builders
       -- | Internally, 'Builder's are buffer-filling functions. They are
@@ -264,6 +265,8 @@ import           System.IO (Handle, IOMode(..), withBinaryFile)
 import           Foreign
 import           GHC.Base (unpackCString#, unpackCStringUtf8#,
                            unpackFoldrCString#, build)
+
+type ByteStringBuilder = Builder
 
 -- | Execute a 'Builder' and return the generated chunks as a 'L.LazyByteString'.
 -- The work is performed lazy, i.e., only when a chunk of the 'L.LazyByteString'
