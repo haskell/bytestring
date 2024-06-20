@@ -1072,7 +1072,7 @@ breakByte c p = case elemIndex c p of
 -- | Returns the longest (possibly empty) suffix of elements which __do not__
 -- satisfy the predicate and the remainder of the string.
 --
--- 'breakEnd' @p@ is equivalent to @'spanEnd' (not . p)@ and to @('takeWhileEnd' (not . p) &&& 'dropWhileEnd' (not . p))@.
+-- 'breakEnd' @p@ is equivalent to @'spanEnd' (not . p)@ and to @('dropWhileEnd' (not . p) &&& 'takeWhileEnd' (not . p))@.
 --
 breakEnd :: (Word8 -> Bool) -> ByteString -> (ByteString, ByteString)
 breakEnd  p ps = splitAt (findFromEndUntil p ps) ps
@@ -1117,7 +1117,7 @@ spanByte c ps@(BS x l) =
 -- | Returns the longest (possibly empty) suffix of elements
 -- satisfying the predicate and the remainder of the string.
 --
--- 'spanEnd' @p@ is equivalent to @'breakEnd' (not . p)@ and to @('takeWhileEnd' p &&& 'dropWhileEnd' p)@.
+-- 'spanEnd' @p@ is equivalent to @'breakEnd' (not . p)@ and to @('dropWhileEnd' p &&& 'takeWhileEnd' p)@.
 --
 -- We have
 --
