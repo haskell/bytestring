@@ -7,6 +7,7 @@ module QuickCheckUtils
   , CByteString(..)
   , Sqrt(..)
   , int64OK
+  , tooStrictErr
   ) where
 
 import Test.Tasty.QuickCheck
@@ -19,6 +20,7 @@ import Data.Int
 import System.IO
 import Foreign.C (CChar)
 import GHC.TypeLits (TypeError, ErrorMessage(..))
+import GHC.Stack (withFrozenCallStack, HasCallStack)
 
 import qualified Data.ByteString.Short as SB
 import qualified Data.ByteString      as P
@@ -134,3 +136,7 @@ instance {-# OVERLAPPING #-}
 -- defined in "QuickCheckUtils".
 int64OK :: (Arbitrary a, Show a, Testable b) => (a -> b) -> Property
 int64OK f = propertyForAllShrinkShow arbitrary shrink (\v -> [show v]) f
+
+tooStrictErr :: forall a. HasCallStack => a
+tooStrictErr = withFrozenCallStack $
+  error "A lazy sub-expression was unexpectedly evaluated"

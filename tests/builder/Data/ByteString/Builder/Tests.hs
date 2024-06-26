@@ -18,7 +18,7 @@ import           Control.Monad.Trans.State (StateT, evalStateT, evalState, put, 
 import           Control.Monad.Trans.Class (lift)
 import           Control.Monad.Trans.Writer (WriterT, execWriterT, tell)
 
-import           Foreign (minusPtr)
+import           Foreign (minusPtr, castPtr, ForeignPtr, withForeignPtr, Int64)
 
 import           Data.Char (chr)
 import           Data.Bits ((.|.), shiftL)
@@ -40,7 +40,6 @@ import           Data.ByteString.Builder.Prim.TestUtils
 
 import           Control.Exception (evaluate)
 import           System.IO (openTempFile, hPutStr, hClose, hSetBinaryMode, hSetEncoding, utf8, hSetNewlineMode, noNewlineTranslation)
-import           Foreign (ForeignPtr, withForeignPtr, castPtr)
 import           Foreign.C.String (withCString)
 import           Numeric (showFFloat)
 import           System.Posix.Internals (c_unlink)
@@ -50,7 +49,8 @@ import           Test.Tasty.QuickCheck
                    ( Arbitrary(..), oneof, choose, listOf, elements
                    , counterexample, ioProperty, Property, testProperty
                    , (===), (.&&.), conjoin, forAll, forAllShrink
-                   , UnicodeString(..), NonNegative(..)
+                   , UnicodeString(..), NonNegative(..), Positive(..)
+                   , mapSize, (==>)
                    )
 import           QuickCheckUtils
 
@@ -70,7 +70,8 @@ tests =
   testsASCII ++
   testsFloating ++
   testsChar8 ++
-  testsUtf8
+  testsUtf8 ++
+  [testLaziness]
 
 
 ------------------------------------------------------------------------------
@@ -980,4 +981,45 @@ testsUtf8 :: [TestTree]
 testsUtf8 =
   [ testBuilderConstr "charUtf8" charUtf8_list charUtf8
   , testBuilderConstr "stringUtf8" (foldMap charUtf8_list) stringUtf8
+  ]
+
+testLaziness :: TestTree
+testLaziness = testGroup "Builder laziness"
+  [ testProperty "byteString" $ mapSize (+ 10) $
+      \bs (Positive chunkSize) ->
+        let strategy = safeStrategy chunkSize chunkSize
+            lbs = toLazyByteStringWith strategy L.empty
+                    (byteString bs <> tooStrictErr)
+        in (S.length bs > max chunkSize 8) ==> L.head lbs == S.head bs
+  , testProperty "byteStringCopy" $ mapSize (+ 10) $
+      \bs (Positive chunkSize) ->
+        let strategy = safeStrategy chunkSize chunkSize
+            lbs = toLazyByteStringWith strategy L.empty
+                    (byteStringCopy bs <> tooStrictErr)
+        in (S.length bs > max chunkSize 8) ==> L.head lbs == S.head bs
+  , testProperty "byteStringInsert" $ mapSize (+ 10) $
+      \bs (Positive chunkSize) ->
+        let strategy = safeStrategy chunkSize chunkSize
+            lbs = toLazyByteStringWith strategy L.empty
+                    (byteStringInsert bs <> tooStrictErr)
+        in L.take (fromIntegral @Int @Int64 (S.length bs)) lbs
+           == L.fromStrict bs
+  , testProperty "lazyByteString" $ mapSize (+ 10) $
+      \bs (Positive chunkSize) ->
+        let strategy = safeStrategy chunkSize chunkSize
+            lbs = toLazyByteStringWith strategy L.empty
+                    (lazyByteString bs <> tooStrictErr)
+        in (L.length bs > fromIntegral @Int @Int64 (max chunkSize 8))
+              ==> L.head lbs == L.head bs
+  , testProperty "shortByteString" $ mapSize (+ 10) $
+      \bs (Positive chunkSize) ->
+        let strategy = safeStrategy chunkSize chunkSize
+            lbs = toLazyByteStringWith strategy L.empty
+                    (shortByteString bs <> tooStrictErr)
+        in (Sh.length bs > max chunkSize 8) ==> L.head lbs == Sh.head bs
+  , testProperty "flush" $ \recipe -> let
+      !(b, toLBS) = recipeComponents recipe
+      !lbs1 = toLazyByteString b
+      !lbs2 = L.take (L.length lbs1) (toLBS $ b <> flush <> tooStrictErr)
+      in lbs1 == lbs2
   ]
