@@ -186,7 +186,6 @@ library
       extra-libraries:  gcc
 
   include-dirs:      include
-  includes:          fpstring.h
   install-includes:  fpstring.h
                      bytestring-cpp-macros.h
 
