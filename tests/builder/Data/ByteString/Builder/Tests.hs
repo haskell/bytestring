@@ -1,4 +1,3 @@
-{-# LANGUAGE BlockArguments   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -789,7 +788,7 @@ testsFloating = testGroup "RealFloat"
           , ( 4.294967295 , "4.294967295e0" )
           ]
     , testGroup "d2sStandard"
-      [ testCase "specific" do
+      [ testCase "specific" $ do
           singleMatches (formatDouble (standard 2)) (flip (showFFloat (Just 2)) []) ( 12.3    , "12.30"    )
           singleMatches (formatDouble (standard 2)) (flip (showFFloat (Just 2)) []) ( 12.345  , "12.34"    )
           singleMatches (formatDouble (standard 2)) (flip (showFFloat (Just 2)) []) ( 12.3451 , "12.35"    )
@@ -805,7 +804,7 @@ testsFloating = testGroup "RealFloat"
         testCase "specific zero" $
           singleMatches (formatDouble (standard 3)) (flip (showFFloat (Just 3)) []) ( 0.0     , "0.000"    )
       -- NonZero should be removed when zero case fixed
-      , testProperty "standard N" \(NonNegative p, NonZero (d :: Double)) -> (LC.unpack . toLazyByteString)
+      , testProperty "standard N" $ \(NonNegative p, NonZero (d :: Double)) -> (LC.unpack . toLazyByteString)
         (formatDouble (standard p) d) === showFFloat (Just p) d ""
       ]
     , testMatches "d2sLooksLikePowerOf5" doubleDec show
@@ -983,7 +982,7 @@ testsFloating = testGroup "RealFloat"
   ]
   where
     testExpected :: TestName -> (a -> Builder) -> [(a, String)] -> TestTree
-    testExpected name dec = testCase name . traverse_ \(x, ref) -> LC.unpack (toLazyByteString (dec x)) @?= ref
+    testExpected name dec = testCase name . traverse_ (\(x, ref) -> LC.unpack (toLazyByteString (dec x)) @?= ref)
 
     singleMatches :: (a -> Builder) -> (a -> String) -> (a, String) -> Assertion
     singleMatches dec refdec (x, ref) = do
