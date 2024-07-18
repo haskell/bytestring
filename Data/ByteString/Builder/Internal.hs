@@ -800,6 +800,7 @@ ensureFree minFree =
 -- | Copy the bytes from a 'S.StrictByteString' into the output stream.
 wrappedBytesCopyStep :: S.StrictByteString  -- ^ Input 'S.StrictByteString'.
                      -> BuildStep a -> BuildStep a
+-- See Note [byteStringCopyStep and wrappedBytesCopyStep]
 wrappedBytesCopyStep bs0 k =
     go bs0
   where
@@ -848,12 +849,62 @@ byteStringThreshold maxCopySize =
 byteStringCopy :: S.StrictByteString -> Builder
 byteStringCopy = \bs -> builder $ byteStringCopyStep bs
 
+{-
+Note [byteStringCopyStep and wrappedBytesCopyStep]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+A Builder that copies the contents of an arbitrary ByteString needs a
+recursive loop, since the bytes to be copied might not fit into the
+first few chunk buffers provided by the driver.  That loop is
+implemented in 'wrappedBytesCopyStep'.  But we also have a
+non-recursive wrapper, 'byteStringCopyStep', which performs exactly
+the first iteration of that loop, falling back to 'wrappedBytesCopyStep'
+if a chunk boundary is reached before the entire ByteString is copied.
+
+This is very strange!  Why do we do this?  Perhaps mostly for
+historical reasons.  But sadly, changing this to use a single
+recursive loop regresses the benchmark 'foldMap byteStringCopy' by
+about 30% as of 2024, in one of two ways:
+
+ 1. If the continuation 'k' is taken as an argument of the
+    inner copying loop, it remains an unknown function call.
+    So for each bytestring copied, that continuation must be
+    entered later via a gen-apply function, which incurs dozens
+    of cycles of extra overhead.
+ 2. If the continuation 'k' is lifted out of the inner copying
+    loop, it becomes a free variable.  And after a bit of
+    inlining, there will be no unknown function call.  But, if
+    the continuation function has any free variables, these
+    become free variables of the inner copying loop, which
+    prevent the loop from floating out.  (In the actual
+    benchmark, the tail of the list of bytestrings to copy is
+    such a free variable of the continuation.)  As a result,
+    the inner copying loop becomes a function closure object
+    rather than a top-level function.  And that means a new
+    inner-copying-loop function-closure-object must be
+    allocated on the heap for every bytestring copied, which
+    is expensive.
+
+    In theory, GHC's late-lambda-lifting pass can clean this up by
+    abstracting over the problematic free variables.  But for some
+    unknown reason (perhaps a bug in ghc-9.10.1) this optimization
+    does not fire on the relevant benchmark code, even with a
+    sufficiently high value of -fstg-lift-lams-rec-args.
+
+
+
+Alternatively, it is possible to avoid recursion altogether by
+requesting that the next chunk be large enough to accommodate the
+entire remainder of the input when a chunk boundary is reached.
+But:
+ * For very large ByteStrings, this may incur unwanted latency.
+ * Large next-chunk-size requests have caused breakage downstream
+   in the past.  See also https://github.com/yesodweb/wai/issues/894
+-}
+
 {-# INLINE byteStringCopyStep #-}
 byteStringCopyStep :: S.StrictByteString -> BuildStep a -> BuildStep a
+-- See Note [byteStringCopyStep and wrappedBytesCopyStep]
 byteStringCopyStep bs@(S.BS ifp isize) k br@(BufferRange op ope)
-    -- Ensure that the common case is not recursive and therefore yields
-    -- better code.
-       -- What's the reasoning here, more concretely?
     | isize <= osize = do
         S.unsafeWithForeignPtr ifp $ \ip -> copyBytes op ip isize
         k (BufferRange op' ope)
