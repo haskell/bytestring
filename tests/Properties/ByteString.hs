@@ -366,7 +366,7 @@ tests =
   , testProperty "toChunks . fromChunks" $
     \xs -> B.toChunks (B.fromChunks xs) === filter (/= mempty) xs
   , testProperty "append lazy" $
-    \(toElem -> c) -> B.head (B.singleton c <> undefined) === c
+    \(toElem -> c) -> B.head (B.singleton c <> tooStrictErr) === c
   , testProperty "compareLength 1" $
     \x -> B.compareLength x (B.length x) === EQ
   , testProperty "compareLength 2" $
@@ -378,13 +378,13 @@ tests =
   , testProperty "compareLength 5" $
     \x (intToIndexTy -> n) -> B.compareLength x n === compare (B.length x) n
   , testProperty "dropEnd lazy" $
-    \(toElem -> c) -> B.take 1 (B.dropEnd 1 (B.singleton c <> B.singleton c <> B.singleton c <> undefined)) === B.singleton c
+    \(toElem -> c) -> B.take 1 (B.dropEnd 1 (B.singleton c <> B.singleton c <> B.singleton c <> tooStrictErr)) === B.singleton c
   , testProperty "dropWhileEnd lazy" $
-    \(toElem -> c) -> B.take 1 (B.dropWhileEnd (const False) (B.singleton c <> undefined)) === B.singleton c
+    \(toElem -> c) -> B.take 1 (B.dropWhileEnd (const False) (B.singleton c <> tooStrictErr)) === B.singleton c
   , testProperty "breakEnd lazy" $
-    \(toElem -> c) -> B.take 1 (fst $ B.breakEnd (const True) (B.singleton c <> undefined)) === B.singleton c
+    \(toElem -> c) -> B.take 1 (fst $ B.breakEnd (const True) (B.singleton c <> tooStrictErr)) === B.singleton c
   , testProperty "spanEnd lazy" $
-    \(toElem -> c) -> B.take 1 (fst $ B.spanEnd (const False) (B.singleton c <> undefined)) === B.singleton c
+    \(toElem -> c) -> B.take 1 (fst $ B.spanEnd (const False) (B.singleton c <> tooStrictErr)) === B.singleton c
 #endif
 
   , testProperty "length" $
