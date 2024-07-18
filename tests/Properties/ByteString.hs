@@ -367,7 +367,7 @@ tests =
   , testProperty "toChunks . fromChunks" $
     \xs -> B.toChunks (B.fromChunks xs) === filter (/= mempty) xs
   , testProperty "append lazy" $
-    \(toElem -> c) -> B.head (B.singleton c <> undefined) === c
+    \(toElem -> c) -> B.head (B.singleton c <> tooStrictErr) === c
   , testProperty "compareLength 1" $
     \x -> B.compareLength x (B.length x) === EQ
   , testProperty "compareLength 2" $
@@ -379,13 +379,13 @@ tests =
   , testProperty "compareLength 5" $
     \x (intToIndexTy -> n) -> B.compareLength x n === compare (B.length x) n
   , testProperty "dropEnd lazy" $
-    \(toElem -> c) -> B.take 1 (B.dropEnd 1 (B.singleton c <> B.singleton c <> B.singleton c <> undefined)) === B.singleton c
+    \(toElem -> c) -> B.take 1 (B.dropEnd 1 (B.singleton c <> B.singleton c <> B.singleton c <> tooStrictErr)) === B.singleton c
   , testProperty "dropWhileEnd lazy" $
-    \(toElem -> c) -> B.take 1 (B.dropWhileEnd (const False) (B.singleton c <> undefined)) === B.singleton c
+    \(toElem -> c) -> B.take 1 (B.dropWhileEnd (const False) (B.singleton c <> tooStrictErr)) === B.singleton c
   , testProperty "breakEnd lazy" $
-    \(toElem -> c) -> B.take 1 (fst $ B.breakEnd (const True) (B.singleton c <> undefined)) === B.singleton c
+    \(toElem -> c) -> B.take 1 (fst $ B.breakEnd (const True) (B.singleton c <> tooStrictErr)) === B.singleton c
   , testProperty "spanEnd lazy" $
-    \(toElem -> c) -> B.take 1 (fst $ B.spanEnd (const False) (B.singleton c <> undefined)) === B.singleton c
+    \(toElem -> c) -> B.take 1 (fst $ B.spanEnd (const False) (B.singleton c <> tooStrictErr)) === B.singleton c
 #endif
 
   , testProperty "length" $
@@ -604,12 +604,21 @@ tests =
 # ifdef BYTESTRING_LAZY
     -- Don't use (===) in these laziness tests:
     -- We don't want printing the test case to fail!
-  , testProperty "zip is lazy" $ lazyZipTest $
-    \x y -> B.zip x y == zip (B.unpack x) (B.unpack y)
-  , testProperty "zipWith is lazy" $ \f -> lazyZipTest $
-    \x y -> (B.zipWith f x y :: [Int]) == zipWith f (B.unpack x) (B.unpack y)
-  , testProperty "packZipWith is lazy" $ \f -> lazyZipTest $
-    \x y -> B.unpack (B.packZipWith ((toElem .) . f) x y) == zipWith ((toElem .) . f) (B.unpack x) (B.unpack y)
+  , testProperty "zip is lazy in the longer input" $ zipLazyInLongerInputTest $
+      \x y -> B.zip x y == zip (B.unpack x) (B.unpack y)
+  , testProperty "zipWith is lazy in the longer input" $
+      \f -> zipLazyInLongerInputTest $
+      \x y -> (B.zipWith f x y :: [Int]) == zipWith f (B.unpack x) (B.unpack y)
+  , testProperty "packZipWith is lazy in the longer input" $
+      \f -> zipLazyInLongerInputTest $
+      \x y -> B.unpack (B.packZipWith ((toElem .) . f) x y) == zipWith ((toElem .) . f) (B.unpack x) (B.unpack y)
+  , testProperty "zip is maximally lazy" $ \x y ->
+      zip (B.unpack x) (B.unpack y) `List.isPrefixOf`
+      B.zip (x <> tooStrictErr) (y <> tooStrictErr)
+  , testProperty "zipWith is maximally lazy" $ \f x y ->
+      zipWith f (B.unpack x) (B.unpack y) `List.isPrefixOf`
+      B.zipWith @Int f (x <> tooStrictErr) (y <> tooStrictErr)
+  -- (It's not clear if packZipWith is required to be maximally lazy.)
 # endif
   , testProperty "unzip" $
     \(fmap (toElem *** toElem) -> xs) -> (B.unpack *** B.unpack) (B.unzip xs) === unzip xs
@@ -807,15 +816,15 @@ readIntegerUnsigned xs = case readMaybe ys of
 #endif
 
 #ifdef BYTESTRING_LAZY
-lazyZipTest
+zipLazyInLongerInputTest
   :: Testable prop
   => (BYTESTRING_TYPE -> BYTESTRING_TYPE -> prop)
   ->  BYTESTRING_TYPE -> BYTESTRING_TYPE -> Property
-lazyZipTest fun = \x0 y0 -> let
+zipLazyInLongerInputTest fun = \x0 y0 -> let
   msg = "Input chunks are: " ++ show (B.toChunks x0, B.toChunks y0)
   (x, y) | B.length x0 <= B.length y0
-         = (x0, y0 <> error "too strict")
+         = (x0, y0 <> tooStrictErr)
          | otherwise
-         = (x0 <> error "too strict", y0)
+         = (x0 <> tooStrictErr, y0)
   in counterexample msg (fun x y)
 #endif
