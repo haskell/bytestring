@@ -13,7 +13,7 @@ task:
     image_project: pg-ci-images
     # OpenBSD version should match
     # https://github.com/anarazel/pg-vm-images/blob/main/packer/openbsd.pkrvars.hcl
-    image: family/pg-ci-openbsd-vanilla-7-3
+    image: family/pg-ci-openbsd-vanilla-7-5
     platform: openbsd
   install_script: pkg_add ghc cabal-install git
   script:
@@ -27,7 +27,7 @@ task:
     image_project: pg-ci-images
     # NetBSD version should match
     # https://github.com/anarazel/pg-vm-images/blob/main/packer/netbsd.pkrvars.hcl
-    image: family/pg-ci-netbsd-vanilla-9-3
+    image: family/pg-ci-netbsd-vanilla-10-0
     platform: netbsd
   install_script:
     - export PKG_PATH="http://cdn.NetBSD.org/pub/pkgsrc/packages/NetBSD/$(uname -p)/$(uname -r|cut -f '1 2' -d.)/All/"
