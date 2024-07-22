@@ -7,8 +7,11 @@
 -- Portability : tested on GHC only
 --
 
+{-# LANGUAGE ViewPatterns        #-}
+
 module Main (main) where
 
+import           Control.Exception                     (assert)
 import           Data.Foldable                         (foldMap)
 import           Data.Monoid
 import           Data.Semigroup
@@ -19,6 +22,8 @@ import           Prelude                               hiding (words)
 import qualified Data.List                             as List
 import           Control.DeepSeq
 import           Control.Exception
+import           Numeric.IEEE
+import           System.IO.Unsafe                      (unsafePerformIO)
 
 import qualified Data.ByteString                       as S
 import qualified Data.ByteString.Char8                 as S8
@@ -55,6 +60,17 @@ countToZero :: Int -> Maybe (Int, Int)
 countToZero 0 = Nothing
 countToZero n = Just (n, n - 1)
 
+castWord32ToFloat :: Word32 -> Float
+castWord32ToFloat x = unsafePerformIO (with x (peek . castPtr))
+
+castWord64ToDouble :: Word64 -> Double
+castWord64ToDouble x = unsafePerformIO (with x (peek . castPtr))
+
+castFloatToWord32 :: Float -> Word32
+castFloatToWord32 x = unsafePerformIO (with x (peek . castPtr))
+
+castDoubleToWord64 :: Double -> Word64
+castDoubleToWord64 x = unsafePerformIO (with x (peek . castPtr))
 
 ------------------------------------------------------------------------------
 -- Benchmark
@@ -79,14 +95,60 @@ smallIntegerData = map fromIntegral intData
 largeIntegerData :: [Integer]
 largeIntegerData = map (* (10 ^ (100 :: Integer))) smallIntegerData
 
+{-# NOINLINE floatSubnormalData #-}
+floatSubnormalData :: [Float]
+floatSubnormalData = assert (increment > 0) $ map evenlyDistribute [1..nRepl]
+  where
+  evenlyDistribute x = castWord32ToFloat $ increment * fromIntegral x
+  increment = castFloatToWord32 maxSubnormal `div` fromIntegral nRepl
+  maxSubnormal = predIEEE minNormal
 
-{-# NOINLINE floatData #-}
-floatData :: [Float]
-floatData = map (\x -> (3.14159 * fromIntegral x) ^ (3 :: Int)) intData
+{-# NOINLINE floatNormalData #-}
+floatNormalData :: [Float]
+floatNormalData = assert (increment > 0) $ map evenlyDistribute [0..nRepl]
+  where
+  evenlyDistribute x = castWord32ToFloat $ increment * fromIntegral x + minimum
+  increment = (maximum - minimum) `div` fromIntegral nRepl
+  minimum = castFloatToWord32 minNormal
+  maximum = castFloatToWord32 maxFinite
 
-{-# NOINLINE doubleData #-}
-doubleData :: [Double]
-doubleData = map (\x -> (3.14159 * fromIntegral x) ^ (3 :: Int)) intData
+{-# NOINLINE floatSpecials #-}
+floatSpecials :: [Float]
+floatSpecials = take nRepl $ cycle specials
+  where
+  specials = [nan, infinity, negate infinity, 0 -0]
+
+{-# NOINLINE doubleSubnormalData #-}
+doubleSubnormalData :: [Double]
+doubleSubnormalData = assert (increment > 0) $ map evenlyDistribute [1..nRepl]
+  where
+  evenlyDistribute x = castWord64ToDouble $ increment * fromIntegral x
+  increment = castDoubleToWord64 maxSubnormal `div` fromIntegral nRepl
+  maxSubnormal = predIEEE minNormal
+
+{-# NOINLINE doubleSmallData #-}
+doubleSmallData :: [Double]
+doubleSmallData = assert (increment > 0) $ map evenlyDistribute [1..nRepl]
+  where
+  evenlyDistribute x = castWord64ToDouble $ increment * fromIntegral x + minimum
+  increment = (maximum - minimum) `div` fromIntegral nRepl
+  minimum = castDoubleToWord64 1.0
+  maximum = castDoubleToWord64 $ 2 ^ 53
+
+{-# NOINLINE doubleBigData #-}
+doubleBigData :: [Double]
+doubleBigData = assert (increment > 0) $ map evenlyDistribute [1..nRepl]
+  where
+  evenlyDistribute x = castWord64ToDouble $ increment * fromIntegral x + minimum
+  increment = (maximum - minimum) `div` fromIntegral nRepl
+  minimum = castDoubleToWord64 $ 2 ^ 53
+  maximum = castDoubleToWord64 maxFinite
+
+{-# NOINLINE doubleSpecials #-}
+doubleSpecials :: [Double]
+doubleSpecials = take nRepl $ cycle specials
+  where
+  specials = [nan, infinity, negate infinity, 0 -0]
 
 {-# NOINLINE byteStringData #-}
 byteStringData :: S.ByteString
@@ -353,12 +415,22 @@ main = do
       , bgroup "Non-bounded encodings"
         [ benchB "byteStringHex"           byteStringData     $ byteStringHex
         , benchB "lazyByteStringHex"       lazyByteStringData $ lazyByteStringHex
-        , benchB "foldMap floatDec"        floatData          $ foldMap floatDec
-        , benchB "foldMap doubleDec"       doubleData         $ foldMap doubleDec
           -- Note that the small data corresponds to the intData pre-converted
           -- to Integer.
         , benchB "foldMap integerDec (small)"                     smallIntegerData        $ foldMap integerDec
         , benchB "foldMap integerDec (large)"                     largeIntegerData        $ foldMap integerDec
+        , bgroup "RealFloat"
+          [ bgroup "FGeneric" $ subAndNormalBench generic
+          , bgroup "FScientific"$ subAndNormalBench scientific
+          , bgroup "FStandard"
+            [ bgroup "Positive" $ fixedPrecision id id
+            , bgroup "Negative" $ fixedPrecision negate negate
+            , bgroup "Special"
+              [ benchB "Float  Average" floatSpecials  $ foldMap (formatFloat  standardDefaultPrecision)
+              , benchB "Double Average" doubleSpecials $ foldMap (formatDouble standardDefaultPrecision)
+              ]
+            ]
+          ]
         ]
       ]
 
@@ -581,3 +653,44 @@ main = do
     , benchReadInt
     , benchShort
     ]
+
+subAndNormalBench format =
+  [ bgroup "Positive" $ benchs id id
+  , bgroup "Negative" $ benchs negate negate
+  , bgroup "Special"
+    [ benchB "Float  Average" floatSpecials  $ foldMap (formatFloat  format)
+    , benchB "Double Average" doubleSpecials $ foldMap (formatDouble format)
+    ]
+  ]
+  where
+  benchs f d = 
+    [ bgroup "Float"
+      [ benchB "Subnormal" (map f floatSubnormalData)  $ foldMap $ formatFloat  format
+      , benchB "Normal"    (map f floatNormalData)     $ foldMap $ formatFloat  format
+      ]
+    , bgroup "Double"
+      [ benchB "Subnormal" (map d doubleSubnormalData) $ foldMap $ formatDouble format
+      , benchB "Small"     (map d doubleSmallData)     $ foldMap $ formatDouble format
+      , benchB "Big"       (map d doubleBigData)       $ foldMap $ formatDouble format
+      ]
+    ]
+
+fixedPrecision f d =
+  [ bgroup "default precision"
+    [ bgroup "Float"
+      [ benchB "Subnormal" (map f floatSubnormalData) $ foldMap $ formatFloat standardDefaultPrecision
+      , benchB "Normal"    (map f floatNormalData)    $ foldMap $ formatFloat standardDefaultPrecision
+      ]
+    , bgroup "Double"
+      [ benchB "Subnormal" (map d doubleSubnormalData) $ foldMap $ formatDouble standardDefaultPrecision
+      , benchB "Small"     (map d doubleSmallData)     $ foldMap $ formatDouble standardDefaultPrecision
+      , benchB "Big"       (map d doubleBigData)       $ foldMap $ formatDouble standardDefaultPrecision
+      ]
+    ]
+  , bgroup "precision"
+    [ benchB "Float-Precision-1"  (map f floatNormalData) $ foldMap $ formatFloat  $ standard 1
+    , benchB "Double-Precision-1" (map d doubleSmallData) $ foldMap $ formatDouble $ standard 1
+    , benchB "Float-Precision-6"  (map f floatNormalData) $ foldMap $ formatFloat  $ standard 6
+    , benchB "Double-Precision-6" (map d doubleSmallData) $ foldMap $ formatDouble $ standard 6
+    ]
+  ]
