@@ -1196,7 +1196,7 @@ buildStepToCIOS (AllocationStrategy nextBuffer bufSize trim) =
                 -- Checking for empty case avoids allocating 'n-1' empty
                 -- buffers for 'n' insertChunkH right after each other.
                 if isEmpty
-                  then fill nextStep (Buffer fpbuf (BufferRange pbuf pe))
+                  then fill nextStep buf
                   else do buf' <- nextBuffer (Just (buf, bufSize))
                           fill nextStep buf'
 
@@ -1208,9 +1208,9 @@ buildStepToCIOS (AllocationStrategy nextBuffer bufSize trim) =
           | trim chunkSize size = do
               bs <- S.createFp chunkSize $ \fpbuf' ->
                         S.memcpyFp fpbuf' fpbuf chunkSize
-              -- Instead of allocating a new buffer after trimming,
-              -- we re-use the old buffer and consider it empty.
-              return $ Yield1 bs (mkCIOS True)
+              -- It is not safe to re-use the old buffer (see #690),
+              -- so we allocate a new buffer after trimming.
+              return $ Yield1 bs (mkCIOS False)
           | otherwise            =
               return $ Yield1 (S.BS fpbuf chunkSize) (mkCIOS False)
           where
