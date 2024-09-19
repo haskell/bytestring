@@ -1042,14 +1042,6 @@ maximalCopySize = 2 * L.smallChunkSize
 ------------------------------------------------------------------------------
 
 -- | A buffer allocation strategy for executing 'Builder's.
-
--- The strategy
---
--- > 'AllocationStrategy' firstBufSize bufSize trim
---
--- states that the first buffer is of size @firstBufSize@, all following buffers
--- are of size @bufSize@, and a buffer of size @n@ filled with @k@ bytes should
--- be trimmed iff @trim k n@ is 'True'.
 data AllocationStrategy = AllocationStrategy
          (Maybe (Buffer, Int) -> IO Buffer)
          {-# UNPACK #-} !Int
