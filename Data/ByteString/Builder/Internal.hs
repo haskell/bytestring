@@ -1042,14 +1042,6 @@ maximalCopySize = 2 * L.smallChunkSize
 ------------------------------------------------------------------------------
 
 -- | A buffer allocation strategy for executing 'Builder's.
-
--- The strategy
---
--- > 'AllocationStrategy' firstBufSize bufSize trim
---
--- states that the first buffer is of size @firstBufSize@, all following buffers
--- are of size @bufSize@, and a buffer of size @n@ filled with @k@ bytes should
--- be trimmed iff @trim k n@ is 'True'.
 data AllocationStrategy = AllocationStrategy
          (Maybe (Buffer, Int) -> IO Buffer)
          {-# UNPACK #-} !Int
@@ -1060,11 +1052,20 @@ data AllocationStrategy = AllocationStrategy
 {-# INLINE customStrategy #-}
 customStrategy
   :: (Maybe (Buffer, Int) -> IO Buffer)
-     -- ^ Buffer allocation function. If 'Nothing' is given, then a new first
-     -- buffer should be allocated. If @'Just' (oldBuf, minSize)@ is given,
-     -- then a buffer with minimal size @minSize@ must be returned. The
-     -- strategy may reuse the @oldBuf@, if it can guarantee that this
-     -- referentially transparent and @oldBuf@ is large enough.
+     -- ^ Buffer allocation function.
+     --
+     -- * If 'Nothing' is given, then a new first buffer should be allocated.
+     --
+     -- * If @'Just' (oldBuf, minSize)@ is given, then a buffer with minimal
+     -- size @minSize@ must be returned. The strategy may reuse @oldBuf@ only if
+     -- @oldBuf@ is large enough and the consumer can guarantee that this will
+     -- not result in a violation of referential transparency.
+     --
+     -- /Warning:/ for multithreaded programs, it is generally unsafe to reuse
+     -- buffers when using the consumers of 'Builder' in this package. For
+     -- example, if 'toLazyByteStringWith' is called with an
+     --  'AllocationStrategy' that reuses buffers, evaluating the result by
+     -- multiple threads simultaneously may lead to corrupted output.
   -> Int
      -- ^ Default buffer size.
   -> (Int -> Int -> Bool)
