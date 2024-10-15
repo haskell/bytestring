@@ -3,6 +3,7 @@
 * __Breaking Changes__:
   * [`Data.Data.dataTypeOf` for `StrictByteString` and `LazyByteString` now returns a `DataType` that uses `AlgRep` instead of `NoRep`.](https://github.com/haskell/bytestring/pull/614)
     * This allows utilities like `syb:Data.Generics.Text.gread` to be meaningfully used at these types containing `ByteString`s.
+  * [`fromListN` in `instance IsList ByteString` truncates input list if it's longer than the size hint](https://github.com/haskell/bytestring/pull/672)
 <!--
 * Bug fixes:
 * API additions and behavior changes:
@@ -11,6 +12,31 @@
 * Miscellaneous:
 * Internal stuff:
 -->
+
+[0.12.2.0] — October 2024
+
+* Bug fixes:
+  * [`Builder`: avoid unsound buffer reuse, introduced in `bytestring-0.11.5.0`](https://github.com/haskell/bytestring/pull/691)
+  * [Fix several bugs around the `byteString` family of `Builders`](https://github.com/haskell/bytestring/pull/671)
+  * [Make `Data.ByteString.Lazy.zipWith` properly lazy](https://github.com/haskell/bytestring/pull/668)
+* API additions:
+  * [Add `instance IsList Builder`](https://github.com/haskell/bytestring/pull/672)
+  * [Add `instance NFData BufferRange` and `instance NFData Buffer`](https://github.com/haskell/bytestring/pull/680)
+  * [Export `toLazyByteString` from `Data.ByteString.Builder.Internal`](https://github.com/haskell/bytestring/pull/672)
+* Performance improvements:
+  * [Remove another dead branch from `toStrict`](https://github.com/haskell/bytestring/pull/663)
+* Miscellaneous:
+  * [Remove support for GHC < 8.4](https://github.com/haskell/bytestring/pull/682)
+  * Various documentation improvements ([1](https://github.com/haskell/bytestring/pull/683), [2](https://github.com/haskell/bytestring/pull/692))
+<!--
+* Internal stuff:
+  * Various CI tweaks ([1](https://github.com/haskell/bytestring/pull/670), [2](https://github.com/haskell/bytestring/pull/681), [3](https://github.com/haskell/bytestring/pull/686), [4](https://github.com/haskell/bytestring/pull/656), [5](https://github.com/haskell/bytestring/pull/693))
+  * [Use `default-extensions` to tidy up a bit](https://github.com/haskell/bytestring/pull/669)
+  * [Remove `includes` from Cabal file](https://github.com/haskell/bytestring/pull/685)
+  * [Improve benchmarks for small `Builders`](https://github.com/haskell/bytestring/pull/680)
+-->
+
+[0.12.2.0]: https://github.com/haskell/bytestring/compare/0.12.1.0...0.12.2.0
 
 [0.12.1.0] — February 2024
 
