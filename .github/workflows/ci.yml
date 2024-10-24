@@ -127,7 +127,7 @@ jobs:
         arch: ['s390x', 'ppc64le', 'riscv64']
     steps:
     - uses: actions/checkout@v4
-    - uses: uraimo/run-on-arch-action@v2.7.2
+    - uses: uraimo/run-on-arch-action@v2.8.1
       timeout-minutes: 60
       with:
         arch: ${{ matrix.arch }}
