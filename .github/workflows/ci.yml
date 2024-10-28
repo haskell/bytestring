@@ -230,7 +230,7 @@ jobs:
         uses: docker://hasufell/arm64v8-ubuntu-haskell:focal
         name: Run build (arm64v8 linux)
         with:
-          args: sh -c "cabal update && cabal test"
+          args: sh -c "ghcup install ghc 9.10.1 && cabal update && cabal test -w ~/.ghcup/bin/ghc-9.10.1"
 
   wasi:
     runs-on: ubuntu-latest
