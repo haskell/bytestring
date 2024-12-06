@@ -1,7 +1,7 @@
 Cabal-Version:       2.2
 
 Name:                bytestring
-Version:             0.12.1.0
+Version:             0.12.2.0
 Synopsis:            Fast, compact, strict and lazy byte strings with a list interface
 Description:
     An efficient compact, immutable byte string type (both strict and lazy)
