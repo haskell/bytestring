@@ -30,10 +30,11 @@
   * Various documentation improvements ([1](https://github.com/haskell/bytestring/pull/683), [2](https://github.com/haskell/bytestring/pull/692))
 <!--
 * Internal stuff:
-  * Various CI tweaks ([1](https://github.com/haskell/bytestring/pull/670), [2](https://github.com/haskell/bytestring/pull/681), [3](https://github.com/haskell/bytestring/pull/686), [4](https://github.com/haskell/bytestring/pull/656), [5](https://github.com/haskell/bytestring/pull/693))
+  * Various CI tweaks ([1](https://github.com/haskell/bytestring/pull/670), [2](https://github.com/haskell/bytestring/pull/681), [3](https://github.com/haskell/bytestring/pull/686), [4](https://github.com/haskell/bytestring/pull/656), [5](https://github.com/haskell/bytestring/pull/693), [6](https://github.com/haskell/bytestring/pull/699), [7](https://github.com/haskell/bytestring/pull/700))
   * [Use `default-extensions` to tidy up a bit](https://github.com/haskell/bytestring/pull/669)
   * [Remove `includes` from Cabal file](https://github.com/haskell/bytestring/pull/685)
   * [Improve benchmarks for small `Builders`](https://github.com/haskell/bytestring/pull/680)
+  * [Add a constraint reflecting](https://github.com/haskell/bytestring/pull/698) [#665](https://github.com/haskell/bytestring/issues/665) [to the package description](https://github.com/haskell/bytestring/pull/698)
 -->
 
 [0.12.2.0]: https://github.com/haskell/bytestring/compare/0.12.1.0...0.12.2.0
