@@ -275,10 +275,8 @@ integerDec i
     | otherwise =                                   go i
   where
     go :: Integer -> Builder
-    go n | n < maxPow10 = intDec (fromInteger n)
-         | otherwise    =
-             case putH (splitf (maxPow10 * maxPow10) n) of
-               x:|xs -> intDec x `mappend` P.primMapListBounded intDecPadded xs
+    go n = case putH (splitf (maxPow10 * maxPow10) n) of
+             x:|xs -> intDec x `mappend` P.primMapListBounded intDecPadded xs
 
     splitf :: Integer -> Integer -> NonEmpty Integer
     splitf pow10 n0
