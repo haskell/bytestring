@@ -5,89 +5,18 @@
 ///////////////////////////////////////////////////////////////
 
 #include <stdio.h>
+#include <stdint.h>
 
 // Decimal Encoding
 ///////////////////
 
 static const char* digits = "0123456789abcdef";
 
-// signed integers
-char* _hs_bytestring_int_dec (int x, char* buf)
-{
-    char c, *ptr = buf, *next_free;
-    int x_tmp;
-
-    // we cannot negate directly as  0 - (minBound :: Int) = minBound
-    if (x < 0) {
-        *ptr++ = '-';
-        buf++;
-        x_tmp = x;
-        x /= 10;
-        *ptr++ = digits[x * 10 - x_tmp];
-        if (x == 0)
-          return ptr;
-        else
-          x = -x;
-    }
-
-    // encode positive number as little-endian decimal
-    do {
-        x_tmp = x;
-        x /= 10;
-        *ptr++ = digits[x_tmp - x * 10];
-    } while ( x );
-
-    // reverse written digits
-    next_free = ptr--;
-    while (buf < ptr) {
-        c       = *ptr;
-        *ptr--  = *buf;
-        *buf++  = c;
-    }
-    return next_free;
-}
-
-// signed long long ints (64 bit integers)
-char* _hs_bytestring_long_long_int_dec (long long int x, char* buf)
-{
-    char c, *ptr = buf, *next_free;
-    long long int x_tmp;
-
-    // we cannot negate directly as  0 - (minBound :: Int) = minBound
-    if (x < 0) {
-        *ptr++ = '-';
-        buf++;
-        x_tmp = x;
-        x /= 10;
-        *ptr++ = digits[x * 10 - x_tmp];
-        if (x == 0)
-          return ptr;
-        else
-          x = -x;
-    }
-
-    // encode positive number as little-endian decimal
-    do {
-        x_tmp = x;
-        x /= 10;
-        *ptr++ = digits[x_tmp - x * 10];
-    } while ( x );
-
-    // reverse written digits
-    next_free = ptr--;
-    while (buf < ptr) {
-        c       = *ptr;
-        *ptr--  = *buf;
-        *buf++  = c;
-    }
-    return next_free;
-}
-
 // unsigned integers
-char* _hs_bytestring_uint_dec (unsigned int x, char* buf)
+char* _hs_bytestring_uint32_dec (uint32_t x, char* buf)
 {
     char c, *ptr = buf, *next_free;
-    unsigned int x_tmp;
+    uint32_t x_tmp;
 
     // encode positive number as little-endian decimal
     do {
@@ -107,10 +36,10 @@ char* _hs_bytestring_uint_dec (unsigned int x, char* buf)
 }
 
 // unsigned long ints
-char* _hs_bytestring_long_long_uint_dec (long long unsigned int x, char* buf)
+char* _hs_bytestring_uint64_dec (uint64_t x, char* buf)
 {
     char c, *ptr = buf, *next_free;
-    long long unsigned int x_tmp;
+    uint64_t x_tmp;
 
     // encode positive number as little-endian decimal
     do {
@@ -136,11 +65,11 @@ char* _hs_bytestring_long_long_uint_dec (long long unsigned int x, char* buf)
 // Padded (9 digits), decimal, positive int:
 // We will use it with numbers that fit in 31 bits; i.e., numbers smaller than
 // 10^9, as "31 * log 2 / log 10 = 9.33"
-void _hs_bytestring_int_dec_padded9 (int x, char* buf)
+void _hs_bytestring_uint32_dec_padded9 (uint32_t x, char* buf)
 {
     const int max_width_int32_dec = 9;
     char* ptr = buf + max_width_int32_dec;
-    int x_tmp;
+    uint32_t x_tmp;
 
     // encode positive number as little-endian decimal
     do {
@@ -156,11 +85,11 @@ void _hs_bytestring_int_dec_padded9 (int x, char* buf)
 // Padded (19 digits), decimal, positive long long int:
 // We will use it with numbers that fit in 63 bits; i.e., numbers smaller than
 // 10^18, as "63 * log 2 / log 10 = 18.96"
-void _hs_bytestring_long_long_int_dec_padded18 (long long int x, char* buf)
+void _hs_bytestring_uint64_dec_padded18 (uint64_t x, char* buf)
 {
     const int max_width_int64_dec = 18;
     char* ptr = buf + max_width_int64_dec;
-    long long int x_tmp;
+    uint64_t x_tmp;
 
     // encode positive number as little-endian decimal
     do {
@@ -179,7 +108,7 @@ void _hs_bytestring_long_long_int_dec_padded18 (long long int x, char* buf)
 ///////////////////////
 
 // unsigned ints (32 bit words)
-char* _hs_bytestring_uint_hex (unsigned int x, char* buf) {
+char* _hs_bytestring_uint32_hex (uint32_t x, char* buf) {
     // write hex representation in reverse order
     char c, *ptr = buf, *next_free;
     do {
@@ -197,7 +126,7 @@ char* _hs_bytestring_uint_hex (unsigned int x, char* buf) {
 };
 
 // unsigned long ints (64 bit words)
-char* _hs_bytestring_long_long_uint_hex (long long unsigned int x, char* buf) {
+char* _hs_bytestring_uint64_hex (uint64_t x, char* buf) {
     // write hex representation in reverse order
     char c, *ptr = buf, *next_free;
     do {

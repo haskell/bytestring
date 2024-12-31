@@ -79,7 +79,7 @@ import           Data.ByteString.Builder.Internal (Builder)
 import qualified Data.ByteString.Builder.Prim                   as P
 import qualified Data.ByteString.Builder.Prim.Internal          as P
 import           Data.ByteString.Builder.RealFloat (floatDec, doubleDec)
-import           Data.ByteString.Internal.Type (c_int_dec_padded9, c_long_long_int_dec_padded18)
+import           Data.ByteString.Internal.Type (c_uint32_dec_padded9, c_uint64_dec_padded18)
 
 import           Foreign
 import           Data.List.NonEmpty (NonEmpty(..))
@@ -311,5 +311,5 @@ integerDec i
 {-# INLINE intDecPadded #-}
 intDecPadded :: P.BoundedPrim Int
 intDecPadded = P.liftFixedToBounded $ P.caseWordSize_32_64
-    (P.fixedPrim  9 $ c_int_dec_padded9            . fromIntegral)
-    (P.fixedPrim 18 $ c_long_long_int_dec_padded18 . fromIntegral)
+    (P.fixedPrim  9 $ c_uint32_dec_padded9  . fromIntegral)
+    (P.fixedPrim 18 $ c_uint64_dec_padded18 . fromIntegral)
