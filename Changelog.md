@@ -1,3 +1,10 @@
+[0.11.5.4] — January 2025
+
+* Bug fixes:
+  * [`Builder`: avoid unsound buffer reuse, introduced in `bytestring-0.11.5.0`](https://github.com/haskell/bytestring/pull/691)
+
+[0.11.5.4]: https://github.com/haskell/bytestring/compare/0.11.5.3...0.11.5.4
+
 [0.11.5.3] — October 2023
 
 * Bug fixes:
