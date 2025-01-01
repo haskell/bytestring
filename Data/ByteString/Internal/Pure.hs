@@ -19,7 +19,6 @@ module Data.ByteString.Internal.Pure
   , isValidUtf8
   , isValidUtf8BA
   -- * itoa.c
-  , encodeSignedDec
   , encodeUnsignedDec
   , encodeUnsignedDecPadded
   , encodeUnsignedHex
@@ -307,22 +306,6 @@ reverseBytesInplace !p1 !p2
     reverseBytesInplace (plusPtr p1 1) (plusPtr p2 (-1))
   | otherwise = pure ()
 
--- | Encode signed number as decimal
-encodeSignedDec :: (Eq a, Num a, Integral a) => a -> Ptr Word8 -> IO (Ptr Word8)
-{-# INLINABLE encodeSignedDec #-} -- for specialization
-encodeSignedDec !x !buf
-  | x >= 0    = encodeUnsignedDec x buf
-  | otherwise = do
-    -- we cannot negate directly as  0 - (minBound :: Int) = minBound
-    -- So we write the sign and the first digit.
-    pokeByteOff buf 0 '-'
-    let !(q,r) = quotRem x (-10)
-    putDigit buf 1 (fromIntegral (abs r))
-    case q of
-      0 -> pure (plusPtr buf 2)
-      _ -> encodeUnsignedDec' q (plusPtr buf 1) (plusPtr buf 2)
-
-
 -- | Encode positive number as decimal
 encodeUnsignedDec :: (Eq a, Num a, Integral a) => a -> Ptr Word8 -> IO (Ptr Word8)
 {-# INLINABLE encodeUnsignedDec #-} -- for specialization
@@ -331,7 +314,6 @@ encodeUnsignedDec !v !next_ptr = encodeUnsignedDec' v next_ptr next_ptr
 -- | Encode positive number as little-endian decimal, then reverse it.
 --
 -- Take two pointers (orig_ptr, next_ptr) to support already encoded digits
--- (e.g. used by encodeSignedDec to avoid overflows)
 --
 encodeUnsignedDec' :: (Eq a, Num a, Integral a) => a -> Ptr Word8 -> Ptr Word8 -> IO (Ptr Word8)
 {-# INLINABLE encodeUnsignedDec' #-} -- for specialization

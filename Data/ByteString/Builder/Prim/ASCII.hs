@@ -1,3 +1,5 @@
+{-# LANGUAGE TypeFamilies #-}
+
 -- | Copyright   : (c) 2010 Jasper Van der Jeugt
 --                 (c) 2010 - 2011 Simon Meier
 -- License       : BSD3-style (see LICENSE)
@@ -99,30 +101,50 @@ char7 = (\c -> fromIntegral $ ord c .&. 0x7f) >$< word8
 -- Signed integers
 ------------------
 
-{-# INLINE encodeIntDecimal #-}
-encodeIntDecimal :: Integral a => Int -> BoundedPrim a
-encodeIntDecimal bound = boundedPrim bound $ c_int_dec . fromIntegral
+type family CorrespondingUnsigned s where
+  CorrespondingUnsigned Int8  = Word8
+  CorrespondingUnsigned Int16 = Word16
+  CorrespondingUnsigned Int32 = Word32
+  CorrespondingUnsigned Int   = Word
+  CorrespondingUnsigned Int64 = Word64
+
+{-# INLINE encodeSignedViaUnsigned #-}
+encodeSignedViaUnsigned ::
+  forall s.
+  (Integral s, Num (CorrespondingUnsigned s)) =>
+  Int -> (BoundedPrim (CorrespondingUnsigned s)) -> BoundedPrim s
+encodeSignedViaUnsigned bound writeUnsigned = boundedPrim bound $ \sval ptr ->
+  if sval < 0 then do
+    poke ptr (c2w '-')
+    runB writeUnsigned (makeUnsigned (negate sval)) (ptr `plusPtr` 1)
+    -- This call to 'negate' may overflow if `sval == minBound`.
+    -- But since we insist that the unsigned type has the same width,
+    -- this causes no trouble.
+  else do
+    runB writeUnsigned (makeUnsigned sval) ptr
+  where
+    makeUnsigned = fromIntegral @s @(CorrespondingUnsigned s)
 
 -- | Decimal encoding of an 'Int8'.
 {-# INLINE int8Dec #-}
 int8Dec :: BoundedPrim Int8
-int8Dec = encodeIntDecimal 4
+int8Dec = encodeSignedViaUnsigned 4 word8Dec
 
 -- | Decimal encoding of an 'Int16'.
 {-# INLINE int16Dec #-}
 int16Dec :: BoundedPrim Int16
-int16Dec = encodeIntDecimal 6
+int16Dec = encodeSignedViaUnsigned 6 word16Dec
 
 
 -- | Decimal encoding of an 'Int32'.
 {-# INLINE int32Dec #-}
 int32Dec :: BoundedPrim Int32
-int32Dec = encodeIntDecimal 11
+int32Dec = encodeSignedViaUnsigned 11 word32Dec
 
 -- | Decimal encoding of an 'Int64'.
 {-# INLINE int64Dec #-}
 int64Dec :: BoundedPrim Int64
-int64Dec = boundedPrim 20 $ c_long_long_int_dec . fromIntegral
+int64Dec = encodeSignedViaUnsigned 20 word64Dec
 
 -- | Decimal encoding of an 'Int'.
 {-# INLINE intDec #-}
@@ -135,29 +157,29 @@ intDec = caseWordSize_32_64
 -- Unsigned integers
 --------------------
 
-{-# INLINE encodeWordDecimal #-}
-encodeWordDecimal :: Integral a => Int -> BoundedPrim a
-encodeWordDecimal bound = boundedPrim bound $ c_uint_dec . fromIntegral
+{-# INLINE encodeWord32Decimal #-}
+encodeWord32Decimal :: Integral a => Int -> BoundedPrim a
+encodeWord32Decimal bound = boundedPrim bound $ c_uint32_dec . fromIntegral
 
 -- | Decimal encoding of a 'Word8'.
 {-# INLINE word8Dec #-}
 word8Dec :: BoundedPrim Word8
-word8Dec = encodeWordDecimal 3
+word8Dec = encodeWord32Decimal 3
 
 -- | Decimal encoding of a 'Word16'.
 {-# INLINE word16Dec #-}
 word16Dec :: BoundedPrim Word16
-word16Dec = encodeWordDecimal 5
+word16Dec = encodeWord32Decimal 5
 
 -- | Decimal encoding of a 'Word32'.
 {-# INLINE word32Dec #-}
 word32Dec :: BoundedPrim Word32
-word32Dec = encodeWordDecimal 10
+word32Dec = encodeWord32Decimal 10
 
 -- | Decimal encoding of a 'Word64'.
 {-# INLINE word64Dec #-}
 word64Dec :: BoundedPrim Word64
-word64Dec = boundedPrim 20 $ c_long_long_uint_dec . fromIntegral
+word64Dec = boundedPrim 20 c_uint64_dec
 
 -- | Decimal encoding of a 'Word'.
 {-# INLINE wordDec #-}
@@ -173,30 +195,30 @@ wordDec = caseWordSize_32_64
 -- without lead
 ---------------
 
-{-# INLINE encodeWordHex #-}
-encodeWordHex :: forall a. (Storable a, Integral a) => BoundedPrim a
-encodeWordHex =
-    boundedPrim (2 * sizeOf (undefined :: a)) $ c_uint_hex  . fromIntegral
+{-# INLINE encodeWord32Hex #-}
+encodeWord32Hex :: forall a. (Storable a, Integral a) => BoundedPrim a
+encodeWord32Hex =
+    boundedPrim (2 * sizeOf @a undefined) $ c_uint32_hex . fromIntegral
 
 -- | Hexadecimal encoding of a 'Word8'.
 {-# INLINE word8Hex #-}
 word8Hex :: BoundedPrim Word8
-word8Hex = encodeWordHex
+word8Hex = encodeWord32Hex
 
 -- | Hexadecimal encoding of a 'Word16'.
 {-# INLINE word16Hex #-}
 word16Hex :: BoundedPrim Word16
-word16Hex = encodeWordHex
+word16Hex = encodeWord32Hex
 
 -- | Hexadecimal encoding of a 'Word32'.
 {-# INLINE word32Hex #-}
 word32Hex :: BoundedPrim Word32
-word32Hex = encodeWordHex
+word32Hex = encodeWord32Hex
 
 -- | Hexadecimal encoding of a 'Word64'.
 {-# INLINE word64Hex #-}
 word64Hex :: BoundedPrim Word64
-word64Hex = boundedPrim 16 $ c_long_long_uint_hex . fromIntegral
+word64Hex = boundedPrim 16 c_uint64_hex
 
 -- | Hexadecimal encoding of a 'Word'.
 {-# INLINE wordHex #-}

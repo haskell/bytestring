@@ -103,14 +103,12 @@ module Data.ByteString.Internal.Type (
         c_count_ba,
         c_elem_index,
         c_sort,
-        c_int_dec,
-        c_int_dec_padded9,
-        c_uint_dec,
-        c_uint_hex,
-        c_long_long_int_dec,
-        c_long_long_int_dec_padded18,
-        c_long_long_uint_dec,
-        c_long_long_uint_hex,
+        c_uint32_dec,
+        c_uint64_dec,
+        c_uint32_dec_padded9,
+        c_uint64_dec_padded18,
+        c_uint32_hex,
+        c_uint64_hex,
         cIsValidUtf8BA,
         cIsValidUtf8BASafe,
         cIsValidUtf8,
@@ -1164,29 +1162,23 @@ foreign import ccall unsafe "static sbs_elem_index"
 
 
 
-foreign import ccall unsafe "static _hs_bytestring_uint_dec" c_uint_dec
-    :: CUInt -> Ptr Word8 -> IO (Ptr Word8)
+foreign import ccall unsafe "static _hs_bytestring_uint32_dec" c_uint32_dec
+    :: Word32 -> Ptr Word8 -> IO (Ptr Word8)
 
-foreign import ccall unsafe "static _hs_bytestring_long_long_uint_dec" c_long_long_uint_dec
-    :: CULLong -> Ptr Word8 -> IO (Ptr Word8)
+foreign import ccall unsafe "static _hs_bytestring_uint64_dec" c_uint64_dec
+    :: Word64 -> Ptr Word8 -> IO (Ptr Word8)
 
-foreign import ccall unsafe "static _hs_bytestring_int_dec" c_int_dec
-    :: CInt -> Ptr Word8 -> IO (Ptr Word8)
+foreign import ccall unsafe "static _hs_bytestring_uint32_hex" c_uint32_hex
+    :: Word32 -> Ptr Word8 -> IO (Ptr Word8)
 
-foreign import ccall unsafe "static _hs_bytestring_long_long_int_dec" c_long_long_int_dec
-    :: CLLong -> Ptr Word8 -> IO (Ptr Word8)
+foreign import ccall unsafe "static _hs_bytestring_uint64_hex" c_uint64_hex
+    :: Word64 -> Ptr Word8 -> IO (Ptr Word8)
 
-foreign import ccall unsafe "static _hs_bytestring_uint_hex" c_uint_hex
-    :: CUInt -> Ptr Word8 -> IO (Ptr Word8)
+foreign import ccall unsafe "static _hs_bytestring_uint32_dec_padded9"
+    c_uint32_dec_padded9  :: Word32 -> Ptr Word8 -> IO ()
 
-foreign import ccall unsafe "static _hs_bytestring_long_long_uint_hex" c_long_long_uint_hex
-    :: CULLong -> Ptr Word8 -> IO (Ptr Word8)
-
-foreign import ccall unsafe "static _hs_bytestring_int_dec_padded9"
-    c_int_dec_padded9 :: CInt -> Ptr Word8 -> IO ()
-
-foreign import ccall unsafe "static _hs_bytestring_long_long_int_dec_padded18"
-    c_long_long_int_dec_padded18 :: CLLong -> Ptr Word8 -> IO ()
+foreign import ccall unsafe "static _hs_bytestring_uint64_dec_padded18"
+    c_uint64_dec_padded18 :: Word64 -> Ptr Word8 -> IO ()
 
 -- We import bytestring_is_valid_utf8 both unsafe and safe. For small inputs
 -- we can use the unsafe version to get a bit more performance, but for large
@@ -1272,28 +1264,22 @@ checkedCast x =
 -- Haskell version of functions in itoa.c
 ----------------------------------------------------------------
 
-c_int_dec :: CInt -> Ptr Word8 -> IO (Ptr Word8)
-c_int_dec = Pure.encodeSignedDec
+c_uint32_dec :: Word32 -> Ptr Word8 -> IO (Ptr Word8)
+c_uint32_dec = Pure.encodeUnsignedDec
 
-c_long_long_int_dec :: CLLong -> Ptr Word8 -> IO (Ptr Word8)
-c_long_long_int_dec = Pure.encodeSignedDec
+c_uint64_dec :: Word64 -> Ptr Word8 -> IO (Ptr Word8)
+c_uint64_dec = Pure.encodeUnsignedDec
 
-c_uint_dec :: CUInt -> Ptr Word8 -> IO (Ptr Word8)
-c_uint_dec = Pure.encodeUnsignedDec
+c_uint32_hex :: Word32 -> Ptr Word8 -> IO (Ptr Word8)
+c_uint32_hex = Pure.encodeUnsignedHex
 
-c_long_long_uint_dec :: CULLong -> Ptr Word8 -> IO (Ptr Word8)
-c_long_long_uint_dec = Pure.encodeUnsignedDec
+c_uint64_hex :: Word64 -> Ptr Word8 -> IO (Ptr Word8)
+c_uint64_hex = Pure.encodeUnsignedHex
 
-c_uint_hex :: CUInt -> Ptr Word8 -> IO (Ptr Word8)
-c_uint_hex = Pure.encodeUnsignedHex
+c_uint32_dec_padded9 :: Word32 -> Ptr Word8 -> IO ()
+c_uint32_dec_padded9 = Pure.encodeUnsignedDecPadded 9
 
-c_long_long_uint_hex :: CULLong -> Ptr Word8 -> IO (Ptr Word8)
-c_long_long_uint_hex = Pure.encodeUnsignedHex
-
-c_int_dec_padded9 :: CInt -> Ptr Word8 -> IO ()
-c_int_dec_padded9 = Pure.encodeUnsignedDecPadded 9
-
-c_long_long_int_dec_padded18 :: CLLong -> Ptr Word8 -> IO ()
-c_long_long_int_dec_padded18 = Pure.encodeUnsignedDecPadded 18
+c_uint64_dec_padded18 :: Word64 -> Ptr Word8 -> IO ()
+c_uint64_dec_padded18 = Pure.encodeUnsignedDecPadded 18
 
 #endif
