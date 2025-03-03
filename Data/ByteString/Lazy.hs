@@ -584,7 +584,6 @@ compareLength :: ByteString -> Int64 -> Ordering
 compareLength _ toCmp | toCmp < 0 = GT
 compareLength Empty toCmp         = compare 0 toCmp
 compareLength (Chunk c cs) toCmp  = compareLength cs (toCmp - fromIntegral (S.length c))
-{-# INLINE compareLength #-}
 
 {-# RULES
 "ByteString.Lazy length/compareN -> compareLength" [~1] forall t n.
