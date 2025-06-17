@@ -127,7 +127,7 @@ jobs:
         arch: ['s390x', 'ppc64le', 'riscv64']
     steps:
     - uses: actions/checkout@v4
-    - uses: uraimo/run-on-arch-action@v2.8.1
+    - uses: uraimo/run-on-arch-action@v3
       timeout-minutes: 60
       with:
         arch: ${{ matrix.arch }}
@@ -260,7 +260,6 @@ jobs:
           wasi-${{ runner.os }}-${{ env.GHC_WASM_META_REV }}-flavour-${{ matrix.ghc }}-
     - name: Build
       run: |
-        mv cabal.project.wasi cabal.project.local
         wasm32-wasi-cabal build --enable-tests
         wasm32-wasi-cabal list-bin test:bytestring-tests
     - name: Test
