@@ -507,12 +507,6 @@ primMapByteStringFixed = primMapByteStringBounded . toB
 primMapLazyByteStringFixed :: FixedPrim Word8 -> (L.LazyByteString -> Builder)
 primMapLazyByteStringFixed = primMapLazyByteStringBounded . toB
 
--- IMPLEMENTATION NOTE: Sadly, 'encodeListWith' cannot be used for foldr/build
--- fusion. Its performance relies on hoisting several variables out of the
--- inner loop.  That's not possible when writing 'encodeListWith' as a 'foldr'.
--- If we had stream fusion for lists, then we could fuse 'encodeListWith', as
--- 'encodeWithStream' can keep control over the execution.
-
 
 -- | Create a 'Builder' that encodes values with the given 'BoundedPrim'.
 --
@@ -573,20 +567,29 @@ primBounded w x =
 --
 -- because it moves several variables out of the inner loop.
 {-# INLINE primMapListBounded #-}
-primMapListBounded :: BoundedPrim a -> [a] -> Builder
-primMapListBounded w xs0 =
-    builder $ step xs0
-  where
-    step xs1 k (BufferRange op0 ope0) =
-        go xs1 op0
-      where
-        go []          !op             = k (BufferRange op ope0)
-        go xs@(x':xs') !op
-          | op `plusPtr` bound <= ope0 = runB w x' op >>= go xs'
-          | otherwise                  =
-             return $ bufferFull bound op (step xs k)
+primMapListBounded :: forall a. BoundedPrim a -> [a] -> Builder
+primMapListBounded w = let
+  bound = I.sizeBound w
 
-    bound = I.sizeBound w
+  adjustRange :: (Ptr Word8 -> Ptr Word8 -> IO (BuildSignal r)) -> BuildStep r
+  adjustRange action (BufferRange bufStart bufEnd)
+    = action (bufEnd `plusPtr` negate bound) bufStart
+
+  augmentContinuation
+    :: a -> (Ptr Word8 -> Ptr Word8 -> IO (BuildSignal r))
+         ->  Ptr Word8 -> Ptr Word8 -> IO (BuildSignal r)
+  augmentContinuation x kont = \stop start -> if  start <= stop
+    then  runB w x start >>= kont stop
+    else  return $ bufferFull bound start $ adjustRange $
+      \newStop newStart -> runB w x newStart >>= kont newStop
+
+  finalContinuation
+    :: BuildStep r -> Ptr Word8 -> Ptr Word8 -> IO (BuildSignal r)
+  finalContinuation kont
+    = \stop start -> kont (BufferRange start $ stop `plusPtr` bound)
+
+  in  \xs -> builder $ \kont ->
+         adjustRange $ foldr augmentContinuation (finalContinuation kont) xs
 
 -- TODO: Add 'foldMap/encodeWith' its variants
 -- TODO: Ensure rewriting 'primBounded w . f = primBounded (w #. f)'
