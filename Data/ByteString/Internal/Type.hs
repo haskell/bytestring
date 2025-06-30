@@ -31,7 +31,11 @@ module Data.ByteString.Internal.Type (
         ),
 
         StrictByteString,
-
+        Scope
+        ( With
+        , Free
+        ),
+        BsHandle(BsHandle),
         -- * Internal indexing
         findIndexOrLength,
 
@@ -197,6 +201,7 @@ import GHC.ForeignPtr           (unsafeWithForeignPtr)
 
 import qualified Language.Haskell.TH.Lib as TH
 import qualified Language.Haskell.TH.Syntax as TH
+import System.IO                (Handle)
 
 #if !HS_unsafeWithForeignPtr_AVAILABLE
 unsafeWithForeignPtr :: ForeignPtr a -> (Ptr a -> IO b) -> IO b
@@ -351,6 +356,10 @@ instance Data ByteString where
     1 -> k (z packBytes)
     _ -> error "gunfold: unexpected constructor of strict ByteString"
   dataTypeOf _   = byteStringDataType
+
+data Scope = With | Free deriving (Show, Eq)
+
+newtype BsHandle (s :: Scope) = BsHandle Handle deriving (Show, Eq)
 
 packConstr :: Constr
 packConstr = mkConstr byteStringDataType "pack" [] Prefix
