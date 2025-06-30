@@ -236,7 +236,7 @@ import Data.ByteString.Lazy
         ,concat,take,takeEnd,drop,dropEnd,splitAt,intercalate
         ,isPrefixOf,isSuffixOf,group,inits,tails,initsNE,tailsNE,copy
         ,stripPrefix,stripSuffix
-        ,hGetContents, hGet, hPut, getContents
+        ,GetContents(hGetContents), BsHandle, hGet, hPut, getContents, stdout
         ,hGetNonBlocking, hPutNonBlocking
         ,putStr, hPutStr, interact
         ,readFile,writeFile,appendFile,compareLength)
@@ -262,8 +262,6 @@ import Prelude hiding
         ,unwords,words,all,concatMap,scanl,scanl1,scanr,scanr1
         ,readFile,writeFile,appendFile,replicate,getContents,getLine,putStr,putStrLn
         ,zip,zipWith,unzip,notElem,repeat,iterate,interact,cycle)
-
-import System.IO            (Handle, stdout)
 
 ------------------------------------------------------------------------
 
@@ -929,7 +927,7 @@ unwords = intercalate (singleton ' ')
 -- Other threads might write to the 'Handle' in between,
 -- and hence 'hPutStrLn' alone is not suitable for concurrent writes.
 --
-hPutStrLn :: Handle -> ByteString -> IO ()
+hPutStrLn :: BsHandle s -> ByteString -> IO ()
 hPutStrLn h ps = hPut h ps >> hPut h (L.singleton 0x0a)
 
 -- | Write a ByteString to 'stdout', appending a newline byte.

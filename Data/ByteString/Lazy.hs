@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE Trustworthy #-}
 
 {-# OPTIONS_HADDOCK prune #-}
@@ -212,7 +213,14 @@ module Data.ByteString.Lazy (
         appendFile,
 
         -- ** I\/O with Handles
-        hGetContents,
+        BsHandle,
+        GetContents(hGetContents),
+        stdin,
+        stdout,
+        mkFreeBsHandle,
+        hClose,
+        withBinaryFile,
+        openBinaryFile,
         hGet,
         hGetNonBlocking,
         hPut,
@@ -236,15 +244,17 @@ import qualified Data.ByteString        as P  (ByteString) -- type name only
 import qualified Data.ByteString        as S  -- S for strict (hmm...)
 import qualified Data.ByteString.Internal.Type as S
 import qualified Data.ByteString.Unsafe as S
+import qualified System.IO              as IO
+import Data.ByteString.Internal.Type (BsHandle(..), Scope(..))
 import Data.ByteString.Lazy.Internal
 
+import Control.DeepSeq          (NFData(rnf))
 import Control.Exception        (assert)
 import Control.Monad            (mplus)
 import Data.Word                (Word8)
 import Data.Int                 (Int64)
 import GHC.Stack.Types          (HasCallStack)
-import System.IO                (Handle,openBinaryFile,stdin,stdout,withBinaryFile,IOMode(..)
-                                ,hClose)
+import System.IO                (Handle,IOMode(..))
 import System.IO.Error          (mkIOError, illegalOperationErrorType)
 import System.IO.Unsafe
 
@@ -1553,7 +1563,23 @@ hGetContentsN k h = lazyRead -- TODO close on exceptions
     loop = do
         c <- S.hGetSome h k -- only blocks if there is no data available
         if S.null c
-          then hClose h >> return Empty
+          then IO.hClose h >> return Empty
+          else Chunk c <$> lazyRead
+
+-- | Read entire handle contents /lazily/ into a 'ByteString'. Chunks
+-- are read on demand, in at most @k@-sized chunks. It does not block
+-- waiting for a whole @k@-sized chunk, so if less than @k@ bytes are
+-- available then they will be returned immediately as a smaller chunk.
+--
+hGetContentsOnlyN :: Int -> Handle -> IO ByteString
+hGetContentsOnlyN k h = lazyRead -- TODO close on exceptions
+  where
+    lazyRead = unsafeInterleaveIO loop
+
+    loop = do
+        c <- S.hGetSome h k -- only blocks if there is no data available
+        if S.null c
+          then return Empty
           else Chunk c <$> lazyRead
 
 -- | Read @n@ bytes into a 'ByteString', directly from the
@@ -1599,16 +1625,21 @@ illegalBufferSize handle fn sz =
 -- | Read entire handle contents /lazily/ into a 'ByteString'. Chunks
 -- are read on demand, using the default chunk size.
 --
--- File handles are closed on EOF if all the file is read, or through
--- garbage collection otherwise.
---
-hGetContents :: Handle -> IO ByteString
-hGetContents = hGetContentsN defaultChunkSize
+class GetContents a where
+  hGetContents :: BsHandle a -> IO ByteString
+
+instance GetContents With where
+  hGetContents (BsHandle h) = hGetContentsOnlyN defaultChunkSize h
+  {-# INLINE hGetContents #-}
+
+instance GetContents Free where
+  hGetContents (BsHandle h) = hGetContentsN defaultChunkSize h
+  {-# INLINE hGetContents #-}
 
 -- | Read @n@ bytes into a 'ByteString', directly from the specified 'Handle'.
 --
-hGet :: Handle -> Int -> IO ByteString
-hGet = hGetN defaultChunkSize
+hGet :: BsHandle s -> Int -> IO ByteString
+hGet (BsHandle h) = hGetN defaultChunkSize h
 
 -- | hGetNonBlocking is similar to 'hGet', except that it will never block
 -- waiting for data to become available, instead it returns only whatever data
@@ -1620,6 +1651,28 @@ hGet = hGetN defaultChunkSize
 --
 hGetNonBlocking :: Handle -> Int -> IO ByteString
 hGetNonBlocking = hGetNonBlockingN defaultChunkSize
+
+stdout :: BsHandle Free
+stdout = BsHandle IO.stdout
+
+stdin :: BsHandle Free
+stdin = BsHandle IO.stdin
+
+hClose :: BsHandle Free -> IO ()
+hClose (BsHandle h) = IO.hClose h
+
+mkFreeBsHandle :: Handle -> BsHandle Free
+mkFreeBsHandle = BsHandle
+
+openBinaryFile :: FilePath -> IOMode -> IO (BsHandle Free)
+openBinaryFile fp mode = BsHandle <$> IO.openBinaryFile fp mode
+
+withBinaryFile :: NFData r => FilePath -> IOMode -> (BsHandle With -> IO r) -> IO r
+withBinaryFile fp mode cb = IO.withBinaryFile fp mode go
+  where
+    go h = do
+      r <- cb (BsHandle h)
+      rnf r `seq` pure r
 
 -- | Read an entire file /lazily/ into a 'ByteString'.
 --
@@ -1655,8 +1708,8 @@ getContents = hGetContents stdin
 -- written one at a time. Other threads might write to the 'Handle' in between,
 -- and hence 'hPut' alone is not suitable for concurrent writes.
 --
-hPut :: Handle -> ByteString -> IO ()
-hPut h = foldrChunks (\c rest -> S.hPut h c >> rest) (return ())
+hPut :: BsHandle s -> ByteString -> IO ()
+hPut (BsHandle h) = foldrChunks (\c rest -> S.hPut h c >> rest) (return ())
 
 -- | Similar to 'hPut' except that it will never block. Instead it returns
 -- any tail that did not get written. This tail may be 'empty' in the case that
@@ -1666,18 +1719,18 @@ hPut h = foldrChunks (\c rest -> S.hPut h c >> rest) (return ())
 -- Note: on Windows and with Haskell implementation other than GHC, this
 -- function does not work correctly; it behaves identically to 'hPut'.
 --
-hPutNonBlocking :: Handle -> ByteString -> IO ByteString
+hPutNonBlocking :: BsHandle s -> ByteString -> IO ByteString
 hPutNonBlocking _ Empty           = return Empty
-hPutNonBlocking h bs@(Chunk c cs) = do
+hPutNonBlocking bh@(BsHandle h) bs@(Chunk c cs) = do
   c' <- S.hPutNonBlocking h c
   case S.length c' of
-    l' | l' == S.length c -> hPutNonBlocking h cs
+    l' | l' == S.length c -> hPutNonBlocking bh cs
     0                     -> return bs
     _                     -> return (Chunk c' cs)
 
 -- | A synonym for 'hPut', for compatibility
 --
-hPutStr :: Handle -> ByteString -> IO ()
+hPutStr :: BsHandle s -> ByteString -> IO ()
 hPutStr = hPut
 
 -- | Write a ByteString to 'stdout'.

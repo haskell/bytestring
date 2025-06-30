@@ -51,11 +51,25 @@ testSuite = withResource
         S.last r `seq` return ()
         appendFile fn "" -- will fail, if fn has not been closed yet
 
-    , testProperty "Testing lazy hGetContents" $ ioProperty $
+    , testProperty "Testing Free lazy hGetContents" $ ioProperty $
       forM_ [1..n] $ const $ do
         fn <- fn'
-        h <- openFile fn ReadMode
+        h <- L.openBinaryFile fn ReadMode
         r <- L.hGetContents h
+        L.last r `seq` return ()
+        appendFile fn "" -- will fail, if fn has not been closed yet
+    , testProperty "Testing With lazy hGetContents" $ ioProperty $
+      forM_ [1..n] $ const $ do
+        fn <- fn'
+        L.withBinaryFile fn ReadMode $
+          \h -> do
+            r <- L.hGetContents h
+            L.last r `seq` return ()
+        appendFile fn "" -- will fail, if fn has not been closed yet
+    , testProperty "Testing lazy withBinaryFile seq result" $ ioProperty $
+      forM_ [1..n] $ const $ do
+        fn <- fn'
+        r <- L.withBinaryFile fn ReadMode L.hGetContents
         L.last r `seq` return ()
         appendFile fn "" -- will fail, if fn has not been closed yet
     ]
