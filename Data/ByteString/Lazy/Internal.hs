@@ -78,9 +78,14 @@ import Control.Exception (assert)
 -- 8-bit characters.
 --
 #ifndef HS_BYTESTRING_ASSERTIONS
-data ByteString = Empty | Chunk  {-# UNPACK #-} !S.StrictByteString ByteString
-  -- INVARIANT: The S.StrictByteString field of any Chunk is not empty.
-  -- (See also the 'invariant' and 'checkInvariant' functions.)
+data ByteString
+  = Empty
+  | Chunk
+    {-# UNPACK #-} !S.StrictByteString
+    -- ^ Must be nonempty. Consider using
+    -- the smart constructor 'chunk' to ensure this invariant.
+    -- See also the 'invariant' and 'checkInvariant' functions.
+    LazyByteString
 
   -- To make testing of this invariant convenient, we add an
   -- assertion to that effect when the HS_BYTESTRING_ASSERTIONS

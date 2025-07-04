@@ -1296,6 +1296,13 @@ isSuffixOf sbs1 = \sbs2 -> do
 
 -- | Break a string on a substring, returning a pair of the part of the
 -- string prior to the match, and the rest of the string.
+-- If the substring is not found, return the entire string in the first component
+-- and an empty string in the second component.
+--
+-- >>> breakSubstring "needle" "hayneedlestraw"
+-- ("hay","needlestraw")
+-- >>> breakSubstring "needle" "hay"
+-- ("hay","")
 --
 -- The following relationships hold:
 --
