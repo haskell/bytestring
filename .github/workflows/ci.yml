@@ -49,6 +49,7 @@ jobs:
         cd bytestring-*/
         cabal bench --enable-tests --enable-benchmarks --benchmark-option=-l all
     - name: Haddock
+      if: matrix.ghc != '8.4'
       run: |
         cd bytestring-*/
         cabal haddock all
