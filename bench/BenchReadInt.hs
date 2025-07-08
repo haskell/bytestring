@@ -18,9 +18,6 @@ import Test.Tasty.Bench
 import Data.Int
 import Data.Word
 import Numeric.Natural
-#if !(MIN_VERSION_base(4,11,0))
-import Data.Semigroup (Semigroup((<>)))
-#endif
 import Data.Monoid (mconcat)
 
 ------------------------------------------------------------------------------

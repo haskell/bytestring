@@ -57,17 +57,16 @@ Author:              Don Stewart,
 Maintainer:          Haskell Bytestring Team <andrew.lelechenko@gmail.com>, Core Libraries Committee
 Homepage:            https://github.com/haskell/bytestring
 Bug-reports:         https://github.com/haskell/bytestring/issues
-Tested-With:         GHC==9.12.1,
-                     GHC==9.10.1,
+Tested-With:         GHC==9.12.2,
+                     GHC==9.10.2,
                      GHC==9.8.4,
-                     GHC==9.6.6,
+                     GHC==9.6.7,
                      GHC==9.4.8,
                      GHC==9.2.8,
                      GHC==9.0.2,
                      GHC==8.10.7,
                      GHC==8.8.4,
-                     GHC==8.6.5,
-                     GHC==8.4.4
+                     GHC==8.6.5
 Build-Type:          Simple
 extra-source-files:  README.md Changelog.md include/bytestring-cpp-macros.h
 
@@ -110,7 +109,7 @@ common language
 
 library
   import:          language
-  build-depends:   base >= 4.11 && < 5, ghc-prim, deepseq, template-haskell
+  build-depends:   base >= 4.12 && < 5, ghc-prim, deepseq, template-haskell
 
   if impl(ghc < 9.4)
     build-depends: data-array-byte >= 0.1 && < 0.2
@@ -249,8 +248,7 @@ benchmark bytestring-bench
   hs-source-dirs:   bench
 
   ghc-options:      -O2 "-with-rtsopts=-A32m"
-  if impl(ghc >= 8.6)
-    ghc-options:    -fproc-alignment=64
+                    -fproc-alignment=64
   build-depends:    base,
                     bytestring,
                     deepseq,
