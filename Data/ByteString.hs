@@ -1558,6 +1558,13 @@ isValidUtf8 (BS ptr len) = accursedUnutterablePerformIO $ unsafeWithForeignPtr p
 
 -- | Break a string on a substring, returning a pair of the part of the
 -- string prior to the match, and the rest of the string.
+-- If the substring is not found, return the entire string in the first component
+-- and an empty string in the second component.
+--
+-- >>> breakSubstring "needle" "hayneedlestraw"
+-- ("hay","needlestraw")
+-- >>> breakSubstring "needle" "hay"
+-- ("hay","")
 --
 -- The following relationships hold:
 --
@@ -1576,7 +1583,7 @@ isValidUtf8 (BS ptr len) = accursedUnutterablePerformIO $ unsafeWithForeignPtr p
 --
 -- > fst (breakSubstring x y)
 --
--- Note that calling `breakSubstring x` does some preprocessing work, so
+-- Note that calling 'breakSubstring' @x@ does some preprocessing work, so
 -- you should avoid unnecessarily duplicating breakSubstring calls with the same
 -- pattern.
 --
@@ -2017,8 +2024,7 @@ hGetContentsSizeHint hnd =
              -- we grow the buffer sizes, but not too huge
              -- we concatenate in the end anyway
 
--- | getContents. Read stdin strictly. Equivalent to hGetContents stdin
--- The 'Handle' is closed after the contents have been read.
+-- | Equivalent to 'hGetContents' 'stdin', reading it /strictly/.
 --
 getContents :: IO ByteString
 getContents = hGetContents stdin

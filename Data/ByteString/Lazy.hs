@@ -1597,10 +1597,20 @@ illegalBufferSize handle fn sz =
       msg = fn ++ ": illegal ByteString size " ++ showsPrec 9 sz []
 
 -- | Read entire handle contents /lazily/ into a 'ByteString'. Chunks
--- are read on demand, using the default chunk size.
+-- are read on demand, using the default chunk size ('defaultChunkSize').
 --
 -- File handles are closed on EOF if all the file is read, or through
 -- garbage collection otherwise.
+--
+-- Beware of using this function inside of 'Control.Exception.bracket' \/
+-- 'System.IO.withFile' \/ 'System.IO.withBinaryFile':
+-- lazy I/O can easily escape it, causing 'Control.Exception.bracket' to close a handle prematurely:
+--
+-- >>> withBinaryFile "foo.txt" ReadMode BL.hGetContents >>= print
+-- "*** Exception: foo.txt: hGetBufSome: illegal operation (handle is closed)
+--
+-- The expected way of using 'hGetContents' is to open a handle,
+-- pass it to 'hGetContents', and leave 'hGetContents' to close the handle when it sees fit.
 --
 hGetContents :: Handle -> IO ByteString
 hGetContents = hGetContentsN defaultChunkSize
@@ -1644,7 +1654,7 @@ writeFile = modifyFile WriteMode
 appendFile :: FilePath -> ByteString -> IO ()
 appendFile = modifyFile AppendMode
 
--- | getContents. Equivalent to hGetContents stdin. Will read /lazily/
+-- | Equivalent to 'hGetContents' 'stdin', reading it /lazily/.
 --
 getContents :: IO ByteString
 getContents = hGetContents stdin
