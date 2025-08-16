@@ -4,6 +4,10 @@
   * [`Data.Data.dataTypeOf` for `StrictByteString` and `LazyByteString` now returns a `DataType` that uses `AlgRep` instead of `NoRep`.](https://github.com/haskell/bytestring/pull/614)
     * This allows utilities like `syb:Data.Generics.Text.gread` to be meaningfully used at these types containing `ByteString`s.
   * [`fromListN` in `instance IsList ByteString` truncates input list if it's longer than the size hint](https://github.com/haskell/bytestring/pull/672)
+* API additions
+  * New TH splices: `Data.ByteString.thLiteral` and `Data.ByteString.thHexLiteral`
+    * These validate input strings prior to generating corresponding
+      compile-time literal ByteStrings.
 <!--
 * Bug fixes:
 * API additions and behavior changes:

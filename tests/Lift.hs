@@ -31,6 +31,14 @@ testSuite = testGroup "Lift"
         let bs = "\0\1\2\3\0\1\2\3" :: BS.ByteString in
         bs === $$(TH.liftTyped $ BS.pack [0,1,2,3,0,1,2,3])
 #endif
+
+    , testProperty "thLiteral" $
+        let bs = "EHLO" :: BS.ByteString in
+        bs === $$(BS.thLiteral "EHLO")
+
+    , testProperty "thHexLiteral" $
+        let bs = "EHLO" :: BS.ByteString in
+        bs === $$(BS.thHexLiteral "45484c4F")
     ]
 
   , testGroup "lazy"
