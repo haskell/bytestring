@@ -42,7 +42,7 @@ module Data.ByteString.Internal.Type (
         unpackChars, unpackAppendCharsLazy, unpackAppendCharsStrict,
         unsafePackAddress, unsafePackLenAddress,
         unsafePackLiteral, unsafePackLenLiteral,
-        thLiteral, thHexLiteral,
+        literalFromChar8, literalFromHex,
 
         -- * Low level imperative construction
         empty,
@@ -544,7 +544,7 @@ data S2W = Octets {-# UNPACK #-} !Int [Word8]
 --
 -- > :set -XTemplateHaskell
 -- > ehloCmd :: ByteString
--- > ehloCmd = $$(thLiteral "EHLO")
+-- > ehloCmd = $$(literalFromChar8 "EHLO")
 --
 #if MIN_VERSION_template_haskell(2,17,0)
 liftTyped :: forall a m. (TH.Lift a, TH.Quote m) => a -> TH.Code m a
@@ -553,7 +553,7 @@ liftTyped = TH.liftTyped
 liftCode :: forall a m. m (TH.TExp a) -> TH.Code m a
 liftCode = TH.liftCode
 
-thLiteral :: (MonadFail m, TH.Quote m) => String -> TH.Code m ByteString
+literalFromChar8 :: (MonadFail m, TH.Quote m) => String -> TH.Code m ByteString
 #else
 liftTyped :: forall a. TH.Lift a => a -> TH.Q (TH.TExp a)
 liftTyped = TH.unsafeTExpCoerce . TH.lift
@@ -561,17 +561,18 @@ liftTyped = TH.unsafeTExpCoerce . TH.lift
 liftCode :: forall a. TH.Q TH.Exp -> TH.Q (TH.TExp a)
 liftCode = TH.unsafeTExpCoerce
 
-thLiteral :: String -> TH.Q (TH.TExp ByteString)
+literalFromChar8 :: String -> TH.Q (TH.TExp ByteString)
 #endif
-thLiteral "" = [||empty||]
-thLiteral s = case foldr' op (Octets 0 []) s of
-    Octets !n ws -> liftTyped (unsafePackLenBytes n ws)
-    Hichar !i !w -> liftCode $ fail $ "non-octet character '\\" ++
+literalFromChar8 "" = [||empty||]
+literalFromChar8 s = case foldr' op (Octets 0 []) s of
+    Octets n ws -> liftTyped (unsafePackLenBytes n ws)
+    Hichar i w  -> liftCode $ fail $ "non-octet character '\\" ++
         show w ++ "' at offset: " ++ show i
   where
-    op _ (Hichar !i !w) = Hichar (i + 1) w
-    op (fromIntegral . fromEnum -> !w) (Octets !i ws)
-        | w <= 0xff = Octets (i + 1) (fromIntegral w : ws)
+    op (fromIntegral . fromEnum -> !w) acc
+        | w <= 0xff = case acc of
+            Octets i ws -> Octets (i + 1) (fromIntegral w : ws)
+            Hichar i w' -> Hichar (i + 1) w'
         | otherwise = Hichar 0 w
 
 data H2W = Hex {-# UNPACK #-} !Int [Word8]
@@ -580,25 +581,25 @@ data H2W = Hex {-# UNPACK #-} !Int [Word8]
 
 -- | Template Haskell splice to convert hex-encoded string constants to compile-time
 -- ByteString literals.  The input string is validated to ensure that it consists of
--- of an even number of valid hexadecimal digits (case insensitive).
+-- an even number of valid hexadecimal digits (case insensitive).
 --
 -- Example:
 --
 -- > :set -XTemplateHaskell
 -- > ehloCmd :: ByteString
--- > ehloCmd = $$(thLiteral "45484c4F")
+-- > ehloCmd = $$(literalFromHex "45484c4F")
 --
 #if MIN_VERSION_template_haskell(2,17,0)
-thHexLiteral :: (MonadFail m, TH.Quote m) => String -> TH.Code m ByteString
+literalFromHex :: (MonadFail m, TH.Quote m) => String -> TH.Code m ByteString
 #else
-thHexLiteral :: String -> TH.Q (TH.TExp ByteString)
+literalFromHex :: String -> TH.Q (TH.TExp ByteString)
 #endif
-thHexLiteral "" = [||empty||]
-thHexLiteral s =
+literalFromHex "" = [||empty||]
+literalFromHex s =
     case foldr' op (Hex 0 []) s of
-        (Hex n ws)  -> liftTyped (unsafePackLenBytes n ws)
-        (Odd i _ _) -> liftCode $ fail $ "Odd input length: " ++ show (1 + 2 * i)
-        (Bad i w)   -> liftCode $ fail $ "Non-hexadecimal character '\\" ++
+        Hex n ws  -> liftTyped (unsafePackLenBytes n ws)
+        Odd i _ _ -> liftCode $ fail $ "Odd input length: " ++ show (1 + 2 * i)
+        Bad i w   -> liftCode $ fail $ "Non-hexadecimal character '\\" ++
             show w ++ "' at offset: " ++ show i
   where
     -- Convert char to decimal digit value if result in [0, 9].

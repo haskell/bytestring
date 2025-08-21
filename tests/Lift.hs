@@ -32,13 +32,13 @@ testSuite = testGroup "Lift"
         bs === $$(TH.liftTyped $ BS.pack [0,1,2,3,0,1,2,3])
 #endif
 
-    , testProperty "thLiteral" $
+    , testProperty "literalFromChar8" $
         let bs = "EHLO" :: BS.ByteString in
-        bs === $$(BS.thLiteral "EHLO")
+        bs === $$(BS.literalFromChar8 "EHLO")
 
-    , testProperty "thHexLiteral" $
+    , testProperty "literalFromHex" $
         let bs = "EHLO" :: BS.ByteString in
-        bs === $$(BS.thHexLiteral "45484c4F")
+        bs === $$(BS.literalFromHex "45484c4F")
     ]
 
   , testGroup "lazy"
