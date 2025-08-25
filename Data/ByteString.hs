@@ -22,7 +22,7 @@
 -- are encoded as strict 'Word8' arrays of bytes, held in a 'ForeignPtr',
 -- and can be passed between C and Haskell with little effort.
 --
--- The recomended way to assemble ByteStrings from smaller parts
+-- The recommended way to assemble ByteStrings from smaller parts
 -- is to use the builder monoid from "Data.ByteString.Builder".
 --
 -- This module is intended to be imported @qualified@, to avoid name
