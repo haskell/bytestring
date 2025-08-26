@@ -33,6 +33,8 @@ module Data.ByteString.Short.Internal (
     unpack,
     fromShort,
     toShort,
+    lazyFromShort,
+    lazyToShort,
 
     -- * Basic interface
     snoc,
@@ -165,6 +167,7 @@ import Data.Data
   ( Data(..) )
 import Data.Monoid
   ( Monoid(..) )
+import Data.Int (Int64)
 import Data.Semigroup
   ( Semigroup(..), stimesMonoid )
 import Data.List.NonEmpty
@@ -183,6 +186,8 @@ import Foreign.C.String
   ( CString
   , CStringLen
   )
+import Foreign.ForeignPtr ( touchForeignPtr )
+import Foreign.ForeignPtr.Unsafe ( unsafeForeignPtrToPtr )
 import Foreign.Marshal.Alloc
   ( allocaBytes )
 import Foreign.Storable
@@ -242,6 +247,7 @@ import Prelude
   )
 
 import qualified Data.ByteString.Internal.Type as BS
+import qualified Data.ByteString.Lazy.Internal as LBS
 
 import qualified Data.List as List
 import qualified GHC.Exts
@@ -449,6 +455,38 @@ toShortIO (BS fptr len) = do
     BS.unsafeWithForeignPtr fptr $ \ptr ->
       stToIO (copyAddrToByteArray ptr mba 0 len)
     ShortByteString <$> stToIO (unsafeFreezeByteArray mba)
+
+-- | A simple wrapper around 'fromShort' that wraps the strict 'ByteString' as
+-- a one-chunk lazy 'LBS.ByteString'.
+lazyFromShort :: ShortByteString -> LBS.ByteString
+lazyFromShort = LBS.fromStrict . fromShort
+
+-- | /O(n)/. Convert a lazy 'LBS.ByteString' into a 'ShortByteString'.
+--
+-- This makes a copy, so does not retain the input string.  Naturally, best
+-- used only with sufficiently short lazy ByteStrings.  The entire lazy
+-- ByteString is brought into memory before a copy is made.
+--
+lazyToShort :: LBS.ByteString -> ShortByteString
+lazyToShort LBS.Empty = empty
+lazyToShort lbs
+    | tot64 /= fromIntegral total = error "lazyToShort: input too long"
+    | otherwise = unsafeDupablePerformIO $ do
+        mba <- stToIO (newByteArray total)
+        copy mba lbs
+        ShortByteString <$> stToIO (unsafeFreezeByteArray mba)
+  where
+    !tot64 = LBS.foldlChunks (\n (BS _ l) -> n + fromIntegral l) (0 :: Int64) lbs
+    !total = fromIntegral tot64
+
+    copy :: MutableByteArray RealWorld -> LBS.ByteString -> IO ()
+    copy mba = go 0
+      where
+        go off (LBS.Chunk (BS fp len) cs) = do
+            stToIO $ copyAddrToByteArray (unsafeForeignPtrToPtr fp) mba off len
+            touchForeignPtr fp
+            go (off + len) cs
+        go !_ LBS.Empty = pure ()
 
 -- | /O(n)/. Convert a 'ShortByteString' into a 'ByteString'.
 --
