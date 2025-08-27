@@ -44,6 +44,7 @@ module Data.ByteString.Internal.Type (
         unsafePackAddress, unsafePackLenAddress,
         unsafePackLiteral, unsafePackLenLiteral,
         literalFromOctetString, literalFromHex,
+        byteCountLiteral,
 
         -- * Low level imperative construction
         empty,
@@ -485,6 +486,18 @@ unsafePackLenAddress len addr# = do
     return $ BS p len
 #endif
 {-# INLINE unsafePackLenAddress #-}
+
+-- | Byte count of null-terminated primitive literal string excluding the
+-- terminating null byte.
+byteCountLiteral :: Addr# -> Int
+byteCountLiteral addr# =
+#if HS_cstringLength_AND_FinalPtr_AVAILABLE
+  I# (cstringLength# addr#)
+#else
+  fromIntegral @CSize @Int $
+    accursedUnutterablePerformIO (c_strlen (Ptr addr#))
+#endif
+{-# INLINE byteCountLiteral #-}
 
 -- | See 'unsafePackAddress'. This function has similar behavior. Prefer
 -- this function when the address in known to be an @Addr#@ literal. In

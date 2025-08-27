@@ -1,7 +1,4 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE Trustworthy #-}
-
-#include "bytestring-cpp-macros.h"
 
 {- | Copyright : (c) 2010-2011 Simon Meier
                  (c) 2010      Jasper van der Jeugt
@@ -456,6 +453,7 @@ import           Data.ByteString.Builder.Internal
 
 import qualified Data.ByteString               as S
 import qualified Data.ByteString.Internal      as S
+import qualified Data.ByteString.Internal.Type as S
 import qualified Data.ByteString.Lazy.Internal as L
 
 import           Data.Char (ord)
@@ -466,9 +464,6 @@ import           Data.ByteString.Builder.Prim.Binary
 import           Data.ByteString.Builder.Prim.ASCII
 
 import           Foreign
-#if !MIN_VERSION_base(4,15,0)
-import           Foreign.C (CSize(..), CString)
-#endif
 import           Foreign.ForeignPtr.Unsafe (unsafeForeignPtrToPtr)
 import           GHC.Exts
 
@@ -667,7 +662,7 @@ primMapLazyByteStringBounded w =
 --
 -- @since 0.11.0.0
 cstring :: Addr# -> Builder
-cstring s = asciiLiteralCopy (Ptr s) (byteCountLiteral s)
+cstring s = asciiLiteralCopy (Ptr s) (S.byteCountLiteral s)
 {-# INLINE cstring #-}
 
 -- | Builder for raw 'Addr#' pointers to null-terminated primitive UTF-8
@@ -676,22 +671,8 @@ cstring s = asciiLiteralCopy (Ptr s) (byteCountLiteral s)
 --
 -- @since 0.11.0.0
 cstringUtf8 :: Addr# -> Builder
-cstringUtf8 s = modUtf8LitCopy (Ptr s) (byteCountLiteral s)
+cstringUtf8 s = modUtf8LitCopy (Ptr s) (S.byteCountLiteral s)
 {-# INLINE cstringUtf8 #-}
-
--- | Byte count of null-terminated primitive literal string excluding the
--- terminating null byte.
-byteCountLiteral :: Addr# -> Int
-byteCountLiteral addr# =
-#if HS_cstringLength_AND_FinalPtr_AVAILABLE
-  I# (cstringLength# addr#)
-#else
-  fromIntegral (pure_strlen (Ptr addr#))
-
-foreign import ccall unsafe "string.h strlen" pure_strlen
-    :: CString -> CSize
-#endif
-{-# INLINE byteCountLiteral #-}
 
 ------------------------------------------------------------------------------
 -- Char8 encoding
