@@ -42,6 +42,7 @@ module Data.ByteString.Internal.Type (
         unpackChars, unpackAppendCharsLazy, unpackAppendCharsStrict,
         unsafePackAddress, unsafePackLenAddress,
         unsafePackLiteral, unsafePackLenLiteral,
+        literalFromChar8, literalFromHex,
 
         -- * Low level imperative construction
         empty,
@@ -152,8 +153,9 @@ import Data.String              (IsString(..))
 
 import Control.Exception        (assert, throw, Exception)
 
-import Data.Bits                ((.&.))
+import Data.Bits                ((.|.), (.&.), complement, shiftL)
 import Data.Char                (ord)
+import Data.Foldable            (foldr')
 import Data.Word
 
 import Data.Data                (Data(..), mkConstr, mkDataType, Constr, DataType, Fixity(Prefix), constrIndex)
@@ -529,6 +531,104 @@ packUptoLenChars len cs0 =
           go !p cs | p == p_end = return (len, cs)
           go !p (c:cs)          = pokeFp p (c2w c) >> go (p `plusForeignPtr` 1) cs
       in go p0 cs0
+
+#if MIN_VERSION_template_haskell(2,17,0)
+type THLift a = forall m. (MonadFail m, TH.Quote m) => TH.Code m a
+
+liftTyped :: forall a m. (MonadFail m, TH.Quote m, TH.Lift a) => a -> TH.Code m a
+liftTyped = TH.liftTyped
+
+liftCode :: forall a m. (MonadFail m, TH.Quote m) => m (TH.TExp a) -> TH.Code m a
+liftCode = TH.liftCode
+#else
+type THLift a = TH.Q (TH.TExp a)
+
+liftTyped :: forall a. TH.Lift a => a -> TH.Q (TH.TExp a)
+liftTyped = TH.unsafeTExpCoerce . TH.lift
+
+liftCode :: forall a. TH.Q TH.Exp -> TH.Q (TH.TExp a)
+liftCode = TH.unsafeTExpCoerce
+#endif
+
+data S2W = Octets {-# UNPACK #-} !Int [Word8]
+           -- ^ Decoded some octets (<= 0xFF)
+         | Hichar {-# UNPACK #-} !Int {-# UNPACK #-} !Word
+           -- ^ Found a high char (> 0xFF)
+
+data H2W = Hex {-# UNPACK #-} !Int [Word8]
+           -- ^ Decoded some full bytes (nibble pairs)
+         | Odd {-# UNPACK #-} !Int {-# UNPACK #-} !Word [Word8]
+           -- ^ Decoded a nibble plus some full bytes
+         | Bad {-# UNPACK #-} !Int {-# UNPACK #-} !Word
+           -- ^ Found a non hex-digit character
+
+-- | Template Haskell splice to convert string constants to compile-time
+-- ByteString literals.  Unlike the 'IsString' instance, the input string
+-- is validated to ensure that each character is a valid /octet/, i.e. is
+-- at most @0xFF@ (255).
+--
+-- Example:
+--
+-- > :set -XTemplateHaskell
+-- > ehloCmd :: ByteString
+-- > ehloCmd = $$(literalFromChar8 "EHLO")
+--
+literalFromChar8 :: String -> THLift ByteString
+literalFromChar8 "" = [||empty||]
+literalFromChar8 s = case foldr' op (Octets 0 []) s of
+    Octets n ws -> liftTyped (unsafePackLenBytes n ws)
+    Hichar i w  -> liftCode $ fail $ "non-octet character '\\" ++
+        show w ++ "' at offset: " ++ show i
+  where
+    op :: Char -> S2W -> S2W
+    op (fromIntegral . fromEnum -> !(w :: Word)) acc
+        | w <= 0xff = case acc of
+            Octets i ws -> Octets (i + 1) (fromIntegral w : ws)
+            Hichar i w' -> Hichar (i + 1) w'
+        | otherwise = Hichar 0 w
+
+-- | Template Haskell splice to convert hex-encoded string constants to compile-time
+-- ByteString literals.  The input string is validated to ensure that it consists of
+-- an even number of valid hexadecimal digits (case insensitive).
+--
+-- Example:
+--
+-- > :set -XTemplateHaskell
+-- > ehloCmd :: ByteString
+-- > ehloCmd = $$(literalFromHex "45484c4F")
+--
+literalFromHex :: String -> THLift ByteString
+literalFromHex "" = [||empty||]
+literalFromHex s =
+    case foldr' op (Hex 0 []) s of
+        Hex n ws  -> liftTyped (unsafePackLenBytes n ws)
+        Odd i _ _ -> liftCode $ fail $ "Odd input length: " ++ show (1 + 2 * i)
+        Bad i w   -> liftCode $ fail $ "Non-hexadecimal character '\\" ++
+            show w ++ "' at offset: " ++ show i
+  where
+    -- Convert char to decimal digit value if result in [0, 9].
+    -- Otherwise, for hex digits, it remains to:
+    --   - fold upper and lower case by masking 0x20,
+    --   - subtract another 0x11 (0x41 total),
+    --   - check that result in [0,5]
+    --   - add 0xa
+    --
+    c2d :: Char -> Word
+    c2d c = fromIntegral (fromEnum c) - 0x30
+
+    op :: Char -> H2W -> H2W
+    op (c2d -> !(d :: Word)) acc
+        | d <= 9 = case acc of
+            Hex i ws    -> Odd i d ws
+            Odd i lo ws -> Hex (i+1) $ fromIntegral ((d `shiftL` 4 .|. lo)) : ws
+            Bad i w     -> Bad (i + 1) w
+        | l <- (d .&. complement 0x20) - 0x11
+        , l <= 5
+        , x <- l + 0xa = case acc of
+            Hex i ws    -> Odd i (l + 0xa) ws
+            Odd i lo ws -> Hex (i+ 1) $ fromIntegral (x `shiftL` 4 .|. lo) : ws
+            Bad i w     -> Bad (i + 1) w
+        | otherwise = Bad 0 (d + 0x30)
 
 -- Unpacking bytestrings into lists efficiently is a tradeoff: on the one hand
 -- we would like to write a tight loop that just blasts the list into memory, on
