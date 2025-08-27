@@ -1,7 +1,7 @@
-{-# LANGUAGE MagicHash #-}
-{-# LANGUAGE NoMonoLocalBinds #-}
-{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE Unsafe #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE NoMonoLocalBinds #-}
 {-# LANGUAGE ViewPatterns #-}
 
 {-# OPTIONS_HADDOCK not-home #-}
@@ -979,11 +979,11 @@ byteStringInsert =
 -- Raw CString encoding
 ------------------------------------------------------------------------------
 
--- | Builder for raw 'Addr#' pointers to null-terminated primitive ASCII
--- strings that are free of embedded (overlong-encoded as the two-byte sequence
--- @0xC0 0x80@) null characters.
+-- | Builder for raw pointers to static data of known length that will never be
+-- moved or freed.  (This is used with the static buffers GHC uses to implement
+-- ASCII string literals that do not contain null characters.)
 --
--- @since 0.11.5.0
+-- @since 0.13.0.0
 {-# INLINABLE asciiLiteralCopy #-}
 asciiLiteralCopy :: Ptr Word8 -> Int -> Builder
 asciiLiteralCopy = \ !ip !len -> builder $ \k br@(BufferRange op ope) ->
@@ -996,7 +996,7 @@ asciiLiteralCopy = \ !ip !len -> builder $ \k br@(BufferRange op ope) ->
 -- as @0xC0 0x80@.  Other deviations from strict UTF-8 are tolerated, but the
 -- result is not well defined.
 --
--- @since 0.11.5.0
+-- @since 0.13.0.0
 {-# INLINABLE modUtf8LitCopy #-}
 modUtf8LitCopy :: Ptr Word8 -> Int -> Builder
 modUtf8LitCopy !ip !len
@@ -1034,6 +1034,7 @@ modUtf8_step !ip !len k (BufferRange op ope)
 utf8_copyBytes :: Ptr Word8 -> Ptr Word8 -> Ptr Word8 -> IO Int
 utf8_copyBytes !ipe = \ ip op -> go 0 ip op
   where
+    go :: Int -> Ptr Word8 -> Ptr Word8 -> IO Int
     go !n !ip@((< ipe) -> True) !op = do
         !ch <- peek ip
         let !ip' = ip `plusPtr` 1
@@ -1041,7 +1042,7 @@ utf8_copyBytes !ipe = \ ip op -> go 0 ip op
         if | ch /= 0xC0 -> do
                poke op ch
                let !cnt = ipe `minusPtr` ip'
-               !runend <- S.memchr ip' 0xC0 (fromIntegral cnt)
+               !runend <- S.memchr ip' 0xC0 (fromIntegral @Int cnt)
                let !runlen | runend == nullPtr = cnt
                            | otherwise = runend `minusPtr` ip'
                if (runlen == 0)
