@@ -167,7 +167,6 @@ import Data.Data
   ( Data(..) )
 import Data.Monoid
   ( Monoid(..) )
-import Data.Int (Int64)
 import Data.Semigroup
   ( Semigroup(..), stimesMonoid )
 import Data.List.NonEmpty
@@ -186,8 +185,6 @@ import Foreign.C.String
   ( CString
   , CStringLen
   )
-import Foreign.ForeignPtr ( touchForeignPtr )
-import Foreign.ForeignPtr.Unsafe ( unsafeForeignPtrToPtr )
 import Foreign.Marshal.Alloc
   ( allocaBytes )
 import Foreign.Storable
@@ -457,11 +454,11 @@ toShortIO (BS fptr len) = do
     ShortByteString <$> stToIO (unsafeFreezeByteArray mba)
 
 -- | A simple wrapper around 'fromShort' that wraps the strict 'ByteString' as
--- a one-chunk lazy 'LBS.ByteString'.
+-- a one-chunk 'LBS.LazyByteString'.
 lazyFromShort :: ShortByteString -> LBS.ByteString
 lazyFromShort = LBS.fromStrict . fromShort
 
--- | /O(n)/. Convert a lazy 'LBS.ByteString' into a 'ShortByteString'.
+-- | /O(n)/. Convert an 'LBS.LazyByteString' into a 'ShortByteString'.
 --
 -- This makes a copy, so does not retain the input string.  Naturally, best
 -- used only with sufficiently short lazy ByteStrings.  The entire lazy
@@ -469,22 +466,19 @@ lazyFromShort = LBS.fromStrict . fromShort
 --
 lazyToShort :: LBS.ByteString -> ShortByteString
 lazyToShort LBS.Empty = empty
-lazyToShort lbs
-    | tot64 /= fromIntegral total = error "lazyToShort: input too long"
-    | otherwise = unsafeDupablePerformIO $ do
+lazyToShort lbs = unsafeDupablePerformIO $ do
         mba <- stToIO (newByteArray total)
         copy mba lbs
         ShortByteString <$> stToIO (unsafeFreezeByteArray mba)
   where
-    !tot64 = LBS.foldlChunks (\n (BS _ l) -> n + fromIntegral l) (0 :: Int64) lbs
-    !total = fromIntegral tot64
+    !total = LBS.foldlChunks (\acc (BS _ l) -> checkedAdd "short.lazyToShort" acc l) 0 lbs
 
     copy :: MutableByteArray RealWorld -> LBS.ByteString -> IO ()
     copy mba = go 0
       where
         go off (LBS.Chunk (BS fp len) cs) = do
-            stToIO $ copyAddrToByteArray (unsafeForeignPtrToPtr fp) mba off len
-            touchForeignPtr fp
+            BS.unsafeWithForeignPtr fp $ \p ->
+                stToIO $ copyAddrToByteArray p mba off len
             go (off + len) cs
         go !_ LBS.Empty = pure ()
 

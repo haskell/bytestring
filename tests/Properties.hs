@@ -299,7 +299,7 @@ prop_stimesOverflowScary bs =
 prop_stimesOverflowEmpty = forAll (choose (0, maxBound @Word)) $ \n ->
   stimes n mempty === mempty @P.ByteString
 
-concat32bitOverflow :: (Int -> a) -> ([a] -> a) -> Property
+concat32bitOverflow :: (Int -> a) -> ([a] -> b) -> Property
 concat32bitOverflow replicateLike concatLike = let
   intBits = finiteBitSize @Int 0
   largeBS = concatLike $ replicate (bit 14) $ replicateLike (bit 17)
@@ -314,6 +314,10 @@ prop_32bitOverflow_Strict_mconcat =
 prop_32bitOverflow_Lazy_toStrict :: Property
 prop_32bitOverflow_Lazy_toStrict =
   concat32bitOverflow (`P.replicate` 0) (L.toStrict . L.fromChunks)
+
+prop_32bitOverflow_Lazy_toShort :: Property
+prop_32bitOverflow_Lazy_toShort =
+  concat32bitOverflow (`P.replicate` 0) (Short.lazyToShort . L.fromChunks)
 
 prop_32bitOverflow_Short_mconcat :: Property
 prop_32bitOverflow_Short_mconcat =
@@ -666,6 +670,7 @@ overflow_tests =
     , testProperty "StrictByteString stimes (empty)" prop_stimesOverflowEmpty
     , testProperty "StrictByteString mconcat" prop_32bitOverflow_Strict_mconcat
     , testProperty "LazyByteString toStrict"  prop_32bitOverflow_Lazy_toStrict
+    , testProperty "LazyByteString toShort"   prop_32bitOverflow_Lazy_toShort
     , testProperty "ShortByteString mconcat"  prop_32bitOverflow_Short_mconcat
     ]
 
