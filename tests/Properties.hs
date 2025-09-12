@@ -299,7 +299,7 @@ prop_stimesOverflowScary bs =
 prop_stimesOverflowEmpty = forAll (choose (0, maxBound @Word)) $ \n ->
   stimes n mempty === mempty @P.ByteString
 
-concat32bitOverflow :: (Int -> a) -> ([a] -> a) -> Property
+concat32bitOverflow :: (Int -> a) -> ([a] -> b) -> Property
 concat32bitOverflow replicateLike concatLike = let
   intBits = finiteBitSize @Int 0
   largeBS = concatLike $ replicate (bit 14) $ replicateLike (bit 17)
@@ -314,6 +314,10 @@ prop_32bitOverflow_Strict_mconcat =
 prop_32bitOverflow_Lazy_toStrict :: Property
 prop_32bitOverflow_Lazy_toStrict =
   concat32bitOverflow (`P.replicate` 0) (L.toStrict . L.fromChunks)
+
+prop_32bitOverflow_Lazy_toShort :: Property
+prop_32bitOverflow_Lazy_toShort =
+  concat32bitOverflow (`P.replicate` 0) (Short.lazyToShort . L.fromChunks)
 
 prop_32bitOverflow_Short_mconcat :: Property
 prop_32bitOverflow_Short_mconcat =
@@ -530,6 +534,8 @@ prop_short_pack_unpack xs =
     (Short.unpack . Short.pack) xs == xs
 prop_short_toShort_fromShort bs =
     (Short.fromShort . Short.toShort) bs == bs
+prop_short_lazyToShort_fromShort lbs =
+    (Short.lazyFromShort . Short.lazyToShort) lbs == lbs
 
 prop_short_toShort_unpack bs =
     (Short.unpack . Short.toShort) bs == P.unpack bs
@@ -596,6 +602,7 @@ prop_short_pinned (NonNegative (I# len#)) = runST $ ST $ \s ->
 short_tests =
     [ testProperty "pack/unpack"              prop_short_pack_unpack
     , testProperty "toShort/fromShort"        prop_short_toShort_fromShort
+    , testProperty "lazyToShort/fromShort"    prop_short_lazyToShort_fromShort
     , testProperty "toShort/unpack"           prop_short_toShort_unpack
     , testProperty "pack/fromShort"           prop_short_pack_fromShort
     , testProperty "empty"                    prop_short_empty
@@ -663,6 +670,7 @@ overflow_tests =
     , testProperty "StrictByteString stimes (empty)" prop_stimesOverflowEmpty
     , testProperty "StrictByteString mconcat" prop_32bitOverflow_Strict_mconcat
     , testProperty "LazyByteString toStrict"  prop_32bitOverflow_Lazy_toStrict
+    , testProperty "LazyByteString toShort"   prop_32bitOverflow_Lazy_toShort
     , testProperty "ShortByteString mconcat"  prop_32bitOverflow_Short_mconcat
     ]
 

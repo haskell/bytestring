@@ -74,6 +74,8 @@ module Data.ByteString.Short (
     unpack,
     fromShort,
     toShort,
+    lazyFromShort,
+    lazyToShort,
 
     -- * Basic interface
     snoc,

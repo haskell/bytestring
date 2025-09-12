@@ -33,6 +33,8 @@ module Data.ByteString.Short.Internal (
     unpack,
     fromShort,
     toShort,
+    lazyFromShort,
+    lazyToShort,
 
     -- * Basic interface
     snoc,
@@ -242,6 +244,7 @@ import Prelude
   )
 
 import qualified Data.ByteString.Internal.Type as BS
+import qualified Data.ByteString.Lazy.Internal as LBS
 
 import qualified Data.List as List
 import qualified GHC.Exts
@@ -449,6 +452,35 @@ toShortIO (BS fptr len) = do
     BS.unsafeWithForeignPtr fptr $ \ptr ->
       stToIO (copyAddrToByteArray ptr mba 0 len)
     ShortByteString <$> stToIO (unsafeFreezeByteArray mba)
+
+-- | A simple wrapper around 'fromShort' that wraps the strict 'ByteString' as
+-- a one-chunk 'LBS.LazyByteString'.
+lazyFromShort :: ShortByteString -> LBS.ByteString
+lazyFromShort = LBS.fromStrict . fromShort
+
+-- | /O(n)/. Convert an 'LBS.LazyByteString' into a 'ShortByteString'.
+--
+-- This makes a copy, so does not retain the input string.  Naturally, best
+-- used only with sufficiently short lazy ByteStrings.  The entire lazy
+-- ByteString is brought into memory before a copy is made.
+--
+lazyToShort :: LBS.ByteString -> ShortByteString
+lazyToShort LBS.Empty = empty
+lazyToShort lbs = unsafeDupablePerformIO $ do
+        mba <- stToIO (newByteArray total)
+        copy mba lbs
+        ShortByteString <$> stToIO (unsafeFreezeByteArray mba)
+  where
+    !total = LBS.foldlChunks (\acc (BS _ l) -> checkedAdd "short.lazyToShort" acc l) 0 lbs
+
+    copy :: MutableByteArray RealWorld -> LBS.ByteString -> IO ()
+    copy mba = go 0
+      where
+        go off (LBS.Chunk (BS fp len) cs) = do
+            BS.unsafeWithForeignPtr fp $ \p ->
+                stToIO $ copyAddrToByteArray p mba off len
+            go (off + len) cs
+        go !_ LBS.Empty = pure ()
 
 -- | /O(n)/. Convert a 'ShortByteString' into a 'ByteString'.
 --
