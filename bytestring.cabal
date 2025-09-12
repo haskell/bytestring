@@ -80,6 +80,14 @@ Flag pure-haskell
   default: False
   manual: True
 
+Flag plugin-tests
+  description: Also build and run the tests that use plugins.
+
+    (Due to circular dependencies, these tests currently
+    cannot be built without renaming the library.)
+  default: False
+  manual: True
+
 source-repository head
   type:     git
   location: https://github.com/haskell/bytestring
@@ -216,15 +224,26 @@ test-suite bytestring-tests
                     QuickCheckUtils
   hs-source-dirs:   tests,
                     tests/builder
+  build-depends:    bytestring
+                    -- Keep 'bytestring' on the same line as 'build-depends:'
+                    -- this is used by our hack to allow plugin tests
   build-depends:    base,
-                    bytestring,
                     deepseq,
                     QuickCheck,
                     tasty,
+                    tasty-expected-failure ^>= 0.12.3,
                     tasty-quickcheck >= 0.8.1,
                     template-haskell,
                     transformers >= 0.3,
                     syb
+
+  if flag(plugin-tests)
+    cpp-options:   -DBYTESTRING_PLUGIN_TESTS=1
+    build-depends: tasty-inspection-testing ^>= 0.2.1
+    other-modules: PluginTests
+                   PluginTests.Splices
+  else
+    cpp-options:   -DBYTESTRING_PLUGIN_TESTS=0
 
   ghc-options:      -fwarn-unused-binds
                     -rtsopts
@@ -249,8 +268,10 @@ benchmark bytestring-bench
 
   ghc-options:      -O2 "-with-rtsopts=-A32m"
                     -fproc-alignment=64
+  build-depends:    bytestring
+                    -- Keep 'bytestring' on the same line as 'build-depends:'
+                    -- this is used by our hack to allow plugin tests
   build-depends:    base,
-                    bytestring,
                     deepseq,
                     tasty-bench,
                     random
