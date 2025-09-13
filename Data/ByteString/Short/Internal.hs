@@ -455,6 +455,8 @@ toShortIO (BS fptr len) = do
 
 -- | A simple wrapper around 'fromShort' that wraps the strict 'ByteString' as
 -- a one-chunk 'LBS.LazyByteString'.
+--
+-- @since 0.12.3.0
 lazyFromShort :: ShortByteString -> LBS.ByteString
 lazyFromShort = LBS.fromStrict . fromShort
 
@@ -464,6 +466,7 @@ lazyFromShort = LBS.fromStrict . fromShort
 -- used only with sufficiently short lazy ByteStrings.  The entire lazy
 -- ByteString is brought into memory before a copy is made.
 --
+-- @since 0.12.3.0
 lazyToShort :: LBS.ByteString -> ShortByteString
 lazyToShort LBS.Empty = empty
 lazyToShort lbs = unsafeDupablePerformIO $ do
