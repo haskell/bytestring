@@ -80,14 +80,6 @@ Flag pure-haskell
   default: False
   manual: True
 
-Flag plugin-tests
-  description: Also build and run the tests that use plugins.
-
-    (Due to circular dependencies, these tests currently
-    cannot be built without renaming the library.)
-  default: False
-  manual: True
-
 source-repository head
   type:     git
   location: https://github.com/haskell/bytestring
@@ -237,7 +229,9 @@ test-suite bytestring-tests
                     transformers >= 0.3,
                     syb
 
-  if flag(plugin-tests)
+  -- The following intentionally-funnily-spelled condition
+  -- is changed to 'true' by our hack to allow plugin-based tests
+  if false && impl(pluginTestsHack)
     cpp-options:   -DBYTESTRING_PLUGIN_TESTS=1
     build-depends: tasty-inspection-testing ^>= 0.2.1
     other-modules: PluginTests
