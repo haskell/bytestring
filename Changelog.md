@@ -22,7 +22,7 @@
   * [Fix build in the presence of sketchy upstream CPP that triggers `-Wundef`](https://github.com/haskell/bytestring/pull/711)
     * (See [#665](https://github.com/haskell/bytestring/issues/665) and [#709](https://github.com/haskell/bytestring/issues/709).)
 * API additions and behavior changes:
-  * `Data.ByteString.Short` now provides `lazyToShort` and `lazyFromShort`.
+  * [`Data.ByteString.Short` now provides `lazyToShort` and `lazyFromShort`.](https://github.com/haskell/bytestring/pull/711)
 * Deprecations:
 * Performance improvements:
   * [Use only unsigned ints in the C itoa functions](https://github.com/haskell/bytestring/pull/702)
