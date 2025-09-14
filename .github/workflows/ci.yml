@@ -138,7 +138,7 @@ jobs:
           apt-get install -y ghc libghc-tasty-quickcheck-dev libghc-syb-dev
         run: |
           ghc --version
-          ghc --make -fPIC -XHaskell2010 -XBangPatterns -XDeriveDataTypeable -XDeriveGeneric -XDeriveLift -XFlexibleContexts -XFlexibleInstances -XLambdaCase -XMagicHash -XMultiWayIf -XNamedFieldPuns -XPatternSynonyms -XRankNTypes -XScopedTypeVariables -XStandaloneDeriving -XTupleSections -XTypeApplications -XTypeOperators -XUnboxedTuples -optP-Wall -optP-Werror=undef -DPURE_HASKELL=0 -Iinclude -itests:tests/builder -o Main cbits/*.c tests/Main.hs +RTS -s
+          ghc --make -fPIC -XHaskell2010 -XBangPatterns -XDeriveDataTypeable -XDeriveGeneric -XDeriveLift -XFlexibleContexts -XFlexibleInstances -XLambdaCase -XMagicHash -XMultiWayIf -XNamedFieldPuns -XPatternSynonyms -XRankNTypes -XScopedTypeVariables -XStandaloneDeriving -XTupleSections -XTypeApplications -XTypeOperators -XUnboxedTuples -optP-Wall -optP-Werror=undef -DPURE_HASKELL=0 -DBYTESTRING_PLUGIN_TESTS=0 -Iinclude -itests:tests/builder -o Main cbits/*.c tests/Main.hs +RTS -s
           ./Main +RTS -s
 
   bounds-checking:

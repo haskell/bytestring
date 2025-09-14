@@ -223,7 +223,6 @@ test-suite bytestring-tests
                     deepseq,
                     QuickCheck,
                     tasty,
-                    tasty-expected-failure ^>= 0.12.3,
                     tasty-quickcheck >= 0.8.1,
                     template-haskell,
                     transformers >= 0.3,
@@ -233,7 +232,8 @@ test-suite bytestring-tests
   -- is changed to 'true' by our hack to allow plugin-based tests
   if false && impl(pluginTestsHack)
     cpp-options:   -DBYTESTRING_PLUGIN_TESTS=1
-    build-depends: tasty-inspection-testing ^>= 0.2.1
+    build-depends: tasty-inspection-testing ^>= 0.2.1,
+                   tasty-expected-failure ^>= 0.12.3
     other-modules: PluginTests
                    PluginTests.Splices
   else
