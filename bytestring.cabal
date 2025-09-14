@@ -218,7 +218,7 @@ test-suite bytestring-tests
                     tests/builder
   build-depends:    bytestring
                     -- Keep 'bytestring' on the same line as 'build-depends:'
-                    -- this is used by our hack to allow plugin tests
+                    -- this is used by our hack to allow plugin-based tests
   build-depends:    base,
                     deepseq,
                     QuickCheck,
@@ -264,7 +264,7 @@ benchmark bytestring-bench
                     -fproc-alignment=64
   build-depends:    bytestring
                     -- Keep 'bytestring' on the same line as 'build-depends:'
-                    -- this is used by our hack to allow plugin tests
+                    -- this is used by our hack to allow plugin-based tests
   build-depends:    base,
                     deepseq,
                     tasty-bench,
