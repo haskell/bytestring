@@ -63,7 +63,11 @@ import Data.Data                (Data(..), mkConstr ,mkDataType, Constr, DataTyp
 
 import GHC.Exts                 (IsList(..))
 
+#if defined(MIN_VERSION_template_haskell_lift)
+import qualified Language.Haskell.TH.Lift as TH
+#else
 import qualified Language.Haskell.TH.Syntax as TH
+#endif
 
 #ifdef HS_BYTESTRING_ASSERTIONS
 import Control.Exception (assert)
