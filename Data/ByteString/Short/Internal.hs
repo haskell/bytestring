@@ -248,7 +248,12 @@ import qualified Data.ByteString.Lazy.Internal as LBS
 
 import qualified Data.List as List
 import qualified GHC.Exts
+#if __GLASGOW_HASKELL__ >= 914
+import qualified Language.Haskell.TH.Lift as TH
+#else
 import qualified Language.Haskell.TH.Syntax as TH
+#endif
+
 
 -- | A compact representation of a 'Word8' vector.
 --
