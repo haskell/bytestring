@@ -108,11 +108,13 @@ instance RdInt Word64 where { bread = B.readWord64;  sread = readWord64 }
 instance RdInt Integer where { bread = B.readInteger; sread = readInteger }
 instance RdInt Natural where { bread = B.readNatural; sread = readNatural }
 
+#if !MIN_VERSION_QuickCheck(2,17,0)
 instance Arbitrary Natural where
     arbitrary = i2n <$> arbitrary
       where i2n :: Integer -> Natural
             i2n i | i >= 0 = fromIntegral i
                   | otherwise = fromIntegral $ negate i
+#endif
 
 testRdInt :: forall a. (Arbitrary a, RdInt a) => String -> TestTree
 testRdInt s = testGroup s $
