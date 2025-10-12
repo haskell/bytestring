@@ -5,15 +5,35 @@
     * This allows utilities like `syb:Data.Generics.Text.gread` to be meaningfully used at these types containing `ByteString`s.
   * [`fromListN` in `instance IsList ByteString` truncates input list if it's longer than the size hint](https://github.com/haskell/bytestring/pull/672)
 
-* API additions and behavior changes:
-  * Data.ByteString.Short now provides `lazyToShort` and `lazyFromShort`.
-
 <!--
+[minor version number] — Month Year
+
 * Bug fixes:
+* API additions and behavior changes:
 * Deprecations:
 * Performance improvements:
 * Miscellaneous:
 * Internal stuff:
+-->
+
+[0.12.3.0] — TBA 2025
+
+* Bug fixes:
+  * [Fix build in the presence of sketchy upstream CPP that triggers `-Wundef`](https://github.com/haskell/bytestring/pull/711)
+    * (See [#665](https://github.com/haskell/bytestring/issues/665) and [#709](https://github.com/haskell/bytestring/issues/709).)
+* API additions and behavior changes:
+  * [`Data.ByteString.Short` now provides `lazyToShort` and `lazyFromShort`.](https://github.com/haskell/bytestring/pull/619)
+* Deprecations:
+* Performance improvements:
+  * [Use only unsigned ints in the C itoa functions](https://github.com/haskell/bytestring/pull/702)
+  * [Remove a dead branch in `integerDec`](https://github.com/haskell/bytestring/pull/702)
+* Miscellaneous:
+  * [Remove useless INLINE on `compareLength` for lazy bytestrings.](https://github.com/haskell/bytestring/pull/705)
+  * [Drop support for GHC < 8.6](https://github.com/haskell/bytestring/pull/710)
+  * Various documentation improvements ([1](https://github.com/haskell/bytestring/pull/710), [2](https://github.com/haskell/bytestring/pull/713))
+<!--
+* Internal stuff:
+  * Various CI tweaks ([1](https://github.com/haskell/bytestring/pull/703), [2](https://github.com/haskell/bytestring/pull/706))
 -->
 
 [0.12.2.0] — October 2024
