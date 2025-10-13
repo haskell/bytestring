@@ -90,7 +90,7 @@ module Data.ByteString.Builder.Internal (
 
   , byteStringCopy
   , asciiLiteralCopy
-  , modUtf8LitCopy
+  , modUtf8LiteralCopy
   , byteStringInsert
   , byteStringThreshold
 
@@ -997,16 +997,16 @@ asciiLiteralCopy = \ !ip !len -> builder $ \k br@(BufferRange op ope) ->
 -- result is not well defined.
 --
 -- @since 0.13.0.0
-{-# INLINABLE modUtf8LitCopy #-}
-modUtf8LitCopy :: Ptr Word8 -> Int -> Builder
-modUtf8LitCopy !ip !len
+{-# INLINABLE modUtf8LiteralCopy #-}
+modUtf8LiteralCopy :: Ptr Word8 -> Int -> Builder
+modUtf8LiteralCopy !ip !len
     | len > 0   = builder (modUtf8_step ip len)
     | otherwise = builder id
 
--- | Copy a /non-empty/ UTF-8 input possibly containing denormalised 2-octet
+-- | Copy a /non-empty/ UTF-8 input possibly containing overlong 2-octet
 -- sequences.  While only the NUL byte should ever encoded that way (as @0xC0
--- 80@), this handles other denormalised @0xC0 0x??@  sequences by keeping the
--- bottom 6 bits of the second byte.  If the input is non-UTF8 garbage, the the
+-- 80@), this handles other overlong @0xC0 0x??@  sequences by keeping the
+-- bottom 6 bits of the second byte.  If the input is non-UTF8 garbage, the
 -- result may not be what the user expected.
 --
 modUtf8_step :: Ptr Word8 -> Int -> BuildStep r -> BuildStep r

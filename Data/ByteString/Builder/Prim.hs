@@ -671,7 +671,7 @@ cstring s = asciiLiteralCopy (Ptr s) (S.byteCountLiteral s)
 --
 -- @since 0.11.0.0
 cstringUtf8 :: Addr# -> Builder
-cstringUtf8 s = modUtf8LitCopy (Ptr s) (S.byteCountLiteral s)
+cstringUtf8 s = modUtf8LiteralCopy (Ptr s) (S.byteCountLiteral s)
 {-# INLINE cstringUtf8 #-}
 
 ------------------------------------------------------------------------------
