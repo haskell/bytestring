@@ -327,6 +327,10 @@ main = do
         , benchB'_ "ASCII String (12B)" $ asciiLit (Ptr "hello wurld!"#)
         , benchB'  "ASCII String (64B, naive)" asciiStr fromString
         , benchB'_ "ASCII String (64B)" $ asciiLit asciiBuf
+        , benchB'_ "strLit"        $ string8 asciiStr
+        , benchB'_ "stringUtf8"    $ stringUtf8 utf8Str
+        , benchB'_ "strLitInline"  $ string8 "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+        , benchB'_ "utf8LitInline" $ stringUtf8 "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\0XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
         ]
 
       , bgroup "Encoding wrappers"
