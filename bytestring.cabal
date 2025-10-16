@@ -109,10 +109,18 @@ common language
 
 library
   import:          language
-  build-depends:   base >= 4.12 && < 5, ghc-prim, deepseq, template-haskell
+  build-depends:   base >= 4.12 && < 5, ghc-prim, deepseq
 
   if impl(ghc < 9.4)
     build-depends: data-array-byte >= 0.1 && < 0.2
+
+  -- template-haskell-lift was added as a boot library in GHC-9.14
+  -- once we no longer wish to backport releases to older major releases,
+  -- this conditional can be dropped
+  if impl(ghc < 9.14)
+    build-depends: template-haskell
+  else
+    build-depends: template-haskell-lift >= 0.1 && <0.2
 
   exposed-modules: Data.ByteString
                    Data.ByteString.Char8
@@ -222,7 +230,6 @@ test-suite bytestring-tests
                     QuickCheck,
                     tasty,
                     tasty-quickcheck >= 0.8.1,
-                    template-haskell,
                     transformers >= 0.3,
                     syb
 
@@ -234,6 +241,11 @@ test-suite bytestring-tests
   -- https://github.com/haskellari/splitmix/issues/101
   if os(openbsd)
     build-depends: splitmix < 0.1.3 || > 0.1.3.1
+
+  if impl(ghc < 9.14)
+    build-depends: template-haskell
+  else
+    build-depends: template-haskell-lift
 
 benchmark bytestring-bench
   import:           language

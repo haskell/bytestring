@@ -10,7 +10,11 @@ import           Test.Tasty.QuickCheck (testProperty, (===))
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Short as SBS
+#if __GLASGOW_HASKELL__ >= 914
+import qualified Language.Haskell.TH.Lift as TH
+#else
 import qualified Language.Haskell.TH.Syntax as TH
+#endif
 
 testSuite :: TestTree
 #ifdef wasm32_HOST_ARCH
@@ -26,7 +30,7 @@ testSuite = testGroup "Lift"
         let bs = "\0\1\2\3\0\1\2\3" :: BS.ByteString in
         bs === $(TH.lift $ BS.pack [0,1,2,3,0,1,2,3])
 
-#if MIN_VERSION_template_haskell(2,16,0)
+#if __GLASGOW_HASKELL__ >= 810
     , testProperty "typed" $
         let bs = "\0\1\2\3\0\1\2\3" :: BS.ByteString in
         bs === $$(TH.liftTyped $ BS.pack [0,1,2,3,0,1,2,3])
@@ -42,7 +46,7 @@ testSuite = testGroup "Lift"
         let bs = "\0\1\2\3\0\1\2\3" :: LBS.ByteString in
         bs === $(TH.lift $ LBS.pack [0,1,2,3,0,1,2,3])
 
-#if MIN_VERSION_template_haskell(2,16,0)
+#if __GLASGOW_HASKELL__ >= 810
     , testProperty "typed" $
         let bs = "\0\1\2\3\0\1\2\3" :: LBS.ByteString in
         bs === $$(TH.liftTyped $ LBS.pack [0,1,2,3,0,1,2,3])
@@ -58,7 +62,7 @@ testSuite = testGroup "Lift"
         let bs = "\0\1\2\3\0\1\2\3" :: SBS.ShortByteString in
         bs === $(TH.lift $ SBS.pack [0,1,2,3,0,1,2,3])
 
-#if MIN_VERSION_template_haskell(2,16,0)
+#if __GLASGOW_HASKELL__ >= 810
     , testProperty "typed" $
         let bs = "\0\1\2\3\0\1\2\3" :: SBS.ShortByteString in
         bs === $$(TH.liftTyped $ SBS.pack [0,1,2,3,0,1,2,3])

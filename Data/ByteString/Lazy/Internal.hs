@@ -63,7 +63,11 @@ import Data.Data                (Data(..), mkConstr ,mkDataType, Constr, DataTyp
 
 import GHC.Exts                 (IsList(..))
 
+#if __GLASGOW_HASKELL__ >= 914
+import qualified Language.Haskell.TH.Lift as TH
+#else
 import qualified Language.Haskell.TH.Syntax as TH
+#endif
 
 #ifdef HS_BYTESTRING_ASSERTIONS
 import Control.Exception (assert)

@@ -195,8 +195,12 @@ import GHC.Int                  (Int (..))
 import GHC.ForeignPtr           (unsafeWithForeignPtr)
 #endif
 
-import qualified Language.Haskell.TH.Lib as TH
+#if __GLASGOW_HASKELL__ >= 914
+import qualified Language.Haskell.TH.Lift as TH
+#else
 import qualified Language.Haskell.TH.Syntax as TH
+import qualified Language.Haskell.TH.Lib as TH
+#endif
 
 #if !HS_unsafeWithForeignPtr_AVAILABLE
 unsafeWithForeignPtr :: ForeignPtr a -> (Ptr a -> IO b) -> IO b
@@ -360,7 +364,13 @@ byteStringDataType = mkDataType "Data.ByteString.ByteString" [packConstr]
 
 -- | @since 0.11.2.0
 instance TH.Lift ByteString where
-#if MIN_VERSION_template_haskell(2,16,0)
+#if __GLASGOW_HASKELL__ >= 914
+  lift (BS ptr len) =
+    [| unsafePackLenLiteral
+        $(TH.lift len)
+        $(TH.liftAddrCompat ptr 0 (fromIntegral len))
+     |]
+#elif __GLASGOW_HASKELL__ >= 810
 -- template-haskell-2.16 first ships with ghc-8.10
   lift (BS ptr len) = [| unsafePackLenLiteral |]
     `TH.appE` TH.litE (TH.integerL (fromIntegral len))
@@ -371,10 +381,13 @@ instance TH.Lift ByteString where
     `TH.appE` TH.litE (TH.StringPrimL $ unpackBytes bs)
 #endif
 
-#if MIN_VERSION_template_haskell(2,17,0)
+#if __GLASGOW_HASKELL__ >= 914
+-- template-haskell-lift-0.1 first ships with ghc-9.16
+  liftTyped = TH.defaultLiftTyped
+#elif __GLASGOW_HASKELL__ >= 900
 -- template-haskell-2.17 first ships with ghc-9.0
   liftTyped = TH.unsafeCodeCoerce . TH.lift
-#elif MIN_VERSION_template_haskell(2,16,0)
+#elif __GLASGOW_HASKELL__ >= 810
 -- template-haskell-2.16 first ships with ghc-8.10
   liftTyped = TH.unsafeTExpCoerce . TH.lift
 #endif
