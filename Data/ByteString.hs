@@ -67,6 +67,8 @@ module Data.ByteString (
         toStrict,
         fromFilePath,
         toFilePath,
+        literalFromOctetString,
+        literalFromHex,
 
         -- * Basic interface
         cons,

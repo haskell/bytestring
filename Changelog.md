@@ -7,7 +7,9 @@
 
 * API additions and behavior changes:
   * Data.ByteString.Short now provides `lazyToShort` and `lazyFromShort`.
-
+  * New TH splices: `Data.ByteString.literalFromOctetString` and `Data.ByteString.literalFromHex`
+    * These validate input strings prior to generating corresponding
+      compile-time literal ByteStrings.
 <!--
 * Bug fixes:
 * Deprecations:
