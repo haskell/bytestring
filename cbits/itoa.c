@@ -235,3 +235,13 @@ void _hs_bytestring_builder_uint64_fixed_width_hex_upper (int width,
       x >>= 4;
     }
 };
+
+// unsigned ints (64 bit words)
+void _hs_bytestring_builder_uint64_fixed_width_hex (int width,
+                                                    uint64_t x,
+                                                    char* buf) {
+    while (--width >= 0) {
+      buf[width] = digits[x & 0xf];
+      x >>= 4;
+    }
+};

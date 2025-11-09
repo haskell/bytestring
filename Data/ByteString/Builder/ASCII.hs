@@ -68,6 +68,8 @@ module Data.ByteString.Builder.ASCII
     , word32HexFixed
     , word64HexFixed
 
+    , word64HexFixedWidth
+
     , floatHexFixed
     , doubleHexFixed
 
@@ -233,6 +235,12 @@ word32HexFixed = P.primFixed P.word32HexFixed
 {-# INLINE word64HexFixed #-}
 word64HexFixed :: Word64 -> Builder
 word64HexFixed = P.primFixed P.word64HexFixed
+
+-- | Hexadecimal encoding of a 'Word64' using a specified number of
+--   lower-case characters.
+{-# INLINE word64HexFixedWidth #-}
+word64HexFixedWidth :: Int -> Word64 -> Builder
+word64HexFixedWidth = P.primFixed . P.word64HexFixedWidth
 
 -- | Encode an IEEE 'Float' using 8 nibbles.
 {-# INLINE floatHexFixed #-}

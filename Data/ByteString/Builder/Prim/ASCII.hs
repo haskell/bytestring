@@ -72,6 +72,9 @@ module Data.ByteString.Builder.Prim.ASCII
     , word16HexFixed
     , word32HexFixed
     , word64HexFixed
+
+    , word64HexFixedWidth
+
     , floatHexFixed
     , doubleHexFixed
 
@@ -231,6 +234,13 @@ wordHex = caseWordSize_32_64
 -- fixed width; leading zeroes
 ------------------------------
 
+foreign import ccall unsafe "static _hs_bytestring_builder_uint64_fixed_width_hex" c_uint64_fixed_hex
+    :: CInt -> Word64 -> Ptr Word8 -> IO ()
+
+{-# INLINE encodeWord64HexFixedWidth #-}
+encodeWord64HexFixedWidth :: forall a. (Storable a, Integral a) => Int -> FixedPrim a
+encodeWord64HexFixedWidth width = fixedPrim width $ c_uint64_fixed_hex (CInt (fromIntegral width)) . fromIntegral
+
 -- | Encode a 'Word8' using 2 nibbles (hexadecimal digits).
 {-# INLINE word8HexFixed #-}
 word8HexFixed :: FixedPrim Word8
@@ -276,6 +286,12 @@ int32HexFixed = fromIntegral >$< word32HexFixed
 {-# INLINE int64HexFixed #-}
 int64HexFixed :: FixedPrim Int64
 int64HexFixed = fromIntegral >$< word64HexFixed
+
+-- | Hexadecimal encoding of a 'Word64' using a specified number of
+--   lower-case characters.
+{-# INLINE word64HexFixedWidth #-}
+word64HexFixedWidth :: Int -> FixedPrim Word64
+word64HexFixedWidth = encodeWord64HexFixedWidth
 
 -- | Encode an IEEE 'Float' using 8 nibbles.
 {-# INLINE floatHexFixed #-}

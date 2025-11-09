@@ -648,6 +648,9 @@ testsASCII =
   , testBuilderConstr "floatHexFixed"  floatHexFixed_list  floatHexFixed
   , testBuilderConstr "doubleHexFixed" doubleHexFixed_list doubleHexFixed
 
+  , testBuilderConstrWidth "word64HexFixedWidth" 16
+                           (wordHexFixedWidth_list) word64HexFixedWidth
+
   , testBuilderConstr "word8UpperHexFixed"  (uphex . wordHexFixed_list) word8HexUpperFixed
   , testBuilderConstrWidth "word64HexUpperFixedWidth" 16
                            (\width -> uphex . wordHexFixedWidth_list width)
