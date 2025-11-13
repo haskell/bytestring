@@ -79,6 +79,7 @@ module Data.ByteString.Builder.Prim.ASCII
     , doubleHexFixed
 
     , word8HexUpperFixed
+    , word16HexUpperFixed
     , word64HexUpperFixedWidth
 
     ) where
@@ -328,6 +329,11 @@ encodeWord64HexUpperFixedWidth width = fixedPrim width $ c_uint64_fixed_hex_uppe
 {-# INLINE word8HexUpperFixed #-}
 word8HexUpperFixed :: FixedPrim Word8
 word8HexUpperFixed = encodeWordHexUpperFixed
+
+-- | Hexadecimal encoding of a 'Word16' using 4 upper-case characters.
+{-# INLINE word16HexUpperFixed #-}
+word16HexUpperFixed :: FixedPrim Word16
+word16HexUpperFixed = encodeWordHexUpperFixed
 
 -- | Hexadecimal encoding of a 'Word64' using a specified number of
 --   upper-case characters.

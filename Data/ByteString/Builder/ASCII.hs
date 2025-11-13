@@ -77,8 +77,10 @@ module Data.ByteString.Builder.ASCII
     , lazyByteStringHex
 
     , word8HexUpperFixed
+    , word16HexUpperFixed
     , word64HexUpperFixedWidth
     , byteStringHexUpper
+    , lazyByteStringHexUpper
 
     ) where
 
@@ -267,6 +269,11 @@ lazyByteStringHex = P.primMapLazyByteStringFixed P.word8HexFixed
 word8HexUpperFixed :: Word8 -> Builder
 word8HexUpperFixed = P.primFixed P.word8HexUpperFixed
 
+-- | Hexadecimal encoding of a 'Word16' using 4 upper-case characters.
+{-# INLINE word16HexUpperFixed #-}
+word16HexUpperFixed :: Word16 -> Builder
+word16HexUpperFixed = P.primFixed P.word16HexUpperFixed
+
 -- | Hexadecimal encoding of a 'Word64' using a specified number of
 --   upper-case characters.
 {-# INLINE word64HexUpperFixedWidth #-}
@@ -279,6 +286,11 @@ word64HexUpperFixedWidth = P.primFixed . P.word64HexUpperFixedWidth
 byteStringHexUpper :: S.ByteString -> Builder
 byteStringHexUpper = P.primMapByteStringFixed P.word8HexUpperFixed
 
+-- | Encode each byte of a lazy 'L.ByteString' using its fixed-width hex
+--   upper-case encoding.
+{-# NOINLINE lazyByteStringHexUpper #-} -- share code
+lazyByteStringHexUpper :: L.ByteString -> Builder
+lazyByteStringHexUpper = P.primMapLazyByteStringFixed P.word8HexUpperFixed
 
 ------------------------------------------------------------------------------
 -- Fast decimal 'Integer' encoding.
