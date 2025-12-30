@@ -216,8 +216,10 @@ test-suite bytestring-tests
                     QuickCheckUtils
   hs-source-dirs:   tests,
                     tests/builder
+  build-depends:    bytestring
+                    -- Keep 'bytestring' on the same line as 'build-depends:'
+                    -- this is used by our hack to allow plugin-based tests
   build-depends:    base,
-                    bytestring,
                     deepseq,
                     QuickCheck,
                     tasty,
@@ -225,6 +227,17 @@ test-suite bytestring-tests
                     template-haskell,
                     transformers >= 0.3,
                     syb
+
+  -- The following intentionally-funnily-spelled condition
+  -- is changed to 'true' by our hack to allow plugin-based tests
+  if false && impl(pluginTestsHack)
+    cpp-options:   -DBYTESTRING_PLUGIN_TESTS=1
+    build-depends: tasty-inspection-testing ^>= 0.2.1,
+                   tasty-expected-failure ^>= 0.12.3
+    other-modules: PluginTests
+                   PluginTests.Splices
+  else
+    cpp-options:   -DBYTESTRING_PLUGIN_TESTS=0
 
   ghc-options:      -fwarn-unused-binds
                     -rtsopts
@@ -249,8 +262,10 @@ benchmark bytestring-bench
 
   ghc-options:      -O2 "-with-rtsopts=-A32m"
                     -fproc-alignment=64
+  build-depends:    bytestring
+                    -- Keep 'bytestring' on the same line as 'build-depends:'
+                    -- this is used by our hack to allow plugin-based tests
   build-depends:    base,
-                    bytestring,
                     deepseq,
                     tasty-bench,
                     random
