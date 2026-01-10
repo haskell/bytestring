@@ -229,7 +229,9 @@ import GHC.Stack.Types
   ( HasCallStack )
 import GHC.Word
 import Prelude
-  ( Eq(..), Ord(..), Ordering(..), Read(..), Show(..)
+  ( Eq, (==), (/=)
+  , Ord, compare, (<), (<=), (>), (>=), min, max
+  , Ordering(..), Read(..), Show(..)
   , ($), ($!), error, (++), (.), (||)
   , String, userError
   , Bool(..), (&&), otherwise
