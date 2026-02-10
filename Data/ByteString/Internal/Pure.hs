@@ -348,7 +348,7 @@ encodeUnsignedHex :: (Eq a, Num a, Integral a, Bits a) => a -> Ptr Word8 -> IO (
 {-# INLINABLE encodeUnsignedHex #-} -- for specialization
 encodeUnsignedHex !v !next_ptr = encodeUnsignedHex' v next_ptr next_ptr
 
--- | Encode positive number as little-endian hexdecimal, then reverse it.
+-- | Encode positive number as little-endian hexadecimal, then reverse it.
 --
 -- Take two pointers (orig_ptr, next_ptr) to support already encoded digits
 encodeUnsignedHex' :: (Eq a, Num a, Integral a, Bits a) => a -> Ptr Word8 -> Ptr Word8 -> IO (Ptr Word8)

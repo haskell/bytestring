@@ -869,7 +869,7 @@ wrappedBufferRangeCopyStep (BufferRange ip0 ipe) k =
 
 
 -- | Construct a 'Builder' that copies the 'S.StrictByteString's, if it is
--- smaller than the treshold, and inserts it directly otherwise.
+-- smaller than the threshold, and inserts it directly otherwise.
 --
 -- For example, @byteStringThreshold 1024@ copies 'S.StrictByteString's whose size
 -- is less or equal to 1kb, and inserts them directly otherwise. This implies
@@ -1017,7 +1017,7 @@ modUtf8_step !ip !len k (BufferRange op ope)
             !usable = avail `min` len
         -- null-termination makes it possible to read one more byte than the
         -- nominal input length, with any unexpected 0xC000 ending interpreted
-        -- as a NUL.  More typically, this simplifies hanlding of inputs where
+        -- as a NUL.  More typically, this simplifies handling of inputs where
         -- 0xC0 0x80 might otherwise be split across the "usable" input window.
         !ch <- peekElemOff ip (usable - 1)
         let !use | ch /= 0xC0 = usable
@@ -1308,7 +1308,7 @@ buildStepToCIOS (AllocationStrategy nextBuffer bufSize trim) =
                   else do buf' <- nextBuffer (Just (buf, bufSize))
                           fill nextStep buf'
 
-        -- Wrap and yield a chunk, trimming it if necesary
+        -- Wrap and yield a chunk, trimming it if necessary
         {-# INLINE wrapChunk #-}
         wrapChunk :: Ptr Word8 -> (Bool -> IO (ChunkIOStream a)) -> IO (ChunkIOStream a)
         wrapChunk !op' mkCIOS
@@ -1316,7 +1316,7 @@ buildStepToCIOS (AllocationStrategy nextBuffer bufSize trim) =
           | trim chunkSize size = do
               bs <- S.createFp chunkSize $ \fpbuf' ->
                         S.memcpyFp fpbuf' fpbuf chunkSize
-              -- It is not safe to re-use the old buffer (see #690),
+              -- It is not safe to reuse the old buffer (see #690),
               -- so we allocate a new buffer after trimming.
               return $ Yield1 bs (mkCIOS False)
           | otherwise            =

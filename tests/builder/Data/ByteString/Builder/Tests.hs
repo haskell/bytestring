@@ -319,7 +319,7 @@ recipeComponents (Recipe how firstSize otherSize cont as) =
     b = fromPut $ evalStateT (traverse_ buildAction as) firstSize
 
 
--- 'Arbitary' instances
+-- 'Arbitrary' instances
 -----------------------
 
 instance Arbitrary Mode where

@@ -217,7 +217,7 @@ _readDecimal !r = consume
 -- accumulator would overflow return 'Overflow'.
 --
 _digits :: Word64           -- ^ maximum non-overflow value `div` 10
-        -> Word64           -- ^ maximum non-overflow vavlue `mod` 10
+        -> Word64           -- ^ maximum non-overflow value `mod` 10
         -> ForeignPtr Word8 -- ^ Input buffer
         -> Int              -- ^ Input length
         -> Word64           -- ^ Accumulated value of leading digits

@@ -168,7 +168,7 @@
 * Performance improvements:
   * [Many functions returning `StrictByteString` can now return their results unboxed](https://github.com/haskell/bytestring/pull/580)
   * [Dead branches removed from `Lazy.toStrict`](https://github.com/haskell/bytestring/pull/590)
-  * [`Builder.toLazyByteString` re-uses under-filled buffers after copying their contents](https://github.com/haskell/bytestring/pull/581)
+  * [`Builder.toLazyByteString` reuses under-filled buffers after copying their contents](https://github.com/haskell/bytestring/pull/581)
 * Miscellaneous:
   * [Minor benchmarking improvements](https://github.com/haskell/bytestring/pull/577)
 <!--

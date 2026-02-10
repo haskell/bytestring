@@ -585,23 +585,23 @@ unpackAppendBytesLazy sbs = go 0 (length sbs)
 -- For these unpack functions, since we're unpacking the whole list strictly we
 -- build up the result list in an accumulator. This means we have to build up
 -- the list starting at the end. So our traversal starts at the end of the
--- buffer and loops down until we hit the sentinal:
+-- buffer and loops down until we hit the sentinel:
 
 unpackAppendCharsStrict :: ShortByteString -> Int -> Int -> [Char] -> [Char]
 unpackAppendCharsStrict !sbs off len = go (off-1) (off-1 + len)
   where
-    go !sentinal !i acc
-      | i == sentinal = acc
+    go !sentinel !i acc
+      | i == sentinel = acc
       | otherwise     = let !c = indexCharArray (asBA sbs) i
-                        in go sentinal (i-1) (c:acc)
+                        in go sentinel (i-1) (c:acc)
 
 unpackAppendBytesStrict :: ShortByteString -> Int -> Int -> [Word8] -> [Word8]
 unpackAppendBytesStrict !sbs off len = go (off-1) (off-1 + len)
   where
-    go !sentinal !i acc
-      | i == sentinal = acc
+    go !sentinel !i acc
+      | i == sentinel = acc
       | otherwise     = let !w = indexWord8Array (asBA sbs) i
-                         in go sentinal (i-1) (w:acc)
+                         in go sentinel (i-1) (w:acc)
 
 
 ------------------------------------------------------------------------

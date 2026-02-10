@@ -24,7 +24,7 @@ For an /efficient implementation of an encoding/,
   the Haskell values to the resulting sequence of bytes /and/
   (b) that the representation of the resulting sequence
   is such that it can be consumed efficiently.
-'Builder's support (a) by providing an /O(1)/ concatentation operation
+'Builder's support (a) by providing an /O(1)/ concatenation operation
   and efficient implementations of basic encodings for 'Char's, 'Int's,
   and other standard Haskell values.
 They support (b) by providing their result as a 'L.LazyByteString',
@@ -148,7 +148,7 @@ For example,
 >renderRow :: Row -> Builder
 >renderRow  = mconcat . intersperse (charUtf8 ',') . map renderCell
 
-Similarly, using /O(n)/ concatentations like '++' or the equivalent 'Data.ByteString.concat'
+Similarly, using /O(n)/ concatenations like '++' or the equivalent 'Data.ByteString.concat'
   operations on strict and 'L.LazyByteString's should be avoided.
 The following definition of @renderString@ is also about 20% slower.
 

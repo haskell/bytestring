@@ -1723,7 +1723,7 @@ tailsNE :: ByteString -> NonEmpty ByteString
 tailsNE p | null p    = empty :| []
           | otherwise = p :| tails (unsafeTail p)
 
--- less efficent spacewise: tails (BS x l) = [BS (plusForeignPtr x n) (l-n) | n <- [0..l]]
+-- less efficient spacewise: tails (BS x l) = [BS (plusForeignPtr x n) (l-n) | n <- [0..l]]
 
 {-
 Note [Avoid NonEmpty combinators]

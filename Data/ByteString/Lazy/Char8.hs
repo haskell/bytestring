@@ -294,7 +294,7 @@ cons = L.cons . c2w
 -- may coalesce the new byte onto the first \'chunk\' rather than starting a
 -- new \'chunk\'.
 --
--- So that means you can't use a lazy recursive contruction like this:
+-- So that means you can't use a lazy recursive construction like this:
 --
 -- > let xs = cons' c xs in xs
 --
@@ -893,7 +893,7 @@ lines (Chunk c0 cs0) = unNE $! go c0 cs0
         -- In particular, we don't strictly pattern match on 'cs'.
         --
         -- We can form `Chunk c ...` because the invariant is maintained
-        -- here and also by using `chunk` in the defintion of `c'` above.
+        -- here and also by using `chunk` in the definition of `c'` above.
         Nothing -> let ~(l:|ls) = lazyRest cs
                     in  Chunk c l :| ls
           where

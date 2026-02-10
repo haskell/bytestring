@@ -520,7 +520,7 @@ primMapLazyByteStringFixed = primMapLazyByteStringBounded . toB
 --
 -- > primBounded (word32 c1) `mappend` primBounded (word32 c2)
 --
--- is rewritten such that the resulting 'Builder' checks only once, if ther are
+-- is rewritten such that the resulting 'Builder' checks only once, if there are
 -- at 8 free bytes, instead of checking twice, if there are 4 free bytes. This
 -- optimization is not observationally equivalent in a strict sense, as it
 -- influences the boundaries of the generated chunks. However, for a user of

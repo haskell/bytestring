@@ -327,7 +327,7 @@ cons c = Chunk (S.singleton c)
 -- may coalesce the new byte onto the first \'chunk\' rather than starting a
 -- new \'chunk\'.
 --
--- So that means you can't use a lazy recursive contruction like this:
+-- So that means you can't use a lazy recursive construction like this:
 --
 -- > let xs = cons' c xs in xs
 --
@@ -1522,7 +1522,7 @@ tailsNE bs = case uncons bs of
 --   is needed in the rest of the program.
 copy :: ByteString -> ByteString
 copy = foldrChunks (Chunk . S.copy) Empty
---TODO, we could coalese small blocks here
+--TODO, we could coalesce small blocks here
 --FIXME: probably not strict enough, if we're doing this to avoid retaining
 -- the parent blocks then we'd better copy strictly.
 

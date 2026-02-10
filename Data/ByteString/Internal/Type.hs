@@ -690,27 +690,27 @@ unpackAppendCharsLazy (BS fp len) cs
 -- For these unpack functions, since we're unpacking the whole list strictly we
 -- build up the result list in an accumulator. This means we have to build up
 -- the list starting at the end. So our traversal starts at the end of the
--- buffer and loops down until we hit the sentinal:
+-- buffer and loops down until we hit the sentinel:
 
 unpackAppendBytesStrict :: ByteString -> [Word8] -> [Word8]
 unpackAppendBytesStrict (BS fp len) xs =
     accursedUnutterablePerformIO $ unsafeWithForeignPtr fp $ \base ->
       loop (base `plusPtr` (-1)) (base `plusPtr` (-1+len)) xs
   where
-    loop !sentinal !p acc
-      | p == sentinal = return acc
+    loop !sentinel !p acc
+      | p == sentinel = return acc
       | otherwise     = do x <- peek p
-                           loop sentinal (p `plusPtr` (-1)) (x:acc)
+                           loop sentinel (p `plusPtr` (-1)) (x:acc)
 
 unpackAppendCharsStrict :: ByteString -> [Char] -> [Char]
 unpackAppendCharsStrict (BS fp len) xs =
     accursedUnutterablePerformIO $ unsafeWithForeignPtr fp $ \base ->
       loop (base `plusPtr` (-1)) (base `plusPtr` (-1+len)) xs
   where
-    loop !sentinal !p acc
-      | p == sentinal = return acc
+    loop !sentinel !p acc
+      | p == sentinel = return acc
       | otherwise     = do x <- peek p
-                           loop sentinal (p `plusPtr` (-1)) (w2c x:acc)
+                           loop sentinel (p `plusPtr` (-1)) (w2c x:acc)
 
 ------------------------------------------------------------------------
 
