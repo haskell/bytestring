@@ -18,7 +18,8 @@ task:
     platform: openbsd
   install_script: pkg_add ghc cabal-install git
   script:
-    - export CABAL_DIR=/tmp/.cabal
+    - mkdir -p /home/cabal
+    - ln -s /home/cabal $HOME/.cabal
     - cabal update
     - cabal test --test-show-details=direct
 
