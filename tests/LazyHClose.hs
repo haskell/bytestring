@@ -1,3 +1,6 @@
+{-# LANGUAGE CPP #-}
+{- HLINT ignore "Use fewer imports" -}
+
 module LazyHClose (testSuite) where
 
 import Control.Monad (void, forM_)
@@ -6,13 +9,22 @@ import Foreign.C.String (withCString)
 import Foreign.ForeignPtr (finalizeForeignPtr)
 import System.IO (openFile, openTempFile, hClose, hPutStrLn, IOMode(..))
 import System.Posix.Internals (c_unlink)
-import Test.Tasty (TestTree, testGroup, withResource)
+import Test.Tasty (TestTree, withResource)
 import Test.Tasty.QuickCheck (testProperty, ioProperty)
 
 import qualified Data.ByteString            as S
 import qualified Data.ByteString.Char8      as S8
 import qualified Data.ByteString.Lazy       as L
 import qualified Data.ByteString.Lazy.Char8 as L8
+
+#if MIN_VERSION_tasty(1,5,4)
+import Test.Tasty (inOrderTestGroup)
+#else
+import Test.Tasty (testGroup)
+
+inOrderTestGroup :: String -> [TestTree] -> TestTree
+inOrderTestGroup = testGroup
+#endif
 
 n :: Int
 n = 1000
@@ -21,7 +33,7 @@ testSuite :: TestTree
 testSuite = withResource
   (do (fn, h) <- openTempFile "." "lazy-hclose-test.tmp"; hPutStrLn h "x"; hClose h; pure fn)
   removeFile $ \fn' ->
-    testGroup "LazyHClose"
+    inOrderTestGroup "LazyHClose"
     [ testProperty "Testing resource leaks for Strict.readFile" $ ioProperty $
       forM_ [1..n] $ const $ do
         fn <- fn'
