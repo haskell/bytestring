@@ -46,6 +46,7 @@ module Data.ByteString.Char8 (
 
         -- * The @ByteString@ type
         ByteString,
+        StrictByteString,
 
         -- * Introducing and eliminating 'ByteString's
         empty,

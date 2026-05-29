@@ -32,6 +32,7 @@ module Data.ByteString.Lazy.Char8 (
 
         -- * The @ByteString@ type
         ByteString,
+        LazyByteString,
 
         -- * Introducing and eliminating 'ByteString's
         empty,
