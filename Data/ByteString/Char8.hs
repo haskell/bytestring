@@ -943,14 +943,6 @@ lastnonspace ptr n
 -- Note that it __does not__ regard CR (@'\\r'@) as a newline character.
 --
 lines :: ByteString -> [ByteString]
-lines ps
-    | null ps = []
-    | otherwise = case search ps of
-             Nothing -> [ps]
-             Just n  -> take n ps : lines (drop (n+1) ps)
-    where search = elemIndex '\n'
-
-{-
 -- Could be faster, now passes tests...
 lines (BS _ 0) = []
 lines (BS x l) = go x l
@@ -958,6 +950,7 @@ lines (BS x l) = go x l
     nl = c2w '\n'
     -- It is important to remain lazy in the tail of the list.  The caller
     -- might only want the first few lines.
+    go :: ForeignPtr Word8 -> Int -> [ByteString]
     go !f !len = accursedUnutterablePerformIO $ unsafeWithForeignPtr f $ \p -> do
         q <- memchr p nl $! fromIntegral len
         if q == nullPtr
@@ -968,7 +961,6 @@ lines (BS x l) = go x l
                 if j < len
                     then return $ BS f i : go (plusForeignPtr f j) (len - j)
                     else return [BS f i]
--}
 
 -- | 'unlines' joins lines, appending a terminating newline after each.
 --
