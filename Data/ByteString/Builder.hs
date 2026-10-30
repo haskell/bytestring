@@ -193,6 +193,7 @@ module Data.ByteString.Builder
     , byteString
     , lazyByteString
     , shortByteString
+    , sliceOfShortByteString
     , int8
     , word8
 

@@ -99,6 +99,7 @@ module Data.ByteString.Builder.Internal (
   , lazyByteStringThreshold
 
   , shortByteString
+  , sliceOfShortByteString
 
   , maximalCopySize
   , byteString
@@ -1059,32 +1060,45 @@ utf8_copyBytes !ipe = \ ip op -> go 0 ip op
 -- Short bytestrings
 ------------------------------------------------------------------------------
 
--- | Construct a 'Builder' that copies the 'SH.ShortByteString'.
+-- | Construct a 'Builder' that copies the 'Sh.ShortByteString'.
 --
 {-# INLINE shortByteString #-}
 shortByteString :: Sh.ShortByteString -> Builder
-shortByteString = \sbs -> builder $ shortByteStringCopyStep sbs
+shortByteString = \sbs -> builder $ shortByteStringCopyStep sbs 0 (Sh.length sbs)
 
--- | Copy the bytes from a 'SH.ShortByteString' into the output stream.
+-- | Emit @len@ bytes starting at offset @off@ as a 'Builder', copying directly
+-- from the underlying byte array into the builder's output buffer.  An error
+-- is raised if the slice bounds are invalid.
+sliceOfShortByteString :: Int -- ^ Starting offset
+                       -> Int -- ^ Number of bytes to copy
+                       -> Sh.ShortByteString -- ^ Input 'Sh.ShortByteString'
+                       -> Builder
+sliceOfShortByteString !off !len sbs
+    | len >= 0 && off + len <= Sh.length sbs
+    = builder $ shortByteStringCopyStep sbs off len
+    | otherwise
+    = error "Invalid short bytestring slice"
+
+-- | Copy the bytes from a 'Sh.ShortByteString' into the output stream.
 {-# INLINE shortByteStringCopyStep #-}
-shortByteStringCopyStep :: Sh.ShortByteString  -- ^ Input 'SH.ShortByteString'.
+shortByteStringCopyStep :: Sh.ShortByteString  -- ^ Input 'Sh.ShortByteString'.
+                        -> Int -- ^ Offset
+                        -> Int -- ^ Length
                         -> BuildStep a -> BuildStep a
-shortByteStringCopyStep !sbs k =
-    go 0 (Sh.length sbs)
+shortByteStringCopyStep !sbs !off0 !len0 k = go off0 len0
   where
-    go !ip !ipe (BufferRange op ope)
-      | inpRemaining <= outRemaining = do
-          Sh.copyToPtr sbs ip op inpRemaining
-          let !br' = BufferRange (op `plusPtr` inpRemaining) ope
+    go !off !len (BufferRange op ope)
+      | len <= outRemaining = do
+          Sh.copyToPtr sbs off op len
+          let !br' = BufferRange (op `plusPtr` len) ope
           k br'
       | otherwise = do
-          Sh.copyToPtr sbs ip op outRemaining
-          let !ip' = ip + outRemaining
-          return $ bufferFull 1 ope (go ip' ipe)
+          Sh.copyToPtr sbs off op outRemaining
+          let !off' = off + outRemaining
+              !len' = len - outRemaining
+          return $ bufferFull 1 ope (go off' len')
       where
         outRemaining = ope `minusPtr` op
-        inpRemaining = ipe - ip
-
 
 -- Lazy bytestrings
 ------------------------------------------------------------------------------
