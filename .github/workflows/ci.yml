@@ -23,14 +23,14 @@ jobs:
         - os: macOS-latest
           ghc: 'latest'
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - uses: haskell-actions/setup@v2
       id: setup-haskell-cabal
       with:
         ghc-version: ${{ matrix.ghc }}
     - name: Update cabal package database
       run: cabal update
-    - uses: actions/cache@v3
+    - uses: actions/cache@v6
       name: Cache cabal stuff
       with:
         path: |
@@ -65,14 +65,14 @@ jobs:
       matrix:
         ghc: ['9.2', '9.4', '9.6', '9.8', '9.10']
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - uses: haskell-actions/setup@v2
       id: setup-haskell-cabal
       with:
         ghc-version: ${{ matrix.ghc }}
     - name: Update cabal package database
       run: cabal update
-    - uses: actions/cache@v3
+    - uses: actions/cache@v6
       name: Cache cabal stuff
       with:
         path: |
@@ -126,7 +126,7 @@ jobs:
       matrix:
         arch: ['s390x', 'ppc64le', 'riscv64']
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - uses: uraimo/run-on-arch-action@v3
       timeout-minutes: 60
       with:
@@ -145,14 +145,14 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - uses: haskell-actions/setup@v2
       id: setup-haskell-cabal
       with:
         ghc-version: 'latest'
     - name: Update cabal package database
       run: cabal update
-    - uses: actions/cache@v3
+    - uses: actions/cache@v6
       name: Cache cabal stuff
       with:
         path: |
@@ -166,14 +166,14 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - uses: haskell-actions/setup@v2
       id: setup-haskell-cabal
       with:
         ghc-version: 'latest'
     - name: Update cabal package database
       run: cabal update
-    - uses: actions/cache@v3
+    - uses: actions/cache@v6
       name: Cache cabal stuff
       with:
         path: |
@@ -187,14 +187,14 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - uses: haskell-actions/setup@v2
       id: setup-haskell-cabal
       with:
         ghc-version: 'latest'
     - name: Update cabal package database
       run: cabal update
-    - uses: actions/cache@v3
+    - uses: actions/cache@v6
       name: Cache cabal stuff
       with:
         path: |
@@ -239,7 +239,7 @@ jobs:
           args: "find . -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +"
 
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - if: matrix.arch == 'arm32v7'
         uses: docker://hasufell/arm32v7-ubuntu-haskell:focal
@@ -271,8 +271,8 @@ jobs:
         ~/.ghc-wasm/add_to_github_path.sh
       env:
         FLAVOUR: ${{ matrix.ghc }}
-    - uses: actions/checkout@v4
-    - uses: actions/cache@v3
+    - uses: actions/checkout@v7
+    - uses: actions/cache@v6
       with:
         path: |
           ~/.ghc-wasm/.cabal/store

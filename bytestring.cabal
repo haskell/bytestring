@@ -234,6 +234,9 @@ test-suite bytestring-tests
                     tasty-quickcheck >= 0.8.1,
                     transformers >= 0.3,
                     syb
+  if impl(ghc >= 8.10) && impl(ghc < 9.0)
+    -- QuickCheck-2.19 does not compiler on GHC 8.10
+    build-depends: QuickCheck < 2.19
 
   -- The following intentionally-funnily-spelled condition
   -- is changed to 'true' by our hack to allow plugin-based tests
