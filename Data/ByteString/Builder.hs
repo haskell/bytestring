@@ -171,6 +171,7 @@ module Data.ByteString.Builder
     (
       -- * The Builder type
       Builder
+    , ByteStringBuilder
 
       -- * Executing Builders
       -- | Internally, 'Builder's are buffer-filling functions. They are
@@ -263,6 +264,8 @@ import           System.IO (Handle, IOMode(..), withBinaryFile)
 import           Foreign
 import           GHC.Base (unpackCString#, unpackCStringUtf8#,
                            unpackFoldrCString#, build)
+
+type ByteStringBuilder = Builder
 
 {- Not yet stable enough.
    See note on 'hPut' in Data.ByteString.Builder.Internal
