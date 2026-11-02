@@ -1074,7 +1074,7 @@ sliceOfShortByteString :: Int -- ^ Starting offset
                        -> Sh.ShortByteString -- ^ Input 'Sh.ShortByteString'
                        -> Builder
 sliceOfShortByteString !off !len sbs
-    | len >= 0 && off + len <= Sh.length sbs
+    | len >= 0 && off >= 0 && off <= Sh.length sbs - len
     = builder $ shortByteStringCopyStep sbs off len
     | otherwise
     = error "Invalid short bytestring slice"
