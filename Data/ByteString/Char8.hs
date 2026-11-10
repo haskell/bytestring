@@ -949,18 +949,18 @@ lines (BS x l) = go x l
   where
     nl = c2w '\n'
     -- It is important to remain lazy in the tail of the list.  The caller
-    -- might only want the first few lines.
+    -- might only want the first few lines.  Empty lines are returned via
+    -- the shared @empty@.
     go :: ForeignPtr Word8 -> Int -> [ByteString]
     go !f !len = accursedUnutterablePerformIO $ unsafeWithForeignPtr f $ \p -> do
         q <- memchr p nl $! fromIntegral len
-        if q == nullPtr
-            then return [BS f len]
-            else do
-                let !i = q `minusPtr` p
-                    !j = i + 1
-                if j < len
-                    then return $ BS f i : go (plusForeignPtr f j) (len - j)
-                    else return [BS f i]
+        if | q == nullPtr -> return [BS f len]
+           | !i <- q `minusPtr` p, i > 0
+           -> if | !j <- i + 1
+                 , j < len   -> return $ BS f i : go (plusForeignPtr f j) (len - j)
+                 | otherwise -> return [BS f i]
+           | len > 1   -> return $ empty : go (plusForeignPtr f 1) (len - 1)
+           | otherwise -> return [empty]
 
 -- | 'unlines' joins lines, appending a terminating newline after each.
 --
