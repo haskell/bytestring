@@ -17,7 +17,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-24.04]
         ghc: ['8.6', '8.8', '8.10', '9.0', '9.2', '9.4', '9.6', '9.8', '9.10', '9.12']
         include:
         - os: macOS-latest
@@ -120,7 +120,7 @@ jobs:
   # `ghc --make` manually, and even so `ghc -O` is prohibitively expensive.
   emulated:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: true
       matrix:
@@ -143,7 +143,7 @@ jobs:
 
   bounds-checking:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v7
     - uses: haskell-actions/setup@v2
@@ -164,7 +164,7 @@ jobs:
 
   pure-haskell:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v7
     - uses: haskell-actions/setup@v2
@@ -185,7 +185,7 @@ jobs:
 
   inspection-testing:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v7
     - uses: haskell-actions/setup@v2
@@ -206,7 +206,7 @@ jobs:
 
   i386:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container:
       image: i386/ubuntu:bionic
     steps:
@@ -254,7 +254,7 @@ jobs:
           args: sh -c "ghcup install ghc 9.10.1 && cabal update && cabal test -w ~/.ghcup/bin/ghc-9.10.1"
 
   wasi:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: build
     env:
       GHC_WASM_META_REV: a04cc1a2206d2030326e1d49be9c6a94ee4283a3
