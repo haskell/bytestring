@@ -633,6 +633,19 @@ split = B.split . c2w
 -- > splitWith (=='a') "aabbaca" == ["","","bb","c",""]
 -- > splitWith undefined ""      == []  -- and not [""]
 --
+-- Each separator ends one component and starts the next, so a non-empty
+-- input with @n@ separators is split into @n + 1@ components. A component
+-- is empty when two separators are next to each other, or when the input
+-- starts or ends with a separator. In the example above, the first two
+-- components are empty because the input starts with two separators, and
+-- the last one is empty because it ends with one.
+--
+-- When the predicate is @(== c)@, 'splitWith' is the same as 'split', and
+-- joining the components back together with @c@ gives the original input:
+--
+-- > splitWith (== c) == split c
+-- > intercalate (singleton c) . splitWith (== c) == id
+--
 splitWith :: (Char -> Bool) -> ByteString -> [ByteString]
 splitWith f = B.splitWith (f . w2c)
 {-# INLINE splitWith #-}

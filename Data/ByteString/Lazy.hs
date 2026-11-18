@@ -1082,6 +1082,19 @@ spanEnd p = breakEnd (not . p)
 -- > splitWith (==97) "aabbaca" == ["","","bb","c",""] -- fromEnum 'a' == 97
 -- > splitWith undefined ""     == []                  -- and not [""]
 --
+-- Each separator ends one component and starts the next, so a non-empty
+-- input with @n@ separators is split into @n + 1@ components. A component
+-- is empty when two separators are next to each other, or when the input
+-- starts or ends with a separator. In the example above, the first two
+-- components are empty because the input starts with two separators, and
+-- the last one is empty because it ends with one.
+--
+-- When the predicate is @(== w)@, 'splitWith' is the same as 'split', and
+-- joining the components back together with @w@ gives the original input:
+--
+-- > splitWith (== w) == split w
+-- > intercalate (singleton w) . splitWith (== w) == id
+--
 splitWith :: (Word8 -> Bool) -> ByteString -> [ByteString]
 splitWith _ Empty          = []
 splitWith p (Chunk c0 cs0) = comb [] (S.splitWith p c0) cs0
