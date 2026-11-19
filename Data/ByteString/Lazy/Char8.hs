@@ -651,6 +651,10 @@ split = L.split . c2w
 -- > splitWith (=='a') "aabbaca" == ["","","bb","c",""]
 -- > splitWith undefined ""      == []  -- and not [""]
 --
+-- and
+--
+-- > intercalate [c] . splitWith (== c) == id
+--
 splitWith :: (Char -> Bool) -> ByteString -> [ByteString]
 splitWith f = L.splitWith (f . w2c)
 {-# INLINE splitWith #-}

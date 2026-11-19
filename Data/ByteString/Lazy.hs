@@ -1082,6 +1082,10 @@ spanEnd p = breakEnd (not . p)
 -- > splitWith (==97) "aabbaca" == ["","","bb","c",""] -- fromEnum 'a' == 97
 -- > splitWith undefined ""     == []                  -- and not [""]
 --
+-- and
+--
+-- > intercalate [c] . splitWith (== c) == id
+--
 splitWith :: (Word8 -> Bool) -> ByteString -> [ByteString]
 splitWith _ Empty          = []
 splitWith p (Chunk c0 cs0) = comb [] (S.splitWith p c0) cs0

@@ -1171,6 +1171,10 @@ split w = splitWith (== w)
 -- > splitWith (==97) "aabbaca" == ["","","bb","c",""] -- fromEnum 'a' == 97
 -- > splitWith undefined ""     == []                  -- and not [""]
 --
+-- and
+--
+-- > intercalate [c] . splitWith (== c) == id
+--
 -- @since 0.11.3.0
 splitWith :: (Word8 -> Bool) -> ShortByteString -> [ShortByteString]
 splitWith p = \sbs -> if

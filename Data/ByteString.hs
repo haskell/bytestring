@@ -1142,6 +1142,10 @@ spanEnd  p ps = splitAt (findFromEndUntil (not.p) ps) ps
 -- > splitWith (==97) "aabbaca" == ["","","bb","c",""] -- fromEnum 'a' == 97
 -- > splitWith undefined ""     == []                  -- and not [""]
 --
+-- and
+--
+-- > intercalate [c] . splitWith (== c) == id
+--
 splitWith :: (Word8 -> Bool) -> ByteString -> [ByteString]
 splitWith _ (BS _  0) = []
 splitWith predicate (BS fp len) = splitWith0 0 len fp
