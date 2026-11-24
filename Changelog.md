@@ -10,6 +10,9 @@
   * New TH splices: `Data.ByteString.literalFromOctetString` and `Data.ByteString.literalFromHex`
     * These validate input strings prior to generating corresponding
       compile-time literal ByteStrings.
+* Bug fixes:
+  * `formatFloat` and `formatDouble` with `standard n` now show zero with `n` digits after the decimal, like `showFFloat`, instead of always as `0.0` ([#729](https://github.com/haskell/bytestring/pull/729))
+
 <!--
 * Bug fixes:
 * Deprecations:
