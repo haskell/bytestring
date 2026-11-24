@@ -800,6 +800,12 @@ testsFloating =
         , singleMatches (formatDouble (standard 2)) (flip (showFFloat (Just 2)) []) ( 0.0050 , "0.00"     )
         , singleMatches (formatDouble (standard 2)) (flip (showFFloat (Just 2)) []) ( 0.0051 , "0.01"     )
         , singleMatches (formatDouble (standard 5)) (flip (showFFloat (Just 5)) []) ( 12.345 , "12.34500" )
+        , singleMatches (formatDouble (standard 0)) (flip (showFFloat (Just 0)) []) ( 0.0    , "0"        )
+        , singleMatches (formatDouble (standard 2)) (flip (showFFloat (Just 2)) []) ( 0.0    , "0.00"     )
+        , singleMatches (formatDouble (standard 0)) (flip (showFFloat (Just 0)) []) ( -0.0   , "-0"       )
+        , singleMatches (formatDouble (standard 3)) (flip (showFFloat (Just 3)) []) ( -0.0   , "-0.000"   )
+        , singleMatches (formatFloat (standard 0))  (flip (showFFloat (Just 0)) []) ( 0.0    , "0"        )
+        , singleMatches (formatFloat (standard 2))  (flip (showFFloat (Just 2)) []) ( -0.0   , "-0.00"    )
         ]
   , testMatches "d2sLooksLikePowerOf5" doubleDec show
         [ ( (coerceWord64ToDouble 0x4830F0CF064DD592) , "5.764607523034235e39" )

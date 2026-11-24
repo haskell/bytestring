@@ -175,7 +175,9 @@ formatFloat (MkFloatFormat fmt prec) = \f ->
     FScientific -> RF.f2s f
     FStandard ->
       case specialStr f of
-        Just b -> b
+        Just b
+          | f == 0, Just p <- prec -> showStandardZero f p
+          | otherwise -> b
         Nothing -> sign f `mappend` showStandard (R.word32ToWord64 m) e' prec
 
 -- TODO: support precision argument for FGeneric and FScientific
@@ -218,7 +220,9 @@ formatDouble (MkFloatFormat fmt prec) = \f ->
     FScientific -> RD.d2s f
     FStandard ->
       case specialStr f of
-        Just b -> b
+        Just b
+          | f == 0, Just p <- prec -> showStandardZero f p
+          | otherwise -> b
         Nothing -> sign f `mappend` showStandard m e' prec
 
 -- | Char7 encode a 'Char'.
@@ -244,6 +248,14 @@ specialStr f
   | isNegativeZero f = Just $ string7 "-0.0"
   | f == 0           = Just $ string7 "0.0"
   | otherwise        = Nothing
+
+-- | Show zero in standard notation with @p@ digits after the decimal, like
+-- `Numeric.showFFloat`: `specialStr` always gives one digit (#641).
+showStandardZero :: RealFloat a => a -> Int -> Builder
+showStandardZero f p =
+  (if isNegativeZero f then char7 '-' else mempty)
+    `mappend` char7 '0'
+    `mappend` (if p > 0 then char7 '.' `mappend` string7 (replicate p '0') else mempty)
 
 -- | Returns a list of decimal digits in a Word64
 digits :: Word64 -> [Int]
